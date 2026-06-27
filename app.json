@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "홍익대알리미",
+    "slug": "hongik-alimi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

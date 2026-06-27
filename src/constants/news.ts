@@ -1,0 +1,89 @@
+import type { TreeNode, NewsItem } from '../types'
+
+export const TREE_DATA: TreeNode[] = [
+  { name: '대학', children: [
+    { id: '교수학습지원', name: '교수학습지원' },
+    { id: '대학혁신지원사업', name: '대학혁신지원사업' },
+    { id: '장학', name: '장학' },
+    { id: '학사', name: '학사' },
+    { id: '학생상담', name: '학생상담' },
+    { id: '학생활동', name: '학생활동' },
+  ]},
+  { name: '건축도시대학', children: [
+    { id: '건축학부', name: '건축학부' },
+    { id: '도시학과', name: '도시학과' },
+  ]},
+  { name: '경영대학', children: [
+    { id: '경영학부', name: '경영학부' },
+  ]},
+  { name: '경제학부', children: [
+    { id: '경제학부', name: '경제학부' },
+  ]},
+  { name: '공과대학', children: [
+    { id: '건설환경공학과', name: '건설환경공학과' },
+    { id: '기계시스템디자인공학과', name: '기계·시스템디자인공학과' },
+    { id: '기초과학과', name: '기초과학과' },
+    { id: '산업데이터공학과', name: '산업·데이터공학과' },
+    { id: '신소재화공시스템공학부', name: '신소재화공시스템공학부' },
+    { id: '전자전기공학부', name: '전자전기공학부' },
+    { id: '컴퓨터공학과', name: '컴퓨터공학과' },
+  ]},
+  { name: '공연예술학부', children: [
+    { id: '뮤지컬전공', name: '뮤지컬전공' },
+    { id: '실용음악전공', name: '실용음악전공' },
+  ]},
+  { name: '교양과', children: [] },
+  { name: '디자인예술경영학부', children: [
+    { id: '디자인경영전공', name: '디자인경영전공' },
+    { id: '예술경영전공', name: '예술경영전공' },
+  ]},
+  { name: '문과대학', children: [
+    { id: '국어국문학과', name: '국어국문학과' },
+    { id: '독어독문학과', name: '독어독문학과' },
+    { id: '불어불문학과', name: '불어불문학과' },
+    { id: '영어영문학과', name: '영어영문학과' },
+  ]},
+  { name: '미술대학', children: [
+    { id: '금속조형디자인과', name: '금속조형디자인과' },
+    { id: '도예유리과', name: '도예유리과' },
+    { id: '동양화과', name: '동양화과' },
+    { id: '디자인학부', name: '디자인학부' },
+    { id: '목조형가구학과', name: '목조형가구학과' },
+    { id: '예술학과', name: '예술학과' },
+    { id: '자율전공', name: '자율전공' },
+    { id: '조소과', name: '조소과' },
+    { id: '판화과', name: '판화과' },
+    { id: '회화과', name: '회화과' },
+  ]},
+  { name: '바이오헬스융합학부', children: [
+    { id: '바이오헬스융합학부', name: '바이오헬스융합학부' },
+  ]},
+  { name: '법과대학', children: [
+    { id: '법학부', name: '법학부' },
+  ]},
+  { name: '사범대학', children: [
+    { id: '교육학과', name: '교육학과' },
+    { id: '국어교육과', name: '국어교육과' },
+    { id: '수학교육과', name: '수학교육과' },
+    { id: '영어교육과', name: '영어교육과' },
+  ]},
+  { name: '융합전공', children: [
+    { id: '데이터사이언스전공', name: '데이터사이언스전공' },
+    { id: '디자인엔지니어링전공', name: '디자인엔지니어링전공' },
+    { id: '사물인터넷공학전공', name: '사물인터넷공학전공' },
+    { id: '지능로봇공학전공', name: '지능로봇공학전공' },
+  ]},
+]
+
+export const NEWS_DATA: NewsItem[] = [
+  { category: '공지', title: '2024년 2학기 수강신청 일정 안내', preview: '수강신청은 8월 19일(월)부터 23일(금)까지 진행됩니다', source: '교학처', sourceId: '학사', date: '08.12' },
+  { category: '장학', title: '국가근로장학금 추가 선발 공고', preview: '2학기 추가 선발 인원을 모집합니다', source: '장학복지처', sourceId: '장학', date: '08.10' },
+  { category: '행사', title: '가을 축제 "한마음제" 참가 신청', preview: '9월 27~28일 개최 예정, 부스 및 공연팀 신청', source: '학생처', sourceId: '학생활동', date: '08.09' },
+  { category: '수강', title: '전공 선택 과목 수강 변경 신청', preview: '수강 변경은 개강 후 1주일 이내에만 가능합니다', source: '컴퓨터공학과', sourceId: '컴퓨터공학과', date: '08.07' },
+  { category: '공지', title: '도서관 추석 연휴 휴관 안내', preview: '추석 연휴 기간 중앙도서관 전 열람실 휴관', source: '중앙도서관', sourceId: '학사', date: '08.06' },
+  { category: '공지', title: '2학기 튜터링·학습코칭 프로그램 모집', preview: '전공별 튜터링, 1:1 학습코칭 참여 신청', source: '교수학습지원센터', sourceId: '교수학습지원', date: '08.04' },
+  { category: '취업', title: '경영대학 2024 취업박람회 개최 안내', preview: '국내외 주요 기업 50여 개사가 참가합니다', source: '경영대학', sourceId: '경영학부', date: '08.03' },
+  { category: '상담', title: '학생 정신건강 무료 상담 프로그램', preview: '전문 상담사와 1:1 심리상담을 무료로 받으세요', source: '학생상담센터', sourceId: '학생상담', date: '08.02' },
+  { category: '공지', title: '전자전기공학부 졸업작품 전시회', preview: '2024년 8월 졸업생 작품 전시회를 개최합니다', source: '전자전기공학부', sourceId: '전자전기공학부', date: '07.30' },
+  { category: '수강', title: '경영학부 전공필수 대체 이수 신청', preview: '8월 말까지 이수 인정 신청을 완료하세요', source: '경영학부', sourceId: '경영학부', date: '07.28' },
+]
