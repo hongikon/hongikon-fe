@@ -1,0 +1,6 @@
+[build]
+  command = "pnpm build:web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
