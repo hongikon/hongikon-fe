@@ -35,6 +35,7 @@ files/
 files.zip
 
 # local env files
+.env
 .env*.local
 
 # typescript

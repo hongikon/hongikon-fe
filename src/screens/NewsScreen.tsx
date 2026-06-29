@@ -15,6 +15,7 @@ import { TREE_DATA, NEWS_DATA } from '../constants/news'
 import type { CategoryKey } from '../constants/colors'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import { useSettings } from '../contexts/SettingsContext'
 
 type TabType = '즐겨찾기' | '구독' | '전체'
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -141,11 +142,15 @@ function DeptNewsList({
 
 export default function NewsScreen() {
   const navigation = useNavigation<NavProp>()
+  const { settings } = useSettings()
   const [activeTab, setActiveTab] = useState<TabType>('즐겨찾기')
   const [selectedDept, setSelectedDept] = useState<{ id: string; name: string } | null>(null)
 
   const favoriteNews = useMemo(() => NEWS_DATA.filter((_, i) => i < 5), [])
-  const subscribedNews = useMemo(() => NEWS_DATA.filter((_, i) => i >= 3), [])
+  const subscribedNews = useMemo(
+    () => NEWS_DATA.filter((n) => settings.subscribedCategories.includes(n.category as CategoryKey)),
+    [settings.subscribedCategories]
+  )
 
   const displayedNews = activeTab === '즐겨찾기' ? favoriteNews : subscribedNews
 

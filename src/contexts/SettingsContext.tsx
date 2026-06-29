@@ -1,28 +1,29 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { CategoryKey } from '../constants/colors'
 
 const STORAGE_KEY = '@hongik_settings'
 
-type MapType = '일반' | '위성' | '지형'
-
 interface Settings {
   subscriptionAlert: boolean
-  mapType: MapType
   favoriteBuildings: string[]
+  subscribedCategories: CategoryKey[]
 }
 
 interface SettingsContextValue {
   settings: Settings
   toggleSubscriptionAlert: () => void
-  setMapType: (type: MapType) => void
   toggleFavoriteBuilding: (name: string) => void
+  toggleSubscribedCategory: (cat: CategoryKey) => void
   resetSettings: () => void
 }
 
+export const ALL_CATEGORIES: CategoryKey[] = ['공지', '장학', '행사', '수강', '시설', '취업', '상담']
+
 const DEFAULT_SETTINGS: Settings = {
   subscriptionAlert: true,
-  mapType: '일반',
   favoriteBuildings: [],
+  subscribedCategories: ALL_CATEGORIES,
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
@@ -56,14 +57,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }, [persist])
 
-  const setMapType = useCallback((type: MapType) => {
-    setSettings((prev) => {
-      const next = { ...prev, mapType: type }
-      persist(next)
-      return next
-    })
-  }, [persist])
-
   const toggleFavoriteBuilding = useCallback((name: string) => {
     setSettings((prev) => {
       const exists = prev.favoriteBuildings.includes(name)
@@ -71,6 +64,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         ? prev.favoriteBuildings.filter((b) => b !== name)
         : [...prev.favoriteBuildings, name]
       const next = { ...prev, favoriteBuildings }
+      persist(next)
+      return next
+    })
+  }, [persist])
+
+  const toggleSubscribedCategory = useCallback((cat: CategoryKey) => {
+    setSettings((prev) => {
+      const exists = prev.subscribedCategories.includes(cat)
+      const subscribedCategories = exists
+        ? prev.subscribedCategories.filter((c) => c !== cat)
+        : [...prev.subscribedCategories, cat]
+      const next = { ...prev, subscribedCategories }
       persist(next)
       return next
     })
@@ -87,8 +92,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       value={{
         settings,
         toggleSubscriptionAlert,
-        setMapType,
         toggleFavoriteBuilding,
+        toggleSubscribedCategory,
         resetSettings,
       }}
     >

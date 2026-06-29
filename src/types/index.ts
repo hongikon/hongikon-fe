@@ -4,6 +4,8 @@ export type BuildingCategory = '강의' | '식당' | '편의' | '주차'
 
 export interface Building {
   name: string
+  lat: number
+  lng: number
   cx: number
   cy: number
   color: string

@@ -10,9 +10,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../constants/colors'
+import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { BUILDINGS } from '../constants/buildings'
-import { useSettings } from '../contexts/SettingsContext'
+import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 
 interface AppNotice {
   id: string
@@ -42,14 +42,14 @@ const APP_NOTICES: AppNotice[] = [
   },
 ]
 
-type ModalType = 'mapType' | 'favorites' | 'notices' | 'noticeDetail' | 'terms' | 'privacy' | null
+type ModalType = 'favorites' | 'notices' | 'noticeDetail' | 'terms' | 'privacy' | null
 
 export default function SettingsScreen() {
   const {
     settings,
     toggleSubscriptionAlert,
-    setMapType,
     toggleFavoriteBuilding,
+    toggleSubscribedCategory,
     resetSettings,
   } = useSettings()
 
@@ -72,12 +72,12 @@ export default function SettingsScreen() {
     setActiveModal('noticeDetail')
   }
 
-  const { subscriptionAlert, mapType, favoriteBuildings } = settings
-  const mapTypes = ['일반', '위성', '지형'] as const
+  const { subscriptionAlert, favoriteBuildings, subscribedCategories } = settings
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scroll}>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
           <View style={styles.row}>
@@ -93,6 +93,45 @@ export default function SettingsScreen() {
               <View style={[styles.toggleThumb, subscriptionAlert && styles.toggleThumbOn]} />
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>구독 설정</Text>
+          <Text style={styles.sectionDesc}>소식 탭 구독 피드에 표시할 카테고리를 선택하세요</Text>
+          <View style={styles.categoryGrid}>
+            {ALL_CATEGORIES.map((cat) => {
+              const isOn = subscribedCategories.includes(cat)
+              const colors = CATEGORY_COLORS[cat]
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryChip,
+                    isOn
+                      ? { backgroundColor: colors.bg, borderColor: colors.text }
+                      : styles.categoryChipOff,
+                  ]}
+                  onPress={() => toggleSubscribedCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  {isOn && <Ionicons name="checkmark-circle" size={13} color={colors.text} />}
+                  <Text style={[styles.categoryChipText, { color: isOn ? colors.text : COLORS.textTertiary }]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>즐겨찾기</Text>
+          <LinkRow
+            icon="star-outline"
+            label="즐겨찾는 건물"
+            value={favoriteBuildings.length > 0 ? `${favoriteBuildings.length}개` : undefined}
+            onPress={() => setActiveModal('favorites')}
+          />
         </View>
 
         <View style={styles.section}>
@@ -114,22 +153,6 @@ export default function SettingsScreen() {
             <Text style={styles.moreText}>전체 보기</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>지도 설정</Text>
-          <LinkRow
-            icon="map-outline"
-            label="기본 지도 유형"
-            value={mapType}
-            onPress={() => setActiveModal('mapType')}
-          />
-          <LinkRow
-            icon="star-outline"
-            label="즐겨찾는 건물"
-            value={favoriteBuildings.length > 0 ? `${favoriteBuildings.length}개` : undefined}
-            onPress={() => setActiveModal('favorites')}
-          />
         </View>
 
         <View style={styles.section}>
@@ -171,26 +194,6 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      <Modal visible={activeModal === 'mapType'} animationType="slide">
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <ModalHeader title="기본 지도 유형" onClose={() => setActiveModal(null)} />
-          <View style={styles.modalBody}>
-            {mapTypes.map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={styles.selectRow}
-                onPress={() => { setMapType(type); setActiveModal(null) }}
-              >
-                <Text style={styles.selectLabel}>{type}</Text>
-                {mapType === type && (
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
         </SafeAreaView>
       </Modal>
 
@@ -243,7 +246,7 @@ export default function SettingsScreen() {
           <ScrollView style={styles.legalBody}>
             <Text style={styles.legalTitle}>개인정보 처리방침</Text>
             <Text style={styles.legalText}>
-              {`1. 수집하는 개인정보\n- 알림 설정 정보\n- 즐겨찾기 건물 목록\n\n2. 개인정보의 이용 목적\n- 맞춤형 캠퍼스 정보 제공\n- 관심 분야별 공지사항 알림\n\n3. 개인정보의 보관\n- 모든 설정 정보는 기기 내부에만 저장됩니다\n- 서버로 전송되지 않습니다\n\n4. 개인정보의 파기\n- 앱 삭제 시 모든 데이터가 자동으로 파기됩니다\n- 설정 초기화 시 저장된 설정이 기본값으로 돌아갑니다`}
+              {`1. 수집하는 개인정보\n- 알림 설정 정보\n- 즐겨찾기 건물 목록\n- 구독 카테고리 설정\n\n2. 개인정보의 이용 목적\n- 맞춤형 캠퍼스 정보 제공\n- 관심 분야별 공지사항 알림\n\n3. 개인정보의 보관\n- 모든 설정 정보는 기기 내부에만 저장됩니다\n- 서버로 전송되지 않습니다\n\n4. 개인정보의 파기\n- 앱 삭제 시 모든 데이터가 자동으로 파기됩니다\n- 설정 초기화 시 저장된 설정이 기본값으로 돌아갑니다`}
             </Text>
           </ScrollView>
         </SafeAreaView>
@@ -276,11 +279,7 @@ function LinkRow({ icon, label, value, danger = false, onPress }: LinkRowProps) 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress}>
       <View style={styles.rowLabel}>
-        <Ionicons
-          name={icon}
-          size={17}
-          color={danger ? COLORS.danger : COLORS.textSecondary}
-        />
+        <Ionicons name={icon} size={17} color={danger ? COLORS.danger : COLORS.textSecondary} />
         <Text style={[styles.rowLabelText, danger && styles.dangerText]}>{label}</Text>
       </View>
       <View style={styles.rowValue}>
@@ -302,6 +301,13 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 4,
     letterSpacing: 0.6,
+  },
+  sectionDesc: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    lineHeight: 17,
   },
   row: {
     flexDirection: 'row',
@@ -341,8 +347,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   toggleThumbOn: { alignSelf: 'flex-end' },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingBottom: 14,
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  categoryChipOff: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+  },
+  categoryChipText: { fontSize: 13, fontWeight: '500' },
   bottomSpacer: { height: 16 },
-
   modalContainer: { flex: 1, backgroundColor: COLORS.white },
   modalHeader: {
     flexDirection: 'row',
@@ -355,7 +381,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
   modalBody: { padding: 20 },
-
   noticeItem: {
     paddingVertical: 14,
     borderBottomWidth: 0.5,
@@ -364,7 +389,6 @@ const styles = StyleSheet.create({
   noticeItemTitle: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary, marginBottom: 3 },
   noticeItemDate: { fontSize: 11, color: '#bbb' },
   noticeDetailDate: { fontSize: 12, color: '#bbb', marginBottom: 8 },
-
   selectRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -377,7 +401,6 @@ const styles = StyleSheet.create({
   favRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   favDot: { width: 10, height: 10, borderRadius: 5 },
   favType: { fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
-
   legalBody: { flex: 1, padding: 20 },
   legalTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 16 },
   legalText: { fontSize: 13, color: '#666', lineHeight: 22 },

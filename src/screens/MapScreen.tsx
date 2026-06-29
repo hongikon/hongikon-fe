@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -9,52 +9,130 @@ import {
   Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, {
-  Rect,
-  Circle,
-  Line,
-  Ellipse,
-  Text as SvgText,
-  G,
-  Polyline,
-  Path,
-} from 'react-native-svg'
+import NaverMapView from '../components/map/NaverMapView'
+import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { BUILDINGS } from '../constants/buildings'
 import type { Building } from '../types'
 
-const MAP_WIDTH = 316
-const MAP_HEIGHT = 488
+const CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
+const CAMPUS_CENTER = { lat: 37.55080, lng: 126.92370 }
 
-interface RoutePoint {
-  x: number
-  y: number
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const rad = Math.PI / 180
+  const dLat = (lat2 - lat1) * rad
+  const dLng = (lng2 - lng1) * rad
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function getRoutePoints(from: Building, to: Building): RoutePoint[] {
-  return [
-    { x: from.cx, y: from.cy },
-    { x: from.anchorX, y: from.cy },
-    { x: from.anchorX, y: from.anchorY },
-    { x: to.anchorX, y: from.anchorY },
-    { x: to.anchorX, y: to.cy },
-    { x: to.cx, y: to.cy },
-  ]
-}
+function buildMapHTML(buildings: Building[]): string {
+  const buildingJSON = JSON.stringify(
+    buildings.map((b) => ({ name: b.name, lat: b.lat, lng: b.lng, color: b.color }))
+  )
 
-function getRouteMinutes(points: RoutePoint[]): number {
-  let dist = 0
-  for (let i = 1; i < points.length; i++) {
-    dist += Math.sqrt(
-      Math.pow(points[i].x - points[i - 1].x, 2) +
-      Math.pow(points[i].y - points[i - 1].y, 2)
-    )
-  }
-  return Math.max(1, Math.round(dist * 1.3 / 66))
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body, #map { width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${CLIENT_ID}"></script>
+  <script>
+    var map = new naver.maps.Map('map', {
+      center: new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}),
+      zoom: 17,
+      mapTypeId: naver.maps.MapTypeId.NORMAL,
+      scaleControl: false,
+      mapDataControl: false,
+    });
+
+    var buildings = ${buildingJSON};
+    var routePolyline = null;
+    var fromMarker = null;
+    var toMarker = null;
+
+    function makeMarkerHTML(color) {
+      return '<div style="width:22px;height:22px;border-radius:50%;background:' + color + ';border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.28);cursor:pointer;"></div>';
+    }
+
+    function makeRouteMarkerHTML(color, label) {
+      return '<div style="width:32px;height:32px;border-radius:50%;background:' + color + ';border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:9px;font-weight:700;">' + label + '</span></div>';
+    }
+
+    buildings.forEach(function(b) {
+      var marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(b.lat, b.lng),
+        map: map,
+        title: b.name,
+        icon: {
+          content: makeMarkerHTML(b.color),
+          anchor: new naver.maps.Point(11, 11),
+        }
+      });
+      naver.maps.Event.addListener(marker, 'click', function() {
+        var msg = JSON.stringify({ type: 'buildingTap', name: b.name });
+        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(msg);
+      });
+    });
+
+    function handleNativeMessage(data) {
+      try {
+        var msg = JSON.parse(data);
+        if (msg.type === 'showRoute') {
+          if (routePolyline) routePolyline.setMap(null);
+          if (fromMarker) fromMarker.setMap(null);
+          if (toMarker) toMarker.setMap(null);
+          var from = new naver.maps.LatLng(msg.fromLat, msg.fromLng);
+          var to   = new naver.maps.LatLng(msg.toLat,   msg.toLng);
+          routePolyline = new naver.maps.Polyline({
+            map: map,
+            path: [from, to],
+            strokeColor: '#3B82F6',
+            strokeWeight: 4,
+            strokeOpacity: 0.88,
+            strokeStyle: 'dash',
+          });
+          fromMarker = new naver.maps.Marker({
+            position: from, map: map,
+            icon: { content: makeRouteMarkerHTML('#10B981', '출발'), anchor: new naver.maps.Point(16, 16) }
+          });
+          toMarker = new naver.maps.Marker({
+            position: to, map: map,
+            icon: { content: makeRouteMarkerHTML('#EF4444', '도착'), anchor: new naver.maps.Point(16, 16) }
+          });
+          var bounds = new naver.maps.LatLngBounds(from, to);
+          map.fitBounds(bounds, { top: 80, right: 40, bottom: 160, left: 40 });
+        }
+        if (msg.type === 'clearRoute') {
+          if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+          if (fromMarker)    { fromMarker.setMap(null);    fromMarker    = null; }
+          if (toMarker)      { toMarker.setMap(null);      toMarker      = null; }
+          map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
+          map.setZoom(17);
+        }
+      } catch(e) {}
+    }
+
+    document.addEventListener('message', function(e) { handleNativeMessage(e.data); });
+    window.addEventListener('message',   function(e) { handleNativeMessage(e.data); });
+  </script>
+</body>
+</html>`
 }
 
 export default function MapScreen() {
+  const webViewRef = useRef<NaverMapViewHandle>(null)
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [fromBuilding, setFromBuilding] = useState<Building | null>(null)
   const [toBuilding, setToBuilding] = useState<Building | null>(null)
@@ -62,55 +140,75 @@ export default function MapScreen() {
   const [routeTarget, setRouteTarget] = useState<'from' | 'to' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const routePoints = fromBuilding && toBuilding
-    ? getRoutePoints(fromBuilding, toBuilding)
-    : null
-  const routeMinutes = routePoints ? getRouteMinutes(routePoints) : 0
+  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), [])
+
+  const routeMinutes = useMemo(() => {
+    if (!fromBuilding || !toBuilding) return 0
+    const meters = haversineMeters(fromBuilding.lat, fromBuilding.lng, toBuilding.lat, toBuilding.lng)
+    return Math.max(1, Math.round(meters / 80))
+  }, [fromBuilding, toBuilding])
 
   const filteredBuildings = searchQuery.trim()
     ? BUILDINGS.filter((b) => b.name.includes(searchQuery.trim()))
     : BUILDINGS
 
-  const handleBuildingPress = useCallback((building: Building) => {
-    setSelectedBuilding(building)
+  const postToMap = useCallback((msg: object) => {
+    webViewRef.current?.injectJavaScript(
+      `handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`
+    )
   }, [])
 
-  const handleClosePopup = useCallback(() => {
-    setSelectedBuilding(null)
+  const handleWebViewMessage = useCallback((event: { nativeEvent: { data: string } }) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data)
+      if (msg.type === 'buildingTap') {
+        const building = BUILDINGS.find((b) => b.name === msg.name) ?? null
+        setSelectedBuilding(building)
+      }
+    } catch {}
   }, [])
 
   const handleSetFrom = useCallback(() => {
     if (!selectedBuilding) return
-    setFromBuilding(selectedBuilding)
+    const next = selectedBuilding
+    setFromBuilding(next)
     setSelectedBuilding(null)
-  }, [selectedBuilding])
+    if (toBuilding) {
+      postToMap({ type: 'showRoute', fromLat: next.lat, fromLng: next.lng, toLat: toBuilding.lat, toLng: toBuilding.lng })
+    }
+  }, [selectedBuilding, toBuilding, postToMap])
 
   const handleSetTo = useCallback(() => {
     if (!selectedBuilding) return
-    setToBuilding(selectedBuilding)
+    const next = selectedBuilding
+    setToBuilding(next)
     setSelectedBuilding(null)
-  }, [selectedBuilding])
+    if (fromBuilding) {
+      postToMap({ type: 'showRoute', fromLat: fromBuilding.lat, fromLng: fromBuilding.lng, toLat: next.lat, toLng: next.lng })
+    }
+  }, [selectedBuilding, fromBuilding, postToMap])
 
   const handleClearRoute = useCallback(() => {
     setFromBuilding(null)
     setToBuilding(null)
-  }, [])
-
-  const handleOpenRoute = useCallback(() => {
-    setShowRoute(true)
-    setRouteTarget(null)
-    setSearchQuery('')
-  }, [])
+    postToMap({ type: 'clearRoute' })
+  }, [postToMap])
 
   const handleSelectRouteBuilding = useCallback((building: Building) => {
     if (routeTarget === 'from') {
       setFromBuilding(building)
+      if (toBuilding) {
+        postToMap({ type: 'showRoute', fromLat: building.lat, fromLng: building.lng, toLat: toBuilding.lat, toLng: toBuilding.lng })
+      }
     } else if (routeTarget === 'to') {
       setToBuilding(building)
+      if (fromBuilding) {
+        postToMap({ type: 'showRoute', fromLat: fromBuilding.lat, fromLng: fromBuilding.lng, toLat: building.lat, toLng: building.lng })
+      }
     }
     setRouteTarget(null)
     setSearchQuery('')
-  }, [routeTarget])
+  }, [routeTarget, fromBuilding, toBuilding, postToMap])
 
   const handleCloseRoute = useCallback(() => {
     setShowRoute(false)
@@ -130,88 +228,14 @@ export default function MapScreen() {
       </TouchableOpacity>
 
       <View style={styles.mapArea}>
-        <Svg width="100%" height="100%" viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}>
-          <Rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="#EEF3EA" />
-
-          <Line x1={75} y1={0} x2={75} y2={MAP_HEIGHT} stroke="#D8D3BC" strokeWidth={12} />
-          <Line x1={232} y1={0} x2={232} y2={MAP_HEIGHT} stroke="#D8D3BC" strokeWidth={12} />
-          <Line x1={153} y1={0} x2={153} y2={MAP_HEIGHT} stroke="#D8D3BC" strokeWidth={8} />
-          <Line x1={0} y1={95} x2={MAP_WIDTH} y2={95} stroke="#D8D3BC" strokeWidth={12} />
-          <Line x1={0} y1={195} x2={MAP_WIDTH} y2={195} stroke="#D8D3BC" strokeWidth={12} />
-          <Line x1={0} y1={310} x2={MAP_WIDTH} y2={310} stroke="#D8D3BC" strokeWidth={12} />
-          <Line x1={0} y1={380} x2={MAP_WIDTH} y2={380} stroke="#D8D3BC" strokeWidth={8} />
-
-          <Rect x={4} y={4} width={65} height={85} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={83} y={4} width={64} height={85} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={159} y={4} width={67} height={85} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={238} y={4} width={74} height={85} rx={5} fill="#D2DAC9" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={4} y={103} width={65} height={86} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={159} y={103} width={67} height={86} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={238} y={103} width={74} height={86} rx={5} fill="#D2DAC9" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={4} y={203} width={65} height={100} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={83} y={203} width={64} height={100} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={238} y={203} width={74} height={100} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-          <Rect x={4} y={318} width={65} height={56} rx={5} fill="#CAD6C2" stroke="#B5C4AE" strokeWidth={1} />
-
-          <Ellipse cx={193} cy={418} rx={68} ry={50} fill="#BCD898" stroke="#98C478" strokeWidth={1.5} />
-          <Ellipse cx={193} cy={418} rx={52} ry={36} fill="none" stroke="#98C478" strokeWidth={1} strokeDasharray="5,3" />
-
-          <Circle cx={150} cy={44} r={14} fill="#A8CC90" opacity={0.8} />
-          <Circle cx={140} cy={52} r={10} fill="#90B87C" opacity={0.8} />
-          <Circle cx={272} cy={152} r={12} fill="#A8CC90" opacity={0.75} />
-          <Circle cx={150} cy={264} r={11} fill="#A8CC90" opacity={0.75} />
-          <Circle cx={86} cy={356} r={11} fill="#A8CC90" opacity={0.75} />
-
-          <SvgText x={275} y={52} textAnchor="middle" fontSize={16} fill="#2563EB" fontWeight="bold">P</SvgText>
-          <SvgText x={193} y={472} textAnchor="middle" fontSize={10} fill="#888">후문</SvgText>
-          <Line x1={193} y1={460} x2={193} y2={469} stroke="#aaa" strokeWidth={1} />
-          <SvgText x={193} y={486} textAnchor="middle" fontSize={10} fill="#888">정문</SvgText>
-
-          {routePoints && (
-            <Polyline
-              points={routePoints.map(p => `${p.x},${p.y}`).join(' ')}
-              fill="none"
-              stroke={COLORS.routeLine}
-              strokeWidth={3.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="8,4"
-              opacity={0.88}
-            />
-          )}
-
-          {fromBuilding && (
-            <G x={fromBuilding.cx} y={fromBuilding.cy}>
-              <Circle r={13} fill={COLORS.routeFrom} stroke="#fff" strokeWidth={2.5} />
-              <SvgText y={1} textAnchor="middle" fontSize={8} fill="#fff" fontWeight="bold">출발</SvgText>
-            </G>
-          )}
-          {toBuilding && (
-            <G x={toBuilding.cx} y={toBuilding.cy}>
-              <Circle r={13} fill={COLORS.routeTo} stroke="#fff" strokeWidth={2.5} />
-              <SvgText y={1} textAnchor="middle" fontSize={8} fill="#fff" fontWeight="bold">도착</SvgText>
-            </G>
-          )}
-
-          {BUILDINGS.map((b) => (
-            <G key={b.name} onPress={() => handleBuildingPress(b)}>
-              <Circle cx={b.cx} cy={b.cy} r={12} fill={b.color} stroke="#fff" strokeWidth={2} />
-              <SvgText x={b.cx} y={b.cy + 16} textAnchor="middle" fontSize={8.5} fill="#4A5568">
-                {b.name}
-              </SvgText>
-            </G>
-          ))}
-
-          <G x={160} y={175}>
-            <Ellipse cx={0} cy={16} rx={9} ry={5} fill="rgba(5,1,74,0.2)" />
-            <Path d="M0,-22C-11,-22-18,-13-18,-5C-18,8 0,26 0,26C0,26 18,8 18,-5C18,-13 11,-22 0,-22Z" fill={COLORS.primary} />
-            <Circle cx={0} cy={-5} r={7} fill="#fff" />
-            <Circle cx={0} cy={-5} r={3} fill={COLORS.primary} />
-          </G>
-        </Svg>
+        <NaverMapView
+          ref={webViewRef}
+          html={mapHTML}
+          onMessage={handleWebViewMessage}
+        />
 
         <View style={styles.mapControls}>
-          <TouchableOpacity style={styles.controlBtn} onPress={handleOpenRoute}>
+          <TouchableOpacity style={styles.controlBtn} onPress={() => setShowRoute(true)}>
             <Ionicons name="navigate" size={17} color={COLORS.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.controlBtn}>
@@ -223,12 +247,12 @@ export default function MapScreen() {
           <View style={styles.routeStrip}>
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
-                <View style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]} />
+                <View style={[styles.routeDot, { backgroundColor: '#10B981' }]} />
                 <Text style={styles.routeLabel} numberOfLines={1}>{fromBuilding.name}</Text>
               </View>
               <Text style={styles.routeArrow}>→</Text>
               <View style={styles.routeRow}>
-                <View style={[styles.routeDot, { backgroundColor: COLORS.routeTo }]} />
+                <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
                 <Text style={styles.routeLabel} numberOfLines={1}>{toBuilding.name}</Text>
               </View>
             </View>
@@ -247,7 +271,7 @@ export default function MapScreen() {
                 <View style={[styles.sheetDot, { backgroundColor: selectedBuilding.color }]} />
                 <Text style={styles.sheetName}>{selectedBuilding.name}</Text>
               </View>
-              <TouchableOpacity onPress={handleClosePopup}>
+              <TouchableOpacity onPress={() => setSelectedBuilding(null)}>
                 <Ionicons name="close" size={20} color="#ccc" />
               </TouchableOpacity>
             </View>
@@ -260,11 +284,11 @@ export default function MapScreen() {
             </View>
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.actionFrom} onPress={handleSetFrom}>
-                <Ionicons name="location" size={14} color={COLORS.routeFrom} />
+                <Ionicons name="location" size={14} color="#10B981" />
                 <Text style={styles.actionFromText}>출발</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionTo} onPress={handleSetTo}>
-                <Ionicons name="flag" size={14} color={COLORS.routeTo} />
+                <Ionicons name="flag" size={14} color="#EF4444" />
                 <Text style={styles.actionToText}>도착</Text>
               </TouchableOpacity>
             </View>
@@ -287,7 +311,7 @@ export default function MapScreen() {
               style={[styles.routeInputRow, routeTarget === 'from' && styles.routeInputActive]}
               onPress={() => { setRouteTarget('from'); setSearchQuery('') }}
             >
-              <View style={[styles.inputDot, { backgroundColor: COLORS.routeFrom }]} />
+              <View style={[styles.inputDot, { backgroundColor: '#10B981' }]} />
               <Text style={fromBuilding ? styles.inputFilled : styles.inputPlaceholder}>
                 {fromBuilding ? fromBuilding.name : '출발지 입력'}
               </Text>
@@ -297,7 +321,7 @@ export default function MapScreen() {
               style={[styles.routeInputRow, routeTarget === 'to' && styles.routeInputActive]}
               onPress={() => { setRouteTarget('to'); setSearchQuery('') }}
             >
-              <View style={[styles.inputDot, { backgroundColor: COLORS.routeTo }]} />
+              <View style={[styles.inputDot, { backgroundColor: '#EF4444' }]} />
               <Text style={toBuilding ? styles.inputFilled : styles.inputPlaceholder}>
                 {toBuilding ? toBuilding.name : '도착지 입력'}
               </Text>
@@ -341,7 +365,7 @@ export default function MapScreen() {
           {!routeTarget && fromBuilding && toBuilding && (
             <View style={styles.routeResultCard}>
               <View style={styles.routeResultRow}>
-                <View style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]} />
+                <View style={[styles.routeDot, { backgroundColor: '#10B981' }]} />
                 <Text style={styles.routeResultName}>{fromBuilding.name}</Text>
               </View>
               <View style={styles.routeResultDivider}>
@@ -349,7 +373,7 @@ export default function MapScreen() {
                 <Text style={styles.routeResultTime}>도보 약 {routeMinutes}분</Text>
               </View>
               <View style={styles.routeResultRow}>
-                <View style={[styles.routeDot, { backgroundColor: COLORS.routeTo }]} />
+                <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
                 <Text style={styles.routeResultName}>{toBuilding.name}</Text>
               </View>
               <TouchableOpacity style={styles.routeStartBtn} onPress={handleCloseRoute}>
@@ -365,57 +389,30 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    backgroundColor: COLORS.white,
-  },
+  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, backgroundColor: COLORS.white },
   headerTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
   searchBar: {
-    marginHorizontal: 16,
-    marginBottom: 10,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F0F0F0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    gap: 8,
+    marginHorizontal: 16, marginBottom: 10, height: 40, borderRadius: 12,
+    backgroundColor: '#F0F0F0', flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, gap: 8,
   },
   searchPlaceholder: { fontSize: 13, color: '#bbb' },
   mapArea: { flex: 1, position: 'relative' },
+  webView: { flex: 1 },
   mapControls: { position: 'absolute', right: 12, bottom: 20, gap: 8 },
   controlBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    width: 40, height: 40, backgroundColor: COLORS.white, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
   routeStrip: {
-    position: 'absolute',
-    top: 8,
-    left: 12,
-    right: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    position: 'absolute', top: 8, left: 12, right: 12,
+    backgroundColor: COLORS.white, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
   },
   routeInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -425,154 +422,50 @@ const styles = StyleSheet.create({
   routeTime: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
   routeCloseBtn: { padding: 2 },
   bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    paddingTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: COLORS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingBottom: 30, paddingTop: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 10,
   },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
+  sheetHandle: { width: 36, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sheetDot: { width: 10, height: 10, borderRadius: 5 },
   sheetName: { fontSize: 17, fontWeight: '600', color: COLORS.textPrimary },
   sheetType: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 10, paddingLeft: 18 },
-  sheetHoursRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    paddingVertical: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: '#f0f0f0',
-    marginBottom: 14,
-  },
+  sheetHoursRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#f0f0f0', marginBottom: 14 },
   sheetHours: { fontSize: 12, color: '#666', lineHeight: 20 },
   sheetActions: { flexDirection: 'row', gap: 10 },
-  actionFrom: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: '#EDFAF3',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  actionFromText: { fontSize: 13, color: COLORS.routeFrom, fontWeight: '600' },
-  actionTo: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: '#EEF0FA',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  actionToText: { fontSize: 13, color: COLORS.routeTo, fontWeight: '600' },
+  actionFrom: { flex: 1, height: 42, borderRadius: 10, backgroundColor: '#EDFAF3', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionFromText: { fontSize: 13, color: '#10B981', fontWeight: '600' },
+  actionTo: { flex: 1, height: 42, borderRadius: 10, backgroundColor: '#FEF2F2', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionToText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
   routeModal: { flex: 1, backgroundColor: COLORS.white },
-  routeModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
-  },
+  routeModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
   routeModalTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
-  routeInputs: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: '#F7F7F7',
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  routeInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-  },
+  routeInputs: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#F7F7F7', borderRadius: 14, overflow: 'hidden' },
+  routeInputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14, gap: 10 },
   routeInputActive: { backgroundColor: '#EEF0FA' },
   inputDot: { width: 10, height: 10, borderRadius: 5 },
   inputPlaceholder: { fontSize: 14, color: '#bbb' },
   inputFilled: { fontSize: 14, color: COLORS.textPrimary, fontWeight: '500' },
   inputDivider: { height: 0.5, backgroundColor: '#E8E8E8', marginHorizontal: 14 },
   routeSearch: { flex: 1, marginTop: 12 },
-  routeSearchBar: {
-    marginHorizontal: 16,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#F0F0F0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    gap: 8,
-    marginBottom: 8,
-  },
+  routeSearchBar: { marginHorizontal: 16, height: 38, borderRadius: 10, backgroundColor: '#F0F0F0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8, marginBottom: 8 },
   routeSearchInput: { flex: 1, fontSize: 14, color: COLORS.textPrimary },
   buildingList: { paddingHorizontal: 16 },
-  buildingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
-    gap: 10,
-  },
+  buildingItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#f4f4f4', gap: 10 },
   buildingItemDot: { width: 10, height: 10, borderRadius: 5 },
   buildingItemInfo: { flex: 1 },
   buildingItemName: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary },
   buildingItemType: { fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
-  routeResultCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: '#F7F7F7',
-    borderRadius: 14,
-    padding: 16,
-  },
+  routeResultCard: { marginHorizontal: 16, marginTop: 20, backgroundColor: '#F7F7F7', borderRadius: 14, padding: 16 },
   routeResultRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   routeResultName: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary },
-  routeResultDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingLeft: 3,
-  },
+  routeResultDivider: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingLeft: 3 },
   routeResultLine: { width: 2, height: 20, backgroundColor: '#ddd', borderRadius: 1 },
   routeResultTime: { fontSize: 12, color: COLORS.primary, fontWeight: '500' },
-  routeStartBtn: {
-    marginTop: 14,
-    height: 42,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  routeStartBtn: { marginTop: 14, height: 42, backgroundColor: COLORS.primary, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   routeStartText: { fontSize: 14, color: '#fff', fontWeight: '600' },
 })
