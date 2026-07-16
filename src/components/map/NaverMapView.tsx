@@ -24,7 +24,7 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ html, onMessage },
     <WebView
       ref={webViewRef}
       style={{ flex: 1 }}
-      source={{ html }}
+      source={{ html, baseUrl: 'http://localhost:8081' }}
       javaScriptEnabled
       domStorageEnabled
       originWhitelist={['*']}
