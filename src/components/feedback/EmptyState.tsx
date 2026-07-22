@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { FONTS } from '../../constants/typography'
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap
@@ -25,5 +26,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  text: { fontSize: 13, color: '#ccc' },
+  text: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 })

@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { BUILDINGS } from '../constants/buildings'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
+import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
+import { FONTS } from '../constants/typography'
 
 interface AppNotice {
   id: string
@@ -32,7 +34,7 @@ const APP_NOTICES: AppNotice[] = [
     id: '2',
     title: '소식 탭 업데이트 안내',
     date: '2024.08.05',
-    body: '즐겨찾기, 구독, 전체 탭으로 소식을 더 편리하게 확인할 수 있습니다. 구독 소식 알림도 설정에서 켜보세요.',
+    body: '북마크, 구독, 전체 탭으로 소식을 더 편리하게 확인할 수 있습니다. 구독 소식 알림도 설정에서 켜보세요.',
   },
   {
     id: '1',
@@ -50,10 +52,12 @@ export default function SettingsScreen() {
     toggleSubscriptionAlert,
     toggleFavoriteBuilding,
     toggleSubscribedCategory,
+    toggleSubscribedDept,
     resetSettings,
   } = useSettings()
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
+  const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
 
   const handleReset = () => {
@@ -72,7 +76,7 @@ export default function SettingsScreen() {
     setActiveModal('noticeDetail')
   }
 
-  const { subscriptionAlert, favoriteBuildings, subscribedCategories } = settings
+  const { subscriptionAlert, favoriteBuildings, subscribedCategories, subscribedDepts } = settings
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -96,8 +100,18 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>구독 설정</Text>
-          <Text style={styles.sectionDesc}>소식 탭 구독 피드에 표시할 카테고리를 선택하세요</Text>
+          <Text style={styles.sectionTitle}>구독</Text>
+          <LinkRow
+            icon="bookmarks-outline"
+            label="구독 관리"
+            value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
+            onPress={() => setSubManagerVisible(true)}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>카테고리 필터</Text>
+          <Text style={styles.sectionDesc}>구독 피드에 표시할 소식 카테고리를 선택하세요</Text>
           <View style={styles.categoryGrid}>
             {ALL_CATEGORIES.map((cat) => {
               const isOn = subscribedCategories.includes(cat)
@@ -125,7 +139,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>즐겨찾기</Text>
+          <Text style={styles.sectionTitle}>북마크</Text>
           <LinkRow
             icon="star-outline"
             label="즐겨찾는 건물"
@@ -246,11 +260,18 @@ export default function SettingsScreen() {
           <ScrollView style={styles.legalBody}>
             <Text style={styles.legalTitle}>개인정보 처리방침</Text>
             <Text style={styles.legalText}>
-              {`1. 수집하는 개인정보\n- 알림 설정 정보\n- 즐겨찾기 건물 목록\n- 구독 카테고리 설정\n\n2. 개인정보의 이용 목적\n- 맞춤형 캠퍼스 정보 제공\n- 관심 분야별 공지사항 알림\n\n3. 개인정보의 보관\n- 모든 설정 정보는 기기 내부에만 저장됩니다\n- 서버로 전송되지 않습니다\n\n4. 개인정보의 파기\n- 앱 삭제 시 모든 데이터가 자동으로 파기됩니다\n- 설정 초기화 시 저장된 설정이 기본값으로 돌아갑니다`}
+              {`1. 수집하는 개인정보\n- 알림 설정 정보\n- 북마크 건물 목록\n- 구독 카테고리 설정\n\n2. 개인정보의 이용 목적\n- 맞춤형 캠퍼스 정보 제공\n- 관심 분야별 공지사항 알림\n\n3. 개인정보의 보관\n- 모든 설정 정보는 기기 내부에만 저장됩니다\n- 서버로 전송되지 않습니다\n\n4. 개인정보의 파기\n- 앱 삭제 시 모든 데이터가 자동으로 파기됩니다\n- 설정 초기화 시 저장된 설정이 기본값으로 돌아갑니다`}
             </Text>
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <SubscriptionManagerModal
+        visible={subManagerVisible}
+        onClose={() => setSubManagerVisible(false)}
+        subscribedDepts={subscribedDepts}
+        onToggleDept={toggleSubscribedDept}
+      />
     </SafeAreaView>
   )
 }
@@ -294,7 +315,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.sectionBg },
   scroll: { flex: 1 },
   section: { backgroundColor: COLORS.white, marginBottom: 8 },
-  sectionTitle: {
+  sectionTitle: { fontFamily: FONTS.regular,
     fontSize: 10,
     color: COLORS.textTertiary,
     paddingHorizontal: 16,
@@ -302,7 +323,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     letterSpacing: 0.6,
   },
-  sectionDesc: {
+  sectionDesc: { fontFamily: FONTS.regular,
     fontSize: 12,
     color: COLORS.textSecondary,
     paddingHorizontal: 16,
@@ -319,13 +340,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f4f4f4',
   },
   rowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  rowLabelText: { fontSize: 14, color: COLORS.textPrimary },
+  rowLabelText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
   dangerText: { color: COLORS.danger },
   rowValue: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  rowValueText: { fontSize: 13, color: COLORS.textTertiary },
+  rowValueText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   noticeRow: { flex: 1, marginRight: 8 },
-  noticeDate: { fontSize: 11, color: '#ccc', marginTop: 2 },
-  moreText: { fontSize: 13, color: COLORS.primary, fontWeight: '500' },
+  noticeDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#ccc', marginTop: 2 },
+  moreText: { fontSize: 13, color: COLORS.primary, fontFamily: FONTS.medium },
   toggle: {
     width: 44,
     height: 26,
@@ -367,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderColor: '#E0E0E0',
   },
-  categoryChipText: { fontSize: 13, fontWeight: '500' },
+  categoryChipText: { fontSize: 13, fontFamily: FONTS.medium },
   bottomSpacer: { height: 16 },
   modalContainer: { flex: 1, backgroundColor: COLORS.white },
   modalHeader: {
@@ -379,16 +400,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#eee',
   },
-  modalTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
+  modalTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   modalBody: { padding: 20 },
   noticeItem: {
     paddingVertical: 14,
     borderBottomWidth: 0.5,
     borderBottomColor: '#f4f4f4',
   },
-  noticeItemTitle: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary, marginBottom: 3 },
-  noticeItemDate: { fontSize: 11, color: '#bbb' },
-  noticeDetailDate: { fontSize: 12, color: '#bbb', marginBottom: 8 },
+  noticeItemTitle: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, marginBottom: 3 },
+  noticeItemDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#bbb' },
+  noticeDetailDate: { fontFamily: FONTS.regular, fontSize: 12, color: '#bbb', marginBottom: 8 },
   selectRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,11 +418,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#f4f4f4',
   },
-  selectLabel: { fontSize: 14, color: COLORS.textPrimary },
+  selectLabel: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
   favRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   favDot: { width: 10, height: 10, borderRadius: 5 },
-  favType: { fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
+  favType: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
   legalBody: { flex: 1, padding: 20 },
-  legalTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 16 },
-  legalText: { fontSize: 13, color: '#666', lineHeight: 22 },
+  legalTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
+  legalText: { fontFamily: FONTS.regular, fontSize: 13, color: '#666', lineHeight: 22 },
 })

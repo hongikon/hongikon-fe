@@ -5,12 +5,16 @@ import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import type { CategoryKey } from '../constants/colors'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import { useSettings } from '../contexts/SettingsContext'
+import { FONTS } from '../constants/typography'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
 
 export default function NewsDetailScreen({ route, navigation }: Props) {
   const { item } = route.params
+  const { isBookmarked, toggleBookmark } = useSettings()
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
+  const bookmarked = isBookmarked(item.id)
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -19,7 +23,17 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
           <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>소식 상세</Text>
-        <View style={{ width: 34 }} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => toggleBookmark(item.id)}
+          accessibilityLabel={bookmarked ? '북마크 해제' : '북마크'}
+        >
+          <Ionicons
+            name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={19}
+            color={bookmarked ? COLORS.primary : COLORS.textSecondary}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -75,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
+  headerTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
   metaRow: {
@@ -85,11 +99,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  date: { fontSize: 12, color: '#bbb' },
+  badgeText: { fontSize: 11, fontFamily: FONTS.semibold },
+  date: { fontFamily: FONTS.regular, fontSize: 12, color: '#bbb' },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
     color: COLORS.textPrimary,
     lineHeight: 28,
     marginBottom: 12,
@@ -100,15 +114,15 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 16,
   },
-  sourceName: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
+  sourceName: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   divider: { height: 0.5, backgroundColor: '#eee', marginBottom: 20 },
-  body: {
+  body: { fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#444',
     lineHeight: 24,
     marginBottom: 12,
   },
-  bodyPlaceholder: {
+  bodyPlaceholder: { fontFamily: FONTS.regular,
     fontSize: 13,
     color: '#bbb',
     fontStyle: 'italic',
@@ -123,5 +137,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#EEF0FA',
   },
-  linkText: { fontSize: 14, color: COLORS.primary, fontWeight: '500' },
+  linkText: { fontSize: 14, color: COLORS.primary, fontFamily: FONTS.medium },
 })

@@ -16,13 +16,24 @@ import type { CategoryKey } from '../constants/colors'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
+import { FONTS } from '../constants/typography'
 
-type TabType = '즐겨찾기' | '구독' | '전체'
+type TabType = '북마크' | '구독' | '전체'
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
-const TABS: TabType[] = ['즐겨찾기', '구독', '전체']
+const TABS: TabType[] = ['북마크', '구독', '전체']
 
-function NewsCard({ item, onPress }: { item: NewsItem; onPress: () => void }) {
+function NewsCard({
+  item,
+  onPress,
+  bookmarked,
+  onToggleBookmark,
+}: {
+  item: NewsItem
+  onPress: () => void
+  bookmarked: boolean
+  onToggleBookmark: () => void
+}) {
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
 
   return (
@@ -31,7 +42,19 @@ function NewsCard({ item, onPress }: { item: NewsItem; onPress: () => void }) {
         <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
           <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
         </View>
-        <Text style={styles.cardDate}>2024.{item.date}</Text>
+        <View style={styles.cardTopRight}>
+          <Text style={styles.cardDate}>2024.{item.date}</Text>
+          <TouchableOpacity
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={onToggleBookmark}
+          >
+            <Ionicons
+              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={16}
+              color={bookmarked ? COLORS.primary : '#ccc'}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
       <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
       <Text style={styles.cardPreview} numberOfLines={1}>{item.preview}</Text>
@@ -107,6 +130,7 @@ function DeptNewsList({
   onBack: () => void
 }) {
   const navigation = useNavigation<NavProp>()
+  const { isBookmarked, toggleBookmark } = useSettings()
   const items = useMemo(
     () => NEWS_DATA.filter((n) => n.sourceId === deptId),
     [deptId]
@@ -127,10 +151,12 @@ function DeptNewsList({
             <Text style={styles.emptyText}>등록된 소식이 없습니다</Text>
           </View>
         ) : (
-          items.map((item, idx) => (
+          items.map((item) => (
             <NewsCard
-              key={idx}
+              key={item.id}
               item={item}
+              bookmarked={isBookmarked(item.id)}
+              onToggleBookmark={() => toggleBookmark(item.id)}
               onPress={() => navigation.navigate('NewsDetail', { item })}
             />
           ))
@@ -142,17 +168,29 @@ function DeptNewsList({
 
 export default function NewsScreen() {
   const navigation = useNavigation<NavProp>()
-  const { settings } = useSettings()
-  const [activeTab, setActiveTab] = useState<TabType>('즐겨찾기')
+  const { settings, isBookmarked, toggleBookmark } = useSettings()
+  const [activeTab, setActiveTab] = useState<TabType>('북마크')
   const [selectedDept, setSelectedDept] = useState<{ id: string; name: string } | null>(null)
 
-  const favoriteNews = useMemo(() => NEWS_DATA.filter((_, i) => i < 5), [])
+  const bookmarkedNews = useMemo(
+    () => NEWS_DATA.filter((n) => settings.bookmarkedNews.includes(n.id)),
+    [settings.bookmarkedNews]
+  )
   const subscribedNews = useMemo(
-    () => NEWS_DATA.filter((n) => settings.subscribedCategories.includes(n.category as CategoryKey)),
-    [settings.subscribedCategories]
+    () =>
+      NEWS_DATA.filter(
+        (n) =>
+          settings.subscribedDepts.includes(n.sourceId) &&
+          settings.subscribedCategories.includes(n.category as CategoryKey)
+      ),
+    [settings.subscribedDepts, settings.subscribedCategories]
   )
 
-  const displayedNews = activeTab === '즐겨찾기' ? favoriteNews : subscribedNews
+  const displayedNews = activeTab === '북마크' ? bookmarkedNews : subscribedNews
+  const emptyMessage =
+    activeTab === '북마크'
+      ? '북마크한 소식이 없습니다'
+      : '구독한 기관·학과의 소식이 없습니다'
 
   const handleSelectDept = useCallback((id: string, name: string) => {
     setSelectedDept({ id, name })
@@ -220,14 +258,23 @@ export default function NewsScreen() {
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {displayedNews.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="file-tray-outline" size={40} color="#ddd" />
-              <Text style={styles.emptyText}>등록된 소식이 없습니다</Text>
+              <Ionicons
+                name={activeTab === '북마크' ? 'bookmark-outline' : 'file-tray-outline'}
+                size={40}
+                color="#ddd"
+              />
+              <Text style={styles.emptyText}>{emptyMessage}</Text>
+              {activeTab === '구독' && (
+                <Text style={styles.emptyHint}>설정 → 구독 관리에서 기관·학과를 추가하세요</Text>
+              )}
             </View>
           ) : (
-            displayedNews.map((item, idx) => (
+            displayedNews.map((item) => (
               <NewsCard
-                key={`${activeTab}-${idx}`}
+                key={`${activeTab}-${item.id}`}
                 item={item}
+                bookmarked={isBookmarked(item.id)}
+                onToggleBookmark={() => toggleBookmark(item.id)}
                 onPress={() => navigation.navigate('NewsDetail', { item })}
               />
             ))
@@ -246,7 +293,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     backgroundColor: COLORS.white,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
+  headerTitle: { fontSize: 20, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
@@ -254,8 +301,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E8E8E8',
   },
   tab: { flex: 1, alignItems: 'center', paddingTop: 10 },
-  tabText: { fontSize: 14, color: '#BFBFBF', fontWeight: '500', paddingBottom: 10 },
-  tabTextActive: { color: COLORS.textPrimary, fontWeight: '700' },
+  tabText: { fontSize: 14, color: '#BFBFBF', fontFamily: FONTS.medium, paddingBottom: 10 },
+  tabTextActive: { color: COLORS.textPrimary, fontFamily: FONTS.bold },
   tabIndicator: { width: '60%', height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
   tabIndicatorActive: { backgroundColor: COLORS.primary },
 
@@ -269,10 +316,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontWeight: '600' },
-  cardDate: { fontSize: 11, color: '#ccc' },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, lineHeight: 20, marginBottom: 4 },
-  cardPreview: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17, marginBottom: 10 },
+  badgeText: { fontSize: 10, fontFamily: FONTS.semibold },
+  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#ccc' },
+  cardTitle: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary, lineHeight: 20, marginBottom: 4 },
+  cardPreview: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, lineHeight: 17, marginBottom: 10 },
   cardSource: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -281,7 +329,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#f2f2f2',
   },
-  cardSourceName: { fontSize: 11, color: '#aaa', fontWeight: '500' },
+  cardSourceName: { fontSize: 11, color: '#aaa', fontFamily: FONTS.medium },
 
   treeScroll: { flex: 1 },
   treeContent: { padding: 10, gap: 6 },
@@ -292,7 +340,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 13,
   },
-  treeParentName: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+  treeParentName: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   treeChildren: { borderTopWidth: 0.5, borderTopColor: '#f2f2f2' },
   treeChild: {
     flexDirection: 'row',
@@ -303,8 +351,8 @@ const styles = StyleSheet.create({
     borderTopColor: '#f8f8f8',
     gap: 7,
   },
-  treeChildPrefix: { fontSize: 12, color: '#c8c8c8', width: 14 },
-  treeChildName: { fontSize: 13, color: '#444', flex: 1 },
+  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: '#c8c8c8', width: 14 },
+  treeChildName: { fontFamily: FONTS.regular, fontSize: 13, color: '#444', flex: 1 },
 
   deptContainer: { flex: 1 },
   deptHeader: {
@@ -325,8 +373,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deptTitle: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary, flex: 1 },
+  deptTitle: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, flex: 1 },
 
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyText: { fontSize: 13, color: '#ccc' },
+  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
+  emptyHint: { fontFamily: FONTS.regular, fontSize: 12, color: '#d5d5d5', marginTop: -4 },
 })

@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
+import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
 import NewsScreen from '../screens/NewsScreen'
 import SettingsScreen from '../screens/SettingsScreen'
@@ -23,6 +24,7 @@ export default function TabNavigator() {
         },
         tabBarLabelStyle: {
           fontSize: 10,
+          fontFamily: FONTS.medium,
         },
       }}
     >

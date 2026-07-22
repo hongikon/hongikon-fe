@@ -76,14 +76,28 @@ export const TREE_DATA: TreeNode[] = [
 ]
 
 export const NEWS_DATA: NewsItem[] = [
-  { category: '공지', title: '2024년 2학기 수강신청 일정 안내', preview: '수강신청은 8월 19일(월)부터 23일(금)까지 진행됩니다', source: '교학처', sourceId: '학사', date: '08.12' },
-  { category: '장학', title: '국가근로장학금 추가 선발 공고', preview: '2학기 추가 선발 인원을 모집합니다', source: '장학복지처', sourceId: '장학', date: '08.10' },
-  { category: '행사', title: '가을 축제 "한마음제" 참가 신청', preview: '9월 27~28일 개최 예정, 부스 및 공연팀 신청', source: '학생처', sourceId: '학생활동', date: '08.09' },
-  { category: '수강', title: '전공 선택 과목 수강 변경 신청', preview: '수강 변경은 개강 후 1주일 이내에만 가능합니다', source: '컴퓨터공학과', sourceId: '컴퓨터공학과', date: '08.07' },
-  { category: '공지', title: '도서관 추석 연휴 휴관 안내', preview: '추석 연휴 기간 중앙도서관 전 열람실 휴관', source: '중앙도서관', sourceId: '학사', date: '08.06' },
-  { category: '공지', title: '2학기 튜터링·학습코칭 프로그램 모집', preview: '전공별 튜터링, 1:1 학습코칭 참여 신청', source: '교수학습지원센터', sourceId: '교수학습지원', date: '08.04' },
-  { category: '취업', title: '경영대학 2024 취업박람회 개최 안내', preview: '국내외 주요 기업 50여 개사가 참가합니다', source: '경영대학', sourceId: '경영학부', date: '08.03' },
-  { category: '상담', title: '학생 정신건강 무료 상담 프로그램', preview: '전문 상담사와 1:1 심리상담을 무료로 받으세요', source: '학생상담센터', sourceId: '학생상담', date: '08.02' },
-  { category: '공지', title: '전자전기공학부 졸업작품 전시회', preview: '2024년 8월 졸업생 작품 전시회를 개최합니다', source: '전자전기공학부', sourceId: '전자전기공학부', date: '07.30' },
-  { category: '수강', title: '경영학부 전공필수 대체 이수 신청', preview: '8월 말까지 이수 인정 신청을 완료하세요', source: '경영학부', sourceId: '경영학부', date: '07.28' },
+  { id: 'n1', category: '공지', title: '2024년 2학기 수강신청 일정 안내', preview: '수강신청은 8월 19일(월)부터 23일(금)까지 진행됩니다', source: '교학처', sourceId: '학사', date: '08.12' },
+  { id: 'n2', category: '장학', title: '국가근로장학금 추가 선발 공고', preview: '2학기 추가 선발 인원을 모집합니다', source: '장학복지처', sourceId: '장학', date: '08.10' },
+  { id: 'n3', category: '행사', title: '가을 축제 "한마음제" 참가 신청', preview: '9월 27~28일 개최 예정, 부스 및 공연팀 신청', source: '학생처', sourceId: '학생활동', date: '08.09' },
+  { id: 'n4', category: '수강', title: '전공 선택 과목 수강 변경 신청', preview: '수강 변경은 개강 후 1주일 이내에만 가능합니다', source: '컴퓨터공학과', sourceId: '컴퓨터공학과', date: '08.07' },
+  { id: 'n5', category: '공지', title: '도서관 추석 연휴 휴관 안내', preview: '추석 연휴 기간 중앙도서관 전 열람실 휴관', source: '중앙도서관', sourceId: '학사', date: '08.06' },
+  { id: 'n6', category: '공지', title: '2학기 튜터링·학습코칭 프로그램 모집', preview: '전공별 튜터링, 1:1 학습코칭 참여 신청', source: '교수학습지원센터', sourceId: '교수학습지원', date: '08.04' },
+  { id: 'n7', category: '취업', title: '경영대학 2024 취업박람회 개최 안내', preview: '국내외 주요 기업 50여 개사가 참가합니다', source: '경영대학', sourceId: '경영학부', date: '08.03' },
+  { id: 'n8', category: '상담', title: '학생 정신건강 무료 상담 프로그램', preview: '전문 상담사와 1:1 심리상담을 무료로 받으세요', source: '학생상담센터', sourceId: '학생상담', date: '08.02' },
+  { id: 'n9', category: '공지', title: '전자전기공학부 졸업작품 전시회', preview: '2024년 8월 졸업생 작품 전시회를 개최합니다', source: '전자전기공학부', sourceId: '전자전기공학부', date: '07.30' },
+  { id: 'n10', category: '수강', title: '경영학부 전공필수 대체 이수 신청', preview: '8월 말까지 이수 인정 신청을 완료하세요', source: '경영학부', sourceId: '경영학부', date: '07.28' },
 ]
+
+export interface SubscribableItem {
+  id: string
+  name: string
+  group: string
+}
+
+// TREE_DATA를 구독 가능한 평면 목록으로 변환한다.
+// 하위 학과가 있으면 각 학과를, 없으면 기관 자체를 구독 단위로 사용한다.
+export const SUBSCRIBABLE_ITEMS: SubscribableItem[] = TREE_DATA.flatMap((node) =>
+  node.children.length === 0
+    ? [{ id: node.name, name: node.name, group: node.name }]
+    : node.children.map((child) => ({ id: child.id, name: child.name, group: node.name }))
+)

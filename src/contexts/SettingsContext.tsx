@@ -8,6 +8,8 @@ interface Settings {
   subscriptionAlert: boolean
   favoriteBuildings: string[]
   subscribedCategories: CategoryKey[]
+  subscribedDepts: string[]
+  bookmarkedNews: string[]
 }
 
 interface SettingsContextValue {
@@ -15,6 +17,9 @@ interface SettingsContextValue {
   toggleSubscriptionAlert: () => void
   toggleFavoriteBuilding: (name: string) => void
   toggleSubscribedCategory: (cat: CategoryKey) => void
+  toggleSubscribedDept: (id: string) => void
+  toggleBookmark: (id: string) => void
+  isBookmarked: (id: string) => boolean
   resetSettings: () => void
 }
 
@@ -24,6 +29,14 @@ const DEFAULT_SETTINGS: Settings = {
   subscriptionAlert: true,
   favoriteBuildings: [],
   subscribedCategories: ALL_CATEGORIES,
+  subscribedDepts: [],
+  bookmarkedNews: [],
+}
+
+function toggleInList(list: string[], value: string): string[] {
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value]
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
@@ -81,6 +94,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }, [persist])
 
+  const toggleSubscribedDept = useCallback((id: string) => {
+    setSettings((prev) => {
+      const next = { ...prev, subscribedDepts: toggleInList(prev.subscribedDepts, id) }
+      persist(next)
+      return next
+    })
+  }, [persist])
+
+  const toggleBookmark = useCallback((id: string) => {
+    setSettings((prev) => {
+      const next = { ...prev, bookmarkedNews: toggleInList(prev.bookmarkedNews, id) }
+      persist(next)
+      return next
+    })
+  }, [persist])
+
+  const isBookmarked = useCallback(
+    (id: string) => settings.bookmarkedNews.includes(id),
+    [settings.bookmarkedNews]
+  )
+
   const resetSettings = useCallback(() => {
     persist(DEFAULT_SETTINGS)
   }, [persist])
@@ -94,6 +128,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         toggleSubscriptionAlert,
         toggleFavoriteBuilding,
         toggleSubscribedCategory,
+        toggleSubscribedDept,
+        toggleBookmark,
+        isBookmarked,
         resetSettings,
       }}
     >

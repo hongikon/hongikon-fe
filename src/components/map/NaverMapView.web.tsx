@@ -24,7 +24,10 @@ function loadExternalScript(src: string): Promise<void> {
 function injectInlineScript(code: string) {
   const s = document.createElement('script')
   s.textContent = code
+  // appendChild 시점에 동기적으로 실행되므로, 실행 뒤 태그를 지워도 효과는 남는다.
+  // 제휴 칩을 누를 때마다 주입되는데, 지우지 않으면 head 에 태그가 계속 쌓인다.
   document.head.appendChild(s)
+  s.remove()
 }
 
 function extractExternalSrc(html: string): string | null {
