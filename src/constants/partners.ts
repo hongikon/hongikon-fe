@@ -1,9 +1,9 @@
 import type { Partner } from '../types'
 
 /**
- * 아래 목록은 전부 총학생회 제휴 건이다. 단과대 제휴가 추가되면 그때
- * affiliations 에 해당 단과대를 넣는다. 한 가게가 양쪽과 계약한 경우가 있어
- * affiliations 는 배열이다.
+ * 목록은 소속(총학생회 / 공과대학 …)별로 구획해 둔다. 다만 실제 필터는 파일
+ * 내 위치가 아니라 각 항목의 affiliations 값으로 이뤄진다. 한 가게가 여러
+ * 주체와 계약한 경우가 있어 affiliations 는 배열이다.
  *
  * 좌표·혜택·주소는 모두 사용자가 직접 확인해 제공한 값이다. 추정값을 넣지 않는다.
  * 새 업체를 추가할 때도 좌표를 확인받기 전에는 목록에 넣지 않는다.
@@ -289,6 +289,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'care-best-checkup-guro',
     name: '베스트 검진센터 구로점',
     category: '의료/미용',
+    mapIcon: '병원',
     affiliations: ['총학생회'],
     lat: 37.4998962,
     lng: 126.884113,
@@ -299,6 +300,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'care-best-checkup-gangnam',
     name: '베스트 검진센터 강남점',
     category: '의료/미용',
+    mapIcon: '병원',
     affiliations: ['총학생회'],
     lat: 37.5171047,
     lng: 127.0394015,
@@ -554,5 +556,151 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.9205912,
     benefit: '계좌 이체 시 전 금액 10% 할인',
     address: '서울 마포구 독막로 67-13 2,3층',
+  },
+
+  // ═══ 공과대학 제휴 ═══════════════════════════════════════
+  // ── 문화 ────────────────────────────────────────────────
+  {
+    id: 'culture-la-billiards',
+    name: 'LA당구장',
+    category: '문화',
+    affiliations: ['공과대학'],
+    lat: 37.5503273,
+    lng: 126.9207402,
+    benefit: '테이블당 음료 2개 서비스',
+    address: '서울 마포구 어울마당로 55-4 서교빌딩 4층',
+  },
+
+  // ── 음식 ────────────────────────────────────────────────
+  {
+    id: 'food-mapo-kkeopdegi',
+    name: '홍대 마포껍데기',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5536476,
+    lng: 126.9225855,
+    benefit: '공대생 인증시 10% 할인',
+    address: '서울 마포구 어울마당로 100-8 1, 2층',
+  },
+  {
+    id: 'food-jejejip',
+    name: '제제집',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5492806,
+    lng: 126.9216349,
+    benefit: '1인 1메뉴 주문시 2인당 음료수 or 공깃밥 1개',
+    address: '서울 마포구 와우산로15길 30',
+  },
+  {
+    id: 'food-oilnae',
+    name: '오일내',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5513853,
+    lng: 126.9215553,
+    benefit: '테이블당 껍데기 or 비빔면 서비스',
+    address: '서울 마포구 어울마당로 70 2층',
+  },
+  {
+    id: 'food-yeoneo-chobap',
+    name: '연어초밥',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5482787,
+    lng: 126.9223832,
+    benefit: '인당 음료수 1개 서비스',
+    address: '서울 마포구 와우산로 39-14 지하 1층',
+  },
+  {
+    id: 'food-ttoboketji-kkantapia',
+    name: '또보겠지 떡볶이집(깐따삐아점)',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5528099,
+    lng: 126.9224825,
+    benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
+    address: '서울 마포구 와우산로21길 28-12',
+  },
+  {
+    id: 'food-ttoboketji-happytoast',
+    name: '또보겠지 떡볶이집(해피토스점)',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5521064,
+    lng: 126.9211604,
+    benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
+    address: '서울 마포구 잔다리로6길 34-5 2층',
+  },
+  {
+    id: 'food-ttoboketji-smileboy',
+    name: '또보겠지 떡볶이집(스마일보이점)',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5549744,
+    lng: 126.9292437,
+    benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
+    address: '서울 마포구 와우산로29길 14-8 101호',
+  },
+  {
+    id: 'food-socoa-hongdae',
+    name: '소코아 홍대점',
+    category: '음식',
+    // 공과대학·문과대학 공동 제휴. 같은 지점이라 항목을 나누지 않고 소속만 겹친다.
+    affiliations: ['공과대학', '문과대학'],
+    lat: 37.5493189,
+    lng: 126.9217977,
+    benefit: '1인 음료 1잔/ 2~4인 사이드 택1',
+    address: '서울 마포구 와우산로 15길 49 1층',
+  },
+  {
+    id: 'food-outdak-hongdae',
+    name: '아웃닭 홍대점',
+    category: '음식',
+    affiliations: ['공과대학'],
+    lat: 37.5500900,
+    lng: 126.9219035,
+    benefit: '2인당 1마리 주문시 테이블당 사이드 택1 제공',
+    address: '서울 마포구 와우산로 17길 19 1층',
+  },
+
+  // ── 주점 ────────────────────────────────────────────────
+  {
+    id: 'bar-chuntown-hongdae-1',
+    name: '춘타운 홍대점 1호점',
+    category: '주점',
+    affiliations: ['공과대학'],
+    lat: 37.5508919,
+    lng: 126.9220307,
+    benefit: '2만원 이상 주문시 사이드 서비스',
+    address: '서울 마포구 잔다리로 10, 1층',
+  },
+
+  // ═══ 문과대학 제휴 ═══════════════════════════════════════
+  // 소코아 홍대점도 문과대학 제휴지만, 공과대학과 공동이라 위 공과대 섹션에
+  // 두고 affiliations 로만 겹쳐 둔다.
+  // ── 문화 ────────────────────────────────────────────────
+  {
+    id: 'culture-keyescape',
+    name: '키이스케이프',
+    category: '문화',
+    affiliations: ['문과대학'],
+    lat: 37.5489619,
+    lng: 126.9209274,
+    benefit:
+      '인당 5,000원 페이백(이용 후 인스타그램 스토리 업로드 또는 영수증 리뷰 작성 → 직원 확인 시 혜택 적용)',
+    address: '서울 마포구 어울마당로 44-1 라곰마빌딩 지하1층',
+  },
+
+  // ── 음식 ────────────────────────────────────────────────
+  {
+    id: 'food-jjimirodak-sangsu',
+    name: '찜이로닭 상수본점',
+    category: '음식',
+    affiliations: ['문과대학'],
+    lat: 37.5481634,
+    lng: 126.9221658,
+    benefit: '주문 메뉴당 캔음료 1개 서비스 제공(2026년 6월 1일 ~ 2026년 12월 31일)',
+    address: '서울 마포구 와우산로 39-21 지1층 좌측호',
   },
 ]

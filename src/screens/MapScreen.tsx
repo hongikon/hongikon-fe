@@ -16,11 +16,15 @@ import type { FloorTarget } from "../components/map/FloorPickerModal";
 import BuildingSheet from "../components/map/BuildingSheet";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
+import PartnerSearchModal from "../components/map/PartnerSearchModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { BUILDINGS } from "../constants/buildings";
 import { PARTNERS } from "../constants/partners";
-import { partnerCategoryMeta } from "../constants/partnerCategories";
+import {
+  partnerCategoryMeta,
+  PARTNER_MAP_ICON_COLOR,
+} from "../constants/partnerCategories";
 import { WALKING_METERS_PER_MINUTE } from "../constants/route";
 import { formatFloor, hasFloorData, floorTransitSeconds } from "../utils/floors";
 import { haversineMeters } from "../utils/geo";
@@ -47,15 +51,20 @@ function buildingLabel(building: Building, floor: number | null): string {
     : `${building.name} ${formatFloor(floor)}`;
 }
 
-/** WebView 로 넘길 마커 정보. 카테고리 색을 여기서 붙인다. */
+/** WebView 로 넘길 마커 정보. 배지 색·아이콘을 여기서 정한다. */
 function toMarker(partner: Partner) {
   const meta = partnerCategoryMeta(partner.category);
+  // mapIcon 으로 아이콘을 덮어쓴 마커(병원 등)는 전용 색을, 아니면 카테고리 색을 쓴다.
+  const color = partner.mapIcon
+    ? PARTNER_MAP_ICON_COLOR[partner.mapIcon]
+    : meta.color;
   return {
     id: partner.id,
     name: partner.name,
     lat: partner.lat,
     lng: partner.lng,
-    color: meta.color,
+    color,
+    iconKey: partner.mapIcon ?? partner.category,
   };
 }
 
@@ -79,6 +88,7 @@ export default function MapScreen() {
     building: Building;
     target: FloorTarget;
   } | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,6 +204,29 @@ export default function MapScreen() {
       applyFilter({ affiliation: selectedAffiliation, category: next });
     },
     [selectedAffiliation, selectedCategory, applyFilter],
+  );
+
+  /**
+   * 검색 결과를 고르면 그 업체만 지도에 올리고 화면 가운데로 가져온다.
+   * 칩 필터는 모두 해제한다. 검색 결과가 칩 조건에 안 맞으면
+   * 칩은 켜져 있는데 다른 업체가 떠 있는 어긋난 상태가 되기 때문이다.
+   */
+  const handleSearchSelect = useCallback(
+    (partner: Partner) => {
+      setShowSearch(false);
+      setSelectedAffiliation(null);
+      setSelectedCategory(null);
+      setSelectedBuilding(null);
+      setSelectedPartner(partner);
+
+      postToMap({
+        type: "setPartners",
+        partners: [toMarker(partner)],
+        bounds: null,
+      });
+      postToMap({ type: "focusPartner", id: partner.id, zoom: 18 });
+    },
+    [postToMap],
   );
 
   const handleClosePartner = useCallback(() => {
@@ -328,9 +361,15 @@ export default function MapScreen() {
         <Text style={styles.headerTitle}>캠퍼스</Text>
       </View>
 
-      <TouchableOpacity style={styles.searchBar} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.searchBar}
+        activeOpacity={0.7}
+        onPress={() => setShowSearch(true)}
+        accessibilityRole="button"
+        accessibilityLabel="제휴 업체 검색"
+      >
         <Ionicons name="search" size={16} color="#999" />
-        <Text style={styles.searchPlaceholder}>건물명, 시설명 검색</Text>
+        <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
       </TouchableOpacity>
 
       <PartnerChips
@@ -540,6 +579,12 @@ export default function MapScreen() {
           )}
         </SafeAreaView>
       </Modal>
+
+      <PartnerSearchModal
+        visible={showSearch}
+        onClose={() => setShowSearch(false)}
+        onSelect={handleSearchSelect}
+      />
 
       {pendingFloor && (
         <FloorPickerModal

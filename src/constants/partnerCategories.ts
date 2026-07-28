@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { Ionicons } from '@expo/vector-icons'
-import type { PartnerCategory } from '../types'
+import type { PartnerCategory, PartnerMapIcon } from '../types'
 
 type IoniconName = ComponentProps<typeof Ionicons>['name']
 
@@ -9,9 +9,11 @@ export interface PartnerCategoryMeta {
   /** 칩에 쓰는 Ionicons 이름 */
   icon: IoniconName
   /**
-   * 지도 마커와 칩 선택 상태에 함께 쓰는 색.
-   * 마커에는 아이콘을 넣지 않으므로, 카테고리를 구분하는 유일한 시각 단서다.
-   * 7종이 서로 구분되도록 색상환에서 충분히 떨어뜨렸다.
+   * 지도 마커 배지와 칩 선택 상태에 함께 쓰는 색. 7종이 서로 구분되도록
+   * 색상환에서 충분히 떨어뜨렸다.
+   *
+   * 마커 배지 안의 아이콘은 이 Ionicons 이름이 아니라, WebView 에서 쓸 수 있도록
+   * mapHtml.ts 의 PARTNER_ICONS 에 인라인 SVG 로 따로 그린다.
    */
   color: string
 }
@@ -35,4 +37,13 @@ export function partnerCategoryMeta(key: PartnerCategory): PartnerCategoryMeta {
     throw new Error(`알 수 없는 제휴 카테고리: ${key}`)
   }
   return meta
+}
+
+/**
+ * mapIcon 으로 아이콘을 덮어쓴 마커의 배지 색. 카테고리 색 대신 쓴다.
+ * 병원은 초록+십자(녹십자)라는 보편 기호를 따르므로 카테고리(의료/미용)
+ * 핑크가 아니라 별도 초록을 쓴다.
+ */
+export const PARTNER_MAP_ICON_COLOR: Record<PartnerMapIcon, string> = {
+  '병원': '#16A34A',
 }

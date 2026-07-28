@@ -22,8 +22,9 @@ interface PartnerChipsProps {
  * 검색바 아래 2단 필터.
  * 위 줄은 소속(총학생회·단과대), 아래 줄은 업종(카페·주점 …).
  *
- * 개수 배지는 반대편 단계의 선택을 고정한 채 센다. 그래서 소속을 고르면
- * 업종 칩의 숫자가 그 소속 안에서의 개수로 좁혀진다.
+ * 개수 숫자 배지는 반대편 단계에 따라 값이 바뀌어 헷갈리므로 화면에 띄우지
+ * 않는다. 다만 개수는 여전히 세어, 해당 조건에 업체가 없는 칩(count 0)만
+ * 흐리게 처리하고 접근성 라벨에 쓴다.
  */
 export default function PartnerChips({
   affiliation,
@@ -76,9 +77,6 @@ export default function PartnerChips({
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {key}
               </Text>
-              <Text style={[styles.count, isActive && styles.countActive]}>
-                {count}
-              </Text>
             </TouchableOpacity>
           );
         })}
@@ -117,9 +115,6 @@ export default function PartnerChips({
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {meta.key}
               </Text>
-              <Text style={[styles.count, isActive && styles.countActive]}>
-                {count}
-              </Text>
             </TouchableOpacity>
           );
         })}
@@ -151,10 +146,4 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.chipText },
   labelActive: { color: COLORS.white },
-  count: {
-    fontSize: 11,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textTertiary,
-  },
-  countActive: { color: "rgba(255,255,255,0.75)" },
 });

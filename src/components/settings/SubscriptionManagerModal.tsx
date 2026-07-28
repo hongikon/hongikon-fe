@@ -65,7 +65,9 @@ export default function SubscriptionManagerModal({
             <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.title}>구독 관리</Text>
-          <Text style={styles.count}>{subscribedDepts.length}</Text>
+          <TouchableOpacity onPress={onClose} accessibilityRole="button">
+            <Text style={styles.done}>완료</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchBar}>
@@ -141,10 +143,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   title: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  count: {
-    minWidth: 22,
-    textAlign: 'right',
-    fontSize: 14,
+  done: {
+    fontSize: 15,
     fontFamily: FONTS.semibold,
     color: COLORS.primary,
   },

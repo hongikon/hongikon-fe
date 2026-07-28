@@ -21,19 +21,14 @@ export const PARTNER_FOCUS_RADIUS_METERS = 2000
 export const PARTNER_BOUNDS_PADDING_DEGREES = 0.0008
 
 /**
- * 제휴 업체 점의 지름(px).
+ * 제휴 마커 아이콘 배지의 한 변(px). 네이버 기본 지도 라벨처럼
+ * 배지(위) + 상호명(아래)으로 쌓는다.
  * 미터가 아니라 화면 픽셀이라, 줌을 아무리 당기고 밀어도 같은 크기로 보인다.
  */
-export const PARTNER_DOT_SIZE_PX = 12
+export const PARTNER_BADGE_SIZE_PX = 26
 
-/** 선택된 업체의 점 지름(px). 살짝만 키워 어느 것을 골랐는지 알린다. */
-export const PARTNER_DOT_SIZE_SELECTED_PX = 15
-
-/**
- * 좌표 위에 두는 투명한 탭 영역의 지름(px).
- * 점이 12px라 그대로는 누르기 어려워, 실제 터치 판정은 이 영역이 받는다.
- */
-export const PARTNER_HIT_AREA_PX = 24
+/** 선택된 업체의 배지 한 변(px). 살짝만 키워 어느 것을 골랐는지 알린다. */
+export const PARTNER_BADGE_SIZE_SELECTED_PX = 30
 
 /**
  * 마커를 누른 직후 이 시간(ms) 안에 들어온 지도 배경 클릭은 무시한다.

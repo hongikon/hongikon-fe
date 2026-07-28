@@ -56,6 +56,13 @@ export type PartnerCategory =
   | '교육'
 
 /**
+ * 지도 마커 배지 아이콘을 카테고리 기본값 대신 개별 지정하는 키.
+ * 한 카테고리에 이질적 업종이 섞일 때 쓴다. 예를 들어 '의료/미용'의
+ * 기본 아이콘은 가위(미용)이지만, 건강검진센터는 '병원'으로 덮어쓴다.
+ */
+export type PartnerMapIcon = '병원'
+
+/**
  * 제휴 업체 한 지점. 지점이 여러 곳인 브랜드(옵틱라이프·로얄짐 등)는
  * 지점마다 별도 항목으로 둔다. 지도에 찍히는 단위가 지점이기 때문이다.
  */
@@ -69,6 +76,11 @@ export interface Partner {
    * 아직 확인되지 않은 업체는 비워두고, 1단 필터에서 걸러지지 않게 한다.
    */
   affiliations?: PartnerAffiliation[]
+  /**
+   * 지도 마커 아이콘을 카테고리 기본값 대신 덮어쓴다. 값이 없으면 카테고리
+   * 아이콘을 쓴다. '의료/미용' 중 건강검진센터를 '병원'으로 구분할 때 쓴다.
+   */
+  mapIcon?: PartnerMapIcon
   /** 좌표는 사용자가 확인해 제공한 값만 넣는다. 추정하지 않는다. */
   lat: number
   lng: number
@@ -98,6 +110,8 @@ export interface NewsItem {
   source: string
   sourceId: string
   date: string
+  /** 원문 게시글 URL. 스크래퍼가 채운다. 없으면 상세 화면이 홈페이지로 폴백한다. */
+  link?: string
 }
 
 export type FilterChip = '전체' | BuildingCategory

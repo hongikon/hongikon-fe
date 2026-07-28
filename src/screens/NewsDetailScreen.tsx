@@ -60,10 +60,14 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
 
         <TouchableOpacity
           style={styles.linkBtn}
-          onPress={() => Linking.openURL('https://www.hongik.ac.kr')}
+          onPress={() =>
+            Linking.openURL(item.link ?? 'https://www.hongik.ac.kr')
+          }
         >
           <Ionicons name="open-outline" size={16} color={COLORS.primary} />
-          <Text style={styles.linkText}>원문 보기 (홍익대 홈페이지)</Text>
+          <Text style={styles.linkText}>
+            {item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
