@@ -347,8 +347,13 @@ export const PARTNERS: readonly Partner[] = [
     affiliations: ['총학생회'],
     lat: 37.5560662,
     lng: 126.9220934,
-    benefit: '영화 1만원 관람 쿠폰, 콤보 3,000원 할인',
+    benefit:
+      '영화 1만원 관람 쿠폰, 콤보 3,000원 할인. 아래 버튼으로 이벤트 페이지에 들어가 쿠폰을 먼저 발급받아야 한다.',
     address: '서울 마포구 양화로 147 아일렉스 7층',
+    link: {
+      label: '쿠폰 발급 페이지 열기',
+      url: 'https://m.megabox.co.kr/event/detail?eventNo=19954',
+    },
   },
   {
     // 혜택에 언급된 '전용 링크' 주소는 제공되지 않아 link 를 비워둔다.

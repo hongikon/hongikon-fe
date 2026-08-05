@@ -4,19 +4,22 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TextInput,
   TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS, CATEGORY_COLORS } from '../constants/colors'
+import { COLORS } from '../constants/colors'
 import { TREE_DATA, NEWS_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
 import type { CategoryKey } from '../constants/colors'
-import type { NewsItem } from '../types'
+import type { NewsItem, TreeChild } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
 import { FONTS } from '../constants/typography'
+import NewsList from '../components/news/NewsList'
+import { useTreeSearch } from '../hooks/useTreeSearch'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 
 type TabType = '북마크' | '구독' | '전체'
@@ -26,49 +29,6 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>
 const DEPT_NAME_BY_ID = new Map(SUBSCRIBABLE_ITEMS.map((item) => [item.id, item.name]))
 
 const TABS: TabType[] = ['북마크', '구독', '전체']
-
-function NewsCard({
-  item,
-  onPress,
-  bookmarked,
-  onToggleBookmark,
-}: {
-  item: NewsItem
-  onPress: () => void
-  bookmarked: boolean
-  onToggleBookmark: () => void
-}) {
-  const catColor = CATEGORY_COLORS[item.category as CategoryKey]
-
-  return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={onPress}>
-      <View style={styles.cardTop}>
-        <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
-          <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
-        </View>
-        <View style={styles.cardTopRight}>
-          <Text style={styles.cardDate}>2024.{item.date}</Text>
-          <TouchableOpacity
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={onToggleBookmark}
-          >
-            <Ionicons
-              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-              size={16}
-              color={bookmarked ? COLORS.primary : '#ccc'}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-      <Text style={styles.cardPreview} numberOfLines={1}>{item.preview}</Text>
-      <View style={styles.cardSource}>
-        <Ionicons name="business-outline" size={12} color="#ccc" />
-        <Text style={styles.cardSourceName}>{item.source}</Text>
-      </View>
-    </TouchableOpacity>
-  )
-}
 
 /** 학과 옆 구독 벨. 행 탭(소식 보기)과 분리해 벨만 구독을 토글한다. */
 function SubscribeBell({
@@ -95,6 +55,84 @@ function SubscribeBell({
   )
 }
 
+/** 구독 단위 한 줄. 이름을 누르면 소식 목록, 벨을 누르면 구독 토글. */
+function TreeLeafRow({
+  child,
+  indented,
+  onSelectDept,
+  subscribed,
+  onToggleSubscribe,
+}: {
+  child: TreeChild
+  indented?: boolean
+  onSelectDept: (id: string, name: string) => void
+  subscribed: boolean
+  onToggleSubscribe: () => void
+}) {
+  return (
+    <View style={[styles.treeChild, indented && styles.treeGrandChild]}>
+      <Text style={styles.treeChildPrefix}>ㄴ</Text>
+      <TouchableOpacity
+        style={styles.treeChildTap}
+        onPress={() => onSelectDept(child.id, child.name)}
+      >
+        <Text style={styles.treeChildName}>{child.name}</Text>
+        <Ionicons name="chevron-forward" size={12} color="#ddd" />
+      </TouchableOpacity>
+      <SubscribeBell subscribed={subscribed} onToggle={onToggleSubscribe} />
+    </View>
+  )
+}
+
+/**
+ * 전공이 나뉜 학부처럼 한 단계 더 들어가는 묶음.
+ * 이 줄 자체는 구독 단위가 아니라서 벨 대신 펼치기 화살표만 둔다.
+ */
+function TreeSubGroup({
+  group,
+  forceOpen,
+  onSelectDept,
+  subscribedDepts,
+  onToggleSubscribe,
+}: {
+  group: TreeChild
+  /** 검색 중에는 결과가 접혀 있으면 안 되므로 강제로 펼친다. */
+  forceOpen?: boolean
+  onSelectDept: (id: string, name: string) => void
+  subscribedDepts: string[]
+  onToggleSubscribe: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const isOpen = forceOpen || open
+
+  return (
+    <View>
+      <TouchableOpacity
+        style={styles.treeChild}
+        onPress={() => setOpen((prev) => !prev)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+      >
+        <Text style={styles.treeChildPrefix}>ㄴ</Text>
+        <Text style={styles.treeSubGroupName}>{group.name}</Text>
+        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={13} color="#bbb" />
+      </TouchableOpacity>
+
+      {isOpen &&
+        group.children?.map((child) => (
+          <TreeLeafRow
+            key={child.id}
+            child={child}
+            indented
+            onSelectDept={onSelectDept}
+            subscribed={subscribedDepts.includes(child.id)}
+            onToggleSubscribe={() => onToggleSubscribe(child.id)}
+          />
+        ))}
+    </View>
+  )
+}
+
 function TreeView({
   onSelectDept,
   subscribedDepts,
@@ -104,68 +142,116 @@ function TreeView({
   subscribedDepts: string[]
   onToggleSubscribe: (id: string) => void
 }) {
-  const [expanded, setExpanded] = useState<Set<number>>(new Set([0]))
+  const { query, setQuery, results, isSearching } = useTreeSearch(TREE_DATA)
+  // 펼침 상태는 이름으로 기억한다. 검색으로 목록이 걸러지면 순서가 밀려서
+  // 인덱스로 기억하면 엉뚱한 단과대가 펼쳐진다.
+  // 처음에는 전부 접어 둔다. 단과대가 많아 하나가 펼쳐져 있으면 나머지가 아래로 밀린다.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const toggleNode = useCallback((idx: number) => {
+  const toggleNode = useCallback((name: string) => {
     setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
       return next
     })
   }, [])
 
   return (
-    <ScrollView style={styles.treeScroll} contentContainerStyle={styles.treeContent}>
-      {TREE_DATA.map((node, idx) => {
-        const isLeaf = node.children.length === 0
-        const isOpen = expanded.has(idx)
+    <View style={styles.treeScroll}>
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={16} color={COLORS.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="학과·기관 검색"
+          placeholderTextColor={COLORS.textPlaceholder}
+          value={query}
+          onChangeText={setQuery}
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel="학과 검색"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setQuery('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="검색어 지우기"
+          >
+            <Ionicons name="close-circle" size={16} color={COLORS.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-        return (
-          <View key={idx} style={styles.treeCard}>
-            <TouchableOpacity
-              style={styles.treeParent}
-              onPress={() => isLeaf ? onSelectDept(node.name, node.name) : toggleNode(idx)}
-            >
-              <Text style={styles.treeParentName}>{node.name}</Text>
-              {isLeaf ? (
-                <SubscribeBell
-                  subscribed={subscribedDepts.includes(node.name)}
-                  onToggle={() => onToggleSubscribe(node.name)}
-                />
-              ) : (
-                <Ionicons
-                  name={isOpen ? 'chevron-up' : 'chevron-down'}
-                  size={15}
-                  color="#bbb"
-                />
-              )}
-            </TouchableOpacity>
+      {results.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="search-outline" size={40} color="#ddd" />
+          <Text style={styles.emptyText}>'{query.trim()}' 검색 결과가 없습니다</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.treeScroll}
+          contentContainerStyle={styles.treeContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {results.map((node) => {
+            const isLeaf = node.children.length === 0
+            // 검색 중에는 걸린 결과가 바로 보이도록 모두 펼친다.
+            const isOpen = isSearching || expanded.has(node.name)
 
-            {!isLeaf && isOpen && (
-              <View style={styles.treeChildren}>
-                {node.children.map((child) => (
-                  <View key={child.id} style={styles.treeChild}>
-                    <Text style={styles.treeChildPrefix}>ㄴ</Text>
-                    <TouchableOpacity
-                      style={styles.treeChildTap}
-                      onPress={() => onSelectDept(child.id, child.name)}
-                    >
-                      <Text style={styles.treeChildName}>{child.name}</Text>
-                      <Ionicons name="chevron-forward" size={12} color="#ddd" />
-                    </TouchableOpacity>
+            return (
+              <View key={node.name} style={styles.treeCard}>
+                <TouchableOpacity
+                  style={styles.treeParent}
+                  onPress={() =>
+                    isLeaf ? onSelectDept(node.name, node.name) : toggleNode(node.name)
+                  }
+                >
+                  <Text style={styles.treeParentName}>{node.name}</Text>
+                  {isLeaf ? (
                     <SubscribeBell
-                      subscribed={subscribedDepts.includes(child.id)}
-                      onToggle={() => onToggleSubscribe(child.id)}
+                      subscribed={subscribedDepts.includes(node.name)}
+                      onToggle={() => onToggleSubscribe(node.name)}
                     />
+                  ) : (
+                    <Ionicons
+                      name={isOpen ? 'chevron-up' : 'chevron-down'}
+                      size={15}
+                      color="#bbb"
+                    />
+                  )}
+                </TouchableOpacity>
+
+                {!isLeaf && isOpen && (
+                  <View style={styles.treeChildren}>
+                    {node.children.map((child) =>
+                      child.children?.length ? (
+                        <TreeSubGroup
+                          key={child.id}
+                          group={child}
+                          forceOpen={isSearching}
+                          onSelectDept={onSelectDept}
+                          subscribedDepts={subscribedDepts}
+                          onToggleSubscribe={onToggleSubscribe}
+                        />
+                      ) : (
+                        <TreeLeafRow
+                          key={child.id}
+                          child={child}
+                          onSelectDept={onSelectDept}
+                          subscribed={subscribedDepts.includes(child.id)}
+                          onToggleSubscribe={() => onToggleSubscribe(child.id)}
+                        />
+                      )
+                    )}
                   </View>
-                ))}
+                )}
               </View>
-            )}
-          </View>
-        )
-      })}
-    </ScrollView>
+            )
+          })}
+        </ScrollView>
+      )}
+    </View>
   )
 }
 
@@ -185,6 +271,11 @@ function DeptNewsList({
     [deptId]
   )
 
+  const handlePressItem = useCallback(
+    (item: NewsItem) => navigation.navigate('NewsDetail', { item }),
+    [navigation],
+  )
+
   return (
     <View style={styles.deptContainer}>
       <View style={styles.deptHeader}>
@@ -193,24 +284,18 @@ function DeptNewsList({
         </TouchableOpacity>
         <Text style={styles.deptTitle} numberOfLines={1}>{deptName}</Text>
       </View>
-      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        {items.length === 0 ? (
+      <NewsList
+        items={items}
+        isBookmarked={isBookmarked}
+        onPressItem={handlePressItem}
+        onToggleBookmark={toggleBookmark}
+        empty={
           <View style={styles.emptyState}>
             <Ionicons name="file-tray-outline" size={40} color="#ddd" />
             <Text style={styles.emptyText}>등록된 소식이 없습니다</Text>
           </View>
-        ) : (
-          items.map((item) => (
-            <NewsCard
-              key={item.id}
-              item={item}
-              bookmarked={isBookmarked(item.id)}
-              onToggleBookmark={() => toggleBookmark(item.id)}
-              onPress={() => navigation.navigate('NewsDetail', { item })}
-            />
-          ))
-        )}
-      </ScrollView>
+        }
+      />
     </View>
   )
 }
@@ -242,6 +327,13 @@ export default function NewsScreen() {
     activeTab === '북마크'
       ? '북마크한 소식이 없습니다'
       : '구독한 기관·학과의 소식이 없습니다'
+
+  // NewsList 로 넘기는 콜백은 렌더마다 새로 만들면 안 된다.
+  // 새로 만들면 목록의 모든 카드가 memo 를 통과해 다시 그려진다.
+  const handlePressItem = useCallback(
+    (item: NewsItem) => navigation.navigate('NewsDetail', { item }),
+    [navigation],
+  )
 
   const handleSelectDept = useCallback((id: string, name: string) => {
     setSelectedDept({ id, name })
@@ -310,51 +402,61 @@ export default function NewsScreen() {
           onToggleSubscribe={toggleSubscribedDept}
         />
       ) : (
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-          {activeTab === '구독' && settings.subscribedDepts.length > 0 && (
-            <View style={styles.hub}>
-              <View style={styles.hubHead}>
-                <Text style={styles.hubLabel}>내 구독 학과 {settings.subscribedDepts.length}</Text>
-                <TouchableOpacity
-                  style={styles.hubManage}
-                  onPress={() => setManageChipsOpen((v) => !v)}
-                  accessibilityRole="button"
-                >
-                  <Ionicons
-                    name={manageChipsOpen ? 'chevron-up' : 'options-outline'}
-                    size={13}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.hubManageText}>관리</Text>
-                </TouchableOpacity>
-              </View>
-
-              {manageChipsOpen && (
-                <View style={styles.chips}>
-                  {settings.subscribedDepts.map((id) => (
-                    <View key={id} style={styles.chip}>
-                      <Text style={styles.chipText}>{DEPT_NAME_BY_ID.get(id) ?? id}</Text>
-                      <TouchableOpacity
-                        onPress={() => toggleSubscribedDept(id)}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        accessibilityLabel={`${DEPT_NAME_BY_ID.get(id) ?? id} 구독 해제`}
-                      >
-                        <View style={styles.chipX}>
-                          <Ionicons name="close" size={11} color={COLORS.white} />
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  <TouchableOpacity style={styles.chipAdd} onPress={() => setSubManagerOpen(true)}>
-                    <Ionicons name="add" size={13} color={COLORS.primary} />
-                    <Text style={styles.chipAddText}>학과 추가</Text>
+        <NewsList
+          items={displayedNews}
+          isBookmarked={isBookmarked}
+          onPressItem={handlePressItem}
+          onToggleBookmark={toggleBookmark}
+          header={
+            activeTab === '구독' && settings.subscribedDepts.length > 0 ? (
+              <View style={styles.hub}>
+                <View style={styles.hubHead}>
+                  <Text style={styles.hubLabel}>
+                    내 구독 학과 {settings.subscribedDepts.length}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.hubManage}
+                    onPress={() => setManageChipsOpen((v) => !v)}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons
+                      name={manageChipsOpen ? 'chevron-up' : 'options-outline'}
+                      size={13}
+                      color={COLORS.primary}
+                    />
+                    <Text style={styles.hubManageText}>관리</Text>
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
-          )}
 
-          {displayedNews.length === 0 ? (
+                {manageChipsOpen && (
+                  <View style={styles.chips}>
+                    {settings.subscribedDepts.map((id) => (
+                      <View key={id} style={styles.chip}>
+                        <Text style={styles.chipText}>{DEPT_NAME_BY_ID.get(id) ?? id}</Text>
+                        <TouchableOpacity
+                          onPress={() => toggleSubscribedDept(id)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          accessibilityLabel={`${DEPT_NAME_BY_ID.get(id) ?? id} 구독 해제`}
+                        >
+                          <View style={styles.chipX}>
+                            <Ionicons name="close" size={11} color={COLORS.white} />
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.chipAdd}
+                      onPress={() => setSubManagerOpen(true)}
+                    >
+                      <Ionicons name="add" size={13} color={COLORS.primary} />
+                      <Text style={styles.chipAddText}>학과 추가</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : null
+          }
+          empty={
             <View style={styles.emptyState}>
               <Ionicons
                 name={activeTab === '북마크' ? 'bookmark-outline' : 'notifications-outline'}
@@ -369,18 +471,8 @@ export default function NewsScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          ) : (
-            displayedNews.map((item) => (
-              <NewsCard
-                key={`${activeTab}-${item.id}`}
-                item={item}
-                bookmarked={isBookmarked(item.id)}
-                onToggleBookmark={() => toggleBookmark(item.id)}
-                onPress={() => navigation.navigate('NewsDetail', { item })}
-              />
-            ))
-          )}
-        </ScrollView>
+          }
+        />
       )}
 
       <SubscriptionManagerModal
@@ -414,33 +506,30 @@ const styles = StyleSheet.create({
   tabIndicator: { width: '60%', height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
   tabIndicatorActive: { backgroundColor: COLORS.primary },
 
-  list: { flex: 1 },
-  listContent: { padding: 12, gap: 8 },
-  card: { backgroundColor: COLORS.white, borderRadius: 14, padding: 14 },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontFamily: FONTS.semibold },
-  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  cardDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#ccc' },
-  cardTitle: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary, lineHeight: 20, marginBottom: 4 },
-  cardPreview: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, lineHeight: 17, marginBottom: 10 },
-  cardSource: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingTop: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: '#f2f2f2',
-  },
-  cardSourceName: { fontSize: 11, color: '#aaa', fontFamily: FONTS.medium },
+  // 카드 스타일은 components/news/NewsCard.tsx 로 함께 옮겼다.
 
   treeScroll: { flex: 1 },
   treeContent: { padding: 10, gap: 6 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 10,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    padding: 0,
+  },
   treeCard: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden' },
   treeParent: {
     flexDirection: 'row',
@@ -459,6 +548,9 @@ const styles = StyleSheet.create({
     borderTopColor: '#f8f8f8',
     gap: 7,
   },
+  // 학부 아래 전공 줄. 한 단계 더 들어갔다는 걸 들여쓰기와 배경으로 보여준다.
+  treeGrandChild: { paddingLeft: 30, backgroundColor: '#fbfbfd' },
+  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: '#444' },
   treeChildTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
   treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: '#c8c8c8', width: 14 },
   treeChildName: { fontFamily: FONTS.regular, fontSize: 13, color: '#444', flex: 1 },

@@ -41,7 +41,10 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
           <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
             <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
           </View>
-          <Text style={styles.date}>2024.{item.date}</Text>
+          <Text style={styles.date}>
+            {item.date}
+            {typeof item.views === 'number' ? ` · 조회 ${item.views}` : ''}
+          </Text>
         </View>
 
         <Text style={styles.title}>{item.title}</Text>
@@ -53,10 +56,34 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.divider} />
 
-        <Text style={styles.body}>{item.preview}</Text>
-        <Text style={styles.bodyPlaceholder}>
-          실제 공지 내용은 백엔드 연동 후 표시됩니다.
-        </Text>
+        {item.preview.length > 0 && <Text style={styles.body}>{item.preview}</Text>}
+
+        {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
+        {item.preview.length === 0 && (
+          <Text style={styles.bodyPlaceholder}>
+            {item.images?.length
+              ? '본문이 이미지로만 되어 있습니다. 원문에서 확인하세요.'
+              : '본문 미리보기가 없습니다. 원문에서 확인하세요.'}
+          </Text>
+        )}
+
+        {item.attachments && item.attachments.length > 0 && (
+          <View style={styles.attachBox}>
+            <Text style={styles.attachLabel}>첨부파일 {item.attachments.length}</Text>
+            {item.attachments.map((file) => (
+              <TouchableOpacity
+                key={file.url}
+                style={styles.attachRow}
+                onPress={() => Linking.openURL(file.url)}
+                accessibilityRole="link"
+                accessibilityLabel={`${file.name} 내려받기`}
+              >
+                <Ionicons name="document-attach-outline" size={15} color={COLORS.primary} />
+                <Text style={styles.attachName} numberOfLines={1}>{file.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.linkBtn}
@@ -132,6 +159,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 24,
   },
+  attachBox: {
+    backgroundColor: '#FAFAFC',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  attachLabel: { fontSize: 11, fontFamily: FONTS.bold, color: '#9a9aa5', letterSpacing: 0.3 },
+  attachRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  attachName: { flex: 1, fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
   linkBtn: {
     flexDirection: 'row',
     alignItems: 'center',

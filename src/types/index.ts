@@ -100,6 +100,16 @@ export interface TreeNode {
 export interface TreeChild {
   id: string
   name: string
+  /**
+   * 전공이 나뉜 학부처럼 한 단계 더 들어가는 경우에만 채운다.
+   * 이 값이 있으면 노드 자신은 구독 단위가 아니라 펼치기용 묶음이다.
+   */
+  children?: TreeChild[]
+}
+
+export interface NewsAttachment {
+  name: string
+  url: string
 }
 
 export interface NewsItem {
@@ -109,9 +119,13 @@ export interface NewsItem {
   preview: string
   source: string
   sourceId: string
+  /** 'YYYY.MM.DD' 형식. */
   date: string
   /** 원문 게시글 URL. 스크래퍼가 채운다. 없으면 상세 화면이 홈페이지로 폴백한다. */
   link?: string
+  /** 아래 3개는 스크래퍼를 --detail 로 돌렸을 때만 채워진다. */
+  views?: number
+  /** 본문이 이미지 한 장뿐인 공지가 흔해서 이미지 URL 을 따로 들고 있는다. */
+  images?: string[]
+  attachments?: NewsAttachment[]
 }
-
-export type FilterChip = '전체' | BuildingCategory

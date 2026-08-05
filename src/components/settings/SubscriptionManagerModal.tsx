@@ -26,12 +26,16 @@ interface Group {
   items: SubscribableItem[]
 }
 
+/**
+ * 이어 붙은 같은 group 끼리 묶는다.
+ * 마지막 묶음을 직접 바꾸지 않고 새 묶음으로 교체해 원본 배열을 건드리지 않는다.
+ */
 function buildGroups(items: SubscribableItem[]): Group[] {
   return items.reduce<Group[]>((groups, item) => {
     const last = groups[groups.length - 1]
-    if (last && last.name === item.group) {
-      last.items.push(item)
-      return groups
+    if (last?.name === item.group) {
+      const merged = { ...last, items: [...last.items, item] }
+      return [...groups.slice(0, -1), merged]
     }
     return [...groups, { name: item.group, items: [item] }]
   }, [])
