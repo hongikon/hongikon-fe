@@ -10,11 +10,18 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import Constants from 'expo-constants'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { BUILDINGS } from '../constants/buildings'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
+import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import { FONTS } from '../constants/typography'
+import type { RootStackParamList } from '../navigation/RootNavigator'
+
+type NavProp = NativeStackNavigationProp<RootStackParamList>
 
 interface AppNotice {
   id: string
@@ -56,9 +63,25 @@ export default function SettingsScreen() {
     resetSettings,
   } = useSettings()
 
+  const { status, logout } = useAuth()
+  const navigation = useNavigation<NavProp>()
+
   const [activeModal, setActiveModal] = useState<ModalType>(null)
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
+
+  const handleLogout = () => {
+    Alert.alert('로그아웃', '로그아웃하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      { text: '로그아웃', style: 'destructive', onPress: () => logout() },
+    ])
+  }
+
+  // 게스트는 로그인된 게 없으니 확인 없이 바로 웰컴 화면으로 보낸다.
+  // logout() 이 토큰·게스트 플래그를 함께 지워 signedOut 상태로 돌려놓는다.
+  const handleGoToLogin = () => {
+    logout()
+  }
 
   const handleReset = () => {
     Alert.alert(
@@ -83,6 +106,23 @@ export default function SettingsScreen() {
       <ScrollView style={styles.scroll}>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>계정</Text>
+          {status === 'authenticated' ? (
+            <>
+              <LinkRow icon="person-circle-outline" label="카카오 계정으로 로그인됨" />
+              <LinkRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
+            </>
+          ) : (
+            <LinkRow
+              icon="log-in-outline"
+              label="로그인하기"
+              value="게스트로 이용 중"
+              onPress={handleGoToLogin}
+            />
+          )}
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
           <View style={styles.row}>
             <View style={styles.rowLabel}>
@@ -93,6 +133,9 @@ export default function SettingsScreen() {
               style={[styles.toggle, subscriptionAlert && styles.toggleOn]}
               onPress={toggleSubscriptionAlert}
               activeOpacity={0.8}
+              accessibilityRole="switch"
+              accessibilityLabel="구독 소식 알림"
+              accessibilityState={{ checked: subscriptionAlert }}
             >
               <View style={[styles.toggleThumb, subscriptionAlert && styles.toggleThumbOn]} />
             </TouchableOpacity>
@@ -171,7 +214,17 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>일반</Text>
-          <LinkRow icon="information-circle-outline" label="앱 버전" value="1.0.0" />
+          <LinkRow icon="school-outline" label="학교" value="홍익대학교 (곧 추가 예정)" />
+          <LinkRow
+            icon="information-circle-outline"
+            label="앱 버전"
+            value={Constants.expoConfig?.version ?? '-'}
+          />
+          <LinkRow
+            icon="pulse-outline"
+            label="앱 상태 확인"
+            onPress={() => navigation.navigate('AppStatus')}
+          />
           <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
           <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
@@ -312,8 +365,10 @@ function LinkRow({ icon, label, value, danger = false, onPress }: LinkRowProps) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.sectionBg },
-  scroll: { flex: 1 },
+  // SafeAreaView 상단 인셋은 첫 section의 흰 배경과 맞춰 흰색으로 둔다.
+  // 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
+  container: { flex: 1, backgroundColor: COLORS.white },
+  scroll: { flex: 1, backgroundColor: COLORS.sectionBg },
   section: { backgroundColor: COLORS.white, marginBottom: 8 },
   sectionTitle: { fontFamily: FONTS.regular,
     fontSize: 10,

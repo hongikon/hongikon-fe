@@ -62,6 +62,19 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
               제휴 혜택
             </Text>
             <Text style={styles.benefitText}>{partner.benefit}</Text>
+
+            {partner.affiliationBenefits?.map((item) => (
+              <View key={item.affiliation} style={styles.exceptionRow}>
+                <View
+                  style={[styles.exceptionChip, { backgroundColor: meta.color }]}
+                >
+                  <Text style={styles.exceptionChipText}>
+                    {item.affiliation}
+                  </Text>
+                </View>
+                <Text style={styles.benefitText}>{item.benefit}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -164,6 +177,29 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   benefitText: { fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 20, color: COLORS.textPrimary },
+  /**
+   * 소속별 예외 혜택. 기본 혜택 아래에 얇은 구분선을 두고 이어 붙여,
+   * 별개 항목이 아니라 "이 소속만 다르다"로 읽히게 한다.
+   */
+  exceptionRow: {
+    marginTop: 9,
+    paddingTop: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.12)",
+    gap: 5,
+    alignItems: "flex-start",
+  },
+  exceptionChip: {
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+  },
+  exceptionChipText: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: COLORS.white,
+    letterSpacing: 0.2,
+  },
   row: {
     flexDirection: "row",
     alignItems: "flex-start",

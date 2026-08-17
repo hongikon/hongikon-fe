@@ -1,13 +1,6 @@
 import { PARTNERS } from '../constants/partners'
+import { normalize } from './normalize'
 import type { Partner } from '../types'
-
-/**
- * 공백을 지우고 소문자로 맞춘다.
- * '어리 홍대'를 '어리홍대'로 쳐도 걸리게 하려는 것이다.
- */
-function normalize(value: string): string {
-  return value.replace(/\s+/g, '').toLowerCase()
-}
 
 /** 상호명뿐 아니라 혜택·주소로도 찾게 한다. '10%할인', '상수동' 같은 검색을 위해서다. */
 function searchableFields(partner: Partner): string[] {

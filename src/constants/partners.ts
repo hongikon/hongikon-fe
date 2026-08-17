@@ -195,10 +195,18 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-subway-sangsu',
     name: '서브웨이 상수점',
     category: '음식',
-    affiliations: ['총학생회'],
+    // 총학생회와 경제학부의 적용 조건이 서로 달라 경제학부만 예외로 적는다.
+    // 판단 근거는 docs/partner-data-conflicts.md 참고.
+    affiliations: ['총학생회', '경제학부'],
     lat: 37.5483177,
     lng: 126.923203,
     benefit: '학기 중 단품/세트 10% 할인',
+    affiliationBenefits: [
+      {
+        affiliation: '경제학부',
+        benefit: '샌드위치·세트 전 품목 10% 할인(사이드 메뉴만 구매 시 할인 미적용)',
+      },
+    ],
     address: '서울 마포구 와우산로 44 1층',
   },
   {
@@ -611,7 +619,8 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-yeoneo-chobap',
     name: '연어초밥',
     category: '음식',
-    affiliations: ['공과대학'],
+    // 경영대학 제휴 혜택은 '음료 1캔 제공'으로, 공과대학과 실질 동일해 한 줄로 둔다.
+    affiliations: ['공과대학', '경영대학'],
     lat: 37.5482787,
     lng: 126.9223832,
     benefit: '인당 음료수 1개 서비스',
@@ -621,7 +630,8 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-ttoboketji-kkantapia',
     name: '또보겠지 떡볶이집(깐따삐아점)',
     category: '음식',
-    affiliations: ['공과대학'],
+    // 경영대학은 깐따삐아·해피토스 두 지점만 제휴한다(스마일보이점 제외).
+    affiliations: ['공과대학', '경영대학'],
     lat: 37.5528099,
     lng: 126.9224825,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
@@ -631,7 +641,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-ttoboketji-happytoast',
     name: '또보겠지 떡볶이집(해피토스점)',
     category: '음식',
-    affiliations: ['공과대학'],
+    affiliations: ['공과대학', '경영대학'],
     lat: 37.5521064,
     lng: 126.9211604,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
@@ -651,11 +661,13 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-socoa-hongdae',
     name: '소코아 홍대점',
     category: '음식',
-    // 공과대학·문과대학 공동 제휴. 같은 지점이라 항목을 나누지 않고 소속만 겹친다.
-    affiliations: ['공과대학', '문과대학'],
-    lat: 37.5493189,
-    lng: 126.9217977,
-    benefit: '1인 음료 1잔/ 2~4인 사이드 택1',
+    // 공과대학·문과대학·경영대학 공동 제휴. 같은 지점이라 항목을 나누지 않고 소속만 겹친다.
+    // 좌표는 공대 자료(37.5493189, 126.9217977)와 약 106m 어긋나 경영대 자료를 채택했다.
+    // 경위는 docs/partner-data-conflicts.md §2.5 참고.
+    affiliations: ['공과대학', '문과대학', '경영대학'],
+    lat: 37.548639,
+    lng: 126.920953,
+    benefit: '1인 음료 1잔 / 2인 이상 사이드 택1',
     address: '서울 마포구 와우산로 15길 49 1층',
   },
   {
@@ -707,5 +719,126 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.9221658,
     benefit: '주문 메뉴당 캔음료 1개 서비스 제공(2026년 6월 1일 ~ 2026년 12월 31일)',
     address: '서울 마포구 와우산로 39-21 지1층 좌측호',
+  },
+
+  // ═══ 경영대학 제휴 ═══════════════════════════════════════
+  // 연어초밥·또보겠지(해피토스/깐따삐아)·소코아 홍대점도 경영대학 제휴지만,
+  // 공과대학과 겹치는 지점이라 위 공과대 섹션에 두고 affiliations 로만 겹쳐 둔다.
+  // ── 카페 ────────────────────────────────────────────────
+  {
+    id: 'cafe-beargles-sangsu',
+    name: '베어글스 홍대상수점',
+    category: '카페',
+    affiliations: ['경영대학'],
+    lat: 37.548026,
+    lng: 126.920913,
+    benefit: '전메뉴 10% 할인',
+    address: '서울 마포구 독막로 65-1 1층',
+  },
+  {
+    id: 'cafe-puppy',
+    name: '퍼피',
+    category: '카페',
+    affiliations: ['경영대학'],
+    lat: 37.548615,
+    lng: 126.919833,
+    benefit: '전메뉴 15% 할인(할인 적용 후 13,000원 이상이면 베이커리 랜덤 1종 추가 제공)',
+    address: '서울 마포구 양화로6길 99-5 2층',
+  },
+
+  // ── 주점 ────────────────────────────────────────────────
+  {
+    id: 'bar-michin-pocha',
+    name: '미친포차',
+    category: '주점',
+    affiliations: ['경영대학'],
+    lat: 37.550960,
+    lng: 126.923652,
+    benefit:
+      '4인 이상 + 경영대학 학우 과반수 이상 방문 시 메인안주 25,000원 이하 중 택 1 또는 사이드·디저트류 25,000원 이하 중 택 2',
+    address: '서울 마포구 와우산로18길 15 2층',
+  },
+
+  // ── 음식 ────────────────────────────────────────────────
+  {
+    id: 'food-hapjeong-naengjanggo',
+    name: '합정 냉장고',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.548680,
+    lng: 126.920092,
+    benefit: '고기 2인분 이상 주문 시 1인분 추가 제공',
+    address: '서울 마포구 양화로6길 99-10 1층',
+  },
+  {
+    id: 'food-nekono-yubu',
+    name: '네코노유부',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.548244,
+    lng: 126.921330,
+    benefit:
+      '홀 - 1인 1메뉴 기준 유부 1pcs 제공(멘치카츠 유부 제외) / 포장 - 평일 방문 포장 시 20% 할인',
+    address: '서울 마포구 와우산로13길 49-11 반지층',
+  },
+  {
+    id: 'food-sandy-village',
+    name: '샌디빌리지',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.547178,
+    lng: 126.922674,
+    benefit: '1만 원 이상 구매 시 10% 할인',
+    address: '서울 마포구 와우산로7길 6 1층 101호',
+  },
+  {
+    id: 'food-bistro-sarangbang',
+    name: '비스트로 사랑방',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.549010,
+    lng: 126.921165,
+    benefit: '전메뉴 10% 할인',
+    address: '서울 마포구 와우산로15길 40 2층',
+  },
+  {
+    id: 'food-suyo-chicken',
+    name: '수요치킨',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.548062,
+    lng: 126.922792,
+    benefit: '전메뉴 20% 할인',
+    address: '서울 마포구 와우산로 39 1층',
+  },
+  {
+    id: 'food-hongdae-mulgalbi',
+    name: '홍대물갈비 홍대본점',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.552912,
+    lng: 126.923026,
+    benefit: '2인 이상 주문 시 왕새우튀김 2마리 또는 버터갈릭 감자튀김 중 택 1',
+    address: '서울 마포구 홍익로 3-30 1층',
+  },
+  {
+    id: 'food-geunamja-bokkeumbap',
+    name: '그남자의 볶음밥',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.554798,
+    lng: 126.923464,
+    benefit: '치즈사리 또는 음료 1캔 중 택 1',
+    address: '서울 마포구 와우산로23길 43 2층',
+  },
+  {
+    id: 'food-jincheong-yujeom',
+    name: '진청유점',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.562275,
+    lng: 126.926294,
+    benefit: '전메뉴 20% 할인',
+    address: '서울 마포구 동교로46길 27 1층',
   },
 ]

@@ -1,14 +1,6 @@
 import { useMemo, useState } from 'react'
+import { normalize } from '../utils/normalize'
 import type { TreeChild, TreeNode } from '../types'
-
-/**
- * 공백을 지우고 소문자로 맞춘다.
- * '컴퓨터 공학'을 '컴퓨터공학'으로 쳐도 걸리게 하려는 것이다.
- * (utils/partnerSearch.ts 와 같은 규칙)
- */
-function normalize(value: string): string {
-  return value.replace(/\s+/g, '').toLowerCase()
-}
 
 function matches(name: string, keyword: string): boolean {
   return normalize(name).includes(keyword)

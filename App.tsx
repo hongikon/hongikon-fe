@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar'
 import { NavigationContainer } from '@react-navigation/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { SettingsProvider } from './src/contexts/SettingsContext'
+import { AuthProvider } from './src/contexts/AuthContext'
 import RootNavigator from './src/navigation/RootNavigator'
 import { FONT_ASSETS } from './src/constants/typography'
 
@@ -28,12 +29,14 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SettingsProvider>
-        <NavigationContainer>
-          <RootNavigator />
-          <StatusBar style="dark" />
-        </NavigationContainer>
-      </SettingsProvider>
+      <AuthProvider>
+        <SettingsProvider>
+          <NavigationContainer>
+            <RootNavigator />
+            <StatusBar style="dark" />
+          </NavigationContainer>
+        </SettingsProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   )
 }

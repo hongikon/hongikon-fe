@@ -3,15 +3,21 @@
     "name": "홍익대알리미",
     "slug": "hongik-alimi",
     "version": "1.0.0",
+    "scheme": "hongikon",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hongmap.alimi"
+      "bundleIdentifier": "com.hongmap.alimi",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.hongmap.alimi",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +30,23 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-splash-screen",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "제보에 첨부할 사진을 고르기 위해 사진 접근 권한이 필요합니다.",
+          "cameraPermission": "제보에 첨부할 사진을 찍기 위해 카메라 권한이 필요합니다."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "25bf8164-7142-43dc-a175-865a00577f3d"
+      }
+    },
+    "owner": "seokhoonchois-team"
   }
 }

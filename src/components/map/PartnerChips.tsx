@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
+import { chipStyles } from "./chipStyles";
 import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
 import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
 import { partnerCount } from "../../utils/partners";
@@ -70,6 +70,7 @@ export default function PartnerChips({
               accessibilityLabel={`${key} 제휴 업체 ${count}곳`}
               style={[
                 styles.chip,
+                styles.chipTransparent,
                 count === 0 && styles.chipEmpty,
                 isActive && styles.affiliationChipActive,
               ]}
@@ -100,6 +101,7 @@ export default function PartnerChips({
               accessibilityLabel={`${meta.key} 제휴 업체 ${count}곳`}
               style={[
                 styles.chip,
+                styles.chipTransparent,
                 count === 0 && styles.chipEmpty,
                 isActive && {
                   backgroundColor: meta.color,
@@ -123,27 +125,12 @@ export default function PartnerChips({
   );
 }
 
-const styles = StyleSheet.create({
-  // flexGrow 0 이 없으면 가로 스크롤이 남은 세로 공간을 먹어 지도를 밀어낸다.
-  scroll: { flexGrow: 0, marginBottom: 8 },
-  row: { paddingHorizontal: 16, gap: 7 },
-  chip: {
-    height: 32,
-    paddingHorizontal: 11,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    backgroundColor: COLORS.white,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  // 해당 조건에 업체가 없는 칩. 눌리기는 하되 먼저 눈에 띄지는 않게 둔다.
-  chipEmpty: { opacity: 0.45 },
+// 칩 모양은 최상단·편의시설 줄과 공유한다. 여기서만 쓰는 선택 상태만 덧붙인다.
+const own = StyleSheet.create({
   affiliationChipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  label: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.chipText },
-  labelActive: { color: COLORS.white },
 });
+
+const styles = { ...chipStyles, ...own };

@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, View, type ListRenderItemInfo } from 'react-nativ
 import { usePagedItems } from '../../hooks/usePagedItems'
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
+import { COLORS } from '../../constants/colors'
 
 interface NewsListProps {
   items: NewsItem[]
@@ -68,7 +69,7 @@ export default function NewsList({
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1 },
+  list: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 12, gap: 8, flexGrow: 1 },
   footerSpace: { height: 24 },
 })

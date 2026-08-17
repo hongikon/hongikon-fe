@@ -1,3 +1,4 @@
+import { BUILDING_BOUNDARIES, BUILDING_EXTRA_BOUNDARIES } from './buildingBoundaries'
 import type { Building } from '../types'
 
 /**
@@ -7,7 +8,7 @@ import type { Building } from '../types'
  * floors / hours / description / facilities 는 출처가 확인된 건물만 채운다.
  * 값이 없으면 배너에서 해당 줄이 자동으로 숨겨진다.
  */
-export const BUILDINGS: Building[] = [
+const BASE_BUILDINGS: Building[] = [
   // ── 북측 ────────────────────────────────────────────────
   { name: '홍문관 R동', lat: 37.5527515, lng: 126.9250927, color: '#64748B', category: '강의', type: '강의·행정 복합동',
     boundary: [
@@ -83,3 +84,25 @@ export const BUILDINGS: Building[] = [
   // 본 캠퍼스에서 북서쪽으로 약 1.4km 떨어져 있어 기본 지도 화면 밖에 있다.
   { name: '제3기숙사', lat: 37.5598513, lng: 126.9141520, color: '#0E7490', category: '편의', type: '기숙사' },
 ]
+
+/**
+ * 외곽선을 이름으로 합쳐 내보낸다.
+ *
+ * 좌표 배열을 위 목록 안에 직접 적으면 건물 한 줄이 수십 줄로 불어나 이름·층수·
+ * 설명을 훑어볼 수 없게 된다. 그래서 외곽선만 `buildingBoundaries.ts` 에 두고
+ * 여기서 붙인다.
+ *
+ * 원본을 고치지 않고 새 객체를 만든다. 외곽선이 없는 건물은 `boundary` 가
+ * 그대로 undefined 로 남아, 지도에서 영역이 그려지지 않는다.
+ */
+export const BUILDINGS: Building[] = BASE_BUILDINGS.map((building) => {
+  const boundary = BUILDING_BOUNDARIES[building.name]
+  const extras = BUILDING_EXTRA_BOUNDARIES[building.name]
+  if (!boundary && !extras) return building
+
+  return {
+    ...building,
+    ...(boundary ? { boundary: boundary as [number, number][] } : {}),
+    ...(extras ? { extraBoundaries: extras as [number, number][][] } : {}),
+  }
+})

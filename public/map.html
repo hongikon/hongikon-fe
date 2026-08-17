@@ -1,47 +1,4 @@
-import {
-  BUILDING_PIN_WIDTH_PX,
-  BUILDING_PIN_WIDTH_SELECTED_PX,
-  CAMPUS_CENTER,
-  DEFAULT_ZOOM,
-  MARKER_CLICK_GUARD_MS,
-  PARTNER_BADGE_SIZE_PX,
-  PARTNER_BADGE_SIZE_SELECTED_PX,
-  TAP_RADIUS_METERS,
-} from '../constants/map'
-import {
-  REPORT_LONG_PRESS_MOVE_TOLERANCE_PX,
-  REPORT_LONG_PRESS_MS,
-} from '../constants/report'
-import { COLORS } from '../constants/colors'
-import type { Building } from '../types'
-
-const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
-
-/**
- * WebView 에 넣을 지도 문서를 만든다.
- *
- * 건물에는 마커를 그리지 않는다. 네이버 지도 배경 타일에 이미 건물 라벨이
- * 그려져 있어, 탭 좌표에서 가장 가까운 등록 건물을 찾는 방식으로 대신한다.
- * 제휴 업체는 배경에 없으므로 직접 마커를 그린다.
- */
-export function buildMapHTML(buildings: readonly Building[]): string {
-  const buildingJSON = JSON.stringify(
-    buildings.map((building) => ({
-      name: building.name,
-      lat: building.lat,
-      lng: building.lng,
-      // 건물별 색(`building.color`)은 넘기지 않는다. 핀을 메인 컬러 하나로
-      // 통일해서, 알록달록한 제휴·편의시설 마커와 성격이 다르다는 것을 보인다.
-      //
-      // 외곽선. 있으면 탭 판정을 중심 반경이 아니라 이 폴리곤 안쪽인지로 한다.
-      // 건물은 원이 아니라서, 중심 반경만으로는 길쭉한 건물의 끝을 놓친다.
-      boundary: building.boundary ?? null,
-      // 떨어져 있는 나머지 덩어리들. 이것도 같은 건물로 친다.
-      extraBoundaries: building.extraBoundaries ?? null,
-    })),
-  )
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -53,7 +10,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 </head>
 <body>
   <div id="map"></div>
-  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}"></script>
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=5fjib1yauc"></script>
   <script>
     /**
      * 네이버가 인증 실패를 알리는 유일한 창구다.
@@ -67,11 +24,11 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
     var container = document.getElementById('map');
     var map = new naver.maps.Map(container, {
-      center: new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}),
-      zoom: ${DEFAULT_ZOOM},
+      center: new naver.maps.LatLng(37.5508, 126.9237),
+      zoom: 17,
     });
 
-    var buildings = ${buildingJSON};
+    var buildings = [{"name":"홍문관 R동","lat":37.5527515,"lng":126.9250927,"boundary":[[37.552178894142806,126.92462701106076],[37.552298156947806,126.92444016281253],[37.552613726386305,126.92478500982047],[37.55291131251744,126.92518929171177],[37.55262993513834,126.92548098333255],[37.552465415553186,126.92534251532862],[37.55241814359391,126.92539065920317],[37.5522964338078,126.92527195353377],[37.55230537569127,126.9251644344522],[37.552465168043284,126.92495208313181]],"extraBoundaries":null},{"name":"제1공학관 K동","lat":37.5521221,"lng":126.9261871,"boundary":[[37.55183552780253,126.92663608658695],[37.551914423051905,126.92672937284692],[37.55202916660183,126.92651424100141],[37.55206748363657,126.92655381225842],[37.55257591991712,126.92555176773377],[37.55247898236202,126.9254245492084]],"extraBoundaries":null},{"name":"체육관","lat":37.5518329,"lng":126.924465,"boundary":[[37.551593014108185,126.9242654650543],[37.551518712657504,126.92431363637962],[37.551457998587175,126.92447496117894],[37.55201005095474,126.92477429967236],[37.55212688953728,126.92431867978158],[37.55194210340382,126.92419155259611],[37.55189709529399,126.92425666976324]],"extraBoundaries":null},{"name":"제3공학관 J동","lat":37.5517521,"lng":126.9269971,"boundary":[[37.551833457758896,126.92693032507847],[37.551783855601926,126.92685398524205],[37.551630873172336,126.92715685798406],[37.551689478135046,126.92722187234747]],"extraBoundaries":null},{"name":"와우관 L동","lat":37.5516542,"lng":126.9265733,"boundary":[[37.55153143236282,126.92662223873474],[37.551657429377016,126.9263929508114],[37.551810671200485,126.92650879713656],[37.551761206057705,126.9266531346017],[37.551828824782426,126.92672379825122],[37.55184012761502,126.92678885871646],[37.55182438471148,126.92682848286542],[37.55175227334475,126.92677762787767],[37.55160378736091,126.92706635032661],[37.55153616883851,126.9269956865794],[37.5516666575259,126.92674376135122]],"extraBoundaries":null},{"name":"운동장","lat":37.5514884,"lng":126.9250283,"boundary":[[37.55209123615544,126.92492416601655],[37.55100969982177,126.92439336773633],[37.550924616801574,126.92519693579438],[37.55168167643938,126.92554699885561],[37.55202400191434,126.92546178220522]],"extraBoundaries":null},{"name":"과학관 I동","lat":37.5514714,"lng":126.9272599,"boundary":[[37.55135611777189,126.92723634238997],[37.551412337619745,126.92708634114997],[37.55166473730903,126.92728130940291],[37.55157023351515,126.92744549405596]],"extraBoundaries":null},{"name":"중앙도서관 H동","lat":37.551297,"lng":126.9267288,"boundary":[[37.55108313507307,126.92654063234913],[37.55150446568786,126.92672411580774],[37.55144600957417,126.9268995823281],[37.55102243024469,126.92672175855827]],"extraBoundaries":null},{"name":"학생회관 G동","lat":37.5511949,"lng":126.9261924,"boundary":[[37.55103335258874,126.92617571872948],[37.55137807956975,126.92632815440675],[37.55130842140903,126.92659982395419],[37.5513917900536,126.92664217989746],[37.55148848881971,126.92638745858785],[37.55157636428796,126.9264326391531],[37.55161007583427,126.92631095092038],[37.551051303503336,126.92606536350402]],"extraBoundaries":null},{"name":"제2공학관 P동","lat":37.5510886,"lng":126.926997,"boundary":[[37.55090309369051,126.92679543359374],[37.55087168138792,126.92699350554444],[37.551261464186105,126.92715721750531],[37.55134244037473,126.92697324211423]],"extraBoundaries":null},{"name":"정보통신센터 Q동","lat":37.5509397,"lng":126.9264016,"boundary":[[37.55118660346963,126.92630570949851],[37.55090272031977,126.92619565170652],[37.550821859850416,126.9265635220458],[37.550979587186525,126.92664824222666],[37.55106731478181,126.92645577284236],[37.55111915561045,126.92650947612927]],"extraBoundaries":null},{"name":"제4강의동 Z4동","lat":37.5507824,"lng":126.9246528,"boundary":[[37.55083444529822,126.92508385955327],[37.55073082339521,126.92507264664907],[37.550734993290575,126.92454641960761],[37.55021685453133,126.92444509304808],[37.55024832786045,126.92434887062706],[37.55087452844614,126.92435955435259]],"extraBoundaries":null},{"name":"문헌관 MH동","lat":37.5506803,"lng":126.9259832,"boundary":[[37.55035976125164,126.92602360948567],[37.55037544177846,126.92588496604819],[37.55063449813136,126.92591583019687],[37.55063896227514,126.9258507552918],[37.55080790110388,126.92585341708856],[37.55081019976565,126.92592697292103],[37.55096337290511,126.92593247966107],[37.550952199084435,126.9260739488899]],"extraBoundaries":null},{"name":"미술학관 F동","lat":37.5506633,"lng":126.9264445,"boundary":[[37.55061889546042,126.92617895666761],[37.55083064228037,126.92619855193844],[37.55076778063438,126.9265324543839],[37.55074982928182,126.92664280907995],[37.550794859824556,126.92661164421398],[37.55084217626425,126.92663423109454],[37.550851223140384,126.92669363457892],[37.55082421955092,126.92673609840539],[37.55079269867548,126.92675876251842],[37.55074988549185,126.92673334201028],[37.55073633891786,126.92668243047554],[37.550416468938955,126.9266572815128],[37.5504118918448,126.92654129113409],[37.55059433682993,126.9265297954778]],"extraBoundaries":null},{"name":"제1강의동 Z1동","lat":37.5505697,"lng":126.9255433,"boundary":[[37.5509337985256,126.92546852623956],[37.55092035850544,126.92558736443597],[37.55019053259128,126.92555979865966],[37.55019047548218,126.92546926640831]],"extraBoundaries":null},{"name":"조형관","lat":37.5502933,"lng":126.9261977,"boundary":[[37.550202247670235,126.9262812164545],[37.5502156423712,126.9260888220419],[37.550549027444106,126.9261139551679],[37.55053563270385,126.92630635043312]],"extraBoundaries":null},{"name":"강당 S동","lat":37.5502593,"lng":126.9251731,"boundary":[[37.55014967273667,126.9250619118731],[37.550149787509994,126.9252429762757],[37.55047416815765,126.92527660203886],[37.550478547653746,126.92507855748083]],"extraBoundaries":null},{"name":"미술종합강의동 U동","lat":37.5501933,"lng":126.9264606,"boundary":[[37.550118960104655,126.92636900157365],[37.550114567884975,126.92655007032803],[37.55029703047814,126.9265668661095],[37.55031717606998,126.9263631483058]],"extraBoundaries":null},{"name":"제4공학관 T동","lat":37.5500934,"lng":126.9246689,"boundary":[[37.550131158271135,126.92428674813897],[37.55002306394006,126.92432646527575],[37.55012707232373,126.9249431109467],[37.55022615688454,126.92490340368431]],"extraBoundaries":null},{"name":"인문사회관 B동","lat":37.5500339,"lng":126.9259939,"boundary":[[37.55001081920292,126.92633515841892],[37.550023897930046,126.92563917997529],[37.55009597774673,126.92563910836661],[37.550078399326985,126.92634357930018]],"extraBoundaries":[[[37.550224462473686,126.92578609578878],[37.55023357369525,126.92594734752203],[37.550118694714534,126.92594463204559],[37.550111843095934,126.92579469484629]]]},{"name":"제3강의동 Z3동","lat":37.5498978,"lng":126.9246528,"boundary":[[37.54992843016366,126.924281294955],[37.54985636485853,126.92430400083197],[37.5499741323474,126.92530539249414],[37.550059727129714,126.92530530707724]],"extraBoundaries":null},{"name":"인문사회관 A동","lat":37.5496681,"lng":126.925892,"boundary":[[37.54929868194343,126.92577852638232],[37.54929426755933,126.92592281489836],[37.54999029544212,126.92593344257315],[37.549994704502744,126.92578066533952]],"extraBoundaries":null},{"name":"이천득관 Z2동","lat":37.5496085,"lng":126.9253877,"boundary":[[37.54937049247273,126.92535126052738],[37.54938859462996,126.92548138127304],[37.549906589721246,126.92535638412627],[37.54988398960397,126.92523758349616]],"extraBoundaries":null},{"name":"제2기숙사","lat":37.5494257,"lng":126.9247386,"boundary":[[37.54935635642625,126.9243752340583],[37.5497189554507,126.92429282332566],[37.54974157462584,126.9244399145652],[37.54955241395439,126.92451649150047],[37.54964744544198,126.92518689570655],[37.54934335689679,126.92518437053542]],"extraBoundaries":null},{"name":"인문사회관 C동","lat":37.5491194,"lng":126.9260797,"boundary":[[37.54909138303468,126.92566839730297],[37.54907389430553,126.92651714240093],[37.549186515517796,126.92651137364712],[37.54922692640951,126.92629632250733],[37.54983509639453,126.92629006541874],[37.54983044990378,126.9260637403118],[37.54926730501929,126.92603034737203],[37.549226518462085,126.9256456303223],[37.54912290371,126.92564573324746]],"extraBoundaries":null},{"name":"인문사회관 D동","lat":37.5488728,"lng":126.9262568,"boundary":[[37.548981080200505,126.92577884130559],[37.54886169798064,126.92577895967972],[37.548839527331396,126.92634479837871],[37.54895214677457,126.92633620029817]],"extraBoundaries":null},{"name":"제3기숙사","lat":37.5598513,"lng":126.914152,"boundary":[[37.55935259183635,126.91401489097231],[37.55946100943637,126.91442504169596],[37.55967485021001,126.91422390312744],[37.559891347714576,126.91458017208932],[37.5600759289354,126.9144101908767],[37.5599585878337,126.91411888621853],[37.559609431311834,126.91409099206707],[37.55956880202426,126.91397502966697]],"extraBoundaries":null}];
     var routePolyline = null;
     var fromOverlay = null;
     var toOverlay = null;
@@ -128,7 +85,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
     // ── 제휴 업체 표시 ──────────────────────────────────────
     // 네이버 기본 지도 라벨처럼 [아이콘 배지] 위 + [상호명] 아래로 쌓는다.
-    // 배지 크기는 미터가 아니라 화면 픽셀(${PARTNER_BADGE_SIZE_PX}px)로 고정한다.
+    // 배지 크기는 미터가 아니라 화면 픽셀(26px)로 고정한다.
     // 줌을 당기든 밀든 같은 크기로 보여야 하기 때문이다.
     // 아이콘은 WebView 안에서 아이콘 폰트를 못 쓰므로 인라인 SVG 로 그린다(이모지 미사용).
     var PARTNER_FONT = "'Pretendard','Apple SD Gothic Neo',-apple-system,'Malgun Gothic',sans-serif";
@@ -152,7 +109,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
     };
 
     function partnerLabelHTML(partner, selected) {
-      var badge = selected ? ${PARTNER_BADGE_SIZE_SELECTED_PX} : ${PARTNER_BADGE_SIZE_PX};
+      var badge = selected ? 30 : 26;
       var glyph = Math.round(badge * 0.6);
       var nameSize = selected ? 12 : 11;
       var nameColor = selected ? partner.color : '#33363d';
@@ -198,7 +155,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
       currentPartners.forEach(function(partner) {
         var selected = partner.id === selectedPartnerId;
-        var badge = selected ? ${PARTNER_BADGE_SIZE_SELECTED_PX} : ${PARTNER_BADGE_SIZE_PX};
+        var badge = selected ? 30 : 26;
         var nameLine = (selected ? 12 : 11) + 6;
         var boxH = padTop + badge + gap + nameLine;
         var position = new naver.maps.LatLng(partner.lat, partner.lng);
@@ -295,7 +252,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
     };
 
     function facilityLabelHTML(marker) {
-      var badge = ${PARTNER_BADGE_SIZE_PX};
+      var badge = 26;
       var glyph = Math.round(badge * 0.58);
       var iconSVG = FACILITY_ICONS[marker.kind] || PARTNER_ICONS['기타'];
 
@@ -322,7 +279,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       removeFacilityOverlays();
       var boxW = 150;
       var padTop = 3;
-      var badge = ${PARTNER_BADGE_SIZE_PX};
+      var badge = 26;
       var boxH = padTop + badge + 3 + 17;
 
       markers.forEach(function(item) {
@@ -353,10 +310,10 @@ export function buildMapHTML(buildings: readonly Building[]): string {
     // 핀만 찍고 이름은 붙이지 않는다. 27개를 한꺼번에 켜면 캠퍼스 중앙부에서
     // 이름끼리, 또 네이버 기본 라벨과도 겹쳐 어느 것도 읽히지 않았다.
     // 건물 이름은 핀을 눌렀을 때 뜨는 배너에서 확인한다.
-    var BUILDING_COLOR = '${COLORS.primary}';
+    var BUILDING_COLOR = '#05014A';
 
     function buildingPinHTML(selected) {
-      var w = selected ? ${BUILDING_PIN_WIDTH_SELECTED_PX} : ${BUILDING_PIN_WIDTH_PX};
+      var w = selected ? 27 : 22;
       var h = Math.round(w * 1.32);
 
       // viewBox 24x32 물방울. 뾰족한 끝이 아래(y=32)라 좌표에 정확히 얹을 수 있다.
@@ -396,7 +353,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
         // 건물은 핀 하나로만 표시한다. 외곽선(building.boundary)은 화면에
         // 그리지 않고 탭 판정에만 쓴다 — 건물 모양을 칠하면 지도가 무거워
         // 보이고, 배경 지도의 건물 윤곽과 겹쳐 오히려 읽기 어려웠다.
-        var w = selected ? ${BUILDING_PIN_WIDTH_SELECTED_PX} : ${BUILDING_PIN_WIDTH_PX};
+        var w = selected ? 27 : 22;
         var h = Math.round(w * 1.32);
         var boxH = padTop + h;
 
@@ -488,10 +445,10 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
     naver.maps.Event.addListener(map, 'click', function(e) {
       if (!e || !e.coord) return;
-      if (new Date().getTime() - lastMarkerClickAt < ${MARKER_CLICK_GUARD_MS}) return;
+      if (new Date().getTime() - lastMarkerClickAt < 350) return;
       // 길게 눌러 제보 작성이 열린 직후의 click 은 그 손동작의 꼬리다.
       // 막지 않으면 작성창 뒤에서 건물 배너까지 함께 열린다.
-      if (new Date().getTime() - lastLongPressAt < ${MARKER_CLICK_GUARD_MS}) return;
+      if (new Date().getTime() - lastLongPressAt < 350) return;
 
       if (selectedPartnerId !== null) {
         selectedPartnerId = null;
@@ -501,7 +458,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
       var lat = e.coord.lat();
       var lng = e.coord.lng();
-      var hit = nearestBuildingWithin(lat, lng, ${TAP_RADIUS_METERS});
+      var hit = nearestBuildingWithin(lat, lng, 40);
 
       // 건물을 탭하면 그 자리에 핀이 뜬다. 버튼으로 27개를 켜 둔 상태라면
       // 그 핀이 커지며 강조된다. 빈 곳을 탭했으면 강조와 핀을 함께 거둔다.
@@ -548,14 +505,14 @@ export function buildMapHTML(buildings: readonly Building[]): string {
         pressStart = null;
         if (!start) return;
         lastLongPressAt = new Date().getTime();
-        var nearby = nearestBuildingWithin(start.lat, start.lng, ${TAP_RADIUS_METERS});
+        var nearby = nearestBuildingWithin(start.lat, start.lng, 40);
         post({
           type: 'reportLongPress',
           lat: start.lat,
           lng: start.lng,
           buildingName: nearby ? nearby.name : null,
         });
-      }, ${REPORT_LONG_PRESS_MS});
+      }, 2000);
     });
 
     // 지도를 끌어 옮기려던 동작이 제보 작성으로 오인되지 않게 한다.
@@ -563,7 +520,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       if (!pressStart || !e || !e.point) return;
       var dx = e.point.x - pressStart.x;
       var dy = e.point.y - pressStart.y;
-      if (Math.sqrt(dx * dx + dy * dy) > ${REPORT_LONG_PRESS_MOVE_TOLERANCE_PX}) {
+      if (Math.sqrt(dx * dx + dy * dy) > 10) {
         cancelLongPress();
       }
     });
@@ -587,8 +544,8 @@ export function buildMapHTML(buildings: readonly Building[]): string {
           currentPartners = [];
           selectedPartnerId = null;
           removePartnerOverlays();
-          map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
-          map.setZoom(${DEFAULT_ZOOM});
+          map.setCenter(new naver.maps.LatLng(37.5508, 126.9237));
+          map.setZoom(17);
         }
 
         if (msg.type === 'setReports') {
@@ -689,8 +646,8 @@ export function buildMapHTML(buildings: readonly Building[]): string {
           if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
           if (fromOverlay) { fromOverlay.setMap(null); fromOverlay = null; }
           if (toOverlay) { toOverlay.setMap(null); toOverlay = null; }
-          map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
-          map.setZoom(${DEFAULT_ZOOM});
+          map.setCenter(new naver.maps.LatLng(37.5508, 126.9237));
+          map.setZoom(17);
         }
       } catch(e) {}
     }
@@ -699,5 +656,4 @@ export function buildMapHTML(buildings: readonly Building[]): string {
     window.addEventListener('message', function(e) { handleNativeMessage(e.data); });
   </script>
 </body>
-</html>`
-}
+</html>

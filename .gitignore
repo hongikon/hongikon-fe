@@ -53,3 +53,5 @@ files.zip
 *.log
 *.bak
 *.bak.*
+# Local Netlify folder
+.netlify

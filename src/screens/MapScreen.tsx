@@ -7,6 +7,7 @@ import {
   TextInput,
   FlatList,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NaverMapView from "../components/map/NaverMapView";
@@ -14,6 +15,13 @@ import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import FloorPickerModal from "../components/map/FloorPickerModal";
 import type { FloorTarget } from "../components/map/FloorPickerModal";
 import BuildingSheet from "../components/map/BuildingSheet";
+import MapFilterChips from "../components/map/MapFilterChips";
+import ReportComposerModal from "../components/map/ReportComposerModal";
+import type { ReportTarget } from "../components/map/ReportComposerModal";
+import ReportSheet from "../components/map/ReportSheet";
+import { useAuth } from "../contexts/AuthContext";
+import { getLiveReports } from "../lib/reportsApi";
+import { toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -36,11 +44,15 @@ import {
   partnersOutsideFocus,
 } from "../utils/partners";
 import type { PartnerFilter } from "../utils/partners";
+import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import type {
   Building,
+  FacilityKind,
+  MapLayer,
   Partner,
   PartnerAffiliation,
   PartnerCategory,
+  ReportListItem,
 } from "../types";
 import { FONTS } from "../constants/typography";
 
@@ -70,6 +82,7 @@ function toMarker(partner: Partner) {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
+  const { accessToken } = useAuth();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
@@ -79,6 +92,9 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] =
     useState<PartnerCategory | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
+  // 사용자가 앱이 멈춘 것으로 오해한다.
+  const [mapAuthFailed, setMapAuthFailed] = useState(false);
   const [fromBuilding, setFromBuilding] = useState<Building | null>(null);
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
@@ -88,6 +104,23 @@ export default function MapScreen() {
     building: Building;
     target: FloorTarget;
   } | null>(null);
+  // 건물 핀 표시 여부. 27개를 늘 띄워 두면 캠퍼스가 핀으로 덮여 제휴 마커가
+  // 묻히므로, 기본은 꺼 두고 지도 오른쪽 건물 버튼으로만 켠다.
+  const [buildingPinsOn, setBuildingPinsOn] = useState(false);
+  // 최상단 필터. 무엇을 볼지 먼저 고르게 한다. null 이면 하위 칩 줄이 없다.
+  const [layer, setLayer] = useState<MapLayer | null>(null);
+  const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
+  // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
+  // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
+  const [reportsOn, setReportsOn] = useState(false);
+  const [reports, setReports] = useState<ReportListItem[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
+    null,
+  );
   const [showSearch, setShowSearch] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
@@ -125,6 +158,18 @@ export default function MapScreen() {
     [visiblePartners],
   );
 
+  /**
+   * 건물명이 `BUILDINGS` 와 안 맞아 좌표를 못 찾은 편의시설 수.
+   * 조용히 빠지면 데이터를 넣었는데 지도에 안 뜨는 이유를 알 수 없어 알린다.
+   */
+  const unresolvedCount = useMemo(
+    () =>
+      facilityKind === null
+        ? 0
+        : unresolvedFacilities().filter((f) => f.kind === facilityKind).length,
+    [facilityKind],
+  );
+
   /** 필터는 걸었는데 걸리는 업체가 없는 상태. 빈 지도만 보여주지 않고 알려준다. */
   const isEmptyResult =
     hasActiveFilter(activeFilter) && visiblePartners.length === 0;
@@ -158,12 +203,53 @@ export default function MapScreen() {
           return;
         }
 
+        if (msg.type === "reportTap") {
+          const found = reports.find((r) => r.id === msg.id) ?? null;
+          setSelectedBuilding(null);
+          setSelectedPartner(null);
+          setSelectedReport(found);
+          return;
+        }
+
+        // 지도를 길게 누르면 그 자리에 제보를 남기는 작성창이 열린다.
+        // 좌표는 건물로 스냅되지 않은 원본이고, 근처 건물명은 참고용이다.
+        if (msg.type === "reportLongPress") {
+          setSelectedBuilding(null);
+          setSelectedPartner(null);
+          setReportTarget({
+            lat: msg.lat,
+            lng: msg.lng,
+            buildingName: msg.buildingName ?? null,
+          });
+          return;
+        }
+
+        // 편의시설 전용 배너는 아직 없다. 그 시설이 있는 건물 배너를 대신 띄운다.
+        if (msg.type === "facilityTap") {
+          const building =
+            BUILDINGS.find((b) => b.name === msg.buildingName) ?? null;
+          setSelectedPartner(null);
+          setSelectedBuilding(building);
+          return;
+        }
+
+        // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
+        if (msg.type === "buildingDismiss") {
+          setSelectedBuilding(null);
+          return;
+        }
+
         if (msg.type === "partnerDismiss") {
           setSelectedPartner(null);
+          return;
+        }
+
+        if (msg.type === "mapAuthFailure") {
+          setMapAuthFailed(true);
         }
       } catch {}
     },
-    [],
+    [reports],
   );
 
   /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
@@ -331,7 +417,108 @@ export default function MapScreen() {
     if (selectedBuilding) beginTo(selectedBuilding);
   }, [selectedBuilding, beginTo]);
 
-  const handleCloseBuilding = useCallback(() => setSelectedBuilding(null), []);
+  const handleCloseBuilding = useCallback(() => {
+    setSelectedBuilding(null);
+    // 배너만 닫고 핀은 그대로 둔다. 켜 둔 핀이 배너를 닫을 때마다 사라지면
+    // 다시 켜야 해서 번거롭다. 강조 표시만 되돌린다.
+    postToMap({ type: "selectBuilding", name: null });
+  }, [postToMap]);
+
+  /** 편의시설 핀을 지도에 반영한다. null 이면 모두 지운다. */
+  const applyFacilityKind = useCallback(
+    (next: FacilityKind | null) => {
+      setFacilityKind(next);
+      if (next === null) {
+        postToMap({ type: "clearFacilities" });
+        return;
+      }
+      postToMap({ type: "setFacilities", markers: facilityMarkers(next) });
+    },
+    [postToMap],
+  );
+
+  /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
+  const handleSelectFacilityKind = useCallback(
+    (kind: FacilityKind) => {
+      applyFacilityKind(facilityKind === kind ? null : kind);
+    },
+    [facilityKind, applyFacilityKind],
+  );
+
+  /**
+   * 최상단 칩. 갈래를 바꾸면 반대편 선택과 마커를 모두 정리한다.
+   * 안 그러면 칩은 편의 시설인데 지도에는 제휴 마커가 떠 있는 어긋난 상태가 된다.
+   */
+  const handleSelectLayer = useCallback(
+    (next: MapLayer) => {
+      setLayer(layer === next ? null : next);
+      setSelectedPartner(null);
+      setSelectedBuilding(null);
+      setSelectedAffiliation(null);
+      setSelectedCategory(null);
+      postToMap({ type: "clearPartners" });
+      applyFacilityKind(null);
+    },
+    [layer, postToMap, applyFacilityKind],
+  );
+
+  /** 살아있는 제보를 받아 지도에 올린다. */
+  const loadReports = useCallback(async () => {
+    setReportsLoading(true);
+    setReportsError(null);
+    try {
+      const list = await getLiveReports({ accessToken });
+      const visible = visibleReports(list);
+      setReports(visible);
+      postToMap({ type: "setReports", markers: toReportMarkers(visible) });
+    } catch (caught) {
+      setReports([]);
+      postToMap({ type: "clearReports" });
+      setReportsError(
+        caught instanceof Error
+          ? caught.message
+          : "제보를 불러오지 못했습니다.",
+      );
+    } finally {
+      setReportsLoading(false);
+    }
+  }, [accessToken, postToMap]);
+
+  /** 제보 버튼. 켜면 지금 진행 중인 제보를 받아 오고, 끄면 지도에서 내린다. */
+  const handleToggleReports = useCallback(() => {
+    const next = !reportsOn;
+    setReportsOn(next);
+    setSelectedReport(null);
+
+    if (next) {
+      void loadReports();
+      return;
+    }
+    setReports([]);
+    setReportsError(null);
+    postToMap({ type: "clearReports" });
+  }, [reportsOn, loadReports, postToMap]);
+
+  /**
+   * 제보 등록 성공. 작성창을 닫는다.
+   *
+   * 새 제보는 `PENDING` 이라 지도에 바로 뜨지 않는다. 검토를 거쳐 `ACTIVE` 가
+   * 된 뒤에야 보이므로, 여기서 목록을 새로 부를 이유가 없다.
+   */
+  const handleReportCreated = useCallback(() => {
+    setReportTarget(null);
+  }, []);
+
+  /** 건물 버튼. 켜면 건물 27개가 모두 핀으로 뜨고, 다시 누르면 사라진다. */
+  const handleToggleBuildingPins = useCallback(() => {
+    const next = !buildingPinsOn;
+    setBuildingPinsOn(next);
+    postToMap(
+      next
+        ? { type: "showBuildings", name: selectedBuilding?.name ?? null }
+        : { type: "hideBuildings" },
+    );
+  }, [buildingPinsOn, selectedBuilding, postToMap]);
 
   const handleClearRoute = useCallback(() => {
     setFromBuilding(null);
@@ -372,12 +559,21 @@ export default function MapScreen() {
         <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
       </TouchableOpacity>
 
-      <PartnerChips
-        affiliation={selectedAffiliation}
-        category={selectedCategory}
-        onSelectAffiliation={handleSelectAffiliation}
-        onSelectCategory={handleSelectCategory}
+      <MapFilterChips
+        layer={layer}
+        facilityKind={facilityKind}
+        onSelectLayer={handleSelectLayer}
+        onSelectFacilityKind={handleSelectFacilityKind}
       />
+
+      {layer === "제휴업체" && (
+        <PartnerChips
+          affiliation={selectedAffiliation}
+          category={selectedCategory}
+          onSelectAffiliation={handleSelectAffiliation}
+          onSelectCategory={handleSelectCategory}
+        />
+      )}
 
       <View style={styles.mapArea}>
         <NaverMapView
@@ -385,6 +581,31 @@ export default function MapScreen() {
           html={mapHTML}
           onMessage={handleWebViewMessage}
         />
+
+        {mapAuthFailed && (
+          <View style={styles.mapErrorNotice}>
+            <Ionicons name="warning" size={15} color="#B45309" />
+            <Text style={styles.mapErrorText}>
+              지도를 불러오지 못했어요. 네이버 지도 인증에 실패했습니다.
+            </Text>
+          </View>
+        )}
+
+        {reportsError !== null && (
+          <View style={styles.mapErrorNotice}>
+            <Ionicons name="warning" size={15} color="#B45309" />
+            <Text style={styles.mapErrorText}>{reportsError}</Text>
+          </View>
+        )}
+
+        {unresolvedCount > 0 && (
+          <View style={styles.offscreenNotice}>
+            <Ionicons name="information-circle" size={13} color="#6B7280" />
+            <Text style={styles.offscreenText}>
+              건물을 찾지 못한 편의시설 {unresolvedCount}곳은 지도에서 빠졌어요
+            </Text>
+          </View>
+        )}
 
         {offscreenCount > 0 && (
           <View style={styles.offscreenNotice}>
@@ -397,8 +618,48 @@ export default function MapScreen() {
 
         <View style={styles.mapControls}>
           <TouchableOpacity
+            style={[styles.controlBtn, reportsOn && styles.controlBtnActive]}
+            onPress={handleToggleReports}
+            accessibilityRole="button"
+            accessibilityLabel={reportsOn ? "제보 숨기기" : "제보 보기"}
+            accessibilityState={{ selected: reportsOn }}
+          >
+            {reportsLoading ? (
+              <ActivityIndicator
+                size="small"
+                color={reportsOn ? COLORS.white : COLORS.primary}
+              />
+            ) : (
+              <Ionicons
+                name="megaphone"
+                size={17}
+                color={reportsOn ? COLORS.white : COLORS.primary}
+              />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.controlBtn,
+              buildingPinsOn && styles.controlBtnActive,
+            ]}
+            onPress={handleToggleBuildingPins}
+            accessibilityRole="button"
+            accessibilityLabel={
+              buildingPinsOn ? "건물 표시 끄기" : "건물 표시 켜기"
+            }
+            accessibilityState={{ selected: buildingPinsOn }}
+          >
+            <Ionicons
+              name="business"
+              size={17}
+              color={buildingPinsOn ? COLORS.white : COLORS.primary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.controlBtn}
             onPress={() => setShowRoute(true)}
+            accessibilityRole="button"
+            accessibilityLabel="길찾기"
           >
             <Ionicons name="navigate" size={17} color={COLORS.primary} />
           </TouchableOpacity>
@@ -449,6 +710,13 @@ export default function MapScreen() {
 
         {selectedPartner && (
           <PartnerSheet partner={selectedPartner} onClose={handleClosePartner} />
+        )}
+
+        {selectedReport && (
+          <ReportSheet
+            report={selectedReport}
+            onClose={() => setSelectedReport(null)}
+          />
         )}
       </View>
 
@@ -586,6 +854,12 @@ export default function MapScreen() {
         onSelect={handleSearchSelect}
       />
 
+      <ReportComposerModal
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onCreated={handleReportCreated}
+      />
+
       {pendingFloor && (
         <FloorPickerModal
           building={pendingFloor.building}
@@ -621,6 +895,7 @@ const styles = StyleSheet.create({
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
   mapArea: { flex: 1, position: "relative" },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
+  controlBtnActive: { backgroundColor: COLORS.primary },
   controlBtn: {
     width: 40,
     height: 40,
@@ -633,6 +908,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
+  },
+  mapErrorNotice: {
+    position: "absolute",
+    top: 8,
+    left: 12,
+    right: 12,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  mapErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#92400E",
   },
   offscreenNotice: {
     position: "absolute",

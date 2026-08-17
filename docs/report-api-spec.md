@@ -240,3 +240,66 @@ CREATE TABLE report_flags (
 1. 3장 질문 답변 (특히 1, 2번 — 나머지는 구현 중 조정 가능)
 2. 확정되면 이 문서의 "가안"·"미확정" 표시를 지우고 실제 값으로 갱신
 3. BE가 엔드포인트 붙이면 프론트는 `docs/report-feature-plan.md` Phase 3(위치·층 지정)부터 착수
+
+---
+
+## 8. 추가 제안 (2026-08-13) — 사진 첨부와 사전 검토
+
+앞 절들이 작성된 뒤에 정해진 두 가지다. 프론트는 이미 이 계약대로 구현해 뒀고,
+서버 합의가 필요하다.
+
+### 8.1 제보는 검토를 거쳐 공개된다
+
+`POST /reports` 로 만든 제보를 **즉시 공개하지 않는다.** 운영진이 확인한 뒤에만
+지도에 뜬다. 허위 제보·비방 위험(`report-feature-plan.md` §7 "높음" 2건)에 대해
+사후 신고보다 사전 검토를 앞세우는 쪽으로 정했다.
+
+`status` 값 목록이 3개에서 5개로 늘어난다.
+
+| 값 | 뜻 | 지도 노출 |
+|---|---|---|
+| `PENDING` | 등록 직후. 검토 대기 | ✕ |
+| `ACTIVE` | 검토 통과 | ○ |
+| `REJECTED` | 검토에서 반려 | ✕ |
+| `HIDDEN` | 신고 누적으로 내려감 | ✕ |
+| `DELETED` | 작성자 삭제 | ✕ |
+
+- `POST /reports` 응답의 `status` 는 `PENDING` 이어야 한다 (기존 예시의 `ACTIVE` 아님)
+- `GET /reports?live=true` 는 `ACTIVE` 만 내려준다
+- 5장 DDL 의 `status` 기본값을 `'active'` → `'pending'` 으로 바꿔야 한다
+- **검토 수단이 아직 없다.** 운영자가 `PENDING` 을 훑고 승인/반려할 화면이나
+  API가 필요하다. 관리자 API로 뺄지, DB 직접 조작으로 시작할지 정해야 한다
+
+프론트는 `visibleReports()`(`src/utils/reports.ts`)에서 `ACTIVE` 가 아니거나
+종료 시각이 지난 제보를 한 번 더 걸러낸다. 서버가 잘못 내려줘도 검토 절차가
+무너지지 않게 하기 위한 이중 방어다.
+
+### 8.2 `POST /reports/images` — 첨부 사진 업로드
+
+**인증**: 필수 (Bearer)
+
+제보 생성과 분리했다. 사진 없는 제보가 더 많아 본문을 multipart 로 통일할 이유가
+없고, 업로드가 실패해도 작성 중이던 내용이 날아가지 않는다.
+
+**Request**: `multipart/form-data`
+
+| 파트 | 타입 | 필수 | 비고 |
+|---|---|---|---|
+| `file` | image/jpeg · image/png | O | 앱에서 quality 0.7 로 압축해 보냄 |
+
+**Response `200`**
+```json
+{ "imageUrl": "https://.../reports/2026/08/abc123.jpg" }
+```
+
+**에러**: `401` 토큰 없음/무효 · `413` 용량 초과 · `415` 지원하지 않는 형식
+
+이어서 `POST /reports` 의 요청·응답에 선택 필드 `imageUrl`(String)이 추가된다.
+`reports` 테이블에도 컬럼이 필요하다.
+
+```sql
+ALTER TABLE reports ADD COLUMN image_url VARCHAR(500) NULL COMMENT '첨부 사진. 없으면 NULL';
+```
+
+**정해야 할 것**: 저장소(서버 로컬 / S3 등 오브젝트 스토리지), 용량 상한,
+반려·삭제된 제보의 사진 정리 주기.
