@@ -1,6 +1,11 @@
 import { FLOOR_TRANSIT_SECONDS } from '../constants/route'
 import type { Building } from '../types'
 
+export interface RoutePoint {
+  lat: number
+  lng: number
+}
+
 /**
  * 층 번호 표기 규칙
  * 양수는 지상(1 → '1F'), 음수는 지하(-1 → 'B1'). 0층은 존재하지 않는다.
@@ -55,4 +60,24 @@ export function floorTransitSeconds(
   const fromLevels = fromFloor === null ? 0 : levelsFromGround(fromFloor)
   const toLevels = toFloor === null ? 0 : levelsFromGround(toFloor)
   return (fromLevels + toLevels) * FLOOR_TRANSIT_SECONDS
+}
+
+/**
+ * 경로 시작/끝 지점의 좌표를 정한다. 고른 층이 `entrances` 의 어느 범위에
+ * 속하면 그 출입구 좌표를, 아니면 건물 대표 좌표(`lat`/`lng`)를 쓴다.
+ *
+ * 층을 고르지 않았거나(null) 그 건물에 출입구별 좌표가 없으면 항상 대표
+ * 좌표로 떨어진다 — 지금은 대부분의 건물이 여기 해당한다.
+ */
+export function resolveEntrancePoint(
+  building: Building,
+  floor: number | null,
+): RoutePoint {
+  if (floor !== null && building.entrances) {
+    const match = building.entrances.find(
+      (entrance) => floor >= entrance.minFloor && floor <= entrance.maxFloor,
+    )
+    if (match) return { lat: match.lat, lng: match.lng }
+  }
+  return { lat: building.lat, lng: building.lng }
 }

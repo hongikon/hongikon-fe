@@ -25,7 +25,7 @@ export interface FacilityKindMeta {
  * 배열 순서가 곧 칩이 놓이는 순서다.
  *
  * 찾는 목적이 비슷한 것끼리 묶었다 — 학업(프린터·증명서 발급·열람실),
- * 먹고 마시는 것(정수기·카페·식당), 사람을 만나거나 둘러보는 곳(학생처·행사·전시).
+ * 먹고 마시는 것(정수기·카페·식당·편의점), 사람을 만나거나 둘러보는 곳(학생처·행사·전시).
  * 색은 이 레이어 안에서만 구분되면 된다. 편의시설과 제휴 업체는 최상단 칩으로
  * 갈려 한 화면에 같이 뜨지 않기 때문이다.
  */
@@ -36,6 +36,7 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
+  { key: '편의점', icon: 'storefront', color: '#D97706' },
   { key: '학생처', icon: 'people', color: '#EA580C' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
 ]

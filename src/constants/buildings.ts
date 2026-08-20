@@ -7,6 +7,11 @@ import type { Building } from '../types'
  *
  * floors / hours / description / facilities 는 출처가 확인된 건물만 채운다.
  * 값이 없으면 배너에서 해당 줄이 자동으로 숨겨진다.
+ *
+ * entrances 는 층에 따라 실제로 드나드는 문이 달라지는 건물만 채운다(예: 저층은
+ * 정문, 고층은 후문 계단으로만 연결). 출입구 좌표가 확인되지 않았으면 비워 두고,
+ * 길찾기는 건물 대표 좌표(lat/lng)로 대신한다. `src/utils/floors.ts` 의
+ * `resolveEntrancePoint` 참고.
  */
 const BASE_BUILDINGS: Building[] = [
   // ── 북측 ────────────────────────────────────────────────

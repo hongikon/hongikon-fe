@@ -90,6 +90,59 @@
 
 ---
 
+## 2026-08-20
+
+**목표**: 백엔드 없이 제보 기능 화면 확인 가능하게 만들기 + 편의시설 종류 추가
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/mockReportsStore.ts` | **신규** | AsyncStorage 기반 로컬 제보 저장소 |
+| `src/lib/reportsApi.ts` | 재작성 | `apiRequest`/`apiUpload` 호출을 로컬 스토어 호출로 교체 (함수 시그니처는 그대로 유지) |
+| `src/components/map/ReportComposerModal.tsx` | 대폭 수정 | 로그인 게이트 제거, 카테고리 '+' 직접 입력 칩 추가, 등록 완료 안내 문구 수정 |
+| `src/components/map/ReportSheet.tsx` | 수정 | 로그인 게이트 제거, 직접 입력한 카테고리 라벨을 배지에 표시 |
+| `src/screens/MapScreen.tsx` | 수정 | 제보 등록 후 레이어가 켜져 있으면 목록 새로고침 |
+| `src/utils/mapHtml.ts` | 수정 | 제보 롱프레스 시 근처 건물 탐색을 반경 제한 없이 항상 반환하도록 변경, `편의점` 핀 아이콘 추가 |
+| `src/types/index.ts` | 수정 | `customCategoryLabel` 필드 추가, `FacilityKind`에 `편의점` 추가 |
+| `src/constants/map.ts` | 수정 | 반경 제한을 걷어내며 쓸모없어진 `TAP_RADIUS_METERS` 제거 |
+| `src/constants/report.ts` | 수정 | `REPORT_CUSTOM_CATEGORY_MAX_LENGTH` 추가 |
+| `src/constants/facilityKinds.ts` | 수정 | `편의점` 칩 메타(아이콘·색) 추가 |
+| `public/map.html` | 재생성 | 위 `mapHtml.ts` 변경분을 `generate-map-html.ts`로 다시 반영 |
+| `package-lock.json` | **신규** | async-storage 등 의존성 설치 반영 |
+
+커밋 `870ae38`에 위 표 중 제보 관련 항목이 모두 담겼다. `편의점` 관련 3개 파일(`types/index.ts`, `constants/facilityKinds.ts`, `mapHtml.ts`/`map.html`)은 아직 커밋 전이다.
+
+---
+
+### 1. 제보 기능을 백엔드 없이 화면에서 확인 가능하게
+
+`docs/report-api-spec.md`는 제안 문서일 뿐 백엔드 구현은 아직이라, 제보를 만들어도 화면에 아무것도 뜨지 않는 상태였다(`.env`의 `EXPO_PUBLIC_API_BASE_URL` 미설정 → 모든 호출이 즉시 에러). 화면 검증용으로 로컬 저장소를 얹었다.
+
+- `mockReportsStore.ts` — AsyncStorage에 제보를 저장/조회/삭제/신고 처리. 운영자 검토 화면이 없으므로 등록 즉시 `ACTIVE`로 올린다(원래는 `PENDING` → 검토 후 `ACTIVE`).
+- `reportsApi.ts`의 함수 시그니처는 그대로 두고 내부만 이 스토어를 부르도록 바꿔, 백엔드가 준비되면 이 파일 안쪽만 `apiRequest`/`apiUpload` 호출로 되돌리면 되게 했다.
+- 신고 누적 3회면 자동으로 `HIDDEN` 처리(운영자 화면이 없어 정한 임시 값).
+
+### 2. 로그인 없이도 제보·신고 테스트 가능
+
+화면만 확인하려는데 로그인 절차가 막고 있어, `ReportComposerModal`·`ReportSheet`의 로그인 게이트를 제거했다. 토큰이 없으면 빈 문자열을 대신 넘기는데, 로컬 목업 스토어는 이 값을 쓰지 않는다.
+
+### 3. 제보 위치 설명 — 좌표 대신 항상 "근처 건물명"
+
+지도를 롱프레스했을 때 40m 반경 안에 건물이 없으면 좌표(`37.55080, 126.92370`)가 그대로 노출됐다. `mapHtml.ts`의 `nearestBuildingWithin(lat, lng, radius)`를 반경 없는 `nearestBuilding(lat, lng)`로 바꿔 항상 가장 가까운 건물을 후보로 올리도록 했다. 이제 좌표가 뜨는 경우는 없다. 반경 제한이 없어지며 쓸모없어진 `TAP_RADIUS_METERS`도 같이 지웠다.
+
+### 4. '무슨 일인가요?' 카테고리 직접 입력
+
+고정된 5개 칩(행사·공연·간식행사·부스·기타) 옆에 '+' 칩을 추가했다. 누르면 인라인 입력창(최대 12자)이 펼쳐지고, 체크로 확정하면 그 텍스트가 칩에 반영되며 내부적으로는 `category: 'ETC'`로 전송된다(서버 스펙에 없는 값이라 유니온을 늘리는 대신 `customCategoryLabel` 필드로 얹었다). 취소하면 이미 확정해 둔 라벨은 건드리지 않고 입력 중이던 값만 버린다.
+
+### 5. 편의시설에 '편의점' 추가
+
+`FacilityKind`에 `편의점`을 추가하고 칩 아이콘(`storefront`)·색(`#D97706`)과 지도 핀용 인라인 SVG(차양 + 문 자리를 뚫은 매대 박스)를 넣었다. `MapFilterChips`는 `FACILITY_KINDS` 배열을 그대로 순회하는 구조라 다른 코드 변경은 없었다.
+
+> **미결**: `constants/facilities.ts`의 `FACILITIES` 배열은 비어 있다(위치가 확인된 항목만 넣는 규칙). 실제 편의점 위치(건물명·층)를 알려주면 칩에 카운트가 붙는다.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |

@@ -35,7 +35,12 @@ import {
   PARTNER_MAP_ICON_COLOR,
 } from "../constants/partnerCategories";
 import { WALKING_METERS_PER_MINUTE } from "../constants/route";
-import { formatFloor, hasFloorData, floorTransitSeconds } from "../utils/floors";
+import {
+  formatFloor,
+  hasFloorData,
+  floorTransitSeconds,
+  resolveEntrancePoint,
+} from "../utils/floors";
 import { haversineMeters } from "../utils/geo";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
@@ -126,14 +131,17 @@ export default function MapScreen() {
 
   const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), []);
 
-  // 도보 시간 = 건물 간 직선거리 + 선택한 층을 오르내리는 시간.
+  // 도보 시간 = 출입구 간 직선거리 + 선택한 층을 오르내리는 시간.
+  // 건물에 층별 출입구가 등록돼 있으면 고른 층에 맞는 문에서 거리를 잰다.
   const routeMinutes = useMemo(() => {
     if (!fromBuilding || !toBuilding) return 0;
+    const fromPoint = resolveEntrancePoint(fromBuilding, fromFloor);
+    const toPoint = resolveEntrancePoint(toBuilding, toFloor);
     const meters = haversineMeters(
-      fromBuilding.lat,
-      fromBuilding.lng,
-      toBuilding.lat,
-      toBuilding.lng,
+      fromPoint.lat,
+      fromPoint.lng,
+      toPoint.lat,
+      toPoint.lng,
     );
     const walkSeconds = (meters / WALKING_METERS_PER_MINUTE) * 60;
     const totalSeconds = walkSeconds + floorTransitSeconds(fromFloor, toFloor);
@@ -322,14 +330,21 @@ export default function MapScreen() {
     postToMap({ type: "selectPartner", id: null });
   }, [postToMap]);
 
+  /**
+   * 층별 출입구가 등록된 건물이면 고른 층에 맞는 문에서 경로를 잇는다.
+   * 층을 방금 고른 쪽은 상태 갱신이 아직 반영되기 전이라 인자로 직접 받는다
+   * (같은 틱에서 setFromFloor 직후 호출되므로 fromFloor 상태를 읽으면 이전 값이 잡힌다).
+   */
   const drawRoute = useCallback(
-    (from: Building, to: Building) => {
+    (from: Building, fromFloorArg: number | null, to: Building, toFloorArg: number | null) => {
+      const fromPoint = resolveEntrancePoint(from, fromFloorArg);
+      const toPoint = resolveEntrancePoint(to, toFloorArg);
       postToMap({
         type: "showRoute",
-        fromLat: from.lat,
-        fromLng: from.lng,
-        toLat: to.lat,
-        toLng: to.lng,
+        fromLat: fromPoint.lat,
+        fromLng: fromPoint.lng,
+        toLat: toPoint.lat,
+        toLng: toPoint.lng,
       });
     },
     [postToMap],
@@ -337,9 +352,9 @@ export default function MapScreen() {
 
   /** 출발이 확정되면 도착지 선택 화면으로 자동으로 넘어간다. */
   const advanceToDestination = useCallback(
-    (from: Building) => {
+    (from: Building, floor: number | null) => {
       if (toBuilding) {
-        drawRoute(from, toBuilding);
+        drawRoute(from, floor, toBuilding, toFloor);
         setShowRoute(false);
         setRouteTarget(null);
         return;
@@ -348,17 +363,17 @@ export default function MapScreen() {
       setRouteTarget("to");
       setShowRoute(true);
     },
-    [toBuilding, drawRoute],
+    [toBuilding, toFloor, drawRoute],
   );
 
   const finishDestination = useCallback(
-    (to: Building) => {
-      if (fromBuilding) drawRoute(fromBuilding, to);
+    (to: Building, floor: number | null) => {
+      if (fromBuilding) drawRoute(fromBuilding, fromFloor, to, floor);
       setShowRoute(false);
       setRouteTarget(null);
       setSearchQuery("");
     },
-    [fromBuilding, drawRoute],
+    [fromBuilding, fromFloor, drawRoute],
   );
 
   /** 층 정보가 있는 건물이면 다이얼을 먼저 띄우고, 없으면 곧장 다음 단계로. */
@@ -373,7 +388,7 @@ export default function MapScreen() {
         setPendingFloor({ building, target: "from" });
         return;
       }
-      advanceToDestination(building);
+      advanceToDestination(building, null);
     },
     [advanceToDestination],
   );
@@ -388,7 +403,7 @@ export default function MapScreen() {
         setPendingFloor({ building, target: "to" });
         return;
       }
-      finishDestination(building);
+      finishDestination(building, null);
     },
     [finishDestination],
   );
@@ -400,11 +415,11 @@ export default function MapScreen() {
       setPendingFloor(null);
       if (target === "from") {
         setFromFloor(floor);
-        advanceToDestination(building);
+        advanceToDestination(building, floor);
         return;
       }
       setToFloor(floor);
-      finishDestination(building);
+      finishDestination(building, floor);
     },
     [pendingFloor, advanceToDestination, finishDestination],
   );

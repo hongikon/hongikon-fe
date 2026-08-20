@@ -7,6 +7,20 @@ export interface ExternalLink {
   url: string
 }
 
+/**
+ * 건물 한 곳에 출입구가 여럿이고, 층에 따라 실제로 드나드는 문이 달라질 때 쓴다.
+ * `minFloor`~`maxFloor` 범위(포함)에 속한 층을 고르면 이 좌표로 경로를 잇는다.
+ * 좌표는 확인된 값만 채운다(추정 금지). 이 배열이 없거나 고른 층이 어느 범위에도
+ * 안 걸리면 `Building.lat/lng`(대표 좌표)를 그대로 쓴다.
+ */
+export interface BuildingEntrance {
+  label: string
+  lat: number
+  lng: number
+  minFloor: number
+  maxFloor: number
+}
+
 export interface Building {
   name: string
   lat: number
@@ -18,6 +32,8 @@ export interface Building {
   floors?: number
   /** 지하 층수. 지하가 없으면 생략한다. */
   basementFloors?: number
+  /** 층별로 다른 출입구를 쓰는 건물만 채운다. `BuildingEntrance` 참고. */
+  entrances?: BuildingEntrance[]
   /** 확인된 값만 채운다. 미확인 건물은 비워두고 배너에서 숨긴다. */
   hours?: string
   description?: string
@@ -56,6 +72,7 @@ export type FacilityKind =
   | '정수기'
   | '카페'
   | '식당'
+  | '편의점'
   | '학생처'
   | '행사·전시'
 
