@@ -66,6 +66,16 @@ export const PARTNERS: readonly Partner[] = [
     benefit: '전 제품 10% 할인',
     address: '서울 마포구 와우산로 11길 9-8 102호',
   },
+  {
+    id: 'cafe-weekly-bagel',
+    name: '위클리베이글',
+    category: '카페',
+    affiliations: ['총학생회'],
+    lat: 37.5537619785992,
+    lng: 126.923693794834,
+    benefit: '전 메뉴 10% 할인, 20만 원 이상 20% 할인',
+    address: '서울 마포구 홍익로 10 101동 지층 B111호',
+  },
 
   // ── 주점 ────────────────────────────────────────────────
   {
@@ -249,6 +259,16 @@ export const PARTNERS: readonly Partner[] = [
     benefit: '전체 금액의 10% 할인 (런치 스페셜 제외)',
     address: '서울 마포구 와우산로 15길 37 지1층 좌측',
   },
+  {
+    id: 'food-back-door',
+    name: '백도어',
+    category: '음식',
+    affiliations: ['총학생회'],
+    lat: 37.5510244350131,
+    lng: 126.924188634391,
+    benefit: '점심(11시~15시) 중 전 메뉴 10% 할인',
+    address: '서울 마포구 와우산로22길 34',
+  },
 
   // ── 의료/미용 ───────────────────────────────────────────
   {
@@ -315,6 +335,16 @@ export const PARTNERS: readonly Partner[] = [
     benefit: '국가지원 검진 및 청춘블루 검진',
     address: '서울 강남구 학동로 53길 3-2',
   },
+  {
+    // 혜택 미정('못찾겠어요나중에추가할래요')이라 비워둔다.
+    id: 'care-safedoc',
+    name: '세이프닥',
+    category: '의료/미용',
+    affiliations: ['총학생회'],
+    lat: 37.552473,
+    lng: 126.9229842,
+    address: '서울 마포구 와우산로 21길 20',
+  },
 
   // ── 문화 ────────────────────────────────────────────────
   {
@@ -369,8 +399,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '홀리데이인 익스프레스 홍대',
     category: '문화',
     affiliations: ['총학생회'],
-    lat: 37.5575614,
-    lng: 126.9267408,
+    lat: 37.55756143237883,
+    lng: 126.92674082033301,
     benefit:
       '전용 링크로 예약 시 객실 20% 할인, 국내 및 전 세계 IHG 계열사 호텔 할인 가능',
     address: '서울 마포구 양화로 188 (AK 플라자 7층)',
@@ -578,8 +608,8 @@ export const PARTNERS: readonly Partner[] = [
     name: 'LA당구장',
     category: '문화',
     affiliations: ['공과대학'],
-    lat: 37.5503273,
-    lng: 126.9207402,
+    lat: 37.5503273207971,
+    lng: 126.920740166452,
     benefit: '테이블당 음료 2개 서비스',
     address: '서울 마포구 어울마당로 55-4 서교빌딩 4층',
   },
@@ -590,8 +620,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '홍대 마포껍데기',
     category: '음식',
     affiliations: ['공과대학'],
-    lat: 37.5536476,
-    lng: 126.9225855,
+    lat: 37.553647641358,
+    lng: 126.922585518447,
     benefit: '공대생 인증시 10% 할인',
     address: '서울 마포구 어울마당로 100-8 1, 2층',
   },
@@ -600,30 +630,46 @@ export const PARTNERS: readonly Partner[] = [
     name: '제제집',
     category: '음식',
     affiliations: ['공과대학'],
-    lat: 37.5492806,
-    lng: 126.9216349,
+    lat: 37.5492805976055,
+    lng: 126.921634930985,
     benefit: '1인 1메뉴 주문시 2인당 음료수 or 공깃밥 1개',
     address: '서울 마포구 와우산로15길 30',
   },
   {
+    // 캠퍼스자율전공 자료의 '오일내 홍대점'과 좌표가 거의 일치해(약 2m 이내) 병합한다.
     id: 'food-oilnae',
     name: '오일내',
     category: '음식',
-    affiliations: ['공과대학'],
-    lat: 37.5513853,
-    lng: 126.9215553,
+    affiliations: ['공과대학', '캠퍼스자율전공(서울)'],
+    lat: 37.5513852765591,
+    lng: 126.921555321059,
     benefit: '테이블당 껍데기 or 비빔면 서비스',
+    affiliationBenefits: [
+      {
+        affiliation: '캠퍼스자율전공(서울)',
+        benefit: '테이블당 치즈계란찜 or 된장찌개 or 김치찌개 or 껍데기 중 택 1',
+      },
+    ],
     address: '서울 마포구 어울마당로 70 2층',
   },
   {
+    // 공과대학 최신 자료에는 '경호네'로 표기되어 있으나 좌표·주소·혜택이
+    // '연어초밥'과 완전히 같아(같은 자리) 병기해 둔다.
     id: 'food-yeoneo-chobap',
-    name: '연어초밥',
+    name: '경호네(연어초밥)',
     category: '음식',
     // 경영대학 제휴 혜택은 '음료 1캔 제공'으로, 공과대학과 실질 동일해 한 줄로 둔다.
-    affiliations: ['공과대학', '경영대학'],
+    // 캠퍼스자율전공 자료의 좌표도 거의 일치해(약 1m 이내) 같은 지점으로 병합한다.
+    affiliations: ['공과대학', '경영대학', '캠퍼스자율전공(서울)'],
     lat: 37.5482787,
     lng: 126.9223832,
     benefit: '인당 음료수 1개 서비스',
+    affiliationBenefits: [
+      {
+        affiliation: '캠퍼스자율전공(서울)',
+        benefit: '테이블당 음료 1개 제공',
+      },
+    ],
     address: '서울 마포구 와우산로 39-14 지하 1층',
   },
   {
@@ -632,8 +678,8 @@ export const PARTNERS: readonly Partner[] = [
     category: '음식',
     // 경영대학은 깐따삐아·해피토스 두 지점만 제휴한다(스마일보이점 제외).
     affiliations: ['공과대학', '경영대학'],
-    lat: 37.5528099,
-    lng: 126.9224825,
+    lat: 37.5528099161396,
+    lng: 126.922482495511,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
     address: '서울 마포구 와우산로21길 28-12',
   },
@@ -642,8 +688,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '또보겠지 떡볶이집(해피토스점)',
     category: '음식',
     affiliations: ['공과대학', '경영대학'],
-    lat: 37.5521064,
-    lng: 126.9211604,
+    lat: 37.5521064426225,
+    lng: 126.921160400094,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
     address: '서울 마포구 잔다리로6길 34-5 2층',
   },
@@ -652,8 +698,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '또보겠지 떡볶이집(스마일보이점)',
     category: '음식',
     affiliations: ['공과대학'],
-    lat: 37.5549744,
-    lng: 126.9292437,
+    lat: 37.5549743934334,
+    lng: 126.929243675616,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
     address: '서울 마포구 와우산로29길 14-8 101호',
   },
@@ -675,8 +721,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '아웃닭 홍대점',
     category: '음식',
     affiliations: ['공과대학'],
-    lat: 37.5500900,
-    lng: 126.9219035,
+    lat: 37.5500899621416,
+    lng: 126.921903530033,
     benefit: '2인당 1마리 주문시 테이블당 사이드 택1 제공',
     address: '서울 마포구 와우산로 17길 19 1층',
   },
@@ -687,10 +733,20 @@ export const PARTNERS: readonly Partner[] = [
     name: '춘타운 홍대점 1호점',
     category: '주점',
     affiliations: ['공과대학'],
-    lat: 37.5508919,
-    lng: 126.9220307,
+    lat: 37.5508919345589,
+    lng: 126.922030684508,
     benefit: '2만원 이상 주문시 사이드 서비스',
     address: '서울 마포구 잔다리로 10, 1층',
+  },
+  {
+    id: 'bar-nas-hongdae',
+    name: '나스',
+    category: '주점',
+    affiliations: ['공과대학'],
+    lat: 37.5511310178553,
+    lng: 126.922652400213,
+    benefit: '테이블당 3만 원 이상 주문 시 사이드 8,000원 서비스',
+    address: '서울 마포구 와우산로 19길 9 1층',
   },
 
   // ═══ 문과대학 제휴 ═══════════════════════════════════════
@@ -702,8 +758,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '키이스케이프',
     category: '문화',
     affiliations: ['문과대학'],
-    lat: 37.5489619,
-    lng: 126.9209274,
+    lat: 37.548961893308,
+    lng: 126.920927426796,
     benefit:
       '인당 5,000원 페이백(이용 후 인스타그램 스토리 업로드 또는 영수증 리뷰 작성 → 직원 확인 시 혜택 적용)',
     address: '서울 마포구 어울마당로 44-1 라곰마빌딩 지하1층',
@@ -715,8 +771,8 @@ export const PARTNERS: readonly Partner[] = [
     name: '찜이로닭 상수본점',
     category: '음식',
     affiliations: ['문과대학'],
-    lat: 37.5481634,
-    lng: 126.9221658,
+    lat: 37.5481634403528,
+    lng: 126.92216581335,
     benefit: '주문 메뉴당 캔음료 1개 서비스 제공(2026년 6월 1일 ~ 2026년 12월 31일)',
     address: '서울 마포구 와우산로 39-21 지1층 좌측호',
   },
@@ -761,24 +817,34 @@ export const PARTNERS: readonly Partner[] = [
 
   // ── 음식 ────────────────────────────────────────────────
   {
+    // 캠퍼스자율전공 자료와 좌표가 거의 일치해(약 1m 이내) 병합한다.
     id: 'food-hapjeong-naengjanggo',
     name: '합정 냉장고',
     category: '음식',
-    affiliations: ['경영대학'],
+    affiliations: ['경영대학', '캠퍼스자율전공(서울)'],
     lat: 37.548680,
     lng: 126.920092,
-    benefit: '고기 2인분 이상 주문 시 1인분 추가 제공',
+    benefit: '고기 2인분 이상 주문 시 1인분 추가 제공(테이블당 1회)',
     address: '서울 마포구 양화로6길 99-10 1층',
   },
   {
+    // 캠퍼스자율전공 자료에는 '네코토유부 상수본점'으로 표기되어 있으나 좌표가
+    // 거의 일치해(약 1m 이내) 같은 지점으로 보고 병합한다.
     id: 'food-nekono-yubu',
     name: '네코노유부',
     category: '음식',
-    affiliations: ['경영대학'],
+    affiliations: ['경영대학', '캠퍼스자율전공(서울)'],
     lat: 37.548244,
     lng: 126.921330,
     benefit:
       '홀 - 1인 1메뉴 기준 유부 1pcs 제공(멘치카츠 유부 제외) / 포장 - 평일 방문 포장 시 20% 할인',
+    affiliationBenefits: [
+      {
+        affiliation: '캠퍼스자율전공(서울)',
+        benefit:
+          '1인 1메뉴 또는 유부 4피스 주문 시 유부 1피스 제공(멘치카츠 유부 제외), 평일 포장 시 20% 할인',
+      },
+    ],
     address: '서울 마포구 와우산로13길 49-11 반지층',
   },
   {
@@ -840,5 +906,237 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.926294,
     benefit: '전메뉴 20% 할인',
     address: '서울 마포구 동교로46길 27 1층',
+  },
+
+  // ═══ 캠퍼스자율전공(서울) 제휴 ═══════════════════════════
+  // 네코노유부·오일내·연어초밥·합정 냉장고는 다른 소속과 같은 지점이라
+  // 위 각 소속 섹션에 두고 affiliations 로만 겹쳐 둔다.
+  // ── 외식 ────────────────────────────────────────────────
+  {
+    id: 'food-jeongbu-45nyeon-hongdae',
+    name: '45년의정부부대찌개 홍대점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5479899954542,
+    lng: 126.921210792783,
+    benefit: '2인당 음료 1개 제공',
+    address: '서울 마포구 상수동 316-8 연신B/D 2층',
+  },
+  {
+    id: 'food-genroku-udon-hongdae',
+    name: '겐로쿠우동 홍대점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5487545124007,
+    lng: 126.920300382188,
+    benefit:
+      '2인 이하: 1인당 이나리(유부초밥) or 고기어묵만두, 4인 이상: 고기어묵만두 or 타코야끼',
+    address: '서울 마포구 서교동 402-18',
+  },
+  {
+    id: 'food-motenatsu',
+    name: '모테나츠',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5489083934153,
+    lng: 126.920019799332,
+    benefit: '음료 1개 or 한입 맥주 중 택 1',
+    address: '서울 마포구 서교동 402-13 2층',
+  },
+  {
+    id: 'food-sangsu-jutaek',
+    name: '상수주택',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5486474124481,
+    lng: 126.921962182437,
+    benefit:
+      '학생증 제시 시 10% 할인, 쿠폰 제시 시 20% 할인(1회 제한, 자율전공학생회실에서 수령)',
+    address: '서울 마포구 상수동 311-1 2층 상수주택',
+  },
+  {
+    id: 'food-smashboy',
+    name: '스매쉬보이',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5489888494623,
+    lng: 126.921491971349,
+    benefit: '버거+음료 주문시 1,000원 할인',
+    address: '서울 마포구 서교동 411-9 1층 스매쉬보이',
+  },
+  {
+    // 제공된 혜택 문구가 '점심 - 메인+공기밥+우동사리/'에서 끊겨 있다.
+    // 뒤에 이어질 내용을 확인받기 전까지는 받은 문구 그대로만 둔다.
+    id: 'food-yunbanjang-hongdae',
+    name: '원주한우곱도리탕 윤반장 홍대점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5492164577926,
+    lng: 126.92247093994,
+    benefit: '점심 - 메인+공기밥+우동사리',
+    address: '서울 마포구 상수동 92-2 지하1층 우측',
+  },
+  {
+    id: 'food-kanda-soba',
+    name: '칸다소바',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5492898464803,
+    lng: 126.922680670023,
+    benefit: '2인 기준 교자 or 음료 서비스 제공(평일에만 적용)',
+    address: '서울 마포구 상수동 91-3',
+  },
+  {
+    id: 'food-kotohira-udon',
+    name: '고토히라 우동',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5550790657471,
+    lng: 126.929204305697,
+    benefit: '2인 테이블당 치쿠와튀김 1개 제공',
+    address: '서울 마포구 서교동 327-20 지하1층',
+  },
+  {
+    id: 'food-kkochikkochi-yangkkochi',
+    name: '꼬치꼬치 양꼬치',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5545304021785,
+    lng: 126.92294268134,
+    benefit: '2인: 인당 음료 1개씩 제공, 3인 이상: 계란볶음밥 or 물만두 중 택 1',
+    address: '서울 마포구 서교동 345-23 2-3층',
+  },
+  {
+    // 혜택 문구가 '3인 이상 - 일반감자튀김 or 치즈윗'에서 끊겨 있다.
+    // 뒤에 이어질 내용을 확인받기 전까지는 받은 문구 그대로만 둔다.
+    id: 'food-thepizzaboys-hongikuniv',
+    name: '더피자보이즈 홍대입구역점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5557338744195,
+    lng: 126.92634638809,
+    benefit: '3인 이상 - 일반감자튀김 or 치즈윗',
+    address: '서울 마포구 서교동 332-33 1층',
+  },
+  {
+    id: 'food-taomalatang-hongdae',
+    name: '타오마라탕 홍대점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5524804477603,
+    lng: 126.922385737882,
+    benefit: '2인당 음료 1개 제공',
+    address: '서울 마포구 서교동 358-38 2층',
+  },
+  {
+    id: 'food-taomalatang-sinchon',
+    name: '타오마라탕 신촌점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5570473388332,
+    lng: 126.935906636005,
+    benefit: '2인당 음료 1개 제공',
+    address: '서울 서대문구 연세로5나길 6 1층',
+  },
+  {
+    id: 'food-taomalatang-hapjeong',
+    name: '타오마라탕 합정점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5492506318267,
+    lng: 126.915295517355,
+    benefit: '2인당 음료 1개 제공',
+    address: '서울 마포구 양화로6길 19 광명빌딩 2층',
+  },
+  {
+    id: 'food-taomalatang-nowon',
+    name: '타오마라탕 노원점',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.6564840257668,
+    lng: 127.063004906422,
+    benefit: '2인당 음료 1개 제공',
+    address: '서울 노원구 상계로 71 2층',
+  },
+  {
+    id: 'food-marai-jangwon',
+    name: '마라이장원',
+    category: '음식',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5484862624422,
+    lng: 126.920133413176,
+    benefit: '전메뉴 10% 할인',
+    address: '서울 마포구 서교동 402-22 1층 1호',
+  },
+
+  // ── 카페/베이커리 ───────────────────────────────────────
+  {
+    id: 'cafe-am9-coffee',
+    name: 'AM9 coffee',
+    category: '카페',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5479835725677,
+    lng: 126.925330803359,
+    benefit: '아메리카노 제외 500원 할인 or 모든 음료 무료 사이즈업',
+    address: '서울 마포구 상수동 93-1 1층 101호',
+  },
+  {
+    // 더피자보이즈 홍대입구역점과 좌표가 동일하게 제공됐다. 같은 건물의
+    // 다른 호수로 보이나, 확인 전까지는 받은 좌표를 그대로 둔다.
+    id: 'cafe-hooligan-coffee',
+    name: '훌리건 커피',
+    category: '카페',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5557338744195,
+    lng: 126.92634638809,
+    benefit:
+      '평일 3시 이전 런치콤보 10% 할인, 3시 이후 음료(맥주 포함) 20% 할인, 3인 이상 방문 시 아이스크림 디저트 제공',
+    address: '서울 마포구 서교동 332-28 1층',
+  },
+  {
+    id: 'cafe-yogurtworld-hongdae',
+    name: '요거트월드 홍대점',
+    category: '카페',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5525907369382,
+    lng: 126.923501017298,
+    benefit: '전 메뉴 15% 할인',
+    address: '서울 마포구 서교동 358-32 1층',
+  },
+  {
+    id: 'cafe-milgaru-inswaeso',
+    name: '밀가루 인쇄소',
+    category: '카페',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5484305543692,
+    lng: 126.924757414614,
+    benefit: '음료 30% 할인, 디저트 20% 할인',
+    address: '서울 마포구 상수동 93-74 지층',
+  },
+
+  // ── 주류 ────────────────────────────────────────────────
+  {
+    id: 'bar-siseon-hongdae',
+    name: '시선 홍대점',
+    category: '주점',
+    affiliations: ['캠퍼스자율전공(서울)'],
+    lat: 37.5502713850633,
+    lng: 126.922666981571,
+    benefit:
+      '20,000원 이하 안주 제공(안주 39,900원 이상 + 주류 주문 시, 테이블 절반 이상이 자율전공 학생일 시, 금·토 제외)',
+    address: '서울 마포구 서교동 407-4 1층, 2층',
+  },
+
+  // ═══ 미술대학 제휴 ═══════════════════════════════════════
+  // ── 기타 ────────────────────────────────────────────────
+  {
+    id: 'etc-archi-lounge',
+    name: '아키라운지',
+    category: '기타',
+    affiliations: ['미술대학'],
+    lat: 37.553419,
+    lng: 126.923362,
+    benefit: '레이저 컷팅 작업 15분 이상 진행시 상시 15% 할인',
+    address: '서울 마포구 홍익로 9-1 3층',
   },
 ]

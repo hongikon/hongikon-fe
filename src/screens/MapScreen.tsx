@@ -25,6 +25,7 @@ import { toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
+import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { BUILDINGS } from "../constants/buildings";
@@ -544,6 +545,8 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <PartnerNoticeModal />
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>캠퍼스</Text>
       </View>

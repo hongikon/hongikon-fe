@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,6 +19,8 @@ import { BUILDINGS } from '../constants/buildings'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
+import { PARTNER_NOTICE_TEXT } from '../components/map/PartnerNoticeModal'
+import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS } from '../constants/typography'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
@@ -31,6 +34,12 @@ interface AppNotice {
 }
 
 const APP_NOTICES: AppNotice[] = [
+  {
+    id: '4',
+    title: '제휴 정보 안내',
+    date: '2026.08.20',
+    body: PARTNER_NOTICE_TEXT,
+  },
   {
     id: '3',
     title: '홍익대알리미 v1.0.0 출시',
@@ -51,7 +60,7 @@ const APP_NOTICES: AppNotice[] = [
   },
 ]
 
-type ModalType = 'favorites' | 'notices' | 'noticeDetail' | 'terms' | 'privacy' | null
+type ModalType = 'favorites' | 'notices' | 'noticeDetail' | 'sources' | 'terms' | 'privacy' | null
 
 export default function SettingsScreen() {
   const {
@@ -225,6 +234,12 @@ export default function SettingsScreen() {
             label="앱 상태 확인"
             onPress={() => navigation.navigate('AppStatus')}
           />
+          <LinkRow
+            icon="logo-instagram"
+            label="제휴 출처"
+            value={`${PARTNER_SOURCES.length}개 소속`}
+            onPress={() => setActiveModal('sources')}
+          />
           <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
           <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
@@ -291,6 +306,36 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               )
             })}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      <Modal visible={activeModal === 'sources'} animationType="slide">
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
+          <ModalHeader title="제휴 출처" onClose={() => setActiveModal(null)} />
+          <ScrollView style={styles.modalBody}>
+            <Text style={styles.sourceIntro}>{PARTNER_NOTICE_TEXT}</Text>
+            {PARTNER_SOURCES.map((source) => (
+              <View key={source.affiliation} style={styles.sourceCard}>
+                <Text style={styles.sourceAffiliation}>{source.affiliation}</Text>
+                {source.period && (
+                  <Text style={styles.sourcePeriod}>제휴기간 {source.period}</Text>
+                )}
+                {source.links.map((link) => (
+                  <TouchableOpacity
+                    key={link.url}
+                    style={styles.sourceLinkRow}
+                    onPress={() => Linking.openURL(link.url)}
+                  >
+                    <Ionicons name="link-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.sourceLinkText} numberOfLines={1}>
+                      {link.label}
+                    </Text>
+                    <Ionicons name="open-outline" size={13} color="#ccc" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -477,6 +522,34 @@ const styles = StyleSheet.create({
   favRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   favDot: { width: 10, height: 10, borderRadius: 5 },
   favType: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
+  sourceIntro: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+  },
+  sourceCard: {
+    backgroundColor: COLORS.sectionBg,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  sourceAffiliation: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  sourcePeriod: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  sourceLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  sourceLinkText: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.primary },
   legalBody: { flex: 1, padding: 20 },
   legalTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
   legalText: { fontFamily: FONTS.regular, fontSize: 13, color: '#666', lineHeight: 22 },
