@@ -6,7 +6,6 @@ import {
   MARKER_CLICK_GUARD_MS,
   PARTNER_BADGE_SIZE_PX,
   PARTNER_BADGE_SIZE_SELECTED_PX,
-  TAP_RADIUS_METERS,
 } from '../constants/map'
 import {
   REPORT_LONG_PRESS_MOVE_TOLERANCE_PX,
@@ -451,13 +450,6 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       return inside;
     }
 
-    /**
-     * 탭 좌표에 해당하는 건물.
-     *
-     * 외곽선이 있는 건물은 그 안쪽이면 거리와 상관없이 잡는다. 건물은 원이
-     * 아니라서 중심 반경만 쓰면 길쭉한 건물의 끝을 놓치기 때문이다.
-     * 외곽선이 없는 건물(27개 중 23개)은 중심에서 radius 안의 가장 가까운 것.
-     */
     // 건물이 떨어진 여러 덩어리로 되어 있으면 그중 아무 곳이나 안쪽이면 잡는다.
     function isInsideBuilding(lat, lng, b) {
       if (b.boundary && b.boundary.length > 2 && isInsidePolygon(lat, lng, b.boundary)) return true;
@@ -469,7 +461,23 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       return false;
     }
 
-    function nearestBuildingWithin(lat, lng, radius) {
+    /**
+     * 탭 좌표가 실제로 들어있는 건물. 27개 전부 외곽선이 있으므로 그 안쪽인
+     * 경우에만 잡는다 — 근처를 눌렀다고 반경으로 스냅하지 않는다.
+     */
+    function buildingAt(lat, lng) {
+      for (var i = 0; i < buildings.length; i++) {
+        if (isInsideBuilding(lat, lng, buildings[i])) return buildings[i];
+      }
+      return null;
+    }
+
+    /**
+     * 제보 롱프레스 전용. 건물 밖에서 벌어지는 일이 많아 좌표는 스냅하지
+     * 않지만, 화면(작성창)에는 좌표 대신 항상 건물명을 보여주고 싶어서
+     * 거리 제한 없이 가장 가까운 건물을 후보로 올려보낸다.
+     */
+    function nearestBuilding(lat, lng) {
       for (var i = 0; i < buildings.length; i++) {
         if (isInsideBuilding(lat, lng, buildings[i])) return buildings[i];
       }
@@ -483,7 +491,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
           nearest = b;
         }
       });
-      return nearest && nearestDistance <= radius ? nearest : null;
+      return nearest;
     }
 
     naver.maps.Event.addListener(map, 'click', function(e) {
@@ -501,10 +509,9 @@ export function buildMapHTML(buildings: readonly Building[]): string {
 
       var lat = e.coord.lat();
       var lng = e.coord.lng();
-      var hit = nearestBuildingWithin(lat, lng, ${TAP_RADIUS_METERS});
+      var hit = buildingAt(lat, lng);
 
-      // 건물을 탭하면 그 자리에 핀이 뜬다. 버튼으로 27개를 켜 둔 상태라면
-      // 그 핀이 커지며 강조된다. 빈 곳을 탭했으면 강조와 핀을 함께 거둔다.
+      // 건물 외곽선 안쪽을 탭했을 때만 핀이 뜬다. 빈 곳을 탭했으면 거둔다.
       var nextName = hit ? hit.name : null;
       if (nextName !== selectedBuildingName) {
         selectedBuildingName = nextName;
@@ -548,7 +555,7 @@ export function buildMapHTML(buildings: readonly Building[]): string {
         pressStart = null;
         if (!start) return;
         lastLongPressAt = new Date().getTime();
-        var nearby = nearestBuildingWithin(start.lat, start.lng, ${TAP_RADIUS_METERS});
+        var nearby = nearestBuilding(start.lat, start.lng);
         post({
           type: 'reportLongPress',
           lat: start.lat,

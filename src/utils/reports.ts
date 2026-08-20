@@ -1,5 +1,26 @@
+import { Alert, Platform } from 'react-native'
 import { reportCategoryMeta } from '../constants/reportCategories'
 import type { ReportCategory, ReportListItem } from '../types'
+
+/**
+ * 로그인이 필요한 동작(제보 작성·신고)을 막았을 때 띄운다.
+ *
+ * `react-native-web` 의 `Alert.alert` 는 버튼을 넘겨도 완전히 빈 함수라 웹에서는
+ * 아무 반응이 없다(react-native-web/src/exports/Alert). `window.confirm` 으로 대신한다.
+ */
+export function promptLogin(message: string, logout: () => void): void {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(`로그인이 필요해요\n${message}`)) {
+      logout()
+    }
+    return
+  }
+
+  Alert.alert('로그인이 필요해요', message, [
+    { text: '취소', style: 'cancel' },
+    { text: '로그인하러 가기', onPress: () => logout() },
+  ])
+}
 
 /** 지도에 찍을 제보 마커 하나. WebView 로 넘기는 최소 정보만 담는다. */
 export interface ReportMarker {

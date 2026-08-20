@@ -105,9 +105,6 @@ export default function MapScreen() {
     building: Building;
     target: FloorTarget;
   } | null>(null);
-  // 건물 핀 표시 여부. 27개를 늘 띄워 두면 캠퍼스가 핀으로 덮여 제휴 마커가
-  // 묻히므로, 기본은 꺼 두고 지도 오른쪽 건물 버튼으로만 켠다.
-  const [buildingPinsOn, setBuildingPinsOn] = useState(false);
   // 최상단 필터. 무엇을 볼지 먼저 고르게 한다. null 이면 하위 칩 줄이 없다.
   const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
@@ -174,6 +171,10 @@ export default function MapScreen() {
   /** 필터는 걸었는데 걸리는 업체가 없는 상태. 빈 지도만 보여주지 않고 알려준다. */
   const isEmptyResult =
     hasActiveFilter(activeFilter) && visiblePartners.length === 0;
+
+  /** 제보 레이어를 켰는데 지금 진행 중인 제보가 하나도 없는 상태. */
+  const reportsEmpty =
+    reportsOn && !reportsLoading && reportsError === null && reports.length === 0;
 
   const filteredBuildings = searchQuery.trim()
     ? BUILDINGS.filter((b) => b.name.includes(searchQuery.trim()))
@@ -503,23 +504,13 @@ export default function MapScreen() {
   /**
    * 제보 등록 성공. 작성창을 닫는다.
    *
-   * 새 제보는 `PENDING` 이라 지도에 바로 뜨지 않는다. 검토를 거쳐 `ACTIVE` 가
-   * 된 뒤에야 보이므로, 여기서 목록을 새로 부를 이유가 없다.
+   * 새 제보는 만들자마자 `ACTIVE` 라(임시 로컬 저장소라 검토 절차가 없다) 제보
+   * 레이어가 켜져 있으면 목록을 다시 불러 바로 지도에 반영한다.
    */
   const handleReportCreated = useCallback(() => {
     setReportTarget(null);
-  }, []);
-
-  /** 건물 버튼. 켜면 건물 27개가 모두 핀으로 뜨고, 다시 누르면 사라진다. */
-  const handleToggleBuildingPins = useCallback(() => {
-    const next = !buildingPinsOn;
-    setBuildingPinsOn(next);
-    postToMap(
-      next
-        ? { type: "showBuildings", name: selectedBuilding?.name ?? null }
-        : { type: "hideBuildings" },
-    );
-  }, [buildingPinsOn, selectedBuilding, postToMap]);
+    if (reportsOn) void loadReports();
+  }, [reportsOn, loadReports]);
 
   const handleClearRoute = useCallback(() => {
     setFromBuilding(null);
@@ -585,39 +576,64 @@ export default function MapScreen() {
           onMessage={handleWebViewMessage}
         />
 
-        {mapAuthFailed && (
-          <View style={styles.mapErrorNotice}>
-            <Ionicons name="warning" size={15} color="#B45309" />
-            <Text style={styles.mapErrorText}>
-              지도를 불러오지 못했어요. 네이버 지도 인증에 실패했습니다.
-            </Text>
-          </View>
-        )}
+        <View style={styles.bannerStack}>
+          {mapAuthFailed && (
+            <View style={styles.mapErrorNotice}>
+              <Ionicons name="warning" size={15} color="#B45309" />
+              <Text style={styles.mapErrorText}>
+                지도를 불러오지 못했어요. 네이버 지도 인증에 실패했습니다.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setMapAuthFailed(false)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
+                <Ionicons name="close" size={15} color="#B45309" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {reportsError !== null && (
-          <View style={styles.mapErrorNotice}>
-            <Ionicons name="warning" size={15} color="#B45309" />
-            <Text style={styles.mapErrorText}>{reportsError}</Text>
-          </View>
-        )}
+          {reportsError !== null && (
+            <View style={styles.mapErrorNotice}>
+              <Ionicons name="warning" size={15} color="#B45309" />
+              <Text style={styles.mapErrorText}>{reportsError}</Text>
+              <TouchableOpacity
+                onPress={() => setReportsError(null)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
+                <Ionicons name="close" size={15} color="#B45309" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {unresolvedCount > 0 && (
-          <View style={styles.offscreenNotice}>
-            <Ionicons name="information-circle" size={13} color="#6B7280" />
-            <Text style={styles.offscreenText}>
-              건물을 찾지 못한 편의시설 {unresolvedCount}곳은 지도에서 빠졌어요
-            </Text>
-          </View>
-        )}
+          {reportsEmpty && (
+            <View style={styles.offscreenNotice}>
+              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Text style={styles.offscreenText}>지금은 진행 중인 제보가 없어요</Text>
+            </View>
+          )}
 
-        {offscreenCount > 0 && (
-          <View style={styles.offscreenNotice}>
-            <Ionicons name="information-circle" size={13} color="#6B7280" />
-            <Text style={styles.offscreenText}>
-              캠퍼스 밖 {offscreenCount}곳은 지도를 줌아웃하면 보여요
-            </Text>
-          </View>
-        )}
+          {unresolvedCount > 0 && (
+            <View style={styles.offscreenNotice}>
+              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Text style={styles.offscreenText}>
+                건물을 찾지 못한 편의시설 {unresolvedCount}곳은 지도에서 빠졌어요
+              </Text>
+            </View>
+          )}
+
+          {offscreenCount > 0 && (
+            <View style={styles.offscreenNotice}>
+              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Text style={styles.offscreenText}>
+                캠퍼스 밖 {offscreenCount}곳은 지도를 줌아웃하면 보여요
+              </Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.mapControls}>
           <TouchableOpacity
@@ -639,24 +655,6 @@ export default function MapScreen() {
                 color={reportsOn ? COLORS.white : COLORS.primary}
               />
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.controlBtn,
-              buildingPinsOn && styles.controlBtnActive,
-            ]}
-            onPress={handleToggleBuildingPins}
-            accessibilityRole="button"
-            accessibilityLabel={
-              buildingPinsOn ? "건물 표시 끄기" : "건물 표시 켜기"
-            }
-            accessibilityState={{ selected: buildingPinsOn }}
-          >
-            <Ionicons
-              name="business"
-              size={17}
-              color={buildingPinsOn ? COLORS.white : COLORS.primary}
-            />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.controlBtn}
@@ -912,11 +910,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  mapErrorNotice: {
+  bannerStack: {
     position: "absolute",
     top: 8,
     left: 12,
     right: 12,
+    gap: 6,
+  },
+  mapErrorNotice: {
     backgroundColor: "#FEF3C7",
     borderRadius: 10,
     paddingHorizontal: 11,
@@ -931,10 +932,6 @@ const styles = StyleSheet.create({
     color: "#92400E",
   },
   offscreenNotice: {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    right: 12,
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 10,
     paddingHorizontal: 11,

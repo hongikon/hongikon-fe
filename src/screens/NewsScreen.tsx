@@ -12,9 +12,7 @@ import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
 import { FONTS } from '../constants/typography'
 import NewsList from '../components/news/NewsList'
-import SearchBar from '../components/news/SearchBar'
 import DeptTreeList from '../components/news/DeptTreeList'
-import { useNewsSearch } from '../hooks/useNewsSearch'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 
 type TabType = '북마크' | '구독' | '전체'
@@ -46,18 +44,9 @@ export default function NewsScreen() {
     [settings.subscribedDepts, settings.subscribedCategories]
   )
 
-  // 각 탭이 검색어를 독립적으로 기억하도록 훅을 둘 다 항상 호출한다.
-  // 그래야 탭을 오갈 때 서로의 검색어를 지우지 않는다.
-  const bookmarkSearch = useNewsSearch(bookmarkedNews)
-  const subscribeSearch = useNewsSearch(subscribedNews)
-  const activeSearch = activeTab === '북마크' ? bookmarkSearch : subscribeSearch
-
-  const displayedNews = activeSearch.results
-  const emptyMessage = activeSearch.isSearching
-    ? `'${activeSearch.query.trim()}' 검색 결과가 없습니다`
-    : activeTab === '북마크'
-      ? '북마크한 소식이 없습니다'
-      : '구독한 기관·학과의 소식이 없습니다'
+  const displayedNews = activeTab === '북마크' ? bookmarkedNews : subscribedNews
+  const emptyMessage =
+    activeTab === '북마크' ? '북마크한 소식이 없습니다' : '구독한 기관·학과의 소식이 없습니다'
 
   // NewsList 로 넘기는 콜백은 렌더마다 새로 만들면 안 된다.
   // 새로 만들면 목록의 모든 카드가 memo 를 통과해 다시 그려진다.
@@ -118,13 +107,6 @@ export default function NewsScreen() {
           onToggleBookmark={toggleBookmark}
           header={
             <View style={styles.listHeaderGroup}>
-              <SearchBar
-                value={activeSearch.query}
-                onChangeText={activeSearch.setQuery}
-                placeholder="소식 검색"
-                accessibilityLabel="소식 검색"
-              />
-
               {activeTab === '구독' && settings.subscribedDepts.length > 0 && (
                 <View style={styles.hub}>
                   <View style={styles.hubHead}>
@@ -177,18 +159,12 @@ export default function NewsScreen() {
           empty={
             <View style={styles.emptyState}>
               <Ionicons
-                name={
-                  activeSearch.isSearching
-                    ? 'search-outline'
-                    : activeTab === '북마크'
-                      ? 'bookmark-outline'
-                      : 'notifications-outline'
-                }
+                name={activeTab === '북마크' ? 'bookmark-outline' : 'notifications-outline'}
                 size={40}
                 color="#ddd"
               />
               <Text style={styles.emptyText}>{emptyMessage}</Text>
-              {activeTab === '구독' && !activeSearch.isSearching && settings.subscribedDepts.length === 0 && (
+              {activeTab === '구독' && settings.subscribedDepts.length === 0 && (
                 <TouchableOpacity style={styles.cta} onPress={() => setSubManagerOpen(true)}>
                   <Ionicons name="add" size={16} color={COLORS.white} />
                   <Text style={styles.ctaText}>학과 구독하기</Text>

@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   ActivityIndicator,
   Image,
@@ -18,6 +19,7 @@ import { FONTS } from '../../constants/typography'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
 import {
   REPORT_CONTENT_MAX_LENGTH,
+  REPORT_CUSTOM_CATEGORY_MAX_LENGTH,
   REPORT_DEFAULT_DURATION_HOURS,
   REPORT_DURATION_OPTIONS_HOURS,
   REPORT_TITLE_MAX_LENGTH,
@@ -59,6 +61,12 @@ export default function ReportComposerModal({
 }: ReportComposerModalProps) {
   const { accessToken } = useAuth()
   const [category, setCategory] = useState<ReportCategory>('EVENT')
+  // '+' 로 확정한 카테고리 라벨. 체크(확정) 전까지는 반영되지 않는다.
+  const [customLabel, setCustomLabel] = useState('')
+  // 입력 칸이 열려 있는 동안의 작업본. 확정해야 customLabel 로 옮겨간다 —
+  // 취소를 누르면 이미 확정해 둔 라벨을 건드리지 않고 이 작업본만 버린다.
+  const [customLabelDraft, setCustomLabelDraft] = useState('')
+  const [customInputOpen, setCustomInputOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [durationHours, setDurationHours] = useState(REPORT_DEFAULT_DURATION_HOURS)
@@ -70,10 +78,14 @@ export default function ReportComposerModal({
   const [submitted, setSubmitted] = useState(false)
 
   const trimmedTitle = title.trim()
+  const trimmedCustomLabel = customLabel.trim()
   const canSubmit = trimmedTitle.length > 0 && !submitting
 
   const reset = () => {
     setCategory('EVENT')
+    setCustomLabel('')
+    setCustomLabelDraft('')
+    setCustomInputOpen(false)
     setTitle('')
     setContent('')
     setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
@@ -82,6 +94,34 @@ export default function ReportComposerModal({
     setSubmitting(false)
     setSubmitted(false)
   }
+
+  /** '+' 칩을 누르면 입력 칸을 연다. 이미 직접 입력을 확정해 뒀으면 그 값부터 고쳐 쓰게 한다. */
+  const handleOpenCustomInput = () => {
+    setCustomLabelDraft(customLabel)
+    setCustomInputOpen(true)
+  }
+
+  const handleConfirmCustomLabel = () => {
+    const trimmedDraft = customLabelDraft.trim()
+    if (!trimmedDraft) return
+    setCustomLabel(trimmedDraft)
+    setCategory('ETC')
+    setCustomInputOpen(false)
+  }
+
+  const handleCancelCustomInput = () => {
+    setCustomInputOpen(false)
+  }
+
+  const handleSelectPresetCategory = (key: ReportCategory) => {
+    setCategory(key)
+    // 프리셋 '기타'와 직접 입력이 둘 다 category: 'ETC' 라, 직접 입력 라벨이
+    // 남아 있으면 프리셋 '기타'를 골라도 직접 입력 칩이 계속 활성으로 보인다.
+    setCustomLabel('')
+    setCustomInputOpen(false)
+  }
+
+  const isCustomActive = category === 'ETC' && trimmedCustomLabel.length > 0
 
   const handleClose = () => {
     reset()
@@ -110,11 +150,6 @@ export default function ReportComposerModal({
   const handleSubmit = async () => {
     if (!target || !canSubmit) return
 
-    if (!accessToken) {
-      setError('제보를 남기려면 먼저 로그인해주세요.')
-      return
-    }
-
     setSubmitting(true)
     setError(null)
 
@@ -123,9 +158,13 @@ export default function ReportComposerModal({
     const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
 
     try {
+      // 로그인 없이도 화면 확인용으로 올려 볼 수 있게, 토큰이 없으면 빈 값을 대신 쓴다.
+      // 로컬 목업 스토어는 이 값을 실제로 쓰지 않는다.
+      const token = accessToken ?? ''
+
       // 사진을 먼저 올려 URL을 받는다. 여기서 실패하면 제보는 만들지 않고
       // 작성 중이던 내용은 그대로 남는다.
-      const imageUrl = imageUri === null ? undefined : await uploadReportImage(imageUri, accessToken)
+      const imageUrl = imageUri === null ? undefined : await uploadReportImage(imageUri, token)
 
       const report = await createReport(
         {
@@ -135,12 +174,13 @@ export default function ReportComposerModal({
           lat: target.lat,
           lng: target.lng,
           category,
+          customCategoryLabel: isCustomActive ? trimmedCustomLabel : undefined,
           title: trimmedTitle,
           content: content.trim() || undefined,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
         },
-        accessToken,
+        token,
       )
       onCreated(report)
       setSubmitted(true)
@@ -156,192 +196,293 @@ export default function ReportComposerModal({
   }
 
   return (
-    <Modal visible={target !== null} animationType="slide" onRequestClose={handleClose}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleClose}
-            accessibilityRole="button"
-            accessibilityLabel="닫기"
-          >
-            <Ionicons name="close" size={22} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>제보하기</Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        {submitted ? (
-          <View style={styles.successBox}>
-            <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
-            <Text style={styles.successTitle}>제보가 접수됐어요</Text>
-            <Text style={styles.successText}>
-              운영진이 확인한 뒤 지도에 올라갑니다. 검토 전에는 다른 사람에게 보이지
-              않아요.
-            </Text>
-            <TouchableOpacity
-              style={[styles.submitBtn, styles.successBtn]}
-              onPress={handleClose}
-              accessibilityRole="button"
-              accessibilityLabel="확인"
-            >
-              <Text style={styles.submitText}>확인</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={15} color={COLORS.primary} />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {target?.buildingName
-                ? `${target.buildingName} 근처`
-                : target
-                  ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}`
-                  : ''}
-            </Text>
-          </View>
-
-          <Text style={styles.sectionLabel}>무슨 일인가요?</Text>
-          <View style={styles.chipWrap}>
-            {REPORT_CATEGORIES.map((meta) => {
-              const isActive = category === meta.key
-              return (
+    <Modal transparent visible={target !== null} animationType="slide" onRequestClose={handleClose}>
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <SafeAreaView style={styles.sheet} edges={['bottom']}>
+              <View style={styles.handle} />
+              <View style={styles.header}>
                 <TouchableOpacity
-                  key={meta.key}
-                  activeOpacity={0.75}
-                  onPress={() => setCategory(meta.key)}
+                  onPress={handleClose}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={meta.label}
-                  style={[
-                    chipStyles.chip,
-                    isActive && { backgroundColor: meta.color, borderColor: meta.color },
-                  ]}
+                  accessibilityLabel="닫기"
                 >
-                  <Ionicons
-                    name={meta.icon}
-                    size={13}
-                    color={isActive ? COLORS.white : meta.color}
-                  />
-                  <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                    {meta.label}
-                  </Text>
+                  <Ionicons name="close" size={22} color={COLORS.textPrimary} />
                 </TouchableOpacity>
-              )
-            })}
-          </View>
+                <Text style={styles.headerTitle}>제보하기</Text>
+                <View style={{ width: 22 }} />
+              </View>
 
-          <Text style={styles.sectionLabel}>제목</Text>
-          <TextInput
-            style={styles.titleInput}
-            placeholder="예: 잔디광장에서 푸드트럭 운영 중"
-            placeholderTextColor="#bbb"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={REPORT_TITLE_MAX_LENGTH}
-          />
-          <Text style={styles.counter}>
-            {title.length} / {REPORT_TITLE_MAX_LENGTH}
-          </Text>
-
-          <Text style={styles.sectionLabel}>설명 (선택)</Text>
-          <TextInput
-            style={styles.contentInput}
-            placeholder="누구나 참여 가능, 다과 제공 …"
-            placeholderTextColor="#bbb"
-            value={content}
-            onChangeText={setContent}
-            maxLength={REPORT_CONTENT_MAX_LENGTH}
-            multiline
-            textAlignVertical="top"
-          />
-          <Text style={styles.counter}>
-            {content.length} / {REPORT_CONTENT_MAX_LENGTH}
-          </Text>
-
-          <Text style={styles.sectionLabel}>사진 (선택)</Text>
-          {imageUri === null ? (
-            <TouchableOpacity
-              style={styles.photoBtn}
-              onPress={handlePickImage}
-              accessibilityRole="button"
-              accessibilityLabel="사진 첨부하기"
-            >
-              <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.photoBtnText}>사진 첨부하기</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.photoPreviewWrap}>
-              <Image source={{ uri: imageUri }} style={styles.photoPreview} />
-              <TouchableOpacity
-                style={styles.photoRemove}
-                onPress={() => setImageUri(null)}
-                accessibilityRole="button"
-                accessibilityLabel="첨부한 사진 빼기"
-              >
-                <Ionicons name="close" size={16} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <Text style={styles.sectionLabel}>얼마나 진행되나요?</Text>
-          <View style={styles.chipWrap}>
-            {REPORT_DURATION_OPTIONS_HOURS.map((hours) => {
-              const isActive = durationHours === hours
-              return (
-                <TouchableOpacity
-                  key={hours}
-                  activeOpacity={0.75}
-                  onPress={() => setDurationHours(hours)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={`${hours}시간 동안`}
-                  style={[chipStyles.chip, isActive && styles.durationChipActive]}
-                >
-                  <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                    {hours}시간
+              {submitted ? (
+                <View style={styles.successBox}>
+                  <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
+                  <Text style={styles.successTitle}>제보가 등록됐어요</Text>
+                  <Text style={styles.successText}>
+                    바로 지도에 올라갑니다.
                   </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-          <Text style={styles.hint}>
-            지금부터 {durationHours}시간 뒤에 지도에서 자동으로 내려갑니다.
-          </Text>
+                  <TouchableOpacity
+                    style={[styles.submitBtn, styles.successBtn]}
+                    onPress={handleClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="확인"
+                  >
+                    <Text style={styles.submitText}>확인</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <ScrollView
+                    style={styles.scrollArea}
+                    contentContainerStyle={styles.body}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.locationRow}>
+                      <Ionicons name="location" size={15} color={COLORS.primary} />
+                      <Text style={styles.locationText} numberOfLines={1}>
+                        {target?.buildingName
+                          ? `${target.buildingName} 근처`
+                          : target
+                            ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}`
+                            : ''}
+                      </Text>
+                    </View>
 
-          {error !== null && (
-            <View style={styles.errorBox}>
-              <Ionicons name="warning" size={15} color="#B45309" />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-        </ScrollView>
+                    <Text style={styles.sectionLabel}>무슨 일인가요?</Text>
+                    <View style={styles.chipWrap}>
+                      {REPORT_CATEGORIES.map((meta) => {
+                        const isActive = category === meta.key && !isCustomActive
+                        return (
+                          <TouchableOpacity
+                            key={meta.key}
+                            activeOpacity={0.75}
+                            onPress={() => handleSelectPresetCategory(meta.key)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isActive }}
+                            accessibilityLabel={meta.label}
+                            style={[
+                              chipStyles.chip,
+                              isActive && { backgroundColor: meta.color, borderColor: meta.color },
+                            ]}
+                          >
+                            <Ionicons
+                              name={meta.icon}
+                              size={13}
+                              color={isActive ? COLORS.white : meta.color}
+                            />
+                            <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
+                              {meta.label}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      })}
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-            accessibilityLabel="제보 올리기"
-            accessibilityState={{ disabled: !canSubmit }}
-          >
-            {submitting ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.submitText}>제보 올리기</Text>
-            )}
-          </TouchableOpacity>
+                      {!customInputOpen && (
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          onPress={handleOpenCustomInput}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isCustomActive }}
+                          accessibilityLabel={
+                            isCustomActive ? `${trimmedCustomLabel}, 직접 입력한 카테고리` : '카테고리 직접 입력'
+                          }
+                          style={[
+                            chipStyles.chip,
+                            isCustomActive
+                              ? styles.customChipActive
+                              : styles.customChipAdd,
+                          ]}
+                        >
+                          <Ionicons
+                            name={isCustomActive ? 'pencil' : 'add'}
+                            size={13}
+                            color={isCustomActive ? COLORS.white : COLORS.primary}
+                          />
+                          <Text
+                            style={[
+                              chipStyles.label,
+                              isCustomActive ? chipStyles.labelActive : styles.customChipAddText,
+                            ]}
+                          >
+                            {isCustomActive ? trimmedCustomLabel : '직접 입력'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {customInputOpen && (
+                      <View style={styles.customInputRow}>
+                        <TextInput
+                          style={styles.customInput}
+                          placeholder="예: 분실물, 설문조사"
+                          placeholderTextColor="#bbb"
+                          value={customLabelDraft}
+                          onChangeText={setCustomLabelDraft}
+                          maxLength={REPORT_CUSTOM_CATEGORY_MAX_LENGTH}
+                          autoFocus
+                          onSubmitEditing={handleConfirmCustomLabel}
+                          returnKeyType="done"
+                        />
+                        <TouchableOpacity
+                          onPress={handleConfirmCustomLabel}
+                          disabled={!customLabelDraft.trim()}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          accessibilityRole="button"
+                          accessibilityLabel="직접 입력한 카테고리 적용"
+                          accessibilityState={{ disabled: !customLabelDraft.trim() }}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={26}
+                            color={customLabelDraft.trim() ? COLORS.primary : '#ddd'}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleCancelCustomInput}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          accessibilityRole="button"
+                          accessibilityLabel="직접 입력 취소"
+                        >
+                          <Ionicons name="close-circle" size={26} color="#ccc" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <Text style={styles.sectionLabel}>제목</Text>
+                    <TextInput
+                      style={styles.titleInput}
+                      placeholder="예 : 컴퓨터공학과 간식행사"
+                      placeholderTextColor="#bbb"
+                      value={title}
+                      onChangeText={setTitle}
+                      maxLength={REPORT_TITLE_MAX_LENGTH}
+                    />
+                    <Text style={styles.counter}>
+                      {title.length} / {REPORT_TITLE_MAX_LENGTH}
+                    </Text>
+
+                    <Text style={styles.sectionLabel}>설명 (선택)</Text>
+                    <TextInput
+                      style={styles.contentInput}
+                      placeholder="예 : 학생회비 납부한 컴퓨터공학과 학생만 수령 가능"
+                      placeholderTextColor="#bbb"
+                      value={content}
+                      onChangeText={setContent}
+                      maxLength={REPORT_CONTENT_MAX_LENGTH}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                    <Text style={styles.counter}>
+                      {content.length} / {REPORT_CONTENT_MAX_LENGTH}
+                    </Text>
+
+                    <Text style={styles.sectionLabel}>사진 (선택)</Text>
+                    {imageUri === null ? (
+                      <TouchableOpacity
+                        style={styles.photoBtn}
+                        onPress={handlePickImage}
+                        accessibilityRole="button"
+                        accessibilityLabel="사진 첨부하기"
+                      >
+                        <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
+                        <Text style={styles.photoBtnText}>사진 첨부하기</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.photoPreviewWrap}>
+                        <Image source={{ uri: imageUri }} style={styles.photoPreview} />
+                        <TouchableOpacity
+                          style={styles.photoRemove}
+                          onPress={() => setImageUri(null)}
+                          accessibilityRole="button"
+                          accessibilityLabel="첨부한 사진 빼기"
+                        >
+                          <Ionicons name="close" size={16} color={COLORS.white} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <Text style={styles.sectionLabel}>얼마나 진행되나요?</Text>
+                    <View style={styles.chipWrap}>
+                      {REPORT_DURATION_OPTIONS_HOURS.map((hours) => {
+                        const isActive = durationHours === hours
+                        return (
+                          <TouchableOpacity
+                            key={hours}
+                            activeOpacity={0.75}
+                            onPress={() => setDurationHours(hours)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isActive }}
+                            accessibilityLabel={`${hours}시간 동안`}
+                            style={[chipStyles.chip, isActive && styles.durationChipActive]}
+                          >
+                            <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
+                              {hours}시간
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                    <Text style={styles.hint}>
+                      지금부터 {durationHours}시간 뒤에 지도에서 자동으로 내려갑니다.
+                    </Text>
+
+                    {error !== null && (
+                      <View style={styles.errorBox}>
+                        <Ionicons name="warning" size={15} color="#B45309" />
+                        <Text style={styles.errorText}>{error}</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+
+                  <View style={styles.footer}>
+                    <TouchableOpacity
+                      style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+                      onPress={handleSubmit}
+                      disabled={!canSubmit}
+                      accessibilityRole="button"
+                      accessibilityLabel="제보 올리기"
+                      accessibilityState={{ disabled: !canSubmit }}
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color={COLORS.white} />
+                      ) : (
+                        <Text style={styles.submitText}>제보 올리기</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </SafeAreaView>
+          </TouchableWithoutFeedback>
         </View>
-          </>
-        )}
-      </SafeAreaView>
+      </TouchableWithoutFeedback>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  backdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    height: '90%',
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  scrollArea: { flex: 1 },
   header: {
     height: 52,
     paddingHorizontal: 16,
@@ -372,6 +513,26 @@ const styles = StyleSheet.create({
   },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   durationChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  customChipAdd: { borderStyle: 'dashed', borderColor: COLORS.primary },
+  customChipAddText: { color: COLORS.primary },
+  customChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  customInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  customInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: COLORS.chipBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontFamily: FONTS.regular,
+    fontSize: 13.5,
+    color: COLORS.textPrimary,
+  },
   titleInput: {
     height: 44,
     borderWidth: 1,

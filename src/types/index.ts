@@ -233,6 +233,12 @@ export interface Report {
   lat: number
   lng: number
   category: ReportCategory
+  /**
+   * `category` 가 `ETC` 일 때, '무슨 일인가요?' 칩에서 직접 입력한 라벨.
+   * 서버 스펙에 없는 임시(로컬 전용) 필드다 — 백엔드가 카테고리를 직접
+   * 입력받게 되면 이 필드는 걷어내고 서버 값을 그대로 쓰면 된다.
+   */
+  customCategoryLabel?: string
   title: string
   content: string | null
   authorNickname: string
@@ -260,6 +266,8 @@ export interface CreateReportInput {
   lat: number
   lng: number
   category: ReportCategory
+  /** `category` 가 `ETC` 일 때, 직접 입력한 라벨. `Report.customCategoryLabel` 참고. */
+  customCategoryLabel?: string
   title: string
   content?: string
   /** `uploadReportImage` 가 돌려준 URL. 사진을 안 붙였으면 생략한다. */

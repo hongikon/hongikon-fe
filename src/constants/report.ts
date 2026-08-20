@@ -2,9 +2,9 @@
  * 지도를 이만큼 길게 누르면 제보 작성이 열린다.
  *
  * 짧으면 지도를 탭해 건물 배너를 볼 때마다 작성창이 튀어나오고, 길면 눌러도
- * 반응이 없는 것으로 느껴진다. 2초는 그 사이에서 고른 값이다.
+ * 반응이 없는 것으로 느껴진다. 1.5초는 그 사이에서 고른 값이다.
  */
-export const REPORT_LONG_PRESS_MS = 2000
+export const REPORT_LONG_PRESS_MS = 1500
 
 /**
  * 길게 누르는 동안 손가락이 이만큼(px) 넘게 움직이면 취소한다.
@@ -15,6 +15,9 @@ export const REPORT_LONG_PRESS_MOVE_TOLERANCE_PX = 10
 /** `docs/report-api-spec.md` §4.1 기준 상한. 서버 검증과 같은 값을 쓴다. */
 export const REPORT_TITLE_MAX_LENGTH = 100
 export const REPORT_CONTENT_MAX_LENGTH = 500
+
+/** '무슨 일인가요?' 에서 직접 입력하는 카테고리 라벨의 최대 길이. 칩 한 줄에 들어가야 해 짧게 잡는다. */
+export const REPORT_CUSTOM_CATEGORY_MAX_LENGTH = 12
 
 /**
  * 제보가 지도에 남아 있는 시간 선택지(시간 단위).

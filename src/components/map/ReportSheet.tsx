@@ -24,22 +24,19 @@ interface ReportSheetProps {
 export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const { accessToken } = useAuth()
   const meta = reportCategoryMeta(report.category)
+  const badgeLabel = report.customCategoryLabel || meta.label
   const [flagging, setFlagging] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleFlag = async () => {
-    if (!accessToken) {
-      setError('신고하려면 먼저 로그인해주세요.')
-      return
-    }
-
     setFlagging(true)
     setError(null)
     try {
       // 사유 선택 화면은 아직 없다. 스펙 §4.4 의 사유 목록이 확정되면
       // 고르게 하고, 그 전까지는 가장 넓은 값으로 보낸다.
-      await flagReport(report.id, { reason: 'ETC' }, accessToken)
+      // 로그인 없이도 화면 확인용으로 눌러 볼 수 있게, 토큰이 없으면 빈 값을 대신 쓴다.
+      await flagReport(report.id, { reason: 'ETC' }, accessToken ?? '')
       setFlagged(true)
     } catch (caught) {
       setError(
@@ -55,7 +52,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: meta.color }]}>
           <Ionicons name={meta.icon} size={13} color={COLORS.white} />
-          <Text style={styles.badgeText}>{meta.label}</Text>
+          <Text style={styles.badgeText}>{badgeLabel}</Text>
         </View>
         <TouchableOpacity
           onPress={onClose}

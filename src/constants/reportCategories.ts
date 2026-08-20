@@ -25,7 +25,7 @@ export interface ReportCategoryMeta {
 export const REPORT_CATEGORIES: readonly ReportCategoryMeta[] = [
   { key: 'EVENT', label: '행사', icon: 'sparkles', color: '#DB2777' },
   { key: 'PERFORMANCE', label: '공연', icon: 'musical-notes', color: '#7C3AED' },
-  { key: 'FOOD_TRUCK', label: '푸드트럭', icon: 'fast-food', color: '#EA580C' },
+  { key: 'FOOD_TRUCK', label: '간식행사', icon: 'fast-food', color: '#EA580C' },
   { key: 'BOOTH', label: '부스', icon: 'storefront', color: '#0891B2' },
   { key: 'ETC', label: '기타', icon: 'ellipsis-horizontal', color: '#64748B' },
 ]
