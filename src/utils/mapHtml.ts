@@ -13,6 +13,7 @@ import {
 } from '../constants/report'
 import { COLORS } from '../constants/colors'
 import type { Building } from '../types'
+import { ENTRANCE_CHECK_DATA } from '../debug/entranceCheckData'
 
 const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
 
@@ -22,8 +23,13 @@ const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
  * 건물에는 마커를 그리지 않는다. 네이버 지도 배경 타일에 이미 건물 라벨이
  * 그려져 있어, 탭 좌표에서 가장 가까운 등록 건물을 찾는 방식으로 대신한다.
  * 제휴 업체는 배경에 없으므로 직접 마커를 그린다.
+ *
+ * `showEntranceDebug` - 임시 출입구 좌표 검증용 오버레이. `src/screens/TempEntranceDebugScreen.tsx`
+ * (웹 전용 `/temp/dots` 경로)에서만 true 로 켠다 - 일반 지도 화면(MapScreen)에는 안 보인다.
+ * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 매개변수와
+ * `src/debug/entranceCheckData.ts`, 아래 관련 블록을 통째로 지운다.
  */
-export function buildMapHTML(buildings: readonly Building[]): string {
+export function buildMapHTML(buildings: readonly Building[], showEntranceDebug = false): string {
   const buildingJSON = JSON.stringify(
     buildings.map((building) => ({
       name: building.name,
@@ -70,8 +76,65 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       zoom: ${DEFAULT_ZOOM},
     });
 
+    // ── 임시: 출입구 좌표 검증용 디버그 오버레이 ─────────────────────
+    // buildings.ts/pathNodes.ts 에 실 데이터로 반영되면 이 블록과
+    // src/debug/entranceCheckData.ts 를 통째로 지운다.
+    ${
+      showEntranceDebug
+        ? `(function () {
+      var DATA = ${JSON.stringify(ENTRANCE_CHECK_DATA)};
+      var infowindow = new naver.maps.InfoWindow({ anchorSkew: true });
+      var byId = {};
+      DATA.points.forEach(function(p) {
+        var size = p.flag ? 16 : 12;
+        var border = p.flag ? '2.5px solid #dc2626' : '1px solid #111827';
+        var marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(p.lat, p.lng),
+          map: map,
+          zIndex: 90,
+          icon: {
+            content: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + p.color + ';border:' + border + ';box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+            anchor: new naver.maps.Point(size / 2, size / 2),
+          },
+        });
+        byId[p.id] = { p: p, marker: marker };
+        var resolveLine = p.resolveNote ? ('<div style="color:#b91c1c">' + p.resolveNote + '</div>') : '';
+        var flagLine = p.flag ? '<div style="color:#dc2626;font-weight:600">수정 필요할 수 있음</div>' : '';
+        var html = '<div style="padding:8px;font-size:12px;max-width:260px;line-height:1.5;">' +
+          '<b>' + p.label + (p.canonical ? (' (' + p.canonical + ')') : '') + '</b> \\u00b7 ' + p.floor + '<br>' +
+          p.lat.toFixed(7) + ', ' + p.lng.toFixed(7) + '<br>' +
+          resolveLine + flagLine +
+          '<div style="margin-top:4px;color:#374151;white-space:pre-wrap">' + String(p.note).replace(/</g, '&lt;') + '</div>' +
+          '</div>';
+        naver.maps.Event.addListener(marker, 'click', function() {
+          infowindow.setContent(html);
+          infowindow.open(map, marker);
+        });
+      });
+      DATA.connections.forEach(function(c) {
+        var a = byId[c.from], b = byId[c.to];
+        if (!a || !b) return;
+        var style = { color: '#2563eb', dash: 'shortdash' };
+        if (c.kind === 'inferred') style = { color: '#f59e0b', dash: 'shortdot' };
+        if (c.kind === 'lounge') style = { color: '#a855f7', dash: 'shortdash' };
+        if (c.kind === 'exterior') style = { color: '#6b7280', dash: 'shortdot' };
+        new naver.maps.Polyline({
+          map: map,
+          path: [new naver.maps.LatLng(a.p.lat, a.p.lng), new naver.maps.LatLng(b.p.lat, b.p.lng)],
+          strokeColor: style.color, strokeWeight: 3, strokeOpacity: 0.85, strokeStyle: style.dash,
+        });
+      });
+      DATA.indoorPaths.forEach(function(ip) {
+        var path = ip.points.map(function(c) { return new naver.maps.LatLng(c[0], c[1]); });
+        new naver.maps.Polyline({ map: map, path: path, strokeColor: '#059669', strokeWeight: 3, strokeOpacity: 0.9 });
+      });
+    })();`
+        : ''
+    }
+    // ── 임시 블록 끝 ─────────────────────────────────────────────
+
     var buildings = ${buildingJSON};
-    var routePolyline = null;
+    var routePolylines = [];
     var fromOverlay = null;
     var toOverlay = null;
 
@@ -432,6 +495,30 @@ export function buildMapHTML(buildings: readonly Building[]): string {
       ));
     }
 
+    // 대안 경로 전부가 화면에 들어오도록, 모든 경로의 모든 점을 합쳐 범위를 잡는다.
+    function boundsFromRoutes(routes) {
+      var swLat = Infinity, swLng = Infinity, neLat = -Infinity, neLng = -Infinity;
+      var found = false;
+      routes.forEach(function(route) {
+        route.points.forEach(function(p) {
+          found = true;
+          swLat = Math.min(swLat, p.lat);
+          swLng = Math.min(swLng, p.lng);
+          neLat = Math.max(neLat, p.lat);
+          neLng = Math.max(neLng, p.lng);
+        });
+      });
+      if (!found) return null;
+      return { swLat: swLat, swLng: swLng, neLat: neLat, neLng: neLng };
+    }
+
+    function clearRouteOverlays() {
+      routePolylines.forEach(function(p) { p.setMap(null); });
+      routePolylines = [];
+      if (fromOverlay) { fromOverlay.setMap(null); fromOverlay = null; }
+      if (toOverlay) { toOverlay.setMap(null); toOverlay = null; }
+    }
+
     // ── 지도 배경 탭 ────────────────────────────────────────
     // 네이버 지도 SDK는 배경 타일에 그려진 건물 라벨의 클릭을 알려주지 않는다.
     // 대신 탭 좌표에서 가장 가까운 등록 건물을 찾아 라벨을 누른 것처럼 처리한다.
@@ -655,49 +742,65 @@ export function buildMapHTML(buildings: readonly Building[]): string {
         }
 
         if (msg.type === 'showRoute') {
-          if (routePolyline) routePolyline.setMap(null);
-          if (fromOverlay) fromOverlay.setMap(null);
-          if (toOverlay) toOverlay.setMap(null);
-          var from = new naver.maps.LatLng(msg.fromLat, msg.fromLng);
-          var to = new naver.maps.LatLng(msg.toLat, msg.toLng);
-          routePolyline = new naver.maps.Polyline({
-            map: map,
-            path: [from, to],
-            strokeWeight: 4,
-            strokeColor: '#3B82F6',
-            strokeOpacity: 0.88,
-            strokeStyle: 'dash',
+          clearRouteOverlays();
+          var routes = msg.routes || [];
+          var selected = msg.selectedIndex || 0;
+
+          routes.forEach(function(route, i) {
+            var path = route.points.map(function(p) { return new naver.maps.LatLng(p.lat, p.lng); });
+            routePolylines.push(new naver.maps.Polyline({
+              map: map,
+              path: path,
+              strokeWeight: i === selected ? 5 : 3,
+              strokeColor: i === selected ? '${COLORS.routeLine}' : '#9CA3AF',
+              strokeOpacity: i === selected ? 0.9 : 0.55,
+              strokeStyle: i === selected ? 'solid' : 'shortdash',
+              zIndex: i === selected ? 200 : 100,
+            }));
           });
-          fromOverlay = new naver.maps.Marker({
-            position: from,
-            icon: {
-              content: makeRouteMarkerHTML('#10B981', '출발'),
-              size: new naver.maps.Size(32, 32),
-              anchor: new naver.maps.Point(16, 16),
-            },
-            map: map,
-          });
-          toOverlay = new naver.maps.Marker({
-            position: to,
-            icon: {
-              content: makeRouteMarkerHTML('#EF4444', '도착'),
-              size: new naver.maps.Size(32, 32),
-              anchor: new naver.maps.Point(16, 16),
-            },
-            map: map,
-          });
-          fitToBounds({
-            swLat: Math.min(msg.fromLat, msg.toLat),
-            swLng: Math.min(msg.fromLng, msg.toLng),
-            neLat: Math.max(msg.fromLat, msg.toLat),
-            neLng: Math.max(msg.fromLng, msg.toLng),
+
+          if (routes.length > 0) {
+            var firstRoute = routes[0].points;
+            var from = firstRoute[0];
+            var to = firstRoute[firstRoute.length - 1];
+            fromOverlay = new naver.maps.Marker({
+              position: new naver.maps.LatLng(from.lat, from.lng),
+              icon: {
+                content: makeRouteMarkerHTML('#10B981', '출발'),
+                size: new naver.maps.Size(32, 32),
+                anchor: new naver.maps.Point(16, 16),
+              },
+              map: map,
+            });
+            toOverlay = new naver.maps.Marker({
+              position: new naver.maps.LatLng(to.lat, to.lng),
+              icon: {
+                content: makeRouteMarkerHTML('#EF4444', '도착'),
+                size: new naver.maps.Size(32, 32),
+                anchor: new naver.maps.Point(16, 16),
+              },
+              map: map,
+            });
+          }
+
+          fitToBounds(boundsFromRoutes(routes));
+        }
+
+        if (msg.type === 'selectRouteAlternative') {
+          routePolylines.forEach(function(poly, i) {
+            var isSelected = i === msg.index;
+            poly.setOptions({
+              strokeWeight: isSelected ? 5 : 3,
+              strokeColor: isSelected ? '${COLORS.routeLine}' : '#9CA3AF',
+              strokeOpacity: isSelected ? 0.9 : 0.55,
+              strokeStyle: isSelected ? 'solid' : 'shortdash',
+              zIndex: isSelected ? 200 : 100,
+            });
           });
         }
 
         if (msg.type === 'clearRoute') {
-          if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
-          if (fromOverlay) { fromOverlay.setMap(null); fromOverlay = null; }
-          if (toOverlay) { toOverlay.setMap(null); toOverlay = null; }
+          clearRouteOverlays();
           map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
           map.setZoom(${DEFAULT_ZOOM});
         }
