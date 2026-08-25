@@ -5,7 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
-import { flagReport } from '../../lib/reportsApi'
+import { flagReport } from '../../apis/reports'
 import { formatFreshness } from '../../utils/reports'
 import type { ReportListItem } from '../../types'
 

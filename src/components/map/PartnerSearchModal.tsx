@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Modal,
   TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
@@ -18,6 +17,8 @@ import type { Partner } from "../../types";
 
 interface PartnerSearchModalProps {
   visible: boolean;
+  /** 상위 화면(Modal 밖)에서 잰 top safe-area inset. */
+  topInset: number;
   onClose: () => void;
   onSelect: (partner: Partner) => void;
 }
@@ -29,10 +30,12 @@ interface PartnerSearchModalProps {
  */
 export default function PartnerSearchModal({
   visible,
+  topInset,
   onClose,
   onSelect,
 }: PartnerSearchModalProps) {
   const [query, setQuery] = useState("");
+  const inputRef = useRef<TextInput>(null);
 
   const results = useMemo(() => searchPartners(query), [query]);
   const hasQuery = query.trim().length > 0;
@@ -48,8 +51,13 @@ export default function PartnerSearchModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
-      <SafeAreaView style={styles.container} edges={["top"]}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={handleClose}
+      onShow={() => inputRef.current?.focus()}
+    >
+      <View style={[styles.container, { paddingTop: topInset }]}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={handleClose}
@@ -61,12 +69,12 @@ export default function PartnerSearchModal({
           <View style={styles.searchBar}>
             <Ionicons name="search" size={16} color="#999" />
             <TextInput
+              ref={inputRef}
               style={styles.input}
               placeholder="제휴 업체 검색"
               placeholderTextColor="#bbb"
               value={query}
               onChangeText={setQuery}
-              autoFocus
               returnKeyType="search"
             />
             {hasQuery && (
@@ -136,7 +144,7 @@ export default function PartnerSearchModal({
             );
           }}
         />
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }

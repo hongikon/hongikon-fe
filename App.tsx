@@ -12,15 +12,21 @@ import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import { FONT_ASSETS } from './src/constants/typography'
 
 /**
- * 임시 - 출입구 좌표 검증용 웹 전용 경로. 로그인 상태와 무관하게 바로 보여야 해서
+ * 임시 - 출입구/실내 경로 검증용 웹 전용 경로. 로그인 상태와 무관하게 바로 보여야 해서
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
+ * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만.
  * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
  */
-const isTempDotsRoute =
-  Platform.OS === 'web' &&
-  typeof window !== 'undefined' &&
-  window.location.pathname.replace(/\/+$/, '') === '/temp/dots'
+const tempDebugMode: 'dots' | 'paths' | null =
+  Platform.OS === 'web' && typeof window !== 'undefined'
+    ? (() => {
+        const path = window.location.pathname.replace(/\/+$/, '')
+        if (path === '/temp/dots') return 'dots'
+        if (path === '/temp/path') return 'paths'
+        return null
+      })()
+    : null
 
 // 폰트가 준비될 때까지 스플래시를 띄워 둔다. 그렇게 하지 않으면
 // 시스템 폰트로 한 프레임 그려졌다가 Pretendard 로 바뀌며 글자가 튄다.
@@ -40,8 +46,8 @@ export default function App() {
     return null
   }
 
-  if (isTempDotsRoute) {
-    return <TempEntranceDebugScreen />
+  if (tempDebugMode) {
+    return <TempEntranceDebugScreen mode={tempDebugMode} />
   }
 
   return (

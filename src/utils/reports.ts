@@ -69,17 +69,16 @@ export function formatFreshness(report: Pick<ReportListItem, 'createdAt' | 'ends
 /**
  * 지도에 올릴 제보만 남긴다.
  *
- * 서버가 `live=true` 로 걸러 주더라도 앱에서 한 번 더 본다. 검토 전(`PENDING`)·
- * 반려(`REJECTED`)·신고 누적(`HIDDEN`) 제보가 섞여 내려오면 검토 절차가
- * 무의미해지기 때문이다. 끝난 제보도 여기서 뺀다.
+ * `GET /reports` 목록 항목(`ReportListItem`)에는 `status`가 없다 — 서버가 이미
+ * ACTIVE·live 조건으로 쿼리해 내려주기 때문이다(`mockReportsStore.listMockReports`도
+ * 같은 규칙을 흉내 낸다). 그래서 여기서 다시 걸러 낼 상태 값 자체가 없다.
+ * 다만 종료 시각은 캐시된 응답을 잠깐 더 들고 있는 사이 지날 수 있어 여기서도 본다.
  */
 export function visibleReports(
   reports: readonly ReportListItem[],
   now: number = Date.now(),
 ): ReportListItem[] {
-  return reports.filter(
-    (report) => report.status === 'ACTIVE' && new Date(report.endsAt).getTime() > now,
-  )
+  return reports.filter((report) => new Date(report.endsAt).getTime() > now)
 }
 
 export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarker[] {

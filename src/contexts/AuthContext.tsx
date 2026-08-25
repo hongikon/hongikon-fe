@@ -8,7 +8,13 @@ import {
   type ReactNode,
 } from 'react'
 import * as WebBrowser from 'expo-web-browser'
-import { apiRequest, API_BASE_URL } from '../lib/api'
+import {
+  AUTH_REDIRECT_URI,
+  KAKAO_LOGIN_URL,
+  deleteAccount as deleteAccountRequest,
+  exchangeAuthCode,
+  type TokenResponse,
+} from '../apis/auth'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
@@ -19,9 +25,6 @@ const ACCESS_TOKEN_KEY = 'hongikon_access_token'
 const REFRESH_TOKEN_KEY = 'hongikon_refresh_token'
 const GUEST_FLAG_KEY = 'hongikon_guest_mode'
 
-/** 백엔드 OAuth2SuccessHandler 가 되돌아오는 주소. app.json 의 scheme(hongikon)과 정확히 일치해야 한다. */
-const REDIRECT_URI = 'hongikon://auth/callback'
-
 /**
  * loading: 저장된 로그인 상태를 아직 확인 중
  * signedOut: 로그인도 게스트 선택도 안 한 상태 — 웰컴 화면을 보여준다
@@ -30,17 +33,13 @@ const REDIRECT_URI = 'hongikon://auth/callback'
  */
 type AuthStatus = 'loading' | 'signedOut' | 'guest' | 'authenticated'
 
-interface TokenResponse {
-  accessToken: string
-  refreshToken: string
-}
-
 interface AuthContextValue {
   status: AuthStatus
   accessToken: string | null
   loginWithKakao: () => Promise<void>
   continueAsGuest: () => Promise<void>
   logout: () => Promise<void>
+  deleteAccount: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -95,8 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loginWithKakao = useCallback(async () => {
-    const authUrl = `${API_BASE_URL}/oauth2/authorization/kakao`
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, REDIRECT_URI)
+    const result = await WebBrowser.openAuthSessionAsync(KAKAO_LOGIN_URL, AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
       throw new Error('로그인이 취소되었습니다.')
@@ -107,10 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('로그인 응답에서 인가 코드를 찾지 못했습니다.')
     }
 
-    const tokens = await apiRequest<TokenResponse>('/auth/token/exchange', {
-      method: 'POST',
-      body: { code },
-    })
+    const tokens = await exchangeAuthCode(code)
 
     await saveTokens(tokens)
     await deleteItem(GUEST_FLAG_KEY)
@@ -125,9 +120,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedOut')
   }, [])
 
+  const deleteAccount = useCallback(async () => {
+    if (!accessToken) throw new Error('로그인 후 이용해주세요.')
+
+    await deleteAccountRequest(accessToken)
+    await clearTokens()
+    await deleteItem(GUEST_FLAG_KEY)
+    setAccessToken(null)
+    setStatus('signedOut')
+  }, [accessToken])
+
   const value = useMemo(
-    () => ({ status, accessToken, loginWithKakao, continueAsGuest, logout }),
-    [status, accessToken, loginWithKakao, continueAsGuest, logout],
+    () => ({ status, accessToken, loginWithKakao, continueAsGuest, logout, deleteAccount }),
+    [status, accessToken, loginWithKakao, continueAsGuest, logout, deleteAccount],
   )
 
   if (status === 'loading') return null

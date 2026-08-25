@@ -49,11 +49,30 @@ export interface Building {
   extraBoundaries?: [number, number][][]
 }
 
+/** 실외 보행로 중간점. 사용자가 실제로 확인한 좌표만 채운다(추정 금지). */
+export interface PathWaypoint {
+  id: string
+  lat: number
+  lng: number
+}
+
+/**
+ * 실외 간선(양방향). 각 값은 `PathWaypoint.id` 이거나 건물 출입구를 가리키는
+ * '건물명' 또는 '건물명#출입구라벨'(라벨은 `BuildingEntrance.label` 과 정확히
+ * 일치) 문자열이다. 건물 쪽 좌표는 `buildings.ts` 를 그대로 참조하며 여기 다시
+ * 적지 않는다 — `src/utils/routing.ts` 가 해석한다.
+ */
+export type PathEdge = [string, string]
+
 /**
  * 지도에 무엇을 올릴지 고르는 최상단 필터. 한 번에 한 갈래만 본다.
- * 편의시설과 제휴 업체를 같이 띄우면 마커가 뒤섞여 어느 쪽인지 알 수 없다.
+ * 편의시설·제휴 업체·이벤트를 같이 띄우면 마커가 뒤섞여 어느 쪽인지 알 수 없다.
+ *
+ * '이벤트'의 하위 두 칩(전시/제보)은 `MapFilterChips`가 그린다. '전시'는
+ * '행사·전시' 편의시설 데이터를 그대로 쓰고(축을 옮겨 왔을 뿐 데이터는 하나다),
+ * '제보'는 기존 제보 토글(`reportsOn`)과 같은 상태를 공유한다.
  */
-export type MapLayer = '편의시설' | '제휴업체'
+export type MapLayer = '편의시설' | '제휴업체' | '이벤트'
 
 /**
  * 편의시설 종류. 유니온에 적은 순서가 곧 칩 순서다.
@@ -69,12 +88,17 @@ export type FacilityKind =
   | '프린터'
   | '증명서 발급'
   | '열람실'
+  | '스터디룸'
   | '정수기'
   | '카페'
   | '식당'
   | '편의점'
+  | '라운지'
+  | '수면실'
   | '학생처'
   | '행사·전시'
+  | '흡연구역'
+  | '엘리베이터'
 
 /**
  * 캠퍼스 편의시설 한 곳.
@@ -215,30 +239,28 @@ export interface NewsItem {
 }
 
 /**
- * `docs/report-api-spec.md` §3.3 기준 값 목록 미확정. 백엔드 확정 전까지의 가안이다.
- * 확정되면 이 유니온과 실제 API 값을 함께 갱신한다.
+ * `hongikon-be`의 `ReportService.CATEGORIES`와 값이 일치한다(2026-08-21 확인, `../../hongikon-be`).
  */
 export type ReportCategory = 'EVENT' | 'PERFORMANCE' | 'FOOD_TRUCK' | 'BOOTH' | 'ETC'
 
 /**
  * 제보 상태.
  *
- * 올린 즉시 지도에 뜨지 않는다. `PENDING` 으로 들어가 운영자 검토를 거친 뒤
- * `ACTIVE` 가 되어야 다른 사용자에게 보인다. 허위 제보·비방 위험이 큰 기능이라
- * (`docs/report-feature-plan.md` §7) 사후 신고보다 사전 검토를 앞세운다.
- *
- * `HIDDEN` 은 신고 누적으로 내려간 것, `REJECTED` 는 검토에서 반려된 것이다.
- * 둘 다 지도에 뜨지 않지만 작성자에게 보이는 문구가 달라 구분한다.
+ * `PENDING`(운영자 검토 대기)·`REJECTED`(반려)는 `docs/report-api-spec.md` §8.1의
+ * 제안일 뿐, 실제 백엔드(`ReportService`)는 구현하지 않았다 — 생성 즉시 `ACTIVE`로
+ * 저장하고(로컬 목업과 동일), 삭제도 상태 전환이 아니라 실제 DELETE라 `DELETED`도
+ * 쓰이지 않는다. 지금 실제로 나오는 값은 `ACTIVE`·`HIDDEN`(신고 누적 3회) 둘뿐이다.
+ * 두 값은 검토 기능이 생기면 다시 쓸 수 있어 유니온에는 남겨 둔다.
  */
 export type ReportStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'HIDDEN' | 'DELETED'
 
 /**
- * 신고 사유. `docs/report-api-spec.md` §4.4 기준 값 목록 미확정 — 가안이다.
+ * 신고 사유. `hongikon-be`의 `ReportService.FLAG_REASONS`와 값이 일치한다.
  */
 export type ReportFlagReason = 'FALSE_INFO' | 'SPAM' | 'INAPPROPRIATE' | 'ETC'
 
 /**
- * 지도의 한 지점에 남긴 실시간 제보. `docs/report-api-spec.md` §4.1 응답 형태를 따른다.
+ * 지도의 한 지점에 남긴 실시간 제보. `POST /reports`·`GET /reports` 응답 형태를 따른다.
  * `startsAt` / `endsAt` / `createdAt`은 서버가 UTC로 내려주는 ISO-8601 문자열이다.
  */
 export interface Report {
@@ -260,9 +282,9 @@ export interface Report {
   content: string | null
   authorNickname: string
   /**
-   * 첨부 사진 URL. 선택 항목이라 없을 수 있다.
-   * 업로드는 제보 생성과 분리돼 있다 — `uploadReportImage` 로 먼저 올려
-   * 받은 URL을 제보에 담는다.
+   * 첨부 사진 URL. 실제 백엔드(`Report` 엔티티)에는 이 컬럼도, 업로드 API도
+   * 없다(2026-08-21 확인) — `docs/report-api-spec.md` §8.2 제안이 아직 구현 전이다.
+   * 지금은 로컬 목업(`uploadReportImage`)에서만 값이 채워진다.
    */
   imageUrl?: string
   /** 요청자 본인 작성 여부. 서버가 JWT의 userId로 계산해 내려준다. */
@@ -273,10 +295,14 @@ export interface Report {
   createdAt: string
 }
 
-/** `GET /reports` 목록 항목. §4.2에 따라 본문(content)은 빠진다. */
-export type ReportListItem = Omit<Report, 'content'>
+/**
+ * `GET /reports` 목록 항목(`ReportSummaryResponse`). `content`뿐 아니라 `status`도
+ * 내려오지 않는다 — 목록 조회는 서버가 이미 살아있는(ACTIVE, live) 제보만 쿼리해
+ * 돌려주므로 상태를 따로 알려줄 필요가 없다. 상태를 보려면 상세(`Report`)가 필요하다.
+ */
+export type ReportListItem = Omit<Report, 'content' | 'status'>
 
-/** `POST /reports` 요청 바디. §4.1 참고. */
+/** `POST /reports` 요청 바디. */
 export interface CreateReportInput {
   buildingId?: number
   floor?: number
@@ -287,21 +313,18 @@ export interface CreateReportInput {
   customCategoryLabel?: string
   title: string
   content?: string
-  /** `uploadReportImage` 가 돌려준 URL. 사진을 안 붙였으면 생략한다. */
+  /** `uploadReportImage` 가 돌려준 URL. 실제 백엔드는 이 필드를 받지 않는다(`Report.imageUrl` 참고). */
   imageUrl?: string
   startsAt: string
   endsAt: string
 }
 
-/** `POST /reports/{id}/flags` 요청 바디. §4.4 참고. */
+/** `POST /reports/{id}/flags` 요청 바디. */
 export interface CreateReportFlagInput {
   reason: ReportFlagReason
 }
 
-/**
- * `POST /reports/{id}/flags` 응답. §4.4는 "본문 없음 또는 { flagCount }"라 명시해
- * flagCount를 선택 필드로 둔다.
- */
+/** `POST /reports/{id}/flags` 응답(`ReportFlagResponse`). `flagCount`는 항상 내려온다. */
 export interface ReportFlagResult {
-  flagCount?: number
+  flagCount: number
 }

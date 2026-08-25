@@ -25,7 +25,7 @@ import {
   REPORT_TITLE_MAX_LENGTH,
 } from '../../constants/report'
 import { useAuth } from '../../contexts/AuthContext'
-import { createReport, uploadReportImage } from '../../lib/reportsApi'
+import { createReport, uploadReportImage } from '../../apis/reports'
 import { chipStyles } from './chipStyles'
 import type { Report, ReportCategory } from '../../types'
 

@@ -14,7 +14,6 @@ const STORAGE_KEY = '@hongik_settings'
 
 interface Settings {
   subscriptionAlert: boolean
-  favoriteBuildings: string[]
   subscribedCategories: CategoryKey[]
   subscribedDepts: string[]
   bookmarkedNews: string[]
@@ -23,7 +22,6 @@ interface Settings {
 interface SettingsContextValue {
   settings: Settings
   toggleSubscriptionAlert: () => void
-  toggleFavoriteBuilding: (name: string) => void
   toggleSubscribedCategory: (cat: CategoryKey) => void
   toggleSubscribedDept: (id: string) => void
   toggleBookmark: (id: string) => void
@@ -35,7 +33,6 @@ export const ALL_CATEGORIES: CategoryKey[] = ['공지', '장학', '행사', '수
 
 const DEFAULT_SETTINGS: Settings = {
   subscriptionAlert: true,
-  favoriteBuildings: [],
   subscribedCategories: ALL_CATEGORIES,
   subscribedDepts: [],
   bookmarkedNews: [],
@@ -113,13 +110,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, subscriptionAlert: !prev.subscriptionAlert }))
   }, [])
 
-  const toggleFavoriteBuilding = useCallback((name: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      favoriteBuildings: toggleInList(prev.favoriteBuildings, name),
-    }))
-  }, [])
-
   const toggleSubscribedCategory = useCallback((cat: CategoryKey) => {
     setSettings((prev) => ({
       ...prev,
@@ -160,7 +150,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       settings,
       toggleSubscriptionAlert,
-      toggleFavoriteBuilding,
       toggleSubscribedCategory,
       toggleSubscribedDept,
       toggleBookmark,
@@ -170,7 +159,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [
       settings,
       toggleSubscriptionAlert,
-      toggleFavoriteBuilding,
       toggleSubscribedCategory,
       toggleSubscribedDept,
       toggleBookmark,

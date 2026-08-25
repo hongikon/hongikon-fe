@@ -33,12 +33,17 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '프린터', icon: 'print', color: '#4F46E5' },
   { key: '증명서 발급', icon: 'ribbon', color: '#0F766E' },
   { key: '열람실', icon: 'book', color: '#059669' },
+  { key: '스터디룸', icon: 'people-circle', color: '#2563EB' },
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
+  { key: '라운지', icon: 'happy', color: '#65A30D' },
+  { key: '수면실', icon: 'bed', color: '#0891B2' },
   { key: '학생처', icon: 'people', color: '#EA580C' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
+  { key: '흡연구역', icon: 'logo-no-smoking', color: '#57534E' },
+  { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },
 ]
 
 const META_BY_KEY = new Map(FACILITY_KINDS.map((meta) => [meta.key, meta]))

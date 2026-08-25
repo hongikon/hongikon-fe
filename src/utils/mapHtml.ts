@@ -24,12 +24,17 @@ const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
  * 그려져 있어, 탭 좌표에서 가장 가까운 등록 건물을 찾는 방식으로 대신한다.
  * 제휴 업체는 배경에 없으므로 직접 마커를 그린다.
  *
- * `showEntranceDebug` - 임시 출입구 좌표 검증용 오버레이. `src/screens/TempEntranceDebugScreen.tsx`
- * (웹 전용 `/temp/dots` 경로)에서만 true 로 켠다 - 일반 지도 화면(MapScreen)에는 안 보인다.
+ * `entranceDebugMode` - 임시 출입구 좌표 검증용 오버레이. `src/screens/TempEntranceDebugScreen.tsx`
+ * (웹 전용 `/temp/dots`, `/temp/path` 경로)에서만 켠다 - 일반 지도 화면(MapScreen)에는 안 보인다.
+ * `'dots'` 는 지점·연결선·실내 경로를 전부 그리고, `'paths'` 는 지점 마커 없이 실내 경로
+ * 선만 그려 경로 모양만 따로 눈으로 확인할 수 있게 한다.
  * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 매개변수와
  * `src/debug/entranceCheckData.ts`, 아래 관련 블록을 통째로 지운다.
  */
-export function buildMapHTML(buildings: readonly Building[], showEntranceDebug = false): string {
+export function buildMapHTML(
+  buildings: readonly Building[],
+  entranceDebugMode: 'off' | 'dots' | 'paths' = 'off',
+): string {
   const buildingJSON = JSON.stringify(
     buildings.map((building) => ({
       name: building.name,
@@ -80,7 +85,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     // buildings.ts/pathNodes.ts 에 실 데이터로 반영되면 이 블록과
     // src/debug/entranceCheckData.ts 를 통째로 지운다.
     ${
-      showEntranceDebug
+      entranceDebugMode === 'dots'
         ? `(function () {
       var DATA = ${JSON.stringify(ENTRANCE_CHECK_DATA)};
       var infowindow = new naver.maps.InfoWindow({ anchorSkew: true });
@@ -129,6 +134,20 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
         new naver.maps.Polyline({ map: map, path: path, strokeColor: '#059669', strokeWeight: 3, strokeOpacity: 0.9 });
       });
     })();`
+        : entranceDebugMode === 'paths'
+        ? `(function () {
+      var DATA = ${JSON.stringify(ENTRANCE_CHECK_DATA)};
+      var infowindow = new naver.maps.InfoWindow({ anchorSkew: true });
+      // 지점 마커 없이 실내 경로 선만 그린다 - 경로 모양만 따로 확인할 때 씀.
+      DATA.indoorPaths.forEach(function(ip) {
+        var path = ip.points.map(function(c) { return new naver.maps.LatLng(c[0], c[1]); });
+        var poly = new naver.maps.Polyline({ map: map, path: path, strokeColor: '#059669', strokeWeight: 4, strokeOpacity: 0.9 });
+        naver.maps.Event.addListener(poly, 'click', function(e) {
+          infowindow.setContent('<div style="padding:8px;font-size:12px;">' + ip.label + '</div>');
+          infowindow.open(map, e.coord);
+        });
+      });
+    })();`
         : ''
     }
     // ── 임시 블록 끝 ─────────────────────────────────────────────
@@ -157,6 +176,19 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     var pressTimer = null;
     var pressStart = null;
     var lastLongPressAt = 0;
+
+    // 제보 위치 선택 모드(지도를 움직여 화면 중앙에 고정된 지점을 고르는 방식).
+    // 켜져 있는 동안은 건물·제휴·제보 탭과 롱프레스를 모두 무시해, 그 아래
+    // 배너들이 선택 UI 위로 열리지 않게 한다.
+    var pickerActive = false;
+
+    function postPickerCenter() {
+      var center = map.getCenter();
+      var lat = center.lat();
+      var lng = center.lng();
+      var nearby = nearestBuilding(lat, lng);
+      post({ type: 'pickerCenter', lat: lat, lng: lng, buildingName: nearby ? nearby.name : null });
+    }
 
     function escapeHTML(value) {
       return String(value).replace(/[&<>"']/g, function(ch) {
@@ -244,6 +276,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     }
 
     function selectPartner(id) {
+      if (pickerActive) return;
       lastMarkerClickAt = new Date().getTime();
       selectedPartnerId = id;
       renderPartners();
@@ -329,6 +362,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
+          if (pickerActive) return;
           lastMarkerClickAt = new Date().getTime();
           post({ type: 'reportTap', id: item.id });
         });
@@ -345,6 +379,8 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
       '정수기': partnerSVG('<path d="M12 2.4S5.6 9.9 5.6 14.1a6.4 6.4 0 0 0 12.8 0C18.4 9.9 12 2.4 12 2.4z"/>'),
       // 열람실: 펼친 책. 마주 본 두 페이지로 그려야 작은 크기에서도 책으로 읽힌다.
       '열람실': partnerSVG('<path d="M11.2 6.4C9.3 5 6.7 4.2 3.8 4.1v13.6c2.9.1 5.5.9 7.4 2.3V6.4z"/><path d="M12.8 6.4v13.6c1.9-1.4 4.5-2.2 7.4-2.3V4.1c-2.9.1-5.5.9-7.4 2.3z"/>'),
+      // 스터디룸: 겹친 두 말풍선(토론). 개인 학습 위주인 열람실(펼친 책)과 갈린다.
+      '스터디룸': partnerSVG('<path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5v6A1.5 1.5 0 0 1 13.5 12H9l-3.2 2.6V12H4.5A1.5 1.5 0 0 1 3 10.5v-6z"/><path d="M9 9.5A1.5 1.5 0 0 1 10.5 8h9A1.5 1.5 0 0 1 21 9.5v6a1.5 1.5 0 0 1-1.5 1.5H15l-3.2 2.6V17H10.5A1.5 1.5 0 0 1 9 15.5v-6z"/>'),
       '학생처': partnerSVG('<path d="M9.2 11.4a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2zm0 1.7c-3.1 0-6.2 1.6-6.2 3.5V19.4h12.4v-2.8c0-1.9-3.1-3.5-6.2-3.5z"/><path d="M17.2 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm.6 1.6c-.9 0-1.7.1-2.4.4 1.3.9 2 2 2 3.1v2.8h5.2v-2.7c0-1.8-2.4-3.2-4.8-3.6z"/>'),
       '카페': partnerSVG('<path d="M4 5h11v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V5z"/><path d="M15 6h2.6a2.4 2.4 0 0 1 0 4.8H15V8.9h2.6a.3.3 0 0 0 0-.7H15V6z"/><rect x="3" y="18" width="13" height="1.9" rx="1"/>'),
       // 증명서 발급: 창구에서 받는 것이라 도장 찍힌 메달·리본으로 그린다.
@@ -353,9 +389,17 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
       '식당': partnerSVG('<path d="M6.6 3h1.3v6h1V3h1.3v6h1V3h1.3v6a3 3 0 0 1-2 2.8V21H8.6v-9.2a3 3 0 0 1-2-2.8V3zM16.6 3c1.4 0 2.5 2.3 2.5 5.3 0 2.4-.9 3.7-1.9 4.1V21h-1.3V3z"/>'),
       // 편의점: 차양(위) + 문 자리를 뚫은(evenodd) 매대 박스로, 식당(그릇)과 한눈에 갈린다.
       '편의점': partnerSVG('<path d="M3 4h18v3H3z"/><path fill-rule="evenodd" d="M4 9h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9zm6 4v7h4v-7h-4z"/>'),
+      // 라운지: 등받이·팔걸이가 있는 소파. 휴식 공간임을 한눈에 알린다.
+      '라운지': partnerSVG('<rect x="4" y="6" width="16" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="5" rx="1"/><rect x="2" y="9" width="3" height="8" rx="1.5"/><rect x="19" y="9" width="3" height="8" rx="1.5"/><rect x="5" y="19" width="1.5" height="2"/><rect x="17.5" y="19" width="1.5" height="2"/>'),
+      // 수면실: 헤드보드·베개가 있는 침대. 라운지(소파)와 한눈에 갈린다.
+      '수면실': partnerSVG('<rect x="2" y="4" width="3" height="15" rx="1"/><rect x="2" y="14" width="20" height="3" rx="1"/><rect x="4" y="9" width="6" height="4" rx="1.5"/><rect x="2" y="19" width="2" height="2"/><rect x="20" y="19" width="2" height="2"/>'),
       // 행사·전시: 상설 전시 공간이라 액자로 그린다. 속을 비워(evenodd)
       // 배지 색이 비쳐 보이게 해, 꽉 찬 다른 글리프와 구분된다.
-      '행사·전시': partnerSVG('<path fill-rule="evenodd" d="M2.6 3h18.8v13.4H2.6V3zm2 2v9.4h14.8V5H4.6z"/><path d="M11 17.4h2v3.1h-2z"/><path d="M6.4 20.4h11.2V22H6.4z"/>')
+      '행사·전시': partnerSVG('<path fill-rule="evenodd" d="M2.6 3h18.8v13.4H2.6V3zm2 2v9.4h14.8V5H4.6z"/><path d="M11 17.4h2v3.1h-2z"/><path d="M6.4 20.4h11.2V22H6.4z"/>'),
+      // 흡연구역: 연기가 피어오르는 담배. '금연' 기호와 헷갈리지 않도록 사선을 넣지 않는다.
+      '흡연구역': partnerSVG('<rect x="2" y="10.3" width="13" height="3.4" rx="1"/><circle cx="16.7" cy="12" r="1.9"/><circle cx="18.6" cy="8.6" r="1.1"/><circle cx="20.1" cy="6" r="0.8"/><circle cx="21.2" cy="3.8" r="0.6"/>'),
+      // 엘리베이터: 위·아래 화살표. 층간 이동 시설임을 나타낸다.
+      '엘리베이터': partnerSVG('<path d="M12 2l4 5H8l4-5z"/><path d="M12 22l-4-5h8l-4 5z"/><rect x="10.7" y="8" width="2.6" height="8" rx="1"/>')
     };
 
     function facilityLabelHTML(marker) {
@@ -402,6 +446,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
+          if (pickerActive) return;
           lastMarkerClickAt = new Date().getTime();
           // 편의시설 전용 배너는 아직 없다. 건물 배너를 대신 띄운다.
           post({ type: 'facilityTap', buildingName: item.buildingName });
@@ -478,6 +523,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
+          if (pickerActive) return;
           lastMarkerClickAt = new Date().getTime();
           selectedBuildingName = building.name;
           renderBuildings();
@@ -584,6 +630,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     }
 
     naver.maps.Event.addListener(map, 'click', function(e) {
+      if (pickerActive) return;
       if (!e || !e.coord) return;
       if (new Date().getTime() - lastMarkerClickAt < ${MARKER_CLICK_GUARD_MS}) return;
       // 길게 눌러 제보 작성이 열린 직후의 click 은 그 손동작의 꼬리다.
@@ -630,6 +677,7 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     }
 
     naver.maps.Event.addListener(map, 'mousedown', function(e) {
+      if (pickerActive) return;
       if (!e || !e.coord) return;
       cancelLongPress();
       pressStart = {
@@ -667,6 +715,11 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
     naver.maps.Event.addListener(map, 'mouseup', cancelLongPress);
     naver.maps.Event.addListener(map, 'dragstart', cancelLongPress);
     naver.maps.Event.addListener(map, 'zoom_changed', cancelLongPress);
+
+    // 위치 선택 모드일 때만, 지도가 멈출 때마다(드래그·줌 끝) 화면 중앙 좌표를 올려보낸다.
+    naver.maps.Event.addListener(map, 'idle', function() {
+      if (pickerActive) postPickerCenter();
+    });
 
     function handleNativeMessage(data) {
       try {
@@ -803,6 +856,16 @@ export function buildMapHTML(buildings: readonly Building[], showEntranceDebug =
           clearRouteOverlays();
           map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
           map.setZoom(${DEFAULT_ZOOM});
+        }
+
+        if (msg.type === 'startLocationPicker') {
+          cancelLongPress();
+          pickerActive = true;
+          postPickerCenter();
+        }
+
+        if (msg.type === 'stopLocationPicker') {
+          pickerActive = false;
         }
       } catch(e) {}
     }

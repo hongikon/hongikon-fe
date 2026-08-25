@@ -5,24 +5,33 @@ import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { buildMapHTML } from '../utils/mapHtml'
 import { BUILDINGS } from '../constants/buildings'
 
+interface Props {
+  /** 'dots' = 지점+연결선+경로 전부(/temp/dots). 'paths' = 실내 경로 선만(/temp/path). */
+  mode: 'dots' | 'paths'
+}
+
 /**
- * 임시 - 출입구 좌표 검증용 화면. 웹에서 `/temp/dots` 로 직접 접근한다(App.tsx 참고).
- * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 파일과 App.tsx 의 관련 분기,
- * `src/debug/entranceCheckData.ts`, `buildMapHTML` 의 `showEntranceDebug` 매개변수를
- * 통째로 지운다.
+ * 임시 - 출입구/실내 경로 좌표 검증용 화면. 웹에서 `/temp/dots`, `/temp/path` 로 직접
+ * 접근한다(App.tsx 참고). buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 파일과
+ * App.tsx 의 관련 분기, `src/debug/entranceCheckData.ts`, `buildMapHTML` 의
+ * `entranceDebugMode` 매개변수를 통째로 지운다.
  *
  * 네이티브(WebView)는 원격 지도 페이지(MAP_PAGE_URL)를 그대로 불러와 `html` prop을
  * 쓰지 않으므로 이 화면은 웹에서만 의미가 있다.
  */
-export default function TempEntranceDebugScreen() {
+export default function TempEntranceDebugScreen({ mode }: Props) {
   const webViewRef = useRef<NaverMapViewHandle>(null)
   const [authFailed, setAuthFailed] = useState(false)
-  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS, true), [])
+  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS, mode), [mode])
 
   return (
     <View style={styles.container}>
       <View style={styles.banner}>
-        <Text style={styles.bannerText}>임시 · 출입구 좌표 검증용 (/temp/dots)</Text>
+        <Text style={styles.bannerText}>
+          {mode === 'paths'
+            ? '임시 · 실내 경로 전용 보기 (/temp/path)'
+            : '임시 · 출입구 좌표 검증용 (/temp/dots)'}
+        </Text>
       </View>
       <NaverMapView
         ref={webViewRef}

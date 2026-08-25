@@ -1,5 +1,5 @@
 import { FLOOR_TRANSIT_SECONDS } from '../constants/route'
-import type { Building } from '../types'
+import type { Building, BuildingEntrance } from '../types'
 
 export interface RoutePoint {
   lat: number
@@ -63,6 +63,20 @@ export function floorTransitSeconds(
 }
 
 /**
+ * 고른 층이 속하는 출입구. `src/utils/routing.ts` 도 이걸로 앵커 노드를
+ * 정해, 경로가 실제로 잇는 출입구와 배너에 뜨는 좌표가 항상 같게 한다.
+ */
+export function matchEntrance(
+  building: Building,
+  floor: number | null,
+): BuildingEntrance | undefined {
+  if (floor === null || !building.entrances) return undefined
+  return building.entrances.find(
+    (entrance) => floor >= entrance.minFloor && floor <= entrance.maxFloor,
+  )
+}
+
+/**
  * 경로 시작/끝 지점의 좌표를 정한다. 고른 층이 `entrances` 의 어느 범위에
  * 속하면 그 출입구 좌표를, 아니면 건물 대표 좌표(`lat`/`lng`)를 쓴다.
  *
@@ -73,11 +87,7 @@ export function resolveEntrancePoint(
   building: Building,
   floor: number | null,
 ): RoutePoint {
-  if (floor !== null && building.entrances) {
-    const match = building.entrances.find(
-      (entrance) => floor >= entrance.minFloor && floor <= entrance.maxFloor,
-    )
-    if (match) return { lat: match.lat, lng: match.lng }
-  }
+  const match = matchEntrance(building, floor)
+  if (match) return { lat: match.lat, lng: match.lng }
   return { lat: building.lat, lng: building.lng }
 }

@@ -2,24 +2,37 @@ import { useMemo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { FACILITY_KINDS } from '../../constants/facilityKinds'
+import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { chipStyles } from './chipStyles'
 import type { FacilityKind, MapLayer } from '../../types'
 
-const LAYERS: readonly { key: MapLayer; label: string; icon: 'business' | 'pricetags' }[] = [
+const LAYERS: readonly {
+  key: MapLayer
+  label: string
+  icon: 'business' | 'pricetags' | 'calendar'
+}[] = [
   { key: '편의시설', label: '편의 시설', icon: 'business' },
   { key: '제휴업체', label: '제휴 업체', icon: 'pricetags' },
+  { key: '이벤트', label: '이벤트', icon: 'calendar' },
 ]
+
+// '행사·전시'는 '이벤트' 하위 칩으로만 보여준다. 편의시설 줄에도 두면 같은
+// 데이터가 두 곳에 뜨는 것처럼 보인다.
+const VISIBLE_FACILITY_KINDS = FACILITY_KINDS.filter((meta) => meta.key !== '행사·전시')
+const EXHIBIT_META = facilityKindMeta('행사·전시')
 
 interface MapFilterChipsProps {
   /** 최상단 갈래. 고르지 않았으면 null 이고, 아래 칩 줄은 나오지 않는다. */
   layer: MapLayer | null
-  /** 편의시설 종류. 레이어가 '편의시설' 일 때만 쓰인다. */
+  /** 편의시설 종류. 레이어가 '편의시설' 이거나 '이벤트'(전시)일 때 쓰인다. */
   facilityKind: FacilityKind | null
+  /** 제보 레이어 on/off. 레이어가 '이벤트' 일 때 '제보' 칩의 선택 상태로 쓰인다. */
+  reportsOn: boolean
   /** 같은 칩을 다시 눌렀을 때의 해제 처리는 호출하는 쪽이 맡는다. */
   onSelectLayer: (value: MapLayer) => void
   onSelectFacilityKind: (value: FacilityKind) => void
+  onToggleReports: () => void
 }
 
 /**
@@ -35,11 +48,13 @@ interface MapFilterChipsProps {
 export default function MapFilterChips({
   layer,
   facilityKind,
+  reportsOn,
   onSelectLayer,
   onSelectFacilityKind,
+  onToggleReports,
 }: MapFilterChipsProps) {
   const facilityCounts = useMemo(
-    () => FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(meta.key) })),
+    () => VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(meta.key) })),
     [],
   )
 
@@ -111,6 +126,56 @@ export default function MapFilterChips({
               </TouchableOpacity>
             )
           })}
+        </ScrollView>
+      )}
+
+      {layer === '이벤트' && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={chipStyles.scroll}
+          contentContainerStyle={chipStyles.row}
+        >
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => onSelectFacilityKind('행사·전시')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: facilityKind === '행사·전시' }}
+            accessibilityLabel="전시"
+            style={[
+              chipStyles.chip,
+              chipStyles.chipTransparent,
+              facilityKind === '행사·전시' && {
+                backgroundColor: EXHIBIT_META.color,
+                borderColor: EXHIBIT_META.color,
+              },
+            ]}
+          >
+            <Ionicons
+              name={EXHIBIT_META.icon}
+              size={13}
+              color={facilityKind === '행사·전시' ? COLORS.white : EXHIBIT_META.color}
+            />
+            <Text style={[chipStyles.label, facilityKind === '행사·전시' && chipStyles.labelActive]}>
+              전시
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={onToggleReports}
+            accessibilityRole="button"
+            accessibilityState={{ selected: reportsOn }}
+            accessibilityLabel={reportsOn ? '제보 숨기기' : '제보 보기'}
+            style={[
+              chipStyles.chip,
+              chipStyles.chipTransparent,
+              reportsOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+            ]}
+          >
+            <Ionicons name="megaphone" size={13} color={reportsOn ? COLORS.white : COLORS.primary} />
+            <Text style={[chipStyles.label, reportsOn && chipStyles.labelActive]}>제보</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
     </>

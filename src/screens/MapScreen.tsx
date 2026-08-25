@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,8 @@ import {
   TextInput,
   FlatList,
   Modal,
-  ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import FloorPickerModal from "../components/map/FloorPickerModal";
@@ -20,7 +19,7 @@ import ReportComposerModal from "../components/map/ReportComposerModal";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
-import { getLiveReports } from "../lib/reportsApi";
+import { getLiveReports } from "../apis/reports";
 import { toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
@@ -34,14 +33,9 @@ import {
   partnerCategoryMeta,
   PARTNER_MAP_ICON_COLOR,
 } from "../constants/partnerCategories";
-import { WALKING_METERS_PER_MINUTE } from "../constants/route";
-import {
-  formatFloor,
-  hasFloorData,
-  floorTransitSeconds,
-  resolveEntrancePoint,
-} from "../utils/floors";
-import { haversineMeters } from "../utils/geo";
+import { formatFloor, hasFloorData } from "../utils/floors";
+import { findRoutes, straightLineFallback } from "../utils/routing";
+import type { RouteAlternative } from "../utils/routing";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
   filterPartners,
@@ -89,6 +83,10 @@ function toMarker(partner: Partner) {
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
   const { accessToken } = useAuth();
+  // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
+  // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
+  // Modal 바깥의 화면에서 미리 재서 넘긴다.
+  const insets = useSafeAreaInsets();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
@@ -115,6 +113,14 @@ export default function MapScreen() {
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  // 제보 위치 선택 모드. 켜져 있으면 화면 중앙에 고정된 핀 아래로 지도를
+  // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
+  const [pickingLocation, setPickingLocation] = useState(false);
+  const [pickerCenter, setPickerCenter] = useState<{
+    lat: number;
+    lng: number;
+    buildingName: string | null;
+  } | null>(null);
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
   const [reportsOn, setReportsOn] = useState(false);
@@ -128,25 +134,25 @@ export default function MapScreen() {
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
 
   const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), []);
 
-  // 도보 시간 = 출입구 간 직선거리 + 선택한 층을 오르내리는 시간.
-  // 건물에 층별 출입구가 등록돼 있으면 고른 층에 맞는 문에서 거리를 잰다.
-  const routeMinutes = useMemo(() => {
-    if (!fromBuilding || !toBuilding) return 0;
-    const fromPoint = resolveEntrancePoint(fromBuilding, fromFloor);
-    const toPoint = resolveEntrancePoint(toBuilding, toFloor);
-    const meters = haversineMeters(
-      fromPoint.lat,
-      fromPoint.lng,
-      toPoint.lat,
-      toPoint.lng,
+  /**
+   * 실측 경로망(routing.ts)에서 대안 경로를 구하고, 아직 그 구간을 못
+   * 덮으면(양쪽 다 비어 있으면) 기존 직선거리 추정 하나로 대신한다.
+   */
+  const routeAlternatives = useMemo<RouteAlternative[]>(() => {
+    if (!fromBuilding || !toBuilding) return [];
+    const found = findRoutes(
+      { building: fromBuilding, floor: fromFloor },
+      { building: toBuilding, floor: toFloor },
     );
-    const walkSeconds = (meters / WALKING_METERS_PER_MINUTE) * 60;
-    const totalSeconds = walkSeconds + floorTransitSeconds(fromFloor, toFloor);
-    return Math.max(1, Math.round(totalSeconds / 60));
+    if (found.length > 0) return found;
+    return [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
   }, [fromBuilding, toBuilding, fromFloor, toFloor]);
+
+  const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
   const activeFilter = useMemo<PartnerFilter>(
     () => ({ affiliation: selectedAffiliation, category: selectedCategory }),
@@ -257,6 +263,16 @@ export default function MapScreen() {
         if (msg.type === "mapAuthFailure") {
           setMapAuthFailed(true);
         }
+
+        // 위치 선택 모드 중 지도가 멈출 때마다 온다. 화면 중앙 좌표를 갱신한다.
+        if (msg.type === "pickerCenter") {
+          setPickerCenter({
+            lat: msg.lat,
+            lng: msg.lng,
+            buildingName: msg.buildingName ?? null,
+          });
+          return;
+        }
       } catch {}
     },
     [reports],
@@ -330,51 +346,51 @@ export default function MapScreen() {
     postToMap({ type: "selectPartner", id: null });
   }, [postToMap]);
 
-  /**
-   * 층별 출입구가 등록된 건물이면 고른 층에 맞는 문에서 경로를 잇는다.
-   * 층을 방금 고른 쪽은 상태 갱신이 아직 반영되기 전이라 인자로 직접 받는다
-   * (같은 틱에서 setFromFloor 직후 호출되므로 fromFloor 상태를 읽으면 이전 값이 잡힌다).
-   */
+  /** 대안 경로들을 지도에 올린다. 고른 것을 굵게, 나머지는 옅게 그린다. */
   const drawRoute = useCallback(
-    (from: Building, fromFloorArg: number | null, to: Building, toFloorArg: number | null) => {
-      const fromPoint = resolveEntrancePoint(from, fromFloorArg);
-      const toPoint = resolveEntrancePoint(to, toFloorArg);
+    (routes: RouteAlternative[], selectedIndex: number) => {
       postToMap({
         type: "showRoute",
-        fromLat: fromPoint.lat,
-        fromLng: fromPoint.lng,
-        toLat: toPoint.lat,
-        toLng: toPoint.lng,
+        routes: routes.map((route) => ({ points: route.points })),
+        selectedIndex,
       });
     },
     [postToMap],
   );
 
-  /** 출발이 확정되면 도착지 선택 화면으로 자동으로 넘어간다. */
-  const advanceToDestination = useCallback(
-    (from: Building, floor: number | null) => {
-      if (toBuilding) {
-        drawRoute(from, floor, toBuilding, toFloor);
-        setShowRoute(false);
-        setRouteTarget(null);
-        return;
-      }
-      setSearchQuery("");
-      setRouteTarget("to");
-      setShowRoute(true);
+  // fromBuilding/toBuilding/fromFloor/toFloor 가 바뀌어 routeAlternatives 가
+  // 새로 계산될 때마다(둘 다 골랐을 때만 채워진다) 첫 번째 대안으로 다시 그린다.
+  useEffect(() => {
+    setSelectedRouteIndex(0);
+    if (routeAlternatives.length > 0) drawRoute(routeAlternatives, 0);
+  }, [routeAlternatives, drawRoute]);
+
+  /** 대안 목록에서 다른 경로를 고르면, 다시 그리지 않고 스타일만 바꾼다. */
+  const handleSelectRouteAlternative = useCallback(
+    (index: number) => {
+      setSelectedRouteIndex(index);
+      postToMap({ type: "selectRouteAlternative", index });
     },
-    [toBuilding, toFloor, drawRoute],
+    [postToMap],
   );
 
-  const finishDestination = useCallback(
-    (to: Building, floor: number | null) => {
-      if (fromBuilding) drawRoute(fromBuilding, fromFloor, to, floor);
+  /** 출발이 확정되면 도착지 선택 화면으로 자동으로 넘어간다. */
+  const advanceToDestination = useCallback(() => {
+    if (toBuilding) {
       setShowRoute(false);
       setRouteTarget(null);
-      setSearchQuery("");
-    },
-    [fromBuilding, fromFloor, drawRoute],
-  );
+      return;
+    }
+    setSearchQuery("");
+    setRouteTarget("to");
+    setShowRoute(true);
+  }, [toBuilding]);
+
+  const finishDestination = useCallback(() => {
+    setShowRoute(false);
+    setRouteTarget(null);
+    setSearchQuery("");
+  }, []);
 
   /** 층 정보가 있는 건물이면 다이얼을 먼저 띄우고, 없으면 곧장 다음 단계로. */
   const beginFrom = useCallback(
@@ -388,7 +404,7 @@ export default function MapScreen() {
         setPendingFloor({ building, target: "from" });
         return;
       }
-      advanceToDestination(building, null);
+      advanceToDestination();
     },
     [advanceToDestination],
   );
@@ -403,7 +419,7 @@ export default function MapScreen() {
         setPendingFloor({ building, target: "to" });
         return;
       }
-      finishDestination(building, null);
+      finishDestination();
     },
     [finishDestination],
   );
@@ -411,15 +427,15 @@ export default function MapScreen() {
   const handleFloorConfirm = useCallback(
     (floor: number) => {
       if (!pendingFloor) return;
-      const { building, target } = pendingFloor;
+      const { target } = pendingFloor;
       setPendingFloor(null);
       if (target === "from") {
         setFromFloor(floor);
-        advanceToDestination(building, floor);
+        advanceToDestination();
         return;
       }
       setToFloor(floor);
-      finishDestination(building, floor);
+      finishDestination();
     },
     [pendingFloor, advanceToDestination, finishDestination],
   );
@@ -527,6 +543,34 @@ export default function MapScreen() {
     if (reportsOn) void loadReports();
   }, [reportsOn, loadReports]);
 
+  /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
+  const handleStartReportPicker = useCallback(() => {
+    setSelectedBuilding(null);
+    setSelectedPartner(null);
+    setSelectedReport(null);
+    setPickerCenter(null);
+    setPickingLocation(true);
+    postToMap({ type: "startLocationPicker" });
+  }, [postToMap]);
+
+  const handleCancelReportPicker = useCallback(() => {
+    setPickingLocation(false);
+    setPickerCenter(null);
+    postToMap({ type: "stopLocationPicker" });
+  }, [postToMap]);
+
+  /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. */
+  const handleConfirmReportPicker = useCallback(() => {
+    if (!pickerCenter) return;
+    setPickingLocation(false);
+    postToMap({ type: "stopLocationPicker" });
+    setReportTarget({
+      lat: pickerCenter.lat,
+      lng: pickerCenter.lng,
+      buildingName: pickerCenter.buildingName,
+    });
+  }, [pickerCenter, postToMap]);
+
   const handleClearRoute = useCallback(() => {
     setFromBuilding(null);
     setToBuilding(null);
@@ -557,31 +601,37 @@ export default function MapScreen() {
         <Text style={styles.headerTitle}>캠퍼스</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.searchBar}
-        activeOpacity={0.7}
-        onPress={() => setShowSearch(true)}
-        accessibilityRole="button"
-        accessibilityLabel="제휴 업체 검색"
-      >
-        <Ionicons name="search" size={16} color="#999" />
-        <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
-      </TouchableOpacity>
+      {!pickingLocation && (
+        <>
+          <TouchableOpacity
+            style={styles.searchBar}
+            activeOpacity={0.7}
+            onPress={() => setShowSearch(true)}
+            accessibilityRole="button"
+            accessibilityLabel="제휴 업체 검색"
+          >
+            <Ionicons name="search" size={16} color="#999" />
+            <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
+          </TouchableOpacity>
 
-      <MapFilterChips
-        layer={layer}
-        facilityKind={facilityKind}
-        onSelectLayer={handleSelectLayer}
-        onSelectFacilityKind={handleSelectFacilityKind}
-      />
+          <MapFilterChips
+            layer={layer}
+            facilityKind={facilityKind}
+            reportsOn={reportsOn}
+            onSelectLayer={handleSelectLayer}
+            onSelectFacilityKind={handleSelectFacilityKind}
+            onToggleReports={handleToggleReports}
+          />
 
-      {layer === "제휴업체" && (
-        <PartnerChips
-          affiliation={selectedAffiliation}
-          category={selectedCategory}
-          onSelectAffiliation={handleSelectAffiliation}
-          onSelectCategory={handleSelectCategory}
-        />
+          {layer === "제휴업체" && (
+            <PartnerChips
+              affiliation={selectedAffiliation}
+              category={selectedCategory}
+              onSelectAffiliation={handleSelectAffiliation}
+              onSelectCategory={handleSelectCategory}
+            />
+          )}
+        </>
       )}
 
       <View style={styles.mapArea}>
@@ -650,41 +700,87 @@ export default function MapScreen() {
           )}
         </View>
 
-        <View style={styles.mapControls}>
-          <TouchableOpacity
-            style={[styles.controlBtn, reportsOn && styles.controlBtnActive]}
-            onPress={handleToggleReports}
-            accessibilityRole="button"
-            accessibilityLabel={reportsOn ? "제보 숨기기" : "제보 보기"}
-            accessibilityState={{ selected: reportsOn }}
-          >
-            {reportsLoading ? (
-              <ActivityIndicator
-                size="small"
-                color={reportsOn ? COLORS.white : COLORS.primary}
-              />
-            ) : (
-              <Ionicons
-                name="megaphone"
-                size={17}
-                color={reportsOn ? COLORS.white : COLORS.primary}
-              />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.controlBtn}
-            onPress={() => setShowRoute(true)}
-            accessibilityRole="button"
-            accessibilityLabel="길찾기"
-          >
-            <Ionicons name="navigate" size={17} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlBtn}>
-            <Ionicons name="locate-outline" size={17} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
+        {!pickingLocation && (
+          <View style={styles.mapControls}>
+            <TouchableOpacity
+              style={styles.controlBtn}
+              onPress={handleStartReportPicker}
+              accessibilityRole="button"
+              accessibilityLabel="제보하기"
+            >
+              <Ionicons name="megaphone" size={17} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.controlBtn}
+              onPress={() => setShowRoute(true)}
+              accessibilityRole="button"
+              accessibilityLabel="길찾기"
+            >
+              <Ionicons name="navigate" size={17} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlBtn}>
+              <Ionicons name="locate-outline" size={17} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
 
-        {fromBuilding && toBuilding && (
+        {pickingLocation && (
+          <>
+            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
+              <View style={styles.pickerCrosshairV} />
+              <View style={styles.pickerCrosshairH} />
+              <View style={styles.pickerPinAnchor}>
+                <View style={styles.pickerPinBubble}>
+                  <Ionicons name="megaphone" size={15} color={COLORS.white} />
+                </View>
+                <View style={styles.pickerPinTail} />
+              </View>
+              <View style={styles.pickerDot} />
+            </View>
+
+            <View style={styles.pickerTopBar}>
+              <Text style={styles.pickerTopText} numberOfLines={2}>
+                지도를 움직여 제보할 위치를 맞춰주세요
+              </Text>
+              <TouchableOpacity
+                onPress={handleCancelReportPicker}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="위치 선택 취소"
+              >
+                <Ionicons name="close" size={18} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.pickerBottomBar}>
+              <View style={styles.pickerLocationRow}>
+                <Ionicons name="location" size={14} color={COLORS.primary} />
+                <Text style={styles.pickerLocationText} numberOfLines={1}>
+                  {pickerCenter
+                    ? pickerCenter.buildingName
+                      ? `${pickerCenter.buildingName} 근처`
+                      : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
+                    : "위치 확인 중..."}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.pickerConfirmBtn,
+                  !pickerCenter && styles.pickerConfirmBtnDisabled,
+                ]}
+                onPress={handleConfirmReportPicker}
+                disabled={!pickerCenter}
+                accessibilityRole="button"
+                accessibilityLabel="이 위치 제보하기"
+                accessibilityState={{ disabled: !pickerCenter }}
+              >
+                <Text style={styles.pickerConfirmText}>이 위치 제보하기</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {!pickingLocation && fromBuilding && toBuilding && (
           <View style={styles.routeStrip}>
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
@@ -705,7 +801,17 @@ export default function MapScreen() {
                 </Text>
               </View>
             </View>
-            <Text style={styles.routeTime}>도보 {routeMinutes}분</Text>
+            <TouchableOpacity
+              onPress={() => setShowRoute(true)}
+              style={styles.routeTimeBtn}
+            >
+              <Text style={styles.routeTime}>
+                도보 {selectedRoute?.minutes ?? 0}분
+              </Text>
+              {selectedRoute?.isEstimate && (
+                <Text style={styles.routeEstimateBadge}>추정</Text>
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handleClearRoute}
               style={styles.routeCloseBtn}
@@ -841,18 +947,38 @@ export default function MapScreen() {
                 />
                 <Text style={styles.routeResultName}>{fromBuilding.name}</Text>
               </View>
-              <View style={styles.routeResultDivider}>
-                <View style={styles.routeResultLine} />
-                <Text style={styles.routeResultTime}>
-                  도보 약 {routeMinutes}분
-                </Text>
-              </View>
               <View style={styles.routeResultRow}>
                 <View
                   style={[styles.routeDot, { backgroundColor: "#EF4444" }]}
                 />
                 <Text style={styles.routeResultName}>{toBuilding.name}</Text>
               </View>
+
+              <View style={styles.routeAltList}>
+                {routeAlternatives.map((route, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.routeAltRow,
+                      index === selectedRouteIndex && styles.routeAltRowSelected,
+                    ]}
+                    onPress={() => handleSelectRouteAlternative(index)}
+                  >
+                    <View style={styles.routeAltHeader}>
+                      <Text style={styles.routeAltLabel}>경로 {index + 1}</Text>
+                      <Text style={styles.routeAltTime}>
+                        도보 약 {route.minutes}분 · {route.distanceMeters}m
+                      </Text>
+                    </View>
+                    {route.isEstimate && (
+                      <Text style={styles.routeAltEstimate}>
+                        실측 경로 준비 중 · 직선 거리 기준
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <TouchableOpacity
                 style={styles.routeStartBtn}
                 onPress={handleCloseRoute}
@@ -866,6 +992,7 @@ export default function MapScreen() {
 
       <PartnerSearchModal
         visible={showSearch}
+        topInset={insets.top}
         onClose={() => setShowSearch(false)}
         onSelect={handleSearchSelect}
       />
@@ -911,7 +1038,129 @@ const styles = StyleSheet.create({
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
   mapArea: { flex: 1, position: "relative" },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
-  controlBtnActive: { backgroundColor: COLORS.primary },
+  pickerMarkerWrap: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerCrosshairV: {
+    position: "absolute",
+    width: 1,
+    height: 22,
+    backgroundColor: COLORS.danger,
+    opacity: 0.5,
+  },
+  pickerCrosshairH: {
+    position: "absolute",
+    width: 22,
+    height: 1,
+    backgroundColor: COLORS.danger,
+    opacity: 0.5,
+  },
+  pickerDot: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: COLORS.danger,
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
+  },
+  pickerPinAnchor: {
+    position: "absolute",
+    alignItems: "center",
+    transform: [{ translateY: -25 }],
+  },
+  pickerPinBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  pickerPinTail: {
+    width: 2,
+    height: 9,
+    backgroundColor: COLORS.primary,
+    marginTop: -1,
+  },
+  pickerTopBar: {
+    position: "absolute",
+    top: 8,
+    left: 12,
+    right: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pickerTopText: {
+    flex: 1,
+    fontFamily: FONTS.medium,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    lineHeight: 18,
+  },
+  pickerBottomBar: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pickerLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  pickerLocationText: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: 12.5,
+    color: COLORS.textPrimary,
+  },
+  pickerConfirmBtn: {
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerConfirmBtnDisabled: { opacity: 0.4 },
+  pickerConfirmText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 14,
+    color: COLORS.white,
+  },
   controlBtn: {
     width: 40,
     height: 40,
@@ -984,7 +1233,17 @@ const styles = StyleSheet.create({
   routeDot: { width: 8, height: 8, borderRadius: 4 },
   routeLabel: { fontSize: 13, color: COLORS.textPrimary, fontFamily: FONTS.medium },
   routeArrow: { fontFamily: FONTS.regular, fontSize: 12, color: "#ccc" },
+  routeTimeBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   routeTime: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.semibold },
+  routeEstimateBadge: {
+    fontSize: 9,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
   routeCloseBtn: { padding: 2 },
   routeModal: { flex: 1, backgroundColor: COLORS.white },
   routeModalHeader: {
@@ -1067,20 +1326,36 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     color: COLORS.textPrimary,
   },
-  routeResultDivider: {
+  routeAltList: { marginTop: 12, gap: 8 },
+  routeAltRow: {
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: COLORS.white,
+  },
+  routeAltRowSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: "#EEF0FA",
+  },
+  routeAltHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingLeft: 3,
+    justifyContent: "space-between",
   },
-  routeResultLine: {
-    width: 2,
-    height: 20,
-    backgroundColor: "#ddd",
-    borderRadius: 1,
+  routeAltLabel: {
+    fontSize: 13,
+    fontFamily: FONTS.semibold,
+    color: COLORS.textPrimary,
   },
-  routeResultTime: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.medium },
+  routeAltTime: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.medium },
+  routeAltEstimate: {
+    marginTop: 4,
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.regular,
+  },
   routeStartBtn: {
     marginTop: 14,
     height: 42,

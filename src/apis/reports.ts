@@ -3,7 +3,7 @@ import {
   deleteMockReport,
   flagMockReport,
   listMockReports,
-} from './mockReportsStore'
+} from '../lib/mockReportsStore'
 import type {
   CreateReportFlagInput,
   CreateReportInput,

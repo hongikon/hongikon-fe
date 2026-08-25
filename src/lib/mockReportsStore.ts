@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { ApiError } from '../apis/client'
 import type {
   CreateReportFlagInput,
   CreateReportInput,
@@ -50,11 +51,17 @@ async function persist(): Promise<void> {
   ])
 }
 
+/**
+ * 실제 백엔드의 `GET /reports?live=true`(`ReportService.getLiveReports`)를 흉내 낸다.
+ * 거기서도 상태 필터링은 목록 응답이 아니라 쿼리 단계에서 끝난다 — 목록에는
+ * `status`가 아예 없다(`ReportListItem` 참고). 여기서도 걸러서 그대로 맞춘다.
+ */
 export async function listMockReports(buildingId?: number): Promise<Report[]> {
   const reports = await ensureLoaded()
-  return buildingId === undefined
-    ? reports
-    : reports.filter((report) => report.buildingId === buildingId)
+  return reports.filter(
+    (report) =>
+      report.status === 'ACTIVE' && (buildingId === undefined || report.buildingId === buildingId),
+  )
 }
 
 export async function createMockReport(input: CreateReportInput): Promise<Report> {
@@ -100,7 +107,7 @@ export async function flagMockReport(
 ): Promise<ReportFlagResult> {
   const reports = await ensureLoaded()
   const report = reports.find((r) => r.id === id)
-  if (!report) return {}
+  if (!report) throw new ApiError(404, '존재하지 않는 제보입니다.')
 
   const flagCount = (flagCounts.get(id) ?? 0) + 1
   flagCounts.set(id, flagCount)
