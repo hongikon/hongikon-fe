@@ -1,8 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../constants/colors'
+import { View, Text, Image, StyleSheet } from 'react-native'
 import { FONTS } from '../constants/typography'
-import { reportCategoryMeta } from '../constants/reportCategories'
+import { COLORS } from '../constants/colors'
 import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
 import { formatPushNotification } from '../utils/notificationFormat'
 import type { PushNotificationData } from '../types'
@@ -13,6 +11,11 @@ import type { PushNotificationData } from '../types'
  * 알림 발사 버튼 참고) 기기 OS 알림 배너로는 못 보므로, 같은 표본 payload를
  * `formatPushNotification`으로 포맷해 카드 모양만 흉내 낸다 — 실제 알림 UI(OS 배너)와는
  * 다르다. 백엔드 발송부가 생기면 이 파일은 지워도 된다.
+ *
+ * 배지는 카테고리 아이콘 대신 실제 앱 아이콘(`assets/icon.png`)을 그대로 쓴다.
+ * 실기기 알림에서도 아이콘 영역엔 앱 아이콘이 뜨므로(iOS는 항상, Android는
+ * `app.json`의 `expo-notifications` 플러그인에 `android-icon-monochrome.png`를
+ * 지정해 상태바 아이콘도 앱 아이콘과 같은 마크를 쓰게 맞춰 뒀다) 미리보기도 맞춘다.
  */
 export default function TempNotificationPreviewScreen() {
   const samples = [SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION].filter(
@@ -42,14 +45,9 @@ function NotificationCard({ data }: { data: PushNotificationData }) {
   const formatted = formatPushNotification(data)
   if (!formatted) return null
 
-  const icon = data.type === 'NEWS' ? 'newspaper' : reportCategoryMeta(data.category).icon
-  const iconColor = data.type === 'NEWS' ? COLORS.primary : reportCategoryMeta(data.category).color
-
   return (
     <View style={styles.card}>
-      <View style={[styles.iconBadge, { backgroundColor: iconColor }]}>
-        <Ionicons name={icon} size={16} color="#fff" />
-      </View>
+      <Image source={require('../../assets/icon.png')} style={styles.appIcon} />
       <View style={styles.cardBody}>
         <View style={styles.cardTopRow}>
           <Text style={styles.appName}>홍익온</Text>
@@ -87,12 +85,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
-  iconBadge: {
+  appIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cardBody: { flex: 1 },
   cardTopRow: {

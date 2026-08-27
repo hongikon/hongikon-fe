@@ -34,7 +34,13 @@
       "expo-splash-screen",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#05014A"
+        }
+      ],
       [
         "expo-image-picker",
         {
