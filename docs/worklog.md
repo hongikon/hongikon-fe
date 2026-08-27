@@ -273,12 +273,109 @@ union-find로 컴포넌트를 다시 계산해 확인: 총 67개 노드·77개 �
 
 ---
 
+## 2026-08-26
+
+**목표**: hongikon-be(스웨거) 기준으로 프론트를 실제 백엔드에 연결.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/apis/reports.ts` | 재작성 | `mockReportsStore` 대신 실제 `POST/GET/DELETE /reports`, `POST /reports/{id}/flags` 호출로 교체 |
+| `src/lib/mockReportsStore.ts` | 삭제 | 위 교체로 더 이상 쓰이지 않음 |
+| `src/apis/client.ts` | +1 | `apiRequest` 메서드 유니온에 `PATCH` 추가(알림 카테고리 토글용) |
+| `src/apis/notifications.ts` | 신규 | 알림 카테고리 조회/토글(`/users/me/notification-categories*`), 키워드 구독 CRUD(`/users/me/keyword-subscriptions*`) |
+| `src/apis/devices.ts` | 신규 | 기기 등록/비활성화(`/users/me/devices*`) — 백엔드 계약만 맞춰둠, 호출부 없음(§4) |
+| `src/contexts/SettingsContext.tsx` | +조회/토글 연동 | 로그인 시 서버 알림 카테고리로 로컬 값을 덮고, 토글마다 `PATCH` 전송 |
+| `src/components/map/ReportComposerModal.tsx`, `ReportSheet.tsx` | 로그인 가드 추가 | 실제 백엔드는 제보 작성/신고에 로그인을 요구(401) — 있었지만 호출부 없이 방치돼 있던 `promptLogin` 유틸을 연결 |
+| `src/utils/reports.ts` | 주석 수정 | 삭제된 `mockReportsStore` 언급 제거 |
+
+### 1. 스코프를 좁힌 이유
+
+hongikon-be의 컨트롤러 13개(제보/뉴스/북마크/건물/시설/제휴업체/경로/알림카테고리/키워드구독/학과/유저학과/기기/인증)를 전부 조사한 결과, "전부 연결"은 지금 시점에 안전하지 않다고 판단했다:
+
+- **백엔드 테이블이 전부 비어 있다** — 시드 스크립트(`data.sql` 등)가 없고, README도 로컬 `gradlew bootRun` + 로컬 MySQL만 안내한다. 배포된 인스턴스도 없고 `EXPO_PUBLIC_API_BASE_URL`도 어디에도 설정돼 있지 않다.
+- **뉴스/북마크**: hongikon-be README가 스스로 "크롤러 아키텍처 방향 미확정(프론트 Node 크롤러 정적 파일 vs 백엔드 DB+API)"이라고 적어 뒀다. FE 뉴스(`crawledNews.ts`)는 이미지·첨부파일·조회수·소스명을 갖고 학과별 여러 소스를 스크래핑한 결과인데, 백엔드 `News`는 `title/content/category/sourceUrl/departmentId/buildingId`뿐인 얇은 관리자 입력 모델이다. 북마크(`newsId: Long`)도 FE의 크롤러 문자열 id와 대응이 안 된다.
+- **건물/시설/제휴업체**: FE `buildings.ts`(외곽선·층별 출입구 등 직접 검증한 데이터)·`facilities.ts`(68건)·`partners.ts`(1191줄, 이 세션과 무관하게 커밋 전 수정 중)가 백엔드 엔티티보다 훨씬 풍부하고, 백엔드 테이블은 비어 있다. `partners.ts`의 새 필드 `affiliationBenefits`(제휴처별 혜택 문구)는 백엔드 `Partner`에 대응 컬럼이 없다.
+- **경로 탐색**: 백엔드가 자체 그래프(`RouteNode`/`RouteEdge`, `pointNo`/`hasRoof`/`isBarrierFree` 등)를 갖고 있는데 이 테이블도 비어 있고, FE는 여전히 `pathNodes.ts` 위 클라이언트 Dijkstra를 쓴다(08-25 §미결 "경로망을 건물에 연결"과 같은 계열 문제). 데이터 스왑이 아니라 엔진 자체가 다르다.
+- **학과**: `GET /departments`도 비어 있어, FE 학과 트리(`useTreeSearch`) 연결은 지금 해봐야 빈 목록만 나온다.
+
+조사 결과를 사용자에게 보고하고 "지금 준비된 것만" 진행하기로 범위를 좁혔다(`AskUserQuestion` 응답: "Do what's actually ready").
+
+### 2. 제보(Reports) — 실연결
+
+Mock(`AsyncStorage` 기반 `mockReportsStore.ts`)을 걷어내고 `apis/reports.ts`가 직접 `apiRequest`를 호출하도록 재작성했다. FE 타입(`Report`/`CreateReportInput` 등)은 이미 백엔드 스펙에 맞춰 주석까지 달려 있어 그대로 옮기면 됐다.
+
+- `customCategoryLabel`·`imageUrl`은 백엔드에 대응 필드가 없다(주석에 이미 명시돼 있던 사실). 요청 바디에서는 빼고, 생성 직후 응답에만 로컬로 다시 붙여 작성자 화면에서는 그대로 보이게 했다 — 새로고침하거나 다른 사용자가 보면 사라진다(기존에 문서화된 동작 그대로).
+- `POST /reports`·`POST /reports/{id}/flags`는 `anyRequest().authenticated()`에 걸려 로그인이 필요하다. 이전에는 목업이라 토큰 없이도(`accessToken ?? ''`) 동작했는데, 실제 백엔드는 401을 던진다. `src/utils/reports.ts`에 정확히 이 상황을 위해 만들어 뒀지만 어디서도 호출하지 않던 `promptLogin`을 `ReportComposerModal`·`ReportSheet`에 연결해, 토큰이 없으면 API를 부르기 전에 로그인 유도 얼럿을 띄우게 했다.
+- `GET /reports`는 `live`/`buildingId` 둘 다 옵셔널 쿼리라 그대로 전달. 백엔드 컨트롤러 주석을 보면 `live` 값과 무관하게 항상 "진행중" 목록만 돌려주지만(`live=false` 케이스 미구현), 의도를 분명히 하려고 `live=true`는 계속 보낸다.
+- `deleteReport`는 호출부가 없다(본인 제보 삭제 UI 자체가 아직 없음) — 함수만 실제 엔드포인트로 바꿔 뒀다.
+
+### 3. 알림 카테고리 — 실연결
+
+`SettingsContext`의 `subscribedCategories`(공지·장학·행사·수강·시설·취업·상담)가 백엔드 `NotificationCategoryService.CATEGORIES`와 문자열까지 정확히 일치함을 확인했다(양쪽 다 "확인 필요"로 표시돼 있었지만 이미 같은 값으로 맞춰져 있었다). 로그인 상태(`accessToken` 존재)일 때만:
+- 마운트 시 `GET /users/me/notification-categories`로 서버 값을 가져와 로컬 값을 덮는다(서버가 진실 소스).
+- 토글마다 `PATCH /users/me/notification-categories/{category}`를 fire-and-forget으로 보낸다(실패하면 `console.warn`, 로컬 상태는 낙관적으로 유지).
+
+게스트(토큰 없음)는 기존처럼 로컬 저장만 쓴다.
+
+### 4. 키워드 구독 / 기기 등록 — API 계층만
+
+- **키워드 구독**(`KeywordSubscriptionController`, 자유 텍스트 알림)은 이 앱에 대응하는 화면이 없다. `SubscriptionManagerModal`이 다루는 "구독"은 학과 단위(`subscribedDepts`)라 축이 다르고, 학과 구독에 대응하는 백엔드 엔드포인트는 아예 없다(있는 건 "내 학과"=`UserDepartmentController`, 마이페이지용 소속 정보로 의미가 다름). `apis/notifications.ts`에 CRUD 함수만 만들어 뒀다 — 새 입력 UI가 생기면 바로 쓸 수 있다.
+- **기기 푸시 토큰 등록**(`UserDeviceController`)도 `apis/devices.ts`에 계약만 맞춰 뒀다. 이 레포에 `expo-notifications`가 아직 없어(패키지 목록 확인) 실제 권한 요청·토큰 발급 플로우를 검증 없이 새 네이티브 의존성과 함께 붙이는 건 위험하다고 판단해 호출부는 만들지 않았다.
+
+### 5. 검증
+
+`npx tsc --noEmit` 통과(변경 때마다 재확인). 실제 백엔드가 로컬에도 배포본에도 안 떠 있어(§1) 런타임 왕복은 아직 못 해봤다 — `EXPO_PUBLIC_API_BASE_URL`을 로컬 `gradlew bootRun` 주소로 채우고 `/auth/test-token`으로 받은 토큰을 넣어야 실제 테스트가 가능하다.
+
+> **미결**: 로컬 백엔드를 띄워 리포트 생성 → 목록 조회 → 신고 → 알림 카테고리 토글까지 실제 왕복 테스트를 아직 못 했다(백엔드 미기동, `EXPO_PUBLIC_API_BASE_URL` 미설정).
+
+---
+
+## 2026-08-27
+
+**목표**: 푸시 알림 최소 구현 — 권한 요청 → Expo 푸시 토큰 발급 → 기기 등록(`POST /users/me/devices`) → 알림 탭 시 화면 이동.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/pushNotifications.ts` | 신규 | `usePushNotifications` 훅 — 권한 요청 → 토큰 발급 → 로그인 상태면 서버 등록 |
+| `src/navigation/navigationRef.ts` | 신규 | `NavigationContainer` 밖(알림 응답 리스너)에서 화면을 전환하기 위한 참조 |
+| `src/utils/notificationFormat.ts` | 신규 | 알림 `data` payload → 표시용 제목/본문 포맷 |
+| `src/apis/devices.ts` | 재작성 | 08-26엔 계약만 맞춰 두고 호출부가 없었는데, 이번에 `usePushNotifications`가 실제로 불러 쓰게 되며 인자 형태를 객체 하나에서 positional 4개로 바꿈 |
+| `App.tsx` | +10 | `NavigationContainer`에 `navigationRef` 연결, `PushNotificationsBridge`(빈 컴포넌트)로 훅 마운트 |
+| `app.json`, `package.json`, `pnpm-lock.yaml` | 의존성 추가 | `expo-notifications` 플러그인·패키지 등록 |
+| `src/constants/news.ts` | +1 | `NEWS_BY_ID` — 알림의 `newsId`로 상세 화면에 넘길 항목을 찾는 맵 |
+| `src/types/index.ts` | +1 타입 | `PushNotificationData`(`NEWS`/`REPORT` 두 갈래) |
+| `src/screens/AppStatusScreen.tsx` | +개발자 도구 | `__DEV__` 전용 "알림 포맷 미리보기" 버튼 |
+
+### 1. 권한 → 토큰 → 서버 등록
+
+`usePushNotifications`는 로그인 상태(`accessToken` 존재)일 때만 권한을 요청하고, 허용되면 `Notifications.getExpoPushTokenAsync`로 받은 토큰을 `POST /users/me/devices`에 등록한다. `UserDeviceController`가 로그인을 요구해 게스트는 건너뛴다. 웹은 원격 푸시를 지원하지 않아 `Platform.OS === 'web'`이면 바로 종료.
+
+### 2. 알림 탭 → 화면 이동
+
+`NavigationContainer` 밖(알림 응답 리스너)에서 네비게이션하려면 `ref`가 필요해 `navigationRef.ts`를 새로 뒀다. `NEWS` 타입은 로컬 `NEWS_DATA`에서 `newsId`로 찾아 상세 화면으로, `REPORT` 타입은 일단 지도 탭(기본 탭)으로만 보낸다 — 좌표로 지도를 자동 포커스하는 기능은 `MapScreen`이 아직 알림발 좌표를 받을 방법이 없어 후속 작업으로 남겼다.
+
+### 3. Payload 계약은 가안
+
+`PushNotificationData`는 프론트가 임의로 정한 타입이다 — `hongikon-be`엔 기기 등록(`UserDevice`) 엔티티만 있고 실제로 푸시를 발송하는 코드 자체가 없다(2026-08-27 확인). 백엔드에 발송부가 생기면 실제 payload와 이 타입을 맞춰봐야 한다.
+
+### 4. 검증
+
+원격 푸시 발송부가 없어 실기기 왕복 테스트가 불가능하다. 대신 `AppStatusScreen`에 같은 `data` payload로 로컬 알림을 바로 띄우는 개발자 전용 버튼을 추가해, 포맷(`formatPushNotification`)과 탭 시 라우팅만은 눈으로 확인할 수 있게 했다. `npx tsc --noEmit` 통과.
+
+> **미결**: 백엔드 발송부가 없어 실제 원격 푸시 왕복 테스트 불가. EAS FCM/APNs 자격 증명도 아직 설정 안 됨(`eas credentials`).
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
 | 1 | **안드로이드 preview APK 빌드** | `eas build --profile preview --platform android`. Expo 무료 계정 필요(로그인은 대화형). 실기기에서 지도가 뜨는지 확인할 유일한 경로 |
-| 2 | **소식 데이터 갱신 구조** | `src/data/news.cs.json`이 2026-08-05 스냅샷. 지금 출시하면 사용자는 그날 공지만 계속 본다. EAS Update 또는 백엔드 연동 필요 |
+| 2 | **소식 데이터 갱신 구조** | `src/data/news.cs.json`이 2026-08-05 스냅샷. hongikon-be README도 "크롤러 아키텍처 방향 미확정"이라 적어 뒀다 — 프론트 EAS Update로 갱신할지, 백엔드 DB+API로 옮길지 팀 결정 필요(08-26 §1) |
 | 3 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
 | 4 | 지도 `baseUrl` 지정 | 네이버 콘솔 등록 도메인 확인 후 |
 | 5 | 스토어 계정 개설 | Apple $99/년, Google Play $25 1회. 현재 둘 다 없음 |
@@ -287,6 +384,8 @@ union-find로 컴포넌트를 다시 계산해 확인: 총 67개 노드·77개 �
 | 8 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점(어느 기존 노드/건물과 이어지는지) 사용자 확인 필요 — 확인되면 `n56`~`n67` 값들도 §5 방식대로 반영 |
 | 9 | 편의시설 데이터 + `pathNodes.ts` 커밋 | `facilities.ts` 등 5개 파일이 아직 커밋 전. 지금 커밋하면 §8의 미확인 3건도 같이 굳어지니 그 전에 정리 권장 |
 | 10 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 경로망 전체가 어느 건물과도 안 이어져 있어 `findRoutes()`가 항상 직선거리로 대체됨(§8 확인 후) |
+| 11 | 로컬 백엔드 기동 + `EXPO_PUBLIC_API_BASE_URL` 설정 | 08-26 §5 참고. 리포트/알림카테고리 실연결을 실제로 왕복 테스트하려면 필요 |
+| 12 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과/뉴스) | 위 항목들 테이블이 전부 비어 있어(08-26 §1) 지금은 연결해도 빈 목록만 나온다. 시딩 방식(수동 INSERT vs 관리자 화면 vs FE 데이터 이관) 백엔드팀과 논의 필요 |
 
 ### 미결 질문
 
@@ -300,3 +399,6 @@ union-find로 컴포넌트를 다시 계산해 확인: 총 67개 노드·77개 �
 - `n19-n20` 간선을 복원해야 하는지 (사용자 요청 없이 사라짐)
 - `remove 55-30`이 `55-31`의 오타인지 (해당 간선이 없어 no-op 처리함)
 - `n50` 완전 삭제가 의도적이었는지 (좌표 오류인지 단순 재구성인지)
+- 편의시설 내용 정리
+- 건물/시설/제휴업체/학과/경로 데이터를 hongikon-be에 언제·어떤 방식으로 시딩할 것인가 (08-26 §1)
+- `partners.ts`의 `affiliationBenefits`(제휴처별 혜택 문구)를 백엔드 `Partner` 스키마에 컬럼으로 추가할 것인가, FE 전용으로 남길 것인가

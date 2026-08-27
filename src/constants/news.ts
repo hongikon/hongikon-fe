@@ -109,6 +109,11 @@ export const NEWS_DATA: NewsItem[] = [
   ...MOCK_NEWS.filter((item) => !CRAWLED_SOURCE_IDS.has(item.sourceId)),
 ]
 
+/** id → NewsItem. 알림 탭 시 `newsId`로 상세 화면에 넘길 항목을 찾는 데 쓴다. */
+export const NEWS_BY_ID: Map<string, NewsItem> = new Map(
+  NEWS_DATA.map((item) => [item.id, item]),
+)
+
 export interface SubscribableItem {
   id: string
   name: string

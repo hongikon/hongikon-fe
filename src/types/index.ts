@@ -328,3 +328,29 @@ export interface CreateReportFlagInput {
 export interface ReportFlagResult {
   flagCount: number
 }
+
+/**
+ * 푸시 알림의 `data` payload. 백엔드가 실제로 푸시를 보내는 코드는 아직 없어
+ * (`hongikon-be`엔 구독·기기 등록 엔티티만 있고 발송부는 미구현, 2026-08-27 확인)
+ * 이 계약은 아직 프론트가 정한 가안이다 — 발송부가 생기면 실제 payload와 맞춰본다.
+ *
+ * `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
+ * (`src/lib/pushNotifications.ts` 의 응답 리스너 참고).
+ */
+export type PushNotificationData =
+  | {
+      type: 'NEWS'
+      /** `NewsItem.id`. 로컬 `NEWS_DATA`에서 찾아 상세 화면에 그대로 넘긴다. */
+      newsId: string
+    }
+  | {
+      type: 'REPORT'
+      reportId: number
+      lat: number
+      lng: number
+      floor: number | null
+      category: ReportCategory
+      /** `category`가 `ETC`일 때만. `Report.customCategoryLabel` 참고. */
+      customCategoryLabel?: string
+      title: string
+    }
