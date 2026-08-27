@@ -1,9 +1,4 @@
-import {
-  createMockReport,
-  deleteMockReport,
-  flagMockReport,
-  listMockReports,
-} from '../lib/mockReportsStore'
+import { apiRequest } from './client'
 import type {
   CreateReportFlagInput,
   CreateReportInput,
@@ -12,12 +7,6 @@ import type {
   ReportListItem,
 } from '../types'
 
-/**
- * 백엔드가 준비되지 않아 임시로 기기 로컬 스토어(`mockReportsStore.ts`)를 쓴다.
- * 함수 시그니처는 실제 API를 그대로 흉내 내, 백엔드가 생기면 이 파일 안쪽만
- * `apiRequest`/`apiUpload` 호출로 되돌리면 되고 호출부(컴포넌트)는 안 건드려도 된다.
- */
-
 interface GetLiveReportsOptions {
   /** 특정 건물로 필터링. 생략하면 전체 제보를 받는다. */
   buildingId?: number
@@ -25,8 +14,10 @@ interface GetLiveReportsOptions {
 }
 
 /**
- * 사진 첨부. 업로드할 서버가 없어 고른 이미지의 로컬 URI를 그대로 돌려준다.
- * `<Image source={{ uri }} />` 는 로컬 파일 URI도 그대로 그릴 수 있어 화면상 차이가 없다.
+ * 사진 첨부. 실제 백엔드(`Report` 엔티티)에는 이 컬럼도 업로드 API도 없어
+ * (`docs/report-api-spec.md` §8.2 제안이 아직 구현 전), 고른 이미지의 로컬
+ * URI를 그대로 돌려준다. `<Image source={{ uri }} />` 는 로컬 파일 URI도
+ * 그대로 그릴 수 있어 작성자 본인 화면에서는 차이가 없다.
  */
 export async function uploadReportImage(
   uri: string,
@@ -35,31 +26,55 @@ export async function uploadReportImage(
   return uri
 }
 
-/** 제보 생성. 검토 절차를 처리할 운영자 화면이 없어 만들자마자 ACTIVE로 올린다. */
+/**
+ * 제보 생성. `customCategoryLabel`/`imageUrl`은 서버 스펙에 없는 로컬 전용
+ * 필드라(`Report` 타입 주석 참고) 요청 바디에서 빼고 보낸다. 서버 응답에는
+ * 당연히 두 값이 없으므로, 방금 만든 제보를 곧바로 화면에 보여줄 수 있도록
+ * 응답에 다시 덧붙여 돌려준다 — 새로고침하거나 다른 사용자가 보면 사라진다.
+ */
 export async function createReport(
   input: CreateReportInput,
-  _accessToken: string,
+  accessToken: string,
 ): Promise<Report> {
-  return createMockReport(input)
+  const { customCategoryLabel, imageUrl, ...body } = input
+
+  const report = await apiRequest<Report>('/reports', {
+    method: 'POST',
+    body,
+    accessToken,
+  })
+
+  return { ...report, customCategoryLabel, imageUrl }
 }
 
 /** 현재 진행 중인 제보 목록. */
 export async function getLiveReports(
   options: GetLiveReportsOptions = {},
 ): Promise<ReportListItem[]> {
-  return listMockReports(options.buildingId)
+  const params = new URLSearchParams({ live: 'true' })
+  if (options.buildingId !== undefined) params.set('buildingId', String(options.buildingId))
+
+  const { reports } = await apiRequest<{ reports: ReportListItem[] }>(
+    `/reports?${params.toString()}`,
+    { accessToken: options.accessToken },
+  )
+  return reports
 }
 
 /** 본인 제보 삭제. */
-export async function deleteReport(id: number, _accessToken: string): Promise<void> {
-  await deleteMockReport(id)
+export async function deleteReport(id: number, accessToken: string): Promise<void> {
+  await apiRequest<void>(`/reports/${id}`, { method: 'DELETE', accessToken })
 }
 
 /** 신고. */
 export async function flagReport(
   id: number,
   input: CreateReportFlagInput,
-  _accessToken: string,
+  accessToken: string,
 ): Promise<ReportFlagResult> {
-  return flagMockReport(id, input)
+  return apiRequest<ReportFlagResult>(`/reports/${id}/flags`, {
+    method: 'POST',
+    body: input,
+    accessToken,
+  })
 }

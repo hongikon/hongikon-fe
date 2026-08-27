@@ -9,6 +9,11 @@ import {
 } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { CategoryKey } from '../constants/colors'
+import { useAuth } from './AuthContext'
+import {
+  getNotificationCategories,
+  setNotificationCategoryEnabled,
+} from '../apis/notifications'
 
 const STORAGE_KEY = '@hongik_settings'
 
@@ -67,6 +72,7 @@ function migrateSubscribedDepts(depts: string[]): string[] {
 const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
+  const { accessToken } = useAuth()
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [loaded, setLoaded] = useState(false)
 
@@ -106,18 +112,54 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }, [settings, loaded])
 
+  /**
+   * 로그인하면 서버에 저장된 카테고리 설정이 기기 로컬 값을 덮는다 — 로그인한
+   * 사용자에게는 서버가 진실 소스다. 게스트(accessToken 없음)는 계속 로컬 값만 쓴다.
+   */
+  useEffect(() => {
+    if (!loaded || !accessToken) return
+
+    let cancelled = false
+    getNotificationCategories(accessToken)
+      .then((categories) => {
+        if (cancelled) return
+        const enabled = categories.filter((c) => c.enabled).map((c) => c.category)
+        setSettings((prev) => ({ ...prev, subscribedCategories: enabled }))
+      })
+      .catch((error) => {
+        console.warn('알림 카테고리 설정을 불러오지 못했습니다:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [accessToken, loaded])
+
   const toggleSubscriptionAlert = useCallback(() => {
     setSettings((prev) => ({ ...prev, subscriptionAlert: !prev.subscriptionAlert }))
   }, [])
 
-  const toggleSubscribedCategory = useCallback((cat: CategoryKey) => {
-    setSettings((prev) => ({
-      ...prev,
-      subscribedCategories: prev.subscribedCategories.includes(cat)
-        ? prev.subscribedCategories.filter((c) => c !== cat)
-        : [...prev.subscribedCategories, cat],
-    }))
-  }, [])
+  const toggleSubscribedCategory = useCallback(
+    (cat: CategoryKey) => {
+      setSettings((prev) => {
+        const nextEnabled = !prev.subscribedCategories.includes(cat)
+
+        if (accessToken) {
+          setNotificationCategoryEnabled(cat, nextEnabled, accessToken).catch((error) => {
+            console.warn('알림 카테고리 설정을 저장하지 못했습니다:', error)
+          })
+        }
+
+        return {
+          ...prev,
+          subscribedCategories: nextEnabled
+            ? [...prev.subscribedCategories, cat]
+            : prev.subscribedCategories.filter((c) => c !== cat),
+        }
+      })
+    },
+    [accessToken],
+  )
 
   const toggleSubscribedDept = useCallback((id: string) => {
     setSettings((prev) => ({

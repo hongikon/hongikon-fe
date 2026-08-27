@@ -26,6 +26,7 @@ import {
 } from '../../constants/report'
 import { useAuth } from '../../contexts/AuthContext'
 import { createReport, uploadReportImage } from '../../apis/reports'
+import { promptLogin } from '../../utils/reports'
 import { chipStyles } from './chipStyles'
 import type { Report, ReportCategory } from '../../types'
 
@@ -59,7 +60,7 @@ export default function ReportComposerModal({
   onClose,
   onCreated,
 }: ReportComposerModalProps) {
-  const { accessToken } = useAuth()
+  const { accessToken, logout } = useAuth()
   const [category, setCategory] = useState<ReportCategory>('EVENT')
   // '+' 로 확정한 카테고리 라벨. 체크(확정) 전까지는 반영되지 않는다.
   const [customLabel, setCustomLabel] = useState('')
@@ -150,6 +151,12 @@ export default function ReportComposerModal({
   const handleSubmit = async () => {
     if (!target || !canSubmit) return
 
+    // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
+    if (!accessToken) {
+      promptLogin('제보를 등록하려면 로그인해주세요.', logout)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -158,13 +165,10 @@ export default function ReportComposerModal({
     const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
 
     try {
-      // 로그인 없이도 화면 확인용으로 올려 볼 수 있게, 토큰이 없으면 빈 값을 대신 쓴다.
-      // 로컬 목업 스토어는 이 값을 실제로 쓰지 않는다.
-      const token = accessToken ?? ''
-
       // 사진을 먼저 올려 URL을 받는다. 여기서 실패하면 제보는 만들지 않고
       // 작성 중이던 내용은 그대로 남는다.
-      const imageUrl = imageUri === null ? undefined : await uploadReportImage(imageUri, token)
+      const imageUrl =
+        imageUri === null ? undefined : await uploadReportImage(imageUri, accessToken)
 
       const report = await createReport(
         {
@@ -180,7 +184,7 @@ export default function ReportComposerModal({
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
         },
-        token,
+        accessToken,
       )
       onCreated(report)
       setSubmitted(true)

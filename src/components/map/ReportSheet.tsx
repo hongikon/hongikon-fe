@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
 import { flagReport } from '../../apis/reports'
-import { formatFreshness } from '../../utils/reports'
+import { formatFreshness, promptLogin } from '../../utils/reports'
 import type { ReportListItem } from '../../types'
 
 interface ReportSheetProps {
@@ -22,7 +22,7 @@ interface ReportSheetProps {
  * 단건 조회 엔드포인트가 생긴 뒤에 붙인다.
  */
 export default function ReportSheet({ report, onClose }: ReportSheetProps) {
-  const { accessToken } = useAuth()
+  const { accessToken, logout } = useAuth()
   const meta = reportCategoryMeta(report.category)
   const badgeLabel = report.customCategoryLabel || meta.label
   const [flagging, setFlagging] = useState(false)
@@ -30,13 +30,18 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const [error, setError] = useState<string | null>(null)
 
   const handleFlag = async () => {
+    // 제보 신고도 로그인이 필요하다(`POST /reports/{id}/flags` — 게스트는 401).
+    if (!accessToken) {
+      promptLogin('제보를 신고하려면 로그인해주세요.', logout)
+      return
+    }
+
     setFlagging(true)
     setError(null)
     try {
       // 사유 선택 화면은 아직 없다. 스펙 §4.4 의 사유 목록이 확정되면
       // 고르게 하고, 그 전까지는 가장 넓은 값으로 보낸다.
-      // 로그인 없이도 화면 확인용으로 눌러 볼 수 있게, 토큰이 없으면 빈 값을 대신 쓴다.
-      await flagReport(report.id, { reason: 'ETC' }, accessToken ?? '')
+      await flagReport(report.id, { reason: 'ETC' }, accessToken)
       setFlagged(true)
     } catch (caught) {
       setError(
