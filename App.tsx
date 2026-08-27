@@ -11,6 +11,7 @@ import RootNavigator from './src/navigation/RootNavigator'
 import { navigationRef } from './src/navigation/navigationRef'
 import { usePushNotifications } from './src/lib/pushNotifications'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
+import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
 import { FONT_ASSETS } from './src/constants/typography'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
@@ -26,13 +27,19 @@ function PushNotificationsBridge() {
  * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만.
  * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
+ *
+ * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).
+ * `hongikon-be`에 발송부가 생겨 실제 원격 푸시로 확인할 수 있게 되면 지운다.
  */
-const tempDebugMode: 'dots' | 'paths' | null =
+type TempDebugMode = 'dots' | 'paths' | 'notifications'
+
+const tempDebugMode: TempDebugMode | null =
   Platform.OS === 'web' && typeof window !== 'undefined'
     ? (() => {
         const path = window.location.pathname.replace(/\/+$/, '')
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
+        if (path === '/temp/notifications') return 'notifications'
         return null
       })()
     : null
@@ -53,6 +60,10 @@ export default function App() {
 
   if (!fontsLoaded && !fontError) {
     return null
+  }
+
+  if (tempDebugMode === 'notifications') {
+    return <TempNotificationPreviewScreen />
   }
 
   if (tempDebugMode) {
