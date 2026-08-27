@@ -370,6 +370,35 @@ Mock(`AsyncStorage` 기반 `mockReportsStore.ts`)을 걷어내고 `apis/reports.
 
 ---
 
+## 2026-08-27 (2)
+
+**목표**: `hongikon-be`의 크롤러/학과 구조를 조사하고, `GET /news`·`GET /departments`용 API 클라이언트를 추가.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/apis/news.ts` | 신규 | `GET /news`(필터), `GET /news/{id}` 호출 |
+| `src/apis/departments.ts` | 신규 | `GET /departments` 호출 |
+
+### 1. 크롤러 구조 확인
+
+08-26 항목에서 "크롤러 아키텍처 미확정"이라 적었던 것과 달리, `hongikon-be`엔 이미 완성된 크롤러가 있었다(`crawler` 패키지) — `CrawlerScheduler`가 매시 정각 `CrawlerService.crawlAll()`을 돌려 학과·행정기관 게시판 36개 + 대학공지 6개 분류를 훑고, `NewsCategoryClassifier`(제목 키워드 → 7종 카테고리, `NotificationCategoryService`와 값 일치 확인됨)로 분류해 `News`로 저장한다. FE `scripts/crawler/*.mjs`를 그대로 포팅한 것이라 게시판 목록도 대부분 일치한다.
+
+**막혀 있는 지점**: `NewsLocationMatcher.matchDepartment()`가 `Department.name`을 게시판의 `sourceId`와 정확히 일치시켜 찾는데, `departments` 테이블이 비어 있다(시드 SQL·Flyway·시더 클래스 전부 없음, 스키마 자체도 `ddl-auto=validate`라 자동 생성 안 됨). 지금 크롤러를 돌리면 소식은 저장되지만 전부 `department_id = null`로 남는다.
+
+### 2. FE 구독 트리 ↔ 크롤러 게시판 대조
+
+`TREE_DATA`(`constants/news.ts`)의 리프 노드와 `CrawlerBoards.DEPARTMENT_BOARDS`의 `sourceId`를 전부 대조했다. 크롤러 쪽 orphan(트리에 없는 게시판)은 없었지만, 트리에는 있는데 게시판이 없는 리프가 9개 있었다: `기초과학과`, `디자인경영전공`/`예술경영전공`(학부 공지 게시판만 있음, FE 주석에 이미 명시돼 있던 사실), `자율전공`(미술대학), `바이오헬스융합학부`(학과 전체), `융합전공` 4개 전공 전부. 이 9개를 구독해도 지금은 영원히 소식이 안 온다 — `Department` 시드에 포함할지, 포함해도 크롤러 커버리지가 없다는 걸 알릴지는 아직 결정 안 됨.
+
+### 3. API 클라이언트 추가 (화면 연결은 보류)
+
+`src/apis/news.ts`/`departments.ts`를 백엔드 DTO에 맞춰 추가했다. `GET /news` 응답(`BackendNewsSummary`/`Detail`)은 FE 크롤러 데이터(`NewsItem`)보다 훨씬 얇다 — `images`/`attachments`/`views`/출처명이 없다(08-26에도 확인했던 내용). `NewsScreen`은 여전히 `NEWS_DATA`(FE 크롤러 정적 스냅샷)를 그대로 쓴다 — 백엔드 `news`/`departments` 테이블이 비어 있고 배포된 인스턴스도 없는 상태에서 화면을 이 API로 바꾸면 목록이 통째로 비어 보이는 눈에 띄는 회귀라, API 계층만 만들고 화면 연결은 보류했다(§1의 시딩, 배포 이후로 미룸).
+
+> **미결**: `Department` 시드(34개 학과, §2의 9개 미매칭 리프 포함 여부), FE 크롤러(`scripts/crawler`)와 백엔드 크롤러 중 어느 쪽을 실제 소스로 쓸지, `NewsScreen`을 언제 이 API로 옮길지 — 전부 배포/시딩 이후로 미뤄진 결정.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
