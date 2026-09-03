@@ -24,14 +24,15 @@ function PushNotificationsBridge() {
 /**
  * 임시 - 출입구/실내 경로 검증용 웹 전용 경로. 로그인 상태와 무관하게 바로 보여야 해서
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
- * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만.
+ * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만,
+ * `/temp/path-nodes` = 실외 보행 경로망 전체.
  * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
  *
  * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).
  * `hongikon-be`에 발송부가 생겨 실제 원격 푸시로 확인할 수 있게 되면 지운다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'notifications'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications'
 
 const tempDebugMode: TempDebugMode | null =
   Platform.OS === 'web' && typeof window !== 'undefined'
@@ -39,6 +40,7 @@ const tempDebugMode: TempDebugMode | null =
         const path = window.location.pathname.replace(/\/+$/, '')
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
+        if (path === '/temp/path-nodes') return 'nodes'
         if (path === '/temp/notifications') return 'notifications'
         return null
       })()

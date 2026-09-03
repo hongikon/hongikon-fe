@@ -14,6 +14,7 @@ import {
 import { COLORS } from '../constants/colors'
 import type { Building } from '../types'
 import { ENTRANCE_CHECK_DATA } from '../debug/entranceCheckData'
+import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 
 const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
 
@@ -27,13 +28,15 @@ const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
  * `entranceDebugMode` - 임시 출입구 좌표 검증용 오버레이. `src/screens/TempEntranceDebugScreen.tsx`
  * (웹 전용 `/temp/dots`, `/temp/path` 경로)에서만 켠다 - 일반 지도 화면(MapScreen)에는 안 보인다.
  * `'dots'` 는 지점·연결선·실내 경로를 전부 그리고, `'paths'` 는 지점 마커 없이 실내 경로
- * 선만 그려 경로 모양만 따로 눈으로 확인할 수 있게 한다.
+ * 선만 그려 경로 모양만 따로 눈으로 확인할 수 있게 한다. `'nodes'` 는 실외 보행
+ * 경로망(`pathNodes.ts`의 PATH_WAYPOINTS/PATH_EDGES)을 실제 지도 위에 그린다 -
+ * 연결된 성분은 파랑, 아직 본망에 못 붙은 성분(56-60)은 주황으로 구분한다.
  * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 매개변수와
  * `src/debug/entranceCheckData.ts`, 아래 관련 블록을 통째로 지운다.
  */
 export function buildMapHTML(
   buildings: readonly Building[],
-  entranceDebugMode: 'off' | 'dots' | 'paths' = 'off',
+  entranceDebugMode: 'off' | 'dots' | 'paths' | 'nodes' = 'off',
 ): string {
   const buildingJSON = JSON.stringify(
     buildings.map((building) => ({
@@ -147,6 +150,123 @@ export function buildMapHTML(
           infowindow.open(map, e.coord);
         });
       });
+    })();`
+        : entranceDebugMode === 'nodes'
+        ? `(function () {
+      var WAYPOINTS = ${JSON.stringify(PATH_WAYPOINTS)};
+      var EDGES = ${JSON.stringify(PATH_EDGES)};
+      var BUILDING_ENTRANCES = ${JSON.stringify(
+        buildings
+          .filter((b) => b.entrances && b.entrances.length > 0)
+          .map((b) => ({ name: b.name, entrances: b.entrances })),
+      )};
+      var infowindow = new naver.maps.InfoWindow({ anchorSkew: true });
+
+      // 연결 성분 구분(합집합-찾기). 본망과, 아직 안 이어진 갈래(56-60)를 색으로 가른다.
+      var parent = {};
+      WAYPOINTS.forEach(function(w) { parent[w.id] = w.id; });
+      function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+      function union(a, b) { var ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; }
+      EDGES.forEach(function(e) { union(e[0], e[1]); });
+
+      var degree = {};
+      WAYPOINTS.forEach(function(w) { degree[w.id] = 0; });
+      EDGES.forEach(function(e) { degree[e[0]]++; degree[e[1]]++; });
+
+      var byId = {};
+      WAYPOINTS.forEach(function(w) { byId[w.id] = w; });
+
+      var mainRoot = find(WAYPOINTS[0].id);
+      var bounds = { swLat: Infinity, swLng: Infinity, neLat: -Infinity, neLng: -Infinity };
+
+      WAYPOINTS.forEach(function(w) {
+        bounds.swLat = Math.min(bounds.swLat, w.lat);
+        bounds.swLng = Math.min(bounds.swLng, w.lng);
+        bounds.neLat = Math.max(bounds.neLat, w.lat);
+        bounds.neLng = Math.max(bounds.neLng, w.lng);
+      });
+
+      EDGES.forEach(function(e) {
+        var a = byId[e[0]], b = byId[e[1]];
+        if (!a || !b) return;
+        var isMain = find(e[0]) === mainRoot;
+        new naver.maps.Polyline({
+          map: map,
+          path: [new naver.maps.LatLng(a.lat, a.lng), new naver.maps.LatLng(b.lat, b.lng)],
+          strokeColor: isMain ? '#1d4ed8' : '#d97706',
+          strokeWeight: 3,
+          strokeOpacity: 0.85,
+          strokeStyle: isMain ? 'solid' : 'shortdash',
+        });
+      });
+
+      WAYPOINTS.forEach(function(w) {
+        var isMain = find(w.id) === mainRoot;
+        var deg = degree[w.id];
+        var color = isMain ? '#1d4ed8' : '#d97706';
+        var size = deg >= 4 ? 14 : deg === 1 ? 11 : 8;
+        var fill = deg === 1 ? '#fff' : color;
+        var idLabel = w.id.replace('n', '');
+        var marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(w.lat, w.lng),
+          map: map,
+          zIndex: deg >= 4 ? 95 : 90,
+          icon: {
+            content: '<div style="position:relative;width:' + size + 'px;height:' + size + 'px;">'
+              + '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + fill
+              + ';border:2px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>'
+              + '<span style="position:absolute;left:' + (size + 2) + 'px;top:-1px;font-size:10px;font-weight:700;'
+              + 'color:#111827;background:rgba(255,255,255,0.85);padding:0 2px;border-radius:2px;white-space:nowrap;">'
+              + idLabel + '</span></div>',
+            anchor: new naver.maps.Point(size / 2, size / 2),
+          },
+        });
+        naver.maps.Event.addListener(marker, 'click', function() {
+          infowindow.setContent(
+            '<div style="padding:8px;font-size:12px;line-height:1.5;">'
+            + '<b>' + w.id + '</b> &middot; deg ' + deg + (isMain ? '' : ' &middot; <span style="color:#d97706">floating branch</span>') + '<br>'
+            + w.lat.toFixed(7) + ', ' + w.lng.toFixed(7)
+            + '</div>'
+          );
+          infowindow.open(map, marker);
+        });
+      });
+
+      BUILDING_ENTRANCES.forEach(function(building) {
+        building.entrances.forEach(function(entrance) {
+          bounds.swLat = Math.min(bounds.swLat, entrance.lat);
+          bounds.swLng = Math.min(bounds.swLng, entrance.lng);
+          bounds.neLat = Math.max(bounds.neLat, entrance.lat);
+          bounds.neLng = Math.max(bounds.neLng, entrance.lng);
+
+          var marker = new naver.maps.Marker({
+            position: new naver.maps.LatLng(entrance.lat, entrance.lng),
+            map: map,
+            zIndex: 96,
+            icon: {
+              content: '<div style="position:relative;width:11px;height:11px;">'
+                + '<div style="width:11px;height:11px;background:#a21caf;border:2px solid #fff;'
+                + 'box-shadow:0 1px 3px rgba(0,0,0,0.4);transform:rotate(45deg);"></div>'
+                + '<span style="position:absolute;left:13px;top:-2px;font-size:9px;font-weight:700;'
+                + 'color:#a21caf;background:rgba(255,255,255,0.9);padding:0 2px;border-radius:2px;white-space:nowrap;">'
+                + entrance.label + '</span></div>',
+              anchor: new naver.maps.Point(5.5, 5.5),
+            },
+          });
+          naver.maps.Event.addListener(marker, 'click', function() {
+            infowindow.setContent(
+              '<div style="padding:8px;font-size:12px;line-height:1.5;">'
+              + '<b>' + building.name + '</b><br>'
+              + '<span style="color:#a21caf">' + entrance.label + '</span> 출입구<br>'
+              + entrance.lat.toFixed(7) + ', ' + entrance.lng.toFixed(7)
+              + '</div>'
+            );
+            infowindow.open(map, marker);
+          });
+        });
+      });
+
+      fitToBounds(bounds);
     })();`
         : ''
     }

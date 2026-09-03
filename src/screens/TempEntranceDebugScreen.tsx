@@ -6,8 +6,11 @@ import { buildMapHTML } from '../utils/mapHtml'
 import { BUILDINGS } from '../constants/buildings'
 
 interface Props {
-  /** 'dots' = 지점+연결선+경로 전부(/temp/dots). 'paths' = 실내 경로 선만(/temp/path). */
-  mode: 'dots' | 'paths'
+  /**
+   * 'dots' = 지점+연결선+경로 전부(/temp/dots). 'paths' = 실내 경로 선만(/temp/path).
+   * 'nodes' = 실외 보행 경로망 전체(/temp/path-nodes).
+   */
+  mode: 'dots' | 'paths' | 'nodes'
 }
 
 /**
@@ -30,6 +33,8 @@ export default function TempEntranceDebugScreen({ mode }: Props) {
         <Text style={styles.bannerText}>
           {mode === 'paths'
             ? '임시 · 실내 경로 전용 보기 (/temp/path)'
+            : mode === 'nodes'
+            ? '임시 · 실외 보행 경로망 보기 (/temp/path-nodes)'
             : '임시 · 출입구 좌표 검증용 (/temp/dots)'}
         </Text>
       </View>
