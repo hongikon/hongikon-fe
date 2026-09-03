@@ -33,7 +33,7 @@ export const PARTNER_SOURCES: readonly PartnerSource[] = [
   },
   {
     affiliation: '경영대학',
-    period: '2026.03.03 ~ 2026.08.31',
+    period: '2026.09.01 ~ 2026.12.14',
     links: [
       { label: '제휴 안내 게시물 1', url: 'https://www.instagram.com/p/DV4shxSkmxP/' },
       { label: '제휴 안내 게시물 2', url: 'https://www.instagram.com/p/DVQPhkWEs9O/' },

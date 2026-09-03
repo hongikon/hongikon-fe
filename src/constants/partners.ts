@@ -681,6 +681,13 @@ export const PARTNERS: readonly Partner[] = [
     lat: 37.5528099161396,
     lng: 126.922482495511,
     benefit: '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀',
+    affiliationBenefits: [
+      {
+        affiliation: '경영대학',
+        benefit:
+          '2인 주문시 음료 1잔 3인 주문시 사리 1개(세트, 차돌 제외) 4인 주문시 버갈튀 또는 달콤베이컨감튀 (확장이전이벤트로 2만원 이상 구매 시 치즈떡 서비스 추가 제공)',
+      },
+    ],
     address: '서울 마포구 와우산로21길 28-12',
   },
   {
@@ -782,37 +789,47 @@ export const PARTNERS: readonly Partner[] = [
   // 공과대학과 겹치는 지점이라 위 공과대 섹션에 두고 affiliations 로만 겹쳐 둔다.
   // ── 카페 ────────────────────────────────────────────────
   {
-    id: 'cafe-beargles-sangsu',
-    name: '베어글스 홍대상수점',
+    id: 'cafe-yeongbos',
+    name: '영보스',
     category: '카페',
     affiliations: ['경영대학'],
-    lat: 37.548026,
-    lng: 126.920913,
-    benefit: '전메뉴 10% 할인',
-    address: '서울 마포구 독막로 65-1 1층',
+    lat: 37.5498069,
+    lng: 126.9240270,
+    benefit: '전메뉴 10% 할인(음료만 가능)',
+    address: '서울 마포구 독막로19길 42-18 지층',
   },
   {
-    id: 'cafe-puppy',
-    name: '퍼피',
+    id: 'cafe-harka-cookie',
+    name: '하르카쿠키',
     category: '카페',
     affiliations: ['경영대학'],
-    lat: 37.548615,
-    lng: 126.919833,
-    benefit: '전메뉴 15% 할인(할인 적용 후 13,000원 이상이면 베이커리 랜덤 1종 추가 제공)',
-    address: '서울 마포구 양화로6길 99-5 2층',
+    lat: 37.5486521,
+    lng: 126.9219486,
+    benefit: '전메뉴 10% 할인',
+    address: '서울 마포구 독막로15길 19 1층',
   },
 
   // ── 주점 ────────────────────────────────────────────────
   {
-    id: 'bar-michin-pocha',
-    name: '미친포차',
+    id: 'bar-t12',
+    name: 'T12',
     category: '주점',
     affiliations: ['경영대학'],
-    lat: 37.550960,
-    lng: 126.923652,
-    benefit:
-      '4인 이상 + 경영대학 학우 과반수 이상 방문 시 메인안주 25,000원 이하 중 택 1 또는 사이드·디저트류 25,000원 이하 중 택 2',
-    address: '서울 마포구 와우산로18길 15 2층',
+    lat: 37.5511735,
+    lng: 126.9222841,
+    benefit: '2잔 이상 주문 시 1만원 이하 칵테일 1잔 제공',
+    address: '서울특별시 마포구 와우산로19길 15 지하',
+  },
+  {
+    // 출처: instagram.com/p/Dcfvgd0klQG, /p/DcdKtRkkqUX, /p/DcdZWbSEjTW
+    id: 'bar-aengchun',
+    name: '앵춘',
+    category: '주점',
+    affiliations: ['경영대학'],
+    lat: 37.5479485,
+    lng: 126.9224248,
+    benefit: '10% 할인(일~목요일 오후 7시 이전 방문 시)',
+    address: '서울 마포구 독막로 81',
   },
 
   // ── 음식 ────────────────────────────────────────────────
@@ -825,6 +842,12 @@ export const PARTNERS: readonly Partner[] = [
     lat: 37.548680,
     lng: 126.920092,
     benefit: '고기 2인분 이상 주문 시 1인분 추가 제공(테이블당 1회)',
+    affiliationBenefits: [
+      {
+        affiliation: '경영대학',
+        benefit: '고기 2인분 이상 주문 시 테이블당 회 1인분 추가 제공(네이버 리뷰 작성 시)',
+      },
+    ],
     address: '서울 마포구 양화로6길 99-10 1층',
   },
   {
@@ -844,6 +867,11 @@ export const PARTNERS: readonly Partner[] = [
         benefit:
           '1인 1메뉴 또는 유부 4피스 주문 시 유부 1피스 제공(멘치카츠 유부 제외), 평일 포장 시 20% 할인',
       },
+      {
+        affiliation: '경영대학',
+        benefit:
+          '홀 - 1인 1메뉴 기준 유부 1pcs 제공(멘치카츠 유부 제외), 3인 이상 방문 시 인당 가라아게 1pcs 추가 제공 / 포장 - 평일 방문 포장 시 20% 할인',
+      },
     ],
     address: '서울 마포구 와우산로13길 49-11 반지층',
   },
@@ -856,16 +884,6 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.922674,
     benefit: '1만 원 이상 구매 시 10% 할인',
     address: '서울 마포구 와우산로7길 6 1층 101호',
-  },
-  {
-    id: 'food-bistro-sarangbang',
-    name: '비스트로 사랑방',
-    category: '음식',
-    affiliations: ['경영대학'],
-    lat: 37.549010,
-    lng: 126.921165,
-    benefit: '전메뉴 10% 할인',
-    address: '서울 마포구 와우산로15길 40 2층',
   },
   {
     id: 'food-suyo-chicken',
@@ -888,16 +906,6 @@ export const PARTNERS: readonly Partner[] = [
     address: '서울 마포구 홍익로 3-30 1층',
   },
   {
-    id: 'food-geunamja-bokkeumbap',
-    name: '그남자의 볶음밥',
-    category: '음식',
-    affiliations: ['경영대학'],
-    lat: 37.554798,
-    lng: 126.923464,
-    benefit: '치즈사리 또는 음료 1캔 중 택 1',
-    address: '서울 마포구 와우산로23길 43 2층',
-  },
-  {
     id: 'food-jincheong-yujeom',
     name: '진청유점',
     category: '음식',
@@ -906,6 +914,47 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.926294,
     benefit: '전메뉴 20% 할인',
     address: '서울 마포구 동교로46길 27 1층',
+  },
+  {
+    id: 'food-pujutgan-salon',
+    name: '푸줏간살롱',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.5479355,
+    lng: 126.9221025,
+    benefit: '전메뉴 10% 할인(점심특선 제외) + 고기구이 메뉴 주문 시 볶음밥 추가 제공',
+    address: '서울 마포구 독막로 77 1층',
+  },
+  {
+    id: 'food-sinmigyeong-hongdae-dakgalbi',
+    name: '신미경홍대닭갈비',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.5520826,
+    lng: 126.9218397,
+    benefit: '리뷰 작성 시 전메뉴 10% 할인',
+    address: '서울 마포구 와우산로21길 31-10 1층',
+  },
+  {
+    id: 'food-tacoeat-sangsu',
+    name: '타코잇 상수역점',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.5484553,
+    lng: 126.9208686,
+    benefit:
+      '콤보 주문 시 피코 데 가요 + 소스 1종 제공 or 2인 세트 주문 시 타코 1pcs 제공 or 생맥 한 잔 주문 시 한 잔 추가 제공(1회 한정) 중 택 1',
+    address: '서울 마포구 와우산로13길 49 1층',
+  },
+  {
+    id: 'food-sinlungpu-malatang',
+    name: '신룽푸마라탕',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.5537620,
+    lng: 126.9236938,
+    benefit: '전메뉴 10% 할인',
+    address: '서울 마포구 홍익로 10 101동 114~115호',
   },
 
   // ═══ 캠퍼스자율전공(서울) 제휴 ═══════════════════════════
