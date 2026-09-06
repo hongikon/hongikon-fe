@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -9,6 +10,7 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
 import { formatPushNotification } from '../utils/notificationFormat'
+import { getBackendStatus } from '../apis/status'
 import type { PushNotificationData } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
@@ -54,6 +56,31 @@ export default function AppStatusScreen() {
   const buildId =
     Platform.OS === 'ios' ? config?.ios?.buildNumber : String(config?.android?.versionCode ?? '-')
 
+  const compatibleBackendVersion = (config?.extra?.compatibleBackendVersion as string | undefined) ?? '-'
+  const [backendVersion, setBackendVersion] = useState<string | null>(null)
+  const [backendCheckFailed, setBackendCheckFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    getBackendStatus()
+      .then((status) => {
+        if (!cancelled) setBackendVersion(status.version)
+      })
+      .catch(() => {
+        if (!cancelled) setBackendCheckFailed(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const backendVersionLabel = backendCheckFailed
+    ? '연결 실패'
+    : (backendVersion ?? '확인 중…')
+  const backendVersionMatches = backendVersion !== null && backendVersion === compatibleBackendVersion
+
   const rows: { label: string; value: string }[] = [
     { label: '앱 이름', value: config?.name ?? '-' },
     { label: '버전', value: config?.version ?? '-' },
@@ -65,6 +92,15 @@ export default function AppStatusScreen() {
       value: EXECUTION_ENVIRONMENT_LABEL[Constants.executionEnvironment ?? ''] ?? '알 수 없음',
     },
     { label: '업데이트 채널', value: Constants.expoConfig?.updates?.url ? '연결됨' : '미설정' },
+  ]
+
+  const backendRows: { label: string; value: string }[] = [
+    { label: '이 빌드가 필요로 하는 백엔드 버전', value: compatibleBackendVersion },
+    { label: '지금 연결된 백엔드 버전', value: backendVersionLabel },
+    {
+      label: '버전 일치 여부',
+      value: backendCheckFailed ? '확인 불가' : backendVersion === null ? '확인 중…' : backendVersionMatches ? '✅ 일치' : '⚠️ 불일치',
+    },
   ]
 
   return (
@@ -80,6 +116,15 @@ export default function AppStatusScreen() {
       <ScrollView style={styles.scroll}>
         <View style={styles.section}>
           {rows.map((row) => (
+            <View key={row.label} style={styles.row}>
+              <Text style={styles.label}>{row.label}</Text>
+              <Text style={styles.value}>{row.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          {backendRows.map((row) => (
             <View key={row.label} style={styles.row}>
               <Text style={styles.label}>{row.label}</Text>
               <Text style={styles.value}>{row.value}</Text>

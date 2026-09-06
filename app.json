@@ -47,12 +47,14 @@
           "photosPermission": "제보에 첨부할 사진을 고르기 위해 사진 접근 권한이 필요합니다.",
           "cameraPermission": "제보에 첨부할 사진을 찍기 위해 카메라 권한이 필요합니다."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
         "projectId": "25bf8164-7142-43dc-a175-865a00577f3d"
-      }
+      },
+      "compatibleBackendVersion": "0.0.1-SNAPSHOT"
     },
     "owner": "seokhoonchois-team"
   }
