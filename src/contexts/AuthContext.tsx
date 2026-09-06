@@ -16,6 +16,7 @@ import {
   type TokenResponse,
 } from '../apis/auth'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
+import AppLoadingScreen from '../screens/AppLoadingScreen'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
 // Expo 공식 가이드가 권장하는 모듈 스코프 호출.
@@ -135,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [status, accessToken, loginWithKakao, continueAsGuest, logout, deleteAccount],
   )
 
-  if (status === 'loading') return null
+  if (status === 'loading') return <AppLoadingScreen />
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
