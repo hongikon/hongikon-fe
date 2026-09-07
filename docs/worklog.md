@@ -432,22 +432,59 @@ Mock(`AsyncStorage` 기반 `mockReportsStore.ts`)을 걷어내고 `apis/reports.
 
 ---
 
+## 2026-09-07
+
+**목표**: 백엔드가 공유한 노트(SDK 버전 불일치, 로그인 화면 전환, 네이버 지도 secret 재발급, 체크리스트 8건)를 실제 프론트 코드·커밋과 대조 검증. 코드 변경 없음 — 조사만.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `docs/worklog.md` | 이 항목 | 조사 결과 기록 |
+
+---
+
+### 1. SDK 57 업그레이드 — 이미 완료됨
+
+백엔드 노트는 "SDK 56 vs Expo Go 57 불일치로 실기기 테스트가 막혀 있다"고 전했으나, 어제(`fac8d3f`, 2026-09-06) 이미 SDK 57로 업그레이드가 끝나 있었다(`expo: ~57.0.20`, expo-* 패키지 전부 동기화, EAS pnpm 버전 고정, `expo-modules-jsi@56.0.12` 패치 제거). 백엔드가 최신 상태를 몰랐던 것으로 보여 알려줌.
+
+### 2. 로그인 후 화면 전환 — 코드는 이미 구현돼 있음, 실기기 테스트만 남음
+
+`AuthContext.tsx`의 `loginWithKakao`가 `WebBrowser.openAuthSessionAsync(KAKAO_LOGIN_URL, AUTH_REDIRECT_URI)`를 쓰고 있어, iOS `ASWebAuthenticationSession`/Android Custom Tabs가 리다이렉트를 직접 캐치해 Promise로 돌려주는 구조다. 별도의 `Linking` 이벤트 리스너 없이도 code 추출 → `exchangeAuthCode` → `authenticated` 전환까지 이미 짜여 있다. SDK도 올라갔으니 추가 구현 없이 바로 실기기 테스트만 하면 된다.
+
+### 3. 네이버 지도 secret — 재발급 여부, 사실상 확정
+
+`.env`의 현재 `NAVER_MAP_CLIENT_SECRET` 값(`L0piepHFml8...`)과 2026-09-04에 카톡으로 전달된 값이 정확히 일치한다. 08-06~08-08 §3 기록에 그 시점 조치가 "키 이름에서 접두사만 제거, **값은 변경하지 않음**"이라고 명시돼 있어, 이 값은 재발급된 새 값이 아니라 예전에 번들에 노출됐던 값 그대로일 가능성이 매우 높다. 그때 남긴 "미결: 재발급 권장"이 아직 처리 안 된 것으로 보인다.
+
+### 4. BE 체크리스트 8건 대조
+
+- `/auth/reissue`·`/auth/logout`·`DELETE /auth/me` 미구현: 프론트 `apis/client.ts`의 `apiRequest`는 401 재시도/재발급 로직이 전혀 없다 — `refreshToken`은 저장만 해두고 쓰는 곳이 없다. reissue가 배포되면 그때 401 인터셉트 로직을 새로 짜야 한다(지금은 대기).
+- `POST /auth/test-token` 제거, 제보 API 5개 미확정 항목: 전부 백엔드 전담/대기, 프론트 액션 없음.
+- `partner_affiliations` benefit 컬럼 / `GET /partners` 응답 구조 변경: 프론트에 `GET /partners`를 호출하는 코드가 아예 없다 — 제휴업체 데이터는 `constants/partners.ts`에 하드코딩돼 있어 이 변경은 지금 프론트 동작에 영향 없음.
+
+> **미결**: 네이버 지도 secret 재발급을 사용자가 직접 네이버 콘솔에서 확인·처리해야 함. 실기기(ngrok) 로그인 전체 흐름 테스트 아직 미실행.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
-| 1 | **안드로이드 preview APK 빌드** | `eas build --profile preview --platform android`. Expo 무료 계정 필요(로그인은 대화형). 실기기에서 지도가 뜨는지 확인할 유일한 경로 |
-| 2 | **소식 데이터 갱신 구조** | `src/data/news.cs.json`이 2026-08-05 스냅샷. hongikon-be README도 "크롤러 아키텍처 방향 미확정"이라 적어 뒀다 — 프론트 EAS Update로 갱신할지, 백엔드 DB+API로 옮길지 팀 결정 필요(08-26 §1) |
-| 3 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
-| 4 | 지도 `baseUrl` 지정 | 네이버 콘솔 등록 도메인 확인 후 |
-| 5 | 스토어 계정 개설 | Apple $99/년, Google Play $25 1회. 현재 둘 다 없음 |
-| 6 | 스토어 스크린샷·설명 | 계정 개설 후 |
-| 7 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
-| 8 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점(어느 기존 노드/건물과 이어지는지) 사용자 확인 필요 — 확인되면 `n56`~`n67` 값들도 §5 방식대로 반영 |
-| 9 | 편의시설 데이터 + `pathNodes.ts` 커밋 | `facilities.ts` 등 5개 파일이 아직 커밋 전. 지금 커밋하면 §8의 미확인 3건도 같이 굳어지니 그 전에 정리 권장 |
-| 10 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 경로망 전체가 어느 건물과도 안 이어져 있어 `findRoutes()`가 항상 직선거리로 대체됨(§8 확인 후) |
-| 11 | 로컬 백엔드 기동 + `EXPO_PUBLIC_API_BASE_URL` 설정 | 08-26 §5 참고. 리포트/알림카테고리 실연결을 실제로 왕복 테스트하려면 필요 |
-| 12 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과/뉴스) | 위 항목들 테이블이 전부 비어 있어(08-26 §1) 지금은 연결해도 빈 목록만 나온다. 시딩 방식(수동 INSERT vs 관리자 화면 vs FE 데이터 이관) 백엔드팀과 논의 필요 |
+| 1 | **네이버 지도 secret 재발급** | 09-07 확인: `.env`의 현재 값이 08-06~08-08에 번들 노출됐던 값과 정확히 일치 — 재발급된 값이 아닐 가능성이 매우 높다. 네이버 콘솔에서 재발급 필요(사용자 직접 조치) |
+| 2 | **실기기 로그인 전체 흐름 테스트 (딥링크 복귀 포함)** | SDK 57은 이미 적용됨(09-06 `fac8d3f`) — 막혀 있던 원인 해소. ngrok 등 https 터널로 `EXPO_PUBLIC_API_BASE_URL`을 실제 배포 백엔드에 연결해 확인 |
+| 3 | 안드로이드 preview APK 빌드 | `eas build --profile preview --platform android`. Expo 무료 계정 필요(로그인은 대화형) |
+| 4 | 소식 데이터 갱신 구조 | `src/data/news.cs.json`이 2026-08-05 스냅샷. hongikon-be README도 "크롤러 아키텍처 방향 미확정"이라 적어 뒀다 — 프론트 EAS Update로 갱신할지, 백엔드 DB+API로 옮길지 팀 결정 필요(08-26 §1) |
+| 5 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
+| 6 | 지도 `baseUrl` 지정 | 네이버 콘솔 등록 도메인 확인 후 |
+| 7 | 스토어 계정 개설 | Apple $99/년, Google Play $25 1회. 현재 둘 다 없음 |
+| 8 | 스토어 스크린샷·설명 | 계정 개설 후 |
+| 9 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
+| 10 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점(어느 기존 노드/건물과 이어지는지) 사용자 확인 필요 — 확인되면 `n56`~`n67` 값들도 §5 방식대로 반영 |
+| 11 | 편의시설 데이터 + `pathNodes.ts` 커밋 | `facilities.ts` 등 5개 파일이 아직 커밋 전. 지금 커밋하면 §8의 미확인 3건도 같이 굳어지니 그 전에 정리 권장 |
+| 12 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 경로망 전체가 어느 건물과도 안 이어져 있어 `findRoutes()`가 항상 직선거리로 대체됨(§8 확인 후) |
+| 13 | 리포트/알림카테고리 실제 배포 백엔드 대상 왕복 테스트 | 09-07 확인: `/auth/token/exchange`까지는 BE가 검증했으나 그 이후(제보 생성·목록·신고, 알림 카테고리 토글)는 아직 실기기 왕복 미확인 |
+| 14 | `/auth/reissue` 붙으면 `client.ts`에 401 인터셉트(재발급 후 재시도) 로직 추가 | BE 미구현 상태라 지금은 착수 불가(09-07 확인) — 배포되면 착수 |
+| 15 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과/뉴스) | 위 항목들 테이블이 전부 비어 있어(08-26 §1) 지금은 연결해도 빈 목록만 나온다. 시딩 방식(수동 INSERT vs 관리자 화면 vs FE 데이터 이관) 백엔드팀과 논의 필요 |
 
 ### 미결 질문
 
