@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { chipStyles } from './chipStyles'
+import ChipIcon from './ChipIcon'
 import type { FacilityKind, MapLayer } from '../../types'
 
 const LAYERS: readonly {
@@ -63,7 +63,7 @@ export default function MapFilterChips({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={chipStyles.scroll}
+        style={[chipStyles.scroll, styles.layerRow]}
         contentContainerStyle={chipStyles.row}
       >
         {LAYERS.map(({ key, label, icon }) => {
@@ -78,11 +78,7 @@ export default function MapFilterChips({
               accessibilityLabel={label}
               style={[chipStyles.chip, styles.layerChip, isActive && styles.layerChipActive]}
             >
-              <Ionicons
-                name={icon}
-                size={13}
-                color={isActive ? COLORS.white : COLORS.primary}
-              />
+              <ChipIcon name={icon} color={COLORS.primary} active={isActive} />
               <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
                 {label}
               </Text>
@@ -110,16 +106,11 @@ export default function MapFilterChips({
                 accessibilityLabel={`${meta.key} ${count}곳`}
                 style={[
                   chipStyles.chip,
-                  chipStyles.chipTransparent,
                   count === 0 && chipStyles.chipEmpty,
                   isActive && { backgroundColor: meta.color, borderColor: meta.color },
                 ]}
               >
-                <Ionicons
-                  name={meta.icon}
-                  size={13}
-                  color={isActive ? COLORS.white : meta.color}
-                />
+                <ChipIcon name={meta.icon} color={meta.color} active={isActive} />
                 <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
                   {meta.key}
                 </Text>
@@ -144,17 +135,16 @@ export default function MapFilterChips({
             accessibilityLabel="전시"
             style={[
               chipStyles.chip,
-              chipStyles.chipTransparent,
               facilityKind === '행사·전시' && {
                 backgroundColor: EXHIBIT_META.color,
                 borderColor: EXHIBIT_META.color,
               },
             ]}
           >
-            <Ionicons
+            <ChipIcon
               name={EXHIBIT_META.icon}
-              size={13}
-              color={facilityKind === '행사·전시' ? COLORS.white : EXHIBIT_META.color}
+              color={EXHIBIT_META.color}
+              active={facilityKind === '행사·전시'}
             />
             <Text style={[chipStyles.label, facilityKind === '행사·전시' && chipStyles.labelActive]}>
               전시
@@ -169,11 +159,10 @@ export default function MapFilterChips({
             accessibilityLabel={reportsOn ? '제보 숨기기' : '제보 보기'}
             style={[
               chipStyles.chip,
-              chipStyles.chipTransparent,
               reportsOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
             ]}
           >
-            <Ionicons name="megaphone" size={13} color={reportsOn ? COLORS.white : COLORS.primary} />
+            <ChipIcon name="megaphone" color={COLORS.primary} active={reportsOn} />
             <Text style={[chipStyles.label, reportsOn && chipStyles.labelActive]}>제보</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -183,7 +172,11 @@ export default function MapFilterChips({
 }
 
 const styles = StyleSheet.create({
+  // 검색바 바로 아래 최상단 줄. 제목·검색바와 이어지는 흰 배경을 유지해,
+  // 그 아래 칩 줄들(투명, 지도가 비쳐 보임)과 달리 지도가 비치지 않게 한다.
+  layerRow: { backgroundColor: COLORS.white, paddingVertical: 8 },
   // 최상단 줄은 아래 줄들보다 한 단계 위라는 것이 보여야 해, 테두리를 진하게 둔다.
-  layerChip: { borderColor: COLORS.primary },
+  // 칩 배경은 흰 면 없이 아래 줄들처럼 투명하게 둔다 — 선택 시에만 색으로 채운다.
+  layerChip: { borderColor: COLORS.primary, backgroundColor: 'transparent' },
   layerChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
 })

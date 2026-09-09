@@ -9,6 +9,7 @@ import type { PartnerAffiliation } from '../types'
  */
 export const PARTNER_AFFILIATIONS: readonly PartnerAffiliation[] = [
   '총학생회',
+  '기숙사',
   '미술대학',
   '공과대학',
   '문과대학',
@@ -21,3 +22,15 @@ export const PARTNER_AFFILIATIONS: readonly PartnerAffiliation[] = [
   '공연예술학부',
   '디자인·예술경영학부',
 ]
+
+/**
+ * 소속 전체에 공통으로 적용되는 혜택 이용 방법 안내. 업체마다 다른
+ * `Partner.benefit`과 달리, 소속 하나에 안내 문구 하나만 대응한다.
+ * 값이 없는 소속은 안내를 표시하지 않는다.
+ */
+export const PARTNER_AFFILIATION_USAGE_NOTES: Partial<
+  Record<PartnerAffiliation, string>
+> = {
+  기숙사:
+    '기숙사 카드키를 보여주기 / 기숙사 홈페이지 로그인 후 왼쪽 메뉴 선택창에서 거주 여부 보여주기',
+}

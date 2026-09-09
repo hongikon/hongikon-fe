@@ -629,10 +629,18 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-jejejip',
     name: '제제집',
     category: '음식',
-    affiliations: ['공과대학'],
+    affiliations: ['공과대학', '기숙사'],
     lat: 37.5492805976055,
     lng: 126.921634930985,
     benefit: '1인 1메뉴 주문시 2인당 음료수 or 공깃밥 1개',
+    // 기숙사 자료는 공과대학과 조건이 달라(2인/3인 기준, 메뉴도 다름) 예외로 적는다.
+    // docs/partner-data-conflicts.md 참고.
+    affiliationBenefits: [
+      {
+        affiliation: '기숙사',
+        benefit: '2인 방문 시 음료수 1캔 증정, 3인 이상 방문 시 된장찌개 1그릇 증정',
+      },
+    ],
     address: '서울 마포구 와우산로15길 30',
   },
   {
@@ -653,14 +661,15 @@ export const PARTNERS: readonly Partner[] = [
     address: '서울 마포구 어울마당로 70 2층',
   },
   {
-    // 공과대학 최신 자료에는 '경호네'로 표기되어 있으나 좌표·주소·혜택이
-    // '연어초밥'과 완전히 같아(같은 자리) 병기해 둔다.
+    // 공과대학 최신 자료에는 '경호네'로 표기됐었으나 좌표·주소·혜택이
+    // '연어초밥'과 완전히 같은 자리로 확인되어, 병기 대신 '연어초밥' 단독
+    // 표기로 정리했다(2026-09-08). docs/partner-data-conflicts.md §2.6 참고.
     id: 'food-yeoneo-chobap',
-    name: '경호네(연어초밥)',
+    name: '연어초밥',
     category: '음식',
     // 경영대학 제휴 혜택은 '음료 1캔 제공'으로, 공과대학과 실질 동일해 한 줄로 둔다.
     // 캠퍼스자율전공 자료의 좌표도 거의 일치해(약 1m 이내) 같은 지점으로 병합한다.
-    affiliations: ['공과대학', '경영대학', '캠퍼스자율전공(서울)'],
+    affiliations: ['공과대학', '경영대학', '캠퍼스자율전공(서울)', '기숙사'],
     lat: 37.5482787,
     lng: 126.9223832,
     benefit: '인당 음료수 1개 서비스',
@@ -717,7 +726,7 @@ export const PARTNERS: readonly Partner[] = [
     // 공과대학·문과대학·경영대학 공동 제휴. 같은 지점이라 항목을 나누지 않고 소속만 겹친다.
     // 좌표는 공대 자료(37.5493189, 126.9217977)와 약 106m 어긋나 경영대 자료를 채택했다.
     // 경위는 docs/partner-data-conflicts.md §2.5 참고.
-    affiliations: ['공과대학', '문과대학', '경영대학'],
+    affiliations: ['공과대학', '문과대학', '경영대학', '기숙사'],
     lat: 37.548639,
     lng: 126.920953,
     benefit: '1인 음료 1잔 / 2인 이상 사이드 택1',
@@ -727,10 +736,19 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-outdak-hongdae',
     name: '아웃닭 홍대점',
     category: '음식',
-    affiliations: ['공과대학'],
+    affiliations: ['공과대학', '기숙사'],
     lat: 37.5500899621416,
     lng: 126.921903530033,
     benefit: '2인당 1마리 주문시 테이블당 사이드 택1 제공',
+    // 기숙사 자료는 '2인당 1마리 주문시' 조건 없이 테이블당으로만 적혀 있다.
+    // 생략인지 실제로 조건이 다른지 확인 전이라 예외로 남긴다.
+    // docs/partner-data-conflicts.md 참고.
+    affiliationBenefits: [
+      {
+        affiliation: '기숙사',
+        benefit: '한 테이블 당 사이드메뉴 1개 제공(택1)',
+      },
+    ],
     address: '서울 마포구 와우산로 17길 19 1층',
   },
 
@@ -802,7 +820,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'cafe-harka-cookie',
     name: '하르카쿠키',
     category: '카페',
-    affiliations: ['경영대학'],
+    affiliations: ['경영대학', '기숙사'],
     lat: 37.5486521,
     lng: 126.9219486,
     benefit: '전메뉴 10% 할인',
@@ -856,7 +874,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-nekono-yubu',
     name: '네코노유부',
     category: '음식',
-    affiliations: ['경영대학', '캠퍼스자율전공(서울)'],
+    affiliations: ['경영대학', '캠퍼스자율전공(서울)', '기숙사'],
     lat: 37.548244,
     lng: 126.921330,
     benefit:
@@ -872,6 +890,14 @@ export const PARTNERS: readonly Partner[] = [
         benefit:
           '홀 - 1인 1메뉴 기준 유부 1pcs 제공(멘치카츠 유부 제외), 3인 이상 방문 시 인당 가라아게 1pcs 추가 제공 / 포장 - 평일 방문 포장 시 20% 할인',
       },
+      {
+        // 기숙사 자료는 포장 할인에 '평일' 제한을 언급하지 않는다 — 경영대학
+        // 자료와 다른지, 표기만 생략된 것인지 확인 전이라 받은 문구 그대로 둔다.
+        // docs/partner-data-conflicts.md 참고.
+        affiliation: '기숙사',
+        benefit:
+          '방문포장 주문 시 결제 금액의 20% 할인 / 매장 식사 - 1인 1메뉴 주문 시 인당 원하는 유부 1pcs 제공, 제휴학생 3인 이상 방문 시 인당 가라아게 1pcs 추가 제공',
+      },
     ],
     address: '서울 마포구 와우산로13길 49-11 반지층',
   },
@@ -879,7 +905,7 @@ export const PARTNERS: readonly Partner[] = [
     id: 'food-sandy-village',
     name: '샌디빌리지',
     category: '음식',
-    affiliations: ['경영대학'],
+    affiliations: ['경영대학', '기숙사'],
     lat: 37.547178,
     lng: 126.922674,
     benefit: '1만 원 이상 구매 시 10% 할인',
@@ -1014,15 +1040,19 @@ export const PARTNERS: readonly Partner[] = [
     address: '서울 마포구 서교동 411-9 1층 스매쉬보이',
   },
   {
-    // 제공된 혜택 문구가 '점심 - 메인+공기밥+우동사리/'에서 끊겨 있다.
-    // 뒤에 이어질 내용을 확인받기 전까지는 받은 문구 그대로만 둔다.
+    // 기숙사 자료가 좌표(37.5492146, 126.9224786, 기존 값과 약 0.3m 이내)와
+    // 함께 이 항목의 원래 미완성 혜택 문구('점심 - 메인+공기밥+우동사리'에서
+    // 끊겨 있던 것)를 완성된 형태로 보내와, 같은 가게로 보고 병합했다.
+    // 상호명은 '원주'가 오표기였고 '원조'가 맞는 표기임을 사용자가 확인해줬다
+    // (2026-09-08). docs/partner-data-conflicts.md §2.8 참고.
     id: 'food-yunbanjang-hongdae',
-    name: '원주한우곱도리탕 윤반장 홍대점',
+    name: '원조한우곱도리탕 윤반장 홍대점',
     category: '음식',
-    affiliations: ['캠퍼스자율전공(서울)'],
+    affiliations: ['캠퍼스자율전공(서울)', '기숙사'],
     lat: 37.5492164577926,
     lng: 126.92247093994,
-    benefit: '점심 - 메인+공기밥+우동사리',
+    benefit:
+      '점심 - 메인메뉴 주문시 공기밥 제공 + 우동사리 or 당면서리 or 음료 중 택 1 / 저녁 - 우동사리/콘치즈/주먹밥/공기밥/음료 중 택 1',
     address: '서울 마포구 상수동 92-2 지하1층 우측',
   },
   {
@@ -1187,5 +1217,178 @@ export const PARTNERS: readonly Partner[] = [
     lng: 126.923362,
     benefit: '레이저 컷팅 작업 15분 이상 진행시 상시 15% 할인',
     address: '서울 마포구 홍익로 9-1 3층',
+  },
+
+  // ═══ 기숙사 제휴 ═════════════════════════════════════════
+  // 소코아 홍대점·네코노유부·제제집·아웃닭 홍대점·샌디빌리지·연어초밥·
+  // 하르카쿠키·원조한우곱도리탕 윤반장 홍대점은 다른 소속과 같은 지점이라
+  // 위 각 소속 섹션에 두고 affiliations 로만 겹쳐 둔다.
+  // 이용 방법: 기숙사 카드키를 보여주기, 또는 기숙사 홈페이지 로그인 후
+  // 왼쪽 메뉴 선택창에서 거주 여부 보여주기 (2026-09-08 수령, 아직 앱에
+  // 표시할 UI 필드가 없어 여기 주석으로만 남긴다 — docs/partner-data-conflicts.md 참고)
+  // ── 음식 ────────────────────────────────────────────────
+  {
+    id: 'food-green-n-berry',
+    name: '그린앤베리',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5603182,
+    lng: 126.9159742,
+    benefit: '포케 or 셀러드 메뉴 주문시 아이스아메리카노, 생토마토주스, 생바나나주스 중 택 1 제공',
+    address: '서울 마포구 월드컵북로 73 1층 그린앤베리',
+  },
+  {
+    id: 'food-cheongnyeon-chicken-seogyo',
+    name: '청년치킨 서교점',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5586175,
+    lng: 126.9126327,
+    benefit:
+      '[반마리] 콜라 500ml or 1,000원 할인 중 택 1 / [한마리] 콜라 500ml or 2,000원 할인 or 3,000원 상당 사이드 중 택 1',
+    address: '서울 마포구 잔다리로 133 101호',
+  },
+  {
+    id: 'food-mapo-la-restaurant',
+    name: '마포라스토랑',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5487522,
+    lng: 126.9214001,
+    benefit: '김 추가(3장) or 멘마 추가 or 차슈 추가(2장) or 베이컨 치즈밥 변경 중 택 1',
+    address: '서울 마포구 와우산로11길 28 지1층 B03호',
+  },
+  {
+    id: 'food-sogeum-jemyeonso-hongdae',
+    name: '소금제면소 홍대',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5502888,
+    lng: 126.9215063,
+    benefit: '[1인] 음료 or 만두 2개 중 택 1 / [2인] 만두 4개 or 가라아게 중 택 1',
+    address: '서울 마포구 와우산로17길 26 1층',
+  },
+  {
+    id: 'food-sneakers-burger-club',
+    name: '스니커즈 버거 클럽',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5502986,
+    lng: 126.9216382,
+    benefit: '단품 주문시 세트메뉴 업그레이드(20시 이전 현장 방문 시에만 가능)',
+    address: '서울 마포구 와우산로17길 24 1층',
+  },
+  {
+    id: 'food-afc-kebab',
+    name: 'AFC Kebab',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5496248,
+    lng: 126.9228733,
+    benefit: '메인메뉴 주문시 콜라 or 물 중 택 1, 3만 원 이상 주문시 Middle Size 케밥 제공',
+    address: '서울 마포구 와우산로 57 1층',
+  },
+  {
+    id: 'food-doner-kebab',
+    name: 'Doner Kebab',
+    category: '음식',
+    affiliations: ['기숙사'],
+    lat: 37.5524518,
+    lng: 126.9227363,
+    benefit:
+      '(7,900원~18,900원: M 사이드 메뉴 1개 or 2pcs 사이드 메뉴 제공 / 19,000원~37,800원: L 사이드 메뉴 1개 or 음료 1개 제공 / 37,900원~: L 사이드 메뉴 2개 or 1인분 세트 메뉴로 업그레이드 or 음료 2캔 제공) or 전체 금액에서 10% 할인',
+    address: '서울 마포구 와우산로21길 24 1층',
+  },
+
+  // ── 주점 ────────────────────────────────────────────────
+  {
+    id: 'bar-sijangeul-yeoneun-saramdeul-hongdae',
+    name: '시장을여는사람들 홍대점',
+    category: '주점',
+    affiliations: ['기숙사'],
+    lat: 37.5505090,
+    lng: 126.9223121,
+    benefit:
+      '12% 할인 (주의사항 - 기숙사 카드키 필수 지참, 처음 들어왔을 때 같이 보여주기, 첫 입점부터 자리 지켜야 함, 중복X, 다양한 서비스 가능)',
+    address: '서울 마포구 잔다리로 5-1 2층',
+  },
+  {
+    id: 'bar-byeolhaeneun-jan',
+    name: '별헤는잔',
+    category: '주점',
+    affiliations: ['기숙사'],
+    lat: 37.5502077,
+    lng: 126.9232577,
+    benefit: '총 금액의 10% 할인',
+    address: '서울 마포구 와우산로 64 3층',
+  },
+  {
+    id: 'bar-pico',
+    name: '피코',
+    category: '주점',
+    affiliations: ['기숙사'],
+    lat: 37.5489650,
+    lng: 126.9199038,
+    benefit: '총 금액의 10% 할인',
+    address: '서울 마포구 독막로9길 14',
+  },
+  {
+    id: 'bar-zigzagg',
+    name: 'ZigZagg',
+    category: '주점',
+    affiliations: ['기숙사'],
+    lat: 37.5518173,
+    lng: 126.9225215,
+    benefit:
+      '[4명 이하 방문시] 3,000원~4,000원 상당 무료 드링크 제공 / [5명 이상 방문시] 바틀 제공',
+    address: '서울 마포구 와우산로21길 19-16 1층',
+  },
+
+  // ── 카페 ────────────────────────────────────────────────
+  {
+    id: 'cafe-comoedoi',
+    name: '코모이도이',
+    category: '카페',
+    affiliations: ['기숙사'],
+    lat: 37.5589328,
+    lng: 126.9117256,
+    benefit: '전 음료 20% 할인, 디저트 10% 할인(1인 1음료 주문시 적용)',
+    address: '서울 마포구 성미산로 31 1층',
+  },
+  {
+    id: 'cafe-rave-espresso-sangsu',
+    name: '레이브 에스프레소 바 상수',
+    category: '카페',
+    affiliations: ['기숙사'],
+    lat: 37.5489195,
+    lng: 126.9237589,
+    benefit: '전메뉴 300원 할인',
+    address: '서울 마포구 독막로19길 43 1층 우측호',
+  },
+
+  // ── 교육 ────────────────────────────────────────────────
+  {
+    id: 'edu-ari-studycafe',
+    name: '아리 스터디 카페',
+    category: '교육',
+    affiliations: ['기숙사'],
+    lat: 37.5458578,
+    lng: 126.9276904,
+    benefit:
+      '시간권 구매시 10시간 추가 증정(결제 시간 상관 X), 기간권 구매시 48시간 추가 증정 or 고정석 업그레이드 제공 (키오스크로 결제 → 기숙사 카드키 촬영 → 윗 번호로 사진 전송)',
+    address: '서울 마포구 토정로 149 영재빌딩 2층 아리스터디카페',
+  },
+
+  // ── 기타 ────────────────────────────────────────────────
+  {
+    id: 'etc-lagom-pilates',
+    name: '라곰필라테스',
+    category: '기타',
+    affiliations: ['기숙사'],
+    lat: 37.5458578,
+    lng: 126.9276904,
+    benefit:
+      '1:1 개인 레슨 - 8회(주 2회/4주) 528,000원, 16회(주 2회/8주) 1,056,000원 / 2:1 듀엣 레슨 - 8회(주 2회/4주) 320,000원, 16회(주 2회/8주) 576,000원',
+    address: '서울 마포구 토정로 149 4층',
   },
 ]

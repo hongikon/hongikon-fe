@@ -6,6 +6,7 @@ import {
   MARKER_CLICK_GUARD_MS,
   PARTNER_BADGE_SIZE_PX,
   PARTNER_BADGE_SIZE_SELECTED_PX,
+  PARTNER_OVERLAP_CYCLE_PX,
 } from '../constants/map'
 import {
   REPORT_LONG_PRESS_MOVE_TOLERANCE_PX,
@@ -282,6 +283,11 @@ export function buildMapHTML(
     var selectedPartnerId = null;
     // 마커 클릭이 지도 클릭으로도 전달되는 경우가 있어, 직후의 배경 클릭을 무시한다.
     var lastMarkerClickAt = 0;
+    // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
+    // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
+    // order: 그 조합의 고정 순서(currentPartners 순서). index: 지금 몇 번째인지.
+    // selectPartner() 참고.
+    var overlapCycle = { key: null, order: [], index: 0 };
 
     var buildingMarkers = [];
     var selectedBuildingName = null;
@@ -395,12 +401,51 @@ export function buildMapHTML(
       partnerMarkers = [];
     }
 
+    // 화면상 partner 배지 중심과 PARTNER_OVERLAP_CYCLE_PX 이내인 업체들을,
+    // currentPartners 순서 그대로 모아 돌려준다(자기 자신 포함, 최소 1개).
+    function partnerOverlapCluster(partner) {
+      var projection = map.getProjection();
+      if (!projection) return [partner];
+      var origin = projection.fromCoordToOffset(
+        new naver.maps.LatLng(partner.lat, partner.lng)
+      );
+      return currentPartners.filter(function(p) {
+        var pt = projection.fromCoordToOffset(new naver.maps.LatLng(p.lat, p.lng));
+        var dx = pt.x - origin.x;
+        var dy = pt.y - origin.y;
+        return Math.sqrt(dx * dx + dy * dy) <= ${PARTNER_OVERLAP_CYCLE_PX};
+      });
+    }
+
     function selectPartner(id) {
       if (pickerActive) return;
       lastMarkerClickAt = new Date().getTime();
-      selectedPartnerId = id;
+
+      var clicked = currentPartners.filter(function(p) { return p.id === id; })[0];
+      var nextId = id;
+
+      if (clicked) {
+        var cluster = partnerOverlapCluster(clicked);
+        if (cluster.length > 1) {
+          var key = cluster.map(function(p) { return p.id; }).sort().join('|');
+          if (overlapCycle.key === key) {
+            // 같은 겹침 조합을 다시 눌렀다 — 다음 업체로 넘어간다.
+            overlapCycle.index = (overlapCycle.index + 1) % overlapCycle.order.length;
+          } else {
+            // 새 겹침 조합 — 지금 실제로 위에서 눌린 업체부터 순회를 시작한다.
+            overlapCycle.key = key;
+            overlapCycle.order = cluster;
+            overlapCycle.index = cluster.indexOf(clicked);
+          }
+          nextId = overlapCycle.order[overlapCycle.index].id;
+        } else {
+          overlapCycle.key = null;
+        }
+      }
+
+      selectedPartnerId = nextId;
       renderPartners();
-      post({ type: 'partnerTap', id: id });
+      post({ type: 'partnerTap', id: nextId });
     }
 
     function renderPartners() {
@@ -759,6 +804,7 @@ export function buildMapHTML(
 
       if (selectedPartnerId !== null) {
         selectedPartnerId = null;
+        overlapCycle.key = null;
         renderPartners();
         post({ type: 'partnerDismiss' });
       }
@@ -848,6 +894,7 @@ export function buildMapHTML(
         if (msg.type === 'setPartners') {
           currentPartners = msg.partners || [];
           selectedPartnerId = null;
+          overlapCycle.key = null;
           renderPartners();
           fitToBounds(msg.bounds);
         }
@@ -855,6 +902,7 @@ export function buildMapHTML(
         if (msg.type === 'clearPartners') {
           currentPartners = [];
           selectedPartnerId = null;
+          overlapCycle.key = null;
           removePartnerOverlays();
           map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
           map.setZoom(${DEFAULT_ZOOM});
@@ -899,6 +947,7 @@ export function buildMapHTML(
 
         if (msg.type === 'selectPartner') {
           selectedPartnerId = msg.id === undefined ? null : msg.id;
+          overlapCycle.key = null;
           renderPartners();
         }
 
@@ -906,6 +955,7 @@ export function buildMapHTML(
         // setPartners 의 bounds 는 캠퍼스를 항상 포함해 한 곳으로 좁혀지지 않는다.
         if (msg.type === 'focusPartner') {
           selectedPartnerId = msg.id;
+          overlapCycle.key = null;
           renderPartners();
           var focused = currentPartners.filter(function(p) { return p.id === msg.id; })[0];
           if (focused) {

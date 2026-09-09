@@ -87,6 +87,10 @@ export default function MapScreen() {
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
   // Modal 바깥의 화면에서 미리 재서 넘긴다.
   const insets = useSafeAreaInsets();
+  // 검색바·필터 칩이 지도 위에 뜨는 오버레이로 바뀌면서(§아래 JSX), 실제
+  // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
+  // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
@@ -594,45 +598,8 @@ export default function MapScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container}>
       <PartnerNoticeModal />
-
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>캠퍼스</Text>
-      </View>
-
-      {!pickingLocation && (
-        <>
-          <TouchableOpacity
-            style={styles.searchBar}
-            activeOpacity={0.7}
-            onPress={() => setShowSearch(true)}
-            accessibilityRole="button"
-            accessibilityLabel="제휴 업체 검색"
-          >
-            <Ionicons name="search" size={16} color="#999" />
-            <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
-          </TouchableOpacity>
-
-          <MapFilterChips
-            layer={layer}
-            facilityKind={facilityKind}
-            reportsOn={reportsOn}
-            onSelectLayer={handleSelectLayer}
-            onSelectFacilityKind={handleSelectFacilityKind}
-            onToggleReports={handleToggleReports}
-          />
-
-          {layer === "제휴업체" && (
-            <PartnerChips
-              affiliation={selectedAffiliation}
-              category={selectedCategory}
-              onSelectAffiliation={handleSelectAffiliation}
-              onSelectCategory={handleSelectCategory}
-            />
-          )}
-        </>
-      )}
 
       <View style={styles.mapArea}>
         <NaverMapView
@@ -641,7 +608,7 @@ export default function MapScreen() {
           onMessage={handleWebViewMessage}
         />
 
-        <View style={styles.bannerStack}>
+        <View style={[styles.bannerStack, { top: headerHeight + 8 }]}>
           {mapAuthFailed && (
             <View style={styles.mapErrorNotice}>
               <Ionicons name="warning" size={15} color="#B45309" />
@@ -738,7 +705,7 @@ export default function MapScreen() {
               <View style={styles.pickerDot} />
             </View>
 
-            <View style={styles.pickerTopBar}>
+            <View style={[styles.pickerTopBar, { top: headerHeight + 8 }]}>
               <Text style={styles.pickerTopText} numberOfLines={2}>
                 지도를 움직여 제보할 위치를 맞춰주세요
               </Text>
@@ -781,7 +748,7 @@ export default function MapScreen() {
         )}
 
         {!pickingLocation && fromBuilding && toBuilding && (
-          <View style={styles.routeStrip}>
+          <View style={[styles.routeStrip, { top: headerHeight + 8 }]}>
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
                 <View
@@ -839,6 +806,58 @@ export default function MapScreen() {
             report={selectedReport}
             onClose={() => setSelectedReport(null)}
           />
+        )}
+      </View>
+
+      {/*
+        검색바·필터 칩을 지도 위에 뜨는 투명 오버레이로 띄운다. mapArea 뒤에
+        와야(later sibling) 그 위에 그려진다. pointerEvents="box-none" 이라
+        빈 공간(제목 옆, 칩 사이)은 터치가 그대로 지도로 전달되고, 안의
+        버튼·칩만 눌린다. onLayout 으로 잰 실제 높이를 배너·상단바 위치
+        계산에 쓴다(headerHeight, 위 선언부 주석 참고).
+      */}
+      <View
+        style={[styles.headerOverlay, { paddingTop: insets.top }]}
+        pointerEvents="box-none"
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+      >
+        <View style={styles.header} pointerEvents="box-none">
+          <Text style={styles.headerTitle}>캠퍼스</Text>
+        </View>
+
+        {!pickingLocation && (
+          <>
+            <View style={styles.searchBarWrap}>
+              <TouchableOpacity
+                style={styles.searchBar}
+                activeOpacity={0.7}
+                onPress={() => setShowSearch(true)}
+                accessibilityRole="button"
+                accessibilityLabel="제휴 업체 검색"
+              >
+                <Ionicons name="search" size={16} color="#999" />
+                <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
+              </TouchableOpacity>
+            </View>
+
+            <MapFilterChips
+              layer={layer}
+              facilityKind={facilityKind}
+              reportsOn={reportsOn}
+              onSelectLayer={handleSelectLayer}
+              onSelectFacilityKind={handleSelectFacilityKind}
+              onToggleReports={handleToggleReports}
+            />
+
+            {layer === "제휴업체" && (
+              <PartnerChips
+                affiliation={selectedAffiliation}
+                category={selectedCategory}
+                onSelectAffiliation={handleSelectAffiliation}
+                onSelectCategory={handleSelectCategory}
+              />
+            )}
+          </>
         )}
       </View>
 
@@ -1011,32 +1030,59 @@ export default function MapScreen() {
           onCancel={handleFloorCancel}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
+  // 지도 위에 뜨는 투명 오버레이. 빈 공간은 지도 터치를 그대로 통과시킨다
+  // (JSX 의 pointerEvents="box-none" 참고).
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+  },
   header: {
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
     backgroundColor: COLORS.white,
   },
-  headerTitle: { fontSize: 20, fontFamily: FONTS.bold, color: COLORS.textPrimary },
+  // 지도 색이 제각각이라(공원 초록·건물 흰색 등) 제목이 묻히지 않게
+  // 흰 후광을 둘러 대비를 준다. mapHtml.ts 의 마커 이름 라벨과 같은 방식.
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    color: COLORS.textPrimary,
+    textShadowColor: "rgba(255,255,255,0.9)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  // 검색바 좌우에 지도가 비치는 여백이 남지 않도록, 알약 모양은 이 흰
+  // 배경 안쪽 padding 으로만 띄운다(margin 이면 그 여백엔 배경이 없다).
+  searchBarWrap: {
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
   searchBar: {
-    marginHorizontal: 16,
-    marginBottom: 10,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: COLORS.white,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
-  mapArea: { flex: 1, position: "relative" },
+  mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   pickerMarkerWrap: {
     position: "absolute",

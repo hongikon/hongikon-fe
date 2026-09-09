@@ -24,12 +24,6 @@ export const chipStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  /**
-   * 2단 이하 칩의 바탕. 최상단만 흰 면으로 채우고 아래 줄들은 테두리만 남긴다.
-   * 줄이 세 개까지 쌓이는데 전부 같은 흰 알약이면 어느 줄이 상위인지 알 수
-   * 없다. 고른 칩은 색으로 채워지므로 이 투명 바탕 위에서 더 또렷해진다.
-   */
-  chipTransparent: { backgroundColor: 'transparent' },
   // 해당 조건에 대상이 없는 칩. 눌리기는 하되 먼저 눈에 띄지는 않게 둔다.
   chipEmpty: { opacity: 0.45 },
   label: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.chipText },

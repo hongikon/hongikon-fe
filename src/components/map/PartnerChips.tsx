@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { chipStyles } from "./chipStyles";
+import ChipIcon from "./ChipIcon";
 import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
 import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
 import { partnerCount } from "../../utils/partners";
@@ -70,7 +70,6 @@ export default function PartnerChips({
               accessibilityLabel={`${key} 제휴 업체 ${count}곳`}
               style={[
                 styles.chip,
-                styles.chipTransparent,
                 count === 0 && styles.chipEmpty,
                 isActive && styles.affiliationChipActive,
               ]}
@@ -101,7 +100,6 @@ export default function PartnerChips({
               accessibilityLabel={`${meta.key} 제휴 업체 ${count}곳`}
               style={[
                 styles.chip,
-                styles.chipTransparent,
                 count === 0 && styles.chipEmpty,
                 isActive && {
                   backgroundColor: meta.color,
@@ -109,11 +107,7 @@ export default function PartnerChips({
                 },
               ]}
             >
-              <Ionicons
-                name={meta.icon}
-                size={13}
-                color={isActive ? COLORS.white : meta.color}
-              />
+              <ChipIcon name={meta.icon} color={meta.color} active={isActive} />
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {meta.key}
               </Text>

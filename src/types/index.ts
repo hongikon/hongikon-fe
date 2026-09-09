@@ -125,6 +125,7 @@ export interface Facility {
  */
 export type PartnerAffiliation =
   | '총학생회'
+  | '기숙사'
   | '미술대학'
   | '공과대학'
   | '문과대학'

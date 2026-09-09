@@ -49,3 +49,12 @@ export const BUILDING_PIN_WIDTH_SELECTED_PX = 27
  * 제휴 마커를 눌렀는데 건물 배너가 같이 뜨는 것을 막는다.
  */
 export const MARKER_CLICK_GUARD_MS = 350
+
+/**
+ * 제휴 마커 배지 중심끼리 이 거리(화면 px) 안이면 "겹친 것"으로 본다.
+ * 홍대 골목처럼 가게가 촘촘한 곳은 실거리 10~20m가 흔한 줌 레벨에서
+ * 배지 하나 폭(px)보다 가깝게 찍혀, 위에 그려진 마커가 아래 것의
+ * 탭을 계속 가로챈다. 그런 겹침을 감지해 같은 자리를 다시 누를 때마다
+ * 겹친 업체를 순서대로 보여주는 데 쓴다(`selectPartner` 참고).
+ */
+export const PARTNER_OVERLAP_CYCLE_PX = 40
