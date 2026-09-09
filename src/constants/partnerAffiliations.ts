@@ -23,14 +23,26 @@ export const PARTNER_AFFILIATIONS: readonly PartnerAffiliation[] = [
   '디자인·예술경영학부',
 ]
 
+const DEFAULT_USAGE_NOTE = '실물 학생증 제시 또는 모바일 학생증 제시'
+
 /**
  * 소속 전체에 공통으로 적용되는 혜택 이용 방법 안내. 업체마다 다른
  * `Partner.benefit`과 달리, 소속 하나에 안내 문구 하나만 대응한다.
- * 값이 없는 소속은 안내를 표시하지 않는다.
+ * 기숙사만 카드키/기숙사 홈페이지로 확인하는 별도 방식이라 예외로 둔다.
  */
-export const PARTNER_AFFILIATION_USAGE_NOTES: Partial<
-  Record<PartnerAffiliation, string>
-> = {
+export const PARTNER_AFFILIATION_USAGE_NOTES: Record<PartnerAffiliation, string> = {
+  총학생회: DEFAULT_USAGE_NOTE,
   기숙사:
     '기숙사 카드키를 보여주기 / 기숙사 홈페이지 로그인 후 왼쪽 메뉴 선택창에서 거주 여부 보여주기',
+  미술대학: DEFAULT_USAGE_NOTE,
+  공과대학: DEFAULT_USAGE_NOTE,
+  문과대학: DEFAULT_USAGE_NOTE,
+  경영대학: DEFAULT_USAGE_NOTE,
+  건축도시대학: DEFAULT_USAGE_NOTE,
+  법과대학: DEFAULT_USAGE_NOTE,
+  사범대학: DEFAULT_USAGE_NOTE,
+  경제학부: DEFAULT_USAGE_NOTE,
+  '캠퍼스자율전공(서울)': DEFAULT_USAGE_NOTE,
+  공연예술학부: DEFAULT_USAGE_NOTE,
+  '디자인·예술경영학부': DEFAULT_USAGE_NOTE,
 }

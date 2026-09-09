@@ -36,13 +36,12 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   const baseAffiliations = (partner.affiliations ?? []).filter(
     (affiliation) => !exceptionAffiliations.has(affiliation),
   );
+  // 기숙사 안내는 항상 학생증 안내 다음(맨 아래)에 오도록 정렬한다 — 소속
+  // 배열에서의 순서와 무관하게 "일반 방법 먼저, 기숙사 방법 나중"을 보장한다.
+  const dormUsageNote = PARTNER_AFFILIATION_USAGE_NOTES.기숙사;
   const baseUsageNotes = Array.from(
-    new Set(
-      baseAffiliations
-        .map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])
-        .filter((note): note is string => Boolean(note)),
-    ),
-  );
+    new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
+  ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
     <View style={styles.sheet}>
@@ -127,19 +126,15 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                     </Text>
                   </View>
                   <Text style={styles.benefitText}>{item.benefit}</Text>
-                  {note && (
-                    <View style={styles.usageNoteInline}>
-                      <Ionicons name="card-outline" size={11} color={meta.color} />
-                      <Text style={styles.usageNoteInlineText}>
-                        <Text
-                          style={[styles.usageNoteInlineLabel, { color: meta.color }]}
-                        >
-                          이용 방법{"  "}
-                        </Text>
-                        {note}
+                  <View style={styles.usageNoteInline}>
+                    <Ionicons name="card-outline" size={11} color={meta.color} />
+                    <Text style={styles.usageNoteInlineText}>
+                      <Text style={[styles.usageNoteInlineLabel, { color: meta.color }]}>
+                        이용 방법{"  "}
                       </Text>
-                    </View>
-                  )}
+                      {note}
+                    </Text>
+                  </View>
                 </View>
               );
             })}
