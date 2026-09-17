@@ -5,7 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 /**
  * expo-secure-store 는 웹에서 동작하지 않는다(Keychain/Keystore 가 없어서).
  * 네이티브에서는 그대로 SecureStore, 웹에서만 AsyncStorage 로 대신한다.
- * 웹은 이 앱의 실제 배포 타깃이 아니라서 토큰 보안 수준을 낮춰도 괜찮다.
+ * 웹(AsyncStorage → localStorage)은 암호화되지 않고 페이지 스크립트가 읽을 수 있다.
+ * 지금은 카카오 콜백이 앱 스킴(hongikon://)이라 웹에서 토큰이 발급될 길이 없어 괜찮지만,
+ * 웹 로그인을 붙일 땐 여기에 장기 토큰을 두지 말고 httpOnly 쿠키 등으로 바꿔야 한다.
  */
 const isWeb = Platform.OS === 'web'
 

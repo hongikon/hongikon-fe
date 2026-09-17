@@ -26,7 +26,8 @@ export function setNotificationCategoryEnabled(
 ): Promise<NotificationCategoryState> {
   return apiRequest<NotificationCategoryState>(
     `/users/me/notification-categories/${encodeURIComponent(category)}`,
-    { method: 'PATCH', body: { enabled }, accessToken },
+    // PATCH 지만 "켜짐/꺼짐" 절댓값을 덮어쓰는 요청이라 여러 번 보내도 결과가 같아 재시도를 허락한다.
+    { method: 'PATCH', body: { enabled }, accessToken, retries: 2 },
   )
 }
 

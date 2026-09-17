@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,6 +10,8 @@ import { FONTS } from '../constants/typography'
 import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
 import { formatPushNotification } from '../utils/notificationFormat'
 import { getBackendStatus } from '../apis/status'
+import { useApiResource } from '../hooks/useApiResource'
+import RetryableError from '../components/common/RetryableError'
 import type { PushNotificationData } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
@@ -57,24 +58,15 @@ export default function AppStatusScreen() {
     Platform.OS === 'ios' ? config?.ios?.buildNumber : String(config?.android?.versionCode ?? '-')
 
   const compatibleBackendVersion = (config?.extra?.compatibleBackendVersion as string | undefined) ?? '-'
-  const [backendVersion, setBackendVersion] = useState<string | null>(null)
-  const [backendCheckFailed, setBackendCheckFailed] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-
-    getBackendStatus()
-      .then((status) => {
-        if (!cancelled) setBackendVersion(status.version)
-      })
-      .catch(() => {
-        if (!cancelled) setBackendCheckFailed(true)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // 연결이 불안정하면 client 가 자동 재시도하고, 그래도 실패하면 아래 "다시 시도" 안내를 띄운다.
+  // 연결이 돌아오거나 앱으로 돌아오면 훅이 알아서 다시 확인한다.
+  const backendStatus = useApiResource(
+    (signal) => getBackendStatus({ signal }),
+    [],
+    { fallbackMessage: '백엔드 상태를 확인하지 못했습니다.' },
+  )
+  const backendVersion = backendStatus.data?.version ?? null
+  const backendCheckFailed = backendStatus.errorMessage !== null && backendVersion === null
 
   const backendVersionLabel = backendCheckFailed
     ? '연결 실패'
@@ -122,6 +114,16 @@ export default function AppStatusScreen() {
             </View>
           ))}
         </View>
+
+        {backendStatus.errorMessage !== null && (
+          <RetryableError
+            style={styles.backendError}
+            message={backendStatus.errorMessage}
+            isNetworkError={backendStatus.isNetworkError}
+            onRetry={backendStatus.canRetry ? backendStatus.retry : undefined}
+            retrying={backendStatus.loading || backendStatus.refreshing}
+          />
+        )}
 
         <View style={styles.section}>
           {backendRows.map((row) => (
@@ -184,6 +186,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f4f4f4',
   },
   label: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  backendError: { marginHorizontal: 12, marginTop: 8 },
   value: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   devSectionTitle: {
     fontFamily: FONTS.regular,

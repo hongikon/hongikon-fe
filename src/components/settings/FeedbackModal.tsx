@@ -15,7 +15,8 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
-import { ApiError } from '../../apis/client'
+import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
+import RetryableError from '../common/RetryableError'
 import ModalHeader from './ModalHeader'
 
 interface FeedbackModalProps {
@@ -28,12 +29,22 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
   const [content, setContent] = useState('')
   const [contact, setContact] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  /**
+   * 전송 실패 안내. Alert 대신 화면 안에 남기는 이유: 웹의 Alert 는 아무것도 띄우지 않고,
+   * 네이티브에서도 닫으면 무엇이 실패했는지 사라진다. 입력한 내용은 그대로 둔다.
+   */
+  const [submitError, setSubmitError] = useState<{
+    message: string
+    network: boolean
+    retryable: boolean
+  } | null>(null)
 
   useEffect(() => {
     if (!visible) {
       setContent('')
       setContact('')
       setSubmitting(false)
+      setSubmitError(null)
     }
   }, [visible])
 
@@ -45,17 +56,19 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     }
 
     setSubmitting(true)
+    setSubmitError(null)
     try {
+      // POST 라 client 가 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: trimmed, contact: contact.trim() || undefined }, accessToken)
       Alert.alert('문의가 접수되었습니다', '빠른 시일 내에 확인하겠습니다.', [
         { text: '확인', onPress: onClose },
       ])
     } catch (error) {
-      const message =
-        error instanceof ApiError || error instanceof Error
-          ? error.message
-          : '문의를 보내지 못했습니다.'
-      Alert.alert('전송 실패', message)
+      setSubmitError({
+        message: getErrorMessage(error, '문의를 보내지 못했습니다. 잠시 후 다시 시도해주세요.'),
+        network: isNetworkError(error),
+        retryable: isRetryableError(error),
+      })
     } finally {
       setSubmitting(false)
     }
@@ -91,6 +104,16 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             autoCapitalize="none"
             autoCorrect={false}
           />
+
+          {submitError !== null && (
+            <RetryableError
+              style={styles.errorBox}
+              message={submitError.message}
+              isNetworkError={submitError.network}
+              onRetry={submitError.retryable ? handleSubmit : undefined}
+              retrying={submitting}
+            />
+          )}
 
           <TouchableOpacity
             style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
@@ -135,6 +158,7 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: 24,
   },
+  errorBox: { marginBottom: 12 },
   submitButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,

@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
-import { Platform } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { AppState, Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import Constants from 'expo-constants'
 import { navigationRef } from '../navigation/navigationRef'
 import { registerDevice } from '../apis/devices'
+import { isRetryableError } from '../apis/client'
+import { useReconnect } from './connectivity'
 import { NEWS_BY_ID } from '../constants/news'
 import { useAuth } from '../contexts/AuthContext'
 import type { PushNotificationData } from '../types'
@@ -44,7 +46,7 @@ async function getExpoPushToken(): Promise<string | null> {
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId })
     return data
   } catch (error) {
-    console.warn('푸시 토큰을 가져오지 못했습니다:', error)
+    if (__DEV__) console.warn('푸시 토큰을 가져오지 못했습니다:', error)
     return null
   }
 }
@@ -59,6 +61,29 @@ async function getExpoPushToken(): Promise<string | null> {
 export function usePushNotifications(): void {
   const { accessToken } = useAuth()
   const registeredTokenRef = useRef<string | null>(null)
+  /**
+   * 기기 등록이 연결 문제로 실패했는지. 사용자가 볼 화면이 없는 백그라운드 작업이라
+   * 버튼 대신 연결이 돌아오거나 앱으로 돌아올 때 조용히 다시 시도한다.
+   * (POST 라 client 는 자동 재시도하지 않는다 — 같은 토큰 재등록은 이렇게 드문 시점에만 한다.)
+   */
+  const registrationFailedRef = useRef(false)
+  const [retryNonce, setRetryNonce] = useState(0)
+
+  const retryRegistration = () => {
+    if (!registrationFailedRef.current) return
+    registrationFailedRef.current = false
+    setRetryNonce((n) => n + 1)
+  }
+
+  useReconnect(retryRegistration, Platform.OS !== 'web' && Boolean(accessToken))
+
+  useEffect(() => {
+    if (Platform.OS === 'web' || !accessToken) return
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') retryRegistration()
+    })
+    return () => subscription.remove()
+  }, [accessToken])
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -88,13 +113,16 @@ export function usePushNotifications(): void {
           accessToken,
         )
         registeredTokenRef.current = token
+        registrationFailedRef.current = false
       } catch (error) {
-        console.warn('기기를 서버에 등록하지 못했습니다:', error)
+        if (cancelled) return
+        registrationFailedRef.current = isRetryableError(error)
+        if (__DEV__) console.warn('기기를 서버에 등록하지 못했습니다:', error)
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [accessToken])
+  }, [accessToken, retryNonce])
 }

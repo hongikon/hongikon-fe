@@ -16,6 +16,8 @@ export function exchangeAuthCode(code: string): Promise<TokenResponse> {
   return apiRequest<TokenResponse>('/auth/token/exchange', {
     method: 'POST',
     body: { code },
+    // 1회용 코드라 절대 다시 보내지 않는다. 기본값도 POST 는 0 이지만 실수로 바뀌지 않게 못 박는다.
+    retries: 0,
   })
 }
 
@@ -24,5 +26,9 @@ export function deleteAccount(accessToken: string): Promise<void> {
   return apiRequest<void>('/auth/me', {
     method: 'DELETE',
     accessToken,
+    // DELETE 라도 자동 재시도하지 않는다. 첫 시도가 응답만 못 받고 처리됐으면 재시도가
+    // 404/401 로 돌아와 "탈퇴 실패"로 잘못 보이고, 경로 자체가 없을 때의 404 와도 구분이 안 된다.
+    // 실패하면 사용자가 탈퇴 버튼을 다시 누르게 둔다.
+    retries: 0,
   })
 }

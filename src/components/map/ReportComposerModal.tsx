@@ -26,6 +26,8 @@ import {
 } from '../../constants/report'
 import { useAuth } from '../../contexts/AuthContext'
 import { createReport, uploadReportImage } from '../../apis/reports'
+import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
+import RetryableError from '../common/RetryableError'
 import { promptLogin } from '../../utils/reports'
 import { chipStyles } from './chipStyles'
 import type { Report, ReportCategory } from '../../types'
@@ -51,9 +53,8 @@ function formatCoord(value: number): string {
 /**
  * 제보 작성창. 지도를 길게 눌러 좌표가 잡힌 뒤에만 열린다.
  *
- * 층 선택은 아직 넣지 않았다. `BUILDINGS` 에 층수 데이터가 한 건도 없어
- * `hasFloorData()` 가 항상 false 라, 층 다이얼을 붙여도 뜨지 않는다.
- * 층수 데이터가 채워지면 `FloorPickerModal` 을 그대로 끼우면 된다.
+ * 층 선택은 아직 넣지 않았다. 제보 위치는 건물 이름만 잡혀 `Building` 객체가
+ * 없는데, 층을 받으려면 길찾기처럼 `FloorChips` 에 건물을 넘겨 붙이면 된다.
  */
 export default function ReportComposerModal({
   target,
@@ -74,6 +75,16 @@ export default function ReportComposerModal({
   const [imageUri, setImageUri] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * 등록 요청이 연결 문제 등으로 실패했을 때의 안내. 입력 검증 오류(`error`)와 나눈 이유는
+   * "다시 시도" 버튼이 여기에만 붙어야 해서다. 제보 등록은 POST 라 자동으로 다시 보내지
+   * 않고(중복 등록 방지), 사용자가 버튼을 눌렀을 때만 작성 내용 그대로 다시 보낸다.
+   */
+  const [submitError, setSubmitError] = useState<{
+    message: string
+    network: boolean
+    retryable: boolean
+  } | null>(null)
   // 등록 성공. 바로 닫지 않고 "검토 후 반영" 안내를 먼저 보여준다.
   // 올린 제보가 지도에 안 보이는 것을 실패로 오해하지 않게 하려는 것이다.
   const [submitted, setSubmitted] = useState(false)
@@ -92,6 +103,7 @@ export default function ReportComposerModal({
     setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
     setImageUri(null)
     setError(null)
+    setSubmitError(null)
     setSubmitting(false)
     setSubmitted(false)
   }
@@ -159,6 +171,7 @@ export default function ReportComposerModal({
 
     setSubmitting(true)
     setError(null)
+    setSubmitError(null)
 
     // 시작은 지금, 종료는 고른 시간 뒤. 서버에는 UTC ISO-8601 로 보낸다.
     const startsAt = new Date()
@@ -189,11 +202,11 @@ export default function ReportComposerModal({
       onCreated(report)
       setSubmitted(true)
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : '제보를 등록하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      )
+      setSubmitError({
+        message: getErrorMessage(caught, '제보를 등록하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+        network: isNetworkError(caught),
+        retryable: isRetryableError(caught),
+      })
     } finally {
       setSubmitting(false)
     }
@@ -430,6 +443,16 @@ export default function ReportComposerModal({
                       지금부터 {durationHours}시간 뒤에 지도에서 자동으로 내려갑니다.
                     </Text>
 
+                    {submitError !== null && (
+                      <RetryableError
+                        style={styles.submitErrorBox}
+                        message={submitError.message}
+                        isNetworkError={submitError.network}
+                        onRetry={submitError.retryable ? handleSubmit : undefined}
+                        retrying={submitting}
+                      />
+                    )}
+
                     {error !== null && (
                       <View style={styles.errorBox}>
                         <Ionicons name="warning" size={15} color="#B45309" />
@@ -600,6 +623,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   successBtn: { alignSelf: 'stretch', marginTop: 12 },
+  submitErrorBox: { marginTop: 16 },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',

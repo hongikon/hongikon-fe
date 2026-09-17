@@ -11,6 +11,8 @@ interface GetLiveReportsOptions {
   /** 특정 건물로 필터링. 생략하면 전체 제보를 받는다. */
   buildingId?: number
   accessToken?: string | null
+  /** 레이어를 끄거나 화면을 떠나면 진행 중인 요청을 끊는다(`useApiResource`). */
+  signal?: AbortSignal
 }
 
 /**
@@ -56,7 +58,7 @@ export async function getLiveReports(
 
   const { reports } = await apiRequest<{ reports: ReportListItem[] }>(
     `/reports?${params.toString()}`,
-    { accessToken: options.accessToken },
+    { accessToken: options.accessToken, signal: options.signal },
   )
   return reports
 }

@@ -6,6 +6,7 @@ export interface BackendStatus {
   buildTime: string
 }
 
-export async function getBackendStatus(): Promise<BackendStatus> {
-  return apiRequest<BackendStatus>('/status')
+/** `signal` 은 화면을 떠날 때 요청을 끊는 용도(`useApiResource`). */
+export async function getBackendStatus(options: { signal?: AbortSignal } = {}): Promise<BackendStatus> {
+  return apiRequest<BackendStatus>('/status', { signal: options.signal })
 }

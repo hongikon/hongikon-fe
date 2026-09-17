@@ -15,6 +15,7 @@ import {
   exchangeAuthCode,
   type TokenResponse,
 } from '../apis/auth'
+import { ApiError, isNetworkError } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -64,6 +65,20 @@ function extractAuthCode(redirectedUrl: string): string | null {
   }
 }
 
+/**
+ * 토큰 교환 실패 문구. 서버 원문은 보여주지 않고(client 가 이미 걸러낸다), 사용자가 할 수 있는
+ * 다음 행동("다시 로그인")을 알려준다.
+ */
+function authExchangeErrorMessage(error: unknown): string {
+  if (isNetworkError(error)) {
+    return '네트워크 연결이 불안정해 로그인을 마치지 못했습니다. 연결을 확인한 뒤 다시 로그인해주세요.'
+  }
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    return '로그인 정보가 만료되었거나 올바르지 않습니다. 다시 로그인해주세요.'
+  }
+  return '로그인 처리 중 서버에 문제가 생겼습니다. 잠시 후 다시 로그인해주세요.'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [accessToken, setAccessToken] = useState<string | null>(null)
@@ -81,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isGuest = await getItem(GUEST_FLAG_KEY)
         setStatus(isGuest ? 'guest' : 'signedOut')
       } catch (error: unknown) {
-        console.warn('로그인 상태를 불러오지 못해 웰컴 화면으로 시작합니다:', error)
+        if (__DEV__) console.warn('로그인 상태를 불러오지 못해 웰컴 화면으로 시작합니다:', error)
         setStatus('signedOut')
       }
     }
@@ -106,7 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('로그인 응답에서 인가 코드를 찾지 못했습니다.')
     }
 
-    const tokens = await exchangeAuthCode(code)
+    // 인가 코드는 1회용이라 client 도 자동 재시도하지 않고(POST), 여기서도 다시 보내지 않는다.
+    // 첫 요청이 서버에 닿아 코드가 이미 소모됐을 수 있어, 다시 보내면 실패하거나 재사용 시도로 남는다.
+    // 실패하면 로그인 창부터 다시 열도록 안내한다.
+    let tokens: TokenResponse
+    try {
+      tokens = await exchangeAuthCode(code)
+    } catch (error) {
+      throw new Error(authExchangeErrorMessage(error))
+    }
 
     await saveTokens(tokens)
     await deleteItem(GUEST_FLAG_KEY)

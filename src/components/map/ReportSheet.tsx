@@ -6,6 +6,8 @@ import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
 import { flagReport } from '../../apis/reports'
+import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
+import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin } from '../../utils/reports'
 import type { ReportListItem } from '../../types'
 
@@ -27,7 +29,11 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const badgeLabel = report.customCategoryLabel || meta.label
   const [flagging, setFlagging] = useState(false)
   const [flagged, setFlagged] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{
+    message: string
+    network: boolean
+    retryable: boolean
+  } | null>(null)
 
   const handleFlag = async () => {
     // 제보 신고도 로그인이 필요하다(`POST /reports/{id}/flags` — 게스트는 401).
@@ -44,9 +50,13 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       await flagReport(report.id, { reason: 'ETC' }, accessToken)
       setFlagged(true)
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : '신고를 접수하지 못했습니다.',
-      )
+      // 신고는 POST 라 자동으로 다시 보내지 않는다(중복 신고 방지). 연결 문제일 때만
+      // "다시 시도" 버튼을 줘서 사용자가 직접 다시 보내게 한다.
+      setError({
+        message: getErrorMessage(caught, '신고를 접수하지 못했습니다.'),
+        network: isNetworkError(caught),
+        retryable: isRetryableError(caught),
+      })
     } finally {
       setFlagging(false)
     }
@@ -104,7 +114,16 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
         )}
       </View>
 
-      {error !== null && <Text style={styles.errorText}>{error}</Text>}
+      {error !== null && (
+        <RetryableError
+          variant="chip"
+          style={styles.errorBox}
+          message={error.message}
+          isNetworkError={error.network}
+          onRetry={error.retryable ? handleFlag : undefined}
+          retrying={flagging}
+        />
+      )}
     </View>
   )
 }
@@ -158,5 +177,5 @@ const styles = StyleSheet.create({
   flagBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
   flagText: { fontFamily: FONTS.regular, fontSize: 12, color: '#999' },
   flaggedText: { fontFamily: FONTS.semibold, fontSize: 12, color: '#B45309' },
-  errorText: { fontFamily: FONTS.regular, fontSize: 12, color: '#B45309', marginTop: 8 },
+  errorBox: { marginTop: 8 },
 })
