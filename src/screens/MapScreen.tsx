@@ -11,8 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
-import FloorPickerModal from "../components/map/FloorPickerModal";
-import type { FloorTarget } from "../components/map/FloorPickerModal";
+import FloorChips from "../components/map/FloorChips";
 import BuildingSheet from "../components/map/BuildingSheet";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
@@ -20,6 +19,8 @@ import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
+import { useApiResource } from "../hooks/useApiResource";
+import RetryableError from "../components/common/RetryableError";
 import { toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
@@ -33,7 +34,7 @@ import {
   partnerCategoryMeta,
   PARTNER_MAP_ICON_COLOR,
 } from "../constants/partnerCategories";
-import { formatFloor, hasFloorData } from "../utils/floors";
+import { formatFloor } from "../utils/floors";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
 import { buildMapHTML } from "../utils/mapHtml";
@@ -57,6 +58,9 @@ import type {
 import { FONTS } from "../constants/typography";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
+/** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
+const EMPTY_REPORTS: ReportListItem[] = [];
+
 function buildingLabel(building: Building, floor: number | null): string {
   return floor === null
     ? building.name
@@ -107,11 +111,6 @@ export default function MapScreen() {
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
   const [toFloor, setToFloor] = useState<number | null>(null);
-  // 층 다이얼을 띄울 대상. 건물에 층 정보가 있을 때만 채워진다.
-  const [pendingFloor, setPendingFloor] = useState<{
-    building: Building;
-    target: FloorTarget;
-  } | null>(null);
   // 최상단 필터. 무엇을 볼지 먼저 고르게 한다. null 이면 하위 칩 줄이 없다.
   const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
@@ -128,9 +127,14 @@ export default function MapScreen() {
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
   const [reportsOn, setReportsOn] = useState(false);
-  const [reports, setReports] = useState<ReportListItem[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  const [reportsError, setReportsError] = useState<string | null>(null);
+  // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
+  const reportsResource = useApiResource(
+    async (signal) =>
+      visibleReports(await getLiveReports({ accessToken, signal })),
+    [accessToken],
+    { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했습니다." },
+  );
+  const reports = reportsResource.data ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
@@ -192,7 +196,10 @@ export default function MapScreen() {
 
   /** 제보 레이어를 켰는데 지금 진행 중인 제보가 하나도 없는 상태. */
   const reportsEmpty =
-    reportsOn && !reportsLoading && reportsError === null && reports.length === 0;
+    reportsOn &&
+    reportsResource.data !== undefined &&
+    reportsResource.errorMessage === null &&
+    reports.length === 0;
 
   const filteredBuildings = searchQuery.trim()
     ? BUILDINGS.filter((b) => b.name.includes(searchQuery.trim()))
@@ -378,36 +385,32 @@ export default function MapScreen() {
     [postToMap],
   );
 
+  /**
+   * 출발·도착이 모두 정해지면 길찾기 모달의 결과 카드를 보여준다. 층은 그 카드의
+   * 칩 줄(`FloorChips`)에서 고르므로, 지도로 바로 돌아가지 않고 여기서 멈춘다.
+   */
+  const showRouteResult = useCallback(() => {
+    setRouteTarget(null);
+    setSearchQuery("");
+    setShowRoute(true);
+  }, []);
+
   /** 출발이 확정되면 도착지 선택 화면으로 자동으로 넘어간다. */
   const advanceToDestination = useCallback(() => {
     if (toBuilding) {
-      setShowRoute(false);
-      setRouteTarget(null);
+      showRouteResult();
       return;
     }
     setSearchQuery("");
     setRouteTarget("to");
     setShowRoute(true);
-  }, [toBuilding]);
+  }, [toBuilding, showRouteResult]);
 
-  const finishDestination = useCallback(() => {
-    setShowRoute(false);
-    setRouteTarget(null);
-    setSearchQuery("");
-  }, []);
-
-  /** 층 정보가 있는 건물이면 다이얼을 먼저 띄우고, 없으면 곧장 다음 단계로. */
   const beginFrom = useCallback(
     (building: Building) => {
       setFromBuilding(building);
       setFromFloor(null);
       setSelectedBuilding(null);
-      if (hasFloorData(building)) {
-        // 모달 중첩을 피한다. 층 선택이 끝나면 도착지 단계에서 다시 연다.
-        setShowRoute(false);
-        setPendingFloor({ building, target: "from" });
-        return;
-      }
       advanceToDestination();
     },
     [advanceToDestination],
@@ -418,33 +421,17 @@ export default function MapScreen() {
       setToBuilding(building);
       setToFloor(null);
       setSelectedBuilding(null);
-      if (hasFloorData(building)) {
-        setShowRoute(false);
-        setPendingFloor({ building, target: "to" });
+      if (fromBuilding) {
+        showRouteResult();
         return;
       }
-      finishDestination();
+      // 도착지부터 고른 경우엔 출발지 입력으로 이어준다.
+      setSearchQuery("");
+      setRouteTarget("from");
+      setShowRoute(true);
     },
-    [finishDestination],
+    [fromBuilding, showRouteResult],
   );
-
-  const handleFloorConfirm = useCallback(
-    (floor: number) => {
-      if (!pendingFloor) return;
-      const { target } = pendingFloor;
-      setPendingFloor(null);
-      if (target === "from") {
-        setFromFloor(floor);
-        advanceToDestination();
-        return;
-      }
-      setToFloor(floor);
-      finishDestination();
-    },
-    [pendingFloor, advanceToDestination, finishDestination],
-  );
-
-  const handleFloorCancel = useCallback(() => setPendingFloor(null), []);
 
   const handleSetFrom = useCallback(() => {
     if (selectedBuilding) beginFrom(selectedBuilding);
@@ -499,42 +486,22 @@ export default function MapScreen() {
     [layer, postToMap, applyFacilityKind],
   );
 
-  /** 살아있는 제보를 받아 지도에 올린다. */
-  const loadReports = useCallback(async () => {
-    setReportsLoading(true);
-    setReportsError(null);
-    try {
-      const list = await getLiveReports({ accessToken });
-      const visible = visibleReports(list);
-      setReports(visible);
-      postToMap({ type: "setReports", markers: toReportMarkers(visible) });
-    } catch (caught) {
-      setReports([]);
-      postToMap({ type: "clearReports" });
-      setReportsError(
-        caught instanceof Error
-          ? caught.message
-          : "제보를 불러오지 못했습니다.",
-      );
-    } finally {
-      setReportsLoading(false);
-    }
-  }, [accessToken, postToMap]);
+  /** 제보를 새로 받을 때마다 지도에 올린다. */
+  useEffect(() => {
+    if (!reportsOn || reportsResource.data === undefined) return;
+    postToMap({
+      type: "setReports",
+      markers: toReportMarkers(reportsResource.data),
+    });
+  }, [reportsOn, reportsResource.data, postToMap]);
 
   /** 제보 버튼. 켜면 지금 진행 중인 제보를 받아 오고, 끄면 지도에서 내린다. */
   const handleToggleReports = useCallback(() => {
     const next = !reportsOn;
     setReportsOn(next);
     setSelectedReport(null);
-
-    if (next) {
-      void loadReports();
-      return;
-    }
-    setReports([]);
-    setReportsError(null);
-    postToMap({ type: "clearReports" });
-  }, [reportsOn, loadReports, postToMap]);
+    if (!next) postToMap({ type: "clearReports" });
+  }, [reportsOn, postToMap]);
 
   /**
    * 제보 등록 성공. 작성창을 닫는다.
@@ -544,8 +511,8 @@ export default function MapScreen() {
    */
   const handleReportCreated = useCallback(() => {
     setReportTarget(null);
-    if (reportsOn) void loadReports();
-  }, [reportsOn, loadReports]);
+    if (reportsOn) reportsResource.retry();
+  }, [reportsOn, reportsResource.retry]);
 
   /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
   const handleStartReportPicker = useCallback(() => {
@@ -626,19 +593,19 @@ export default function MapScreen() {
             </View>
           )}
 
-          {reportsError !== null && (
-            <View style={styles.mapErrorNotice}>
-              <Ionicons name="warning" size={15} color="#B45309" />
-              <Text style={styles.mapErrorText}>{reportsError}</Text>
-              <TouchableOpacity
-                onPress={() => setReportsError(null)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                accessibilityRole="button"
-                accessibilityLabel="닫기"
-              >
-                <Ionicons name="close" size={15} color="#B45309" />
-              </TouchableOpacity>
-            </View>
+          {reportsOn && reportsResource.errorMessage !== null && (
+            <RetryableError
+              variant="chip"
+              message={
+                reportsResource.data !== undefined
+                  ? "제보를 새로 불러오지 못했어요. 마지막으로 받은 제보를 보여주고 있어요."
+                  : reportsResource.errorMessage
+              }
+              isNetworkError={reportsResource.isNetworkError}
+              onRetry={reportsResource.canRetry ? reportsResource.retry : undefined}
+              retrying={reportsResource.loading || reportsResource.refreshing}
+              onDismiss={reportsResource.clearError}
+            />
           )}
 
           {reportsEmpty && (
@@ -966,12 +933,26 @@ export default function MapScreen() {
                 />
                 <Text style={styles.routeResultName}>{fromBuilding.name}</Text>
               </View>
-              <View style={styles.routeResultRow}>
+              <FloorChips
+                label="출발 층"
+                building={fromBuilding}
+                floor={fromFloor}
+                accent="#10B981"
+                onChange={setFromFloor}
+              />
+              <View style={[styles.routeResultRow, styles.routeResultRowSpaced]}>
                 <View
                   style={[styles.routeDot, { backgroundColor: "#EF4444" }]}
                 />
                 <Text style={styles.routeResultName}>{toBuilding.name}</Text>
               </View>
+              <FloorChips
+                label="도착 층"
+                building={toBuilding}
+                floor={toFloor}
+                accent="#EF4444"
+                onChange={setToFloor}
+              />
 
               <View style={styles.routeAltList}>
                 {routeAlternatives.map((route, index) => (
@@ -1021,15 +1002,6 @@ export default function MapScreen() {
         onClose={() => setReportTarget(null)}
         onCreated={handleReportCreated}
       />
-
-      {pendingFloor && (
-        <FloorPickerModal
-          building={pendingFloor.building}
-          target={pendingFloor.target}
-          onConfirm={handleFloorConfirm}
-          onCancel={handleFloorCancel}
-        />
-      )}
     </View>
   );
 }
@@ -1367,6 +1339,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   routeResultRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  routeResultRowSpaced: { marginTop: 14 },
   routeResultName: {
     fontSize: 14,
     fontFamily: FONTS.medium,

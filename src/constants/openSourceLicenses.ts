@@ -20,7 +20,6 @@ export const OSS_LICENSES: OSSLicense[] = [
   { name: 'expo-web-browser', version: '56.0.6', license: 'MIT' },
   { name: '@expo/vector-icons', version: '15.1.1', license: 'MIT' },
   { name: '@react-native-async-storage/async-storage', version: '2.2.0', license: 'MIT' },
-  { name: '@react-native-picker/picker', version: '2.11.4', license: 'MIT' },
   { name: '@react-navigation/native', version: '7.3.3', license: 'MIT' },
   { name: '@react-navigation/native-stack', version: '7.17.5', license: 'MIT' },
   { name: '@react-navigation/bottom-tabs', version: '7.18.2', license: 'MIT' },

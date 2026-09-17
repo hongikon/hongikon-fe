@@ -178,14 +178,14 @@ const BASE_BUILDINGS: Building[] = [
   // ── 남부 ────────────────────────────────────────────────
   { name: '조형관', lat: 37.5502933, lng: 126.9261977, color: '#D97706', category: '강의', type: '예술·디자인 강의동',
     entrances: [
-      { label: 'HI_E_3F_ENTER', lat: 37.5503078, lng: 126.9260846, minFloor: 1, maxFloor: 1 },
-      { label: 'HI_E_1F_ENTER', lat: 37.55020218050226, lng: 126.92617370938746, minFloor: 2, maxFloor: 2 },
-      { label: 'HI_E_2F_ENTER', lat: 37.55054232834514, lng: 126.92620732366287, minFloor: 3, maxFloor: 3 },
+      { label: 'HI_E_3F_ENTER', lat: 37.5503078, lng: 126.9260846, minFloor: 3, maxFloor: 3 },
+      { label: 'HI_E_1F_ENTER', lat: 37.55020218050226, lng: 126.92617370938746, minFloor: 1, maxFloor: 1 },
+      { label: 'HI_E_2F_ENTER', lat: 37.55054232834514, lng: 126.92620732366287, minFloor: 2, maxFloor: 2 },
     ] },
   { name: '강당 S동', lat: 37.5502593, lng: 126.9251731, color: '#06B6D4', category: '편의', type: '강당',
     entrances: [
-      { label: 'HI_S_3F_ENTER', lat: 37.5504890, lng: 126.9251832, minFloor: 1, maxFloor: 1 },
-      { label: 'HI_S_1F_ENTER', lat: 37.55020385453509, lng: 126.92525423881615, minFloor: 3, maxFloor: 3 },
+      { label: 'HI_S_3F_ENTER', lat: 37.5504890, lng: 126.9251832, minFloor: 3, maxFloor: 3 },
+      { label: 'HI_S_1F_ENTER', lat: 37.55020385453509, lng: 126.92525423881615, minFloor: 1, maxFloor: 1 },
     ] },
   { name: '미술종합강의동 U동', lat: 37.5501933, lng: 126.9264606, color: '#FB923C', category: '강의', type: '미술 강의동',
     entrances: [

@@ -2,7 +2,7 @@ import { BUILDINGS } from '../constants/buildings'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 import { WALKING_METERS_PER_MINUTE } from '../constants/route'
 import type { Building } from '../types'
-import { floorTransitSeconds, matchEntrance, resolveEntrancePoint } from './floors'
+import { entranceTransitSeconds, matchEntrance, resolveEntrancePoint } from './floors'
 import type { RoutePoint } from './floors'
 import { haversineMeters } from './geo'
 
@@ -122,7 +122,7 @@ function attachFloorNode(graph: Graph, building: Building, floor: number | null)
   graph.nodes.set(floorNodeId, point)
   graph.floorNodeIds.add(floorNodeId)
 
-  const seconds = floorTransitSeconds(null, floor)
+  const seconds = entranceTransitSeconds(building, floor)
   pushAdj(graph, floorNodeId, { to: anchor, seconds, meters: 0 })
   pushAdj(graph, anchor, { to: floorNodeId, seconds, meters: 0 })
 
@@ -342,7 +342,8 @@ export function straightLineFallback(
   const toPoint = resolveEntrancePoint(toBuilding, toFloor)
   const meters = haversineMeters(fromPoint.lat, fromPoint.lng, toPoint.lat, toPoint.lng)
   const walkSeconds = (meters / WALKING_METERS_PER_MINUTE) * 60
-  const totalSeconds = walkSeconds + floorTransitSeconds(fromFloor, toFloor)
+  const totalSeconds =
+    walkSeconds + entranceTransitSeconds(fromBuilding, fromFloor) + entranceTransitSeconds(toBuilding, toFloor)
 
   return {
     points: [fromPoint, toPoint],
