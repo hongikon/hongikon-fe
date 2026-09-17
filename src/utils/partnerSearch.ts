@@ -1,6 +1,12 @@
 import { PARTNERS } from '../constants/partners'
+import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { normalize } from './normalize'
-import type { Partner } from '../types'
+import type { Partner, PartnerCategory } from '../types'
+
+export interface PartnerSection {
+  category: PartnerCategory
+  data: Partner[]
+}
 
 /** 상호명뿐 아니라 혜택·주소로도 찾게 한다. '10%할인', '상수동' 같은 검색을 위해서다. */
 function searchableFields(partner: Partner): string[] {
@@ -36,4 +42,18 @@ export function searchPartners(query: string): Partner[] {
       Number(matchesName(b, normalizedQuery)) -
       Number(matchesName(a, normalizedQuery)),
   )
+}
+
+/**
+ * 검색어 없이 검색 화면을 열었을 때 훑어볼 전체 목록.
+ * `PARTNER_CATEGORIES` 순서로 묶고, 묶음 안은 이름 가나다순. 업체가 없는
+ * 카테고리는 빈 구획을 만들지 않도록 건너뛴다.
+ */
+export function browsePartnersByCategory(): PartnerSection[] {
+  return PARTNER_CATEGORIES.map(({ key }) => ({
+    category: key,
+    data: PARTNERS.filter((partner) => partner.category === key).sort((a, b) =>
+      a.name.localeCompare(b.name, 'ko'),
+    ),
+  })).filter((section) => section.data.length > 0)
 }
