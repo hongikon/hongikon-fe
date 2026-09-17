@@ -14,7 +14,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true
         }
       }
     },
@@ -59,15 +60,7 @@
           "cameraPermission": "제보에 첨부할 사진을 찍기 위해 카메라 권한이 필요합니다."
         }
       ],
-      "expo-status-bar",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
