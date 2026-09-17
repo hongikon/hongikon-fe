@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "홍익대알리미",
+    "name": "홍익온",
     "slug": "hongik-alimi",
     "version": "1.0.0",
     "scheme": "hongikon",
@@ -12,14 +12,17 @@
       "bundleIdentifier": "com.hongmap.alimi",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
       "package": "com.hongmap.alimi",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1833DB",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -31,14 +34,22 @@
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser",
       [
         "expo-notifications",
         {
           "icon": "./assets/android-icon-monochrome.png",
-          "color": "#05014A"
+          "color": "#1833DB"
         }
       ],
       [
@@ -48,7 +59,15 @@
           "cameraPermission": "제보에 첨부할 사진을 찍기 위해 카메라 권한이 필요합니다."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

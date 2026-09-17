@@ -16,7 +16,7 @@ export default function TermsModal({ visible, onClose }: TermsModalProps) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <ModalHeader title="이용약관" onClose={onClose} />
         <ScrollView style={styles.body}>
-          <Text style={styles.title}>홍익대알리미 이용약관</Text>
+          <Text style={styles.title}>홍익온 이용약관</Text>
           <Text style={styles.text}>{TERMS_TEXT}</Text>
         </ScrollView>
       </SafeAreaView>

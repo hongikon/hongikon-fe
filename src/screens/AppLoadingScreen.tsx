@@ -1,7 +1,8 @@
-import { Text, StyleSheet, Image, ActivityIndicator } from 'react-native'
+import { Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
+import BrandSymbol from '../../assets/brand/symbol.svg'
 
 /**
  * AuthContext가 저장된 로그인 상태(토큰/게스트 여부)를 읽어오는 동안 보여준다.
@@ -11,11 +12,7 @@ import { FONTS } from '../constants/typography'
 export default function AppLoadingScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <Image
-        source={require('../../assets/splash-icon.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <BrandSymbol width={88} height={88} style={styles.logo} />
       <ActivityIndicator color={COLORS.primary} style={styles.spinner} />
       <Text style={styles.label}>불러오는 중…</Text>
     </SafeAreaView>
@@ -30,7 +27,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  logo: { width: 96, height: 96, borderRadius: 24, marginBottom: 8 },
+  logo: { marginBottom: 8 },
   spinner: { marginTop: 4 },
   label: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textSecondary },
 })

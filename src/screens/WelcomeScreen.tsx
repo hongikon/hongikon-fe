@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
 } from 'react-native'
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { useAuth } from '../contexts/AuthContext'
+import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 
 type PendingAction = 'kakao' | 'guest' | null
 
@@ -50,12 +50,9 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
-        <Image
-          source={require('../../assets/splash-icon.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>홍익대알리미</Text>
+        <View style={styles.logo} accessibilityRole="image" accessibilityLabel="HONGIK ON">
+          <LogotypeVertical width={180} height={109} />
+        </View>
         <Text style={styles.subtitle}>캠퍼스 지도와 학과 소식을 한 곳에서</Text>
       </View>
 
@@ -113,8 +110,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 32,
   },
-  logo: { width: 96, height: 96, borderRadius: 24 },
-  title: { fontSize: 22, fontFamily: FONTS.bold, color: COLORS.textPrimary, marginTop: 8 },
+  logo: { marginBottom: 12 },
   subtitle: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   buttons: { paddingHorizontal: 24, paddingBottom: 20, gap: 10 },
   button: {

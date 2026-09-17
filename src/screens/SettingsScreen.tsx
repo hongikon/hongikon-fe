@@ -27,6 +27,7 @@ import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS } from '../constants/typography'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
@@ -221,6 +222,10 @@ export default function SettingsScreen() {
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
         </View>
 
+        <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
+          <LogotypeHorizontal width={112} height={20} />
+        </View>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -363,5 +368,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   categoryChipText: { fontSize: 13, fontFamily: FONTS.medium },
+  brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
   bottomSpacer: { height: 16 },
 })
