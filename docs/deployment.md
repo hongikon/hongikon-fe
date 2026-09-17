@@ -27,7 +27,8 @@ sudo EMAIL=<인증서 알림 받을 이메일> bash deploy/setup-https.sh
 
 이어서:
 - 카카오 개발자 콘솔 → Redirect URI에 `https://api.hongikon.com/login/oauth2/code/kakao` 추가
-- 확인되면 Nginx의 IP 직접 접속용 기본 사이트(`/etc/nginx/sites-enabled/default`)를 지운다
+- 스크립트는 IP 직접 접속용 기존 기본 사이트를 끄고, 도메인이 아닌 Host 요청은 끊는다(444). 그래서 `http://54.180.195.51` 로는 더 이상 접속되지 않는다
+- 백엔드 컨테이너는 `-p 127.0.0.1:8080:8080` 으로 띄운다(스크립트가 외부 바인딩이면 경고한다)
 
 ## 3. 웹판 (Netlify)
 
