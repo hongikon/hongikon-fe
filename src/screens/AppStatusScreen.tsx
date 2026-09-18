@@ -10,12 +10,20 @@ import { FONTS } from '../constants/typography'
 import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
 import { formatPushNotification } from '../utils/notificationFormat'
 import { getBackendStatus } from '../apis/status'
+import { API_BASE_URL } from '../apis/client'
 import { useApiResource } from '../hooks/useApiResource'
 import RetryableError from '../components/common/RetryableError'
 import type { PushNotificationData } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
+
+/** `app.config.ts` 가 넣어 주는 빌드 환경. 테스터가 지금 어느 빌드를 보고 있는지 구분하려고 띄운다. */
+const APP_VARIANT_LABEL: Record<string, string> = {
+  development: '개발',
+  preview: '테스트(내부 배포)',
+  production: '운영',
+}
 
 const EXECUTION_ENVIRONMENT_LABEL: Record<string, string> = {
   standalone: '독립 실행형 빌드',
@@ -73,8 +81,11 @@ export default function AppStatusScreen() {
     : (backendVersion ?? '확인 중…')
   const backendVersionMatches = backendVersion !== null && backendVersion === compatibleBackendVersion
 
+  const appVariant = String(config?.extra?.appVariant ?? 'production')
+
   const rows: { label: string; value: string }[] = [
     { label: '앱 이름', value: config?.name ?? '-' },
+    { label: '빌드 환경', value: APP_VARIANT_LABEL[appVariant] ?? appVariant },
     { label: '버전', value: config?.version ?? '-' },
     { label: '빌드 번호', value: buildId ?? '-' },
     { label: '플랫폼', value: `${Platform.OS} ${Platform.Version}` },
@@ -87,6 +98,7 @@ export default function AppStatusScreen() {
   ]
 
   const backendRows: { label: string; value: string }[] = [
+    { label: '연결된 백엔드 주소', value: API_BASE_URL || '미설정' },
     { label: '이 빌드가 필요로 하는 백엔드 버전', value: compatibleBackendVersion },
     { label: '지금 연결된 백엔드 버전', value: backendVersionLabel },
     {

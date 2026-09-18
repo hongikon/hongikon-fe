@@ -49,13 +49,33 @@ eas submit --profile production --platform android|ios
 
 `production` 은 `appVersionSource: remote` + `autoIncrement` 라 빌드 번호를 EAS가 올린다. 사용자에게 보이는 `version` 은 `app.json` 에서 직접 올린다.
 
+## 실행 환경 (개발 / 테스트 / 운영)
+
+`app.config.ts` 가 `APP_VARIANT` 에 따라 앱 이름과 패키지 id 를 갈라준다. 패키지 id 가 달라
+한 기기에 세 가지를 나란히 깔 수 있고, 앱 상태 화면의 '빌드 환경' 줄에서 지금 보고 있는 게
+어느 빌드인지 확인할 수 있다.
+
+| 환경 | 만드는 법 | 앱 이름 | 패키지 id |
+|---|---|---|---|
+| 개발 | `pnpm dev` (또는 `eas build --profile development`) | 홍익온 (개발) | `com.hongmap.alimi.dev` |
+| 테스트 | `eas build --profile preview` | 홍익온 (테스트) | `com.hongmap.alimi.preview` |
+| 운영 | `eas build --profile production` | 홍익온 | `com.hongmap.alimi` |
+
+카카오 로그인 복귀 주소(`hongikon://`)는 백엔드가 고정으로 들고 있어 세 빌드가 같다. 두 개
+이상 깔려 있으면 로그인 후 어느 앱으로 돌아갈지 OS 가 고르므로, 로그인 흐름을 검증할 땐
+한 번에 하나만 설치한다.
+
 ## 환경변수가 들어가는 곳
 
 | 대상 | 설정 위치 | `EXPO_PUBLIC_API_BASE_URL` |
 |---|---|---|
 | 로컬 개발 | `.env` (`.env.example` 참고) | `https://api.hongikon.com` |
+| 로컬 + 로컬 백엔드 | `pnpm dev:local` | `http://localhost:8080` |
 | EAS 빌드 | `eas.json` 의 `build.base.env` | `https://api.hongikon.com` |
 | Netlify 웹 | `netlify.toml` | `/api` (프록시) |
+
+실기기에서 로컬 백엔드에 붙을 땐 `localhost` 가 아니라 PC 의 LAN IP 를 `.env` 에 적는다
+(Android 에뮬레이터는 `10.0.2.2`). iOS 는 `NSAllowsLocalNetworking` 으로 이 경우만 열어 뒀다.
 
 `.env` 는 git·EAS 업로드에서 빠지므로 빌드용 공개값은 `eas.json` 에 둔다. 시크릿에는 `EXPO_PUBLIC_` 접두사를 붙이지 않는다.
 
