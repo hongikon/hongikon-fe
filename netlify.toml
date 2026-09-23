@@ -7,6 +7,11 @@
   # 웹판(hongikon.com)은 같은 출처의 /api 로 부르고 아래 프록시가 api.hongikon.com 으로 넘긴다.
   # 백엔드에 CORS 설정을 열지 않아도 되고, 브라우저 입장에선 쿠키·헤더가 한 출처에만 오간다.
   EXPO_PUBLIC_API_BASE_URL = "/api"
+  # package.json의 packageManager(pnpm@11.25.0)를 Netlify 빌드 이미지의 corepack이
+  # "모르는 버전"으로 보고 서명 검증에서 막을 수 있어(2026-09-09부터 모든 배포가
+  # "Install dependencies" 단계에서 실패해 온 원인으로 추정 — 로컬에서는 시스템 pnpm을
+  # 직접 써서 corepack을 안 거치므로 재현이 안 됐다), 서명 검증을 끈다.
+  COREPACK_ENABLE_STRICT = "0"
 
 [[redirects]]
   from = "/api/*"
