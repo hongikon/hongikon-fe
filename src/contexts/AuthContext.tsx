@@ -13,6 +13,7 @@ import {
   KAKAO_LOGIN_URL,
   deleteAccount as deleteAccountRequest,
   exchangeAuthCode,
+  logoutRequest,
   type TokenResponse,
 } from '../apis/auth'
 import { ApiError, isNetworkError } from '../apis/client'
@@ -138,6 +139,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // 서버에 refresh 토큰 폐기를 먼저 시도한다 — 실패해도(오프라인 등) 로컬 로그아웃은 그대로
+    // 진행한다. 그렇지 않으면 네트워크가 안 되는 순간 로그아웃 버튼 자체가 안 먹는 꼴이 된다.
+    const refreshToken = await getItem(REFRESH_TOKEN_KEY)
+    if (refreshToken) {
+      try {
+        await logoutRequest(refreshToken)
+      } catch (error: unknown) {
+        if (__DEV__) console.warn('서버 로그아웃 요청 실패(로컬 로그아웃은 계속 진행):', error)
+      }
+    }
+
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
