@@ -11,6 +11,7 @@ import RootNavigator from './src/navigation/RootNavigator'
 import { navigationRef } from './src/navigation/navigationRef'
 import { usePushNotifications } from './src/lib/pushNotifications'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
+import UpdateBanner from './src/components/common/UpdateBanner'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
 import { FONT_ASSETS } from './src/constants/typography'
@@ -82,6 +83,7 @@ export default function App() {
             <RootNavigator />
             {/* 모든 화면 위에 떠야 해서 내비게이터 뒤(위 레이어)에 둔다. 네이티브 Modal 위로는 못 올라간다. */}
             <NetworkStatusBanner />
+            <UpdateBanner />
             <StatusBar style="dark" />
           </NavigationContainer>
         </SettingsProvider>

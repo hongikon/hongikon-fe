@@ -5,6 +5,10 @@
     "version": "1.0.0",
     "scheme": "hongikon",
     "orientation": "portrait",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/25bf8164-7142-43dc-a175-865a00577f3d"
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
