@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
@@ -6,13 +6,35 @@ import type { CategoryKey } from '../constants/colors'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
+import { useApiResource } from '../hooks/useApiResource'
+import { getNewsById } from '../apis/news'
+import { backendDetailToNewsItem } from '../utils/newsMapping'
 import { FONTS } from '../constants/typography'
+import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
 
+/**
+ * 목록 카드에서 온 `item`엔 짧은 preview만 있고 본문 전체·이미지·첨부파일·조회수는 없다
+ * (`NewsSummaryResponse`엔 그 필드들이 없음). 백엔드 소식(id가 숫자 문자열)이면 상세 API로
+ * 나머지를 채워 넣는다. 로컬 목데이터(`constants/news.ts`의 "n1" 같은 id)는 숫자가 아니라
+ * 자동으로 건너뛴다.
+ */
+function useEnhancedNewsItem(item: NewsItem) {
+  const backendId = /^\d+$/.test(item.id) ? Number(item.id) : null
+  const detail = useApiResource(
+    (signal) => getNewsById(backendId as number, signal),
+    [backendId],
+    { enabled: backendId !== null, fallbackMessage: '소식 본문을 불러오지 못했습니다.' },
+  )
+
+  if (!detail.data) return { item, loadingMore: detail.loading }
+  return { item: backendDetailToNewsItem(detail.data), loadingMore: false }
+}
+
 export default function NewsDetailScreen({ route, navigation }: Props) {
-  const { item } = route.params
   const { isBookmarked, toggleBookmark } = useSettings()
+  const { item, loadingMore } = useEnhancedNewsItem(route.params.item)
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
   const bookmarked = isBookmarked(item.id)
 
@@ -56,10 +78,17 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.divider} />
 
+        {loadingMore && (
+          <View style={styles.bodyLoading}>
+            <ActivityIndicator size="small" color="#bbb" />
+            <Text style={styles.bodyLoadingText}>본문을 불러오는 중…</Text>
+          </View>
+        )}
+
         {item.preview.length > 0 && <Text style={styles.body}>{item.preview}</Text>}
 
         {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
-        {item.preview.length === 0 && (
+        {!loadingMore && item.preview.length === 0 && (
           <Text style={styles.bodyPlaceholder}>
             {item.images?.length
               ? '본문이 이미지로만 되어 있습니다. 원문에서 확인하세요.'
@@ -147,6 +176,8 @@ const styles = StyleSheet.create({
   },
   sourceName: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   divider: { height: 0.5, backgroundColor: '#eee', marginBottom: 20 },
+  bodyLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
+  bodyLoadingText: { fontFamily: FONTS.regular, fontSize: 13, color: '#bbb' },
   body: { fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#444',

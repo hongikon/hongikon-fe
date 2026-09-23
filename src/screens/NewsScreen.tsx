@@ -1,19 +1,21 @@
 import { useState, useCallback, useMemo } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
-import { TREE_DATA, NEWS_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
+import { TREE_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
 import type { CategoryKey } from '../constants/colors'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
+import { useNewsFeed } from '../hooks/useNewsFeed'
 import { FONTS } from '../constants/typography'
 import NewsList from '../components/news/NewsList'
 import DeptTreeList from '../components/news/DeptTreeList'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
+import RetryableError from '../components/common/RetryableError'
 
 type TabType = '북마크' | '구독' | '전체'
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -30,18 +32,21 @@ export default function NewsScreen() {
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
 
+  const newsFeed = useNewsFeed()
+  const newsData = newsFeed.data ?? []
+
   const bookmarkedNews = useMemo(
-    () => NEWS_DATA.filter((n) => settings.bookmarkedNews.includes(n.id)),
-    [settings.bookmarkedNews]
+    () => newsData.filter((n) => settings.bookmarkedNews.includes(n.id)),
+    [newsData, settings.bookmarkedNews]
   )
   const subscribedNews = useMemo(
     () =>
-      NEWS_DATA.filter(
+      newsData.filter(
         (n) =>
           settings.subscribedDepts.includes(n.sourceId) &&
           settings.subscribedCategories.includes(n.category as CategoryKey)
       ),
-    [settings.subscribedDepts, settings.subscribedCategories]
+    [newsData, settings.subscribedDepts, settings.subscribedCategories]
   )
 
   const displayedNews = activeTab === '북마크' ? bookmarkedNews : subscribedNews
@@ -98,6 +103,19 @@ export default function NewsScreen() {
           onSelectDept={handleSelectDept}
           subscribedDepts={settings.subscribedDepts}
           onToggleSubscribe={toggleSubscribedDept}
+        />
+      ) : newsFeed.loading ? (
+        <View style={styles.feedLoading}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.feedLoadingText}>소식을 불러오는 중…</Text>
+        </View>
+      ) : newsFeed.errorMessage && newsData.length === 0 ? (
+        <RetryableError
+          style={styles.feedError}
+          message={newsFeed.errorMessage}
+          isNetworkError={newsFeed.isNetworkError}
+          onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
+          retrying={newsFeed.refreshing}
         />
       ) : (
         <NewsList
@@ -222,6 +240,10 @@ const styles = StyleSheet.create({
 
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
+
+  feedLoading: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  feedLoadingText: { fontFamily: FONTS.regular, fontSize: 13, color: '#bbb' },
+  feedError: { marginHorizontal: 12, marginTop: 12 },
 
   listHeaderGroup: { gap: 10 },
   hub: { backgroundColor: COLORS.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },

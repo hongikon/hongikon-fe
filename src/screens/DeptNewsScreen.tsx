@@ -1,16 +1,17 @@
 import { useCallback, useMemo } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { NEWS_DATA } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsSearch } from '../hooks/useNewsSearch'
+import { useNewsFeed } from '../hooks/useNewsFeed'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
+import RetryableError from '../components/common/RetryableError'
 import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DeptNews'>
@@ -19,7 +20,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DeptNews'>
 export default function DeptNewsScreen({ route, navigation }: Props) {
   const { deptId, deptName } = route.params
   const { isBookmarked, toggleBookmark } = useSettings()
-  const items = useMemo(() => NEWS_DATA.filter((n) => n.sourceId === deptId), [deptId])
+  const newsFeed = useNewsFeed()
+  const items = useMemo(
+    () => (newsFeed.data ?? []).filter((n) => n.sourceId === deptId),
+    [newsFeed.data, deptId],
+  )
   const search = useNewsSearch(items)
 
   const handlePressItem = useCallback(
@@ -35,6 +40,19 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{deptName}</Text>
       </View>
+      {newsFeed.loading ? (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        </View>
+      ) : newsFeed.errorMessage && items.length === 0 ? (
+        <RetryableError
+          style={styles.feedError}
+          message={newsFeed.errorMessage}
+          isNetworkError={newsFeed.isNetworkError}
+          onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
+          retrying={newsFeed.refreshing}
+        />
+      ) : (
       <NewsList
         items={search.results}
         isBookmarked={isBookmarked}
@@ -63,6 +81,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
           </View>
         }
       />
+      )}
     </SafeAreaView>
   )
 }
@@ -89,5 +108,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, flex: 1 },
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  feedError: { marginHorizontal: 12, marginTop: 12 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 })
