@@ -203,10 +203,15 @@ CREATE TABLE partner_affiliations (
 --       돌릴 때마다 같은 게시글이 통째로 다시 쌓인다.
 --       크롤러는 INSERT ... ON DUPLICATE KEY UPDATE 로 쓴다.
 -- [FIX] 조회용 인덱스 추가 — 목록 화면이 곧 풀스캔이었다.
+-- [FIX 2026-09-23] images/attachments/views 추가 — 크롤러(ArticleDetail)는 파싱하는데
+--       저장 단계(NewsCrawlStorageService)에서 버려지고 있었다(hongikon-be db/alter_add_news_media_columns.sql).
 CREATE TABLE news (
   id            BIGINT       NOT NULL AUTO_INCREMENT,
   title         VARCHAR(300) NOT NULL,
   content       TEXT         NULL,
+  images        TEXT         NULL COMMENT 'JSON 배열(이미지 URL 목록)',
+  attachments   TEXT         NULL COMMENT 'JSON 배열([{name,url}])',
+  views         INT          NULL,
   category      VARCHAR(30)  NOT NULL COMMENT '앱 CategoryKey 7종과 동일 집합',
   source_url    VARCHAR(500) NOT NULL,
   department_id BIGINT       NULL,
