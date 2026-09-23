@@ -37,6 +37,10 @@ import {
 import { formatFloor } from "../utils/floors";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
+import {
+  ROUTE_COMING_SOON_NOTICE_MS,
+  ROUTE_FINDING_ENABLED,
+} from "../constants/route";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
   filterPartners,
@@ -143,6 +147,29 @@ export default function MapScreen() {
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [showRouteComingSoon, setShowRouteComingSoon] = useState(false);
+  const routeNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (routeNoticeTimer.current) clearTimeout(routeNoticeTimer.current);
+    },
+    [],
+  );
+
+  /** 길찾기 버튼. 기능이 꺼져 있으면 모달 대신 "다음 업데이트" 안내를 잠깐 띄운다. */
+  const handleOpenRoute = useCallback(() => {
+    if (ROUTE_FINDING_ENABLED) {
+      setShowRoute(true);
+      return;
+    }
+    setShowRouteComingSoon(true);
+    if (routeNoticeTimer.current) clearTimeout(routeNoticeTimer.current);
+    routeNoticeTimer.current = setTimeout(
+      () => setShowRouteComingSoon(false),
+      ROUTE_COMING_SOON_NOTICE_MS,
+    );
+  }, []);
 
   const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), []);
 
@@ -608,6 +635,15 @@ export default function MapScreen() {
             />
           )}
 
+          {showRouteComingSoon && (
+            <View style={styles.offscreenNotice}>
+              <Ionicons name="navigate" size={13} color="#6B7280" />
+              <Text style={styles.offscreenText}>
+                길찾기는 다음 업데이트에서 제공될 예정이에요
+              </Text>
+            </View>
+          )}
+
           {reportsEmpty && (
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color="#6B7280" />
@@ -646,7 +682,7 @@ export default function MapScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.controlBtn}
-              onPress={() => setShowRoute(true)}
+              onPress={handleOpenRoute}
               accessibilityRole="button"
               accessibilityLabel="길찾기"
             >
@@ -759,6 +795,7 @@ export default function MapScreen() {
           <BuildingSheet
             building={selectedBuilding}
             onClose={handleCloseBuilding}
+            routeFindingEnabled={ROUTE_FINDING_ENABLED}
             onSetFrom={handleSetFrom}
             onSetTo={handleSetTo}
           />

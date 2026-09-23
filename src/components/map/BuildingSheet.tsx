@@ -13,6 +13,8 @@ import { FONTS } from "../../constants/typography";
 interface BuildingSheetProps {
   building: Building;
   onClose: () => void;
+  /** false 면 출발/도착 버튼 대신 "다음 업데이트에서 제공" 안내를 보여준다. */
+  routeFindingEnabled: boolean;
   onSetFrom: () => void;
   onSetTo: () => void;
 }
@@ -24,6 +26,7 @@ interface BuildingSheetProps {
 export default function BuildingSheet({
   building,
   onClose,
+  routeFindingEnabled,
   onSetFrom,
   onSetTo,
 }: BuildingSheetProps) {
@@ -89,16 +92,25 @@ export default function BuildingSheet({
         </TouchableOpacity>
       )}
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom}>
-          <Ionicons name="location" size={14} color="#10B981" />
-          <Text style={styles.actionFromText}>출발</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionTo} onPress={onSetTo}>
-          <Ionicons name="flag" size={14} color="#EF4444" />
-          <Text style={styles.actionToText}>도착</Text>
-        </TouchableOpacity>
-      </View>
+      {routeFindingEnabled ? (
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom}>
+            <Ionicons name="location" size={14} color="#10B981" />
+            <Text style={styles.actionFromText}>출발</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionTo} onPress={onSetTo}>
+            <Ionicons name="flag" size={14} color="#EF4444" />
+            <Text style={styles.actionToText}>도착</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.routeComingSoon}>
+          <Ionicons name="navigate-outline" size={14} color={COLORS.textSecondary} />
+          <Text style={styles.routeComingSoonText}>
+            길찾기는 다음 업데이트에서 제공될 예정이에요
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -222,4 +234,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionToText: { fontSize: 13, color: "#EF4444", fontFamily: FONTS.semibold },
+  routeComingSoon: {
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  routeComingSoonText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+  },
 });
