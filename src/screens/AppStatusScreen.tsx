@@ -97,13 +97,17 @@ export default function AppStatusScreen() {
     { label: '업데이트 채널', value: Constants.expoConfig?.updates?.url ? '연결됨' : '미설정' },
   ]
 
-  const backendRows: { label: string; value: string }[] = [
+  // 아직 한 번도 응답을 못 받은 첫 조회 중에만(실패도 아니고 값도 없을 때) 문구 대신 스피너를 보여준다.
+  const backendStillChecking = backendVersion === null && !backendCheckFailed
+
+  const backendRows: { label: string; value: string; loading?: boolean }[] = [
     { label: '연결된 백엔드 주소', value: API_BASE_URL || '미설정' },
     { label: '이 빌드가 필요로 하는 백엔드 버전', value: compatibleBackendVersion },
-    { label: '지금 연결된 백엔드 버전', value: backendVersionLabel },
+    { label: '지금 연결된 백엔드 버전', value: backendVersionLabel, loading: backendStillChecking },
     {
       label: '버전 일치 여부',
       value: backendCheckFailed ? '확인 불가' : backendVersion === null ? '확인 중…' : backendVersionMatches ? '✅ 일치' : '⚠️ 불일치',
+      loading: backendStillChecking,
     },
   ]
 

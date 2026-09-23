@@ -7,6 +7,7 @@ import {
   TextInput,
   FlatList,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import NaverMapView from "../components/map/NaverMapView";
@@ -617,6 +618,13 @@ export default function MapScreen() {
               >
                 <Ionicons name="close" size={15} color="#B45309" />
               </TouchableOpacity>
+            </View>
+          )}
+
+          {reportsOn && reportsResource.loading && reportsResource.errorMessage === null && (
+            <View style={styles.offscreenNotice}>
+              <ActivityIndicator size="small" color="#6B7280" />
+              <Text style={styles.offscreenText}>제보를 불러오는 중…</Text>
             </View>
           )}
 

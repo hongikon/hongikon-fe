@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
@@ -121,7 +122,11 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             disabled={submitting}
             activeOpacity={0.8}
           >
-            <Text style={styles.submitButtonText}>{submitting ? '전송 중...' : '보내기'}</Text>
+            {submitting ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.submitButtonText}>보내기</Text>
+            )}
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </SafeAreaView>
