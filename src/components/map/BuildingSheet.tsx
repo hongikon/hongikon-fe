@@ -1,4 +1,5 @@
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -9,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building } from "../../types";
 import { FONTS } from "../../constants/typography";
+import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 
 interface BuildingSheetProps {
   building: Building;
@@ -30,9 +32,14 @@ export default function BuildingSheet({
   onSetFrom,
   onSetTo,
 }: BuildingSheetProps) {
+  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
   return (
-    <View style={styles.sheet}>
-      <View style={styles.handle} />
+    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+      <View
+        style={styles.handle}
+        {...panHandlers}
+        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+      />
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
@@ -111,7 +118,7 @@ export default function BuildingSheet({
           </Text>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

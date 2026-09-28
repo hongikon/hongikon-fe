@@ -1,4 +1,5 @@
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -12,6 +13,7 @@ import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../constants/partnerAffiliations";
 import type { Partner } from "../../types";
 import { FONTS } from "../../constants/typography";
+import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -19,10 +21,66 @@ interface PartnerSheetProps {
 }
 
 /**
+ * " / "로 여러 항목이 이어진 혜택·이용방법 문구를 "- 항목" 줄로 쪼갠다. 구분자가
+ * 없으면(하나뿐이면) 그대로 한 줄만 돌려준다 — "단품/세트"처럼 공백 없이 붙은
+ * "/"는 복합 단어라 여기 안 걸린다(partners.ts 데이터가 이 표기 규칙을 따른다).
+ */
+function splitBulletItems(text: string): string[] {
+  const items = text.split(" / ");
+  return items.length > 1 ? items : [text];
+}
+
+/** 혜택 본문. 항목이 여럿이면(위 splitBulletItems) 한 줄씩 "- "로 나눠 보여준다. */
+function BenefitText({ text }: { text: string }) {
+  const items = splitBulletItems(text);
+  if (items.length === 1) return <Text style={styles.benefitText}>{text}</Text>;
+  return (
+    <View style={styles.bulletList}>
+      {items.map((item, index) => (
+        <Text key={index} style={styles.benefitText}>
+          {"- "}
+          {item}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * "이용 방법" 안내. 문구가 하나면 라벨과 한 줄로 붙여 쓰던 기존 모양 그대로 두고,
+ * " / "로 여럿이면(예: 기숙사 안내) 라벨을 제 줄로 떼고 그 아래 항목을 나눠 보여준다.
+ */
+function UsageNote({ note, color }: { note: string; color: string }) {
+  const items = splitBulletItems(note);
+  return (
+    <View style={styles.usageNoteInline}>
+      <Ionicons name="card-outline" size={11} color={color} style={styles.usageNoteIcon} />
+      {items.length === 1 ? (
+        <Text style={styles.usageNoteInlineText}>
+          <Text style={[styles.usageNoteInlineLabel, { color }]}>이용 방법{"  "}</Text>
+          {note}
+        </Text>
+      ) : (
+        <View style={styles.usageNoteBlock}>
+          <Text style={[styles.usageNoteInlineLabel, { color }]}>이용 방법</Text>
+          {items.map((item, index) => (
+            <Text key={index} style={styles.usageNoteInlineText}>
+              {"- "}
+              {item}
+            </Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
  * 제휴 업체 상세. 혜택이 가장 중요하므로 카드로 강조한다.
  * benefit / address / hours / contact / link 는 값이 있을 때만 렌더한다.
  */
 export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
+  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
   const meta = partnerCategoryMeta(partner.category);
   // affiliationBenefits 로 예외가 걸린 소속은 그 예외 줄 안에서 이용 방법을
   // 보여준다. 예외가 없는 소속(기본 benefit 을 그대로 쓰는 소속)의 이용
@@ -44,8 +102,12 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
-    <View style={styles.sheet}>
-      <View style={styles.handle} />
+    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+      <View
+        style={styles.handle}
+        {...panHandlers}
+        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+      />
 
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -99,17 +161,9 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                     </View>
                   ))}
                 </View>
-                <Text style={styles.benefitText}>{partner.benefit}</Text>
+                <BenefitText text={partner.benefit} />
                 {baseUsageNotes.map((note) => (
-                  <View key={note} style={styles.usageNoteInline}>
-                    <Ionicons name="card-outline" size={11} color={meta.color} />
-                    <Text style={styles.usageNoteInlineText}>
-                      <Text style={[styles.usageNoteInlineLabel, { color: meta.color }]}>
-                        이용 방법{"  "}
-                      </Text>
-                      {note}
-                    </Text>
-                  </View>
+                  <UsageNote key={note} note={note} color={meta.color} />
                 ))}
               </>
             )}
@@ -125,16 +179,8 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                       {item.affiliation}
                     </Text>
                   </View>
-                  <Text style={styles.benefitText}>{item.benefit}</Text>
-                  <View style={styles.usageNoteInline}>
-                    <Ionicons name="card-outline" size={11} color={meta.color} />
-                    <Text style={styles.usageNoteInlineText}>
-                      <Text style={[styles.usageNoteInlineLabel, { color: meta.color }]}>
-                        이용 방법{"  "}
-                      </Text>
-                      {note}
-                    </Text>
-                  </View>
+                  <BenefitText text={item.benefit} />
+                  <UsageNote note={note} color={meta.color} />
                 </View>
               );
             })}
@@ -176,7 +222,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -240,6 +286,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   benefitText: { fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 20, color: COLORS.textPrimary },
+  /** BenefitText 가 " / " 기준으로 여러 줄로 쪼갤 때 줄 사이 여백. */
+  bulletList: { gap: 2 },
   /** 한 혜택 줄에 소속이 여럿 걸릴 수 있어(예: 소코아 4개 소속) 줄바꿈을 허용한다. */
   chipRow: {
     flexDirection: "row",
@@ -296,6 +344,8 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 6,
   },
+  // 아이콘이 라벨 텍스트(fontSize 11)의 첫 줄 가운데에 오도록 살짝 내린다.
+  usageNoteIcon: { marginTop: 1 },
   usageNoteInlineLabel: {
     fontFamily: FONTS.bold,
     fontSize: 11,
@@ -307,6 +357,8 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: "#666",
   },
+  // UsageNote 가 항목을 여럿(" / ")으로 쪼갤 때: 라벨 줄 + 그 아래 "- 항목" 줄들.
+  usageNoteBlock: { flex: 1, gap: 2 },
   row: {
     flexDirection: "row",
     alignItems: "flex-start",

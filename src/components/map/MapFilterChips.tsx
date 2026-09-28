@@ -172,11 +172,10 @@ export default function MapFilterChips({
 }
 
 const styles = StyleSheet.create({
-  // 검색바 바로 아래 최상단 줄. 제목·검색바와 이어지는 흰 배경을 유지해,
-  // 그 아래 칩 줄들(투명, 지도가 비쳐 보임)과 달리 지도가 비치지 않게 한다.
-  layerRow: { backgroundColor: COLORS.white, paddingVertical: 8 },
-  // 최상단 줄은 아래 줄들보다 한 단계 위라는 것이 보여야 해, 테두리를 진하게 둔다.
-  // 칩 배경은 흰 면 없이 아래 줄들처럼 투명하게 둔다 — 선택 시에만 색으로 채운다.
-  layerChip: { borderColor: COLORS.primary, backgroundColor: 'transparent' },
+  // 검색바 바로 아래 최상단 줄. 줄 자체는 다른 칩 줄처럼 투명하게 둬서 지도가
+  // 비쳐 보이게 하고(chipStyles.chip 의 흰 알약만 뜬다), 세로 여백만 맞춘다.
+  layerRow: { paddingVertical: 8 },
+  // 최상단 줄은 아래 줄들보다 한 단계 위라는 것이 보여야 해, 테두리만 진하게 둔다.
+  layerChip: { borderColor: COLORS.primary },
   layerChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
 })

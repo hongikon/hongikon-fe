@@ -32,14 +32,17 @@ export default function PartnerChips({
   onSelectAffiliation,
   onSelectCategory,
 }: PartnerChipsProps) {
-  const affiliationCounts = useMemo(
-    () =>
-      PARTNER_AFFILIATIONS.map((key) => ({
-        key,
-        count: partnerCount({ affiliation: key, category }),
-      })),
-    [category],
-  );
+  const affiliationCounts = useMemo(() => {
+    const withCounts = PARTNER_AFFILIATIONS.map((key) => ({
+      key,
+      count: partnerCount({ affiliation: key, category }),
+    }));
+    // 업체가 하나도 없는 소속은 골라도 빈 지도만 보여줄 뿐이라, 목록 오른쪽 끝으로
+    // 밀어낸다(각 그룹 안에서는 원래 순서 유지). 있는 것부터 먼저 보이게 하려는 것.
+    const withPartners = withCounts.filter((c) => c.count > 0);
+    const empty = withCounts.filter((c) => c.count === 0);
+    return [...withPartners, ...empty];
+  }, [category]);
 
   const categoryCounts = useMemo(
     () =>
@@ -60,21 +63,33 @@ export default function PartnerChips({
       >
         {affiliationCounts.map(({ key, count }) => {
           const isActive = affiliation === key;
+          // 이미 골라둔 상태에서 다른 업종을 눌러 0곳이 된 경우는, 해제는 계속
+          // 할 수 있어야 하니 그때만 눌리게 둔다.
+          const disabled = count === 0 && !isActive;
           return (
             <TouchableOpacity
               key={key}
               activeOpacity={0.75}
               onPress={() => onSelectAffiliation(key)}
+              disabled={disabled}
               accessibilityRole="button"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`${key} 제휴 업체 ${count}곳`}
+              accessibilityState={{ selected: isActive, disabled }}
+              accessibilityLabel={
+                count === 0 ? `${key}: 제휴 업체 없음` : `${key} 제휴 업체 ${count}곳`
+              }
               style={[
                 styles.chip,
-                count === 0 && styles.chipEmpty,
+                disabled && own.affiliationChipDisabled,
                 isActive && styles.affiliationChipActive,
               ]}
             >
-              <Text style={[styles.label, isActive && styles.labelActive]}>
+              <Text
+                style={[
+                  styles.label,
+                  disabled && own.affiliationLabelDisabled,
+                  isActive && styles.labelActive,
+                ]}
+              >
                 {key}
               </Text>
             </TouchableOpacity>
@@ -125,6 +140,15 @@ const own = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
+  // 공용 chipEmpty(옅게 흐림)보다 또렷하게 "선택 불가"를 알린다 — 옅은 회색으로
+  // 채우고 글자는 반투명만 주던 이전과 달리 아예 다른 회색 글자로 바꾼다.
+  affiliationChipDisabled: {
+    backgroundColor: COLORS.sectionBg,
+    borderColor: COLORS.chipBorder,
+  },
+  // 이전엔 opacity 로 통째로 흐리게만 했는데, 그러면 글자가 거의 안 읽혔다.
+  // 진한 회색으로 바꿔 또렷이 읽히면서도(요청사항) 활성 칩의 남색과는 분명히 다르게 둔다.
+  affiliationLabelDisabled: { color: COLORS.textSecondary },
 });
 
 const styles = { ...chipStyles, ...own };

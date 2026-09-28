@@ -83,6 +83,7 @@ export function buildMapHTML(
     var map = new naver.maps.Map(container, {
       center: new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}),
       zoom: ${DEFAULT_ZOOM},
+      scaleControl: true,
     });
 
     // ── 임시: 출입구 좌표 검증용 디버그 오버레이 ─────────────────────
@@ -796,6 +797,9 @@ export function buildMapHTML(
 
     naver.maps.Event.addListener(map, 'click', function(e) {
       if (pickerActive) return;
+      // 관성 스크롤이 남아 있는 채로 탭해도 배너가 바로 돌아오게 한다.
+      post({ type: 'mapDragEnd' });
+      map.setOptions({ scaleControl: true });
       if (!e || !e.coord) return;
       if (new Date().getTime() - lastMarkerClickAt < ${MARKER_CLICK_GUARD_MS}) return;
       // 길게 눌러 제보 작성이 열린 직후의 click 은 그 손동작의 꼬리다.
@@ -882,8 +886,22 @@ export function buildMapHTML(
     naver.maps.Event.addListener(map, 'dragstart', cancelLongPress);
     naver.maps.Event.addListener(map, 'zoom_changed', cancelLongPress);
 
-    // 위치 선택 모드일 때만, 지도가 멈출 때마다(드래그·줌 끝) 화면 중앙 좌표를 올려보낸다.
+    // 검색바·하단 배너 뜨고 사라지는 모션(네이버·카카오맵 스타일)을 위해, 실제
+    // 손가락으로 끄는 동안만 네이티브에 알린다(프로그램으로 카메라를 옮길 때는
+    // dragstart 가 안 나서 안 걸린다). 위치 선택 모드는 중앙 핀 고정이 핵심이라 제외한다.
+    naver.maps.Event.addListener(map, 'dragstart', function() {
+      if (pickerActive) return;
+      post({ type: 'mapDragStart' });
+      // 저작권 로고·"© NAVER Corp." 표기는 API 약관상 항상 떠 있어야 해서 그대로 두고,
+      // 축척막대만 검색바·배너와 같이 잠깐 치운다.
+      map.setOptions({ scaleControl: false });
+    });
+
+    // 지도가 멈출 때마다(드래그·줌 끝, 관성 스크롤 포함) 배너를 되돌리고,
+    // 위치 선택 모드면 화면 중앙 좌표도 함께 올려보낸다.
     naver.maps.Event.addListener(map, 'idle', function() {
+      post({ type: 'mapDragEnd' });
+      map.setOptions({ scaleControl: true });
       if (pickerActive) postPickerCenter();
     });
 
