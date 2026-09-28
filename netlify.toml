@@ -24,9 +24,11 @@
   to = "/index.html"
   status = 200
 
-# 보안 헤더. CSP는 아직 안 넣었다 — 네이버 지도 SDK 스크립트 도메인을 확정하지 않고
-# script-src를 걸면 지도가 조용히 안 뜰 수 있어(웹판 NaverMapView.web.tsx 참고),
-# 실제 허용 도메인 목록을 확인한 뒤 별도로 추가한다.
+# 보안 헤더. CSP는 아직 강제(enforcing)로 안 넣었다 — 네이버 지도 SDK(oapi.map.naver.com)가
+# 실제로 쓰는 타일·리소스 도메인을 전부 확정하지 못한 채 script-src를 걸면 지도가 조용히
+# 안 뜰 수 있다(웹판 NaverMapView.web.tsx 참고). 대신 Report-Only로 걸어 둔다 — 이 헤더는
+# 아무것도 차단하지 않고 위반만 브라우저 콘솔에 기록하므로 지도가 깨질 위험이 없다. 배포 후
+# 콘솔에 위반 로그가 안 남으면 그대로 Content-Security-Policy(강제)로 이름만 바꾸면 된다.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -34,6 +36,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), payment=()"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://*.pstatic.net https://*.naver.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.naver.com https://*.naver.net https://*.pstatic.net; font-src 'self' data:; frame-ancestors 'none'"
 
 # API 응답(인증·제보 등 사용자별 데이터)이 브라우저·중간 캐시에 남지 않게 한다.
 [[headers]]

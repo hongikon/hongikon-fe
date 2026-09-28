@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import FloorChips from "../components/map/FloorChips";
@@ -96,6 +97,9 @@ export default function MapScreen() {
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
   // Modal 바깥의 화면에서 미리 재서 넘긴다.
   const insets = useSafeAreaInsets();
+  // 지도 탭만 탭바를 지도 위에 띄운다(TabNavigator.tsx) — 그만큼 화면 맨
+  // 아래에 깔린 버튼·배너가 탭바에 가리지 않게 이 높이만큼 띄워 올린다.
+  const tabBarHeight = useBottomTabBarHeight();
   // 검색바·필터 칩이 지도 위에 뜨는 오버레이로 바뀌면서(§아래 JSX), 실제
   // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
   // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
@@ -603,7 +607,10 @@ export default function MapScreen() {
           onMessage={handleWebViewMessage}
         />
 
-        <View style={[styles.bannerStack, { top: headerHeight + 8 }]}>
+        <View
+          pointerEvents="box-none"
+          style={[styles.bannerStack, { top: headerHeight + 8 }]}
+        >
           {mapAuthFailed && (
             <View style={styles.mapErrorNotice}>
               <Ionicons name="warning" size={15} color="#B45309" />
@@ -679,7 +686,7 @@ export default function MapScreen() {
         </View>
 
         {!pickingLocation && (
-          <View style={styles.mapControls}>
+          <View style={[styles.mapControls, { bottom: 20 + tabBarHeight }]}>
             <TouchableOpacity
               style={styles.controlBtn}
               onPress={handleStartReportPicker}
@@ -799,26 +806,36 @@ export default function MapScreen() {
           </View>
         )}
 
-        {selectedBuilding && (
-          <BuildingSheet
-            building={selectedBuilding}
-            onClose={handleCloseBuilding}
-            routeFindingEnabled={ROUTE_FINDING_ENABLED}
-            onSetFrom={handleSetFrom}
-            onSetTo={handleSetTo}
-          />
-        )}
+        {/*
+          건물·제휴업체·제보 배너("하단 배너"). 각 배너는 자기 스타일에서 이미
+          position:absolute; bottom:0 을 쓰므로, 이 레이어는 화면 전체를 덮어
+          (position:absolute, 사방 0) 그 기준선을 그대로 유지해 준다.
+        */}
+        <View
+          pointerEvents="box-none"
+          style={[styles.bottomSheetLayer, { bottom: tabBarHeight }]}
+        >
+          {selectedBuilding && (
+            <BuildingSheet
+              building={selectedBuilding}
+              onClose={handleCloseBuilding}
+              routeFindingEnabled={ROUTE_FINDING_ENABLED}
+              onSetFrom={handleSetFrom}
+              onSetTo={handleSetTo}
+            />
+          )}
 
-        {selectedPartner && (
-          <PartnerSheet partner={selectedPartner} onClose={handleClosePartner} />
-        )}
+          {selectedPartner && (
+            <PartnerSheet partner={selectedPartner} onClose={handleClosePartner} />
+          )}
 
-        {selectedReport && (
-          <ReportSheet
-            report={selectedReport}
-            onClose={() => setSelectedReport(null)}
-          />
-        )}
+          {selectedReport && (
+            <ReportSheet
+              report={selectedReport}
+              onClose={() => setSelectedReport(null)}
+            />
+          )}
+        </View>
       </View>
 
       {/*
@@ -829,14 +846,14 @@ export default function MapScreen() {
         계산에 쓴다(headerHeight, 위 선언부 주석 참고).
       */}
       <View
-        style={[styles.headerOverlay, { paddingTop: insets.top }]}
+        style={[
+          styles.headerOverlay,
+          // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
+          { paddingTop: insets.top + 8 },
+        ]}
         pointerEvents="box-none"
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
-        <View style={styles.header} pointerEvents="box-none">
-          <Text style={styles.headerTitle}>캠퍼스</Text>
-        </View>
-
         {!pickingLocation && (
           <>
             <View style={styles.searchBarWrap}>
@@ -1061,26 +1078,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    backgroundColor: COLORS.white,
-  },
-  // 지도 색이 제각각이라(공원 초록·건물 흰색 등) 제목이 묻히지 않게
-  // 흰 후광을 둘러 대비를 준다. mapHtml.ts 의 마커 이름 라벨과 같은 방식.
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: FONTS.bold,
-    color: COLORS.textPrimary,
-    textShadowColor: "rgba(255,255,255,0.9)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
   // 검색바 좌우에 지도가 비치는 여백이 남지 않도록, 알약 모양은 이 흰
   // 배경 안쪽 padding 으로만 띄운다(margin 이면 그 여백엔 배경이 없다).
+  // 흰 배경을 깔지 않는다 — 검색바 알약 자체(아래 searchBar)만 흰색이고,
+  // 양옆은 지도가 그대로 비쳐야 네이버맵처럼 떠 있는 느낌이 난다.
   searchBarWrap: {
-    backgroundColor: COLORS.white,
     paddingHorizontal: 16,
     paddingBottom: 10,
   },
@@ -1101,6 +1103,9 @@ const styles = StyleSheet.create({
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
+  // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
+  // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
+  bottomSheetLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   pickerMarkerWrap: {
     position: "absolute",
     top: 0,

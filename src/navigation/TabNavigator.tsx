@@ -1,5 +1,5 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
@@ -8,6 +8,14 @@ import SettingsScreen from '../screens/SettingsScreen'
 
 const Tab = createBottomTabNavigator()
 
+const TAB_BAR_BASE_STYLE = {
+  height: 82,
+  paddingTop: 8,
+  backgroundColor: COLORS.white,
+  borderTopWidth: 0.5,
+  borderTopColor: COLORS.border,
+}
+
 export default function TabNavigator() {
   return (
     <Tab.Navigator
@@ -15,13 +23,7 @@ export default function TabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.iconInactive,
-        tabBarStyle: {
-          height: 82,
-          paddingTop: 8,
-          backgroundColor: COLORS.white,
-          borderTopWidth: 0.5,
-          borderTopColor: COLORS.border,
-        },
+        tabBarStyle: TAB_BAR_BASE_STYLE,
         tabBarLabelStyle: {
           fontSize: 10,
           fontFamily: FONTS.medium,
@@ -36,6 +38,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map-outline" size={size} color={color} />
           ),
+          // 지도 화면만 탭바를 지도 위에 띄운다(position:absolute) — 그래야 지도가
+          // 화면 맨 아래까지 깔려서, 드래그 중 탭바가 사라져도 빈 회색이 아니라
+          // 지도가 그대로 보인다. 소식·설정은 원래 방식(탭바가 자기 자리를 차지)을 쓴다.
+          tabBarStyle: { ...TAB_BAR_BASE_STYLE, position: 'absolute', left: 0, right: 0, bottom: 0 },
         }}
       />
       <Tab.Screen
