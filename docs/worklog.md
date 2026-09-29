@@ -466,30 +466,304 @@ Mock(`AsyncStorage` 기반 `mockReportsStore.ts`)을 걷어내고 `apis/reports.
 
 ---
 
+## 2026-09-08 ~ 09-09
+
+**목표 변화**: 네이버 지도 로컬 인증 실패 원인 확인 → 기숙사 제휴 데이터 추가 → 지도 탭 제휴 UI 정리
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `.env` | 로컬 전용 | `NAVER_MAP_CLIENT_ID` → `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` |
+| `src/constants/partners.ts` | +233 | 기숙사 제휴 15곳 신규, 기존 8곳에 기숙사 소속 추가 |
+| `src/constants/partnerAffiliations.ts` | +25 | 소속별 이용 방법 안내(`PARTNER_AFFILIATION_USAGE_NOTES`) |
+| `docs/partner-data-conflicts.md` | +62 | 출처 간 혜택 문구·상호명 충돌 정리 |
+| `src/components/map/PartnerSheet.tsx` | +131 | 혜택 아래 이용 방법 표시, 소속 칩 |
+| `src/screens/MapScreen.tsx` | +140 / -60 | 검색바·필터 칩을 전체 화면 지도 위 플로팅 오버레이로 |
+| `src/utils/mapHtml.ts` | +54 | 겹친 제휴 마커 탭 시 순환 선택 |
+| `src/components/map/ChipIcon.tsx` | **신규** | 칩 아이콘 공통화 |
+| `src/utils/partnerSearch.ts`, `PartnerSearchModal.tsx` | +171 / -50 | 검색어 없을 때 카테고리별 접이식 전체 목록 |
+| `.gitignore` | +4 | EAS 로컬 자격증명 제외 |
+
+커밋: `772775e`, `0cbdf6c`, `deeaa68`(09-09), `83ebb5d`(09-17 커밋).
+
+---
+
+### 1. 네이버 지도가 로컬에서 회색으로 뜨던 원인
+
+`.env`의 키 이름이 `NAVER_MAP_CLIENT_ID`였는데 코드(`mapHtml.ts:19`)와 배포 스크립트(`generate-map-html.ts`, `netlify-env-sync.mjs`)는 전부 `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID`를 읽는다. 그래서 `maps.js?ncpKeyId=`가 빈 값으로 요청되고, 네이버는 HTTP 200을 주면서 조용히 인증 실패(`navermap_authFailure`)를 낸다. 콘솔 에러가 없어서 찾기 어려웠다.
+
+`.env` 키 이름만 바꿔 해결(값 변경 없음, 커밋 대상 아님). `generate-map-html.ts`의 자체 가드로 키가 채워지는 것을 확인한 뒤, 재생성된 `public/map.html`은 관련 없는 지도 데이터까지 딸려 들어와 되돌렸다. 배포된 Netlify 페이지는 예전 `.env`로 만들어져 당시엔 멀쩡했고, 다음 재생성·배포 때 터질 문제였다.
+
+### 2. 기숙사 제휴 추가와 이용 방법 안내
+
+기숙사를 새 소속으로 넣으면서 기숙사만 "카드키 제시 / 기숙사 홈페이지 거주 확인" 안내가 있고 나머지 12개 소속은 안내가 전혀 없는 불균형이 생겼다. 다른 소속의 실제 방법이 공개되지 않아 기숙사 문구를 지우는 안도 있었지만, 나머지 12개에 공통 기본 문구("실물 학생증 제시 또는 모바일 학생증 제시")를 주는 쪽으로 정했다. 한 업체가 기숙사와 다른 소속을 함께 가지면 학생증 안내가 위, 기숙사 안내가 아래로 오도록 정렬을 명시적으로 고정했다(소속 배열 순서에 의존하지 않게).
+
+출처마다 혜택 문구·상호가 다른 경우('연어초밥' 표기, '원조한우곱도리탕' 통합, '경호네' 제거)는 판단 근거와 함께 `docs/partner-data-conflicts.md`에 남겼다.
+
+### 3. 지도 탭 UI
+
+- 상단 헤더를 없애고 검색바·필터 칩을 지도 위 오버레이로 띄웠다. 오버레이 실제 높이를 `onLayout`으로 재서 배너·경로 카드 위치를 그 아래로 맞춘다.
+- 칩 배경은 여러 번 조정했다(투명 → 상단 영역 흰색 배경 → 칩 흰색). 최종은 09-28 §3 참고.
+- 같은 자리에 겹친 제휴 마커는 예전엔 맨 위 것만 선택됐다. 탭할 때마다 하나씩 순환하도록 바꿨다(`PARTNER_OVERLAP_CYCLE_PX`).
+- 검색바를 눌렀을 때 검색어가 비어 있으면 전체 업체를 카테고리별로 묶어 보여준다. 헤더는 고정, 개수 표시, 오른쪽 접기 버튼, 업체마다 소속 칩이 붙는다.
+
+### 4. EAS 자격증명
+
+`credentials.json`에 iOS 배포 인증서(.p12) 비밀번호가 평문으로 들어 있는데, `.gitignore`는 `*.p12`/`*.mobileprovision`만 막고 있었다. 커밋된 적은 없지만 `git add -A` 한 번이면 올라갈 수 있어 제외 목록에 추가했다. 이 파일은 팀원과 공유하지 않고 본인만 보관하기로 했다.
+
+---
+
+## 2026-09-17 ~ 09-19
+
+**목표**: 첫 배포 준비 — 브랜드 적용, 도메인(`hongikon.com`)·HTTPS, 빌드 환경 분리
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `eas.json`, `netlify.toml`, `docs/deployment.md` | 재작성 | 운영 배포 설정, `/api` 프록시, 보안 헤더 |
+| `assets/brand/*`, `scripts/generate-app-icons.mjs` | **신규** | HONGIK ON 브랜드 SVG, 아이콘·스플래시 생성 |
+| 앱 전반(19개 파일) | +172 / -29 | 앱 이름 홍익대알리미 → **홍익온** |
+| `src/apis/client.ts` 외 18개 | +1204 / -122 | 타임아웃·재시도·네트워크 상태 배너 |
+| `src/utils/floors.ts`, `FloorChips.tsx` | **신규** | 길찾기 출발·도착 층 선택 |
+| `app.config.ts` | **신규** | 개발/테스트/운영 변형 분리 |
+| `src/screens/AppStatusScreen.tsx` | +12 | 빌드 환경·연결된 API 주소 표시 |
+| hongikon-be `deploy/nginx/*`, `deploy/setup-https.sh` | **신규** | Nginx + Let's Encrypt (PR #1, 09-18 머지) |
+
+커밋: `b9c4e77`, `4426214`, `1553b14`, `0768fc4`, `7e0fbfd`, `5b0f333`, `83ebb5d`(09-17), `65bda5e`(09-19). BE `31c95e7`, `90d7949`.
+
+---
+
+### 1. 배포 구조
+
+웹은 Netlify가 `/api/*`를 `api.hongikon.com`으로 서버 측 프록시하므로 브라우저 입장에선 same-origin이다. 그래서 백엔드에 CORS를 열 필요가 없다(09-28에 다시 확인). 처음엔 백엔드 TLS가 없어서 iOS ATS·Android cleartext를 임시로 허용했다가, `api.hongikon.com` 전환 커밋(`7e0fbfd`)에서 HTTPS 강제로 바꾸고 임시 허용을 걷어냈다. Expo 템플릿 기본값이 `NSAllowsArbitraryLoads: true`였던 것도 명시적으로 막았다.
+
+백엔드 Nginx는 보안 리뷰 후 보강했다. IP 직접 접근·위조된 Host는 catch-all로 버리고, 프록시되는 Host를 `server_name`으로 고정해 OAuth redirect-uri가 외부 입력에 흔들리지 않게 했다. HSTS 적용, `:8080`이 외부에 열려 있으면 경고.
+
+### 2. API 호출 안정화
+
+요청별 타임아웃, 멱등 요청만 백오프 재시도, 서버 원문 대신 사용자용 에러 메시지. 전역 네트워크 상태 배너(재시도 + 백그라운드 재확인)와 `useApiResource`/`RetryableError`를 상태·설정·문의·제보·푸시 등록 화면에 붙였다.
+
+### 3. 길찾기 층 선택
+
+층 옵션을 층별 출입구에서 뽑고, 출입구가 없는 층은 가장 가까운 출입구를 쓴다. 층 이동 시간은 매칭된 출입구 층 기준. 쓰이지 않던 `FloorPickerModal`을 결과 카드 안 인라인 칩으로 대체했다. 출입구 층 값이 라벨과 어긋나 있던 것(조형관, 강당 S동)도 바로잡았다. `1F → 1층`처럼 층 표기를 통일했다.
+
+### 4. 빌드 환경 분리
+
+| 환경 | 만드는 법 | 앱 이름 | 패키지 id |
+|---|---|---|---|
+| 개발 | `pnpm dev` | 홍익온 (개발) | `com.hongmap.alimi.dev` |
+| 테스트 | `eas build --profile preview` | 홍익온 (테스트) | `com.hongmap.alimi.preview` |
+| 운영 | `eas build --profile production` | 홍익온 | `com.hongmap.alimi` |
+
+패키지 id가 달라 한 폰에 셋 다 설치된다. 다만 카카오 로그인 복귀 주소(`hongikon://`)는 백엔드가 고정으로 갖고 있어 셋이 같다 — 로그인 테스트는 한 번에 하나만 설치해서 해야 한다. `pnpm dev:local`은 로컬 백엔드(`localhost:8080`)로 붙는다.
+
+### 5. 첫 Android 테스트 빌드
+
+09-17 EAS에서 preview APK 빌드 완료(09-18 다운로드 확인). 이 APK는 분리 이전 패키지 id(`com.hongmap.alimi`)라 이후 테스트 빌드와 별개 앱으로 깔린다.
+
+> **미결**: 가비아 DNS, EC2 HTTPS 스크립트 실행, 카카오 Redirect URI, Netlify 도메인 연결은 콘솔 로그인이 필요해 이 시점엔 진행하지 못했다.
+
+---
+
+## 2026-09-21 ~ 09-23
+
+**목표 변화**: 배포 점검 → 첫 출시 범위 확정(길찾기 보류) → OTA 업데이트 → Netlify 배포 실패 해결 → 보안 점검 → 소식 탭을 실제 백엔드로 전환
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/constants/route.ts`, `MapScreen.tsx`, `BuildingSheet.tsx` | 수정 | `ROUTE_FINDING_ENABLED = false`, "다음 업데이트에서 제공" 안내 |
+| `src/components/common/UpdateBanner.tsx` | **신규** | EAS Update 확인·적용 배너 |
+| `app.json`, `eas.json` | 수정 | `runtimeVersion`, `updates.url`, 프로필별 채널 |
+| `netlify.toml` | 수정 | `NODE_VERSION` 20 → 22 |
+| `src/apis/auth.ts`, `src/contexts/AuthContext.tsx` | +26 | 로그아웃 시 서버 refresh 토큰 폐기 |
+| `src/apis/news.ts`, `src/utils/newsMapping.ts`(**신규**), `src/hooks/useNewsFeed.ts`(**신규**) | +186 / -25 | `GET /news` 연동 |
+| `NewsScreen`, `DeptNewsScreen`, `NewsSearchScreen`, `NewsDetailScreen` | 수정 | 정적 `NEWS_DATA` → 실데이터 |
+| `docs/student-tips-design.md`, `settings-ui-upgrade.md`, `api-matching-audit.md` | **신규** | 설계·감사 문서 |
+| hongikon-be `application-prod.properties` 외 | 수정 | prod Swagger 차단, 뉴스 이미지·첨부·조회수 저장 |
+
+커밋: `9c67ad5`, `2debb00`, `9a208c1`, `31b327f`, `209ffeb`, `41b4ad5`, `195a625`, `f1c4a85`, `0c213e1`, `f6646e8`, `d88a66b`. BE `0700b06`, `41bbae4`, `4515530`, `a236aec`.
+
+---
+
+### 1. 길찾기는 첫 출시에서 뺐다
+
+`pathNodes.ts` 경로망이 캠퍼스 전체를 덮지 못해 대부분 직선거리로 대체되는 상태다. 지도 관련 부분은 이후 업데이트로 채우기로 하고, 플래그 하나로 출발·도착 UI를 숨기고 안내 문구를 띄운다. 경로 데이터가 채워지면 `ROUTE_FINDING_ENABLED`만 `true`로 바꾸면 된다.
+
+### 2. OTA 업데이트
+
+`runtimeVersion.policy: "appVersion"`으로 같은 앱 버전 빌드끼리만 JS 업데이트를 받는다(네이티브 변경은 여전히 재빌드 필요). 프로필마다 채널을 나눴고, 앱이 포그라운드로 돌아올 때 업데이트를 확인해 배너로 적용을 권한다.
+
+### 3. Netlify 배포가 2주간 실패하던 원인
+
+SDK 57 업그레이드(`fac8d3f`)에서 `packageManager: pnpm@11.25.0`을 넣은 뒤로 09-09부터 Netlify 배포가 전부 "Install dependencies"에서 실패했고, 라이브 사이트는 8/25 빌드("홍익대알리미", 깨진 아이콘 폰트)를 한 달째 서빙하고 있었다.
+
+첫 가설은 corepack 서명 검증(`195a625`)이었는데 틀렸다. 실제 배포 로그를 받아 보니 원인은 Node 버전이었다.
+
+```
+Error [ERR_UNKNOWN_BUILTIN_MODULE]: No such built-in module: node:sqlite
+```
+
+pnpm 11.25.0은 Node 22.13+의 `node:sqlite`를 쓰는데 `netlify.toml`은 `NODE_VERSION=20`이었다. 로컬은 Node 24라 재현되지 않았다. 22로 올리고 corepack 설정은 되돌렸다(`f1c4a85`). 이후 배포 `ready` 확인.
+
+### 4. 보안 점검에서 고친 것
+
+- **로그아웃이 서버 세션을 폐기하지 않음** — `logout()`이 로컬 토큰만 지워서, 탈취된 refresh 토큰이 로그아웃 뒤에도 최대 14일 유효했다. `/auth/logout` 호출 추가(네트워크 실패해도 로컬 로그아웃은 진행).
+- **public 저장소에 시크릿 일부 노출** — 이 문서(hongikon-fe는 public)에 재발급 전 네이버 지도 secret 앞부분이 남아 있어 지웠다. 키 자체 재발급은 여전히 남아 있다.
+- **운영 서버 Swagger 공개** (BE) — `SecurityConfig`의 permitAll이 프로필 구분 없이 걸려 있어 `api.hongikon.com`에서도 전체 API 스키마가 인증 없이 보였다. prod 프로필에서만 끔.
+
+문제없음을 확인한 것: JWT 구현, Nginx 설정, SQL 인젝션(네이티브 쿼리 없음), 소스·git 히스토리 하드코딩 시크릿, `application-local.properties` 커밋 이력.
+
+### 5. API 매칭 감사
+
+`src/apis/*.ts`를 백엔드 실제 컨트롤러와 대조했다(커밋된 `api-docs.json`은 오래돼 `DELETE /auth/me` 등이 빠져 있어 기준으로 쓰지 않음). 확인된 버그:
+
+- `POST /feedback`이 백엔드에 없다 → 문의하기가 항상 404
+- `POST /auth/reissue`가 있는데 프론트가 안 쓴다 → JWT 30분 만료 후 사실상 로그아웃
+- 로그아웃이 서버를 안 부름 → §4에서 수정
+
+북마크·구독 학과는 백엔드가 지원하는데 클라이언트 코드가 없어 기기 로컬에만 남는다.
+
+### 6. 소식 탭을 실제 백엔드로 전환
+
+정적 `NEWS_DATA`는 8/5 이후 7주째 멈춰 있었다. 백엔드 크롤러는 매시간 돌고 있었지만 `NewsCrawlStorageService.save()`가 이미지·첨부·조회수를 파싱해 놓고 저장 단계에서 버리고 있었다. 홍익대 공지는 본문이 이미지 한 장인 경우가 흔해 그대로 전환하면 "본문 없음"이 많이 보일 상황이었다.
+
+그래서 백엔드부터 고쳤다(`News`에 JSON 컬럼 + 컨버터, 목록에 `departmentName`·`preview` 추가). 프론트는 `sourceId`에 `departmentName`을 그대로 써서 기존 `TREE_DATA` 기반 구독 필터와 맞췄다. 상세 화면은 목록에 없는 본문 전체·이미지·첨부를 진입 시 `getNewsById`로 채운다.
+
+> **미결**: `hongikon-be/db/alter_add_news_media_columns.sql`을 RDS에 먼저 실행해야 한다. `ddl-auto=validate`라 안 하면 새 백엔드가 기동하지 않는다.
+
+### 7. 인프라 상태 (09-23 기준)
+
+- DNS: 오전엔 가비아에 레코드가 0개였고, 오후에 `api`/`@`/`www` 반영 확인. 웹 HTTPS(`hongikon.com`) 자동 발급 완료.
+- EC2 443: `Connection refused`. 앱이 HTTPS만 허용하므로 로컬이든 배포 앱이든 백엔드에 못 붙는다. 네트워크 배너가 계속 뜨는 건 오작동이 아니라 이 때문이다. SSH 키가 없어 스크립트는 직접 못 돌렸고, 실행 안내를 hongikon-be `docs/ec2-https-runbook.md`로 남겼다.
+- iOS: ad-hoc 프로비저닝에 대표 기기 1대만 등록돼 있어, 다른 사람은 "무결성을 확인할 수 없음"으로 설치가 안 된다. `eas device:create`로 기기 등록 필요.
+- Android/iOS production 빌드(새 아이콘 반영) 완료.
+
+---
+
+## 2026-09-23 ~ 09-28
+
+**목표 변화**: 지도 드래그 시 네이버/카카오맵식 UI 숨김 → 피드백 받고 제거 → 바텀시트 제스처 → 배포 전 최종 점검
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/hooks/useSwipeDownToDismiss.ts` | **신규** | 핸들바 아래로 끌어 시트 닫기 |
+| `BuildingSheet.tsx`, `PartnerSheet.tsx` | 수정 | 스와이프 닫기, 혜택 문구 `" / "` → 줄 목록 |
+| `PartnerChips.tsx`, `MapFilterChips.tsx` | +59 | 업체 0곳 소속은 뒤로 + 비활성 |
+| `src/utils/mapHtml.ts` | +20 | 드래그 중 축척막대 숨김 |
+| `src/screens/MapScreen.tsx`, `TabNavigator.tsx` | 수정 | 드래그 숨김 애니메이션 제거, `mapDragState.ts` 삭제 |
+| `src/components/common/ErrorBoundary.tsx` | **신규** | 렌더링 예외 시 재시도 화면 |
+| `netlify.toml` | +9 | CSP Report-Only |
+| `~/.zshrc` | 로컬 | `JAVA_HOME` openjdk@17 등록 |
+
+커밋: `558cca6`, `2756791`(09-28, 푸시 완료).
+
+---
+
+### 1. 드래그 중 UI 숨김 — 넣었다가 뺐다
+
+09-23에 네이버/카카오맵처럼 지도를 끄는 동안 검색바는 위로, 하단 배너·탭바는 아래로 사라지게 만들었다(`MapScreen`과 `TabNavigator`가 형제 컴포넌트가 아니어서 `mapDragState.ts` 구독 모듈로 연결). 하지만 09-28에 "터치할 때마다 위아래로 사라지는 게 정신없다"는 피드백으로 전부 제거했다. 같은 시도를 반복하지 않도록 남긴다.
+
+드래그 중 네이버 지도 축척막대만 숨기는 코드(`mapHtml.ts`)는 남아 있다. 작은 눈금만 깜빡이는 정도라 문제의 연출과는 다르지만, 거슬리면 빼면 된다. "© NAVER Corp." 표시는 약관상 항상 보여야 해서 건드리지 않았다.
+
+### 2. 바텀시트·제휴 칩
+
+- 장식용이던 핸들바를 아래로 80px 이상 끌거나 튕기면 시트가 닫힌다. 새 라이브러리 없이 `PanResponder` + `Animated`로 만들고, 제스처는 핸들바에만 걸어 본문 스크롤과 부딪히지 않는다. `ReportSheet`는 핸들바가 없어 제외.
+- 혜택·이용 방법 문구에서 양옆 공백이 있는 `" / "`만 여러 항목으로 쪼개 `- 항목` 줄로 보여준다. `단품/세트`처럼 붙어 있는 슬래시는 복합어라 유지 — `partners.ts` 전체에서 이 기준이 맞는지 확인했다.
+- 업체가 0곳인 소속 칩은 목록 뒤로 밀고, 흐림 대신 또렷한 회색 + `disabled`. 이미 선택된 상태에서 0곳이 되면 해제는 가능.
+- 상단 칩 줄 배경은 투명으로 해서 지도가 비치게 했다.
+
+### 3. 배포 전 최종 점검 (09-28)
+
+| 항목 | 결과 |
+|---|---|
+| 프론트 `tsc --noEmit` | 통과 |
+| ErrorBoundary | 흰 화면 대신 재시도 화면, `App.tsx` 최상단 |
+| CSP | **Report-Only**로 추가. 네이버 지도 SDK가 쓰는 타일·리소스 도메인을 확정 못 해서, 강제로 걸면 지도가 조용히 깨질 위험이 있다 |
+| 백엔드 CORS | 불필요 확인(09-17 §1). 처음에 "없다"고 경고했던 것 정정 |
+| `Report.java` ↔ `db/create_reports_table.sql`·`alter_reports_table.sql` | 필드 단위 일치 |
+| Java | openjdk@17이 설치돼 있었지만 PATH에 없었다 → `~/.zshrc` 등록 |
+| `./gradlew compileJava`, `build -x test` | BUILD SUCCESSFUL |
+| 백엔드 테스트 `contextLoads` | **실패** — 테스트용 DB 프로파일이 없어 로컬 MySQL에 붙으려다 `Access denied for user 'seokhoon'@'localhost'`. 코드 문제가 아니라 환경 문제 |
+
+> **미결**: 코드·설정 수준의 준비는 끝났지만 실제 배포(EC2 반영, EAS 빌드, Netlify)와 prod DB 마이그레이션 반영 여부는 확인하지 못했다. 백엔드 테스트는 H2 프로파일이나 Testcontainers가 없으면 CI에서도 같은 이유로 실패한다.
+
+---
+
+## 2026-09-29 ~ 09-30
+
+**목표**: 백엔드 HTTPS 배포 완료(백엔드 담당) 반영, 실제 서버 상태 확인. 프론트 코드 변경 없음.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `docs/worklog.md` | 이 항목 | 서버 확인 결과, 다음 작업 갱신 |
+
+hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
+
+---
+
+### 1. 백엔드 HTTPS·카카오 URI — 완료
+
+백엔드 담당이 09-29에 처리했다. EC2 보안그룹 SSH 소스 IP 갱신(공인 IP가 바뀌어 접속이 막혀 있었음), Nginx `server_name`을 `api.hongikon.com`으로 변경, `certbot --nginx`로 인증서 발급(만료 2026-12-28, 자동 갱신 등록), 카카오 Redirect URI `https://api.hongikon.com/login/oauth2/code/kakao` 추가. 09-30에 외부에서 `https://api.hongikon.com/status` → HTTP 200, 인증서 검증 정상 확인.
+
+### 2. 서버를 직접 찔러 보니 남은 것
+
+| 요청 | 결과 | 의미 |
+|---|---|---|
+| `GET /status` | `buildTime: 2026-09-17T05:28:52Z` | 09-23 백엔드 커밋(소식 미디어 저장, `preview`, prod Swagger 차단)이 아직 배포 안 됨 |
+| `GET /v3/api-docs`, `/swagger-ui/index.html` | 200, 200 | 운영 서버 API 스키마가 여전히 공개. 위 재배포로 해결 |
+| `https://54.180.195.51/status` (IP 직접) | 200 | catch-all `default_server` 차단이 적용 안 됨 |
+| 응답 헤더 `Server` | `nginx/1.24.0 (Ubuntu)` | `server_tokens off` 미적용. HSTS는 적용됨 |
+
+`setup-https.sh` 대신 certbot을 직접 돌려서, 09-17에 보안 리뷰로 보강한 `deploy/nginx/hongikon-api.conf`(IP·위조 Host 차단, Host 고정, 요청 제한, 버전 숨김)는 반영되지 않은 것으로 보인다.
+
+### 3. 백엔드 기록 중 이미 처리된 두 가지
+
+백엔드 기록의 "다음 단계"에 적힌 두 항목은 프론트에서 이미 끝난 상태라 백엔드 담당에게 전달 필요.
+
+- **CORS 설정** — 웹은 Netlify가 `/api/*`를 서버 측 프록시하므로 same-origin이라 필요 없다(09-17 §1, 09-28 §3). 열면 공격 표면만 늘어난다.
+- **iOS ATS 예외 제거** — `7e0fbfd`(09-17)에서 이미 `NSAllowsArbitraryLoads: false`로 바꿨다.
+
+> **미결**: 백엔드 기록에 t3.micro 메모리 68%·스왑 24%, "System restart required" 상태가 적혀 있다. 재배포할 때 재부팅도 같이 하는 게 좋다.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
-| 1 | **네이버 지도 secret 재발급** | 09-07 확인: `.env`의 현재 값이 08-06~08-08에 번들 노출됐던 값과 정확히 일치 — 재발급된 값이 아닐 가능성이 매우 높다. 네이버 콘솔에서 재발급 필요(사용자 직접 조치) |
-| 2 | **실기기 로그인 전체 흐름 테스트 (딥링크 복귀 포함)** | SDK 57은 이미 적용됨(09-06 `fac8d3f`) — 막혀 있던 원인 해소. ngrok 등 https 터널로 `EXPO_PUBLIC_API_BASE_URL`을 실제 배포 백엔드에 연결해 확인 |
-| 3 | 안드로이드 preview APK 빌드 | `eas build --profile preview --platform android`. Expo 무료 계정 필요(로그인은 대화형) |
-| 4 | 소식 데이터 갱신 구조 | `src/data/news.cs.json`이 2026-08-05 스냅샷. hongikon-be README도 "크롤러 아키텍처 방향 미확정"이라 적어 뒀다 — 프론트 EAS Update로 갱신할지, 백엔드 DB+API로 옮길지 팀 결정 필요(08-26 §1) |
-| 5 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
-| 6 | 지도 `baseUrl` 지정 | 네이버 콘솔 등록 도메인 확인 후 |
-| 7 | 스토어 계정 개설 | Apple $99/년, Google Play $25 1회. 현재 둘 다 없음 |
-| 8 | 스토어 스크린샷·설명 | 계정 개설 후 |
-| 9 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
-| 10 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점(어느 기존 노드/건물과 이어지는지) 사용자 확인 필요 — 확인되면 `n56`~`n67` 값들도 §5 방식대로 반영 |
-| 11 | 편의시설 데이터 + `pathNodes.ts` 커밋 | `facilities.ts` 등 5개 파일이 아직 커밋 전. 지금 커밋하면 §8의 미확인 3건도 같이 굳어지니 그 전에 정리 권장 |
-| 12 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 경로망 전체가 어느 건물과도 안 이어져 있어 `findRoutes()`가 항상 직선거리로 대체됨(§8 확인 후) |
-| 13 | 리포트/알림카테고리 실제 배포 백엔드 대상 왕복 테스트 | 09-07 확인: `/auth/token/exchange`까지는 BE가 검증했으나 그 이후(제보 생성·목록·신고, 알림 카테고리 토글)는 아직 실기기 왕복 미확인 |
-| 14 | `/auth/reissue` 붙으면 `client.ts`에 401 인터셉트(재발급 후 재시도) 로직 추가 | BE 미구현 상태라 지금은 착수 불가(09-07 확인) — 배포되면 착수 |
-| 15 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과/뉴스) | 위 항목들 테이블이 전부 비어 있어(08-26 §1) 지금은 연결해도 빈 목록만 나온다. 시딩 방식(수동 INSERT vs 관리자 화면 vs FE 데이터 이관) 백엔드팀과 논의 필요 |
+| 1 | **RDS에 `alter_add_news_media_columns.sql` 실행 → 백엔드 재배포** | 운영 서버는 아직 09-17 빌드(09-30 §2). SQL 없이 재배포하면 `ddl-auto=validate`로 기동 실패. 재배포되면 prod Swagger 차단도 같이 적용됨. EC2 재부팅 권장 상태라 함께 진행 |
+| 2 | **Nginx 보안 설정 반영** | `deploy/nginx/hongikon-api.conf` 미적용 — IP 직접 접속 200, Nginx 버전 노출(09-30 §2). `setup-https.sh` 재실행 또는 conf 교체 후 `nginx -t && reload` |
+| 3 | 백엔드 담당에게 CORS·ATS 불필요 전달 | 09-30 §3 |
+| 4 | **네이버 지도 secret 재발급** | 09-07 확인: 번들 노출됐던 값 그대로. 네이버 콘솔에서 재발급 필요(사용자 직접 조치) |
+| 5 | `client.ts`에 401 → `/auth/reissue` 재발급 후 재시도 | 09-23 감사: reissue는 백엔드에 있는데 프론트가 안 씀 → 30분 뒤 사실상 로그아웃 |
+| 6 | 문의하기 `POST /feedback` | 백엔드에 엔드포인트 없음 → 항상 404. 백엔드 추가 또는 프론트 경로 변경 |
+| 7 | 실기기 로그인 전체 흐름 + 제보/알림 카테고리 왕복 테스트 | HTTPS·카카오 URI는 09-29 완료 — 지금 바로 가능(소식 이미지는 1번 이후). 변형 빌드는 한 번에 하나만 설치(09-17 §4) |
+| 8 | iOS 테스트 기기 등록 (`eas device:create`) | ad-hoc에 대표 기기 1대만 등록돼 있어 다른 사람은 설치 불가 |
+| 9 | CSP Report-Only → 강제 전환 | 배포 후 브라우저 콘솔에 위반 로그가 없으면 헤더 이름만 바꾸면 됨 |
+| 10 | 백엔드 테스트용 DB 프로파일(H2 또는 Testcontainers) | 없으면 `contextLoads`가 로컬·CI 모두 실패(09-28 §3) |
+| 11 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
+| 12 | 스토어 계정 개설 · 스크린샷·설명 | Apple $99/년, Google Play $25 1회 |
+| 13 | 길찾기 재개 (`ROUTE_FINDING_ENABLED`) | 경로망 완성 후. 아래 14~16 선행 |
+| 14 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
+| 15 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점 사용자 확인 필요 |
+| 16 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 `findRoutes()`가 항상 직선거리로 대체됨 |
+| 17 | 북마크·구독 학과 백엔드 연동 | 백엔드는 지원, 클라이언트 코드 없음(09-23 §5) |
+| 18 | 설정 탭 UI 개선 / 학생 생활 팁 | `docs/settings-ui-upgrade.md`, `docs/student-tips-design.md` — 설계만 있음 |
+| 19 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과) | 시딩 방식 백엔드팀과 논의 필요 |
 
 ### 미결 질문
 
+- 학생 생활 팁을 소식 탭 안의 한 갈래로 둘지, 별도 탭으로 둘지 / 정적 JSON으로 먼저 갈지 (`student-tips-design.md` 6절)
+- 드래그 중 네이버 지도 축척막대 숨김(`mapHtml.ts`)을 남길 것인가 (09-28 §1)
 - 네이버 콘솔에 등록된 서비스 URL은 무엇인가 (`/temp/dots` 로컬 접속으로 재확인 시도 중)
-- 소식 갱신을 EAS Update로 할 것인가, 백엔드에서 받을 것인가
 - 어느 플랫폼부터 출시할 것인가
 - `A동 1층 (37.5509723, 126.9260261)` 좌표가 실제 A동이 맞는가
 - `HI_E_BUILDING_ELEVATOR`가 실제로 어느 건물인지
