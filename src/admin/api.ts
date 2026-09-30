@@ -1,5 +1,5 @@
-import { apiRequest, ApiError, API_BASE_URL, NetworkError, type ApiRequestOptions } from '../apis/client'
-import { exchangeAuthCode, logoutRequest, type TokenResponse } from '../apis/auth'
+import { apiRequest, ApiError, NetworkError, type ApiRequestOptions } from '../apis/client'
+import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenResponse } from '../apis/auth'
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import type {
   AdminFeedback,
@@ -28,22 +28,9 @@ const LONG_TASK_TIMEOUT_MS = 180_000
 
 // ── 로그인 ────────────────────────────────────────────────────────────
 
-/**
- * 카카오 로그인 시작 주소의 호스트. `/api` 프록시가 아니라 반드시 API 도메인이어야 한다 —
- * 프록시를 거치면 OAuth state 세션 쿠키가 hongikon.com 에 붙어 카카오 콜백에서 검증이 깨진다.
- * API_BASE_URL 이 절대 주소면 그대로, 상대 경로(`/api`)면 EXPO_PUBLIC_API_ORIGIN 을 쓴다.
- */
-export function getApiOrigin(): string | null {
-  const origin = /^https?:\/\//.test(API_BASE_URL) ? API_BASE_URL : process.env.EXPO_PUBLIC_API_ORIGIN ?? ''
-  return origin ? origin.replace(/\/+$/, '') : null
-}
-
 /** 카카오 로그인 주소. 성공하면 서버가 `{현재 출처}/admin?code=...` 로 돌려보낸다. */
 export function buildAdminLoginUrl(): string | null {
-  const origin = getApiOrigin()
-  if (!origin || typeof window === 'undefined') return null
-  const redirectUri = `${window.location.origin}/admin`
-  return `${origin}/oauth2/authorization/kakao?redirect_uri=${encodeURIComponent(redirectUri)}`
+  return buildWebKakaoLoginUrl('/admin')
 }
 
 /** 1회용 코드 → 토큰. 성공하면 sessionStorage 에 저장한다. */

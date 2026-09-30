@@ -7,10 +7,13 @@ import {
   useMemo,
   type ReactNode,
 } from 'react'
+import { Platform } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import {
   AUTH_REDIRECT_URI,
   KAKAO_LOGIN_URL,
+  WEB_AUTH_CALLBACK_PATH,
+  buildWebKakaoLoginUrl,
   deleteAccount as deleteAccountRequest,
   exchangeAuthCode,
   logoutRequest,
@@ -28,6 +31,21 @@ const ACCESS_TOKEN_KEY = 'hongikon_access_token'
 const REFRESH_TOKEN_KEY = 'hongikon_refresh_token'
 const GUEST_FLAG_KEY = 'hongikon_guest_mode'
 
+const isWeb = Platform.OS === 'web'
+
+/**
+ * 웹에서 카카오 로그인을 마치고 `/auth/callback?code=...` 로 돌아왔으면 코드를 꺼내고 주소창을 `/` 로 정리한다
+ * (새로고침으로 1회용 코드를 다시 쓰지 않게, 방문 기록에도 남지 않게). 콜백이 아니면 undefined,
+ * 콜백인데 코드가 없으면(취소 등) null.
+ */
+function takeWebAuthCallbackCode(): string | null | undefined {
+  if (!isWeb || typeof window === 'undefined') return undefined
+  if (window.location.pathname.replace(/\/+$/, '') !== WEB_AUTH_CALLBACK_PATH) return undefined
+  const code = new URLSearchParams(window.location.search).get('code')
+  window.history.replaceState(null, '', '/')
+  return code
+}
+
 /**
  * loading: 저장된 로그인 상태를 아직 확인 중
  * signedOut: 로그인도 게스트 선택도 안 한 상태 — 웰컴 화면을 보여준다
@@ -39,6 +57,8 @@ type AuthStatus = 'loading' | 'signedOut' | 'guest' | 'authenticated'
 interface AuthContextValue {
   status: AuthStatus
   accessToken: string | null
+  /** 웹에서 카카오 로그인 후 돌아와 토큰 교환에 실패했을 때의 안내 문구. 웰컴 화면이 보여준다. */
+  loginError: string | null
   loginWithKakao: () => Promise<void>
   continueAsGuest: () => Promise<void>
   logout: () => Promise<void>
@@ -83,9 +103,31 @@ function authExchangeErrorMessage(error: unknown): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<string | null>(null)
 
   useEffect(() => {
     async function restore() {
+      // 웹: 카카오 로그인에서 막 돌아온 경우 저장된 상태보다 먼저 처리한다.
+      const callbackCode = takeWebAuthCallbackCode()
+      if (callbackCode !== undefined) {
+        if (!callbackCode) {
+          setLoginError('로그인이 취소되었습니다.')
+          setStatus('signedOut')
+          return
+        }
+        try {
+          const tokens = await exchangeAuthCode(callbackCode)
+          await saveTokens(tokens)
+          await deleteItem(GUEST_FLAG_KEY)
+          setAccessToken(tokens.accessToken)
+          setStatus('authenticated')
+        } catch (error: unknown) {
+          setLoginError(authExchangeErrorMessage(error))
+          setStatus('signedOut')
+        }
+        return
+      }
+
       try {
         const token = await getItem(ACCESS_TOKEN_KEY)
         if (token) {
@@ -111,6 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loginWithKakao = useCallback(async () => {
+    setLoginError(null)
+
+    // 웹(PC·모바일 브라우저): 앱 스킴(hongikon://)으로는 돌아올 수 없으니 페이지 전체를 카카오로 보냈다가
+    // /auth/callback 으로 돌아와 restore() 에서 마저 처리한다. 이동하는 동안 버튼은 로딩 상태로 둔다.
+    if (isWeb) {
+      const url = buildWebKakaoLoginUrl(WEB_AUTH_CALLBACK_PATH)
+      if (!url) throw new Error('로그인 서버 주소가 설정되지 않았습니다.')
+      window.location.assign(url)
+      return new Promise<void>(() => {})
+    }
+
     const result = await WebBrowser.openAuthSessionAsync(KAKAO_LOGIN_URL, AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
@@ -167,8 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessToken])
 
   const value = useMemo(
-    () => ({ status, accessToken, loginWithKakao, continueAsGuest, logout, deleteAccount }),
-    [status, accessToken, loginWithKakao, continueAsGuest, logout, deleteAccount],
+    () => ({ status, accessToken, loginError, loginWithKakao, continueAsGuest, logout, deleteAccount }),
+    [status, accessToken, loginError, loginWithKakao, continueAsGuest, logout, deleteAccount],
   )
 
   if (status === 'loading') return <AppLoadingScreen />

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -21,16 +22,24 @@ type PendingAction = 'kakao' | 'guest' | null
  * AuthContext.status 가 'signedOut' 일 때만 RootNavigator 가 이 화면을 보여준다.
  */
 export default function WelcomeScreen() {
-  const { loginWithKakao, continueAsGuest } = useAuth()
+  const { loginWithKakao, continueAsGuest, loginError } = useAuth()
   const [pending, setPending] = useState<PendingAction>(null)
+  // 웹에선 Alert.alert 가 아무것도 띄우지 않아(react-native-web) 버튼 위에 문구로 보여준다.
+  const [inlineError, setInlineError] = useState<string | null>(null)
+  const errorText = inlineError ?? loginError
 
   const handleKakaoLogin = useCallback(async () => {
     setPending('kakao')
+    setInlineError(null)
     try {
       await loginWithKakao()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '로그인에 실패했습니다.'
-      Alert.alert('카카오 로그인 실패', message)
+      if (Platform.OS === 'web') {
+        setInlineError(message)
+      } else {
+        Alert.alert('카카오 로그인 실패', message)
+      }
     } finally {
       setPending(null)
     }
@@ -57,6 +66,11 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.buttons}>
+        {errorText && (
+          <Text style={styles.errorText} accessibilityRole="alert">
+            {errorText}
+          </Text>
+        )}
         <TouchableOpacity
           style={[styles.button, styles.kakaoButton]}
           onPress={handleKakaoLogin}
@@ -126,6 +140,13 @@ const styles = StyleSheet.create({
   // 준비 중 버튼은 브랜드색 대신 회색으로 눌러 비활성 상태임을 드러낸다.
   appleButton: { backgroundColor: '#B9B9B9' },
   appleButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.white },
+  errorText: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    color: COLORS.danger,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
   guestButton: { alignItems: 'center', paddingVertical: 12 },
   guestButtonText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textSecondary },
 })
