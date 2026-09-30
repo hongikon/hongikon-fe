@@ -1,19 +1,18 @@
 import { REPORT_CATEGORIES } from '../constants/reportCategories'
 import type { ReportCategory } from '../types'
 import type { FlagReason, ReportStatus } from './types'
+import { parseServerTime } from '../utils/serverTime'
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-const HAS_ZONE = /(Z|[+-]\d{2}:?\d{2})$/i
 
 /**
- * 서버 날짜 문자열 → Date.
- * 존 정보가 있으면(`buildTime` 의 `...Z`) 그대로, 없으면(LocalDateTime) 한국 시간으로 본다.
- * 브라우저 시간대가 한국이 아니어도(해외 출장 등) 같은 시각으로 읽히게 하려는 것이다.
+ * 서버 날짜 문자열 → Date. 존 없는 LocalDateTime 은 UTC 로 읽는다(`utils/serverTime.ts` 참고).
+ * 브라우저 시간대와 상관없이 같은 시각으로 읽힌다.
  */
 export function parseServerDate(value: string | null | undefined): Date | null {
   if (!value) return null
-  const date = new Date(HAS_ZONE.test(value) ? value : `${value}+09:00`)
-  return Number.isNaN(date.getTime()) ? null : date
+  const ms = parseServerTime(value)
+  return Number.isNaN(ms) ? null : new Date(ms)
 }
 
 function pad(value: number): string {

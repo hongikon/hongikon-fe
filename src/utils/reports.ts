@@ -1,6 +1,7 @@
 import { Alert, Platform } from 'react-native'
 import { reportCategoryMeta } from '../constants/reportCategories'
 import type { ReportCategory, ReportListItem } from '../types'
+import { parseServerTime } from './serverTime'
 
 /**
  * 로그인이 필요한 동작(제보 작성·신고)을 막았을 때 띄운다.
@@ -35,14 +36,14 @@ export interface ReportMarker {
 const KST_OFFSET_MINUTES = 9 * 60
 
 /**
- * UTC ISO 문자열을 KST 기준 `H시 M분` 으로 바꾼다.
+ * 서버 시각(UTC, 존 없음 — `parseServerTime` 참고)을 KST 기준 `H시 M분` 으로 바꾼다.
  *
  * `Intl.DateTimeFormat` 의 timeZone 옵션을 쓰지 않는다. Hermes 의 Intl 지원은
  * 빌드 설정에 따라 갈려서, 기기에 따라 시간이 틀어지거나 던질 수 있다.
  * 고정 오프셋(+9)은 한국이 서머타임을 쓰지 않아 언제나 맞는다.
  */
 export function formatKstTime(iso: string): string {
-  const shifted = new Date(new Date(iso).getTime() + KST_OFFSET_MINUTES * 60 * 1000)
+  const shifted = new Date(parseServerTime(iso) + KST_OFFSET_MINUTES * 60 * 1000)
   const hours = shifted.getUTCHours()
   const minutes = shifted.getUTCMinutes()
   return minutes === 0 ? `${hours}시` : `${hours}시 ${minutes}분`
@@ -50,7 +51,7 @@ export function formatKstTime(iso: string): string {
 
 /** '방금 전' · '12분 전' · '3시간 전'. 하루가 넘으면 날짜 대신 '하루 전' 으로 끊는다. */
 export function formatElapsed(iso: string, now: number = Date.now()): string {
-  const minutes = Math.floor((now - new Date(iso).getTime()) / 60000)
+  const minutes = Math.floor((now - parseServerTime(iso)) / 60000)
   if (minutes < 1) return '방금 전'
   if (minutes < 60) return `${minutes}분 전`
   const hours = Math.floor(minutes / 60)
@@ -77,7 +78,7 @@ export function visibleReports(
   reports: readonly ReportListItem[],
   now: number = Date.now(),
 ): ReportListItem[] {
-  return reports.filter((report) => new Date(report.endsAt).getTime() > now)
+  return reports.filter((report) => parseServerTime(report.endsAt) > now)
 }
 
 export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarker[] {

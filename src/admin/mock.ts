@@ -14,12 +14,10 @@ import type {
  * 관리자 API 스펙의 응답 모양을 그대로 흉내 내고, 변경(PATCH/POST)은 이 탭 메모리에만 반영한다.
  */
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-/** 지금 기준 minutes 분 뒤(음수면 전)의 LocalDateTime 문자열(한국 시간, 존 없음). */
+/** 지금 기준 minutes 분 뒤(음수면 전)의 LocalDateTime 문자열(서버처럼 UTC, 존 없음). */
 function at(minutes: number): string {
-  const kst = new Date(Date.now() + minutes * 60_000 + KST_OFFSET_MS)
-  return kst.toISOString().slice(0, 19)
+  return new Date(Date.now() + minutes * 60_000).toISOString().slice(0, 19)
 }
 
 function delay(ms: number): Promise<void> {
