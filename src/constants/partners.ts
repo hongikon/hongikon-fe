@@ -269,6 +269,19 @@ export const PARTNERS: readonly Partner[] = [
     benefit: '점심(11시~15시) 중 전 메뉴 10% 할인',
     address: '서울 마포구 와우산로22길 34',
   },
+  {
+    // 출처: @hongik_chance 인스타 공지(2026-09-29). 좌표는 사용자가 준 도로명 주소를
+    // 네이버 지오코딩으로 변환한 값(단일 일치). docs/partner-intake.md 참고.
+    id: 'food-balbarine',
+    name: '발바리네',
+    category: '음식',
+    affiliations: ['총학생회'],
+    lat: 37.5533271,
+    lng: 126.9276344,
+    benefit: '2인 이상 방문 시 음료 1개 / 4인 이상 방문 시 음료 2개, 스팸정식 중 택 1',
+    address: '서울 마포구 와우산로 128 1층',
+    hours: '월~토 10:00~21:00',
+  },
 
   // ── 의료/미용 ───────────────────────────────────────────
   {
