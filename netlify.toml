@@ -11,6 +11,9 @@
   # 웹판(hongikon.com)은 같은 출처의 /api 로 부르고 아래 프록시가 api.hongikon.com 으로 넘긴다.
   # 백엔드에 CORS 설정을 열지 않아도 되고, 브라우저 입장에선 쿠키·헤더가 한 출처에만 오간다.
   EXPO_PUBLIC_API_BASE_URL = "/api"
+  # 관리자 화면(/admin)의 카카오 로그인은 프록시(/api)가 아니라 API 도메인으로 직접 이동해야 한다
+  # (OAuth state 세션 쿠키가 api.hongikon.com 에 붙어야 카카오 콜백에서 검증이 통과한다).
+  EXPO_PUBLIC_API_ORIGIN = "https://api.hongikon.com"
   # app.config.ts 는 APP_VARIANT 가 없으면 개발(development)로 보고 이름 뒤에 " (개발)"을 붙인다.
   # 웹판은 운영 배포이므로 명시한다(없던 탓에 hongikon.com 탭 제목이 "홍익온 (개발)"이었다).
   APP_VARIANT = "production"
