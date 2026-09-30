@@ -10,7 +10,7 @@
 //    브라우저는 /favicon.ico 를 오래 캐시해서, 브랜드 아이콘으로 바꾼 뒤에도 옛 아이콘이 계속 보였다.
 //    파일 내용 해시를 쿼리로 붙여 아이콘이 바뀔 때만 새로 받게 한다.
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 
 const DIST = 'dist'
@@ -69,12 +69,29 @@ if (leftovers.length > 0) {
   process.exit(1)
 }
 
-// 2) 파비콘 캐시 무효화
+// 2) 파비콘 캐시 무효화 + PNG/애플 터치 아이콘
+//    크롬은 PNG 아이콘을 .ico 보다 우선하고, 사파리는 북마크·홈 화면에 apple-touch-icon 을 쓴다(없으면 기본 글자 아이콘).
+//    새 주소로 걸어 두면 옛 파비콘을 캐시한 브라우저도 새로 받는다.
 const favicon = join(DIST, 'favicon.ico')
 const indexHtml = join(DIST, 'index.html')
 if (existsSync(favicon) && existsSync(indexHtml)) {
-  const version = createHash('sha256').update(readFileSync(favicon)).digest('hex').slice(0, 8)
-  const html = readFileSync(indexHtml, 'utf8').replace(/href="\/favicon\.ico"/g, `href="/favicon.ico?v=${version}"`)
+  copyFileSync('assets/favicon.png', join(DIST, 'favicon.png'))
+  copyFileSync('assets/icon.png', join(DIST, 'apple-touch-icon.png'))
+  const version = createHash('sha256')
+    .update(readFileSync(favicon))
+    .update(readFileSync('assets/favicon.png'))
+    .update(readFileSync('assets/icon.png'))
+    .digest('hex')
+    .slice(0, 8)
+  const links =
+    `<link rel="icon" type="image/png" sizes="196x196" href="/favicon.png?v=${version}"/>` +
+    `<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=${version}"/>`
+  const html = readFileSync(indexHtml, 'utf8')
+    .replace(/<link rel="icon" href="\/favicon\.ico"\/>/g, `<link rel="icon" href="/favicon.ico?v=${version}" sizes="any"/>${links}`)
+  if (!html.includes('apple-touch-icon')) {
+    console.error('[fix-web-export] index.html 에서 파비콘 링크를 찾지 못함 — Expo 템플릿이 바뀌었는지 확인')
+    process.exit(1)
+  }
   writeFileSync(indexHtml, html)
 }
 

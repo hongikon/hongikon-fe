@@ -35,6 +35,12 @@
 # 안 뜰 수 있다(웹판 NaverMapView.web.tsx 참고). 대신 Report-Only로 걸어 둔다 — 이 헤더는
 # 아무것도 차단하지 않고 위반만 브라우저 콘솔에 기록하므로 지도가 깨질 위험이 없다. 배포 후
 # 콘솔에 위반 로그가 안 남으면 그대로 Content-Security-Policy(강제)로 이름만 바꾸면 된다.
+# 파비콘은 브라우저가 특히 오래 붙잡는다 — 주소 고정인 /favicon.ico 는 매번 새 버전인지 확인하게 한다.
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/*"
   [headers.values]
