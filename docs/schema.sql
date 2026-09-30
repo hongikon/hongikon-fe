@@ -214,6 +214,7 @@ CREATE TABLE news (
   views         INT          NULL,
   category      VARCHAR(30)  NOT NULL COMMENT '앱 CategoryKey 7종과 동일 집합',
   source_url    VARCHAR(500) NOT NULL,
+  source_id     VARCHAR(50)  NULL COMMENT '수집 게시판 id = TREE_DATA 리프 id(학과명 또는 학사/장학 등 대학공지 분류). hongikon-be db/alter_add_news_source_id_column.sql',
   department_id BIGINT       NULL,
   building_id   BIGINT       NULL,
   published_at  DATETIME     NOT NULL,
