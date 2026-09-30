@@ -8,6 +8,8 @@ export interface NaverMapViewHandle {
 interface Props {
   html: string
   onMessage: (event: { nativeEvent: { data: string } }) => void
+  /** 네이티브(NaverMapView.tsx)와 props 를 맞추려고만 둔다. 웹은 같은 페이지 안이라 다시 불러올 일이 없다. */
+  onReady?: () => void
 }
 
 function loadExternalScript(src: string): Promise<void> {
