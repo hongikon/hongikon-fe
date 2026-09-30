@@ -518,6 +518,27 @@ export default function MapScreen() {
     [layer, postToMap, applyFacilityKind],
   );
 
+  /**
+   * 지도 페이지가 (다시) 준비됐을 때 지금 화면 상태를 다시 그린다. 첫 로딩이 늦거나 실패해 자동으로
+   * 다시 불러오면 페이지가 새로 떠서, 그 사이 보낸 마커 명령이 사라지기 때문이다(NaverMapView 참고).
+   */
+  const resyncMap = useCallback(() => {
+    if (hasActiveFilter(activeFilter)) {
+      const partners = filterPartners(activeFilter);
+      postToMap({
+        type: "setPartners",
+        partners: partners.map(toMarker),
+        bounds: partnerFocusBounds(partners),
+      });
+    }
+    if (facilityKind !== null) {
+      postToMap({ type: "setFacilities", markers: facilityMarkers(facilityKind) });
+    }
+    if (reportsOn && reportsResource.data !== undefined) {
+      postToMap({ type: "setReports", markers: toReportMarkers(reportsResource.data) });
+    }
+  }, [activeFilter, facilityKind, reportsOn, reportsResource.data, postToMap]);
+
   /** 제보를 새로 받을 때마다 지도에 올린다. */
   useEffect(() => {
     if (!reportsOn || reportsResource.data === undefined) return;
@@ -605,6 +626,7 @@ export default function MapScreen() {
           ref={webViewRef}
           html={mapHTML}
           onMessage={handleWebViewMessage}
+          onReady={resyncMap}
         />
 
         <View
@@ -737,7 +759,8 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.pickerBottomBar}>
+            {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
+            <View style={[styles.pickerBottomBar, { bottom: 20 + tabBarHeight }]}>
               <View style={styles.pickerLocationRow}>
                 <Ionicons name="location" size={14} color={COLORS.primary} />
                 <Text style={styles.pickerLocationText} numberOfLines={1}>

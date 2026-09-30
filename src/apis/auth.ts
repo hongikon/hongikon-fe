@@ -3,8 +3,36 @@ import { apiRequest, API_BASE_URL } from './client'
 /** 백엔드 OAuth2SuccessHandler 가 되돌아오는 주소. app.json 의 scheme(hongikon)과 정확히 일치해야 한다. */
 export const AUTH_REDIRECT_URI = 'hongikon://auth/callback'
 
-/** 카카오 로그인 진입 주소. WebBrowser.openAuthSessionAsync 로 연다. */
+/** 카카오 로그인 진입 주소(앱). WebBrowser.openAuthSessionAsync 로 연다. */
 export const KAKAO_LOGIN_URL = `${API_BASE_URL}/oauth2/authorization/kakao`
+
+/**
+ * 웹판 카카오 로그인이 끝나고 돌아올 경로. 백엔드 허용 목록(app.oauth2.allowed-redirect-uris)에
+ * `https://hongikon.com/auth/callback` 처럼 출처까지 정확히 등록돼 있어야 한다.
+ */
+export const WEB_AUTH_CALLBACK_PATH = '/auth/callback'
+
+/**
+ * 카카오 로그인 시작 주소의 호스트. 웹에서는 `/api` 프록시가 아니라 반드시 API 도메인이어야 한다 —
+ * 프록시를 거치면 OAuth state 세션 쿠키가 hongikon.com 에 붙어 카카오 콜백(api.hongikon.com)에서
+ * 검증이 깨진다. API_BASE_URL 이 절대 주소면 그대로, 상대 경로(`/api`)면 EXPO_PUBLIC_API_ORIGIN 을 쓴다.
+ */
+export function getApiOrigin(): string | null {
+  const origin = /^https?:\/\//.test(API_BASE_URL) ? API_BASE_URL : process.env.EXPO_PUBLIC_API_ORIGIN ?? ''
+  return origin ? origin.replace(/\/+$/, '') : null
+}
+
+/**
+ * 웹(PC·모바일 브라우저)용 카카오 로그인 주소. 성공하면 서버가 `{현재 출처}{returnPath}?code=...` 로 돌려보낸다.
+ * 팝업이 아니라 페이지 전체를 이동한다 — 모바일 브라우저는 팝업을 막는 경우가 많고, 카카오톡 앱 로그인도
+ * 카카오 로그인 페이지가 알아서 앱을 열었다가 이 주소로 돌아온다.
+ */
+export function buildWebKakaoLoginUrl(returnPath: string): string | null {
+  const origin = getApiOrigin()
+  if (!origin || typeof window === 'undefined') return null
+  const redirectUri = `${window.location.origin}${returnPath}`
+  return `${origin}/oauth2/authorization/kakao?redirect_uri=${encodeURIComponent(redirectUri)}`
+}
 
 export interface TokenResponse {
   accessToken: string

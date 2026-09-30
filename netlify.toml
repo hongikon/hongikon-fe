@@ -11,6 +11,12 @@
   # 웹판(hongikon.com)은 같은 출처의 /api 로 부르고 아래 프록시가 api.hongikon.com 으로 넘긴다.
   # 백엔드에 CORS 설정을 열지 않아도 되고, 브라우저 입장에선 쿠키·헤더가 한 출처에만 오간다.
   EXPO_PUBLIC_API_BASE_URL = "/api"
+  # 관리자 화면(/admin)의 카카오 로그인은 프록시(/api)가 아니라 API 도메인으로 직접 이동해야 한다
+  # (OAuth state 세션 쿠키가 api.hongikon.com 에 붙어야 카카오 콜백에서 검증이 통과한다).
+  EXPO_PUBLIC_API_ORIGIN = "https://api.hongikon.com"
+  # app.config.ts 는 APP_VARIANT 가 없으면 개발(development)로 보고 이름 뒤에 " (개발)"을 붙인다.
+  # 웹판은 운영 배포이므로 명시한다(없던 탓에 hongikon.com 탭 제목이 "홍익온 (개발)"이었다).
+  APP_VARIANT = "production"
 
 [[redirects]]
   from = "/api/*"
@@ -29,6 +35,12 @@
 # 안 뜰 수 있다(웹판 NaverMapView.web.tsx 참고). 대신 Report-Only로 걸어 둔다 — 이 헤더는
 # 아무것도 차단하지 않고 위반만 브라우저 콘솔에 기록하므로 지도가 깨질 위험이 없다. 배포 후
 # 콘솔에 위반 로그가 안 남으면 그대로 Content-Security-Policy(강제)로 이름만 바꾸면 된다.
+# 파비콘은 브라우저가 특히 오래 붙잡는다 — 주소 고정인 /favicon.ico 는 매번 새 버전인지 확인하게 한다.
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/*"
   [headers.values]

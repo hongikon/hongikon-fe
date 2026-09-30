@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Platform } from 'react-native'
 import { useFonts } from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
@@ -16,6 +16,7 @@ import ErrorBoundary from './src/components/common/ErrorBoundary'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
 import { FONT_ASSETS } from './src/constants/typography'
+import AdminEntry from './src/admin/AdminEntry'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -49,6 +50,16 @@ const tempDebugMode: TempDebugMode | null =
       })()
     : null
 
+/**
+ * 웹 관리자 콘솔(`/admin`, `/admin/...`). 앱의 로그인(AuthProvider)·내비게이션과 완전히 따로 돈다 —
+ * 토큰도 별도(sessionStorage)다. `AdminEntry` 는 네이티브에선 null, 웹에선 지연 로드라
+ * 앱 번들에는 관리자 코드가 실리지 않는다.
+ */
+const isAdminPath =
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  /^\/admin(\/|$)/.test(window.location.pathname)
+
 // 폰트가 준비될 때까지 스플래시를 띄워 둔다. 그렇게 하지 않으면
 // 시스템 폰트로 한 프레임 그려졌다가 Pretendard 로 바뀌며 글자가 튄다.
 SplashScreen.preventAutoHideAsync()
@@ -65,6 +76,14 @@ export default function App() {
 
   if (!fontsLoaded && !fontError) {
     return null
+  }
+
+  if (isAdminPath && AdminEntry) {
+    return (
+      <Suspense fallback={null}>
+        <AdminEntry />
+      </Suspense>
+    )
   }
 
   if (tempDebugMode === 'notifications') {

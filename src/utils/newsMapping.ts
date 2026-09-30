@@ -8,9 +8,11 @@ function formatDate(publishedAt: string): string {
 
 /**
  * 목록(`GET /news`) 항목을 화면이 쓰는 `NewsItem`으로 변환한다.
- * `sourceId`는 구독 필터링(`SettingsContext.subscribedDepts`)이 학과 이름 문자열 기준이라
- * `departmentName`을 그대로 쓴다 — TREE_DATA의 리프 id와 백엔드 Department.name이
- * 같은 문자열을 쓰도록 맞춰져 있다(`Department.java` 주석 참고).
+ * `sourceId`는 구독 필터링(`SettingsContext.subscribedDepts`)이 TREE_DATA 리프 id 기준이라
+ * 백엔드 `sourceId`(수집 게시판 id)를 우선 쓴다. 대학공지('학사'/'장학' 등)는 학과가 아니라
+ * `departmentName`이 항상 null이므로 이 값이 없으면 구독해도 안 보인다. `sourceId`가 없는
+ * 이전 백엔드/기존 글이면 `departmentName`(= TREE_DATA 학과 리프 id와 같은 문자열) → '기타' 순으로 폴백.
+ * 표시용 `source`는 학과명을 우선하고, 대학공지는 분류 라벨(예: '학사')을 그대로 보여준다.
  */
 export function backendSummaryToNewsItem(n: BackendNewsSummary): NewsItem {
   return {
@@ -18,8 +20,8 @@ export function backendSummaryToNewsItem(n: BackendNewsSummary): NewsItem {
     category: n.category,
     title: n.title,
     preview: n.preview ?? '',
-    source: n.departmentName ?? '홍익대학교',
-    sourceId: n.departmentName ?? '기타',
+    source: n.departmentName ?? n.sourceId ?? '홍익대학교',
+    sourceId: n.sourceId ?? n.departmentName ?? '기타',
     date: formatDate(n.publishedAt),
   }
 }
