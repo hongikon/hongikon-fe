@@ -22,6 +22,12 @@ export interface BackendNewsSummary {
   departmentId: number | null
   /** 출처 표시명(예: "컴퓨터공학과"). department 미매칭 소식은 null. */
   departmentName: string | null
+  /**
+   * 수집 게시판 id(TREE_DATA 리프 id와 동일). 학과 게시판이면 학과명, 대학공지면 '학사'/'장학' 등.
+   * 대학공지는 departmentName이 항상 null이라 구독 필터링엔 이 값이 필요하다.
+   * hongikon-be feat/news-board-source 이후 제공 — 이전 백엔드는 필드 자체가 없고, 컬럼 도입 전 글은 null일 수 있다.
+   */
+  sourceId?: string | null
   buildingId: number | null
   publishedAt: string
 }
