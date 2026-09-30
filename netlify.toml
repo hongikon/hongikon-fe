@@ -11,6 +11,9 @@
   # 웹판(hongikon.com)은 같은 출처의 /api 로 부르고 아래 프록시가 api.hongikon.com 으로 넘긴다.
   # 백엔드에 CORS 설정을 열지 않아도 되고, 브라우저 입장에선 쿠키·헤더가 한 출처에만 오간다.
   EXPO_PUBLIC_API_BASE_URL = "/api"
+  # app.config.ts 는 APP_VARIANT 가 없으면 개발(development)로 보고 이름 뒤에 " (개발)"을 붙인다.
+  # 웹판은 운영 배포이므로 명시한다(없던 탓에 hongikon.com 탭 제목이 "홍익온 (개발)"이었다).
+  APP_VARIANT = "production"
 
 [[redirects]]
   from = "/api/*"
