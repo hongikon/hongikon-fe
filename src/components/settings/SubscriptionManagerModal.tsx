@@ -16,6 +16,7 @@ import { FONTS } from '../../constants/typography'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
 import { ToastViewport } from '../common/Toast'
+import ContentColumn from '../common/ContentColumn'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
@@ -54,6 +55,8 @@ export default function SubscriptionManagerModal({
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
+        {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+        <ContentColumn>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
             <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
@@ -168,6 +171,7 @@ export default function SubscriptionManagerModal({
         </ScrollView>
         {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다. */}
         <ToastViewport />
+        </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

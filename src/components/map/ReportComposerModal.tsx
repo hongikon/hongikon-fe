@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
 import {
@@ -630,6 +631,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: '90%',
+    // 넓은 화면(폴드 펼침·웹)에선 아래에서 올라오는 시트를 가운데 한 폭으로 모은다.
+    width: '100%',
+    maxWidth: SHEET_MAX_WIDTH,
+    alignSelf: 'center',
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

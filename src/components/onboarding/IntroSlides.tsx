@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ComponentProps } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type ComponentProps } from 'react'
 import {
   Pressable,
   ScrollView,
@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import OnboardingIllustration, { type IllustrationBadge } from './OnboardingIllustration'
+import OnboardingIllustration, { ILLUSTRATION_SIZE, type IllustrationBadge } from './OnboardingIllustration'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 import BrandSymbol from '../../../assets/brand/symbol.svg'
 
@@ -67,22 +67,43 @@ interface IntroSlidesProps {
  * 첫 실행 소개 2~3장. 옆으로 밀어 넘기거나 "다음"을 누른다.
  * 페이지 넘김은 가로 ScrollView 의 pagingEnabled 로 한다 — 웹(react-native-web)도 scroll-snap 으로 같은 동작을 한다.
  * 너비는 화면 너비가 아니라 실제로 그려진 영역 너비(onLayout)를 쓴다. 웹에서 앱 영역이 창보다 좁을 수 있어서다.
+ *
+ * 폴드를 접고 펴거나(앱이 다시 시작되지 않고 창 크기만 바뀐다) 웹 창 크기를 바꾸면 너비가 달라진다.
+ * 그때 스크롤 위치는 옛 너비 기준으로 남아 두 장 사이에 걸치므로, 보던 장으로 다시 맞춘다.
+ * 높이가 낮은 화면(플립 커버 화면, 가로로 눕힌 창)에선 그림을 줄여 제목·설명이 잘리지 않게 한다.
  */
 export default function IntroSlides({ onDone }: IntroSlidesProps) {
   const scrollRef = useRef<ScrollView>(null)
-  const [width, setWidth] = useState(0)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  const { width, height } = size
   const [index, setIndex] = useState(0)
+  // 너비가 바뀐 직후 다시 맞출 때 쓰는 "지금 보던 장". state 는 스크롤 이벤트가 먼저 덮어쓸 수 있어 따로 둔다.
+  const indexRef = useRef(0)
   const isLast = index === SLIDES.length - 1
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    setWidth(Math.round(e.nativeEvent.layout.width))
+    const next = {
+      width: Math.round(e.nativeEvent.layout.width),
+      height: Math.round(e.nativeEvent.layout.height),
+    }
+    setSize((prev) => (prev.width === next.width && prev.height === next.height ? prev : next))
   }, [])
+
+  // 너비가 바뀌면 보던 장의 시작점으로 스크롤을 옮긴다(애니메이션 없이). 처음 그릴 때(0번 장)는 그대로다.
+  useLayoutEffect(() => {
+    if (!width) return
+    scrollRef.current?.scrollTo({ x: indexRef.current * width, animated: false })
+  }, [width])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!width) return
-      const next = Math.round(e.nativeEvent.contentOffset.x / width)
-      setIndex(Math.max(0, Math.min(SLIDES.length - 1, next)))
+      const next = Math.max(
+        0,
+        Math.min(SLIDES.length - 1, Math.round(e.nativeEvent.contentOffset.x / width)),
+      )
+      indexRef.current = next
+      setIndex(next)
     },
     [width],
   )
@@ -90,10 +111,16 @@ export default function IntroSlides({ onDone }: IntroSlidesProps) {
   const goTo = useCallback(
     (next: number) => {
       scrollRef.current?.scrollTo({ x: next * width, animated: true })
+      indexRef.current = next
       setIndex(next)
     },
     [width],
   )
+
+  // 글자 영역(약 190dp)을 먼저 확보하고 남는 높이에 맞춰 그림만 줄인다.
+  // 0.4배보다 작아질 만큼 낮으면(가로로 눕힌 작은 창 등) 그림을 아예 빼서 제목·설명이 잘리지 않게 한다.
+  const artScale = height ? Math.min(1, (height - ART_TEXT_RESERVE) / ART_BLOCK) : 1
+  const showArt = artScale >= 0.4
 
   const handleNext = useCallback(() => {
     if (isLast) onDone()
@@ -134,9 +161,22 @@ export default function IntroSlides({ onDone }: IntroSlidesProps) {
                 style={[styles.slide, { width }]}
                 accessibilityLabel={`${i + 1}/${SLIDES.length}. ${slide.title.replace('\n', ' ')}`}
               >
-                <View style={styles.art}>
-                  <OnboardingIllustration icon={slide.icon} badges={slide.badges} />
+                {showArt && (
+                <View
+                  style={[
+                    styles.art,
+                    {
+                      width: ILLUSTRATION_SIZE * artScale,
+                      height: ILLUSTRATION_SIZE * artScale,
+                      marginBottom: ART_GAP * artScale,
+                    },
+                  ]}
+                >
+                  <View style={{ transform: [{ scale: artScale }] }}>
+                    <OnboardingIllustration icon={slide.icon} badges={slide.badges} />
+                  </View>
                 </View>
+                )}
                 <Text style={styles.title}>{slide.title}</Text>
                 <Text style={styles.body}>{slide.body}</Text>
               </View>
@@ -160,6 +200,12 @@ export default function IntroSlides({ onDone }: IntroSlidesProps) {
   )
 }
 
+/** 그림 아래 여백. */
+const ART_GAP = 40
+const ART_BLOCK = ILLUSTRATION_SIZE + ART_GAP
+/** 제목 두 줄 + 설명 두 줄 + 위아래 숨 쉴 틈. */
+const ART_TEXT_RESERVE = 190
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: {
@@ -174,7 +220,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   pager: { flex: 1 },
   slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  art: { marginBottom: 40 },
+  art: { alignItems: 'center', justifyContent: 'center' },
   title: {
     fontSize: 24,
     lineHeight: 33,
