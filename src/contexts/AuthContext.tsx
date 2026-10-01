@@ -23,6 +23,7 @@ import {
 } from '../apis/auth'
 import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
+import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
@@ -232,6 +233,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // 이 기기의 푸시 등록부터 내린다 — 안 그러면 로그아웃한 폰이 이전 계정의 알림을 계속 받는다.
+    // 인증이 필요한 요청이라 refresh 토큰을 폐기하기 전에 보낸다(액세스 토큰이 만료됐으면 여기서 재발급된다).
+    // 실패해도 로그아웃은 막지 않는다. 그 경우 서버의 기기 행은 남지만, 이 기기로 다시 로그인하면
+    // 같은 푸시 토큰 재등록이 기존 행을 지우고 새 계정으로 넘긴다(`UserDeviceService.register`).
+    const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
+    if (storedAccessToken) {
+      const done = await deactivateStoredPushDevice(storedAccessToken, { quick: true })
+      if (!done && __DEV__) console.warn('로그아웃 중 기기 비활성화 실패(로그아웃은 계속 진행)')
+    }
+    await forgetStoredPushDevice()
+
     // 서버에 refresh 토큰 폐기를 먼저 시도한다 — 실패해도(오프라인 등) 로컬 로그아웃은 그대로
     // 진행한다. 그렇지 않으면 네트워크가 안 되는 순간 로그아웃 버튼 자체가 안 먹는 꼴이 된다.
     const refreshToken = await getItem(REFRESH_TOKEN_KEY)
@@ -253,6 +265,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!accessToken) throw new Error('로그인 후 이용해주세요.')
 
     await deleteAccountRequest(accessToken)
+    // 탈퇴하면 서버가 기기 행까지 지운다(`UserService.withdraw`) — 저장해 둔 id 만 버린다.
+    await forgetStoredPushDevice()
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
