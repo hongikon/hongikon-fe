@@ -35,6 +35,7 @@ import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
+import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
 import { FONTS } from '../constants/typography'
@@ -456,6 +457,7 @@ export default function SettingsScreen() {
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
           <LogotypeHorizontal width={112} height={20} />
         </View>
+        <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
 
         {/* 회원 탈퇴는 실수로 누르지 않게 맨 아래 작은 글씨로 둔다. */}
         {status === 'authenticated' && (
@@ -691,6 +693,15 @@ const styles = StyleSheet.create({
   warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
   warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
+  unofficialNotice: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginTop: 10,
+  },
   permissionCard: {
     flexDirection: 'row',
     alignItems: 'center',

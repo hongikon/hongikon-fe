@@ -16,6 +16,7 @@ import { FONTS } from '../constants/typography'
 import { useAuth } from '../contexts/AuthContext'
 import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '../lib/appleAuth'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
+import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 
 type PendingAction = 'apple' | 'kakao' | 'guest' | null
 
@@ -153,6 +154,7 @@ export default function WelcomeScreen() {
             {pending === 'guest' ? '이동 중…' : '둘러보기'}
           </Text>
         </TouchableOpacity>
+        <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
       </View>
     </SafeAreaView>
   )
@@ -192,4 +194,11 @@ const styles = StyleSheet.create({
   },
   guestButton: { alignItems: 'center', paddingVertical: 12 },
   guestButtonText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textSecondary },
+  unofficialNotice: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
 })
