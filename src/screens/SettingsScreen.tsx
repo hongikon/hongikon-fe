@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -25,6 +26,7 @@ import FeedbackModal from '../components/settings/FeedbackModal'
 import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import { requestMapIntent } from '../lib/mapIntents'
 import { confirmAction, notify } from '../utils/dialog'
+import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
@@ -114,6 +116,28 @@ export default function SettingsScreen() {
     setActiveModal('noticeDetail')
   }
 
+  const permission = useNotificationPermission()
+  // 휴대폰 설정에서 알림이 막혀 있으면 앱 안 스위치가 켜져 있어도 알림이 오지 않는다.
+  const systemBlocked = permission.status === 'denied' || permission.status === 'undetermined'
+
+  /** 앱 알림을 켤 때 휴대폰 권한을 아직 묻지 않았으면 그때 시스템 창을 띄운다. */
+  const handleToggleSubscriptionAlert = () => {
+    const turningOn = !settings.subscriptionAlert
+    toggleSubscriptionAlert()
+    if (turningOn && permission.status === 'undetermined' && permission.canAskAgain && status === 'authenticated') {
+      void requestNotificationPermission()
+    }
+  }
+
+  /** 거절된 뒤에는 앱이 다시 물을 수 없어(iOS) 휴대폰 설정 화면으로 보낸다. 아직 물을 수 있으면 바로 묻는다. */
+  const handleFixSystemPermission = () => {
+    if ((permission.status === 'undetermined' || permission.status === 'denied') && permission.canAskAgain) {
+      void requestNotificationPermission()
+      return
+    }
+    Linking.openSettings().catch(() => notify('설정을 열지 못했어요', '휴대폰 설정 > 홍익온 > 알림에서 허용해 주세요.'))
+  }
+
   const { subscriptionAlert, alertCategories, subscribedDepts } = settings
   const isGuest = status !== 'authenticated'
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
@@ -182,10 +206,29 @@ export default function SettingsScreen() {
             </View>
             <ToggleSwitch
               value={subscriptionAlert}
-              onToggle={toggleSubscriptionAlert}
+              onToggle={handleToggleSubscriptionAlert}
               accessibilityLabel="구독 소식 알림"
             />
           </View>
+          {subscriptionAlert && status === 'authenticated' && systemBlocked && (
+            <View style={styles.permissionCard}>
+              <Ionicons name="alert-circle-outline" size={17} color="#B45309" />
+              <Text style={styles.permissionText}>
+                {permission.status === 'denied'
+                  ? '휴대폰 설정에서 홍익온 알림이 꺼져 있어 알림이 오지 않아요.'
+                  : '알림을 받으려면 휴대폰 알림 권한을 허용해 주세요.'}
+              </Text>
+              <TouchableOpacity
+                onPress={handleFixSystemPermission}
+                accessibilityRole="button"
+                accessibilityLabel={permission.status === 'denied' && !permission.canAskAgain ? '휴대폰 설정 열기' : '알림 허용하기'}
+              >
+                <Text style={styles.permissionAction}>
+                  {permission.status === 'denied' && !permission.canAskAgain ? '설정 열기' : '허용하기'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -530,6 +573,19 @@ const styles = StyleSheet.create({
   warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
   warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
+  permissionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
+  },
+  permissionText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: '#92400E' },
+  permissionAction: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   withdrawLink: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16, marginTop: 8 },
   withdrawText: {
     fontFamily: FONTS.regular,

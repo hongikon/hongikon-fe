@@ -5,6 +5,7 @@ import Constants from 'expo-constants'
 import { navigationRef } from '../navigation/navigationRef'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from './connectivity'
+import { useNotificationPermission } from './notificationPermission'
 import { deactivateStoredPushDevice, registerPushDevice } from './pushDevice'
 import { useAuth } from '../contexts/AuthContext'
 import { useSettings } from '../contexts/SettingsContext'
@@ -106,6 +107,7 @@ async function getExpoPushToken(): Promise<string | null> {
  * `App.tsx`에서 `NavigationContainer` 안(한 번만) 호출한다.
  */
 export function usePushNotifications(): void {
+  const permission = useNotificationPermission()
   const { accessToken, status } = useAuth()
   const { settings } = useSettings()
   const alertEnabled = settings.subscriptionAlert
@@ -176,12 +178,12 @@ export function usePushNotifications(): void {
       }
     }
 
+    // 시스템 허용 창은 여기서 띄우지 않는다 — 앱이 이유를 먼저 설명한 뒤(NotificationPrimer·설정 화면)
+    // 사용자가 누를 때 띄운다. 허용되면 이 effect 가 permission 변화로 다시 돌아 등록한다.
+    if (permission.status !== 'granted') return
+
     let cancelled = false
     ;(async () => {
-      const { status: current } = await Notifications.getPermissionsAsync()
-      const status =
-        current === 'granted' ? current : (await Notifications.requestPermissionsAsync()).status
-      if (status !== 'granted' || cancelled) return
 
       const token = await getExpoPushToken()
       if (!token || cancelled || registeredTokenRef.current === token) return
@@ -204,5 +206,5 @@ export function usePushNotifications(): void {
     return () => {
       cancelled = true
     }
-  }, [accessToken, alertEnabled, retryNonce])
+  }, [accessToken, alertEnabled, retryNonce, permission.status])
 }
