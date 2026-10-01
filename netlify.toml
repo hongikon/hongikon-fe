@@ -47,8 +47,24 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), payment=()"
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://*.pstatic.net https://*.naver.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.naver.com https://*.naver.net https://*.pstatic.net; font-src 'self' data:; frame-ancestors 'none'"
+    Permissions-Policy = "camera=(), microphone=(), payment=(), geolocation=()"
+    # 다른 사이트가 window.open 으로 hongikon.com 을 열어 창 참조(postMessage 등)를 쥐지 못하게 한다.
+    # 카카오 로그인은 팝업이 아니라 전체 페이지 이동이라 영향 없다.
+    Cross-Origin-Opener-Policy = "same-origin"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://*.pstatic.net https://*.naver.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.naver.com https://*.naver.net https://*.pstatic.net; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+# 관리자 콘솔은 검색에 노출되지 않게 하고, 브라우저·중간 캐시에 화면이 남지 않게 한다.
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
 
 # 파일 이름에 내용 해시가 붙는 정적 자산은 1년 동안 다시 확인하지 않는다(내용이 바뀌면 이름이 바뀐다).
 # - /_expo/static/*: JS 번들(index-<hash>.js, 지연 로드 청크)

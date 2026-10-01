@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -14,6 +13,7 @@ import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../constants/partnerAffiliat
 import type { Partner } from "../../types";
 import { FONTS } from "../../constants/typography";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { openExternalUrl } from "../../utils/openExternalUrl";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -215,7 +215,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
         {partner.link && (
           <TouchableOpacity
             style={styles.linkBtn}
-            onPress={() => Linking.openURL(partner.link!.url)}
+            onPress={() => openExternalUrl(partner.link!.url)}
           >
             <Ionicons name="open-outline" size={14} color={COLORS.primary} />
             <Text style={styles.linkText}>{partner.link.label}</Text>

@@ -40,11 +40,22 @@ export interface TokenResponse {
   refreshToken: string
 }
 
-/** 카카오 로그인 콜백에서 받은 1회용 인가 코드를 액세스/리프레시 토큰으로 교환한다. */
-export function exchangeAuthCode(code: string): Promise<TokenResponse> {
+/**
+ * 앱 카카오 로그인 진입 주소에 PKCE code_challenge 를 붙인다(src/lib/pkce.ts). 서버가 1회용 code 를 이 값에 묶어,
+ * 딥링크를 가로챈 다른 앱은 verifier 없이 code 를 토큰으로 바꿀 수 없다. 구버전 서버는 이 쿼리를 무시한다.
+ */
+export function buildKakaoLoginUrl(codeChallenge: string): string {
+  return `${KAKAO_LOGIN_URL}?code_challenge=${encodeURIComponent(codeChallenge)}`
+}
+
+/**
+ * 카카오 로그인 콜백에서 받은 1회용 인가 코드를 액세스/리프레시 토큰으로 교환한다.
+ * codeVerifier 는 로그인 진입 때 code_challenge 를 보냈다면 그 원본(PKCE). 구버전 서버는 모르는 필드라 무시한다.
+ */
+export function exchangeAuthCode(code: string, codeVerifier?: string): Promise<TokenResponse> {
   return apiRequest<TokenResponse>('/auth/token/exchange', {
     method: 'POST',
-    body: { code },
+    body: codeVerifier ? { code, codeVerifier } : { code },
     // 1회용 코드라 절대 다시 보내지 않는다. 기본값도 POST 는 0 이지만 실수로 바뀌지 않게 못 박는다.
     retries: 0,
   })
