@@ -14,6 +14,7 @@ import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
 import UpdateBanner from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
+import { ToastProvider } from './src/components/common/Toast'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
 import { FONT_ASSETS } from './src/constants/typography'
@@ -97,7 +98,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
+      <SafeAreaProvider><ToastProvider>
         <AuthProvider>
           <SettingsProvider>
             <NavigationContainer ref={navigationRef}>
@@ -111,7 +112,7 @@ export default function App() {
             </NavigationContainer>
           </SettingsProvider>
         </AuthProvider>
-      </SafeAreaProvider>
+      </ToastProvider></SafeAreaProvider>
     </ErrorBoundary>
   )
 }

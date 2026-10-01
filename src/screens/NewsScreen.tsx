@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -11,6 +11,9 @@ import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
 import { useBookmarkedNews } from '../hooks/useBookmarkedNews'
+import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
+import { NewsListSkeleton } from '../components/common/Skeleton'
+import * as haptics from '../lib/haptics'
 import { FONTS } from '../constants/typography'
 import NewsList from '../components/news/NewsList'
 import DeptTreeList from '../components/news/DeptTreeList'
@@ -27,7 +30,9 @@ const TABS: TabType[] = ['북마크', '구독', '전체']
 
 export default function NewsScreen() {
   const navigation = useNavigation<NavProp>()
-  const { settings, isBookmarked, toggleBookmark, toggleSubscribedDept } = useSettings()
+  const { settings, isBookmarked } = useSettings()
+  // 북마크·구독은 진동과 토스트("북마크에 저장했어요")가 붙은 버전을 쓴다.
+  const { toggleBookmark, toggleSubscribedDept } = useFeedbackToggles()
   const [activeTab, setActiveTab] = useState<TabType>('북마크')
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
@@ -83,7 +88,12 @@ export default function NewsScreen() {
             <TouchableOpacity
               key={tab}
               style={styles.tab}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                if (tab !== activeTab) haptics.selection()
+                setActiveTab(tab)
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
               <View style={[styles.tabIndicator, isActive && styles.tabIndicatorActive]} />
@@ -102,10 +112,7 @@ export default function NewsScreen() {
           onToggleSubscribe={toggleSubscribedDept}
         />
       ) : feedState.loading ? (
-        <View style={styles.feedLoading}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={styles.feedLoadingText}>소식을 불러오는 중…</Text>
-        </View>
+        <NewsListSkeleton />
       ) : feedState.errorMessage && displayedNews.length === 0 ? (
         <RetryableError
           style={styles.feedError}
@@ -252,8 +259,6 @@ const styles = StyleSheet.create({
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 
-  feedLoading: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  feedLoadingText: { fontFamily: FONTS.regular, fontSize: 13, color: '#bbb' },
   feedError: { marginHorizontal: 12, marginTop: 12 },
 
   listHeaderGroup: { gap: 10 },

@@ -3,6 +3,8 @@ import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } fr
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import * as haptics from '../../lib/haptics'
+import { useToast } from '../common/Toast'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
 import { flagReport } from '../../apis/reports'
@@ -27,6 +29,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const { accessToken, logout } = useAuth()
   const meta = reportCategoryMeta(report.category)
   const badgeLabel = report.customCategoryLabel || meta.label
+  const toast = useToast()
   const [flagging, setFlagging] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [error, setError] = useState<{
@@ -49,10 +52,13 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       // 고르게 하고, 그 전까지는 가장 넓은 값으로 보낸다.
       await flagReport(report.id, { reason: 'ETC' }, accessToken)
       setFlagged(true)
+      haptics.success()
+      toast.show({ message: '신고가 접수됐어요. 확인 후 조치할게요' })
     } catch (caught) {
       // 이미 신고한 제보면 서버가 409 를 준다 — 실패가 아니라 "신고함" 상태로 보여준다.
       if (caught instanceof ApiError && caught.status === 409) {
         setFlagged(true)
+        toast.show({ message: '이미 신고한 제보예요', tone: 'info' })
         return
       }
       // 신고는 POST 라 자동으로 다시 보내지 않는다(중복 신고 방지). 연결 문제일 때만

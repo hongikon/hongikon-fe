@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
@@ -11,6 +11,8 @@ import { getNewsById } from '../apis/news'
 import { backendDetailToNewsItem } from '../utils/newsMapping'
 import { FONTS } from '../constants/typography'
 import RetryableError from '../components/common/RetryableError'
+import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Skeleton'
+import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
@@ -44,7 +46,7 @@ function useEnhancedNewsItem(params: RootStackParamList['NewsDetail']) {
 export default function NewsDetailScreen({ route, navigation }: Props) {
   const { item, loadingMore, detail } = useEnhancedNewsItem(route.params)
 
-  // 알림으로 들어와 아직 아무것도 없을 때: 받는 중이면 스피너, 실패하면 다시 시도 안내.
+  // 알림으로 들어와 아직 아무것도 없을 때: 받는 중이면 본문 모양의 스켈레톤, 실패하면 다시 시도 안내.
   if (!item) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -64,10 +66,7 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
             retrying={detail.refreshing || detail.loading}
           />
         ) : (
-          <View style={styles.fullLoading}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
-            <Text style={styles.bodyLoadingText}>소식을 불러오는 중…</Text>
-          </View>
+          <NewsDetailSkeleton />
         )}
       </SafeAreaView>
     )
@@ -85,7 +84,8 @@ function NewsDetailBody({
   loadingMore: boolean
   onBack: () => void
 }) {
-  const { isBookmarked, toggleBookmark } = useSettings()
+  const { isBookmarked } = useSettings()
+  const { toggleBookmark } = useFeedbackToggles()
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
   const bookmarked = isBookmarked(item.id)
 
@@ -129,14 +129,12 @@ function NewsDetailBody({
 
         <View style={styles.divider} />
 
-        {loadingMore && (
-          <View style={styles.bodyLoading}>
-            <ActivityIndicator size="small" color="#bbb" />
-            <Text style={styles.bodyLoadingText}>본문을 불러오는 중…</Text>
-          </View>
+        {/* 목록에서 온 짧은 미리보기 대신 본문 자리 모양을 보여주고, 다 받으면 본문으로 바꾼다. */}
+        {loadingMore ? (
+          <DetailBodySkeleton />
+        ) : (
+          item.preview.length > 0 && <Text style={styles.body}>{item.preview}</Text>
         )}
-
-        {item.preview.length > 0 && <Text style={styles.body}>{item.preview}</Text>}
 
         {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
         {!loadingMore && item.preview.length === 0 && (
@@ -202,7 +200,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   headerSpacer: { width: 34, height: 34 },
-  fullLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   loadError: { margin: 16 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
@@ -230,8 +227,6 @@ const styles = StyleSheet.create({
   },
   sourceName: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   divider: { height: 0.5, backgroundColor: '#eee', marginBottom: 20 },
-  bodyLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
-  bodyLoadingText: { fontFamily: FONTS.regular, fontSize: 13, color: '#bbb' },
   body: { fontFamily: FONTS.regular,
     fontSize: 15,
     color: '#444',

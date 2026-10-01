@@ -4,6 +4,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { buildFloorOptions } from '../../utils/floors'
 import type { Building } from '../../types'
+import * as haptics from '../../lib/haptics'
 
 interface FloorChipsProps {
   label: string
@@ -44,7 +45,10 @@ export default function FloorChips({ label, building, floor, accent, onChange }:
             <TouchableOpacity
               key={chip.key}
               style={[styles.chip, selected && { backgroundColor: accent, borderColor: accent }]}
-              onPress={() => onChange(chip.value)}
+              onPress={() => {
+                haptics.selection()
+                onChange(chip.value)
+              }}
               accessibilityRole="button"
               accessibilityLabel={`${label} ${chip.text}`}
               accessibilityState={{ selected }}

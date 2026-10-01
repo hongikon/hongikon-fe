@@ -14,6 +14,8 @@ import { COLORS } from '../../constants/colors'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news'
 import { FONTS } from '../../constants/typography'
 import { useSettings } from '../../contexts/SettingsContext'
+import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
+import { ToastViewport } from '../common/Toast'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
@@ -30,7 +32,9 @@ export default function SubscriptionManagerModal({
 }: SubscriptionManagerModalProps) {
   const [query, setQuery] = useState('')
   // 게시판별 알림은 구독과 늘 함께 다뤄 호출부마다 넘기지 않고 설정에서 바로 읽는다.
-  const { settings, isDeptAlertOn, toggleDeptAlert } = useSettings()
+  const { settings, isDeptAlertOn } = useSettings()
+  // 종(게시판 알림)은 진동·토스트가 붙은 버전을 쓴다. 구독 토글(onToggleDept)은 호출부가 넘긴다.
+  const { toggleDeptAlert } = useFeedbackToggles()
   const masterOff = !settings.subscriptionAlert
 
   const groups = useMemo(() => {
@@ -162,6 +166,8 @@ export default function SubscriptionManagerModal({
           )}
           <View style={styles.bottomSpacer} />
         </ScrollView>
+        {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다. */}
+        <ToastViewport />
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

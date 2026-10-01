@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -9,6 +9,8 @@ import { FONTS } from '../constants/typography'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
+import { NewsListSkeleton } from '../components/common/Skeleton'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import RetryableError from '../components/common/RetryableError'
@@ -19,7 +21,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DeptNews'>
 /** 학과·기관 하나의 소식 목록. 학과 트리(전체 탭·검색)에서 항목을 고르면 들어온다. */
 export default function DeptNewsScreen({ route, navigation }: Props) {
   const { deptId, deptName } = route.params
-  const { isBookmarked, toggleBookmark } = useSettings()
+  const { isBookmarked } = useSettings()
+  const { toggleBookmark } = useFeedbackToggles()
   const [query, setQuery] = useState('')
   const keyword = useDebouncedValue(query.trim())
   // 학과·기관 = 수집 게시판 하나(sourceId). 검색어는 서버가 제목에서 찾는다.
@@ -71,9 +74,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
         }
         empty={
           newsFeed.loading ? (
-            <View style={styles.emptyState}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            </View>
+            <NewsListSkeleton inList count={4} />
           ) : newsFeed.errorMessage ? (
             <RetryableError
               style={styles.feedError}
