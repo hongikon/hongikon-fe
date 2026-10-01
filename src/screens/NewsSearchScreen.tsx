@@ -54,7 +54,8 @@ export default function NewsSearchScreen({ navigation }: Props) {
   )
 
   const handleSelectDept = useCallback(
-    (id: string, name: string) => navigation.navigate('DeptNews', { deptId: id, deptName: name }),
+    (id: string, name: string) => // 학과 소식은 소식 탭 안의 화면이다(탭바 유지). 검색 화면은 닫고 그쪽으로 간다.
+      navigation.navigate('Main', { screen: 'News', params: { screen: 'DeptNews', params: { deptId: id, deptName: name } } }),
     [navigation],
   )
 

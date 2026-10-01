@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
@@ -9,6 +9,7 @@ import { layoutStyles } from '../constants/layout'
 import { TREE_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import type { NewsStackParamList } from '../navigation/NewsStackNavigator'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
 import { useBookmarkedNews } from '../hooks/useBookmarkedNews'
@@ -22,7 +23,11 @@ import SubscriptionManagerModal from '../components/settings/SubscriptionManager
 import RetryableError from '../components/common/RetryableError'
 
 type TabType = '북마크' | '구독' | '전체'
-type NavProp = NativeStackNavigationProp<RootStackParamList>
+// 소식 탭 스택(학과 소식) 안에 있으면서 루트 스택(상세·검색)으로도 이동한다.
+type NavProp = CompositeNavigationProp<
+  NativeStackNavigationProp<NewsStackParamList>,
+  NativeStackNavigationProp<RootStackParamList>
+>
 
 /** 구독 학과 id → 표시 이름. 구독 칩에 쓴다. */
 const DEPT_NAME_BY_ID = new Map(SUBSCRIBABLE_ITEMS.map((item) => [item.id, item.name]))

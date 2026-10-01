@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import TabNavigator, { type MainTabParamList } from './TabNavigator'
 import NewsDetailScreen from '../screens/NewsDetailScreen'
 import NewsSearchScreen from '../screens/NewsSearchScreen'
-import DeptNewsScreen from '../screens/DeptNewsScreen'
 import WelcomeScreen from '../screens/WelcomeScreen'
 import OnboardingScreen from '../screens/OnboardingScreen'
 import AppStatusScreen from '../screens/AppStatusScreen'
@@ -22,7 +21,6 @@ export type RootStackParamList = {
    */
   NewsDetail: { item: NewsItem } | { newsId: string }
   NewsSearch: undefined
-  DeptNews: { deptId: string; deptName: string }
   AppStatus: undefined
 }
 
@@ -75,11 +73,6 @@ export default function RootNavigator() {
         name="NewsSearch"
         component={NewsSearchScreen}
         options={{ animation: 'slide_from_bottom' }}
-      />
-      <Stack.Screen
-        name="DeptNews"
-        component={DeptNewsScreen}
-        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="AppStatus"

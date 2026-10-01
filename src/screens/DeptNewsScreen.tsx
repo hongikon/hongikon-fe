@@ -2,8 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import type { CompositeScreenProps } from '@react-navigation/native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import type { NewsStackParamList } from '../navigation/NewsStackNavigator'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
@@ -17,7 +19,10 @@ import SearchBar from '../components/news/SearchBar'
 import RetryableError from '../components/common/RetryableError'
 import type { NewsItem } from '../types'
 
-type Props = NativeStackScreenProps<RootStackParamList, 'DeptNews'>
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<NewsStackParamList, 'DeptNews'>,
+  NativeStackScreenProps<RootStackParamList>
+>
 
 /** 학과·기관 하나의 소식 목록. 학과 트리(전체 탭·검색)에서 항목을 고르면 들어온다. */
 export default function DeptNewsScreen({ route, navigation }: Props) {

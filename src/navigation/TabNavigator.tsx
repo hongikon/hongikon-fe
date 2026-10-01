@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import type { NavigatorScreenParams } from '@react-navigation/native'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
-import NewsScreen from '../screens/NewsScreen'
+import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigator'
 import SettingsScreen from '../screens/SettingsScreen'
 
 /** 하단 탭. 알림 탭처럼 바깥에서 특정 탭으로 보낼 때 `navigate('Main', { screen: 'Map' })` 로 쓴다. */
 export type MainTabParamList = {
   Map: undefined
-  News: undefined
+  News: NavigatorScreenParams<NewsStackParamList> | undefined
   Settings: undefined
 }
 
@@ -53,7 +54,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="News"
-        component={NewsScreen}
+        component={NewsStackNavigator}
         options={{
           tabBarLabel: '소식',
           tabBarIcon: ({ color, size }) => (

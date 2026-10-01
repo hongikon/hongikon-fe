@@ -985,7 +985,8 @@ export default function MapScreen() {
         style={[
           styles.headerOverlay,
           // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
-          { paddingTop: insets.top + 8, paddingHorizontal: sideGutter },
+          // 검색바·칩은 지도처럼 창 너비를 다 쓴다 — 폴드를 펴거나 웹 창을 늘려도 지도와 같이 늘어난다.
+          { paddingTop: insets.top + 8 },
         ]}
         pointerEvents="box-none"
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
