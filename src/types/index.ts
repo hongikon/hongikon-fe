@@ -281,11 +281,10 @@ export interface Report {
   content: string | null
   authorNickname: string
   /**
-   * 첨부 사진 URL. 실제 백엔드(`Report` 엔티티)에는 이 컬럼도, 업로드 API도
-   * 없다(2026-08-21 확인) — `docs/report-api-spec.md` §8.2 제안이 아직 구현 전이다.
-   * 지금은 로컬 목업(`uploadReportImage`)에서만 값이 채워진다.
+   * 첨부 사진 보기 URL(S3 presigned GET, 약 1시간 유효). 사진이 없거나, 사진 기능이
+   * 배포되기 전 서버면 null/없음. 만료되면 이미지 로드가 실패하니 화면은 실패 시 숨긴다.
    */
-  imageUrl?: string
+  imageUrl?: string | null
   /** 요청자 본인 작성 여부. 서버가 JWT의 userId로 계산해 내려준다. */
   isMine: boolean
   startsAt: string
@@ -314,8 +313,8 @@ export interface CreateReportInput {
   customCategoryLabel?: string
   title: string
   content?: string
-  /** `uploadReportImage` 가 돌려준 URL. 실제 백엔드는 이 필드를 받지 않는다(`Report.imageUrl` 참고). */
-  imageUrl?: string
+  /** `uploadReportImage` 가 돌려준 S3 키(`reports/{uuid}.jpg`). 사진이 없으면 생략. */
+  imageKey?: string
   startsAt: string
   endsAt: string
 }

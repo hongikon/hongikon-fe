@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Modal,
   View,
@@ -29,7 +29,14 @@ import {
   REPORT_TITLE_MAX_LENGTH,
 } from '../../constants/report'
 import { useAuth } from '../../contexts/AuthContext'
-import { createReport, uploadReportImage } from '../../apis/reports'
+import {
+  REPORT_IMAGE_MAX_BYTES,
+  ReportImageUploadError,
+  createReport,
+  reportImageContentType,
+  uploadReportImage,
+  type PickedReportImage,
+} from '../../apis/reports'
 import { getServerBuildingId } from '../../apis/buildings'
 import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
 import { BUILDINGS } from '../../constants/buildings'
@@ -102,7 +109,13 @@ export default function ReportComposerModal({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [durationHours, setDurationHours] = useState(REPORT_DEFAULT_DURATION_HOURS)
-  const [imageUri, setImageUri] = useState<string | null>(null)
+  const [image, setImage] = useState<PickedReportImage | null>(null)
+  /** 이미 올린 사진의 키. 제보 등록만 실패해 다시 시도할 때 사진을 또 올리지 않게 한다. */
+  const uploadedImageRef = useRef<{ uri: string; key: string } | null>(null)
+  /** 사진 업로드가 실패해 "사진 없이 올리기"를 보여줄지. */
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false)
+  /** 서버에 사진 기능이 아직 없어 사진을 빼고 올렸다 — 완료 화면에서 알려준다. */
+  const [photoSkipped, setPhotoSkipped] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   /** 거절된 권한. 있으면 오류 안내 옆에 "설정 열기"를 보여준다. */
@@ -151,7 +164,10 @@ export default function ReportComposerModal({
     setContent('')
     setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
     setFloor(1)
-    setImageUri(null)
+    setImage(null)
+    uploadedImageRef.current = null
+    setPhotoUploadFailed(false)
+    setPhotoSkipped(false)
     setError(null)
     setBlockedPermission(null)
     setSubmitError(null)
@@ -216,23 +232,56 @@ export default function ReportComposerModal({
 
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
+        // JPEG 로 다시 압축해 용량을 줄인다(서버 상한 5MB).
         quality: 0.7,
         allowsEditing: false,
+        // iOS 앨범의 HEIC 사진을 JPEG 로 받아 온다(서버는 JPEG·PNG 만 받음).
+        preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       }
       const result =
         source === 'camera'
           ? await ImagePicker.launchCameraAsync(options)
           : await ImagePicker.launchImageLibraryAsync(options)
       if (result.canceled || result.assets.length === 0) return
-      setImageUri(result.assets[0].uri)
+      const asset = result.assets[0]
+      const picked: PickedReportImage = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.fileSize }
+      if (reportImageContentType(picked) === null) {
+        setError('이 형식의 사진은 올릴 수 없어요. 다른 사진을 골라 주세요.')
+        return
+      }
+      if (picked.fileSize && picked.fileSize > REPORT_IMAGE_MAX_BYTES) {
+        setError('사진 용량이 너무 커요. 5MB 이하 사진을 골라 주세요.')
+        return
+      }
+      setImage(picked)
+      setPhotoUploadFailed(false)
     } catch {
       // 시뮬레이터처럼 카메라가 없는 기기 등
       setError(source === 'camera' ? '이 기기에서는 카메라를 쓸 수 없어요. 앨범에서 골라 주세요.' : '사진을 불러오지 못했어요.')
     }
   }
 
-  const handleSubmit = async () => {
-    if (!target || !canSubmit || !building) return
+  /** 사진을 올려 키를 받는다. 같은 사진을 이미 올렸으면 그 키를 쓴다. */
+  const ensureImageKey = async (picked: PickedReportImage, token: string): Promise<string> => {
+    if (uploadedImageRef.current?.uri === picked.uri) return uploadedImageRef.current.key
+    const key = await uploadReportImage(picked, token)
+    uploadedImageRef.current = { uri: picked.uri, key }
+    return key
+  }
+
+  /** 사진 업로드가 실패했을 때 사진을 빼고 바로 올린다. */
+  const handleSubmitWithoutPhoto = () => {
+    setImage(null)
+    uploadedImageRef.current = null
+    void submit(null)
+  }
+
+  const handleSubmit = () => {
+    void submit(image)
+  }
+
+  const submit = async (picked: PickedReportImage | null) => {
+    if (!target || !building || submitting || trimmedTitle.length === 0) return
 
     // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
     if (!accessToken) {
@@ -243,16 +292,33 @@ export default function ReportComposerModal({
     setSubmitting(true)
     setError(null)
     setSubmitError(null)
+    setPhotoUploadFailed(false)
 
     // 시작은 지금, 종료는 고른 시간 뒤. 서버에는 UTC ISO-8601 로 보낸다.
     const startsAt = new Date()
     const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
 
+    let imageKey: string | undefined
     try {
-      // 사진을 먼저 올려 URL을 받는다. 여기서 실패하면 제보는 만들지 않고
-      // 작성 중이던 내용은 그대로 남는다.
-      const imageUrl =
-        imageUri === null ? undefined : await uploadReportImage(imageUri, accessToken)
+      // 사진을 먼저 S3 에 올려 키를 받는다. 실패하면 제보는 만들지 않고 작성 내용은 그대로 남긴다
+      // (다시 시도 / 사진 없이 올리기). 서버에 사진 기능이 아직 없으면 사진만 빼고 계속 올린다.
+      if (picked !== null) {
+        try {
+          imageKey = await ensureImageKey(picked, accessToken)
+        } catch (caught) {
+          if (!(caught instanceof ReportImageUploadError)) throw caught
+          if (caught.kind !== 'unavailable') {
+            setPhotoUploadFailed(true)
+            setSubmitError({
+              message: caught.message,
+              network: false,
+              retryable: caught.kind === 'failed',
+            })
+            return
+          }
+          setPhotoSkipped(true)
+        }
+      }
 
       // 앱 건물 이름 → 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400).
       const buildingId = await getServerBuildingId(building.name)
@@ -262,7 +328,7 @@ export default function ReportComposerModal({
 
       const report = await createReport(
         {
-          imageUrl,
+          imageKey,
           buildingId,
           floor,
           lat: target.lat,
@@ -276,10 +342,23 @@ export default function ReportComposerModal({
         },
         accessToken,
       )
-      onCreated(report)
+      // 사진은 서버가 확인 후 보기 URL 을 붙여 준다. 응답에 없으면 방금 고른 사진으로 미리 보여준다.
+      onCreated(imageKey && !report.imageUrl && picked ? { ...report, imageUrl: picked.uri } : report)
+      uploadedImageRef.current = null
       setSubmitted(true)
       haptics.success()
     } catch (caught) {
+      // 서버가 사진 확인(업로드 여부·크기·형식)에서 거절했을 수 있다. 다음엔 새로 올리고, 사진 없이 올릴 길도 연다.
+      if (imageKey && caught instanceof ApiError && caught.status === 400) {
+        uploadedImageRef.current = null
+        setPhotoUploadFailed(true)
+        setSubmitError({
+          message: '사진을 확인하지 못해 제보를 올리지 못했어요. 다시 시도하거나 사진 없이 올려 주세요.',
+          network: false,
+          retryable: true,
+        })
+        return
+      }
       setSubmitError({
         message: reportSubmitErrorMessage(caught),
         network: isNetworkError(caught),
@@ -318,6 +397,9 @@ export default function ReportComposerModal({
                   <Text style={styles.successText}>
                     운영진이 확인한 뒤 지도에 올라가요.{'\n'}잘못된 정보나 광고는 올라가지 않을 수 있어요.
                   </Text>
+                  {photoSkipped && (
+                    <Text style={styles.successText}>사진 첨부는 아직 준비 중이라 사진 없이 올렸어요.</Text>
+                  )}
                   <TouchableOpacity
                     style={[styles.submitBtn, styles.successBtn]}
                     onPress={handleClose}
@@ -507,7 +589,7 @@ export default function ReportComposerModal({
                     </Text>
 
                     <Text style={styles.sectionLabel}>사진 (선택)</Text>
-                    {imageUri === null ? (
+                    {image === null ? (
                       <View style={styles.photoBtnRow}>
                         {Platform.OS !== 'web' && (
                           <TouchableOpacity
@@ -532,10 +614,13 @@ export default function ReportComposerModal({
                       </View>
                     ) : (
                       <View style={styles.photoPreviewWrap}>
-                        <Image source={{ uri: imageUri }} style={styles.photoPreview} />
+                        <Image source={{ uri: image.uri }} style={styles.photoPreview} />
                         <TouchableOpacity
                           style={styles.photoRemove}
-                          onPress={() => setImageUri(null)}
+                          onPress={() => {
+                            setImage(null)
+                            setPhotoUploadFailed(false)
+                          }}
                           accessibilityRole="button"
                           accessibilityLabel="첨부한 사진 빼기"
                         >
@@ -577,6 +662,17 @@ export default function ReportComposerModal({
                         onRetry={submitError.retryable ? handleSubmit : undefined}
                         retrying={submitting}
                       />
+                    )}
+                    {photoUploadFailed && image !== null && (
+                      <TouchableOpacity
+                        style={styles.skipPhotoBtn}
+                        onPress={handleSubmitWithoutPhoto}
+                        disabled={submitting}
+                        accessibilityRole="button"
+                        accessibilityLabel="사진 없이 올리기"
+                      >
+                        <Text style={styles.skipPhotoText}>사진 없이 올리기</Text>
+                      </TouchableOpacity>
                     )}
 
                     {error !== null && (
@@ -768,6 +864,8 @@ const styles = StyleSheet.create({
   },
   successBtn: { alignSelf: 'stretch', marginTop: 12 },
   submitErrorBox: { marginTop: 16 },
+  skipPhotoBtn: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 6 },
+  skipPhotoText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary, textDecorationLine: 'underline' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
