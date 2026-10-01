@@ -140,3 +140,23 @@ export const SUBSCRIBABLE_ITEMS: SubscribableItem[] = TREE_DATA.flatMap((node) =
     ? [{ id: node.name, name: node.name, group: node.name }]
     : node.children.flatMap((child) => toSubscribableItems(child, node.name))
 )
+
+export interface SubscribableGroup {
+  name: string
+  items: SubscribableItem[]
+}
+
+/**
+ * 이어 붙은 같은 group(단과대) 끼리 묶는다. 구독 관리 모달과 설정의 게시판별 알림 목록이 함께 쓴다.
+ * 마지막 묶음을 직접 바꾸지 않고 새 묶음으로 교체해 원본 배열을 건드리지 않는다.
+ */
+export function groupSubscribableItems(items: readonly SubscribableItem[]): SubscribableGroup[] {
+  return items.reduce<SubscribableGroup[]>((groups, item) => {
+    const last = groups[groups.length - 1]
+    if (last?.name === item.group) {
+      const merged = { ...last, items: [...last.items, item] }
+      return [...groups.slice(0, -1), merged]
+    }
+    return [...groups, { name: item.group, items: [item] }]
+  }, [])
+}

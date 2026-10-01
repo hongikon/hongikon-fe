@@ -32,13 +32,12 @@ export default function NewsScreen() {
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
 
-  // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없거나 카테고리를
-  // 전부 끈 상태면 부르지 않고 빈 화면 안내를 그대로 보여준다. 카테고리는 하나일 때만 서버에서,
-  // 여러 개면 페이지마다 클라이언트에서 거른다(백엔드 category 파라미터가 하나만 받음 — useNewsFeed 참고).
+  // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없으면 부르지 않고 빈 화면 안내를
+  // 그대로 보여준다. 분야로는 거르지 않는다 — 설정의 '알림 받을 분야'는 푸시 알림에만 쓰이고 피드와는 따로다.
   const subscribedFeed = useNewsFeed(
-    { sourceIds: settings.subscribedDepts, categories: settings.subscribedCategories },
+    { sourceIds: settings.subscribedDepts },
     // 탭을 오갈 때마다 다시 받지 않도록 활성 탭과 무관하게 켜 둔다.
-    { enabled: settings.subscribedDepts.length > 0 && settings.subscribedCategories.length > 0 },
+    { enabled: settings.subscribedDepts.length > 0 },
   )
   // 북마크 탭: 목록에서 골라낼 수 없어 id마다 상세를 받는다.
   const bookmarked = useBookmarkedNews(settings.bookmarkedNews)

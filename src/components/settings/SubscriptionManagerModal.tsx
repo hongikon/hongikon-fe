@@ -11,34 +11,15 @@ import {
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { SUBSCRIBABLE_ITEMS, type SubscribableItem } from '../../constants/news'
+import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news'
 import { FONTS } from '../../constants/typography'
+import { useSettings } from '../../contexts/SettingsContext'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
   onClose: () => void
   subscribedDepts: string[]
   onToggleDept: (id: string) => void
-}
-
-interface Group {
-  name: string
-  items: SubscribableItem[]
-}
-
-/**
- * 이어 붙은 같은 group 끼리 묶는다.
- * 마지막 묶음을 직접 바꾸지 않고 새 묶음으로 교체해 원본 배열을 건드리지 않는다.
- */
-function buildGroups(items: SubscribableItem[]): Group[] {
-  return items.reduce<Group[]>((groups, item) => {
-    const last = groups[groups.length - 1]
-    if (last?.name === item.group) {
-      const merged = { ...last, items: [...last.items, item] }
-      return [...groups.slice(0, -1), merged]
-    }
-    return [...groups, { name: item.group, items: [item] }]
-  }, [])
 }
 
 export default function SubscriptionManagerModal({
@@ -48,6 +29,9 @@ export default function SubscriptionManagerModal({
   onToggleDept,
 }: SubscriptionManagerModalProps) {
   const [query, setQuery] = useState('')
+  // 게시판별 알림은 구독과 늘 함께 다뤄 호출부마다 넘기지 않고 설정에서 바로 읽는다.
+  const { settings, isDeptAlertOn, toggleDeptAlert } = useSettings()
+  const masterOff = !settings.subscriptionAlert
 
   const groups = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -58,7 +42,7 @@ export default function SubscriptionManagerModal({
             item.group.toLowerCase().includes(keyword)
         )
       : SUBSCRIBABLE_ITEMS
-    return buildGroups(filtered)
+    return groupSubscribableItems(filtered)
   }, [query])
 
   return (
@@ -94,6 +78,21 @@ export default function SubscriptionManagerModal({
           )}
         </View>
 
+        {subscribedDepts.length > 0 && (
+          <View style={styles.hint}>
+            <Ionicons
+              name={masterOff ? 'notifications-off-outline' : 'notifications-outline'}
+              size={13}
+              color={COLORS.textSecondary}
+            />
+            <Text style={styles.hintText}>
+              {masterOff
+                ? '구독 소식 알림이 꺼져 있어요. 켜면 종이 켜진 게시판만 알려드려요.'
+                : '종 모양을 눌러 게시판마다 알림을 켜고 끌 수 있어요.'}
+            </Text>
+          </View>
+        )}
+
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {groups.length === 0 ? (
             <View style={styles.empty}>
@@ -106,15 +105,46 @@ export default function SubscriptionManagerModal({
                 <Text style={styles.groupTitle}>{group.name}</Text>
                 {group.items.map((item) => {
                   const isOn = subscribedDepts.includes(item.id)
+                  const alertOn = isOn && isDeptAlertOn(item.id)
                   return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.row}
-                      onPress={() => onToggleDept(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.rowName}>{item.name}</Text>
-                      <View style={[styles.subBtn, isOn && styles.subBtnOn]}>
+                    <View key={item.id} style={styles.row}>
+                      <TouchableOpacity
+                        style={styles.rowNameArea}
+                        onPress={() => onToggleDept(item.id)}
+                        activeOpacity={0.6}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.name} ${isOn ? '구독 해제' : '구독'}`}
+                      >
+                        <Text style={styles.rowName}>{item.name}</Text>
+                      </TouchableOpacity>
+                      {isOn && (
+                        <TouchableOpacity
+                          style={[
+                            styles.bellBtn,
+                            alertOn ? styles.bellBtnOn : styles.bellBtnOff,
+                            masterOff && styles.dimmed,
+                          ]}
+                          onPress={() => toggleDeptAlert(item.id)}
+                          activeOpacity={0.6}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          accessibilityRole="switch"
+                          accessibilityLabel={`${item.name} 알림 ${alertOn ? '켜짐' : '꺼짐'}`}
+                          accessibilityState={{ checked: alertOn }}
+                        >
+                          <Ionicons
+                            name={alertOn ? 'notifications' : 'notifications-off-outline'}
+                            size={15}
+                            color={alertOn ? COLORS.primary : COLORS.textTertiary}
+                          />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.subBtn, isOn && styles.subBtnOn]}
+                        onPress={() => onToggleDept(item.id)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.name} ${isOn ? '구독 해제' : '구독'}`}
+                      >
                         <Ionicons
                           name={isOn ? 'checkmark' : 'add'}
                           size={14}
@@ -123,8 +153,8 @@ export default function SubscriptionManagerModal({
                         <Text style={[styles.subBtnText, isOn && styles.subBtnTextOn]}>
                           {isOn ? '구독중' : '구독'}
                         </Text>
-                      </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                    </View>
                   )
                 })}
               </View>
@@ -185,7 +215,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#f4f4f4',
   },
-  rowName: { fontFamily: FONTS.regular, flex: 1, fontSize: 14, color: COLORS.textPrimary, marginRight: 12 },
+  rowNameArea: { flex: 1, marginRight: 12, paddingVertical: 2 },
+  rowName: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  bellBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  bellBtnOn: { backgroundColor: '#ECEBF5' },
+  bellBtnOff: { backgroundColor: '#F3F3F3' },
+  dimmed: { opacity: 0.45 },
+  hint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: 14,
+    marginTop: -2,
+    marginBottom: 12,
+  },
+  hintText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: COLORS.textSecondary },
   subBtn: {
     flexDirection: 'row',
     alignItems: 'center',
