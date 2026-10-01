@@ -27,7 +27,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
 import { useApiResource } from "../hooks/useApiResource";
 import RetryableError from "../components/common/RetryableError";
-import { toReportMarkers, visibleReports } from "../utils/reports";
+import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -98,7 +98,7 @@ function toMarker(partner: Partner) {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
-  const { accessToken } = useAuth();
+  const { accessToken, logout } = useAuth();
   // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
   // Modal 바깥의 화면에서 미리 재서 넘긴다.
@@ -288,6 +288,11 @@ export default function MapScreen() {
         // 지도를 길게 누르면 그 자리에 제보를 남기는 작성창이 열린다.
         // 좌표는 건물로 스냅되지 않은 원본이고, 근처 건물명은 참고용이다.
         if (msg.type === "reportLongPress") {
+          // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
+          if (!accessToken) {
+            promptLogin("제보를 남기려면 로그인해주세요.", logout);
+            return;
+          }
           setSelectedBuilding(null);
           setSelectedPartner(null);
           setReportTarget({
@@ -333,7 +338,7 @@ export default function MapScreen() {
         }
       } catch {}
     },
-    [reports],
+    [reports, accessToken, logout],
   );
 
   /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
@@ -552,7 +557,13 @@ export default function MapScreen() {
     if (reportsOn && reportsResource.data !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(reportsResource.data) });
     }
-  }, [activeFilter, facilityKind, reportsOn, reportsResource.data, postToMap]);
+    // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
+    // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
+    if (pickingLocation) {
+      setPickerCenter(null);
+      postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
+    }
+  }, [activeFilter, facilityKind, reportsOn, reportsResource.data, pickingLocation, pickerPurpose, postToMap]);
 
   /** 제보를 새로 받을 때마다 지도에 올린다. */
   useEffect(() => {
@@ -572,13 +583,11 @@ export default function MapScreen() {
   }, [reportsOn, postToMap]);
 
   /**
-   * 제보 등록 성공. 작성창을 닫는다.
-   *
-   * 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에 뜬다. 작성창이 그 안내를 먼저
-   * 보여준다. 레이어가 켜져 있으면 목록은 새로 받아 둔다(그 사이 승인된 다른 제보 반영).
+   * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
+   * 뜨므로, 작성창이 그 안내를 보여 주고 사용자가 '확인'을 눌러 닫는다(onClose).
+   * 레이어가 켜져 있으면 목록은 새로 받아 둔다(그 사이 승인된 다른 제보 반영).
    */
   const handleReportCreated = useCallback(() => {
-    setReportTarget(null);
     if (reportsOn) reportsResource.retry();
   }, [reportsOn, reportsResource.retry]);
 
@@ -591,17 +600,28 @@ export default function MapScreen() {
       setPickerCenter(null);
       setPickerPurpose(purpose);
       setPickingLocation(true);
-      postToMap({ type: "startLocationPicker" });
+      postToMap({ type: "startLocationPicker", purpose });
     },
     [postToMap],
   );
 
-  const handleStartReportPicker = useCallback(() => startPicker("report"), [startPicker]);
+  /** 제보는 로그인이 필요하다. 게스트는 위치를 고르고 작성창을 다 채운 뒤가 아니라 시작할 때 묻는다. */
+  const handleStartReportPicker = useCallback(() => {
+    if (!accessToken) {
+      promptLogin("제보를 남기려면 로그인해주세요.", logout);
+      return;
+    }
+    startPicker("report");
+  }, [accessToken, logout, startPicker]);
+
+  /** 제휴 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
+  const partnerLocationBeforePickRef = useRef<PartnerSuggestLocation | null>(null);
 
   /** 설정의 제휴 제보 창에서 "지도에서 위치 찍기"로 넘어온 요청. 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다. */
   const handleMapIntent = useCallback(() => {
     const intent = consumeMapIntent();
     if (intent?.type === "pickPartnerLocation") {
+      partnerLocationBeforePickRef.current = null;
       setPartnerSuggest(null);
       startPicker("partner");
     }
@@ -614,7 +634,11 @@ export default function MapScreen() {
     setPickingLocation(false);
     setPickerCenter(null);
     postToMap({ type: "stopLocationPicker" });
-  }, [postToMap]);
+    // 제휴 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
+    if (pickerPurpose === "partner") {
+      setPartnerSuggest({ location: partnerLocationBeforePickRef.current });
+    }
+  }, [pickerPurpose, postToMap]);
 
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 제휴 제보면 제휴 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
@@ -1148,6 +1172,7 @@ export default function MapScreen() {
         location={partnerSuggest?.location ?? null}
         onClose={() => setPartnerSuggest(null)}
         onPickOnMap={() => {
+          partnerLocationBeforePickRef.current = partnerSuggest?.location ?? null;
           setPartnerSuggest(null);
           startPicker("partner");
         }}

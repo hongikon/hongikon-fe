@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Modal,
   View,
@@ -187,7 +187,25 @@ export default function ReportComposerModal({
 
   const isCustomActive = category === 'ETC' && trimmedCustomLabel.length > 0
 
+  /**
+   * 요청 세대. 창을 닫을 때 올려, 닫은 뒤 늦게 끝난 등록 결과가 상태를 건드리지 못하게 한다
+   * (안 그러면 다음에 연 빈 작성창에 이전 실패 안내나 "접수됐어요"가 뜬다).
+   */
+  const requestGenRef = useRef(0)
+
+  // 닫혀 있다가(null) 새 위치로 열릴 때마다 처음 상태로 시작한다. 이전 등록의 "접수됐어요" 화면이
+  // 남아 있으면 안 된다. 렌더 중에 바로 맞춰야 열리는 첫 화면부터 깨끗하다.
+  const [prevTarget, setPrevTarget] = useState(target)
+  if (prevTarget !== target) {
+    setPrevTarget(target)
+    if (prevTarget === null && target !== null) reset()
+  }
+  useEffect(() => {
+    if (target === null) requestGenRef.current += 1
+  }, [target])
+
   const handleClose = () => {
+    requestGenRef.current += 1
     reset()
     onClose()
   }
@@ -240,6 +258,8 @@ export default function ReportComposerModal({
       return
     }
 
+    const generation = ++requestGenRef.current
+    const isStale = () => generation !== requestGenRef.current
     setSubmitting(true)
     setError(null)
     setSubmitError(null)
@@ -276,17 +296,20 @@ export default function ReportComposerModal({
         },
         accessToken,
       )
+      // 서버에는 이미 올라갔으니 창을 닫았어도 지도 목록은 새로 받게 알린다.
       onCreated(report)
+      if (isStale()) return
       setSubmitted(true)
       haptics.success()
     } catch (caught) {
+      if (isStale()) return
       setSubmitError({
         message: reportSubmitErrorMessage(caught),
         network: isNetworkError(caught),
         retryable: isRetryableError(caught),
       })
     } finally {
-      setSubmitting(false)
+      if (!isStale()) setSubmitting(false)
     }
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -45,8 +45,12 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
   const [submitted, setSubmitted] = useState(false)
   const [validation, setValidation] = useState<string | null>(null)
 
+  /** 요청 세대. 창을 닫을 때 올려, 닫은 뒤 늦게 끝난 전송 결과가 다음에 연 빈 창을 건드리지 못하게 한다. */
+  const requestGenRef = useRef(0)
+
   useEffect(() => {
     if (!visible) {
+      requestGenRef.current += 1
       setSubmitted(false)
       setValidation(null)
       setContent('')
@@ -64,26 +68,30 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     }
     setValidation(null)
 
+    const generation = ++requestGenRef.current
+    const isStale = () => generation !== requestGenRef.current
     setSubmitting(true)
     setSubmitError(null)
     try {
       // POST 라 client 가 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: trimmed, contact: contact.trim() || undefined }, accessToken)
+      if (isStale()) return
       setSubmitted(true)
       haptics.success()
     } catch (error) {
+      if (isStale()) return
       setSubmitError({
         message: getErrorMessage(error, '문의를 보내지 못했습니다. 잠시 후 다시 시도해주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
     } finally {
-      setSubmitting(false)
+      if (!isStale()) setSubmitting(false)
     }
   }
 
   return (
-    <Modal visible={visible} animationType="slide">
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>

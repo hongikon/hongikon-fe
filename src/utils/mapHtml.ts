@@ -20,6 +20,18 @@ import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
 
 /**
+ * 제휴 제보 핀의 "○○관 근처" 표시 거리 상한(건물 중심 기준). 제휴 업체는 대개 캠퍼스 밖이라
+ * 이보다 멀면 건물명을 붙이지 않는다.
+ */
+const PARTNER_LABEL_MAX_METERS = 80
+/**
+ * 제보 위치를 건물로 묶는 거리 상한(건물 중심 기준). 제보는 서버가 건물·층 단위로만 받아 건물이 꼭 필요하다.
+ * 운동장·광장처럼 건물 사이 빈 곳의 행사도 많아 제휴보다 넉넉히 두되, 캠퍼스 밖까지 엉뚱한 건물로
+ * 묶이지는 않게 한다. 넘으면 작성창이 "건물 가까이로 옮겨 주세요"를 안내한다.
+ */
+const REPORT_BUILDING_MAX_METERS = 200
+
+/**
  * WebView 에 넣을 지도 문서를 만든다.
  *
  * 건물에는 마커를 그리지 않는다. 네이버 지도 배경 타일에 이미 건물 라벨이
@@ -308,12 +320,18 @@ export function buildMapHTML(
     // 켜져 있는 동안은 건물·제휴·제보 탭과 롱프레스를 모두 무시해, 그 아래
     // 배너들이 선택 UI 위로 열리지 않게 한다.
     var pickerActive = false;
+    // 무엇 때문에 고르는지('report' | 'partner'). 근처 건물을 얼마나 멀리까지 찾을지가 다르다.
+    var pickerPurpose = 'report';
 
     function postPickerCenter() {
       var center = map.getCenter();
       var lat = center.lat();
       var lng = center.lng();
-      var nearby = nearestBuilding(lat, lng);
+      var nearby = nearestBuilding(
+        lat,
+        lng,
+        pickerPurpose === 'partner' ? ${PARTNER_LABEL_MAX_METERS} : ${REPORT_BUILDING_MAX_METERS}
+      );
       post({ type: 'pickerCenter', lat: lat, lng: lng, buildingName: nearby ? nearby.name : null });
     }
 
@@ -774,11 +792,12 @@ export function buildMapHTML(
     }
 
     /**
-     * 제보 롱프레스 전용. 건물 밖에서 벌어지는 일이 많아 좌표는 스냅하지
-     * 않지만, 화면(작성창)에는 좌표 대신 항상 건물명을 보여주고 싶어서
-     * 거리 제한 없이 가장 가까운 건물을 후보로 올려보낸다.
+     * 핀 근처 건물(제보 롱프레스·위치 고르기). 건물 밖에서 벌어지는 일이 많아 좌표는 스냅하지 않고,
+     * 화면에는 좌표 대신 건물명을 보여 주려고 가장 가까운 건물을 후보로 올려보낸다.
+     * 다만 maxMeters 보다 멀면 null 이다 — 캠퍼스 밖 가게에 "○○관 근처"가 붙거나, 한참 떨어진
+     * 곳의 제보가 엉뚱한 건물로 올라가지 않게 한다.
      */
-    function nearestBuilding(lat, lng) {
+    function nearestBuilding(lat, lng, maxMeters) {
       for (var i = 0; i < buildings.length; i++) {
         if (isInsideBuilding(lat, lng, buildings[i])) return buildings[i];
       }
@@ -792,7 +811,7 @@ export function buildMapHTML(
           nearest = b;
         }
       });
-      return nearest;
+      return nearestDistance <= maxMeters ? nearest : null;
     }
 
     naver.maps.Event.addListener(map, 'click', function(e) {
@@ -862,7 +881,7 @@ export function buildMapHTML(
         pressStart = null;
         if (!start) return;
         lastLongPressAt = new Date().getTime();
-        var nearby = nearestBuilding(start.lat, start.lng);
+        var nearby = nearestBuilding(start.lat, start.lng, ${REPORT_BUILDING_MAX_METERS});
         post({
           type: 'reportLongPress',
           lat: start.lat,
@@ -1049,6 +1068,7 @@ export function buildMapHTML(
         if (msg.type === 'startLocationPicker') {
           cancelLongPress();
           pickerActive = true;
+          pickerPurpose = msg.purpose === 'partner' ? 'partner' : 'report';
           postPickerCenter();
         }
 
@@ -1058,8 +1078,13 @@ export function buildMapHTML(
       } catch(e) {}
     }
 
-    document.addEventListener('message', function(e) { handleNativeMessage(e.data); });
-    window.addEventListener('message', function(e) { handleNativeMessage(e.data); });
+    // 웹(NaverMapView.web.tsx)은 화면이 다시 붙을 때마다 이 스크립트를 같은 창에 다시 넣는다. 리스너를
+    // 매번 붙이면 메시지 하나가 여러 번 처리돼 한 번만 붙인다(항상 최신 handleNativeMessage 를 부른다).
+    if (!window.__hongikonMessageListener) {
+      window.__hongikonMessageListener = true;
+      document.addEventListener('message', function(e) { handleNativeMessage(e.data); });
+      window.addEventListener('message', function(e) { handleNativeMessage(e.data); });
+    }
   </script>
 </body>
 </html>`
