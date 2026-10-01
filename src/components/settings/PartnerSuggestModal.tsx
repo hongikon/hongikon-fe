@@ -29,9 +29,42 @@ const MAX_CONTENT_LENGTH = 1000 // 서버 FeedbackCreateRequest.content 상한
 
 type Kind = 'new' | 'fix'
 
+/** 지도에서 핀으로 찍은 위치. 좌표는 제보 내용에 그대로 담아 운영진이 바로 지도에 넣을 수 있게 한다. */
+export interface PartnerSuggestLocation {
+  lat: number
+  lng: number
+  /** 핀 근처 건물 이름(없을 수 있음) */
+  buildingName: string | null
+}
+
 interface PartnerSuggestModalProps {
   visible: boolean
   onClose: () => void
+  /** 지도에서 찍은 위치. 있으면 위치 칸이 채워지고 주소 입력은 선택이 된다. */
+  location?: PartnerSuggestLocation | null
+  /** 있으면 "지도에서 위치 찍기" 버튼을 보여준다(누르면 창을 닫고 지도에서 핀을 고른다). */
+  onPickOnMap?: () => void
+}
+
+interface Draft {
+  kind: Kind
+  storeName: string
+  address: string
+  affiliation: PartnerAffiliation | null
+  benefit: string
+  source: string
+  contact: string
+}
+
+/**
+ * "지도에서 위치 찍기"로 창을 닫았다가(설정 → 지도) 다시 열 때 입력해 둔 내용을 되살리기 위한 임시 보관.
+ * 설정 화면과 지도 화면이 각자 이 창을 띄우므로 컴포넌트 밖에 둔다.
+ */
+let savedDraft: Draft | null = null
+
+function formatLocation(location: PartnerSuggestLocation): string {
+  const coord = `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`
+  return location.buildingName ? `${location.buildingName} 근처 (${coord})` : coord
 }
 
 /**
@@ -39,7 +72,12 @@ interface PartnerSuggestModalProps {
  * 별도 API 없이 문의(`POST /feedback`)로 보내고, 머리말로 관리자 화면에서 구분한다.
  * 로그인 없이도 보낼 수 있다(문의와 같음).
  */
-export default function PartnerSuggestModal({ visible, onClose }: PartnerSuggestModalProps) {
+export default function PartnerSuggestModal({
+  visible,
+  onClose,
+  location = null,
+  onPickOnMap,
+}: PartnerSuggestModalProps) {
   const { accessToken } = useAuth()
   const [kind, setKind] = useState<Kind>('new')
   const [storeName, setStoreName] = useState('')
@@ -57,6 +95,26 @@ export default function PartnerSuggestModal({ visible, onClose }: PartnerSuggest
   } | null>(null)
   // 접수 완료. 웹에선 Alert 가 뜨지 않아 화면 안에서 알려준다.
   const [submitted, setSubmitted] = useState(false)
+
+  // 지도에서 위치를 찍고 돌아왔으면 입력해 두었던 내용을 되살린다.
+  useEffect(() => {
+    if (visible && savedDraft) {
+      const draft = savedDraft
+      savedDraft = null
+      setKind(draft.kind)
+      setStoreName(draft.storeName)
+      setAddress(draft.address)
+      setAffiliation(draft.affiliation)
+      setBenefit(draft.benefit)
+      setSource(draft.source)
+      setContact(draft.contact)
+    }
+  }, [visible])
+
+  const handlePickOnMap = () => {
+    savedDraft = { kind, storeName, address, affiliation, benefit, source, contact }
+    onPickOnMap?.()
+  }
 
   useEffect(() => {
     if (!visible) {
@@ -78,7 +136,8 @@ export default function PartnerSuggestModal({ visible, onClose }: PartnerSuggest
     const lines = [
       `${PARTNER_SUGGESTION_PREFIX} ${kind === 'new' ? '새 제휴 업체' : '제휴 정보 수정'}`,
       `가게: ${storeName.trim()}`,
-      `위치: ${address.trim()}`,
+      address.trim() ? `위치: ${address.trim()}` : null,
+      location ? `좌표: ${location.lat.toFixed(7)}, ${location.lng.toFixed(7)}${location.buildingName ? ` (${location.buildingName} 근처)` : ''}` : null,
       affiliation ? `소속: ${affiliation}` : null,
       benefit.trim() ? `${kind === 'new' ? '혜택' : '달라진 점'}: ${benefit.trim()}` : null,
       source.trim() ? `출처: ${source.trim()}` : null,
@@ -87,8 +146,8 @@ export default function PartnerSuggestModal({ visible, onClose }: PartnerSuggest
   }
 
   const handleSubmit = async () => {
-    if (!storeName.trim() || !address.trim()) {
-      setValidation('가게 이름과 위치는 꼭 적어 주세요.')
+    if (!storeName.trim() || (!address.trim() && !location)) {
+      setValidation('가게 이름과 위치(주소 또는 지도에서 찍기)는 꼭 알려 주세요.')
       return
     }
     setValidation(null)
@@ -170,9 +229,31 @@ export default function PartnerSuggestModal({ visible, onClose }: PartnerSuggest
                 />
 
                 <Text style={styles.label}>위치 *</Text>
+                {location !== null && (
+                  <View style={styles.pickedRow}>
+                    <Ionicons name="location" size={15} color={COLORS.primary} />
+                    <Text style={styles.pickedText} numberOfLines={1}>
+                      {formatLocation(location)}
+                    </Text>
+                  </View>
+                )}
+                {onPickOnMap !== undefined && (
+                  <TouchableOpacity
+                    style={styles.pickButton}
+                    onPress={handlePickOnMap}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={location ? '지도에서 위치 다시 찍기' : '지도에서 위치 찍기'}
+                  >
+                    <Ionicons name="pin-outline" size={16} color={COLORS.primary} />
+                    <Text style={styles.pickButtonText}>
+                      {location ? '지도에서 다시 찍기' : '지도에서 위치 찍기'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TextInput
                   style={styles.input}
-                  placeholder="주소나 근처 건물 (예: 와우산로 128 1층)"
+                  placeholder={location ? '상세 주소·층 (선택, 예: 1층 안쪽)' : '주소나 근처 건물 (예: 와우산로 128 1층)'}
                   placeholderTextColor={COLORS.textPlaceholder}
                   value={address}
                   onChangeText={setAddress}
@@ -324,6 +405,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 20 },
+  pickedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EEF0FF',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  pickedText: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
+  pickButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginBottom: 8,
+  },
+  pickButtonText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 12 },
   errorBox: { marginBottom: 12 },

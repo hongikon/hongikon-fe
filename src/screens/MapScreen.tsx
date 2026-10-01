@@ -17,6 +17,10 @@ import FloorChips from "../components/map/FloorChips";
 import BuildingSheet from "../components/map/BuildingSheet";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
+import PartnerSuggestModal from "../components/settings/PartnerSuggestModal";
+import type { PartnerSuggestLocation } from "../components/settings/PartnerSuggestModal";
+import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
+import { useFocusEffect } from "@react-navigation/native";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
@@ -128,6 +132,10 @@ export default function MapScreen() {
   // 제보 위치 선택 모드. 켜져 있으면 화면 중앙에 고정된 핀 아래로 지도를
   // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
   const [pickingLocation, setPickingLocation] = useState(false);
+  /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 제휴 제보(partner). 확인 버튼 문구와 다음 창이 달라진다. */
+  const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner">("report");
+  /** 제휴 제보 창. null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
+  const [partnerSuggest, setPartnerSuggest] = useState<{ location: PartnerSuggestLocation | null } | null>(null);
   const [pickerCenter, setPickerCenter] = useState<{
     lat: number;
     lng: number;
@@ -568,14 +576,32 @@ export default function MapScreen() {
   }, [reportsOn, reportsResource.retry]);
 
   /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
-  const handleStartReportPicker = useCallback(() => {
-    setSelectedBuilding(null);
-    setSelectedPartner(null);
-    setSelectedReport(null);
-    setPickerCenter(null);
-    setPickingLocation(true);
-    postToMap({ type: "startLocationPicker" });
-  }, [postToMap]);
+  const startPicker = useCallback(
+    (purpose: "report" | "partner") => {
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      setPickerCenter(null);
+      setPickerPurpose(purpose);
+      setPickingLocation(true);
+      postToMap({ type: "startLocationPicker" });
+    },
+    [postToMap],
+  );
+
+  const handleStartReportPicker = useCallback(() => startPicker("report"), [startPicker]);
+
+  /** 설정의 제휴 제보 창에서 "지도에서 위치 찍기"로 넘어온 요청. 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다. */
+  const handleMapIntent = useCallback(() => {
+    const intent = consumeMapIntent();
+    if (intent?.type === "pickPartnerLocation") {
+      setPartnerSuggest(null);
+      startPicker("partner");
+    }
+  }, [startPicker]);
+
+  useFocusEffect(handleMapIntent);
+  useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
 
   const handleCancelReportPicker = useCallback(() => {
     setPickingLocation(false);
@@ -583,17 +609,27 @@ export default function MapScreen() {
     postToMap({ type: "stopLocationPicker" });
   }, [postToMap]);
 
-  /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. */
+  /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 제휴 제보면 제휴 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
     if (!pickerCenter) return;
     setPickingLocation(false);
     postToMap({ type: "stopLocationPicker" });
+    if (pickerPurpose === "partner") {
+      setPartnerSuggest({
+        location: {
+          lat: pickerCenter.lat,
+          lng: pickerCenter.lng,
+          buildingName: pickerCenter.buildingName,
+        },
+      });
+      return;
+    }
     setReportTarget({
       lat: pickerCenter.lat,
       lng: pickerCenter.lng,
       buildingName: pickerCenter.buildingName,
     });
-  }, [pickerCenter, postToMap]);
+  }, [pickerCenter, pickerPurpose, postToMap]);
 
   const handleClearRoute = useCallback(() => {
     setFromBuilding(null);
@@ -747,7 +783,9 @@ export default function MapScreen() {
 
             <View style={[styles.pickerTopBar, { top: headerHeight + 8 }]}>
               <Text style={styles.pickerTopText} numberOfLines={2}>
-                지도를 움직여 제보할 위치를 맞춰주세요
+                {pickerPurpose === "partner"
+                  ? "지도를 움직여 가게 위치에 핀을 맞춰주세요"
+                  : "지도를 움직여 제보할 위치를 맞춰주세요"}
               </Text>
               <TouchableOpacity
                 onPress={handleCancelReportPicker}
@@ -779,10 +817,12 @@ export default function MapScreen() {
                 onPress={handleConfirmReportPicker}
                 disabled={!pickerCenter}
                 accessibilityRole="button"
-                accessibilityLabel="이 위치 제보하기"
+                accessibilityLabel={pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
                 accessibilityState={{ disabled: !pickerCenter }}
               >
-                <Text style={styles.pickerConfirmText}>이 위치 제보하기</Text>
+                <Text style={styles.pickerConfirmText}>
+                  {pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
+                </Text>
               </TouchableOpacity>
             </View>
           </>
@@ -1089,6 +1129,16 @@ export default function MapScreen() {
         target={reportTarget}
         onClose={() => setReportTarget(null)}
         onCreated={handleReportCreated}
+      />
+
+      <PartnerSuggestModal
+        visible={partnerSuggest !== null}
+        location={partnerSuggest?.location ?? null}
+        onClose={() => setPartnerSuggest(null)}
+        onPickOnMap={() => {
+          setPartnerSuggest(null);
+          startPicker("partner");
+        }}
       />
     </View>
   );

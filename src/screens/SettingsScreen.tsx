@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,6 +23,8 @@ import TermsModal from '../components/settings/TermsModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
+import { requestMapIntent } from '../lib/mapIntents'
+import { confirmAction, notify } from '../utils/dialog'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
@@ -62,10 +63,15 @@ export default function SettingsScreen() {
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
 
   const handleLogout = () => {
-    Alert.alert('로그아웃', '로그아웃하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      { text: '로그아웃', style: 'destructive', onPress: () => logout() },
-    ])
+    confirmAction({
+      title: '로그아웃',
+      message: '로그아웃하시겠습니까?',
+      confirmLabel: '로그아웃',
+      destructive: true,
+      onConfirm: () => {
+        void logout()
+      },
+    })
   }
 
   // 게스트는 로그인된 게 없으니 확인 없이 바로 웰컴 화면으로 보낸다.
@@ -75,36 +81,32 @@ export default function SettingsScreen() {
   }
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      '회원 탈퇴',
-      '탈퇴하면 계정 정보가 삭제되며 되돌릴 수 없습니다. 계속하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '탈퇴',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAccount()
-            } catch (error) {
-              const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 발생했습니다.'
-              Alert.alert('탈퇴 실패', message)
-            }
-          },
-        },
-      ]
-    )
+    confirmAction({
+      title: '회원 탈퇴',
+      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되며 되돌릴 수 없습니다. 계속하시겠습니까?',
+      confirmLabel: '탈퇴',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await deleteAccount()
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 발생했습니다.'
+          notify('탈퇴 실패', message)
+        }
+      },
+    })
   }
 
   const handleReset = () => {
-    Alert.alert(
-      '설정 초기화',
-      '모든 설정이 기본값으로 되돌아갑니다. 계속하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        { text: '초기화', style: 'destructive', onPress: () => resetSettings() },
-      ]
-    )
+    confirmAction({
+      title: '설정 초기화',
+      message: '모든 설정이 기본값으로 되돌아갑니다. 계속하시겠습니까?',
+      confirmLabel: '초기화',
+      destructive: true,
+      onConfirm: () => {
+        void resetSettings()
+      },
+    })
   }
 
   const openNoticeDetail = (notice: AppNotice) => {
@@ -134,7 +136,6 @@ export default function SettingsScreen() {
             <>
               <LinkRow icon="person-circle-outline" label="카카오 계정으로 로그인됨" />
               <LinkRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
-              <LinkRow icon="trash-outline" label="회원 탈퇴" danger onPress={handleDeleteAccount} />
             </>
           ) : (
             <LinkRow
@@ -324,6 +325,18 @@ export default function SettingsScreen() {
           <LogotypeHorizontal width={112} height={20} />
         </View>
 
+        {/* 회원 탈퇴는 실수로 누르지 않게 맨 아래 작은 글씨로 둔다. */}
+        {status === 'authenticated' && (
+          <TouchableOpacity
+            style={styles.withdrawLink}
+            onPress={handleDeleteAccount}
+            accessibilityRole="button"
+            accessibilityLabel="회원 탈퇴"
+          >
+            <Text style={styles.withdrawText}>회원 탈퇴</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -352,6 +365,13 @@ export default function SettingsScreen() {
       <PartnerSuggestModal
         visible={activeModal === 'partnerSuggest'}
         onClose={() => setActiveModal(null)}
+        onPickOnMap={() => {
+          // 창을 닫고 지도 탭으로 옮겨 핀을 고르게 한다. 지도 화면이 요청을 받아 같은 제보 창을 다시 연다.
+          setActiveModal(null)
+          requestMapIntent({ type: 'pickPartnerLocation' })
+          // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
+          ;(navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
+        }}
       />
 
       <FeedbackModal visible={activeModal === 'feedback'} onClose={() => setActiveModal(null)} />
@@ -510,5 +530,12 @@ const styles = StyleSheet.create({
   warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
   warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
+  withdrawLink: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16, marginTop: 8 },
+  withdrawText: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textDecorationLine: 'underline',
+  },
   bottomSpacer: { height: 16 },
 })
