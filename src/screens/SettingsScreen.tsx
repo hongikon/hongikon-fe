@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
+import ToggleSwitch from '../components/settings/ToggleSwitch'
 import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
@@ -25,6 +26,7 @@ import FeedbackModal from '../components/settings/FeedbackModal'
 import OpenSourceLicensesModal from '../components/settings/OpenSourceLicensesModal'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
+import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
 import { FONTS } from '../constants/typography'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
@@ -45,8 +47,10 @@ export default function SettingsScreen() {
   const {
     settings,
     toggleSubscriptionAlert,
-    toggleSubscribedCategory,
+    toggleAlertCategory,
     toggleSubscribedDept,
+    toggleDeptAlert,
+    isDeptAlertOn,
     resetSettings,
   } = useSettings()
 
@@ -108,7 +112,17 @@ export default function SettingsScreen() {
     setActiveModal('noticeDetail')
   }
 
-  const { subscriptionAlert, subscribedCategories, subscribedDepts } = settings
+  const { subscriptionAlert, alertCategories, subscribedDepts } = settings
+  const isGuest = status !== 'authenticated'
+  // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
+  const detailDimmed = !subscriptionAlert
+
+  /** 구독한 게시판을 TREE_DATA 순서(단과대별)로 묶는다. 구독한 순서가 아니라 늘 같은 자리에 보이게 한다. */
+  const subscribedGroups = useMemo(() => {
+    const subscribed = new Set(subscribedDepts)
+    return groupSubscribableItems(SUBSCRIBABLE_ITEMS.filter((item) => subscribed.has(item.id)))
+  }, [subscribedDepts])
+  const alertOnCount = subscribedDepts.filter(isDeptAlertOn).length
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -134,40 +148,107 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
-          <View style={styles.row}>
+          {isGuest && (
+            <View style={styles.guestNotice}>
+              <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
+              <View style={styles.guestNoticeBody}>
+                <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
+                <Text style={styles.guestNoticeText}>
+                  지금 고른 게시판·분야 설정은 로그인하면 그대로 적용돼요.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.guestNoticeBtn}
+                onPress={handleGoToLogin}
+                accessibilityRole="button"
+                accessibilityLabel="로그인하기"
+              >
+                <Text style={styles.guestNoticeBtnText}>로그인</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={[styles.row, styles.rowLast]}>
             <View style={styles.rowLabel}>
               <Ionicons name="notifications-outline" size={17} color={COLORS.textSecondary} />
-              <Text style={styles.rowLabelText}>구독 소식 알림</Text>
+              <View style={styles.rowLabelStack}>
+                <Text style={styles.rowLabelText}>구독 소식 알림</Text>
+                <Text style={styles.rowSubText}>
+                  {subscriptionAlert
+                    ? '켜 둔 게시판의 새 소식을 알려드려요'
+                    : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'}
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity
-              style={[styles.toggle, subscriptionAlert && styles.toggleOn]}
-              onPress={toggleSubscriptionAlert}
-              activeOpacity={0.8}
-              accessibilityRole="switch"
+            <ToggleSwitch
+              value={subscriptionAlert}
+              onToggle={toggleSubscriptionAlert}
               accessibilityLabel="구독 소식 알림"
-              accessibilityState={{ checked: subscriptionAlert }}
-            >
-              <View style={[styles.toggleThumb, subscriptionAlert && styles.toggleThumbOn]} />
-            </TouchableOpacity>
+            />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>구독</Text>
+          <Text style={styles.sectionTitle}>구독 게시판</Text>
           <LinkRow
             icon="bookmarks-outline"
             label="구독 관리"
             value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
             onPress={() => setSubManagerVisible(true)}
           />
+          {subscribedGroups.length > 0 ? (
+            <View style={[styles.boardList, detailDimmed && styles.dimmed]}>
+              <View style={styles.boardListHead}>
+                <Text style={styles.boardListTitle}>게시판별 알림</Text>
+                <Text style={styles.boardListCount}>
+                  {alertOnCount}/{subscribedDepts.length} 켜짐
+                </Text>
+              </View>
+              {subscribedGroups.map((group) => (
+                <View key={group.name} style={styles.boardGroup}>
+                  <Text style={styles.boardGroupTitle}>{group.name}</Text>
+                  {group.items.map((item) => {
+                    const on = isDeptAlertOn(item.id)
+                    return (
+                      <View key={item.id} style={styles.boardRow}>
+                        <Ionicons
+                          name={on ? 'notifications' : 'notifications-off-outline'}
+                          size={14}
+                          color={on ? COLORS.primary : COLORS.textTertiary}
+                        />
+                        <Text
+                          style={[styles.boardName, !on && styles.boardNameOff]}
+                          numberOfLines={1}
+                        >
+                          {item.name}
+                        </Text>
+                        <ToggleSwitch
+                          size="small"
+                          value={on}
+                          onToggle={() => toggleDeptAlert(item.id)}
+                          accessibilityLabel={`${item.name} 알림 ${on ? '켜짐' : '꺼짐'}`}
+                        />
+                      </View>
+                    )
+                  })}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyHint}>게시판을 구독하면 여기서 게시판마다 알림을 켜고 끌 수 있어요</Text>
+          )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>카테고리 필터</Text>
-          <Text style={styles.sectionDesc}>구독 피드에 표시할 소식 카테고리를 선택하세요</Text>
-          <View style={styles.categoryGrid}>
+          <View style={styles.sectionHead}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleInline]}>알림 받을 분야</Text>
+            <Text style={styles.sectionCount}>
+              {alertCategories.length}/{ALL_CATEGORIES.length}
+            </Text>
+          </View>
+          <Text style={styles.sectionDesc}>구독한 게시판의 새 소식 중 선택한 분야만 알려드려요</Text>
+          <View style={[styles.categoryGrid, detailDimmed && styles.dimmed]}>
             {ALL_CATEGORIES.map((cat) => {
-              const isOn = subscribedCategories.includes(cat)
+              const isOn = alertCategories.includes(cat)
               const colors = CATEGORY_COLORS[cat]
               return (
                 <TouchableOpacity
@@ -178,10 +259,17 @@ export default function SettingsScreen() {
                       ? { backgroundColor: colors.bg, borderColor: colors.text }
                       : styles.categoryChipOff,
                   ]}
-                  onPress={() => toggleSubscribedCategory(cat)}
+                  onPress={() => toggleAlertCategory(cat)}
                   activeOpacity={0.7}
+                  accessibilityRole="switch"
+                  accessibilityLabel={`${cat} 분야 알림 ${isOn ? '켜짐' : '꺼짐'}`}
+                  accessibilityState={{ checked: isOn }}
                 >
-                  {isOn && <Ionicons name="checkmark-circle" size={13} color={colors.text} />}
+                  <Ionicons
+                    name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={13}
+                    color={isOn ? colors.text : COLORS.textTertiary}
+                  />
                   <Text style={[styles.categoryChipText, { color: isOn ? colors.text : COLORS.textTertiary }]}>
                     {cat}
                   </Text>
@@ -189,6 +277,12 @@ export default function SettingsScreen() {
               )
             })}
           </View>
+          {alertCategories.length === 0 && (
+            <View style={styles.warnRow}>
+              <Ionicons name="alert-circle-outline" size={13} color={COLORS.danger} />
+              <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -326,27 +420,6 @@ const styles = StyleSheet.create({
   dangerText: { color: COLORS.danger },
   rowValue: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   rowValueText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
-  toggle: {
-    width: 44,
-    height: 26,
-    backgroundColor: COLORS.toggleOff,
-    borderRadius: 13,
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  toggleOn: { backgroundColor: COLORS.primary },
-  toggleThumb: {
-    width: 22,
-    height: 22,
-    backgroundColor: '#fff',
-    borderRadius: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  toggleThumbOn: { alignSelf: 'flex-end' },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -368,6 +441,70 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   categoryChipText: { fontSize: 13, fontFamily: FONTS.medium },
+  dimmed: { opacity: 0.45 },
+  rowLast: { borderBottomWidth: 0 },
+  rowLabelStack: { flex: 1, gap: 2 },
+  rowSubText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, lineHeight: 16 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
+  sectionTitleInline: { flex: 1 },
+  sectionCount: { fontFamily: FONTS.medium, fontSize: 11, color: COLORS.textTertiary, paddingTop: 6 },
+  guestNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F4F3FA',
+  },
+  guestNoticeBody: { flex: 1, gap: 2 },
+  guestNoticeTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.textPrimary },
+  guestNoticeText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 16, color: COLORS.textSecondary },
+  guestNoticeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+  },
+  guestNoticeBtnText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.white },
+  boardList: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  boardListHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  boardListTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.textPrimary },
+  boardListCount: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textTertiary },
+  boardGroup: { marginTop: 8 },
+  boardGroupTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    color: COLORS.textTertiary,
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  boardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  boardName: { flex: 1, fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  boardNameOff: { color: COLORS.textSecondary },
+  emptyHint: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    lineHeight: 17,
+    color: COLORS.textTertiary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
+  warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
   bottomSpacer: { height: 16 },
 })
