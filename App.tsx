@@ -13,6 +13,7 @@ import { usePushNotifications } from './src/lib/pushNotifications'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
 import UpdateBanner from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
+import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
@@ -99,6 +100,8 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
+          {/* 온보딩을 보여줄지 정한 뒤에 설정을 불러온다(순서가 중요 — OnboardingGate 주석). */}
+          <OnboardingGate>
           <SettingsProvider>
             <NavigationContainer ref={navigationRef}>
               <PushNotificationsBridge />
@@ -110,6 +113,7 @@ export default function App() {
               <StatusBar style="dark" />
             </NavigationContainer>
           </SettingsProvider>
+          </OnboardingGate>
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
