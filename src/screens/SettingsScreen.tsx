@@ -83,7 +83,7 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     confirmAction({
       title: '로그아웃',
-      message: '로그아웃하시겠습니까?',
+      message: '로그아웃할까요?',
       confirmLabel: '로그아웃',
       destructive: true,
       onConfirm: () => {
@@ -101,14 +101,14 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     confirmAction({
       title: '회원 탈퇴',
-      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되며 되돌릴 수 없습니다. 계속하시겠습니까?',
+      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되고 되돌릴 수 없어요. 계속할까요?',
       confirmLabel: '탈퇴',
       destructive: true,
       onConfirm: async () => {
         try {
           await deleteAccount()
         } catch (error) {
-          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 발생했습니다.'
+          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 생겼어요.'
           notify('탈퇴 실패', message)
         }
       },
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
   const handleReset = () => {
     confirmAction({
       title: '설정 초기화',
-      message: '모든 설정이 기본값으로 되돌아갑니다. 계속하시겠습니까?',
+      message: '모든 설정이 기본값으로 되돌아가요. 계속할까요?',
       confirmLabel: '초기화',
       destructive: true,
       onConfirm: () => {

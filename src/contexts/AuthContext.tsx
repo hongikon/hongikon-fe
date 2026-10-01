@@ -173,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
             await clearTokens()
             setAccessToken(null)
-            setLoginError('로그인이 만료되었습니다. 다시 로그인해주세요.')
+            setLoginError('로그인이 만료됐어요. 다시 로그인해 주세요.')
             setStatus('signedOut')
             // 이 기기의 푸시 등록도 내려 보지만, 유효한 토큰이 없어 대개 401 로 실패한다(재발급할 refresh 토큰도
             // 무효). 그러면 서버의 기기 행은 활성으로 남고, 이 기기로 다시 로그인할 때 같은 푸시 토큰 재등록이
