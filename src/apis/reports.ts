@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from './client'
-import { stripJpegLocation } from '../utils/jpegPrivacy'
+import { stripJpegLocation, stripPngMetadata } from '../utils/jpegPrivacy'
 import type {
   CreateReportFlagInput,
   CreateReportInput,
@@ -117,10 +117,10 @@ export async function uploadReportImage(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), IMAGE_PUT_TIMEOUT_MS)
   try {
-    // 로컬 파일(file://, 웹은 blob:/data:)을 읽어, JPEG 면 촬영 위치(GPS)를 지운 뒤 PUT 한다.
+    // 로컬 파일(file://, 웹은 blob:/data:)을 읽어, 촬영 위치 등 메타데이터(JPEG GPS·XMP, PNG eXIf·텍스트)를 지운 뒤 PUT 한다.
     const blob = await (await fetch(image.uri)).blob()
     const raw = await readBlobBytes(blob)
-    const bytes = contentType === 'image/jpeg' ? stripJpegLocation(raw) : raw
+    const bytes = contentType === 'image/jpeg' ? stripJpegLocation(raw) : stripPngMetadata(raw)
     const maxBytes = ticket.maxBytes || REPORT_IMAGE_MAX_BYTES
     if (bytes.byteLength > maxBytes) {
       throw new ReportImageUploadError('tooLarge', '사진 용량이 너무 커요. 5MB 이하 사진을 골라 주세요.')

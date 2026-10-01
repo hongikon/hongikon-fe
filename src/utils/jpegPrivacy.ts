@@ -1,5 +1,5 @@
 /**
- * 제보 사진에서 촬영 위치(GPS)를 지운다.
+ * 제보 사진에서 촬영 위치(GPS) 등 메타데이터를 지운다. JPEG 는 GPS·XMP, PNG 는 eXIf·텍스트 청크(아래 `stripPngMetadata`).
  *
  * Android 의 `expo-image-picker` 는 사진을 다시 압축할 때 원본 EXIF(위치 포함)를 그대로
  * 옮겨 붙인다. 앨범 사진에는 집·기숙사 같은 촬영 위치가 들어 있을 수 있어, 서버로
@@ -95,6 +95,46 @@ export function stripJpegLocation(input: Uint8Array): Uint8Array {
     let cursor = 0
     for (const [from, to] of keep) {
       output.set(bytes.subarray(from, to), cursor)
+      cursor += to - from
+    }
+    return output
+  } catch {
+    return input
+  }
+}
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+/** 위치·촬영 정보가 들어갈 수 있는 PNG 메타데이터 청크. 그림을 그리는 데는 필요 없다. */
+const PNG_METADATA_CHUNKS = new Set(['eXIf', 'tEXt', 'iTXt', 'zTXt'])
+
+/**
+ * PNG 에서 EXIF(eXIf)·텍스트(tEXt/iTXt/zTXt) 청크를 뺀다. 나머지 청크는 바이트 그대로
+ * 옮기므로 CRC 를 다시 계산할 필요가 없다. PNG 가 아니거나 해석하지 못하면 원본을 돌려준다.
+ */
+export function stripPngMetadata(input: Uint8Array): Uint8Array {
+  if (input.length < 8 || PNG_SIGNATURE.some((b, i) => input[i] !== b)) return input
+  try {
+    const keep: Array<[number, number]> = [[0, 8]]
+    let offset = 8
+    let sawEnd = false
+    while (offset + 12 <= input.length) {
+      const length = ((input[offset] << 24) | (input[offset + 1] << 16) | (input[offset + 2] << 8) | input[offset + 3]) >>> 0
+      const type = String.fromCharCode(input[offset + 4], input[offset + 5], input[offset + 6], input[offset + 7])
+      const chunkEnd = offset + 12 + length // 길이(4) + 타입(4) + 데이터 + CRC(4)
+      if (chunkEnd > input.length) return input
+      if (!PNG_METADATA_CHUNKS.has(type)) keep.push([offset, chunkEnd])
+      offset = chunkEnd
+      if (type === 'IEND') {
+        sawEnd = true
+        break
+      }
+    }
+    if (!sawEnd) return input
+    const total = keep.reduce((sum, [from, to]) => sum + (to - from), 0)
+    const output = new Uint8Array(total)
+    let cursor = 0
+    for (const [from, to] of keep) {
+      output.set(input.subarray(from, to), cursor)
       cursor += to - from
     }
     return output
