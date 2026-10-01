@@ -31,9 +31,11 @@ import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import * as haptics from '../lib/haptics'
 import { requestMapIntent } from '../lib/mapIntents'
+import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
+import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
 import { FONTS } from '../constants/typography'
@@ -81,7 +83,7 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     confirmAction({
       title: '로그아웃',
-      message: '로그아웃하시겠습니까?',
+      message: '로그아웃할까요?',
       confirmLabel: '로그아웃',
       destructive: true,
       onConfirm: () => {
@@ -99,14 +101,14 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     confirmAction({
       title: '회원 탈퇴',
-      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되며 되돌릴 수 없습니다. 계속하시겠습니까?',
+      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되고 되돌릴 수 없어요. 계속할까요?',
       confirmLabel: '탈퇴',
       destructive: true,
       onConfirm: async () => {
         try {
           await deleteAccount()
         } catch (error) {
-          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 발생했습니다.'
+          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 생겼어요.'
           notify('탈퇴 실패', message)
         }
       },
@@ -116,7 +118,7 @@ export default function SettingsScreen() {
   const handleReset = () => {
     confirmAction({
       title: '설정 초기화',
-      message: '모든 설정이 기본값으로 되돌아갑니다. 계속하시겠습니까?',
+      message: '모든 설정이 기본값으로 되돌아가요. 계속할까요?',
       confirmLabel: '초기화',
       destructive: true,
       onConfirm: () => {
@@ -439,11 +441,14 @@ export default function SettingsScreen() {
           />
           <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
           <LinkRow icon="school-outline" label="학교" value="홍익대학교" />
-          <LinkRow
-            icon="pulse-outline"
-            label="앱 상태 확인"
-            onPress={() => navigation.navigate('AppStatus')}
-          />
+          {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
+          {SHOW_DEVELOPER_TOOLS && (
+            <LinkRow
+              icon="pulse-outline"
+              label="앱 상태 확인"
+              onPress={() => navigation.navigate('AppStatus')}
+            />
+          )}
           <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <LinkRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
@@ -452,6 +457,7 @@ export default function SettingsScreen() {
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
           <LogotypeHorizontal width={112} height={20} />
         </View>
+        <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
 
         {/* 회원 탈퇴는 실수로 누르지 않게 맨 아래 작은 글씨로 둔다. */}
         {status === 'authenticated' && (
@@ -687,6 +693,15 @@ const styles = StyleSheet.create({
   warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
   warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
+  unofficialNotice: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginTop: 10,
+  },
   permissionCard: {
     flexDirection: 'row',
     alignItems: 'center',

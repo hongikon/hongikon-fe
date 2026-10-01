@@ -44,17 +44,17 @@ const SLIDES: readonly Slide[] = [
       { icon: 'ribbon-outline', label: '장학·학사' },
     ],
     title: '학과·학교 공지를\n놓치지 않게',
-    body: '구독한 게시판의 새 공지를 모아 보여주고\n올라오는 즉시 알림으로 알려드려요.',
+    body: '구독한 게시판의 공지를 한곳에 모아 보여주고\n새 공지는 알림으로 알려드려요.',
   },
   {
     key: 'report',
     icon: 'megaphone',
     badges: [
-      { icon: 'flash-outline', label: '실시간 제보' },
+      { icon: 'flash-outline', label: '캠퍼스 제보' },
       { icon: 'storefront-outline', label: '제휴 제보' },
     ],
     title: '캠퍼스 소식은\n함께 만들어요',
-    body: '지금 캠퍼스 상황과 새로 생긴 제휴 가게를\n누구나 바로 제보할 수 있어요.',
+    body: '로그인하면 누구나 캠퍼스 상황과 제휴 가게를\n제보할 수 있어요(운영진 확인 후 표시).',
   },
 ]
 

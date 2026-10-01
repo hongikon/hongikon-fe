@@ -44,10 +44,8 @@ import {
 import { formatFloor } from "../utils/floors";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
-import {
-  ROUTE_COMING_SOON_NOTICE_MS,
-  ROUTE_FINDING_ENABLED,
-} from "../constants/route";
+import { ROUTE_FINDING_ENABLED } from "../constants/route";
+import { CAMPUS_CENTER, DEFAULT_ZOOM } from "../constants/map";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
   filterPartners,
@@ -168,27 +166,16 @@ export default function MapScreen() {
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  const [showRouteComingSoon, setShowRouteComingSoon] = useState(false);
-  const routeNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 길찾기 버튼. 기능이 꺼져 있으면(ROUTE_FINDING_ENABLED) 버튼 자체를 그리지 않는다. */
+  const handleOpenRoute = useCallback(() => setShowRoute(true), []);
 
-  useEffect(
-    () => () => {
-      if (routeNoticeTimer.current) clearTimeout(routeNoticeTimer.current);
-    },
-    [],
-  );
-
-  /** 길찾기 버튼. 기능이 꺼져 있으면 모달 대신 "다음 업데이트" 안내를 잠깐 띄운다. */
-  const handleOpenRoute = useCallback(() => {
-    if (ROUTE_FINDING_ENABLED) {
-      setShowRoute(true);
-      return;
-    }
-    setShowRouteComingSoon(true);
-    if (routeNoticeTimer.current) clearTimeout(routeNoticeTimer.current);
-    routeNoticeTimer.current = setTimeout(
-      () => setShowRouteComingSoon(false),
-      ROUTE_COMING_SOON_NOTICE_MS,
+  /**
+   * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
+   * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
+   */
+  const handleRecenter = useCallback(() => {
+    webViewRef.current?.injectJavaScript(
+      `if (window.map && window.naver) { map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
     );
   }, []);
 
@@ -734,12 +721,19 @@ export default function MapScreen() {
       <PartnerNoticeModal />
 
       <View style={styles.mapArea}>
-        <NaverMapView
-          ref={webViewRef}
-          html={mapHTML}
-          onMessage={handleWebViewMessage}
-          onReady={resyncMap}
-        />
+        {/*
+          지도 탭은 탭바가 지도 위에 떠 있다(TabNavigator). 지도 자체는 탭바 위에서 끝나게 해,
+          지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
+          탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
+        */}
+        <View style={[styles.mapCanvas, { marginBottom: tabBarHeight }]}>
+          <NaverMapView
+            ref={webViewRef}
+            html={mapHTML}
+            onMessage={handleWebViewMessage}
+            onReady={resyncMap}
+          />
+        </View>
 
         <View
           pointerEvents="box-none"
@@ -784,15 +778,6 @@ export default function MapScreen() {
             />
           )}
 
-          {showRouteComingSoon && (
-            <View style={styles.offscreenNotice}>
-              <Ionicons name="navigate" size={13} color="#6B7280" />
-              <Text style={styles.offscreenText}>
-                길찾기는 다음 업데이트에서 제공될 예정이에요
-              </Text>
-            </View>
-          )}
-
           {reportsEmpty && (
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color="#6B7280" />
@@ -829,23 +814,30 @@ export default function MapScreen() {
             >
               <Ionicons name="megaphone" size={17} color={COLORS.primary} />
             </TouchableOpacity>
+            {ROUTE_FINDING_ENABLED && (
+              <TouchableOpacity
+                style={styles.controlBtn}
+                onPress={handleOpenRoute}
+                accessibilityRole="button"
+                accessibilityLabel="길찾기"
+              >
+                <Ionicons name="navigate" size={17} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.controlBtn}
-              onPress={handleOpenRoute}
+              onPress={handleRecenter}
               accessibilityRole="button"
-              accessibilityLabel="길찾기"
+              accessibilityLabel="캠퍼스로 돌아가기"
             >
-              <Ionicons name="navigate" size={17} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlBtn}>
-              <Ionicons name="locate-outline" size={17} color={COLORS.primary} />
+              <Ionicons name="school-outline" size={17} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
         )}
 
         {pickingLocation && (
           <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
+            <View pointerEvents="none" style={[styles.pickerMarkerWrap, { bottom: tabBarHeight }]}>
               <View style={styles.pickerCrosshairV} />
               <View style={styles.pickerCrosshairH} />
               <View style={styles.pickerPinAnchor}>
@@ -939,6 +931,8 @@ export default function MapScreen() {
             <TouchableOpacity
               onPress={handleClearRoute}
               style={styles.routeCloseBtn}
+              accessibilityRole="button"
+              accessibilityLabel="경로 지우기"
             >
               <Ionicons name="close" size={16} color="#999" />
             </TouchableOpacity>
@@ -1032,13 +1026,18 @@ export default function MapScreen() {
         )}
       </View>
 
-      <Modal visible={showRoute} animationType="slide">
+      <Modal visible={showRoute} animationType="slide" onRequestClose={handleCloseRoute}>
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
         <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
           <ContentColumn>
           <View style={styles.routeModalHeader}>
-            <TouchableOpacity onPress={handleCloseRoute}>
+            <TouchableOpacity
+              onPress={handleCloseRoute}
+              accessibilityRole="button"
+              accessibilityLabel="뒤로 가기"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons
                 name="arrow-back"
                 size={22}
@@ -1260,6 +1259,8 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  // 실제 지도가 그려지는 칸. 탭바 높이만큼 아래를 비운다(JSX 주석 참고). 위치 고르기 중앙 핀도 같은 칸 기준이다.
+  mapCanvas: { flex: 1 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
   // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.

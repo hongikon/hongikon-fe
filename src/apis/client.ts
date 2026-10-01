@@ -59,8 +59,8 @@ export class NetworkError extends Error {
     super(
       message ??
         (kind === 'timeout'
-          ? '서버 응답이 늦어지고 있습니다. 잠시 후 다시 시도해주세요.'
-          : '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.'),
+          ? '서버 응답이 늦어지고 있어요. 잠시 뒤 다시 시도해 주세요.'
+          : '서버에 연결할 수 없어요. 네트워크 상태를 확인해 주세요.'),
     )
     this.name = 'NetworkError'
     this.kind = kind
@@ -70,7 +70,7 @@ export class NetworkError extends Error {
 /** 호출부가 스스로 취소(화면 이탈 등)한 요청. 사용자에게 오류로 보여주지 않는다. */
 export class RequestCancelledError extends Error {
   constructor() {
-    super('요청이 취소되었습니다.')
+    super('요청이 취소됐어요.')
     this.name = 'RequestCancelledError'
   }
 }
@@ -78,8 +78,9 @@ export class RequestCancelledError extends Error {
 /** 백엔드 주소 미설정. 네트워크 문제가 아니라 빌드 설정 문제라 따로 구분한다. */
 class ConfigError extends Error {
   constructor() {
-    super('백엔드 서버 주소가 설정되지 않았습니다. .env 의 EXPO_PUBLIC_API_BASE_URL을 확인해주세요.')
+    super('서버 주소가 설정되지 않아 연결할 수 없어요. 앱을 최신 버전으로 업데이트해 주세요.')
     this.name = 'ConfigError'
+    if (__DEV__) console.warn('EXPO_PUBLIC_API_BASE_URL 이 비어 있다. .env 를 확인할 것.')
   }
 }
 
@@ -118,19 +119,19 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 
 /** 상태 코드별 사용자 문구. 서버 본문 대신 이걸 보여준다. */
 function friendlyMessageForStatus(status: number): string {
-  if (status === 400 || status === 422) return '요청 내용을 확인한 뒤 다시 시도해주세요.'
-  if (status === 401) return '로그인이 만료되었습니다. 다시 로그인해주세요.'
-  if (status === 403) return '이 작업을 할 권한이 없습니다.'
-  if (status === 404) return '요청한 정보를 찾을 수 없습니다.'
-  if (status === 408) return '서버 응답이 늦어지고 있습니다. 잠시 후 다시 시도해주세요.'
-  if (status === 409) return '이미 처리된 요청입니다.'
-  if (status === 413) return '보내는 파일이 너무 큽니다. 더 작은 파일로 다시 시도해주세요.'
-  if (status === 429) return '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.'
+  if (status === 400 || status === 422) return '요청 내용을 확인한 뒤 다시 시도해 주세요.'
+  if (status === 401) return '로그인이 만료됐어요. 다시 로그인해 주세요.'
+  if (status === 403) return '이 작업을 할 권한이 없어요.'
+  if (status === 404) return '요청한 정보를 찾을 수 없어요.'
+  if (status === 408) return '서버 응답이 늦어지고 있어요. 잠시 뒤 다시 시도해 주세요.'
+  if (status === 409) return '이미 처리된 요청이에요.'
+  if (status === 413) return '보내는 파일이 너무 커요. 더 작은 파일로 다시 시도해 주세요.'
+  if (status === 429) return '요청이 너무 잦아요. 잠시 뒤 다시 시도해 주세요.'
   if (status === 502 || status === 503 || status === 504) {
-    return '서버와 연결이 원활하지 않습니다. 잠시 후 다시 시도해주세요.'
+    return '서버와 연결이 원활하지 않아요. 잠시 뒤 다시 시도해 주세요.'
   }
-  if (status >= 500) return '서버에 일시적인 문제가 생겼습니다. 잠시 후 다시 시도해주세요.'
-  return `요청을 처리하지 못했습니다 (${status})`
+  if (status >= 500) return '서버에 일시적인 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.'
+  return `요청을 처리하지 못했어요 (${status})`
 }
 
 /**
@@ -325,7 +326,7 @@ async function parseJson<T>(response: Response): Promise<T> {
     return JSON.parse(text) as T
   } catch {
     // 프록시가 200 으로 HTML 을 돌려주는 경우 등. 원문은 화면에 내보내지 않는다.
-    throw new ApiError(response.status, '서버 응답을 해석하지 못했습니다. 잠시 후 다시 시도해주세요.', text.slice(0, DEV_DETAIL_MAX_LENGTH))
+    throw new ApiError(response.status, '서버 응답을 해석하지 못했어요. 잠시 뒤 다시 시도해 주세요.', text.slice(0, DEV_DETAIL_MAX_LENGTH))
   }
 }
 

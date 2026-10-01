@@ -15,7 +15,7 @@ import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 interface BuildingSheetProps {
   building: Building;
   onClose: () => void;
-  /** false 면 출발/도착 버튼 대신 "다음 업데이트에서 제공" 안내를 보여준다. */
+  /** false 면 출발/도착 버튼을 그리지 않는다(출시 전 기능 안내도 띄우지 않는다 — 심사 2.1). */
   routeFindingEnabled: boolean;
   onSetFrom: () => void;
   onSetTo: () => void;
@@ -99,7 +99,7 @@ export default function BuildingSheet({
         </TouchableOpacity>
       )}
 
-      {routeFindingEnabled ? (
+      {routeFindingEnabled && (
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom}>
             <Ionicons name="location" size={14} color="#10B981" />
@@ -109,13 +109,6 @@ export default function BuildingSheet({
             <Ionicons name="flag" size={14} color="#EF4444" />
             <Text style={styles.actionToText}>도착</Text>
           </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.routeComingSoon}>
-          <Ionicons name="navigate-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.routeComingSoonText}>
-            길찾기는 다음 업데이트에서 제공될 예정이에요
-          </Text>
         </View>
       )}
     </Animated.View>
@@ -241,18 +234,4 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionToText: { fontSize: 13, color: "#EF4444", fontFamily: FONTS.semibold },
-  routeComingSoon: {
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  routeComingSoonText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontFamily: FONTS.medium,
-  },
 });
