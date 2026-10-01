@@ -59,9 +59,27 @@ export function facilityMarkers(kind: FacilityKind | null): FacilityMarker[] {
   const color = kind === null ? '' : facilityKindMeta(kind).color
   const byBuilding = new Map<string, FacilityMarker>()
 
+  const pinned: FacilityMarker[] = []
+
   filterFacilities(kind).forEach((facility) => {
     const building = BUILDING_BY_NAME.get(facility.buildingName)
     if (!building) return
+
+    // 실측 좌표가 있는 시설은 건물 마커로 합치지 않고 그 지점에 따로 찍는다.
+    if (facility.lat !== undefined && facility.lng !== undefined) {
+      const floors = facility.floor !== undefined ? [facility.floor] : []
+      pinned.push({
+        id: `${facility.kind}-${facility.id}`,
+        kind: facility.kind,
+        buildingName: building.name,
+        lat: facility.lat,
+        lng: facility.lng,
+        floors,
+        color,
+        label: buildLabel(building.name, floors),
+      })
+      return
+    }
 
     const existing = byBuilding.get(building.name)
     const floors = existing ? existing.floors : []
@@ -82,5 +100,5 @@ export function facilityMarkers(kind: FacilityKind | null): FacilityMarker[] {
     })
   })
 
-  return [...byBuilding.values()]
+  return [...byBuilding.values(), ...pinned]
 }

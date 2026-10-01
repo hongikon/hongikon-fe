@@ -105,7 +105,8 @@ export const FACILITIES: readonly Facility[] = [
   // ── 인문사회관 B동 ──────────────────────────────────────
   { id: 'hi-b-1f-printer', kind: '프린터', buildingName: '인문사회관 B동', floor: 1, note: '공용PC실' },
   // 원표는 floor_id가 비어 있으나 location_detail에 "1층"이 명시돼 있어 그대로 반영
-  { id: 'hi-b-1f-outdoor-smoking-01', kind: '흡연구역', buildingName: '인문사회관 B동', floor: 1, note: 'B동 1층 흡연구역 (야외)' },
+  // 좌표: 2026-09-30 사용자 실측(HI_B_1F_흡연장). 원본 (위도, 경도, 고도) 중 앞의 두 값.
+  { id: 'hi-b-1f-outdoor-smoking-01', kind: '흡연구역', buildingName: '인문사회관 B동', floor: 1, note: 'B동 1층 흡연구역 (야외)', lat: 37.55062859162865, lng: 126.925791484712 },
   { id: 'hi-b-building-elevator', kind: '엘리베이터', buildingName: '인문사회관 B동' },
 
   // ── 인문사회관 A동 ──────────────────────────────────────
@@ -123,7 +124,8 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-dorm2-b2f-restaurant-01', kind: '식당', buildingName: '제2기숙사', floor: -2, note: '학생식당' },
   { id: 'hi-dorm2-b2f-restaurant-02', kind: '식당', buildingName: '제2기숙사', floor: -2, note: '맘스터치' },
   { id: 'hi-dorm2-b2f-reading-room', kind: '열람실', buildingName: '제2기숙사', floor: -2, note: '기숙사 열람실' },
-  { id: 'hi-dorm2-1f-outdoor-smoking-01', kind: '흡연구역', buildingName: '제2기숙사', floor: 1, note: '기숙사 1층 야외 흡연장' },
+  // 좌표: 2026-09-30 사용자 실측(HI_D2_1F_흡연장). 원본 (위도, 경도, 고도) 중 앞의 두 값.
+  { id: 'hi-dorm2-1f-outdoor-smoking-01', kind: '흡연구역', buildingName: '제2기숙사', floor: 1, note: '기숙사 1층 야외 흡연장', lat: 37.54929961640159, lng: 126.9250265323808 },
   { id: 'hi-dorm2-building-elevator', kind: '엘리베이터', buildingName: '제2기숙사' },
 
   // ── 인문사회관 C동 ──────────────────────────────────────
