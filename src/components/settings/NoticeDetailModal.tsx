@@ -4,6 +4,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import type { AppNotice } from '../../constants/appNotices'
 import ModalHeader from './ModalHeader'
+import ContentColumn from '../common/ContentColumn'
 
 interface NoticeDetailModalProps {
   visible: boolean
@@ -17,6 +18,8 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
+        {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+        <ContentColumn>
         <ModalHeader title="공지사항" onClose={onClose} />
         {notice && (
           <ScrollView style={styles.body}>
@@ -25,6 +28,7 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
             <Text style={styles.text}>{notice.body}</Text>
           </ScrollView>
         )}
+        </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

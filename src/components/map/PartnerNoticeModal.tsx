@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 
 const STORAGE_KEY = '@hongik_partner_notice_seen'
 
@@ -61,6 +62,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
+    maxWidth: DIALOG_MAX_WIDTH,
     backgroundColor: COLORS.white,
     borderRadius: 18,
     paddingHorizontal: 22,

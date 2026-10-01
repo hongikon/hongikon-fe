@@ -25,6 +25,7 @@ import { chipStyles } from '../map/chipStyles'
 import ModalHeader from './ModalHeader'
 import { PARTNER_SUGGESTION_PREFIX } from '../../constants/feedback'
 import type { PartnerAffiliation } from '../../types'
+import ContentColumn from '../common/ContentColumn'
 
 const MAX_CONTENT_LENGTH = 1000 // 서버 FeedbackCreateRequest.content 상한
 
@@ -175,6 +176,8 @@ export default function PartnerSuggestModal({
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+          <ContentColumn>
           <ModalHeader title="제휴 제보하기" onClose={onClose} />
 
           {submitted ? (
@@ -350,6 +353,7 @@ export default function PartnerSuggestModal({
               </ScrollView>
             </KeyboardAvoidingView>
           )}
+          </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
 import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
 import { formatPushNotification } from '../utils/notificationFormat'
@@ -113,7 +114,7 @@ export default function AppStatusScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, layoutStyles.readable]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
@@ -121,7 +122,7 @@ export default function AppStatusScreen() {
         <View style={{ width: 22 }} />
       </View>
 
-      <ScrollView style={styles.scroll}>
+      <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
         <View style={styles.section}>
           {rows.map((row) => (
             <View key={row.label} style={styles.row}>

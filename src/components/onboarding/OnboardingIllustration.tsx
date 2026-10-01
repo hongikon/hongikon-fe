@@ -50,7 +50,9 @@ function Badge({ icon, label, style }: IllustrationBadge & { style: object }) {
   )
 }
 
-const SIZE = 232
+/** 그림 한 변. 낮은 화면에서 IntroSlides 가 이 값을 기준으로 줄인다. */
+export const ILLUSTRATION_SIZE = 232
+const SIZE = ILLUSTRATION_SIZE
 
 const styles = StyleSheet.create({
   root: { width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' },

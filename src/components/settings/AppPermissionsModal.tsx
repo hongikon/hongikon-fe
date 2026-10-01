@@ -23,6 +23,7 @@ import {
 import { notify } from '../../utils/dialog'
 import * as haptics from '../../lib/haptics'
 import ModalHeader from './ModalHeader'
+import { layoutStyles } from '../../constants/layout'
 
 interface AppPermissionsModalProps {
   visible: boolean
@@ -143,8 +144,12 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>
-          <ModalHeader title="앱 권한" onClose={onClose} />
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          {/* 폴드를 펼친 화면·넓은 웹 창에선 머리줄·카드를 가운데 읽기 폭으로 모은다.
+              회색 바탕(scroll)은 화면 끝까지 깔아야 해서 본문은 contentContainerStyle 로만 좁힌다. */}
+          <View style={layoutStyles.readable}>
+            <ModalHeader title="앱 권한" onClose={onClose} />
+          </View>
+          <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, layoutStyles.readable]}>
             <Text style={styles.lead}>
               홍익온이 휴대폰에 요청하는 권한이에요.{'\n'}필요한 순간에만 쓰고, 언제든 바꿀 수 있어요.
             </Text>

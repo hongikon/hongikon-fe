@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo 
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
+import { layoutStyles } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
 
 interface NewsListProps {
@@ -70,7 +71,8 @@ export default function NewsList({
   return (
     <FlatList
       style={styles.list}
-      contentContainerStyle={styles.content}
+      // 넓은 화면(폴드 펼침·웹)에선 카드가 화면 끝까지 늘어나지 않게 가운데 읽기 폭으로 모은다.
+      contentContainerStyle={[styles.content, layoutStyles.readable]}
       data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}

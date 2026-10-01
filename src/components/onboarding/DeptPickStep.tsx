@@ -82,7 +82,7 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
             size={17}
             color={universityAllOn ? COLORS.white : COLORS.primary}
           />
-          <Text style={[styles.chipText, universityAllOn && styles.chipTextOn]}>
+          <Text style={[styles.chipText, universityAllOn && styles.chipTextOn]} numberOfLines={1}>
             학교 공지(학사·장학 등) 함께 받기
           </Text>
         </Pressable>
@@ -159,6 +159,8 @@ const styles = StyleSheet.create({
   chip: {
     marginTop: 12,
     alignSelf: 'flex-start',
+    // 폴드 커버(≈344dp)처럼 좁은 화면에서 글자가 칩 밖으로 넘치지 않게 줄 너비에서 멈춘다.
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: ONBOARDING_TINT,
   },
   chipOn: { backgroundColor: COLORS.primary },
-  chipText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
+  chipText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
   chipTextOn: { color: COLORS.white },
   pressed: { opacity: 0.75 },
   list: { flex: 1, marginTop: 12 },

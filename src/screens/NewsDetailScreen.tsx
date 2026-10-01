@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import type { CategoryKey } from '../constants/colors'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
@@ -50,7 +51,7 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
   if (!item) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, layoutStyles.readable]}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
@@ -91,7 +92,7 @@ function NewsDetailBody({
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, layoutStyles.readable]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
@@ -109,7 +110,7 @@ function NewsDetailBody({
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, layoutStyles.readable]}>
         <View style={styles.metaRow}>
           <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
             <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>

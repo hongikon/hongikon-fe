@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
+import { layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
 import type { TreeChild, TreeNode } from '../../types'
 
@@ -162,7 +163,7 @@ export default function DeptTreeList({
   return (
     <ScrollView
       style={styles.treeScroll}
-      contentContainerStyle={styles.treeContent}
+      contentContainerStyle={[styles.treeContent, layoutStyles.readable]}
       keyboardShouldPersistTaps="handled"
     >
       {results.map((node) => {

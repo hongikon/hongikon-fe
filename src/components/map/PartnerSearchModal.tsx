@@ -15,6 +15,7 @@ import { FONTS } from "../../constants/typography";
 import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { browsePartnersByCategory, searchPartners } from "../../utils/partnerSearch";
 import type { Partner, PartnerCategory } from "../../types";
+import ContentColumn from "../common/ContentColumn";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -129,6 +130,8 @@ export default function PartnerSearchModal({
       onShow={() => inputRef.current?.focus()}
     >
       <View style={[styles.container, { paddingTop: topInset }]}>
+        {/* 폴드를 펼친 화면·넓은 웹 창에선 검색창·목록을 가운데 읽기 폭으로 모은다. */}
+        <ContentColumn>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={handleClose}
@@ -219,6 +222,7 @@ export default function PartnerSearchModal({
             renderItem={({ item }) => renderPartnerRow(item, false)}
           />
         )}
+        </ContentColumn>
       </View>
     </Modal>
   );

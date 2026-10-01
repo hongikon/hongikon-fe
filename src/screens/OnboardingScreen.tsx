@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { completeOnboarding } from '../lib/onboarding'
 import { refreshNotificationPermission } from '../lib/notificationPermission'
 import { markNotificationPermissionAsked } from '../components/common/NotificationPrimer'
+import ContentColumn from '../components/common/ContentColumn'
 import IntroSlides from '../components/onboarding/IntroSlides'
 import DeptPickStep from '../components/onboarding/DeptPickStep'
 import NotificationStep from '../components/onboarding/NotificationStep'
@@ -92,6 +93,8 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* 폴드를 펼친 화면·넓은 웹 창에서도 그림·버튼이 가운데 한 폭에 모이게 한다. */}
+      <ContentColumn>
       {step !== 'intro' && (
         <View style={styles.header}>
           <Pressable
@@ -115,6 +118,7 @@ export default function OnboardingScreen() {
           {step === 'notifications' && <NotificationStep onDone={finish} />}
         </Animated.View>
       </KeyboardAvoidingView>
+      </ContentColumn>
     </SafeAreaView>
   )
 }

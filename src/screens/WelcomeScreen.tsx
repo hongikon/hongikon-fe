@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
 import { useAuth } from '../contexts/AuthContext'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
@@ -65,7 +66,7 @@ export default function WelcomeScreen() {
         <Text style={styles.subtitle}>캠퍼스 지도와 학과 소식을 한 곳에서</Text>
       </View>
 
-      <View style={styles.buttons}>
+      <View style={[styles.buttons, layoutStyles.readable]}>
         {errorText && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {errorText}

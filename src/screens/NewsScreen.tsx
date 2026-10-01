@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import { TREE_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
@@ -69,7 +70,7 @@ export default function NewsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, layoutStyles.readable]}>
         <Text style={styles.headerTitle}>소식</Text>
         <TouchableOpacity
           style={styles.searchBtn}
@@ -82,6 +83,8 @@ export default function NewsScreen() {
       </View>
 
       <View style={styles.tabBar}>
+        {/* 밑줄은 화면 끝까지, 탭 세 개는 목록과 같은 가운데 폭 안에 둔다. */}
+        <View style={[styles.tabRow, layoutStyles.readable]}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab
           return (
@@ -100,6 +103,7 @@ export default function NewsScreen() {
             </TouchableOpacity>
           )
         })}
+        </View>
       </View>
 
       {activeTab === '전체' ? (
@@ -243,11 +247,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: COLORS.white,
     borderBottomWidth: 0.5,
     borderBottomColor: '#E8E8E8',
   },
+  tabRow: { flexDirection: 'row' },
   tab: { flex: 1, alignItems: 'center', paddingTop: 10 },
   tabText: { fontSize: 14, color: '#BFBFBF', fontFamily: FONTS.medium, paddingBottom: 10 },
   tabTextActive: { color: COLORS.textPrimary, fontFamily: FONTS.bold },

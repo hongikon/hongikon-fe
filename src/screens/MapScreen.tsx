@@ -66,6 +66,8 @@ import type {
   ReportListItem,
 } from "../types";
 import { FONTS } from "../constants/typography";
+import { useCenteredGutter } from "../hooks/useCenteredGutter";
+import ContentColumn from "../components/common/ContentColumn";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -108,6 +110,11 @@ export default function MapScreen() {
   // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
   // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
   const [headerHeight, setHeaderHeight] = useState(0);
+  // 넓은 창(폴드 펼침·가로·웹)에서 지도는 끝까지 깔되, 검색바·칩·배너·하단 시트는
+  // 가운데 한 폭(SHEET_MAX_WIDTH)에 모은다. 좁은 화면에선 0 이라 기존 배치 그대로다.
+  // 폴드를 접고 펴면 앱이 다시 시작되지 않고 창 크기만 바뀌므로 매 렌더 다시 계산한다.
+  const sideGutter = useCenteredGutter();
+  const overlayInset = { left: 12 + sideGutter, right: 12 + sideGutter };
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
@@ -667,7 +674,7 @@ export default function MapScreen() {
 
         <View
           pointerEvents="box-none"
-          style={[styles.bannerStack, { top: headerHeight + 8 }]}
+          style={[styles.bannerStack, overlayInset, { top: headerHeight + 8 }]}
         >
           {mapAuthFailed && (
             <View style={styles.mapErrorNotice}>
@@ -781,7 +788,7 @@ export default function MapScreen() {
               <View style={styles.pickerDot} />
             </View>
 
-            <View style={[styles.pickerTopBar, { top: headerHeight + 8 }]}>
+            <View style={[styles.pickerTopBar, overlayInset, { top: headerHeight + 8 }]}>
               <Text style={styles.pickerTopText} numberOfLines={2}>
                 {pickerPurpose === "partner"
                   ? "지도를 움직여 가게 위치에 핀을 맞춰주세요"
@@ -798,7 +805,7 @@ export default function MapScreen() {
             </View>
 
             {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
-            <View style={[styles.pickerBottomBar, { bottom: 20 + tabBarHeight }]}>
+            <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + tabBarHeight }]}>
               <View style={styles.pickerLocationRow}>
                 <Ionicons name="location" size={14} color={COLORS.primary} />
                 <Text style={styles.pickerLocationText} numberOfLines={1}>
@@ -829,7 +836,7 @@ export default function MapScreen() {
         )}
 
         {!pickingLocation && fromBuilding && toBuilding && (
-          <View style={[styles.routeStrip, { top: headerHeight + 8 }]}>
+          <View style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}>
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
                 <View
@@ -876,7 +883,10 @@ export default function MapScreen() {
         */}
         <View
           pointerEvents="box-none"
-          style={[styles.bottomSheetLayer, { bottom: tabBarHeight }]}
+          style={[
+            styles.bottomSheetLayer,
+            { bottom: tabBarHeight, left: sideGutter, right: sideGutter },
+          ]}
         >
           {selectedBuilding && (
             <BuildingSheet
@@ -912,7 +922,7 @@ export default function MapScreen() {
         style={[
           styles.headerOverlay,
           // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
-          { paddingTop: insets.top + 8 },
+          { paddingTop: insets.top + 8, paddingHorizontal: sideGutter },
         ]}
         pointerEvents="box-none"
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
@@ -957,6 +967,7 @@ export default function MapScreen() {
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
         <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
+          <ContentColumn>
           <View style={styles.routeModalHeader}>
             <TouchableOpacity onPress={handleCloseRoute}>
               <Ionicons
@@ -1114,6 +1125,7 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
           )}
+          </ContentColumn>
         </SafeAreaView>
         </SafeAreaProvider>
       </Modal>

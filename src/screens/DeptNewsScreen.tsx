@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
@@ -37,7 +38,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, layoutStyles.readable]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={17} color="#444" />
         </TouchableOpacity>

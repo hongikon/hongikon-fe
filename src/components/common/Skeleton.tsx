@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { COLORS } from '../../constants/colors'
+import { CONTENT_MAX_WIDTH } from '../../constants/layout'
 
 /**
  * 첫 로딩 동안 실제 화면 모양을 회색 블록으로 미리 보여주는 자리표시자(스켈레톤).
@@ -183,7 +184,15 @@ function DetailBodySkeletonLines() {
 const styles = StyleSheet.create({
   list: { flex: 1, padding: 12, gap: 8, backgroundColor: COLORS.background },
   listInner: { gap: 8 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14 },
+  // 실제 목록(NewsList)처럼 넓은 화면에선 가운데 읽기 폭에서 멈춘다(목록 좌우 padding 12 를 뺀 폭).
+  card: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH - 24,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+  },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   cardSource: { paddingTop: 10, borderTopWidth: 0.5, borderTopColor: '#f2f2f2' },
   gap6: { marginBottom: 6 },
@@ -192,7 +201,7 @@ const styles = StyleSheet.create({
   gap12: { marginBottom: 12 },
   gap16: { marginBottom: 16 },
   gap20: { marginBottom: 20 },
-  detail: { padding: 20 },
+  detail: { padding: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   detailMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   detailDivider: { height: 0.5, backgroundColor: '#eee', marginBottom: 20 },
   bodyLines: { gap: 11 },

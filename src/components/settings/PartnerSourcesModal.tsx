@@ -6,6 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { PARTNER_SOURCES } from '../../constants/partnerSources'
 import { PARTNER_NOTICE_TEXT } from '../map/PartnerNoticeModal'
 import ModalHeader from './ModalHeader'
+import ContentColumn from '../common/ContentColumn'
 
 interface PartnerSourcesModalProps {
   visible: boolean
@@ -18,6 +19,8 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
+        {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+        <ContentColumn>
         <ModalHeader title="제휴 출처" onClose={onClose} />
         <ScrollView style={styles.body}>
           <Text style={styles.intro}>{PARTNER_NOTICE_TEXT}</Text>
@@ -41,6 +44,7 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
             </View>
           ))}
         </ScrollView>
+        </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

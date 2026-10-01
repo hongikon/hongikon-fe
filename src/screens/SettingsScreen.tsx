@@ -13,6 +13,7 @@ import Constants from 'expo-constants'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
+import { layoutStyles } from '../constants/layout'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
@@ -172,7 +173,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scroll}>
+      <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>계정</Text>
