@@ -34,7 +34,7 @@ interface AppPermissionsModalProps {
  * 꺼져 있으면 여기서 바로 허용하거나(아직 물을 수 있을 때) 휴대폰 설정으로 보낸다.
  *
  * - 알림: notificationPermission.ts 의 공용 상태를 그대로 쓴다.
- * - 사진: 제보 작성(ReportComposerModal)에서 갤러리를 열 때만 쓴다. 카메라는 쓰지 않아 목록에 없다.
+ * - 카메라·사진: 제보 작성(ReportComposerModal)에서 [카메라로 찍기]·[앨범에서 고르기]를 누를 때만 쓴다.
  * - 위치: 기기 위치(GPS)는 쓰지 않는다(개인정보 처리방침과 같다). 제보 위치는 지도에서 직접 고른다.
  * 휴대폰 설정에서 바꾸고 돌아오면(앱이 다시 앞으로 오면) 상태를 다시 읽는다.
  */
@@ -50,6 +50,43 @@ function fromNotification(p: NotificationPermission): PermissionView {
   if (p.status === 'unknown' || p.status === 'unsupported') return { kind: 'loading' }
   if (p.status === 'granted') return { kind: 'granted' }
   return { kind: p.status, canAskAgain: p.canAskAgain }
+}
+
+function fromCamera(res: ImagePicker.CameraPermissionResponse): PermissionView {
+  if (res.granted) return { kind: 'granted' }
+  return { kind: res.status === 'denied' ? 'denied' : 'undetermined', canAskAgain: res.canAskAgain }
+}
+
+/** 카메라 권한. 사진 보관함과 같은 방식으로 앱 복귀 때 다시 읽는다. */
+function useCameraPermission(enabled: boolean) {
+  const [state, setState] = useState<PermissionView>({ kind: 'loading' })
+
+  const refresh = useCallback(async () => {
+    try {
+      setState(fromCamera(await ImagePicker.getCameraPermissionsAsync()))
+    } catch {
+      // 읽지 못하면 이전 값을 둔다.
+    }
+  }, [])
+
+  const request = useCallback(async () => {
+    try {
+      setState(fromCamera(await ImagePicker.requestCameraPermissionsAsync()))
+    } catch {
+      await refresh()
+    }
+  }, [refresh])
+
+  useEffect(() => {
+    if (!enabled) return
+    void refresh()
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refresh()
+    })
+    return () => sub.remove()
+  }, [enabled, refresh])
+
+  return { state, request }
 }
 
 function fromMedia(res: ImagePicker.MediaLibraryPermissionResponse): PermissionView {
@@ -99,6 +136,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
   const isWeb = Platform.OS === 'web'
   const notification = fromNotification(useNotificationPermission())
   const media = useMediaLibraryPermission(visible && !isWeb)
+  const camera = useCameraPermission(visible && !isWeb)
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -115,7 +153,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
               <View style={styles.webNote}>
                 <Ionicons name="phone-portrait-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.webNoteText}>
-                  알림·사진 권한은 휴대폰 앱에서 설정해요. 웹에서는 따로 요청하는 권한이 없어요.
+                  알림·카메라·사진 권한은 휴대폰 앱에서 설정해요. 웹에서는 따로 요청하는 권한이 없어요.
                 </Text>
               </View>
             ) : (
@@ -129,6 +167,17 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                     void requestNotificationPermission()
                   }}
                   settingsName="알림"
+                />
+                <View style={styles.separator} />
+                <PermissionRow
+                  icon="camera-outline"
+                  title="카메라"
+                  purpose="제보할 때 현장 사진을 바로 찍어요"
+                  state={camera.state}
+                  onRequest={() => {
+                    void camera.request()
+                  }}
+                  settingsName="카메라"
                 />
                 <View style={styles.separator} />
                 <PermissionRow
