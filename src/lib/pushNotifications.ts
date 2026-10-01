@@ -20,6 +20,40 @@ Notifications.setNotificationHandler({
 })
 
 /**
+ * 아직 처리하지 못한 알림 탭. 앱이 꺼진 상태에서 알림으로 켜지면(콜드 스타트) 내비게이션이
+ * 준비되기 전이거나 웰컴 화면(로그인 전 — 상세 화면이 아직 없음)이라 바로 이동할 수 없다.
+ * 여기 두었다가 이동할 수 있게 되는 순간(내비게이션 준비, 둘러보기/로그인 완료) 처리한다.
+ */
+let pendingNotification: PushNotificationData | null = null
+/** 같은 알림을 두 번 처리하지 않게(콜드 스타트 조회와 탭 리스너가 같은 알림을 함께 줄 수 있다). */
+let lastHandledNotificationId: string | null = null
+
+function canRouteTo(routeName: 'NewsDetail' | 'Main'): boolean {
+  if (!navigationRef.isReady()) return false
+  const routeNames = navigationRef.getRootState()?.routeNames ?? []
+  return routeNames.includes(routeName)
+}
+
+function handleNotificationResponse(response: Notifications.NotificationResponse | null): void {
+  if (!response) return
+  const id = response.notification.request.identifier
+  if (id === lastHandledNotificationId) return
+  lastHandledNotificationId = id
+  pendingNotification = (response.notification.request.content.data ?? null) as PushNotificationData | null
+  flushPendingNotification()
+}
+
+/** 보관해 둔 알림 탭이 있고 지금 이동할 수 있으면 이동한다. */
+function flushPendingNotification(): void {
+  const data = pendingNotification
+  if (!data) return
+  const target = data.type === 'NEWS' ? 'NewsDetail' : 'Main'
+  if (!canRouteTo(target)) return
+  pendingNotification = null
+  routeForNotification(data)
+}
+
+/**
  * 알림을 탭했을 때 이동할 화면을 정한다.
  * NEWS는 상세 화면(id로 상세 API 조회)으로, REPORT는 지도 탭(기본 탭)으로 보낸다 — 좌표로 지도를
  * 자동 포커스하는 기능은 MapScreen이 아직 알림발 좌표를 받을 방법이 없어 후속 작업으로 남긴다.
@@ -30,8 +64,9 @@ function routeForNotification(data: PushNotificationData): void {
   if (data.type === 'NEWS') {
     // 목록(`GET /news`)이 페이지 단위라 id로 항목을 찾을 수 없다 — id만 넘기면 상세 화면이
     // `GET /news/{id}`로 받아 그린다. 백엔드(NewsPushDispatcher)는 newsId 를 숫자로 보낸다.
-    if (data.newsId === undefined || data.newsId === null) return
-    navigationRef.navigate('NewsDetail', { newsId: String(data.newsId) })
+    const newsId = String(data.newsId ?? '').trim()
+    if (!/^\d+$/.test(newsId)) return
+    navigationRef.navigate('NewsDetail', { newsId })
     return
   }
 
@@ -59,7 +94,7 @@ async function getExpoPushToken(): Promise<string | null> {
  * `App.tsx`에서 `NavigationContainer` 안(한 번만) 호출한다.
  */
 export function usePushNotifications(): void {
-  const { accessToken } = useAuth()
+  const { accessToken, status } = useAuth()
   const registeredTokenRef = useRef<string | null>(null)
   /**
    * 기기 등록이 연결 문제로 실패했는지. 사용자가 볼 화면이 없는 백그라운드 작업이라
@@ -85,12 +120,27 @@ export function usePushNotifications(): void {
     return () => subscription.remove()
   }, [accessToken])
 
+  // 앱이 켜져 있거나 백그라운드일 때 알림 탭
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      routeForNotification(response.notification.request.content.data as PushNotificationData)
-    })
+    if (Platform.OS === 'web') return
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse)
     return () => subscription.remove()
   }, [])
+
+  // 앱이 꺼진 상태에서 알림을 눌러 켜진 경우(콜드 스타트). 리스너가 붙기 전에 일어난 탭이라 따로 조회한다.
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    Notifications.getLastNotificationResponseAsync()
+      .then(handleNotificationResponse)
+      .catch(() => {})
+  }, [])
+
+  // 내비게이션이 준비되거나 화면 구성이 바뀔 때(웰컴 → 둘러보기/로그인) 보관해 둔 알림을 처리한다.
+  useEffect(() => {
+    flushPendingNotification()
+    const unsubscribe = navigationRef.addListener('state', flushPendingNotification)
+    return unsubscribe
+  }, [status])
 
   useEffect(() => {
     if (Platform.OS === 'web' || !accessToken) return
