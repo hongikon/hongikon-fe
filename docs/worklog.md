@@ -735,29 +735,125 @@ hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
 
 ---
 
+## 2026-09-30 ~ 10-01
+
+**목표 변화**: 대학공지 구독 복구 + 관리자 콘솔(백엔드·웹) → 데모 앱 배포(APK·iOS·시뮬레이터) → 실사용 버그 수정(웹 아이콘·파비콘, 웹 로그인, 지도 빈 화면, 제보 바 가림, 시간대) → 백엔드 `/news` 페이지 나눔 대응 → 토큰 재발급
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/admin/**`, `App.tsx` | **신규** | 웹 관리자 콘솔 `/admin` (대시보드·제보 검토·문의·운영 도구) |
+| `src/utils/newsMapping.ts`, `src/apis/news.ts` | 수정 | `sourceId` 우선 분류, `GET /news` 페이지 응답 |
+| `src/hooks/useNewsFeed.ts` | 재작성 | 서버 필터 + 무한 스크롤 |
+| `src/hooks/useBookmarkedNews.ts`, `useDebouncedValue.ts` | **신규** | 북마크 개별 조회, 검색 디바운스 |
+| `src/lib/pushNotifications.ts`, `NewsDetailScreen.tsx` | 수정 | 알림 탭 → 소식 상세(콜드 스타트 포함) |
+| `src/utils/serverTime.ts` | **신규** | 존 없는 서버 시각을 UTC 로 읽기 |
+| `src/contexts/AuthContext.tsx`, `src/apis/client.ts`, `src/apis/auth.ts` | 수정 | 웹 페이지 이동 로그인, 401 → 토큰 재발급 |
+| `src/components/map/NaverMapView.tsx`, `MapScreen.tsx` | 수정 | 지도 준비 감시·자동 재로드, 제보 바 위치 |
+| `scripts/fix-web-export.mjs`, `package.json`, `netlify.toml` | **신규**/수정 | 웹 아이콘 폰트 경로·파비콘, `APP_VARIANT`·`EXPO_PUBLIC_API_ORIGIN` |
+| `src/constants/partners.ts`, `facilities.ts`, `src/types/index.ts`, `src/utils/facilities.ts` | 수정 | 발바리네 추가, 흡연구역 실측 좌표 2곳만 유지 |
+| `eas.json` | 수정 | `preview-simulator` 프로필 |
+| hongikon-be | PR #2·#3 | `news.source_id`, 관리자 API·권한·문의·웹 로그인 복귀 주소, 배포 절차서 |
+
+커밋(FE): `d46b0ad` ~ `8e1dcc4`. BE: PR #2(`a1081b4`), PR #3(`feat/admin-console`, 9/30 머지 → 10/1 배포).
+
+---
+
+### 1. 대학공지(학사·장학 등) 구독이 비던 문제
+
+대학공지 6개 게시판은 학과가 아니라 `department_id` 가 비는 게 정상인데, 프론트가 `departmentName` 이 없으면 `sourceId` 를 `'기타'` 로 바꿔 구독·게시판 화면이 비었다. 백엔드에 게시판 출처 `news.source_id` 를 저장·노출하고(PR #2), 프론트는 `sourceId ?? departmentName ?? '기타'` 로 분류한다. 기존 행은 URL 의 `noCat`(대학공지 6종: 500/23 학사, 501/24 장학 …)과 학과 게시판 호스트로 백필 — 예전 정적 데이터 분류와 일치 확인.
+
+### 2. 관리자 콘솔
+
+제보는 `PENDING` 으로 등록되고 지도엔 `ACTIVE` 만 뜨는데 **승인 API 자체가 없어 제보가 영영 노출되지 않는 구조**였다. 백엔드(PR #3): `users.role`(요청마다 DB 확인, 해제 즉시 반영), `/admin/**`·`/crawler/**` ADMIN 전용(기존엔 로그인만 하면 누구나 크롤링·백필 호출 가능), 제보 상태 변경(반려 사유 필수, 관리자가 검토한 제보는 신고 누적 자동 숨김 제외), `POST /feedback`(앱 문의하기 404 해소), `GET /admin/overview`, 크롤링 동시 실행 방지. H2 통합 테스트 7건.
+
+웹은 `hongikon.com/admin`. 로그인은 `/api` 프록시가 아니라 API 도메인으로 **페이지 전체 이동**해야 한다 — 프록시를 거치면 OAuth state 세션 쿠키가 `hongikon.com` 에 붙어 카카오 콜백(`api.hongikon.com`)에서 검증이 깨진다. 돌아올 주소는 `?redirect_uri=` 로 받되 허용 목록과 정확히 일치할 때만(오픈 리다이렉트로 1회용 코드가 새지 않게). 운영 기본값에 localhost 는 넣지 않았다.
+
+> **미결**: 관리자 지정(`UPDATE users SET role='ADMIN'`)은 RDS 에서 직접. 백필 서비스가 뉴스 1건마다 `buildingRepository.findAll()` 을 다시 부른다(ADMIN 전용이 돼 우선순위 낮춤).
+
+### 3. 시간대 — 제보가 9시간 일찍 사라지던 문제
+
+서버는 `LocalDateTime` 을 존 없이(UTC 값) 내려주는데 JS 는 존 없는 날짜-시각을 **기기 현지 시간**으로 읽는다. 한국 폰에서 `endsAt` 이 9시간 이르게 읽혀 남은 시간이 9시간 미만인 제보가 `visibleReports` 에서 바로 걸러졌다(승인된 제보가 없어 드러나지 않았음). `parseServerTime` 으로 존이 없으면 `Z` 를 붙여 읽는다. 전제: 서버 컨테이너가 UTC(`eclipse-temurin` 기본) — `TZ=Asia/Seoul` 을 넣으면 안 된다(배포 절차서에도 명시).
+
+### 4. 웹(hongikon.com) 깨짐 3종
+
+- **탭 제목 "홍익온 (개발)"**: Netlify 빌드에 `APP_VARIANT` 가 없어 개발 변형으로 빌드됐다 → `production` 명시.
+- **아이콘이 전부 네모**: Netlify 는 `node_modules` 라는 폴더를 배포하지 않는다. Expo 가 아이콘 폰트를 `dist/assets/node_modules/...` 에 둬서 폰트 요청에 `index.html` 이 돌아왔다(`200 text/html 1214B`). export 후 경로를 옮기고 번들 참조를 고치는 `fix-web-export.mjs` 추가, 참조가 남으면 빌드 실패. 수정 후 `200 font/ttf 389,724B`.
+- **옛 파비콘(하늘색 ^)**: 서버 파일은 이미 새 브랜드였고 브라우저 캐시였다. 버전 쿼리, PNG 아이콘, `apple-touch-icon`, `/favicon.ico` 재검증 헤더.
+
+### 5. 웹 카카오 로그인
+
+웹이 앱과 같은 팝업 + `hongikon://` 복귀를 써서 **끝까지 된 적이 없었다**. 웹(PC·모바일 브라우저)은 API 도메인으로 페이지 이동 → `/auth/callback?code=` 로 돌아와 교환, 앱은 기존 방식 유지. 웹에선 `Alert` 가 동작하지 않아 실패 문구를 웰컴 화면에 직접 표시. PC 에서 "카카오톡으로 로그인"을 고르면 카카오가 카카오톡 PC 앱 설치를 권한다(카카오 쪽 동작) — 카카오계정(이메일) 로그인을 쓰면 된다.
+
+### 6. 앱 지도 빈 화면·제보 바 가림
+
+- 앱 지도는 원격 `map.html` 을 WebView 로 불러와 첫 로딩이 가끔 실패하면 빈 화면으로 남았다(재시작하면 뜸). 페이지 전역(`map`, `handleNativeMessage`)으로 준비 여부를 보는 스크립트를 주입하고, 12초 안에 준비되지 않거나 로딩 오류·WebView 프로세스 종료 시 자동 재로드(최대 2회 → "다시 시도"), 앱 복귀·재연결 때도 재시도. 다시 뜨면 제휴·편의시설·제보 마커를 다시 보낸다. 배포된 `map.html` 수정 없이 동작.
+- 제보 위치 선택 하단 바가 `bottom:20` 고정이라 지도 위에 떠 있는 탭바 뒤에 숨어 "이 위치 제보하기"가 안 보였다 → 탭바 높이만큼 올림.
+
+### 7. 백엔드 `/news` 페이지 나눔 대응 (10-01)
+
+백엔드가 `GET /news` 를 `{news:[...]}`(1.1만 건, 약 2MB) → `PageResponse{content,page,size,totalElements,totalPages,hasNext}` 로 바꿔 배포(`5f3024a`)해 앱 소식 목록이 통째로 비었다. **크롤링은 정상**(당일 공지까지 수집). 목록·구독·학과·검색을 서버 필터(`sourceId` 반복 파라미터, `keyword`) + 무한 스크롤(20개씩)로 전환, 북마크는 id 별 조회. 실서버 확인: 전체 2,246건 페이지 연속 로드, 컴퓨터공학과 212건, "수강신청" 34건.
+
+> **미결**: 구독 카테고리를 여러 개(전부는 아님) 고르면 서버가 `category` 를 하나만 받아 페이지마다 앱에서 거른다(최대 5페이지 보충). 크롤러 중복 저장으로 같은 글이 두 id 로 보이는 경우가 있다(예: 11528/11529).
+
+### 8. 알림 탭 → 소식 상세
+
+백엔드 푸시는 `{type:"NEWS", newsId}` 를 보내는데 앱이 예전 정적 데이터(`NEWS_BY_ID`)에서 찾아 못 찾고 메인으로 갔다. 이제 `newsId` 로 상세를 불러온다. 앱이 꺼진 상태에서 알림으로 켠 경우(`getLastNotificationResponseAsync`), 웰컴 화면이라 상세가 없는 경우(보관했다 둘러보기/로그인 직후 이동), 같은 알림 중복, 상세가 열린 채 다른 알림을 눌렀을 때 이전 소식이 남던 문제까지 처리. 실제 푸시 수신은 실기기에서만 확인 가능.
+
+### 9. 토큰 재발급
+
+앱이 `/auth/reissue` 를 쓰지 않아 로그인 30분 뒤 로그인 필요한 요청이 전부 401 로 실패했다. 토큰을 붙인 요청이 401 이면 한 번만 재발급 후 재시도(401 은 인증 필터 거절이라 POST 재전송도 중복 처리 없음), 동시 401 은 재발급 한 번으로 묶는다(리프레시 토큰 회전). 리프레시 토큰도 만료(4xx)면 로그아웃 + "로그인이 만료되었습니다". 모의 응답으로 401 → 재발급 → 재시도, 재발급 실패, 공개 요청 미시도 확인.
+
+### 10. "원문 보기" 보안 확인(장학 등)
+
+홍익대 홈페이지에 STCLab BotManager 가 붙어 있다. 두 갈래로 조사한 결과 **localhost 여부는 무관**(Referer 를 바꿔도 서버 응답 바이트 동일, `/detect` 도 통과). 개발 중 막힌 건 자동화용 크롬(`navigator.webdriver=true`)이었다 — 서버 응답 `detectionType:12`(Automation Tool). 장학 공지 원문 8건은 일반 요청으로 모두 정상(200, 제목 포함). 다만 학교 테넌트의 챌린지 화면이 STCLab 기본 `/sample/challenge/index.html`(스타일 403, 번역 설정 없음)이라, 실사용자가 통계·IP 규칙에 걸리면 빠져나오지 못할 수 있다.
+
+> **미결**: 평소 크롬·실기기에서도 막히는지 확인. 막히면 앱에 안내 문구 + 학교 정보전산팀에 챌린지 페이지 설정 문의.
+
+### 11. 데모 배포·제휴·흡연구역
+
+- Android preview APK(`a0974c4a`), iOS ad-hoc(`6d97f3c3`, 등록 기기 1대), iOS 시뮬레이터 빌드(`02c7812b`). 맥 시뮬레이터: Xcode 27 은 Simulator 앱 대신 **DeviceHub**. 이후 수정은 전부 `preview` 채널 OTA 로 배포 — **OTA 는 `eas.json` 빌드 env 를 쓰지 않으니** `EXPO_PUBLIC_API_BASE_URL` 등을 명령에 직접 넣고, 번들에 API 주소가 들어갔는지 확인한다. 작업 폴더의 미커밋 파일이 섞이지 않게 깨끗한 worktree(`wt-fe-build`)에서 빌드·OTA.
+- iOS 기기 등록 링크로 2대 추가(총 3대). 새 빌드가 필요한데 애플 로그인이 대화형이라 사용자가 직접 실행해야 한다.
+- 발바리네(총학생회): 인스타 공지 기준, 좌표는 도로명 주소를 네이버 지오코딩(기존 지도 키로 동작). 앞으로 제휴 재료는 `docs/partner-intake.md` 에 모았다가 반영.
+- 흡연구역: `Facility` 에 선택 좌표를 두고 실측(위도·경도·고도 중 앞 두 값) B동·제2기숙사만 그 지점에 찍음. 좌표 없는 6곳은 삭제.
+- 카카오 동의 화면 앱 이름이 '홍대로' — 카카오 개발자 콘솔 [앱 설정 → 일반]에서 변경 필요(코드 아님).
+
+### 12. 운영 서버 확인 (10-01)
+
+| 항목 | 결과 |
+|---|---|
+| `buildTime` | 2026-10-01 (PR #2·#3·페이지 나눔·푸시 포함) |
+| Swagger `/v3/api-docs` | 401 (운영 차단됨) |
+| 응답 `Server` 헤더 | `nginx` (버전 숨김) |
+| 소식 상세 | `images`·`attachments`·`views`·`sourceId` 포함 |
+| `https://54.180.195.51/status` (IP 직접) | **200** — 443 기본 서버 차단이 아직 없음 |
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
-| 1 | **RDS에 `alter_add_news_media_columns.sql` 실행 → 백엔드 재배포** | 운영 서버는 아직 09-17 빌드(09-30 §2). SQL 없이 재배포하면 `ddl-auto=validate`로 기동 실패. 재배포되면 prod Swagger 차단도 같이 적용됨. EC2 재부팅 권장 상태라 함께 진행 |
-| 2 | **Nginx 보안 설정 반영** | `deploy/nginx/hongikon-api.conf` 미적용 — IP 직접 접속 200, Nginx 버전 노출(09-30 §2). `setup-https.sh` 재실행 또는 conf 교체 후 `nginx -t && reload` |
-| 3 | 백엔드 담당에게 CORS·ATS 불필요 전달 | 09-30 §3 |
-| 4 | **네이버 지도 secret 재발급** | 09-07 확인: 번들 노출됐던 값 그대로. 네이버 콘솔에서 재발급 필요(사용자 직접 조치) |
-| 5 | `client.ts`에 401 → `/auth/reissue` 재발급 후 재시도 | 09-23 감사: reissue는 백엔드에 있는데 프론트가 안 씀 → 30분 뒤 사실상 로그아웃 |
-| 6 | 문의하기 `POST /feedback` | 백엔드에 엔드포인트 없음 → 항상 404. 백엔드 추가 또는 프론트 경로 변경 |
-| 7 | 실기기 로그인 전체 흐름 + 제보/알림 카테고리 왕복 테스트 | HTTPS·카카오 URI는 09-29 완료 — 지금 바로 가능(소식 이미지는 1번 이후). 변형 빌드는 한 번에 하나만 설치(09-17 §4) |
-| 8 | iOS 테스트 기기 등록 (`eas device:create`) | ad-hoc에 대표 기기 1대만 등록돼 있어 다른 사람은 설치 불가 |
-| 9 | CSP Report-Only → 강제 전환 | 배포 후 브라우저 콘솔에 위반 로그가 없으면 헤더 이름만 바꾸면 됨 |
-| 10 | 백엔드 테스트용 DB 프로파일(H2 또는 Testcontainers) | 없으면 `contextLoads`가 로컬·CI 모두 실패(09-28 §3) |
-| 11 | 개인정보 처리방침 공개 URL | 스토어 심사 필수. 앱 내 화면은 있으나 웹 URL 없음 |
-| 12 | 스토어 계정 개설 · 스크린샷·설명 | Apple $99/년, Google Play $25 1회 |
+| 1 | **iOS 테스트 빌드 다시 만들기 (기기 3대 포함)** | 사용자가 터미널에서 `wt-fe-build` 로 `npx eas-cli build --profile preview --platform ios` → 애플 로그인 직접, 기기 3대 모두 선택 |
+| 2 | **관리자 지정** `UPDATE users SET role='ADMIN'` → `/admin` 에서 제보 승인·문의 확인 | 승인 전까지 제보는 지도에 안 뜬다 |
+| 3 | 앱↔백엔드 API 전수 점검 결과 반영 | 10-01 점검 진행 중 |
+| 4 | **네이버 지도 secret 재발급** | 09-07 확인: 번들 노출됐던 값 그대로. 네이버 콘솔에서 재발급(사용자 직접) |
+| 5 | 카카오 콘솔 앱 이름 '홍대로' → '홍익온', 아이콘 등록 | 동의 화면에 그대로 노출 |
+| 6 | Nginx 443 기본 서버 차단 | IP 로 https 직접 접속 시 200(10-01 §12) |
+| 7 | "원문 보기" 보안 확인 — 평소 크롬·실기기 재확인 후 안내 문구/학교 문의 | 10-01 §10 |
+| 8 | 크롤러 중복 저장 정리, 구독 `category` 다중값 서버 지원 | 10-01 §7 |
+| 9 | 실기기 푸시 수신·알림 탭(콜드 스타트 포함) 확인 | 시뮬레이터는 원격 푸시 불가 |
+| 10 | CSP Report-Only → 강제 전환 | 콘솔 위반 로그 확인 후 |
+| 11 | 개인정보 처리방침 공개 URL | 스토어 심사 필수 |
+| 12 | 스토어 출시 준비(TestFlight 여부 포함) | 개인 개발자 계정은 판매자명이 실명으로 표시 |
 | 13 | 길찾기 재개 (`ROUTE_FINDING_ENABLED`) | 경로망 완성 후. 아래 14~16 선행 |
 | 14 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
 | 15 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점 사용자 확인 필요 |
 | 16 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 `findRoutes()`가 항상 직선거리로 대체됨 |
-| 17 | 북마크·구독 학과 백엔드 연동 | 백엔드는 지원, 클라이언트 코드 없음(09-23 §5) |
-| 18 | 설정 탭 UI 개선 / 학생 생활 팁 | `docs/settings-ui-upgrade.md`, `docs/student-tips-design.md` — 설계만 있음 |
-| 19 | 백엔드 데이터 시딩(건물/시설/제휴업체/학과) | 시딩 방식 백엔드팀과 논의 필요 |
+| 17 | 북마크·구독 학과 백엔드 연동 | 백엔드는 지원, 지금은 기기 로컬 저장 |
+| 18 | 설정 탭 UI 개선 / 학생 생활 팁 | 설계만 있음 |
+| 19 | 제휴업체 백엔드 이관 | woni 의 `scripts/generate-partners-seed.mjs`(09-30) |
 
 ### 미결 질문
 
