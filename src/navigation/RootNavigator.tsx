@@ -1,5 +1,6 @@
+import type { NavigatorScreenParams } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import TabNavigator from './TabNavigator'
+import TabNavigator, { type MainTabParamList } from './TabNavigator'
 import NewsDetailScreen from '../screens/NewsDetailScreen'
 import NewsSearchScreen from '../screens/NewsSearchScreen'
 import DeptNewsScreen from '../screens/DeptNewsScreen'
@@ -14,7 +15,7 @@ export type RootStackParamList = {
   /** 첫 실행 온보딩(소개 → 내 학과 고르기 → 알림 허용). 끝나면 웰컴으로 넘어간다. */
   Onboarding: undefined
   Welcome: undefined
-  Main: undefined
+  Main: NavigatorScreenParams<MainTabParamList> | undefined
   /**
    * 목록 카드에서 오면 `item`(요약)을 넘겨 바로 그리고, 알림처럼 id만 아는 경로는 `newsId`만 넘긴다 —
    * 어느 쪽이든 상세 화면이 `GET /news/{id}`로 본문을 받아 채운다.

@@ -7,13 +7,11 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { SAMPLE_NEWS_NOTIFICATION, SAMPLE_REPORT_NOTIFICATION } from '../constants/pushNotificationSamples'
-import { formatPushNotification } from '../utils/notificationFormat'
+import { PUSH_NOTIFICATION_SAMPLES, type PushNotificationSample } from '../constants/pushNotificationSamples'
 import { getBackendStatus } from '../apis/status'
 import { API_BASE_URL } from '../apis/client'
 import { useApiResource } from '../hooks/useApiResource'
 import RetryableError from '../components/common/RetryableError'
-import type { PushNotificationData } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -32,19 +30,11 @@ const EXECUTION_ENVIRONMENT_LABEL: Record<string, string> = {
 }
 
 /**
- * `hongikon-be`에 아직 발송부가 없어(`src/lib/pushNotifications.ts` 참고) 실제
- * 원격 푸시로는 확인할 수 없다 — 대신 같은 `data` payload로 기기에 바로 로컬
- * 알림을 띄운다. 탭하면 실제 원격 푸시를 탭했을 때와 똑같이 라우팅된다
- * (`usePushNotifications`의 리스너가 처리). 웹에서 카드 모양만 보려면
+ * 서버 푸시와 같은 제목·본문·`data` payload로 기기에 바로 로컬 알림을 띄운다. 탭하면 실제 원격 푸시를
+ * 탭했을 때와 똑같이 라우팅된다(`usePushNotifications`의 리스너가 처리). 웹에서 카드 모양만 보려면
  * `/temp/notifications`(`TempNotificationPreviewScreen`)를 쓴다.
  */
-async function fireTestNotification(data: PushNotificationData) {
-  const formatted = formatPushNotification(data)
-  if (!formatted) {
-    Alert.alert('알림 표본 없음', '표본으로 쓸 소식 데이터가 없습니다.')
-    return
-  }
-
+async function fireTestNotification(sample: PushNotificationSample) {
   const { status } = await Notifications.requestPermissionsAsync()
   if (status !== 'granted') {
     Alert.alert('알림 권한 필요', '기기 설정에서 알림 권한을 허용해주세요.')
@@ -52,7 +42,7 @@ async function fireTestNotification(data: PushNotificationData) {
   }
 
   await Notifications.scheduleNotificationAsync({
-    content: { title: formatted.title, body: formatted.body, data },
+    content: { title: sample.title, body: sample.body, data: sample.data },
     trigger: null,
   })
 }
@@ -60,7 +50,6 @@ async function fireTestNotification(data: PushNotificationData) {
 export default function AppStatusScreen() {
   const navigation = useNavigation<NavProp>()
   const config = Constants.expoConfig
-  const sampleNewsNotification = SAMPLE_NEWS_NOTIFICATION
 
   const buildId =
     Platform.OS === 'ios' ? config?.ios?.buildNumber : String(config?.android?.versionCode ?? '-')
@@ -155,22 +144,16 @@ export default function AppStatusScreen() {
             <Text style={styles.devSectionTitle}>
               개발자 도구 — 알림 포맷 미리보기 (배포 빌드에는 없음)
             </Text>
-            {sampleNewsNotification && (
+            {PUSH_NOTIFICATION_SAMPLES.map((sample) => (
               <TouchableOpacity
+                key={sample.label}
                 style={styles.row}
-                onPress={() => fireTestNotification(sampleNewsNotification)}
+                onPress={() => fireTestNotification(sample)}
               >
-                <Text style={styles.label}>소식 알림 테스트 보내기</Text>
+                <Text style={styles.label}>{sample.label} 테스트 보내기</Text>
                 <Ionicons name="chevron-forward" size={13} color="#ddd" />
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => fireTestNotification(SAMPLE_REPORT_NOTIFICATION)}
-            >
-              <Text style={styles.label}>제보 알림 테스트 보내기</Text>
-              <Ionicons name="chevron-forward" size={13} color="#ddd" />
-            </TouchableOpacity>
+            ))}
           </View>
         )}
       </ScrollView>

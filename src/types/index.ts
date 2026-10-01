@@ -331,11 +331,13 @@ export interface ReportFlagResult {
 }
 
 /**
- * 푸시 알림의 `data` payload. NEWS 는 백엔드 발송부(hongikon-be f5dd9e4 `NewsPushDispatcher`,
- * `{type: "NEWS", newsId}`)와 맞춰 두었다. REPORT 는 아직 프론트가 정한 가안이다.
+ * 푸시 알림의 `data` payload. 모두 백엔드 발송부와 맞춰 두었다.
+ * - NEWS: `NewsPushDispatcher` — `{type: "NEWS", newsId}`
+ * - REPORT_STATUS: `ReportPushDispatcher` — 내 제보가 승인(ACTIVE)·반려(REJECTED)됐을 때 작성자에게
+ * - REPORT_NEW: `ReportPushDispatcher` — 새 제보가 처음 지도에 올라갔을 때 새 제보 알림을 켠 유저에게
  *
- * `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
- * (`src/lib/pushNotifications.ts` 의 응답 리스너 참고).
+ * 제목·본문은 서버가 채워 보내고, `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
+ * (`src/utils/notificationRouting.ts`, `src/lib/pushNotifications.ts`).
  */
 export type PushNotificationData =
   | {
@@ -347,13 +349,11 @@ export type PushNotificationData =
       newsId: number | string
     }
   | {
-      type: 'REPORT'
+      type: 'REPORT_STATUS'
       reportId: number
-      lat: number
-      lng: number
-      floor: number | null
-      category: ReportCategory
-      /** `category`가 `ETC`일 때만. `Report.customCategoryLabel` 참고. */
-      customCategoryLabel?: string
-      title: string
+      status: 'ACTIVE' | 'REJECTED'
+    }
+  | {
+      type: 'REPORT_NEW'
+      reportId: number
     }

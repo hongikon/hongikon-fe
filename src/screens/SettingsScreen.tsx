@@ -25,6 +25,7 @@ import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
+import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import * as haptics from '../lib/haptics'
@@ -49,6 +50,7 @@ type ModalType =
   | 'feedback'
   | 'partnerSuggest'
   | 'permissions'
+  | 'keywords'
   | null
 
 export default function SettingsScreen() {
@@ -58,8 +60,14 @@ export default function SettingsScreen() {
     isDeptAlertOn,
     resetSettings,
   } = useSettings()
-  // 구독·게시판 알림·분야 토글은 진동과 토스트("○○ 알림을 껐어요")를 함께 준다.
-  const { toggleAlertCategory, toggleSubscribedDept, toggleDeptAlert } = useFeedbackToggles()
+  // 구독·게시판 알림·분야·제보 알림 토글은 진동과 토스트("○○ 알림을 껐어요")를 함께 준다.
+  const {
+    toggleAlertCategory,
+    toggleSubscribedDept,
+    toggleDeptAlert,
+    toggleReportStatusAlert,
+    toggleNewReportAlert,
+  } = useFeedbackToggles()
   const toast = useToast()
 
   const { status, logout, deleteAccount } = useAuth()
@@ -149,7 +157,7 @@ export default function SettingsScreen() {
     Linking.openSettings().catch(() => notify('설정을 열지 못했어요', '휴대폰 설정 > 홍익온 > 알림에서 허용해 주세요.'))
   }
 
-  const { subscriptionAlert, alertCategories, subscribedDepts } = settings
+  const { subscriptionAlert, alertCategories, subscribedDepts, reportStatusAlert, newReportAlert } = settings
   // 알림 권한이 꺼져 있으면 '앱 권한' 줄에 바로 보여 찾아 들어가게 한다.
   const permissionSummary =
     permission.status === 'granted'
@@ -199,7 +207,7 @@ export default function SettingsScreen() {
               <View style={styles.guestNoticeBody}>
                 <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
                 <Text style={styles.guestNoticeText}>
-                  지금 고른 게시판·분야 설정은 로그인하면 그대로 적용돼요.
+                  지금 고른 게시판·분야·제보 알림 설정은 로그인하면 그대로 적용돼요.
                 </Text>
               </View>
               <TouchableOpacity
@@ -219,7 +227,7 @@ export default function SettingsScreen() {
                 <Text style={styles.rowLabelText}>구독 소식 알림</Text>
                 <Text style={styles.rowSubText}>
                   {subscriptionAlert
-                    ? '켜 둔 게시판의 새 소식을 알려드려요'
+                    ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
                     : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'}
                 </Text>
               </View>
@@ -249,6 +257,42 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           )}
+          {/* 제보 알림. 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
+          <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
+            <Text style={styles.subGroupTitle}>제보 알림</Text>
+            <View style={styles.subRow}>
+              <View style={styles.rowLabel}>
+                <Ionicons name="checkmark-done-outline" size={17} color={COLORS.textSecondary} />
+                <View style={styles.rowLabelStack}>
+                  <Text style={styles.rowLabelText}>내 제보 결과 알림</Text>
+                  <Text style={styles.rowSubText}>올린 제보가 지도에 올라가거나 반려되면 알려드려요</Text>
+                </View>
+              </View>
+              <ToggleSwitch
+                size="small"
+                value={reportStatusAlert}
+                onToggle={toggleReportStatusAlert}
+                accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
+              />
+            </View>
+            <View style={[styles.subRow, styles.rowLast]}>
+              <View style={styles.rowLabel}>
+                <Ionicons name="megaphone-outline" size={17} color={COLORS.textSecondary} />
+                <View style={styles.rowLabelStack}>
+                  <Text style={styles.rowLabelText}>캠퍼스 새 제보 알림</Text>
+                  <Text style={styles.rowSubText}>
+                    새 제보가 지도에 올라오면 알려드려요 · 30분에 한 번까지
+                  </Text>
+                </View>
+              </View>
+              <ToggleSwitch
+                size="small"
+                value={newReportAlert}
+                onToggle={toggleNewReportAlert}
+                accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
+              />
+            </View>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -258,6 +302,17 @@ export default function SettingsScreen() {
             label="구독 관리"
             value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
             onPress={() => setSubManagerVisible(true)}
+          />
+          {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
+          <LinkRow
+            icon="pricetag-outline"
+            label="키워드 알림"
+            value={isGuest ? '로그인 후 사용' : undefined}
+            onPress={() =>
+              isGuest
+                ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.')
+                : setActiveModal('keywords')
+            }
           />
           {subscribedGroups.length > 0 ? (
             <View style={[styles.boardList, detailDimmed && styles.dimmed]}>
@@ -447,6 +502,8 @@ export default function SettingsScreen() {
 
       <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
 
+      <KeywordAlertsModal visible={activeModal === 'keywords'} onClose={() => setActiveModal(null)} />
+
       <SubscriptionManagerModal
         visible={subManagerVisible}
         onClose={() => setSubManagerVisible(false)}
@@ -538,6 +595,25 @@ const styles = StyleSheet.create({
   categoryChipText: { fontSize: 13, fontFamily: FONTS.medium },
   dimmed: { opacity: 0.45 },
   rowLast: { borderBottomWidth: 0 },
+  subGroup: { borderTopWidth: 0.5, borderTopColor: '#f4f4f4', paddingTop: 4 },
+  subGroupTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    color: COLORS.textTertiary,
+    letterSpacing: 0.4,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f4f4f4',
+  },
   rowLabelStack: { flex: 1, gap: 2 },
   rowSubText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, lineHeight: 16 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
