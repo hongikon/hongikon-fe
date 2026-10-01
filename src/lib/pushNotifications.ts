@@ -6,7 +6,6 @@ import { navigationRef } from '../navigation/navigationRef'
 import { registerDevice } from '../apis/devices'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from './connectivity'
-import { NEWS_BY_ID } from '../constants/news'
 import { useAuth } from '../contexts/AuthContext'
 import type { PushNotificationData } from '../types'
 
@@ -22,16 +21,17 @@ Notifications.setNotificationHandler({
 
 /**
  * 알림을 탭했을 때 이동할 화면을 정한다.
- * NEWS는 상세 화면으로, REPORT는 지도 탭(기본 탭)으로 보낸다 — 좌표로 지도를
+ * NEWS는 상세 화면(id로 상세 API 조회)으로, REPORT는 지도 탭(기본 탭)으로 보낸다 — 좌표로 지도를
  * 자동 포커스하는 기능은 MapScreen이 아직 알림발 좌표를 받을 방법이 없어 후속 작업으로 남긴다.
  */
 function routeForNotification(data: PushNotificationData): void {
   if (!navigationRef.isReady()) return
 
   if (data.type === 'NEWS') {
-    const item = NEWS_BY_ID.get(data.newsId)
-    if (!item) return
-    navigationRef.navigate('NewsDetail', { item })
+    // 목록(`GET /news`)이 페이지 단위라 id로 항목을 찾을 수 없다 — id만 넘기면 상세 화면이
+    // `GET /news/{id}`로 받아 그린다. 백엔드(NewsPushDispatcher)는 newsId 를 숫자로 보낸다.
+    if (data.newsId === undefined || data.newsId === null) return
+    navigationRef.navigate('NewsDetail', { newsId: String(data.newsId) })
     return
   }
 

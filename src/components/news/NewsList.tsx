@@ -1,6 +1,5 @@
 import { useCallback, type ReactElement } from 'react'
-import { FlatList, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
-import { usePagedItems } from '../../hooks/usePagedItems'
+import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
@@ -14,14 +13,24 @@ interface NewsListProps {
   header?: ReactElement | null
   /** 항목이 하나도 없을 때 보여줄 것. */
   empty: ReactElement
+  /** 목록 끝에 닿았을 때(서버에서 다음 페이지를 받는다). 없으면 받은 목록만 보여준다. */
+  onEndReached?: () => void
+  /** 다음 페이지를 받는 중이면 목록 끝에 스피너를 보여준다. */
+  loadingMore?: boolean
+  /** 목록 끝에 붙일 것(다음 페이지 실패 안내 등). `loadingMore`일 땐 스피너가 우선. */
+  footer?: ReactElement | null
+  /** 당겨서 새로고침. 둘 다 있어야 켜진다. */
+  refreshing?: boolean
+  onRefresh?: () => void
 }
 
 /**
  * 소식 목록.
  *
- * FlatList 로 화면 밖 항목을 정리하고, 스크롤이 끝에 닿으면 조금씩 더 붙인다.
- * 학과에 따라 80건, 구독을 여러 개 걸면 500건이 넘는데
- * 예전처럼 ScrollView 에 전부 펼치면 진입할 때 그만큼을 한 번에 만들어야 했다.
+ * FlatList 로 화면 밖 항목을 정리하고, 스크롤이 끝에 닿으면 `onEndReached`로 서버에서
+ * 다음 페이지를 받아 붙인다(`useNewsFeed`). 예전엔 전체 목록을 한 번에 받아
+ * 클라이언트에서 12건씩 잘라 보여줬지만(`usePagedItems`), `GET /news`가 페이지 응답으로
+ * 바뀌어(hongikon-be 5f3024a) 이제 서버 페이지가 그 역할을 한다.
  */
 export default function NewsList({
   items,
@@ -30,8 +39,12 @@ export default function NewsList({
   onToggleBookmark,
   header,
   empty,
+  onEndReached,
+  loadingMore = false,
+  footer,
+  refreshing,
+  onRefresh,
 }: NewsListProps) {
-  const { visible, hasMore, loadMore } = usePagedItems(items)
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<NewsItem>) => (
@@ -51,15 +64,25 @@ export default function NewsList({
     <FlatList
       style={styles.list}
       contentContainerStyle={styles.content}
-      data={visible}
+      data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
       // 끝에서 한 화면쯤 남았을 때 미리 채워 스크롤이 멈칫하지 않게 한다.
-      onEndReached={loadMore}
+      onEndReached={onEndReached}
       onEndReachedThreshold={0.6}
-      ListFooterComponent={hasMore ? <View style={styles.footerSpace} /> : null}
+      ListFooterComponent={
+        loadingMore ? (
+          <View style={styles.footerLoading}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          </View>
+        ) : (
+          footer ?? null
+        )
+      }
+      refreshing={onRefresh ? Boolean(refreshing) : undefined}
+      onRefresh={onRefresh}
       initialNumToRender={8}
       maxToRenderPerBatch={8}
       windowSize={7}
@@ -71,5 +94,5 @@ export default function NewsList({
 const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 12, gap: 8, flexGrow: 1 },
-  footerSpace: { height: 24 },
+  footerLoading: { paddingVertical: 16, alignItems: 'center' },
 })

@@ -10,6 +10,7 @@ import { useApiResource } from '../hooks/useApiResource'
 import { getNewsById } from '../apis/news'
 import { backendDetailToNewsItem } from '../utils/newsMapping'
 import { FONTS } from '../constants/typography'
+import RetryableError from '../components/common/RetryableError'
 import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
@@ -19,29 +20,76 @@ type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
  * (`NewsSummaryResponse`엔 그 필드들이 없음). 백엔드 소식(id가 숫자 문자열)이면 상세 API로
  * 나머지를 채워 넣는다. 로컬 목데이터(`constants/news.ts`의 "n1" 같은 id)는 숫자가 아니라
  * 자동으로 건너뛴다.
+ *
+ * 푸시 알림처럼 `newsId`만 넘어오면(목록에서 찾을 수 없음 — `GET /news`가 페이지 단위) 상세 API
+ * 결과만으로 그린다. 받기 전엔 `item`이 null.
  */
-function useEnhancedNewsItem(item: NewsItem) {
-  const backendId = /^\d+$/.test(item.id) ? Number(item.id) : null
+function useEnhancedNewsItem(params: RootStackParamList['NewsDetail']) {
+  const summary = 'item' in params ? params.item : null
+  const id = 'item' in params ? params.item.id : params.newsId
+  const backendId = /^\d+$/.test(id) ? Number(id) : null
   const detail = useApiResource(
     (signal) => getNewsById(backendId as number, signal),
     [backendId],
     { enabled: backendId !== null, fallbackMessage: '소식 본문을 불러오지 못했습니다.' },
   )
 
-  if (!detail.data) return { item, loadingMore: detail.loading }
-  return { item: backendDetailToNewsItem(detail.data), loadingMore: false }
+  if (!detail.data) return { item: summary, loadingMore: detail.loading, detail }
+  return { item: backendDetailToNewsItem(detail.data), loadingMore: false, detail }
 }
 
 export default function NewsDetailScreen({ route, navigation }: Props) {
+  const { item, loadingMore, detail } = useEnhancedNewsItem(route.params)
+
+  // 알림으로 들어와 아직 아무것도 없을 때: 받는 중이면 스피너, 실패하면 다시 시도 안내.
+  if (!item) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>소식 상세</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        {detail.errorMessage ? (
+          <RetryableError
+            style={styles.loadError}
+            message={detail.errorMessage}
+            isNetworkError={detail.isNetworkError}
+            onRetry={detail.canRetry ? detail.retry : undefined}
+            retrying={detail.refreshing || detail.loading}
+          />
+        ) : (
+          <View style={styles.fullLoading}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.bodyLoadingText}>소식을 불러오는 중…</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    )
+  }
+
+  return <NewsDetailBody item={item} loadingMore={loadingMore} onBack={() => navigation.goBack()} />
+}
+
+function NewsDetailBody({
+  item,
+  loadingMore,
+  onBack,
+}: {
+  item: NewsItem
+  loadingMore: boolean
+  onBack: () => void
+}) {
   const { isBookmarked, toggleBookmark } = useSettings()
-  const { item, loadingMore } = useEnhancedNewsItem(route.params.item)
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
   const bookmarked = isBookmarked(item.id)
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>소식 상세</Text>
@@ -150,6 +198,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  headerSpacer: { width: 34, height: 34 },
+  fullLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  loadError: { margin: 16 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
   metaRow: {

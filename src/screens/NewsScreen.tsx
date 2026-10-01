@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
@@ -6,11 +6,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { TREE_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
-import type { CategoryKey } from '../constants/colors'
 import type { NewsItem } from '../types'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
+import { useBookmarkedNews } from '../hooks/useBookmarkedNews'
 import { FONTS } from '../constants/typography'
 import NewsList from '../components/news/NewsList'
 import DeptTreeList from '../components/news/DeptTreeList'
@@ -32,24 +32,22 @@ export default function NewsScreen() {
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
 
-  const newsFeed = useNewsFeed()
-  const newsData = newsFeed.data ?? []
-
-  const bookmarkedNews = useMemo(
-    () => newsData.filter((n) => settings.bookmarkedNews.includes(n.id)),
-    [newsData, settings.bookmarkedNews]
+  // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없거나 카테고리를
+  // 전부 끈 상태면 부르지 않고 빈 화면 안내를 그대로 보여준다. 카테고리는 하나일 때만 서버에서,
+  // 여러 개면 페이지마다 클라이언트에서 거른다(백엔드 category 파라미터가 하나만 받음 — useNewsFeed 참고).
+  const subscribedFeed = useNewsFeed(
+    { sourceIds: settings.subscribedDepts, categories: settings.subscribedCategories },
+    // 탭을 오갈 때마다 다시 받지 않도록 활성 탭과 무관하게 켜 둔다.
+    { enabled: settings.subscribedDepts.length > 0 && settings.subscribedCategories.length > 0 },
   )
-  const subscribedNews = useMemo(
-    () =>
-      newsData.filter(
-        (n) =>
-          settings.subscribedDepts.includes(n.sourceId) &&
-          settings.subscribedCategories.includes(n.category as CategoryKey)
-      ),
-    [newsData, settings.subscribedDepts, settings.subscribedCategories]
-  )
+  // 북마크 탭: 목록에서 골라낼 수 없어 id마다 상세를 받는다.
+  const bookmarked = useBookmarkedNews(settings.bookmarkedNews)
 
-  const displayedNews = activeTab === '북마크' ? bookmarkedNews : subscribedNews
+  const isBookmarkTab = activeTab === '북마크'
+  const displayedNews = isBookmarkTab ? bookmarked.items : subscribedFeed.items
+  const feedState = isBookmarkTab
+    ? { ...bookmarked, retrying: bookmarked.refreshing || bookmarked.loading }
+    : { ...subscribedFeed, retrying: subscribedFeed.loading || subscribedFeed.loadingMore || subscribedFeed.refreshing }
   const emptyMessage =
     activeTab === '북마크' ? '북마크한 소식이 없습니다' : '구독한 기관·학과의 소식이 없습니다'
 
@@ -104,18 +102,18 @@ export default function NewsScreen() {
           subscribedDepts={settings.subscribedDepts}
           onToggleSubscribe={toggleSubscribedDept}
         />
-      ) : newsFeed.loading ? (
+      ) : feedState.loading ? (
         <View style={styles.feedLoading}>
           <ActivityIndicator size="small" color={COLORS.primary} />
           <Text style={styles.feedLoadingText}>소식을 불러오는 중…</Text>
         </View>
-      ) : newsFeed.errorMessage && newsData.length === 0 ? (
+      ) : feedState.errorMessage && displayedNews.length === 0 ? (
         <RetryableError
           style={styles.feedError}
-          message={newsFeed.errorMessage}
-          isNetworkError={newsFeed.isNetworkError}
-          onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
-          retrying={newsFeed.refreshing}
+          message={feedState.errorMessage}
+          isNetworkError={feedState.isNetworkError}
+          onRetry={feedState.canRetry ? feedState.retry : undefined}
+          retrying={feedState.retrying}
         />
       ) : (
         <NewsList
@@ -123,6 +121,20 @@ export default function NewsScreen() {
           isBookmarked={isBookmarked}
           onPressItem={handlePressItem}
           onToggleBookmark={toggleBookmark}
+          onEndReached={isBookmarkTab ? undefined : subscribedFeed.loadMore}
+          loadingMore={!isBookmarkTab && subscribedFeed.loadingMore}
+          refreshing={isBookmarkTab ? undefined : subscribedFeed.refreshing}
+          onRefresh={isBookmarkTab ? undefined : subscribedFeed.refresh}
+          footer={
+            feedState.errorMessage ? (
+              <RetryableError
+                message={feedState.errorMessage}
+                isNetworkError={feedState.isNetworkError}
+                onRetry={feedState.canRetry ? feedState.retry : undefined}
+                retrying={feedState.retrying}
+              />
+            ) : null
+          }
           header={
             <View style={styles.listHeaderGroup}>
               {activeTab === '구독' && settings.subscribedDepts.length > 0 && (

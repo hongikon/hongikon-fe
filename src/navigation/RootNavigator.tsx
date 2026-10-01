@@ -11,7 +11,11 @@ import type { NewsItem } from '../types'
 export type RootStackParamList = {
   Welcome: undefined
   Main: undefined
-  NewsDetail: { item: NewsItem }
+  /**
+   * 목록 카드에서 오면 `item`(요약)을 넘겨 바로 그리고, 알림처럼 id만 아는 경로는 `newsId`만 넘긴다 —
+   * 어느 쪽이든 상세 화면이 `GET /news/{id}`로 본문을 받아 채운다.
+   */
+  NewsDetail: { item: NewsItem } | { newsId: string }
   NewsSearch: undefined
   DeptNews: { deptId: string; deptName: string }
   AppStatus: undefined

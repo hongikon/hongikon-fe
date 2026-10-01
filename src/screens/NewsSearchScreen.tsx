@@ -8,12 +8,13 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { TREE_DATA } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
-import { useNewsSearch } from '../hooks/useNewsSearch'
 import { useTreeSearch } from '../hooks/useTreeSearch'
 import { useNewsFeed } from '../hooks/useNewsFeed'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import DeptTreeList from '../components/news/DeptTreeList'
+import RetryableError from '../components/common/RetryableError'
 import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsSearch'>
@@ -30,10 +31,15 @@ export default function NewsSearchScreen({ navigation }: Props) {
   const { isBookmarked, toggleBookmark, settings, toggleSubscribedDept } = useSettings()
   const [mode, setMode] = useState<SearchMode>('게시글')
 
-  const newsFeed = useNewsFeed()
-  const postSearch = useNewsSearch(newsFeed.data ?? [])
+  // 게시글 검색은 서버(`GET /news?keyword=`, 제목 부분 일치)가 한다. 타이핑마다 부르지 않도록
+  // 300ms 디바운스하고, 검색어가 비면 필터 없는 전체 최신 소식을 보여준다.
+  const [postQuery, setPostQuery] = useState('')
+  const keyword = useDebouncedValue(postQuery.trim())
+  const newsFeed = useNewsFeed({ keyword })
+  const isSearchingPosts = keyword.length > 0
+  const postSearch = { query: postQuery, setQuery: setPostQuery }
   const deptSearch = useTreeSearch(TREE_DATA)
-  // 모드를 오가도 서로의 검색어를 지우지 않도록 훅을 둘 다 항상 호출하고,
+  // 모드를 오가도 서로의 검색어를 지우지 않도록 상태를 둘 다 들고 있고,
   // 입력창은 현재 모드의 상태만 보여준다.
   const active = mode === '게시글' ? postSearch : deptSearch
 
@@ -56,7 +62,7 @@ export default function NewsSearchScreen({ navigation }: Props) {
         <SearchBar
           value={active.query}
           onChangeText={active.setQuery}
-          placeholder={mode === '게시글' ? '소식 검색' : '학과·기관 검색'}
+          placeholder={mode === '게시글' ? '소식 제목 검색' : '학과·기관 검색'}
           accessibilityLabel="검색"
           style={styles.searchBar}
           autoFocus
@@ -84,25 +90,48 @@ export default function NewsSearchScreen({ navigation }: Props) {
 
       {mode === '게시글' ? (
         <NewsList
-          items={postSearch.results}
+          items={newsFeed.items}
           isBookmarked={isBookmarked}
           onPressItem={handlePressItem}
           onToggleBookmark={toggleBookmark}
+          onEndReached={newsFeed.loadMore}
+          loadingMore={newsFeed.loadingMore}
+          refreshing={newsFeed.refreshing}
+          onRefresh={newsFeed.refresh}
+          footer={
+            newsFeed.errorMessage && newsFeed.items.length > 0 ? (
+              <RetryableError
+                message={newsFeed.errorMessage}
+                isNetworkError={newsFeed.isNetworkError}
+                onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
+                retrying={newsFeed.loadingMore}
+              />
+            ) : null
+          }
           empty={
-            <View style={styles.emptyState}>
-              {newsFeed.loading ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              ) : (
-                <Ionicons name="search-outline" size={40} color="#ddd" />
-              )}
-              <Text style={styles.emptyText}>
-                {newsFeed.loading
-                  ? '소식을 불러오는 중…'
-                  : postSearch.isSearching
-                    ? `'${postSearch.query.trim()}' 검색 결과가 없습니다`
-                    : '제목·미리보기·출처로 검색합니다'}
-              </Text>
-            </View>
+            newsFeed.errorMessage && !newsFeed.loading ? (
+              <RetryableError
+                style={styles.feedError}
+                message={newsFeed.errorMessage}
+                isNetworkError={newsFeed.isNetworkError}
+                onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                {newsFeed.loading ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Ionicons name="search-outline" size={40} color="#ddd" />
+                )}
+                <Text style={styles.emptyText}>
+                  {newsFeed.loading
+                    ? '소식을 불러오는 중…'
+                    : isSearchingPosts
+                      ? `'${keyword}' 검색 결과가 없습니다`
+                      : '등록된 소식이 없습니다'}
+                </Text>
+              </View>
+            )
           }
         />
       ) : (
@@ -158,4 +187,5 @@ const styles = StyleSheet.create({
   modeChipTextActive: { color: COLORS.white },
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
+  feedError: { marginTop: 12 },
 })

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,8 +7,8 @@ import type { RootStackParamList } from '../navigation/RootNavigator'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { useSettings } from '../contexts/SettingsContext'
-import { useNewsSearch } from '../hooks/useNewsSearch'
 import { useNewsFeed } from '../hooks/useNewsFeed'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import RetryableError from '../components/common/RetryableError'
@@ -20,12 +20,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DeptNews'>
 export default function DeptNewsScreen({ route, navigation }: Props) {
   const { deptId, deptName } = route.params
   const { isBookmarked, toggleBookmark } = useSettings()
-  const newsFeed = useNewsFeed()
-  const items = useMemo(
-    () => (newsFeed.data ?? []).filter((n) => n.sourceId === deptId),
-    [newsFeed.data, deptId],
-  )
-  const search = useNewsSearch(items)
+  const [query, setQuery] = useState('')
+  const keyword = useDebouncedValue(query.trim())
+  // 학과·기관 = 수집 게시판 하나(sourceId). 검색어는 서버가 제목에서 찾는다.
+  const sourceIds = useMemo(() => [deptId], [deptId])
+  const newsFeed = useNewsFeed({ sourceIds, keyword })
+  const isSearching = keyword.length > 0
 
   const handlePressItem = useCallback(
     (item: NewsItem) => navigation.navigate('NewsDetail', { item }),
@@ -40,48 +40,61 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{deptName}</Text>
       </View>
-      {newsFeed.loading ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-        </View>
-      ) : newsFeed.errorMessage && items.length === 0 ? (
-        <RetryableError
-          style={styles.feedError}
-          message={newsFeed.errorMessage}
-          isNetworkError={newsFeed.isNetworkError}
-          onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
-          retrying={newsFeed.refreshing}
-        />
-      ) : (
+      {/* 검색창이 목록 헤더라, 검색어를 바꿔 다시 받는 동안에도 목록은 그대로 두고(입력 포커스 유지)
+          로딩·오류는 빈 목록 자리에 보여준다. */}
       <NewsList
-        items={search.results}
+        items={newsFeed.items}
         isBookmarked={isBookmarked}
         onPressItem={handlePressItem}
         onToggleBookmark={toggleBookmark}
+        onEndReached={newsFeed.loadMore}
+        loadingMore={newsFeed.loadingMore}
+        refreshing={newsFeed.refreshing}
+        onRefresh={newsFeed.refresh}
+        footer={
+          newsFeed.errorMessage && newsFeed.items.length > 0 ? (
+            <RetryableError
+              message={newsFeed.errorMessage}
+              isNetworkError={newsFeed.isNetworkError}
+              onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
+              retrying={newsFeed.loadingMore}
+            />
+          ) : null
+        }
         header={
           <SearchBar
-            value={search.query}
-            onChangeText={search.setQuery}
-            placeholder="소식 검색"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="소식 제목 검색"
             accessibilityLabel="소식 검색"
           />
         }
         empty={
-          <View style={styles.emptyState}>
-            <Ionicons
-              name={search.isSearching ? 'search-outline' : 'file-tray-outline'}
-              size={40}
-              color="#ddd"
+          newsFeed.loading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
+          ) : newsFeed.errorMessage ? (
+            <RetryableError
+              style={styles.feedError}
+              message={newsFeed.errorMessage}
+              isNetworkError={newsFeed.isNetworkError}
+              onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
             />
-            <Text style={styles.emptyText}>
-              {search.isSearching
-                ? `'${search.query.trim()}' 검색 결과가 없습니다`
-                : '등록된 소식이 없습니다'}
-            </Text>
-          </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name={isSearching ? 'search-outline' : 'file-tray-outline'}
+                size={40}
+                color="#ddd"
+              />
+              <Text style={styles.emptyText}>
+                {isSearching ? `'${keyword}' 검색 결과가 없습니다` : '등록된 소식이 없습니다'}
+              </Text>
+            </View>
+          )
         }
       />
-      )}
     </SafeAreaView>
   )
 }
@@ -108,6 +121,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, flex: 1 },
   emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  feedError: { marginHorizontal: 12, marginTop: 12 },
+  feedError: { marginTop: 12 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 })

@@ -43,11 +43,13 @@ function formatReportLocation(data: Extract<PushNotificationData, { type: 'REPOR
  * - REPORT: 제목에 제보 위치(건물+층), 본문에 제보 제목 — "위치 + 내용".
  *
  * `newsId`가 로컬 `NEWS_DATA`에 없으면(오래된 스냅샷 등) null을 돌려준다 —
- * 호출자는 이 경우 알림을 조용히 무시하면 된다.
+ * 호출자는 이 경우 알림을 조용히 무시하면 된다. 로컬 표본 미리보기(`AppStatusScreen`,
+ * `TempNotificationPreviewScreen`) 전용이다 — 실제 원격 푸시는 서버가 제목·본문을 채워 보내고,
+ * 탭했을 때의 이동은 `lib/pushNotifications.ts`가 id로 상세 API를 불러 처리한다.
  */
 export function formatPushNotification(data: PushNotificationData): FormattedNotification | null {
   if (data.type === 'NEWS') {
-    const item = NEWS_BY_ID.get(data.newsId)
+    const item = NEWS_BY_ID.get(String(data.newsId))
     if (!item) return null
     return { title: `[${item.source}]`, body: item.title }
   }
