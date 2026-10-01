@@ -12,7 +12,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.hongmap.alimi",
       "buildNumber": "1",
       "infoPlist": {
