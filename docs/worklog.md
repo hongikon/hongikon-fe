@@ -857,9 +857,10 @@ hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
 
 ### 출시 범위 (2026-10-02 결정)
 
-- **v1.0.0(첫 출시)**: 아이폰 전용(`supportsTablet: false`, `f2a877f`), **Apple 로그인 포함**(App Store 가이드라인 4.8 — 카카오 등 외부 로그인을 쓰면 동등한 로그인 수단 필요), 갤럭시 폴드 지원.
-  - Apple 로그인은 iOS 에서만 표시. 탈퇴 시 Apple 토큰 폐기(규정)에는 애플 개발자 계정의 Sign in with Apple 키(.p8)가 필요 — 사용자가 직접 생성해 서버 환경변수로 넣는다.
-  - 비활성 "Apple로 시작하기 · 준비 중" 버튼은 심사 2.1(미완성 기능) 때문에 숨겼고(`29c53bf`), 실제 Apple 로그인 버튼으로 대체한다.
+- **v1.0.0(첫 출시)**: 아이폰 전용(`supportsTablet: false`, `f2a877f`), **Apple 로그인 포함**(App Store 가이드라인 4.8 — 카카오 등 외부 로그인을 쓰면 동등한 로그인 수단 필요), 갤럭시 폴드 지원(`b983dfa`).
+  - Apple 로그인: 프론트 `feat/apple-login`(iOS 에서만 표시, 기존 바이너리(OTA)에서는 네이티브 모듈이 없어 버튼이 자동으로 숨음), 백엔드 PR #7(`POST /auth/apple`, 탈퇴 시 Apple 토큰 폐기). **v1.0.0 네이티브 빌드에 포함돼야 한다.**
+  - 탈퇴 시 Apple 토큰 폐기(규정)에는 애플 개발자 계정의 Sign in with Apple 키(.p8)가 필요 — 사용자가 직접 생성해 서버 환경변수(`APPLE_TEAM_ID`·`APPLE_KEY_ID`·`APPLE_PRIVATE_KEY`)로 넣는다.
+  - 비활성 "Apple로 시작하기 · 준비 중" 버튼은 숨겼고(`29c53bf`), 실제 Apple 로그인 버튼으로 대체.
 - **v2.0.0**: 아이패드 지원(`supportsTablet: true` + 아이패드 레이아웃·스크린샷).
 
 ### 미결 질문
