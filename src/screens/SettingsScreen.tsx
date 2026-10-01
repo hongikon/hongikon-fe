@@ -31,6 +31,7 @@ import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import * as haptics from '../lib/haptics'
 import { requestMapIntent } from '../lib/mapIntents'
+import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
@@ -439,11 +440,14 @@ export default function SettingsScreen() {
           />
           <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
           <LinkRow icon="school-outline" label="학교" value="홍익대학교" />
-          <LinkRow
-            icon="pulse-outline"
-            label="앱 상태 확인"
-            onPress={() => navigation.navigate('AppStatus')}
-          />
+          {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
+          {SHOW_DEVELOPER_TOOLS && (
+            <LinkRow
+              icon="pulse-outline"
+              label="앱 상태 확인"
+              onPress={() => navigation.navigate('AppStatus')}
+            />
+          )}
           <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <LinkRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
