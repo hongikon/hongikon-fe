@@ -3,10 +3,11 @@ import { AppState, Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import Constants from 'expo-constants'
 import { navigationRef } from '../navigation/navigationRef'
-import { registerDevice } from '../apis/devices'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from './connectivity'
+import { deactivateStoredPushDevice, registerPushDevice } from './pushDevice'
 import { useAuth } from '../contexts/AuthContext'
+import { useSettings } from '../contexts/SettingsContext'
 import { NEWS_BY_ID } from '../constants/news'
 import type { PushNotificationData } from '../types'
 
@@ -98,24 +99,35 @@ async function getExpoPushToken(): Promise<string | null> {
  * 처리한다. 기기 등록 API는 로그인을 요구해(`UserDeviceController`) 게스트는 건너뛴다.
  * 웹은 원격 푸시를 지원하지 않아 바로 종료한다.
  *
+ * 설정의 '구독 소식 알림'이 꺼져 있으면 등록하지 않고, 이미 등록된 기기는 비활성화한다
+ * (`DELETE /users/me/devices/{id}`) — 서버에 알림 전체 끄기 설정이 따로 없어 기기 단위로 끈다.
+ * 다시 켜면 새로 등록한다.
+ *
  * `App.tsx`에서 `NavigationContainer` 안(한 번만) 호출한다.
  */
 export function usePushNotifications(): void {
   const { accessToken, status } = useAuth()
+  const { settings } = useSettings()
+  const alertEnabled = settings.subscriptionAlert
   const registeredTokenRef = useRef<string | null>(null)
   /**
-   * 기기 등록이 연결 문제로 실패했는지. 사용자가 볼 화면이 없는 백그라운드 작업이라
+   * 기기 등록·비활성화가 연결 문제로 실패했는지. 사용자가 볼 화면이 없는 백그라운드 작업이라
    * 버튼 대신 연결이 돌아오거나 앱으로 돌아올 때 조용히 다시 시도한다.
    * (POST 라 client 는 자동 재시도하지 않는다 — 같은 토큰 재등록은 이렇게 드문 시점에만 한다.)
    */
-  const registrationFailedRef = useRef(false)
+  const syncFailedRef = useRef(false)
   const [retryNonce, setRetryNonce] = useState(0)
 
   const retryRegistration = () => {
-    if (!registrationFailedRef.current) return
-    registrationFailedRef.current = false
+    if (!syncFailedRef.current) return
+    syncFailedRef.current = false
     setRetryNonce((n) => n + 1)
   }
+
+  // 로그아웃하면 기기가 비활성화된다(AuthContext.logout). 같은 실행 중 다시 로그인하면 새로 등록해야 한다.
+  useEffect(() => {
+    if (!accessToken) registeredTokenRef.current = null
+  }, [accessToken])
 
   useReconnect(retryRegistration, Platform.OS !== 'web' && Boolean(accessToken))
 
@@ -152,6 +164,18 @@ export function usePushNotifications(): void {
   useEffect(() => {
     if (Platform.OS === 'web' || !accessToken) return
 
+    if (!alertEnabled) {
+      // 꺼짐: 권한을 묻지 않고, 등록돼 있던 기기만 서버에서 내린다. 다시 켜면 새로 등록하게 기억을 지운다.
+      registeredTokenRef.current = null
+      let cancelled = false
+      deactivateStoredPushDevice(accessToken).then((done) => {
+        if (!cancelled && !done) syncFailedRef.current = true
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
     let cancelled = false
     ;(async () => {
       const { status: current } = await Notifications.getPermissionsAsync()
@@ -163,17 +187,16 @@ export function usePushNotifications(): void {
       if (!token || cancelled || registeredTokenRef.current === token) return
 
       try {
-        await registerDevice(
-          token,
-          'EXPO',
-          Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
-          accessToken,
-        )
+        // 받은 기기 id 는 registerPushDevice 가 저장한다 — 알림 끄기·로그아웃 때 비활성화에 쓴다.
+        await registerPushDevice(token, Platform.OS === 'ios' ? 'IOS' : 'ANDROID', accessToken)
+        // 등록하는 사이 알림을 껐으면 꺼짐 처리(비활성화)가 이 등록 뒤로 줄 서 있다가 곧 내린다.
+        // 그때는 "등록됨"으로 기억하지 않아야 다시 켤 때 새로 등록한다.
+        if (cancelled) return
         registeredTokenRef.current = token
-        registrationFailedRef.current = false
+        syncFailedRef.current = false
       } catch (error) {
         if (cancelled) return
-        registrationFailedRef.current = isRetryableError(error)
+        syncFailedRef.current = isRetryableError(error)
         if (__DEV__) console.warn('기기를 서버에 등록하지 못했습니다:', error)
       }
     })()
@@ -181,5 +204,5 @@ export function usePushNotifications(): void {
     return () => {
       cancelled = true
     }
-  }, [accessToken, retryNonce])
+  }, [accessToken, alertEnabled, retryNonce])
 }

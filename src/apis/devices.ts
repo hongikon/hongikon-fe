@@ -1,4 +1,4 @@
-import { apiRequest } from './client'
+import { apiRequest, type ApiRequestOptions } from './client'
 
 /** 백엔드 `TokenType` (`UserDevice` 엔티티) 과 값이 일치해야 한다. */
 export type PushTokenType = 'EXPO' | 'FCM' | 'APNS'
@@ -30,10 +30,18 @@ export function registerDevice(
   })
 }
 
-/** 기기를 비활성화해 더 이상 푸시를 받지 않게 한다(`DELETE /users/me/devices/{id}`). */
-export function deactivateDevice(deviceId: number, accessToken: string): Promise<void> {
+/**
+ * 기기를 비활성화해 더 이상 푸시를 받지 않게 한다(`DELETE /users/me/devices/{id}`).
+ * 로그아웃처럼 사용자를 기다리게 하면 안 되는 곳은 `options` 로 재시도·제한 시간을 줄인다.
+ */
+export function deactivateDevice(
+  deviceId: number,
+  accessToken: string,
+  options: Pick<ApiRequestOptions, 'retries' | 'timeoutMs'> = {},
+): Promise<void> {
   return apiRequest<void>(`/users/me/devices/${deviceId}`, {
     method: 'DELETE',
     accessToken,
+    ...options,
   })
 }

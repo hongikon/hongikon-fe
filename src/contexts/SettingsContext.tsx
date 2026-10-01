@@ -16,8 +16,15 @@ import {
   getNotificationCategories,
   setNotificationCategoryEnabled,
 } from '../apis/notifications'
+import {
+  addMyDepartment,
+  getMyDepartments,
+  loadDepartmentIdMap,
+  removeMyDepartment,
+} from '../apis/departments'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from '../lib/connectivity'
+import { diffDeptSubscriptions, mergeDeptSubscriptions } from '../utils/departmentSync'
 
 const STORAGE_KEY = '@hongik_settings'
 
@@ -182,11 +189,141 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }, [accessToken])
 
+  /**
+   * 학과 구독 서버 동기화. 학과 소식 푸시는 서버 `user_departments` 에 있는 구독자에게만 가서
+   * (`UserDeviceRepository.findPushTargets`), 로컬에만 두면 아무도 받지 못한다.
+   *
+   * - 서버에 아직 반영하지 못한 학과 변경(리프 id → 구독 여부). 카테고리와 같은 방식으로
+   *   화면은 바로 바꾸고, 연결이 돌아오면 마지막 값만 다시 보낸다.
+   * - 학과가 아닌 '대학' 게시판(학사·장학 등)은 서버 학과 목록에 없어 로컬에만 둔다.
+   * - 게스트는 지금처럼 로컬에만 둔다.
+   */
+  const pendingDeptChangesRef = useRef(new Map<string, boolean>())
+  /** 지금 서버로 보내는 중인 리프. 같은 리프의 POST·DELETE 가 겹쳐 순서가 뒤집히지 않게 하나씩 보낸다. */
+  const deptInFlightRef = useRef(new Set<string>())
+  const accessTokenRef = useRef(accessToken)
+  accessTokenRef.current = accessToken
+  const isLoggedIn = Boolean(accessToken)
+  /** 로그인 직후 합치기가 끝났는지. 끝나기 전 실패하면 재연결·포그라운드 때 다시 한다. */
+  const [deptSyncFailed, setDeptSyncFailed] = useState(false)
+  const [deptSyncNonce, setDeptSyncNonce] = useState(0)
+
+  // 로그아웃하면 이전 계정의 미전송 변경을 버린다. 토큰 재발급(accessToken 값만 바뀜)에는 비우지 않는다 —
+  // 계정이 바뀌려면 반드시 로그아웃(null)을 거친다.
+  useEffect(() => {
+    if (isLoggedIn) return
+    pendingDeptChangesRef.current.clear()
+    setDeptSyncFailed(false)
+  }, [isLoggedIn])
+
+  /** 리프 하나의 마지막 변경을 서버에 보낸다. 보내는 사이 또 바뀌었으면 끝난 뒤 새 값을 이어 보낸다. */
+  const flushDeptChange = useCallback(async (leaf: string): Promise<void> => {
+    const pending = pendingDeptChangesRef.current
+    const inFlight = deptInFlightRef.current
+    const token = accessTokenRef.current
+    const subscribed = pending.get(leaf)
+    if (!token || subscribed === undefined || inFlight.has(leaf)) return
+
+    inFlight.add(leaf)
+    let sent = false
+    try {
+      const departmentId = (await loadDepartmentIdMap()).get(leaf)
+      if (departmentId !== undefined) {
+        await (subscribed
+          ? addMyDepartment(departmentId, token)
+          : removeMyDepartment(departmentId, token))
+      }
+      // 학과가 아닌 리프(대학 게시판)는 보낼 곳이 없어 그대로 끝낸다.
+      if (pending.get(leaf) === subscribed) pending.delete(leaf)
+      sent = true
+    } catch (error) {
+      if (isRetryableError(error)) {
+        // 값을 남겨 두었다가 재연결·포그라운드 때 다시 보낸다.
+        if (__DEV__) console.warn('학과 구독을 서버에 저장하지 못해 연결되면 다시 보냅니다:', error)
+      } else {
+        // 서버가 거절한 변경은 다시 보내도 같다. 로컬 구독은 소식 피드 필터로도 쓰여 되돌리지 않고 남겨 둔다.
+        if (pending.get(leaf) === subscribed) pending.delete(leaf)
+        if (__DEV__) console.warn('학과 구독 저장이 거절되었습니다:', error)
+      }
+    } finally {
+      inFlight.delete(leaf)
+    }
+    if (sent && pending.has(leaf)) void flushDeptChange(leaf)
+  }, [])
+
+  const flushPendingDeptChanges = useCallback(() => {
+    pendingDeptChangesRef.current.forEach((_, leaf) => {
+      void flushDeptChange(leaf)
+    })
+  }, [flushDeptChange])
+
+  /** 서버 구독을 원하는 값으로 맞춘다. 차이 나는 학과만 대기열에 넣어 보낸다. */
+  const queueDeptChanges = useCallback(
+    (leaves: Iterable<string>, subscribed: boolean) => {
+      for (const leaf of leaves) pendingDeptChangesRef.current.set(leaf, subscribed)
+      flushPendingDeptChanges()
+    },
+    [flushPendingDeptChanges],
+  )
+
+  /**
+   * 로그인하면 서버 구독과 로컬 구독을 합집합으로 합친다(이유는 `mergeDeptSubscriptions` 주석).
+   * 합친 뒤 서버에 없는 학과는 추가하고, 방금 해지했지만 아직 못 보낸 학과는 지운다.
+   */
+  useEffect(() => {
+    if (!loaded || !isLoggedIn) return
+
+    let cancelled = false
+    ;(async () => {
+      const token = accessTokenRef.current
+      if (!token) return
+      const [idByLeaf, mine] = await Promise.all([loadDepartmentIdMap(), getMyDepartments(token)])
+      if (cancelled) return
+
+      const serverIds = mine.map((d) => d.departmentId)
+      const pendingRemovals = new Set(
+        [...pendingDeptChangesRef.current].filter(([, on]) => !on).map(([leaf]) => leaf),
+      )
+      const merged = mergeDeptSubscriptions(
+        settingsRef.current.subscribedDepts,
+        serverIds,
+        idByLeaf,
+        pendingRemovals,
+      )
+      setSettings((prev) => ({
+        ...prev,
+        // 기다리는 사이 사용자가 바꾼 값(prev)을 기준으로 다시 합친다.
+        subscribedDepts: mergeDeptSubscriptions(prev.subscribedDepts, serverIds, idByLeaf, pendingRemovals),
+      }))
+      setDeptSyncFailed(false)
+
+      const leafById = new Map([...idByLeaf].map(([leaf, id]) => [id, leaf]))
+      const { toAdd, toRemove } = diffDeptSubscriptions(merged, serverIds, idByLeaf)
+      const pending = pendingDeptChangesRef.current
+      // 이미 대기 중인 리프는 그 값이 더 최신이라 건드리지 않는다.
+      const toLeaves = (ids: number[]) =>
+        ids.map((id) => leafById.get(id)!).filter((leaf) => !pending.has(leaf))
+      queueDeptChanges(toLeaves(toAdd), true)
+      queueDeptChanges(toLeaves(toRemove), false)
+    })().catch((error) => {
+      if (cancelled) return
+      // 로컬 값으로 계속 쓸 수 있어 화면을 막지 않는다. 연결이 돌아오면 다시 합친다.
+      setDeptSyncFailed(isRetryableError(error))
+      if (__DEV__) console.warn('학과 구독을 서버와 맞추지 못했습니다:', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, loaded, deptSyncNonce, queueDeptChanges])
+
   const recoverCategorySync = useCallback(() => {
     if (!accessToken) return
     if (categoryFetchFailed) setCategoryFetchNonce((n) => n + 1)
     if (pendingCategoryChangesRef.current.size > 0) flushPendingCategoryChanges()
-  }, [accessToken, categoryFetchFailed, flushPendingCategoryChanges])
+    if (deptSyncFailed) setDeptSyncNonce((n) => n + 1)
+    if (pendingDeptChangesRef.current.size > 0) flushPendingDeptChanges()
+  }, [accessToken, categoryFetchFailed, flushPendingCategoryChanges, deptSyncFailed, flushPendingDeptChanges])
 
   useReconnect(recoverCategorySync, Boolean(accessToken))
 
@@ -241,12 +378,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [accessToken],
   )
 
-  const toggleSubscribedDept = useCallback((id: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      subscribedDepts: toggleInList(prev.subscribedDepts, id),
-    }))
-  }, [])
+  /** 화면은 바로 바꾸고(낙관적 반영), 로그인 상태면 서버 구독도 뒤따라 맞춘다. 실패해도 화면은 막지 않는다. */
+  const toggleSubscribedDept = useCallback(
+    (id: string) => {
+      const nextSubscribed = !settingsRef.current.subscribedDepts.includes(id)
+      setSettings((prev) => ({
+        ...prev,
+        subscribedDepts: toggleInList(prev.subscribedDepts, id),
+      }))
+      if (accessTokenRef.current) queueDeptChanges([id], nextSubscribed)
+    },
+    [queueDeptChanges],
+  )
 
   const toggleBookmark = useCallback((id: string) => {
     setSettings((prev) => ({
@@ -261,8 +404,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   )
 
   const resetSettings = useCallback(() => {
+    // 초기화하면 구독 학과가 비므로 서버 구독도 해지한다 — 안 그러면 다음 로그인 때 합치기로 되살아난다.
+    if (accessTokenRef.current) queueDeptChanges(settingsRef.current.subscribedDepts, false)
     setSettings(DEFAULT_SETTINGS)
-  }, [])
+  }, [queueDeptChanges])
 
   /**
    * 값을 매 렌더 새 객체로 만들면 설정을 건드리지 않아도 모든 소비자가 다시 그려진다.
