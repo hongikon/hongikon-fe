@@ -42,6 +42,8 @@ export interface AdminReport {
   customCategoryLabel: string | null
   title: string
   content: string | null
+  /** 첨부 사진 보기 URL(presigned GET, 약 1시간). 사진이 없거나 반려·삭제로 지워졌으면 null. 이전 서버는 필드 자체가 없다. */
+  imageUrl?: string | null
   buildingId: number | null
   buildingName: string | null
   floor: number | null

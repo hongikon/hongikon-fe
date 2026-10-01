@@ -22,7 +22,7 @@ interface ReportSheetProps {
  * 제보 상세 배너. 지도 마커를 누르면 뜬다.
  *
  * 본문(`content`)은 목록 응답에 없다(`docs/report-api-spec.md` §4.2 는 목록에서
- * content 를 뺀다). 제목·카테고리·시간·사진까지만 보여주고, 본문이 필요해지면
+ * content 를 뺀다). 제목·카테고리·시간·사진(서버가 준 presigned URL)까지만 보여주고, 본문이 필요해지면
  * 단건 조회 엔드포인트가 생긴 뒤에 붙인다.
  */
 export default function ReportSheet({ report, onClose }: ReportSheetProps) {
@@ -32,6 +32,8 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const toast = useToast()
   const [flagging, setFlagging] = useState(false)
   const [flagged, setFlagged] = useState(false)
+  // 사진 URL 은 1시간 뒤 만료된다. 못 불러오면 깨진 칸 대신 숨긴다(다른 제보로 바뀌면 다시 시도).
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
   const [error, setError] = useState<{
     message: string
     network: boolean
@@ -92,10 +94,12 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       <Text style={styles.title}>{report.title}</Text>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
 
-      {report.imageUrl !== undefined && (
+      {!!report.imageUrl && report.imageUrl !== failedPhotoUrl && (
         <Image
           source={{ uri: report.imageUrl }}
           style={styles.photo}
+          resizeMode="cover"
+          onError={() => setFailedPhotoUrl(report.imageUrl ?? null)}
           accessibilityLabel="제보 첨부 사진"
         />
       )}

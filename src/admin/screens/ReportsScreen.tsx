@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
@@ -150,6 +150,8 @@ function ReportCard({
   const [flags, setFlags] = useState<AdminReportFlag[] | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [flagsError, setFlagsError] = useState<string | null>(null)
+  /** 사진 URL 이 만료(1시간)돼 못 불러온 경우. 새로고침하면 새 URL 을 받는다. */
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
 
   const now = Date.now()
   const endsAt = parseServerDate(report.endsAt)
@@ -223,6 +225,25 @@ function ReportCard({
 
       <Text style={styles.title}>{report.title}</Text>
       {report.content ? <Text style={styles.content}>{report.content}</Text> : <Text style={styles.metaItalic}>(내용 없음)</Text>}
+
+      {report.imageUrl ? (
+        report.imageUrl === failedPhotoUrl ? (
+          <Text style={styles.metaItalic}>사진을 불러오지 못했습니다. 새로고침하면 다시 불러옵니다.</Text>
+        ) : (
+          <Pressable
+            onPress={() => window.open(report.imageUrl ?? '', '_blank', 'noopener,noreferrer')}
+            accessibilityRole="link"
+            accessibilityLabel="첨부 사진 원본 보기"
+          >
+            <Image
+              source={{ uri: report.imageUrl }}
+              style={styles.photo}
+              resizeMode="contain"
+              onError={() => setFailedPhotoUrl(report.imageUrl ?? null)}
+            />
+          </Pressable>
+        )
+      ) : null}
 
       <View style={styles.facts}>
         <Fact icon="location-outline" text={location || '건물 지정 없음(지도 위치)'}>
@@ -362,6 +383,7 @@ const styles = StyleSheet.create({
   categoryText: { fontFamily: FONTS.semibold, fontSize: 12 },
   title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.textPrimary },
   content: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 21, color: COLORS.textPrimary },
+  photo: { width: '100%', maxWidth: 360, height: 220, borderRadius: 8, backgroundColor: '#F2F2F2' },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   metaItalic: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   facts: { gap: 6 },
