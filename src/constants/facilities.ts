@@ -41,7 +41,6 @@ export const FACILITIES: readonly Facility[] = [
 
   // ── 제1공학관 K동 ───────────────────────────────────────
   { id: 'hi-k-6f-printer', kind: '프린터', buildingName: '제1공학관 K동', floor: 6, note: '공용PC실' },
-  { id: 'hi-k-outdoor-smoking-01', kind: '흡연구역', buildingName: '제1공학관 K동', note: 'K동 앞 대나무숲 야외 흡연구역' },
 
   // ── 체육관 ──────────────────────────────────────────────
   { id: 'hi-gym-building-elevator', kind: '엘리베이터', buildingName: '체육관' },
@@ -76,7 +75,6 @@ export const FACILITIES: readonly Facility[] = [
   // ── 정보통신센터 Q동 ────────────────────────────────────
   { id: 'hi-q-8f-study-room', kind: '스터디룸', buildingName: '정보통신센터 Q동', floor: 8, note: '프레젠테이션룸' },
   { id: 'hi-q-1f-nap-room', kind: '수면실', buildingName: '정보통신센터 Q동', floor: 1, note: '여학생 휴게실' },
-  { id: 'hi-q-outdoor-smoking-01', kind: '흡연구역', buildingName: '정보통신센터 Q동', note: "지도 표기 '흡연 구역' · H동 남측·Q동 서측 연결부 인근" },
   { id: 'hi-q-building-elevator', kind: '엘리베이터', buildingName: '정보통신센터 Q동', note: '지도상 엘리베이터 표기(정확한 층 미확인)' },
 
   // ── 제4강의동 Z4동 ──────────────────────────────────────
@@ -86,12 +84,10 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-mh-16f-restaurant', kind: '식당', buildingName: '문헌관 MH동', floor: 16, note: '교직원식당' },
   { id: 'hi-mh-1f-printer', kind: '프린터', buildingName: '문헌관 MH동', floor: 1 },
   { id: 'hi-mh-1f-certificate-kiosk', kind: '증명서 발급', buildingName: '문헌관 MH동', floor: 1, note: '증명서 출력기' },
-  { id: 'hi-mh-outdoor-smoking-01', kind: '흡연구역', buildingName: '문헌관 MH동', note: '문헌관 앞 야외 흡연구역' },
   { id: 'hi-mh-building-elevator', kind: '엘리베이터', buildingName: '문헌관 MH동' },
 
   // ── 미술학관 F동 ────────────────────────────────────────
   { id: 'hi-f-1f-printer', kind: '프린터', buildingName: '미술학관 F동', floor: 1, note: '공용PC실' },
-  { id: 'hi-f-outdoor-smoking-01', kind: '흡연구역', buildingName: '미술학관 F동', note: 'F동 야외 흡연구역' },
 
   // ── 미술종합강의동 U동 ──────────────────────────────────
   { id: 'hi-u-building-elevator', kind: '엘리베이터', buildingName: '미술종합강의동 U동' },
@@ -99,7 +95,6 @@ export const FACILITIES: readonly Facility[] = [
   // ── 제4공학관 T동 ───────────────────────────────────────
   { id: 'hi-t-4f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 4 },
   { id: 'hi-t-3f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 3 },
-  { id: 'hi-t-outdoor-smoking-01', kind: '흡연구역', buildingName: '제4공학관 T동', note: 'T동 주차장 야외 흡연구역' },
   { id: 'hi-t-building-elevator', kind: '엘리베이터', buildingName: '제4공학관 T동' },
 
   // ── 인문사회관 B동 ──────────────────────────────────────
@@ -131,7 +126,6 @@ export const FACILITIES: readonly Facility[] = [
   // ── 인문사회관 C동 ──────────────────────────────────────
   { id: 'hi-c-4f-printer', kind: '프린터', buildingName: '인문사회관 C동', floor: 4, note: '공용PC실' },
   { id: 'hi-c-8f-cafe', kind: '카페', buildingName: '인문사회관 C동', floor: 8, note: '카페나무' },
-  { id: 'hi-c-8f-outdoor-smoking-01', kind: '흡연구역', buildingName: '인문사회관 C동', floor: 8, note: 'C8 흡연구역 (야외)' },
   { id: 'hi-c-building-elevator', kind: '엘리베이터', buildingName: '인문사회관 C동' },
 
   // ── 인문사회관 D동 ──────────────────────────────────────
