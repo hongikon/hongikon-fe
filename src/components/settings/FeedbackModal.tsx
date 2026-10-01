@@ -89,6 +89,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             placeholder="불편한 점이나 제안하고 싶은 내용을 적어주세요"
             placeholderTextColor={COLORS.textPlaceholder}
             value={content}
+            maxLength={1000}
             onChangeText={setContent}
             multiline
             textAlignVertical="top"
@@ -100,6 +101,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             placeholder="example@hongik.ac.kr"
             placeholderTextColor={COLORS.textPlaceholder}
             value={contact}
+            maxLength={100}
             onChangeText={setContact}
             keyboardType="email-address"
             autoCapitalize="none"

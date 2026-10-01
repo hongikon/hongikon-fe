@@ -251,13 +251,9 @@ export interface NewsItem {
 export type ReportCategory = 'EVENT' | 'PERFORMANCE' | 'FOOD_TRUCK' | 'BOOTH' | 'ETC'
 
 /**
- * 제보 상태.
- *
- * `PENDING`(운영자 검토 대기)·`REJECTED`(반려)는 `docs/report-api-spec.md` §8.1의
- * 제안일 뿐, 실제 백엔드(`ReportService`)는 구현하지 않았다 — 생성 즉시 `ACTIVE`로
- * 저장하고(로컬 목업과 동일), 삭제도 상태 전환이 아니라 실제 DELETE라 `DELETED`도
- * 쓰이지 않는다. 지금 실제로 나오는 값은 `ACTIVE`·`HIDDEN`(신고 누적 3회) 둘뿐이다.
- * 두 값은 검토 기능이 생기면 다시 쓸 수 있어 유니온에는 남겨 둔다.
+ * 제보 상태. 새 제보는 `PENDING`(운영진 검토 대기)으로 저장되고, 관리자 화면(`/admin`)에서
+ * 승인하면 `ACTIVE` 가 돼 지도에 뜬다. `REJECTED`(반려), `HIDDEN`(신고 누적 3회 자동 숨김 또는
+ * 관리자 숨김), `DELETED`(관리자 삭제). 지도 목록(`GET /reports`)에는 `ACTIVE` 만 온다.
  */
 export type ReportStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'HIDDEN' | 'DELETED'
 
@@ -279,11 +275,7 @@ export interface Report {
   lat: number
   lng: number
   category: ReportCategory
-  /**
-   * `category` 가 `ETC` 일 때, '무슨 일인가요?' 칩에서 직접 입력한 라벨.
-   * 서버 스펙에 없는 임시(로컬 전용) 필드다 — 백엔드가 카테고리를 직접
-   * 입력받게 되면 이 필드는 걷어내고 서버 값을 그대로 쓰면 된다.
-   */
+  /** `category` 가 `ETC` 일 때, '무슨 일인가요?' 칩에서 직접 입력한 라벨(서버 최대 50자). */
   customCategoryLabel?: string
   title: string
   content: string | null
@@ -311,8 +303,10 @@ export type ReportListItem = Omit<Report, 'content' | 'status'>
 
 /** `POST /reports` 요청 바디. */
 export interface CreateReportInput {
-  buildingId?: number
-  floor?: number
+  /** 서버 `buildings.id`(필수). 앱 건물 이름은 `getServerBuildingId` 로 바꾼다. */
+  buildingId: number
+  /** 필수. 지하는 음수(B1 = -1). */
+  floor: number
   lat: number
   lng: number
   category: ReportCategory

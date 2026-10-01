@@ -559,8 +559,8 @@ export default function MapScreen() {
   /**
    * 제보 등록 성공. 작성창을 닫는다.
    *
-   * 새 제보는 만들자마자 `ACTIVE` 라(임시 로컬 저장소라 검토 절차가 없다) 제보
-   * 레이어가 켜져 있으면 목록을 다시 불러 바로 지도에 반영한다.
+   * 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에 뜬다. 작성창이 그 안내를 먼저
+   * 보여준다. 레이어가 켜져 있으면 목록은 새로 받아 둔다(그 사이 승인된 다른 제보 반영).
    */
   const handleReportCreated = useCallback(() => {
     setReportTarget(null);

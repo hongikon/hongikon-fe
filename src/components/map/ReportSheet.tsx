@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
 import { flagReport } from '../../apis/reports'
-import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
+import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin } from '../../utils/reports'
 import type { ReportListItem } from '../../types'
@@ -50,6 +50,11 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       await flagReport(report.id, { reason: 'ETC' }, accessToken)
       setFlagged(true)
     } catch (caught) {
+      // 이미 신고한 제보면 서버가 409 를 준다 — 실패가 아니라 "신고함" 상태로 보여준다.
+      if (caught instanceof ApiError && caught.status === 409) {
+        setFlagged(true)
+        return
+      }
       // 신고는 POST 라 자동으로 다시 보내지 않는다(중복 신고 방지). 연결 문제일 때만
       // "다시 시도" 버튼을 줘서 사용자가 직접 다시 보내게 한다.
       setError({

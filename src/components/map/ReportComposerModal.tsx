@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Modal,
   View,
@@ -26,7 +26,10 @@ import {
 } from '../../constants/report'
 import { useAuth } from '../../contexts/AuthContext'
 import { createReport, uploadReportImage } from '../../apis/reports'
-import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
+import { getServerBuildingId } from '../../apis/buildings'
+import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
+import { BUILDINGS } from '../../constants/buildings'
+import { buildFloorOptions, formatFloor, type FloorOption } from '../../utils/floors'
 import RetryableError from '../common/RetryableError'
 import { promptLogin } from '../../utils/reports'
 import { chipStyles } from './chipStyles'
@@ -44,6 +47,29 @@ interface ReportComposerModalProps {
   target: ReportTarget | null
   onClose: () => void
   onCreated: (report: Report) => void
+}
+
+/** 층수가 확인되지 않은 건물에서 고를 수 있게 하는 기본 층 목록(B1~6F). */
+const FALLBACK_FLOOR_OPTIONS: FloorOption[] = [-1, 1, 2, 3, 4, 5, 6].map((value) => ({
+  label: formatFloor(value),
+  value,
+}))
+
+/**
+ * 등록 실패를 사용자가 다음에 뭘 해야 하는지 알 수 있는 문구로 바꾼다.
+ * (서버 원문은 개발용이라 그대로 보여주지 않는다.)
+ */
+function reportSubmitErrorMessage(error: unknown): string {
+  if (isNetworkError(error)) return '인터넷 연결이 불안정해 제보를 올리지 못했어요. 연결을 확인하고 다시 시도해 주세요.'
+  if (error instanceof ApiError) {
+    if (error.status === 400) return '제보 내용이 올바르지 않아요. 위치(건물·층)와 제목을 다시 확인해 주세요.'
+    if (error.status === 401) return '로그인이 만료됐어요. 다시 로그인한 뒤 제보해 주세요.'
+    if (error.status === 403) return '이 계정으로는 제보를 올릴 수 없어요.'
+    if (error.status === 429) return '제보를 너무 자주 올렸어요. 잠시 후 다시 시도해 주세요.'
+    if (error.status >= 500) return '서버에 일시적인 문제가 있어 제보를 올리지 못했어요. 잠시 후 다시 시도해 주세요.'
+  }
+  if (error instanceof Error && error.message) return error.message
+  return '제보를 올리지 못했어요. 잠시 후 다시 시도해 주세요.'
 }
 
 function formatCoord(value: number): string {
@@ -89,9 +115,26 @@ export default function ReportComposerModal({
   // 올린 제보가 지도에 안 보이는 것을 실패로 오해하지 않게 하려는 것이다.
   const [submitted, setSubmitted] = useState(false)
 
+  // 서버는 제보를 건물·층 단위로 받는다(둘 다 필수). 핀 근처 건물이 없으면 올릴 수 없다.
+  const building = useMemo(
+    () => (target?.buildingName ? BUILDINGS.find((b) => b.name === target.buildingName) ?? null : null),
+    [target?.buildingName],
+  )
+  const floorOptions = useMemo(() => {
+    const options = building ? buildFloorOptions(building) : []
+    return options.length > 0 ? options : FALLBACK_FLOOR_OPTIONS
+  }, [building])
+  const [floor, setFloor] = useState(1)
+  // 다른 건물로 바뀌면 그 건물에 있는 층으로 맞춘다(기본 1층).
+  useEffect(() => {
+    if (!floorOptions.some((option) => option.value === floor)) {
+      setFloor(floorOptions.some((option) => option.value === 1) ? 1 : floorOptions[0].value)
+    }
+  }, [floorOptions, floor])
+
   const trimmedTitle = title.trim()
   const trimmedCustomLabel = customLabel.trim()
-  const canSubmit = trimmedTitle.length > 0 && !submitting
+  const canSubmit = trimmedTitle.length > 0 && building !== null && !submitting
 
   const reset = () => {
     setCategory('EVENT')
@@ -101,6 +144,7 @@ export default function ReportComposerModal({
     setTitle('')
     setContent('')
     setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
+    setFloor(1)
     setImageUri(null)
     setError(null)
     setSubmitError(null)
@@ -161,7 +205,7 @@ export default function ReportComposerModal({
   }
 
   const handleSubmit = async () => {
-    if (!target || !canSubmit) return
+    if (!target || !canSubmit || !building) return
 
     // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
     if (!accessToken) {
@@ -183,11 +227,17 @@ export default function ReportComposerModal({
       const imageUrl =
         imageUri === null ? undefined : await uploadReportImage(imageUri, accessToken)
 
+      // 앱 건물 이름 → 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400).
+      const buildingId = await getServerBuildingId(building.name)
+      if (buildingId === null) {
+        throw new Error('이 건물은 아직 제보를 받을 수 없어요. 가까운 다른 건물로 위치를 옮겨 주세요.')
+      }
+
       const report = await createReport(
         {
           imageUrl,
-          // buildingId 는 보내지 않는다. 앱의 건물 데이터는 이름으로만 식별되고
-          // 서버 buildings 테이블의 숫자 id 를 알 방법이 없다(스펙 §4.1 선택 필드).
+          buildingId,
+          floor,
           lat: target.lat,
           lng: target.lng,
           category,
@@ -203,7 +253,7 @@ export default function ReportComposerModal({
       setSubmitted(true)
     } catch (caught) {
       setSubmitError({
-        message: getErrorMessage(caught, '제보를 등록하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+        message: reportSubmitErrorMessage(caught),
         network: isNetworkError(caught),
         retryable: isRetryableError(caught),
       })
@@ -234,9 +284,9 @@ export default function ReportComposerModal({
               {submitted ? (
                 <View style={styles.successBox}>
                   <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
-                  <Text style={styles.successTitle}>제보가 등록됐어요</Text>
+                  <Text style={styles.successTitle}>제보가 접수됐어요</Text>
                   <Text style={styles.successText}>
-                    바로 지도에 올라갑니다.
+                    운영진이 확인한 뒤 지도에 올라가요.{'\n'}잘못된 정보나 광고는 올라가지 않을 수 있어요.
                   </Text>
                   <TouchableOpacity
                     style={[styles.submitBtn, styles.successBtn]}
@@ -264,6 +314,39 @@ export default function ReportComposerModal({
                             : ''}
                       </Text>
                     </View>
+
+                    {building === null ? (
+                      <View style={styles.errorBox}>
+                        <Ionicons name="information-circle" size={15} color="#B45309" />
+                        <Text style={styles.errorText}>
+                          제보는 건물·층 단위로 올라가요. 창을 닫고 지도에서 핀을 건물 가까이로 옮겨 주세요.
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Text style={styles.sectionLabel}>몇 층인가요?</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.floorRow}>
+                          {floorOptions.map((option) => {
+                            const isActive = floor === option.value
+                            return (
+                              <TouchableOpacity
+                                key={option.value}
+                                activeOpacity={0.75}
+                                onPress={() => setFloor(option.value)}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: isActive }}
+                                accessibilityLabel={`${option.label}`}
+                                style={[chipStyles.chip, isActive && styles.durationChipActive]}
+                              >
+                                <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
+                                  {option.label}
+                                </Text>
+                              </TouchableOpacity>
+                            )
+                          })}
+                        </ScrollView>
+                      </>
+                    )}
 
                     <Text style={styles.sectionLabel}>무슨 일인가요?</Text>
                     <View style={styles.chipWrap}>
@@ -539,6 +622,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  floorRow: { flexDirection: 'row', gap: 7, paddingRight: 4 },
   durationChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   customChipAdd: { borderStyle: 'dashed', borderColor: COLORS.primary },
   customChipAddText: { color: COLORS.primary },

@@ -38,7 +38,8 @@ export async function createReport(
   input: CreateReportInput,
   accessToken: string,
 ): Promise<Report> {
-  const { customCategoryLabel, imageUrl, ...body } = input
+  // 사진 업로드 API 는 아직 없어 imageUrl 만 빼고 보낸다. customCategoryLabel 은 서버가 ETC 일 때 받는다.
+  const { imageUrl, ...body } = input
 
   const report = await apiRequest<Report>('/reports', {
     method: 'POST',
@@ -46,7 +47,7 @@ export async function createReport(
     accessToken,
   })
 
-  return { ...report, customCategoryLabel, imageUrl }
+  return { ...report, imageUrl }
 }
 
 /** 현재 진행 중인 제보 목록. */
