@@ -279,7 +279,13 @@ export interface Report {
   customCategoryLabel?: string
   title: string
   content: string | null
+  /**
+   * 작성자 이름. 앱 닉네임 기능 이후 서버는 `authorDisplayName` 과 같은 값(가린 이름)을 싣는다.
+   * 그 전 서버는 카카오/Apple 닉네임 원문을 실으므로 화면에 직접 쓰지 말고 `reportAuthorName` 을 거친다.
+   */
   authorNickname: string
+  /** 다른 사람에게 보일 작성자 이름(앱 닉네임 또는 가린 로그인 닉네임). 앱 닉네임 기능 전 서버는 없음. */
+  authorDisplayName?: string
   /**
    * 첨부 사진 보기 URL(S3 presigned GET, 약 1시간 유효). 사진이 없거나, 사진 기능이
    * 배포되기 전 서버면 null/없음. 만료되면 이미지 로드가 실패하니 화면은 실패 시 숨긴다.

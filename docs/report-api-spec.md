@@ -107,6 +107,12 @@ Base path는 기존 `/auth`처럼 접두사 없이 `/reports`로 뒀다.
 
 작성자 `userId`는 노출하지 않고 `authorNickname`(표시용)과 `isMine`(요청자 본인 여부, 서버에서 JWT의 userId로 계산)만 내려준다. 원본 계획의 "명예훼손 대응 = 작성자 표시" 요구는 닉네임 노출로 충분히 충족한다.
 
+> **2026-10 변경(앱 닉네임, hongikon-be `feat/app-nickname`)**: 카카오 닉네임은 대개 실명이라 원문을 공개하지 않는다.
+> 서버는 `authorDisplayName`(앱 닉네임, 없으면 로그인 닉네임 첫 글자만 남기고 가린 이름 — 예: `홍**`)을 새로 싣고,
+> `authorNickname` 에도 같은 값을 넣는다(구버전 앱 호환). 앱은 `reportAuthorName()`(`src/utils/nickname.ts`)으로 보여 주며,
+> `authorDisplayName` 이 없는 이전 서버 응답이면 `authorNickname` 을 앱에서 직접 가린다.
+> 앱 닉네임은 `GET /users/me`, `PUT /users/me/nickname {nickname}`, `DELETE /users/me/nickname`(`src/apis/users.ts`).
+
 **에러**
 - `400` — 유효성 실패 (`title` 초과, `endsAt <= startsAt` 등) → `{ "message": "..." }`
 - `401` — 토큰 없음/무효

@@ -11,6 +11,7 @@ import { flagReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin } from '../../utils/reports'
+import { reportAuthorName } from '../../utils/nickname'
 import type { ReportListItem } from '../../types'
 
 interface ReportSheetProps {
@@ -105,7 +106,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       )}
 
       <View style={styles.footer}>
-        <Text style={styles.author}>{report.authorNickname}</Text>
+        <Text style={styles.author}>{reportAuthorName(report)}</Text>
         {flagged ? (
           <Text style={styles.flaggedText}>신고 접수됨</Text>
         ) : (
