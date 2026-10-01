@@ -931,6 +931,8 @@ export default function MapScreen() {
             <TouchableOpacity
               onPress={handleClearRoute}
               style={styles.routeCloseBtn}
+              accessibilityRole="button"
+              accessibilityLabel="경로 지우기"
             >
               <Ionicons name="close" size={16} color="#999" />
             </TouchableOpacity>
@@ -1024,13 +1026,18 @@ export default function MapScreen() {
         )}
       </View>
 
-      <Modal visible={showRoute} animationType="slide">
+      <Modal visible={showRoute} animationType="slide" onRequestClose={handleCloseRoute}>
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
         <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
           <ContentColumn>
           <View style={styles.routeModalHeader}>
-            <TouchableOpacity onPress={handleCloseRoute}>
+            <TouchableOpacity
+              onPress={handleCloseRoute}
+              accessibilityRole="button"
+              accessibilityLabel="뒤로 가기"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons
                 name="arrow-back"
                 size={22}
