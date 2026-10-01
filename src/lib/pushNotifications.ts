@@ -9,7 +9,6 @@ import { useNotificationPermission } from './notificationPermission'
 import { deactivateStoredPushDevice, registerPushDevice } from './pushDevice'
 import { useAuth } from '../contexts/AuthContext'
 import { useSettings } from '../contexts/SettingsContext'
-import { NEWS_BY_ID } from '../constants/news'
 import { requestMapIntent } from './mapIntents'
 import { notificationTarget } from '../utils/notificationRouting'
 import type { PushNotificationData } from '../types'
@@ -53,7 +52,7 @@ function flushPendingNotification(): void {
   const data = pendingNotification
   if (!data) return
   const target = notificationTarget(data)
-  const routeName = target.kind === 'news' || target.kind === 'localNews' ? 'NewsDetail' : 'Main'
+  const routeName = target.kind === 'news' ? 'NewsDetail' : 'Main'
   if (!canRouteTo(routeName)) return
   pendingNotification = null
   routeForNotification(data)
@@ -74,12 +73,6 @@ function routeForNotification(data: PushNotificationData): void {
     case 'news':
       navigationRef.navigate('NewsDetail', { newsId: target.newsId })
       return
-    case 'localNews': {
-      // `AppStatusScreen` 로컬 표본 알림은 로컬 크롤링 스냅샷 id를 쓴다 — 로컬 데이터에서 찾아 넘긴다.
-      const localItem = NEWS_BY_ID.get(target.newsId)
-      if (localItem) navigationRef.navigate('NewsDetail', { item: localItem })
-      return
-    }
     case 'map':
       if (target.focusReportId !== null) requestMapIntent({ type: 'focusReport', reportId: target.focusReportId })
       navigationRef.navigate('Main', { screen: 'Map' })

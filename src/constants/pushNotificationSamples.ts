@@ -1,4 +1,3 @@
-import { NEWS_DATA } from './news'
 import type { PushNotificationData } from '../types'
 
 /**
@@ -20,18 +19,19 @@ const SAMPLE_REPORT_TITLE = '붕어빵 트럭 왔어요'
 /** 표본 제보 id. 서버에 없는 id 라 탭하면 지도가 "지금 지도에 없는 제보" 안내와 함께 열린다. */
 const SAMPLE_REPORT_ID = 999_999_999
 
-const newsSample: PushNotificationSample | null = NEWS_DATA[0]
-  ? {
-      label: '소식 알림',
-      // 서버는 학과 이름(없으면 "{게시판} 공지")을 제목으로 쓴다.
-      title: NEWS_DATA[0].source,
-      body: NEWS_DATA[0].title,
-      data: { type: 'NEWS', newsId: NEWS_DATA[0].id },
-    }
-  : null
+/**
+ * 표본 소식. 운영 서버에 실제로 있는 공지 id 라 탭하면 상세 화면이 `GET /news/{id}` 로 받아 그린다.
+ * 서버는 학과 이름(없으면 "{게시판} 공지")을 제목으로 쓴다.
+ */
+const NEWS_SAMPLE: PushNotificationSample = {
+  label: '소식 알림',
+  title: '장학 공지',
+  body: '2026년 든든 학업지원금 공고문',
+  data: { type: 'NEWS', newsId: '11950' },
+}
 
 export const PUSH_NOTIFICATION_SAMPLES: PushNotificationSample[] = [
-  ...(newsSample ? [newsSample] : []),
+  NEWS_SAMPLE,
   {
     label: '내 제보 승인 알림',
     title: '제보가 지도에 올라갔어요',
