@@ -15,6 +15,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.hongmap.alimi",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
@@ -64,7 +65,8 @@
           "cameraPermission": "제보에 첨부할 사진을 찍기 위해 카메라 권한이 필요합니다."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

@@ -62,7 +62,7 @@ export default function SettingsScreen() {
   const { toggleAlertCategory, toggleSubscribedDept, toggleDeptAlert } = useFeedbackToggles()
   const toast = useToast()
 
-  const { status, logout, deleteAccount } = useAuth()
+  const { status, loginProvider, logout, deleteAccount } = useAuth()
   const navigation = useNavigation<NavProp>()
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
@@ -178,7 +178,10 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>계정</Text>
           {status === 'authenticated' ? (
             <>
-              <LinkRow icon="person-circle-outline" label="카카오 계정으로 로그인됨" />
+              <LinkRow
+                icon="person-circle-outline"
+                label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
+              />
               <LinkRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
             </>
           ) : (

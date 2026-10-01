@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -13,20 +13,59 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { useAuth } from '../contexts/AuthContext'
+import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '../lib/appleAuth'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 
-type PendingAction = 'kakao' | 'guest' | null
+type PendingAction = 'apple' | 'kakao' | 'guest' | null
+
+/** 카카오 버튼과 같은 크기·모서리. Apple 버튼은 다른 로그인 버튼보다 작거나 아래에 있으면 안 된다(HIG·심사 4.8). */
+const LOGIN_BUTTON_HEIGHT = 50
+const LOGIN_BUTTON_RADIUS = 14
 
 /**
- * 최초 진입 화면. 카카오 로그인 / 게스트 중 하나를 고른다(Apple 로그인은 v2.0.0 예정).
+ * 최초 진입 화면. Apple 로그인(iOS) / 카카오 로그인 / 게스트 중 하나를 고른다.
  * AuthContext.status 가 'signedOut' 일 때만 RootNavigator 가 이 화면을 보여준다.
+ *
+ * Apple 버튼은 iOS 이면서 이 바이너리에 ExpoAppleAuthentication 네이티브 모듈이 있고 기기가 지원할 때만 보인다
+ * (src/lib/appleAuth.ts). 웹·안드로이드·모듈 없는 구버전 바이너리(OTA 로 이 JS 를 받은 1.0.0)에서는 숨는다.
+ * Apple 이 승인한 시스템 버튼(AppleAuthenticationButton, 검은색)을 그대로 쓰고 카카오 버튼 위에 둔다.
  */
 export default function WelcomeScreen() {
-  const { loginWithKakao, continueAsGuest, loginError } = useAuth()
+  const { loginWithKakao, loginWithApple, continueAsGuest, loginError } = useAuth()
   const [pending, setPending] = useState<PendingAction>(null)
+  const [appleAvailable, setAppleAvailable] = useState(false)
   // 웹에선 Alert.alert 가 아무것도 띄우지 않아(react-native-web) 버튼 위에 문구로 보여준다.
   const [inlineError, setInlineError] = useState<string | null>(null)
   const errorText = inlineError ?? loginError
+
+  useEffect(() => {
+    let active = true
+    isAppleSignInAvailable().then((available) => {
+      if (active) setAppleAvailable(available)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleAppleLogin = useCallback(async () => {
+    setPending('apple')
+    setInlineError(null)
+    try {
+      await loginWithApple()
+    } catch (error: unknown) {
+      // 사용자가 Apple 시트를 닫은 건 오류가 아니다 — 아무것도 띄우지 않는다.
+      if (isAppleSignInCanceled(error)) return
+      const message = error instanceof Error ? error.message : '로그인에 실패했습니다.'
+      if (Platform.OS === 'web') {
+        setInlineError(message)
+      } else {
+        Alert.alert('Apple 로그인 실패', message)
+      }
+    } finally {
+      setPending(null)
+    }
+  }, [loginWithApple])
 
   const handleKakaoLogin = useCallback(async () => {
     setPending('kakao')
@@ -55,6 +94,7 @@ export default function WelcomeScreen() {
   }, [continueAsGuest])
 
   const isBusy = pending !== null
+  const appleButton = appleAvailable ? getAppleButton() : null
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -71,6 +111,19 @@ export default function WelcomeScreen() {
             {errorText}
           </Text>
         )}
+        {appleButton && (
+          // 시스템 버튼이라 disabled 가 없어, 처리 중에는 감싼 View 로 터치만 막는다(모양은 Apple 규정대로 그대로 둔다).
+          <View pointerEvents={isBusy ? 'none' : 'auto'} style={pending === 'apple' && styles.applePending}>
+            <appleButton.AppleAuthenticationButton
+              buttonType={appleButton.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={appleButton.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={LOGIN_BUTTON_RADIUS}
+              onPress={handleAppleLogin}
+              style={styles.appleButton}
+            />
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.button, styles.kakaoButton]}
           onPress={handleKakaoLogin}
@@ -87,9 +140,6 @@ export default function WelcomeScreen() {
             </>
           )}
         </TouchableOpacity>
-
-        {/* Apple 로그인은 v2.0.0 에서 추가한다. 미완성 기능(비활성 "준비 중" 버튼)이 보이면 App Store 심사
-            2.1 거절 사유라 그때까지 버튼 자체를 숨긴다. 스타일(appleButton*)은 그때 다시 쓴다. */}
 
         <TouchableOpacity
           style={styles.guestButton}
@@ -124,14 +174,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 50,
-    borderRadius: 14,
+    height: LOGIN_BUTTON_HEIGHT,
+    borderRadius: LOGIN_BUTTON_RADIUS,
   },
   kakaoButton: { backgroundColor: '#FEE500' },
   kakaoButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: '#3C1E1E' },
-  // 준비 중 버튼은 브랜드색 대신 회색으로 눌러 비활성 상태임을 드러낸다.
-  appleButton: { backgroundColor: '#B9B9B9' },
-  appleButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.white },
+  // 시스템 버튼에는 높이·너비만 준다(배경색·모서리는 buttonStyle·cornerRadius 로만 — Apple 규정).
+  appleButton: { width: '100%', height: LOGIN_BUTTON_HEIGHT },
+  applePending: { opacity: 0.6 },
   errorText: {
     fontSize: 13,
     fontFamily: FONTS.medium,

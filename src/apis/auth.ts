@@ -1,4 +1,5 @@
 import { apiRequest, API_BASE_URL } from './client'
+import type { AppleLoginRequestBody } from '../lib/appleNonce'
 
 /** 백엔드 OAuth2SuccessHandler 가 되돌아오는 주소. app.json 의 scheme(hongikon)과 정확히 일치해야 한다. */
 export const AUTH_REDIRECT_URI = 'hongikon://auth/callback'
@@ -45,6 +46,18 @@ export function exchangeAuthCode(code: string): Promise<TokenResponse> {
     method: 'POST',
     body: { code },
     // 1회용 코드라 절대 다시 보내지 않는다. 기본값도 POST 는 0 이지만 실수로 바뀌지 않게 못 박는다.
+    retries: 0,
+  })
+}
+
+/**
+ * Sign in with Apple(iOS) 결과를 서버에 보내 액세스/리프레시 토큰을 받는다(카카오 교환과 같은 응답).
+ * authorizationCode 는 1회용이라 자동 재시도하지 않는다 — 실패하면 Apple 버튼부터 다시 누르게 한다.
+ */
+export function loginWithAppleRequest(body: AppleLoginRequestBody): Promise<TokenResponse> {
+  return apiRequest<TokenResponse>('/auth/apple', {
+    method: 'POST',
+    body,
     retries: 0,
   })
 }

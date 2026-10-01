@@ -17,12 +17,14 @@ import {
   buildWebKakaoLoginUrl,
   deleteAccount as deleteAccountRequest,
   exchangeAuthCode,
+  loginWithAppleRequest,
   logoutRequest,
   reissueTokens,
   type TokenResponse,
 } from '../apis/auth'
 import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
+import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
 import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -33,6 +35,8 @@ WebBrowser.maybeCompleteAuthSession()
 const ACCESS_TOKEN_KEY = 'hongikon_access_token'
 const REFRESH_TOKEN_KEY = 'hongikon_refresh_token'
 const GUEST_FLAG_KEY = 'hongikon_guest_mode'
+/** 어떤 계정으로 로그인했는지(설정 화면 "○○ 계정으로 로그인됨" 표시용). 서버에 묻지 않고 로그인할 때 기기에 적어 둔다. */
+const LOGIN_PROVIDER_KEY = 'hongikon_login_provider'
 
 const isWeb = Platform.OS === 'web'
 
@@ -57,12 +61,26 @@ function takeWebAuthCallbackCode(): string | null | undefined {
  */
 type AuthStatus = 'loading' | 'signedOut' | 'guest' | 'authenticated'
 
+export type LoginProvider = 'kakao' | 'apple'
+
+/** 저장 값이 없으면(Apple 로그인 추가 전에 로그인한 사용자) 카카오 — 그때는 카카오 로그인뿐이었다. */
+function toLoginProvider(value: string | null): LoginProvider {
+  return value === 'apple' ? 'apple' : 'kakao'
+}
+
 interface AuthContextValue {
   status: AuthStatus
   accessToken: string | null
   /** 웹에서 카카오 로그인 후 돌아와 토큰 교환에 실패했을 때의 안내 문구. 웰컴 화면이 보여준다. */
   loginError: string | null
+  /** 로그인한 계정 종류. 로그인 상태가 아니면 null. */
+  loginProvider: LoginProvider | null
   loginWithKakao: () => Promise<void>
+  /**
+   * Sign in with Apple(iOS). 사용자가 Apple 시트를 닫으면 ERR_REQUEST_CANCELED 오류를 그대로 던진다
+   * (`isAppleSignInCanceled` 로 걸러 조용히 넘긴다). 그 밖의 실패는 보여줄 문구를 담은 Error.
+   */
+  loginWithApple: () => Promise<void>
   continueAsGuest: () => Promise<void>
   logout: () => Promise<void>
   deleteAccount: () => Promise<void>
@@ -78,6 +96,7 @@ async function saveTokens(tokens: TokenResponse): Promise<void> {
 async function clearTokens(): Promise<void> {
   await deleteItem(ACCESS_TOKEN_KEY)
   await deleteItem(REFRESH_TOKEN_KEY)
+  await deleteItem(LOGIN_PROVIDER_KEY)
 }
 
 /** 백엔드가 되돌려준 리다이렉트 URL에서 1회용 인가 코드를 뽑아낸다. 못 찾으면 null. */
@@ -107,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [storedProvider, setStoredProvider] = useState<LoginProvider>('kakao')
   /** 동시에 여러 요청이 401 을 받아도 재발급은 한 번만 한다(리프레시 토큰이 회전돼 두 번 쓰면 두 번째가 실패). */
   const refreshInFlightRef = useRef<Promise<string | null> | null>(null)
 
@@ -141,6 +161,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshInFlightRef.current
   }, [])
 
+  /** 로그인 성공 공통 마무리: 토큰·로그인 종류 저장, 게스트 표시 해제, 화면 전환. */
+  const completeLogin = useCallback(async (tokens: TokenResponse, provider: LoginProvider) => {
+    await saveTokens(tokens)
+    await setItem(LOGIN_PROVIDER_KEY, provider)
+    await deleteItem(GUEST_FLAG_KEY)
+    setStoredProvider(provider)
+    setAccessToken(tokens.accessToken)
+    setStatus('authenticated')
+  }, [])
+
   useEffect(() => {
     setTokenRefresher(refreshAccessToken)
     return () => setTokenRefresher(null)
@@ -158,10 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         try {
           const tokens = await exchangeAuthCode(callbackCode)
-          await saveTokens(tokens)
-          await deleteItem(GUEST_FLAG_KEY)
-          setAccessToken(tokens.accessToken)
-          setStatus('authenticated')
+          await completeLogin(tokens, 'kakao')
         } catch (error: unknown) {
           setLoginError(authExchangeErrorMessage(error))
           setStatus('signedOut')
@@ -172,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = await getItem(ACCESS_TOKEN_KEY)
         if (token) {
+          setStoredProvider(toLoginProvider(await getItem(LOGIN_PROVIDER_KEY)))
           setAccessToken(token)
           setStatus('authenticated')
           return
@@ -186,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     restore()
-  }, [])
+  }, [completeLogin])
 
   const continueAsGuest = useCallback(async () => {
     await setItem(GUEST_FLAG_KEY, '1')
@@ -226,11 +254,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(authExchangeErrorMessage(error))
     }
 
-    await saveTokens(tokens)
-    await deleteItem(GUEST_FLAG_KEY)
-    setAccessToken(tokens.accessToken)
-    setStatus('authenticated')
-  }, [])
+    await completeLogin(tokens, 'kakao')
+  }, [completeLogin])
+
+  const loginWithApple = useCallback(async () => {
+    setLoginError(null)
+
+    let body
+    try {
+      body = await requestAppleSignIn()
+    } catch (error: unknown) {
+      if (isAppleSignInCanceled(error)) throw error
+      if (__DEV__) console.warn('Apple 로그인 실패:', error)
+      throw new Error('Apple 로그인을 마치지 못했습니다. 잠시 후 다시 시도해주세요.')
+    }
+
+    // authorizationCode 는 1회용이라 다시 보내지 않는다(카카오 코드 교환과 같은 이유). 실패하면 버튼부터 다시.
+    let tokens: TokenResponse
+    try {
+      tokens = await loginWithAppleRequest(body)
+    } catch (error) {
+      throw new Error(authExchangeErrorMessage(error))
+    }
+
+    await completeLogin(tokens, 'apple')
+  }, [completeLogin])
 
   const logout = useCallback(async () => {
     // 화면은 바로 로그아웃 상태로 돌리고, 서버 정리(기기 해제·refresh 토큰 폐기)는 뒤에서 한다.
@@ -274,9 +322,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedOut')
   }, [accessToken])
 
+  const loginProvider = status === 'authenticated' ? storedProvider : null
+
   const value = useMemo(
-    () => ({ status, accessToken, loginError, loginWithKakao, continueAsGuest, logout, deleteAccount }),
-    [status, accessToken, loginError, loginWithKakao, continueAsGuest, logout, deleteAccount],
+    () => ({
+      status,
+      accessToken,
+      loginError,
+      loginProvider,
+      loginWithKakao,
+      loginWithApple,
+      continueAsGuest,
+      logout,
+      deleteAccount,
+    }),
+    [status, accessToken, loginError, loginProvider, loginWithKakao, loginWithApple, continueAsGuest, logout, deleteAccount],
   )
 
   if (status === 'loading') return <AppLoadingScreen />
