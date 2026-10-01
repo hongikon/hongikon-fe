@@ -11,7 +11,7 @@ import {
   Image,
   StyleSheet,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../constants/colors'
@@ -264,6 +264,8 @@ export default function ReportComposerModal({
 
   return (
     <Modal transparent visible={target !== null} animationType="slide" onRequestClose={handleClose}>
+      {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
+      <SafeAreaProvider>
       <TouchableWithoutFeedback onPress={handleClose}>
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback onPress={() => {}}>
@@ -566,6 +568,7 @@ export default function ReportComposerModal({
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </SafeAreaProvider>
     </Modal>
   )
 }

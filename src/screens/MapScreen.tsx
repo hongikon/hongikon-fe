@@ -9,7 +9,7 @@ import {
   Modal,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
@@ -914,6 +914,8 @@ export default function MapScreen() {
       </View>
 
       <Modal visible={showRoute} animationType="slide">
+        {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
+        <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
           <View style={styles.routeModalHeader}>
             <TouchableOpacity onPress={handleCloseRoute}>
@@ -1073,6 +1075,7 @@ export default function MapScreen() {
             </View>
           )}
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
 
       <PartnerSearchModal

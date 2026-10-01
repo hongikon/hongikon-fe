@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Linking } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -15,6 +15,8 @@ interface PartnerSourcesModalProps {
 export default function PartnerSourcesModal({ visible, onClose }: PartnerSourcesModalProps) {
   return (
     <Modal visible={visible} animationType="slide">
+      {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ModalHeader title="제휴 출처" onClose={onClose} />
         <ScrollView style={styles.body}>
@@ -40,6 +42,7 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
           ))}
         </ScrollView>
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   )
 }

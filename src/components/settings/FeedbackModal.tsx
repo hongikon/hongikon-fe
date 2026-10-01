@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { useAuth } from '../../contexts/AuthContext'
@@ -77,6 +77,8 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
 
   return (
     <Modal visible={visible} animationType="slide">
+      {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ModalHeader title="문의하기" onClose={onClose} />
         <KeyboardAvoidingView
@@ -132,6 +134,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   )
 }

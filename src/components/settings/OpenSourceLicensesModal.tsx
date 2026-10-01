@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { OSS_LICENSES } from '../../constants/openSourceLicenses'
@@ -13,6 +13,8 @@ interface OpenSourceLicensesModalProps {
 export default function OpenSourceLicensesModal({ visible, onClose }: OpenSourceLicensesModalProps) {
   return (
     <Modal visible={visible} animationType="slide">
+      {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ModalHeader title="오픈소스 라이선스" onClose={onClose} />
         <ScrollView style={styles.body}>
@@ -27,6 +29,7 @@ export default function OpenSourceLicensesModal({ visible, onClose }: OpenSource
           ))}
         </ScrollView>
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   )
 }
