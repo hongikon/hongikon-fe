@@ -8,9 +8,9 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -39,9 +39,14 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     network: boolean
     retryable: boolean
   } | null>(null)
+  // 접수 완료. 웹에선 Alert 가 아무것도 띄우지 않아(react-native-web) 화면 안에서 알려준다.
+  const [submitted, setSubmitted] = useState(false)
+  const [validation, setValidation] = useState<string | null>(null)
 
   useEffect(() => {
     if (!visible) {
+      setSubmitted(false)
+      setValidation(null)
       setContent('')
       setContact('')
       setSubmitting(false)
@@ -52,18 +57,17 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
   const handleSubmit = async () => {
     const trimmed = content.trim()
     if (!trimmed) {
-      Alert.alert('문의 내용을 입력해주세요.')
+      setValidation('문의 내용을 입력해 주세요.')
       return
     }
+    setValidation(null)
 
     setSubmitting(true)
     setSubmitError(null)
     try {
       // POST 라 client 가 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: trimmed, contact: contact.trim() || undefined }, accessToken)
-      Alert.alert('문의가 접수되었습니다', '빠른 시일 내에 확인하겠습니다.', [
-        { text: '확인', onPress: onClose },
-      ])
+      setSubmitted(true)
     } catch (error) {
       setSubmitError({
         message: getErrorMessage(error, '문의를 보내지 못했습니다. 잠시 후 다시 시도해주세요.'),
@@ -81,6 +85,18 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ModalHeader title="문의하기" onClose={onClose} />
+        {submitted ? (
+          <View style={styles.successBox}>
+            <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
+            <Text style={styles.successTitle}>문의가 접수됐어요</Text>
+            <Text style={styles.successText}>
+              운영진이 확인한 뒤{contact.trim() ? ' 적어 주신 이메일로' : ''} 답변드릴게요.
+            </Text>
+            <TouchableOpacity style={[styles.submitButton, styles.successButton]} onPress={onClose} activeOpacity={0.8}>
+              <Text style={styles.submitButtonText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <KeyboardAvoidingView
           style={styles.body}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -110,6 +126,8 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             autoCorrect={false}
           />
 
+          {validation !== null && <Text style={styles.validation}>{validation}</Text>}
+
           {submitError !== null && (
             <RetryableError
               style={styles.errorBox}
@@ -133,6 +151,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             )}
           </TouchableOpacity>
         </KeyboardAvoidingView>
+        )}
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
@@ -169,6 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorBox: { marginBottom: 12 },
+  validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 12 },
   submitButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
@@ -178,4 +198,8 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
+  successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
+  successTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: COLORS.textPrimary },
+  successText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+  successButton: { alignSelf: 'stretch', marginTop: 8 },
 })

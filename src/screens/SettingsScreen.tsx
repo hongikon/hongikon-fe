@@ -22,7 +22,7 @@ import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
-import OpenSourceLicensesModal from '../components/settings/OpenSourceLicensesModal'
+import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS } from '../constants/typography'
@@ -38,7 +38,7 @@ type ModalType =
   | 'terms'
   | 'privacy'
   | 'feedback'
-  | 'licenses'
+  | 'partnerSuggest'
   | null
 
 export default function SettingsScreen() {
@@ -209,15 +209,19 @@ export default function SettingsScreen() {
             value={`${PARTNER_SOURCES.length}개 소속`}
             onPress={() => setActiveModal('sources')}
           />
+          <LinkRow
+            icon="storefront-outline"
+            label="제휴 제보하기"
+            onPress={() => setActiveModal('partnerSuggest')}
+          />
           <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
-          <LinkRow icon="school-outline" label="학교" value="홍익대학교 (곧 추가 예정)" />
+          <LinkRow icon="school-outline" label="학교" value="홍익대학교" />
           <LinkRow
             icon="pulse-outline"
             label="앱 상태 확인"
             onPress={() => navigation.navigate('AppStatus')}
           />
           <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
-          <LinkRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} />
           <LinkRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
           <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
         </View>
@@ -251,8 +255,8 @@ export default function SettingsScreen() {
 
       <PrivacyModal visible={activeModal === 'privacy'} onClose={() => setActiveModal(null)} />
 
-      <OpenSourceLicensesModal
-        visible={activeModal === 'licenses'}
+      <PartnerSuggestModal
+        visible={activeModal === 'partnerSuggest'}
         onClose={() => setActiveModal(null)}
       />
 
