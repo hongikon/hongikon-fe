@@ -84,6 +84,12 @@
       post({ type: 'pickerCenter', lat: lat, lng: lng, buildingName: nearby ? nearby.name : null });
     }
 
+    // 마커 HTML 의 style 속성에 들어가는 색. 문자열을 그대로 이어 붙이면 따옴표로 속성을 끊고 태그를
+    // 넣을 수 있어, #rgb / #rrggbb / #rrggbbaa 형식만 통과시킨다.
+    function safeColor(value, fallback) {
+      return typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : (fallback || '#888888');
+    }
+
     function escapeHTML(value) {
       return String(value).replace(/[&<>"']/g, function(ch) {
         if (ch === '&') return '&amp;';
@@ -143,13 +149,13 @@
       var badge = selected ? 30 : 26;
       var glyph = Math.round(badge * 0.6);
       var nameSize = selected ? 12 : 11;
-      var nameColor = selected ? partner.color : '#33363d';
+      var nameColor = selected ? safeColor(partner.color) : '#33363d';
       var nameWeight = selected ? 700 : 600;
       var iconSVG = PARTNER_ICONS[partner.iconKey] || PARTNER_ICONS['기타'];
 
       // 배지만 탭 대상으로 둔다(pointer-events:auto). 이름·바깥 박스는 아래에서 none.
       var badgeEl = '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:'
-        + Math.round(badge * 0.32) + 'px;background:' + partner.color
+        + Math.round(badge * 0.32) + 'px;background:' + safeColor(partner.color)
         + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;pointer-events:auto;'
         + 'display:flex;align-items:center;justify-content:center;">'
         + '<span style="width:' + glyph + 'px;height:' + glyph + 'px;display:block;">' + iconSVG + '</span></div>';
@@ -255,7 +261,7 @@
     function reportLabelHTML(item) {
       var badge = 30;
       var badgeEl = '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
-        + 'background:' + item.color + ';box-shadow:0 2px 6px rgba(0,0,0,0.3),0 0 0 3px rgba(255,255,255,0.95);'
+        + 'background:' + safeColor(item.color) + ';box-shadow:0 2px 6px rgba(0,0,0,0.3),0 0 0 3px rgba(255,255,255,0.95);'
         + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
         + '<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" style="display:block;">'
         + '<path d="M5 3h11l-1.6 3.4L16 9.8H7v10.9H5V3z"/></svg></div>';
@@ -341,7 +347,7 @@
       var iconSVG = FACILITY_ICONS[marker.kind] || PARTNER_ICONS['기타'];
 
       var badgeEl = '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
-        + 'background:' + marker.color + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;'
+        + 'background:' + safeColor(marker.color, 'transparent') + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;'
         + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
         + '<span style="width:' + glyph + 'px;height:' + glyph + 'px;display:block;">' + iconSVG + '</span></div>';
 
@@ -833,13 +839,10 @@
       } catch(e) {}
     }
 
-    // 웹(NaverMapView.web.tsx)은 화면이 다시 붙을 때마다 이 스크립트를 같은 창에 다시 넣는다. 리스너를
-    // 매번 붙이면 메시지 하나가 여러 번 처리돼 한 번만 붙인다(항상 최신 handleNativeMessage 를 부른다).
-    if (!window.__hongikonMessageListener) {
-      window.__hongikonMessageListener = true;
-      document.addEventListener('message', function(e) { handleNativeMessage(e.data); });
-      window.addEventListener('message', function(e) { handleNativeMessage(e.data); });
-    }
+    // window/document 의 'message' 리스너는 두지 않는다. 앱(MapScreen.postToMap)과 웹(NaverMapView.web.tsx)은
+    // 모두 injectJavaScript 로 handleNativeMessage(...) 를 직접 부른다. 리스너가 있으면 hongikon.com 을 연
+    // 다른 사이트(window.open·iframe)가 postMessage 로 지도에 임의 마커 HTML 을 넣어 이 출처에서 스크립트를
+    // 실행할 수 있었다(웹 로그인 토큰 탈취 가능 — 2026-10 보안 점검).
   </script>
 </body>
 </html>
