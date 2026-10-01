@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building } from "../../types";
 import { FONTS } from "../../constants/typography";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { openExternalUrl } from "../../utils/openExternalUrl";
 
 interface BuildingSheetProps {
   building: Building;
@@ -92,7 +92,7 @@ export default function BuildingSheet({
       {building.link && (
         <TouchableOpacity
           style={styles.linkBtn}
-          onPress={() => Linking.openURL(building.link!.url)}
+          onPress={() => openExternalUrl(building.link!.url)}
         >
           <Ionicons name="open-outline" size={14} color={COLORS.primary} />
           <Text style={styles.linkText}>{building.link.label}</Text>

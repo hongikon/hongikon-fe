@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
@@ -15,6 +15,7 @@ import RetryableError from '../components/common/RetryableError'
 import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Skeleton'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import type { NewsItem } from '../types'
+import { openExternalUrl } from '../utils/openExternalUrl'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
 
@@ -164,7 +165,7 @@ function NewsDetailBody({
               <TouchableOpacity
                 key={file.url}
                 style={styles.attachRow}
-                onPress={() => Linking.openURL(file.url)}
+                onPress={() => openExternalUrl(file.url)}
                 accessibilityRole="link"
                 accessibilityLabel={`${file.name} 내려받기`}
               >
@@ -177,9 +178,7 @@ function NewsDetailBody({
 
         <TouchableOpacity
           style={styles.linkBtn}
-          onPress={() =>
-            Linking.openURL(item.link ?? 'https://www.hongik.ac.kr')
-          }
+          onPress={() => openExternalUrl(item.link, 'https://www.hongik.ac.kr')}
           accessibilityRole="link"
           accessibilityLabel={item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'}
         >

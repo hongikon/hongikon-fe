@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Linking } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -7,6 +7,7 @@ import { PARTNER_SOURCES } from '../../constants/partnerSources'
 import { PARTNER_NOTICE_TEXT } from '../map/PartnerNoticeModal'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import { openExternalUrl } from '../../utils/openExternalUrl'
 
 interface PartnerSourcesModalProps {
   visible: boolean
@@ -32,7 +33,7 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
                 <TouchableOpacity
                   key={link.url}
                   style={styles.linkRow}
-                  onPress={() => Linking.openURL(link.url)}
+                  onPress={() => openExternalUrl(link.url)}
                 >
                   <Ionicons name="link-outline" size={14} color={COLORS.primary} />
                   <Text style={styles.linkText} numberOfLines={1}>
