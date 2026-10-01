@@ -12,7 +12,7 @@ import { Platform } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import {
   AUTH_REDIRECT_URI,
-  KAKAO_LOGIN_URL,
+  buildKakaoLoginUrl,
   WEB_AUTH_CALLBACK_PATH,
   buildWebKakaoLoginUrl,
   deleteAccount as deleteAccountRequest,
@@ -25,6 +25,7 @@ import {
 import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
+import { createPkcePair } from '../lib/pkce'
 import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -264,7 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return new Promise<void>(() => {})
     }
 
-    const result = await WebBrowser.openAuthSessionAsync(KAKAO_LOGIN_URL, AUTH_REDIRECT_URI)
+    // PKCE: 이 로그인 시도에서만 쓰는 verifier. 메모리에만 두고 저장하지 않는다.
+    const pkce = createPkcePair()
+    const result = await WebBrowser.openAuthSessionAsync(buildKakaoLoginUrl(pkce.challenge), AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
       throw new Error('로그인이 취소되었습니다.')
@@ -280,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 실패하면 로그인 창부터 다시 열도록 안내한다.
     let tokens: TokenResponse
     try {
-      tokens = await exchangeAuthCode(code)
+      tokens = await exchangeAuthCode(code, pkce.verifier)
     } catch (error) {
       throw new Error(authExchangeErrorMessage(error))
     }
