@@ -7,6 +7,7 @@ import { registerDevice } from '../apis/devices'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from './connectivity'
 import { useAuth } from '../contexts/AuthContext'
+import { NEWS_BY_ID } from '../constants/news'
 import type { PushNotificationData } from '../types'
 
 /** 앱이 켜져 있을 때 알림을 어떻게 보여줄지. 배너·목록엔 띄우되 배지·소리는 안 쓴다. */
@@ -65,8 +66,14 @@ function routeForNotification(data: PushNotificationData): void {
     // 목록(`GET /news`)이 페이지 단위라 id로 항목을 찾을 수 없다 — id만 넘기면 상세 화면이
     // `GET /news/{id}`로 받아 그린다. 백엔드(NewsPushDispatcher)는 newsId 를 숫자로 보낸다.
     const newsId = String(data.newsId ?? '').trim()
-    if (!/^\d+$/.test(newsId)) return
-    navigationRef.navigate('NewsDetail', { newsId })
+    if (/^\d+$/.test(newsId)) {
+      navigationRef.navigate('NewsDetail', { newsId })
+      return
+    }
+    // `AppStatusScreen` 로컬 표본 알림은 로컬 크롤링 스냅샷 id(예: 'univ-154856')를 쓴다 — 그 경우만
+    // 로컬 데이터에서 찾아 넘긴다. 그 밖의 형식이 이상한 payload 는 조용히 무시한다.
+    const localItem = NEWS_BY_ID.get(newsId)
+    if (localItem) navigationRef.navigate('NewsDetail', { item: localItem })
     return
   }
 

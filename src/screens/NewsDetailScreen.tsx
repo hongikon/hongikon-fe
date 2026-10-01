@@ -34,8 +34,11 @@ function useEnhancedNewsItem(params: RootStackParamList['NewsDetail']) {
     { enabled: backendId !== null, fallbackMessage: '소식 본문을 불러오지 못했습니다.' },
   )
 
-  if (!detail.data) return { item: summary, loadingMore: detail.loading, detail }
-  return { item: backendDetailToNewsItem(detail.data), loadingMore: false, detail }
+  // 상세가 열린 채로 다른 소식 알림을 누르면 같은 화면의 params 만 바뀐다. useApiResource 는 실패해도
+  // 마지막 값을 남겨 두므로, 지금 id 와 맞는 응답일 때만 쓴다(아니면 이전 소식이 그대로 보인다).
+  const fresh = detail.data && String(detail.data.id) === id ? detail.data : null
+  if (!fresh) return { item: summary, loadingMore: detail.loading || detail.refreshing, detail }
+  return { item: backendDetailToNewsItem(fresh), loadingMore: false, detail }
 }
 
 export default function NewsDetailScreen({ route, navigation }: Props) {
