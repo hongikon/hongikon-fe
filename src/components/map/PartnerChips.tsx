@@ -7,6 +7,7 @@ import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
 import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
 import { partnerCount } from "../../utils/partners";
 import type { PartnerAffiliation, PartnerCategory } from "../../types";
+import * as haptics from "../../lib/haptics";
 
 interface PartnerChipsProps {
   /** 1단: 제휴 주체. 고르지 않았으면 null. */
@@ -70,7 +71,10 @@ export default function PartnerChips({
             <TouchableOpacity
               key={key}
               activeOpacity={0.75}
-              onPress={() => onSelectAffiliation(key)}
+              onPress={() => {
+                haptics.selection();
+                onSelectAffiliation(key);
+              }}
               disabled={disabled}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive, disabled }}
@@ -109,7 +113,10 @@ export default function PartnerChips({
             <TouchableOpacity
               key={meta.key}
               activeOpacity={0.75}
-              onPress={() => onSelectCategory(meta.key)}
+              onPress={() => {
+                haptics.selection();
+                onSelectCategory(meta.key);
+              }}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
               accessibilityLabel={`${meta.key} 제휴 업체 ${count}곳`}

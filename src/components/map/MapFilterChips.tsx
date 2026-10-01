@@ -6,6 +6,7 @@ import { facilityCount } from '../../utils/facilities'
 import { chipStyles } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import type { FacilityKind, MapLayer } from '../../types'
+import * as haptics from '../../lib/haptics'
 
 const LAYERS: readonly {
   key: MapLayer
@@ -72,7 +73,10 @@ export default function MapFilterChips({
             <TouchableOpacity
               key={key}
               activeOpacity={0.75}
-              onPress={() => onSelectLayer(key)}
+              onPress={() => {
+                haptics.selection()
+                onSelectLayer(key)
+              }}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
               accessibilityLabel={label}
@@ -100,7 +104,10 @@ export default function MapFilterChips({
               <TouchableOpacity
                 key={meta.key}
                 activeOpacity={0.75}
-                onPress={() => onSelectFacilityKind(meta.key)}
+                onPress={() => {
+                  haptics.selection()
+                  onSelectFacilityKind(meta.key)
+                }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 accessibilityLabel={`${meta.key} ${count}곳`}
@@ -129,7 +136,10 @@ export default function MapFilterChips({
         >
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={() => onSelectFacilityKind('행사·전시')}
+            onPress={() => {
+              haptics.selection()
+              onSelectFacilityKind('행사·전시')
+            }}
             accessibilityRole="button"
             accessibilityState={{ selected: facilityKind === '행사·전시' }}
             accessibilityLabel="전시"
@@ -153,7 +163,10 @@ export default function MapFilterChips({
 
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={onToggleReports}
+            onPress={() => {
+              haptics.selection()
+              onToggleReports()
+            }}
             accessibilityRole="button"
             accessibilityState={{ selected: reportsOn }}
             accessibilityLabel={reportsOn ? '제보 숨기기' : '제보 보기'}

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
@@ -68,6 +69,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
       // POST 라 client 가 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: trimmed, contact: contact.trim() || undefined }, accessToken)
       setSubmitted(true)
+      haptics.success()
     } catch (error) {
       setSubmitError({
         message: getErrorMessage(error, '문의를 보내지 못했습니다. 잠시 후 다시 시도해주세요.'),

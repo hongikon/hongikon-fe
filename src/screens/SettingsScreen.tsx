@@ -24,6 +24,10 @@ import TermsModal from '../components/settings/TermsModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
+import AppPermissionsModal from '../components/settings/AppPermissionsModal'
+import { useToast } from '../components/common/Toast'
+import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
+import * as haptics from '../lib/haptics'
 import { requestMapIntent } from '../lib/mapIntents'
 import { confirmAction, notify } from '../utils/dialog'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
@@ -44,18 +48,19 @@ type ModalType =
   | 'privacy'
   | 'feedback'
   | 'partnerSuggest'
+  | 'permissions'
   | null
 
 export default function SettingsScreen() {
   const {
     settings,
     toggleSubscriptionAlert,
-    toggleAlertCategory,
-    toggleSubscribedDept,
-    toggleDeptAlert,
     isDeptAlertOn,
     resetSettings,
   } = useSettings()
+  // 구독·게시판 알림·분야 토글은 진동과 토스트("○○ 알림을 껐어요")를 함께 준다.
+  const { toggleAlertCategory, toggleSubscribedDept, toggleDeptAlert } = useFeedbackToggles()
+  const toast = useToast()
 
   const { status, logout, deleteAccount } = useAuth()
   const navigation = useNavigation<NavProp>()
@@ -124,6 +129,12 @@ export default function SettingsScreen() {
   const handleToggleSubscriptionAlert = () => {
     const turningOn = !settings.subscriptionAlert
     toggleSubscriptionAlert()
+    haptics.tapLight()
+    toast.show(
+      turningOn
+        ? { message: '구독 소식 알림을 켰어요' }
+        : { message: '구독 소식 알림을 껐어요', tone: 'info' },
+    )
     if (turningOn && permission.status === 'undetermined' && permission.canAskAgain && status === 'authenticated') {
       void requestNotificationPermission()
     }
@@ -139,6 +150,15 @@ export default function SettingsScreen() {
   }
 
   const { subscriptionAlert, alertCategories, subscribedDepts } = settings
+  // 알림 권한이 꺼져 있으면 '앱 권한' 줄에 바로 보여 찾아 들어가게 한다.
+  const permissionSummary =
+    permission.status === 'granted'
+      ? undefined
+      : permission.status === 'denied'
+        ? '알림 꺼짐'
+        : permission.status === 'undetermined'
+          ? '알림 확인 필요'
+          : undefined
   const isGuest = status !== 'authenticated'
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
   const detailDimmed = !subscriptionAlert
@@ -332,6 +352,12 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>일반</Text>
           <LinkRow
+            icon="key-outline"
+            label="앱 권한"
+            value={permissionSummary}
+            onPress={() => setActiveModal('permissions')}
+          />
+          <LinkRow
             icon="megaphone-outline"
             label="공지사항"
             onPress={() => setActiveModal('notices')}
@@ -418,6 +444,8 @@ export default function SettingsScreen() {
       />
 
       <FeedbackModal visible={activeModal === 'feedback'} onClose={() => setActiveModal(null)} />
+
+      <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
 
       <SubscriptionManagerModal
         visible={subManagerVisible}

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -11,6 +11,9 @@ import { useSettings } from '../contexts/SettingsContext'
 import { useTreeSearch } from '../hooks/useTreeSearch'
 import { useNewsFeed } from '../hooks/useNewsFeed'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
+import { NewsListSkeleton } from '../components/common/Skeleton'
+import * as haptics from '../lib/haptics'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import DeptTreeList from '../components/news/DeptTreeList'
@@ -28,7 +31,8 @@ const MODES: SearchMode[] = ['게시글', '학과']
  * 필터 칩으로 모드를 바꾸고 입력창 하나를 그 모드의 훅에 연결한다.
  */
 export default function NewsSearchScreen({ navigation }: Props) {
-  const { isBookmarked, toggleBookmark, settings, toggleSubscribedDept } = useSettings()
+  const { isBookmarked, settings } = useSettings()
+  const { toggleBookmark, toggleSubscribedDept } = useFeedbackToggles()
   const [mode, setMode] = useState<SearchMode>('게시글')
 
   // 게시글 검색은 서버(`GET /news?keyword=`, 제목 부분 일치)가 한다. 타이핑마다 부르지 않도록
@@ -76,7 +80,10 @@ export default function NewsSearchScreen({ navigation }: Props) {
             <TouchableOpacity
               key={m}
               style={[styles.modeChip, isActive && styles.modeChipActive]}
-              onPress={() => setMode(m)}
+              onPress={() => {
+                if (m !== mode) haptics.selection()
+                setMode(m)
+              }}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
             >
@@ -109,7 +116,9 @@ export default function NewsSearchScreen({ navigation }: Props) {
             ) : null
           }
           empty={
-            newsFeed.errorMessage && !newsFeed.loading ? (
+            newsFeed.loading ? (
+              <NewsListSkeleton inList count={4} />
+            ) : newsFeed.errorMessage ? (
               <RetryableError
                 style={styles.feedError}
                 message={newsFeed.errorMessage}
@@ -118,15 +127,9 @@ export default function NewsSearchScreen({ navigation }: Props) {
               />
             ) : (
               <View style={styles.emptyState}>
-                {newsFeed.loading ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                ) : (
-                  <Ionicons name="search-outline" size={40} color="#ddd" />
-                )}
+                <Ionicons name="search-outline" size={40} color="#ddd" />
                 <Text style={styles.emptyText}>
-                  {newsFeed.loading
-                    ? '소식을 불러오는 중…'
-                    : isSearchingPosts
+                  {isSearchingPosts
                       ? `'${keyword}' 검색 결과가 없습니다`
                       : '등록된 소식이 없습니다'}
                 </Text>

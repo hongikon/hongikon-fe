@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo 
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
+import * as haptics from '../../lib/haptics'
 
 interface NewsListProps {
   items: NewsItem[]
@@ -60,6 +61,12 @@ export default function NewsList({
 
   const keyExtractor = useCallback((item: NewsItem) => item.id, [])
 
+  // 당겨서 새로고침이 걸리는 순간 가볍게 진동한다.
+  const handleRefresh = useCallback(() => {
+    haptics.tapLight()
+    onRefresh?.()
+  }, [onRefresh])
+
   return (
     <FlatList
       style={styles.list}
@@ -82,7 +89,7 @@ export default function NewsList({
         )
       }
       refreshing={onRefresh ? Boolean(refreshing) : undefined}
-      onRefresh={onRefresh}
+      onRefresh={onRefresh ? handleRefresh : undefined}
       initialNumToRender={8}
       maxToRenderPerBatch={8}
       windowSize={7}

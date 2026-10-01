@@ -15,6 +15,7 @@ import UpdateBanner from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
+import { ToastProvider } from './src/components/common/Toast'
 import TempEntranceDebugScreen from './src/screens/TempEntranceDebugScreen'
 import TempNotificationPreviewScreen from './src/screens/TempNotificationPreviewScreen'
 import { FONT_ASSETS } from './src/constants/typography'
@@ -98,7 +99,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
+      <SafeAreaProvider><ToastProvider>
         <AuthProvider>
           {/* 온보딩을 보여줄지 정한 뒤에 설정을 불러온다(순서가 중요 — OnboardingGate 주석). */}
           <OnboardingGate>
@@ -115,7 +116,7 @@ export default function App() {
           </SettingsProvider>
           </OnboardingGate>
         </AuthProvider>
-      </SafeAreaProvider>
+      </ToastProvider></SafeAreaProvider>
     </ErrorBoundary>
   )
 }

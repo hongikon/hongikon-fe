@@ -15,6 +15,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import * as haptics from '../../lib/haptics'
 import { PARTNER_AFFILIATIONS } from '../../constants/partnerAffiliations'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
@@ -157,6 +158,7 @@ export default function PartnerSuggestModal({
       // POST 라 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: buildContent(), contact: contact.trim() || undefined }, accessToken)
       setSubmitted(true)
+      haptics.success()
     } catch (error) {
       setSubmitError({
         message: getErrorMessage(error, '제보를 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),

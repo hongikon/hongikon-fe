@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import * as haptics from '../../lib/haptics'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
 import {
   REPORT_CONTENT_MAX_LENGTH,
@@ -276,6 +277,7 @@ export default function ReportComposerModal({
       )
       onCreated(report)
       setSubmitted(true)
+      haptics.success()
     } catch (caught) {
       setSubmitError({
         message: reportSubmitErrorMessage(caught),
