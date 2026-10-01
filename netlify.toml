@@ -50,6 +50,21 @@
     Permissions-Policy = "camera=(), microphone=(), payment=()"
     Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https://oapi.map.naver.com https://*.pstatic.net https://*.naver.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.naver.com https://*.naver.net https://*.pstatic.net; font-src 'self' data:; frame-ancestors 'none'"
 
+# 파일 이름에 내용 해시가 붙는 정적 자산은 1년 동안 다시 확인하지 않는다(내용이 바뀌면 이름이 바뀐다).
+# - /_expo/static/*: JS 번들(index-<hash>.js, 지연 로드 청크)
+# - /assets/*: 폰트·이미지(<name>.<hash>.<ext>). scripts/fix-web-export.mjs 가 node_modules 경로를
+#   /assets/nm/pnpm/... 로 옮긴 아이콘 폰트도 여기에 들어간다.
+# index.html·map.html·favicon 처럼 주소가 고정인 파일은 넣지 않는다(새 배포를 바로 받아야 한다).
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # API 응답(인증·제보 등 사용자별 데이터)이 브라우저·중간 캐시에 남지 않게 한다.
 [[headers]]
   for = "/api/*"
