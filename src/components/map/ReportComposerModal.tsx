@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Image,
   StyleSheet,
+  Platform,
+  Linking,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -101,6 +103,8 @@ export default function ReportComposerModal({
   const [imageUri, setImageUri] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** 거절된 권한. 있으면 오류 안내 옆에 "설정 열기"를 보여준다. */
+  const [blockedPermission, setBlockedPermission] = useState<'camera' | 'library' | null>(null)
   /**
    * 등록 요청이 연결 문제 등으로 실패했을 때의 안내. 입력 검증 오류(`error`)와 나눈 이유는
    * "다시 시도" 버튼이 여기에만 붙어야 해서다. 제보 등록은 POST 라 자동으로 다시 보내지
@@ -147,6 +151,7 @@ export default function ReportComposerModal({
     setFloor(1)
     setImageUri(null)
     setError(null)
+    setBlockedPermission(null)
     setSubmitError(null)
     setSubmitting(false)
     setSubmitted(false)
@@ -185,23 +190,43 @@ export default function ReportComposerModal({
     onClose()
   }
 
-  /** 사진 한 장만 붙인다. 여러 장은 검토 부담만 키우고 지도 배너에서 보여줄 자리도 없다. */
-  const handlePickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      setError('사진 접근 권한이 없어 첨부할 수 없습니다. 설정에서 허용해주세요.')
-      return
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-      allowsEditing: false,
-    })
-    if (result.canceled || result.assets.length === 0) return
-
+  /**
+   * 사진 한 장만 붙인다. 여러 장은 검토 부담만 키우고 지도 배너에서 보여줄 자리도 없다.
+   * 권한은 버튼을 누른 그때만 묻는다(카메라·앨범 각각). 거절된 뒤엔 휴대폰 설정으로 보내는 버튼을 보여준다.
+   */
+  const handlePickImage = async (source: 'camera' | 'library') => {
     setError(null)
-    setImageUri(result.assets[0].uri)
+    setBlockedPermission(null)
+    try {
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        setBlockedPermission(source)
+        setError(
+          source === 'camera'
+            ? '카메라 권한이 꺼져 있어 사진을 찍을 수 없어요.'
+            : '사진 접근 권한이 꺼져 있어 사진을 고를 수 없어요.',
+        )
+        return
+      }
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        quality: 0.7,
+        allowsEditing: false,
+      }
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options)
+      if (result.canceled || result.assets.length === 0) return
+      setImageUri(result.assets[0].uri)
+    } catch {
+      // 시뮬레이터처럼 카메라가 없는 기기 등
+      setError(source === 'camera' ? '이 기기에서는 카메라를 쓸 수 없어요. 앨범에서 골라 주세요.' : '사진을 불러오지 못했어요.')
+    }
   }
 
   const handleSubmit = async () => {
@@ -480,15 +505,28 @@ export default function ReportComposerModal({
 
                     <Text style={styles.sectionLabel}>사진 (선택)</Text>
                     {imageUri === null ? (
-                      <TouchableOpacity
-                        style={styles.photoBtn}
-                        onPress={handlePickImage}
-                        accessibilityRole="button"
-                        accessibilityLabel="사진 첨부하기"
-                      >
-                        <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
-                        <Text style={styles.photoBtnText}>사진 첨부하기</Text>
-                      </TouchableOpacity>
+                      <View style={styles.photoBtnRow}>
+                        {Platform.OS !== 'web' && (
+                          <TouchableOpacity
+                            style={[styles.photoBtn, styles.photoBtnHalf]}
+                            onPress={() => handlePickImage('camera')}
+                            accessibilityRole="button"
+                            accessibilityLabel="카메라로 찍기"
+                          >
+                            <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
+                            <Text style={styles.photoBtnText}>카메라로 찍기</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={[styles.photoBtn, styles.photoBtnHalf]}
+                          onPress={() => handlePickImage('library')}
+                          accessibilityRole="button"
+                          accessibilityLabel="앨범에서 고르기"
+                        >
+                          <Ionicons name="images-outline" size={18} color={COLORS.primary} />
+                          <Text style={styles.photoBtnText}>앨범에서 고르기</Text>
+                        </TouchableOpacity>
+                      </View>
                     ) : (
                       <View style={styles.photoPreviewWrap}>
                         <Image source={{ uri: imageUri }} style={styles.photoPreview} />
@@ -542,6 +580,15 @@ export default function ReportComposerModal({
                       <View style={styles.errorBox}>
                         <Ionicons name="warning" size={15} color="#B45309" />
                         <Text style={styles.errorText}>{error}</Text>
+                        {blockedPermission !== null && (
+                          <TouchableOpacity
+                            onPress={() => Linking.openSettings().catch(() => {})}
+                            accessibilityRole="button"
+                            accessibilityLabel="휴대폰 설정 열기"
+                          >
+                            <Text style={styles.settingsLink}>설정 열기</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                   </ScrollView>
@@ -687,6 +734,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   photoBtnText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
+  photoBtnRow: { flexDirection: 'row', gap: 8 },
+  photoBtnHalf: { flex: 1 },
+  settingsLink: { fontFamily: FONTS.semibold, fontSize: 12.5, color: COLORS.primary },
   photoPreviewWrap: { position: 'relative', alignSelf: 'flex-start' },
   photoPreview: { width: 120, height: 120, borderRadius: 10, backgroundColor: '#EEE' },
   photoRemove: {
