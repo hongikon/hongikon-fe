@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { navigationRef } from '../../navigation/navigationRef'
 
 /**
  * 화면 아래에 잠깐 떴다 사라지는 안내(토스트). "구독했어요", "북마크에서 뺐어요"처럼
@@ -58,8 +59,27 @@ const ToastContext = createContext<ToastInternal | null>(null)
 
 const DEFAULT_DURATION = 2200
 const ACTION_DURATION = 3500
-/** 하단 탭바(TabNavigator, height 82) 위로 띄운다. */
+/** 탭 화면에서는 하단 탭바(TabNavigator, height 82) 위로 띄운다. */
 const ROOT_BOTTOM_OFFSET = 82 + 12
+/** 탭바가 없는 화면(소식 상세·검색·학과 소식 등 스택 화면, 웰컴)에서는 홈 인디케이터 바로 위에 둔다. */
+const ROOT_BOTTOM_OFFSET_NO_TAB_BAR = 16
+
+/** 지금 맨 위 화면이 탭 화면(Main)인지. 내비게이션 상태가 바뀔 때마다 다시 잰다. */
+function isOnTabScreen(): boolean {
+  if (!navigationRef.isReady()) return false
+  const state = navigationRef.getRootState()
+  return state?.routes[state.index]?.name === 'Main'
+}
+
+/**
+ * 렌더할 때마다 지금 화면을 본다(토스트가 뜰 때마다 Provider 가 다시 그려 준다). 토스트가 떠 있는 사이
+ * 화면을 옮겨도 따라가도록 내비게이션 상태 변화에도 다시 그린다.
+ */
+function useRootBottomOffset(): number {
+  const [, rerender] = useState(0)
+  useEffect(() => navigationRef.addListener('state', () => rerender((n) => n + 1)), [])
+  return isOnTabScreen() ? ROOT_BOTTOM_OFFSET : ROOT_BOTTOM_OFFSET_NO_TAB_BAR
+}
 
 let nextHostId = 1
 
@@ -109,9 +129,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <ToastViewport bottomOffset={ROOT_BOTTOM_OFFSET} isRoot />
+      <RootToastViewport />
     </ToastContext.Provider>
   )
+}
+
+function RootToastViewport() {
+  return <ToastViewport bottomOffset={useRootBottomOffset()} isRoot />
 }
 
 /** 토스트 띄우기. Provider 밖(관리자 콘솔 등)에서는 아무 일도 하지 않는다. */

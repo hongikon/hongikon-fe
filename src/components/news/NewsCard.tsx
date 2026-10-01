@@ -38,7 +38,7 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={handleToggleBookmark}
             accessibilityRole="button"
-            accessibilityLabel={bookmarked ? '북마크 해제' : '북마크'}
+            accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
           >
             <Ionicons
               name={bookmarked ? 'bookmark' : 'bookmark-outline'}

@@ -468,7 +468,13 @@ interface LinkRowProps {
 
 function LinkRow({ icon, label, value, danger = false, onPress }: LinkRowProps) {
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress}>
+    <TouchableOpacity
+      style={styles.row}
+      onPress={onPress}
+      disabled={!onPress}
+      // 누를 수 없는 줄(앱 버전 등)은 버튼으로 읽히지 않게 한다.
+      accessibilityRole={onPress ? 'button' : undefined}
+    >
       <View style={styles.rowLabel}>
         <Ionicons name={icon} size={17} color={danger ? COLORS.danger : COLORS.textSecondary} />
         <Text style={[styles.rowLabelText, danger && styles.dangerText]}>{label}</Text>

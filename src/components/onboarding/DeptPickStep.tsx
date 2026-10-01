@@ -75,6 +75,8 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
           style={({ pressed }) => [styles.chip, universityAllOn && styles.chipOn, pressed && styles.pressed]}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: universityAllOn }}
+          // react-native-web 0.21 은 accessibilityState 를 DOM 에 옮기지 않아 웹은 aria-* 로 따로 준다.
+          aria-checked={universityAllOn}
           accessibilityLabel="학교 공지(학사·장학 등) 함께 받기"
         >
           <Ionicons
@@ -140,6 +142,7 @@ const DeptRow = memo(function DeptRow({ item, selected, onToggle }: DeptRowProps
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       accessibilityLabel={item.name}
     >
       <Text style={[styles.rowName, selected && styles.rowNameOn]}>{item.name}</Text>

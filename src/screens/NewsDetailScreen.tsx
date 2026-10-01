@@ -52,7 +52,12 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={[styles.header, layoutStyles.readable]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="뒤로 가기"
+          >
             <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>소식 상세</Text>
@@ -93,14 +98,20 @@ function NewsDetailBody({
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
           <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>소식 상세</Text>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => toggleBookmark(item.id)}
-          accessibilityLabel={bookmarked ? '북마크 해제' : '북마크'}
+          accessibilityRole="button"
+          accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
         >
           <Ionicons
             name={bookmarked ? 'bookmark' : 'bookmark-outline'}
@@ -169,6 +180,8 @@ function NewsDetailBody({
           onPress={() =>
             Linking.openURL(item.link ?? 'https://www.hongik.ac.kr')
           }
+          accessibilityRole="link"
+          accessibilityLabel={item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'}
         >
           <Ionicons name="open-outline" size={16} color={COLORS.primary} />
           <Text style={styles.linkText}>

@@ -34,7 +34,11 @@ export default function NewsScreen() {
   const { settings, isBookmarked } = useSettings()
   // 북마크·구독은 진동과 토스트("북마크에 저장했어요")가 붙은 버전을 쓴다.
   const { toggleBookmark, toggleSubscribedDept } = useFeedbackToggles()
-  const [activeTab, setActiveTab] = useState<TabType>('북마크')
+  // 처음엔 구독한 게시판이 있으면 '구독', 없으면 고를 수 있는 '전체'를 연다. 북마크는 대개 비어 있어
+  // 첫 화면으로 두면 빈 안내만 보였다.
+  const [activeTab, setActiveTab] = useState<TabType>(() =>
+    settings.subscribedDepts.length > 0 ? '구독' : '전체',
+  )
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
 
@@ -97,6 +101,8 @@ export default function NewsScreen() {
               }}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
+              // react-native-web 0.21 은 accessibilityState 를 DOM 에 옮기지 않아 웹은 aria-* 로 따로 준다.
+              aria-selected={isActive}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
               <View style={[styles.tabIndicator, isActive && styles.tabIndicatorActive]} />
@@ -151,7 +157,7 @@ export default function NewsScreen() {
                 <View style={styles.hub}>
                   <View style={styles.hubHead}>
                     <Text style={styles.hubLabel}>
-                      내 구독 학과 {settings.subscribedDepts.length}
+                      내 구독 {settings.subscribedDepts.length}
                     </Text>
                     <TouchableOpacity
                       style={styles.hubManage}

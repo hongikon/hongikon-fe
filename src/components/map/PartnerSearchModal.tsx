@@ -84,6 +84,7 @@ export default function PartnerSearchModal({
         style={styles.row}
         activeOpacity={0.7}
         onPress={() => handleSelect(partner)}
+        accessibilityRole="button"
       >
         <View style={[styles.dot, { backgroundColor: meta.color }]} />
         <View style={styles.info}>
