@@ -10,6 +10,8 @@ import { deactivateStoredPushDevice, registerPushDevice } from './pushDevice'
 import { useAuth } from '../contexts/AuthContext'
 import { useSettings } from '../contexts/SettingsContext'
 import { NEWS_BY_ID } from '../constants/news'
+import { requestMapIntent } from './mapIntents'
+import { notificationTarget } from '../utils/notificationRouting'
 import type { PushNotificationData } from '../types'
 
 /** 앱이 켜져 있을 때 알림을 어떻게 보여줄지. 배너·목록엔 띄우되 배지·소리는 안 쓴다. */
@@ -50,36 +52,41 @@ function handleNotificationResponse(response: Notifications.NotificationResponse
 function flushPendingNotification(): void {
   const data = pendingNotification
   if (!data) return
-  const target = data.type === 'NEWS' ? 'NewsDetail' : 'Main'
-  if (!canRouteTo(target)) return
+  const target = notificationTarget(data)
+  const routeName = target.kind === 'news' || target.kind === 'localNews' ? 'NewsDetail' : 'Main'
+  if (!canRouteTo(routeName)) return
   pendingNotification = null
   routeForNotification(data)
 }
 
 /**
- * 알림을 탭했을 때 이동할 화면을 정한다.
- * NEWS는 상세 화면(id로 상세 API 조회)으로, REPORT는 지도 탭(기본 탭)으로 보낸다 — 좌표로 지도를
- * 자동 포커스하는 기능은 MapScreen이 아직 알림발 좌표를 받을 방법이 없어 후속 작업으로 남긴다.
+ * 알림을 탭했을 때 이동할 화면(`utils/notificationRouting.ts` 가 정한다).
+ * - NEWS: 상세 화면(id로 상세 API 조회)
+ * - REPORT_STATUS(승인)·REPORT_NEW: 지도 탭 + 그 제보 포커스 요청(`mapIntents` focusReport) — MapScreen 이
+ *   진행 중 제보를 받아 찾아 띄운다. 지도가 아직 안 떠 있으면(콜드 스타트) 지도 탭이 포커스될 때 처리한다.
+ * - REPORT_STATUS(반려): 지도에 없는 제보라 지도 탭만 연다.
  */
 function routeForNotification(data: PushNotificationData): void {
   if (!navigationRef.isReady()) return
 
-  if (data.type === 'NEWS') {
-    // 목록(`GET /news`)이 페이지 단위라 id로 항목을 찾을 수 없다 — id만 넘기면 상세 화면이
-    // `GET /news/{id}`로 받아 그린다. 백엔드(NewsPushDispatcher)는 newsId 를 숫자로 보낸다.
-    const newsId = String(data.newsId ?? '').trim()
-    if (/^\d+$/.test(newsId)) {
-      navigationRef.navigate('NewsDetail', { newsId })
+  const target = notificationTarget(data)
+  switch (target.kind) {
+    case 'news':
+      navigationRef.navigate('NewsDetail', { newsId: target.newsId })
+      return
+    case 'localNews': {
+      // `AppStatusScreen` 로컬 표본 알림은 로컬 크롤링 스냅샷 id를 쓴다 — 로컬 데이터에서 찾아 넘긴다.
+      const localItem = NEWS_BY_ID.get(target.newsId)
+      if (localItem) navigationRef.navigate('NewsDetail', { item: localItem })
       return
     }
-    // `AppStatusScreen` 로컬 표본 알림은 로컬 크롤링 스냅샷 id(예: 'univ-154856')를 쓴다 — 그 경우만
-    // 로컬 데이터에서 찾아 넘긴다. 그 밖의 형식이 이상한 payload 는 조용히 무시한다.
-    const localItem = NEWS_BY_ID.get(newsId)
-    if (localItem) navigationRef.navigate('NewsDetail', { item: localItem })
-    return
+    case 'map':
+      if (target.focusReportId !== null) requestMapIntent({ type: 'focusReport', reportId: target.focusReportId })
+      navigationRef.navigate('Main', { screen: 'Map' })
+      return
+    case 'none':
+      return
   }
-
-  navigationRef.navigate('Main')
 }
 
 async function getExpoPushToken(): Promise<string | null> {

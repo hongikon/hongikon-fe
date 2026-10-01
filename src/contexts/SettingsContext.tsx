@@ -23,6 +23,11 @@ import {
   isSubscriptionApiMissing,
   putMySubscription,
 } from '../apis/subscriptions'
+import {
+  getNotificationSettings,
+  isNotificationSettingsApiMissing,
+  patchNotificationSettings,
+} from '../apis/notificationSettings'
 import { isRetryableError } from '../apis/client'
 import { useReconnect } from '../lib/connectivity'
 import {
@@ -31,6 +36,11 @@ import {
   mergeBoardSubscriptions,
   type BoardTarget,
 } from '../utils/boardSubscriptionSync'
+import {
+  resolveReportAlertPrefs,
+  sameReportAlertPrefs,
+  type ReportAlertPrefs,
+} from '../utils/reportAlertSync'
 import {
   DEFAULT_SETTINGS,
   restoreSettings,
@@ -50,6 +60,10 @@ interface SettingsContextValue {
   /** 구독 중인 게시판의 알림만 켜고 끈다. 구독하지 않은 게시판이면 아무 일도 하지 않는다. */
   toggleDeptAlert: (id: string) => void
   isDeptAlertOn: (id: string) => boolean
+  /** 내 제보 결과(승인·반려) 알림 켜고 끄기. */
+  toggleReportStatusAlert: () => void
+  /** 캠퍼스 새 제보 알림 켜고 끄기. */
+  toggleNewReportAlert: () => void
   toggleBookmark: (id: string) => void
   isBookmarked: (id: string) => boolean
   resetSettings: () => void
@@ -57,6 +71,10 @@ interface SettingsContextValue {
 
 /** 앱이 그릴 수 있는 게시판(TREE_DATA 리프). 서버에서만 온 모르는 sourceId 를 거르는 데 쓴다. */
 const KNOWN_BOARD_IDS: ReadonlySet<string> = new Set(SUBSCRIBABLE_ITEMS.map((item) => item.id))
+
+function toReportAlertPrefs(s: Settings): ReportAlertPrefs {
+  return { reportStatus: s.reportStatusAlert, newReports: s.newReportAlert }
+}
 
 function toggleInList(list: string[], value: string): string[] {
   return list.includes(value)
@@ -269,14 +287,115 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, loaded, boardSyncNonce, boardQueue])
 
+  /**
+   * 제보 알림 설정 서버 동기화(`/users/me/notification-settings`). 제보 푸시는 서버 값으로 대상을 정한다.
+   * 맞추는 규칙은 `utils/reportAlertSync.ts` — 서버에 못 올린 변경(`reportAlertsDirty`)이 있으면 로컬이 이긴다.
+   * 서버에 API 가 아직 없으면(404) 이번 실행 동안은 기기에만 두고, dirty 로 남겨 배포 뒤 다음 실행 때 올린다.
+   */
+  const reportAlertsUnsupportedRef = useRef(false)
+  const reportAlertsSeqRef = useRef(0)
+  const [reportAlertsFetchFailed, setReportAlertsFetchFailed] = useState(false)
+  const [reportAlertsFetchNonce, setReportAlertsFetchNonce] = useState(0)
+
+  /** 이 값을 서버로 올린다. 보내는 사이 또 바뀌었으면 dirty 를 그대로 둔다(마지막 요청이 다시 지운다). */
+  const pushReportAlerts = useCallback((prefs: ReportAlertPrefs) => {
+    const token = accessTokenRef.current
+    if (!token || reportAlertsUnsupportedRef.current) return
+    const seq = ++reportAlertsSeqRef.current
+    patchNotificationSettings(prefs, token)
+      .then(() => {
+        if (seq !== reportAlertsSeqRef.current) return
+        setSettings((prev) =>
+          sameReportAlertPrefs(toReportAlertPrefs(prev), prefs) ? { ...prev, reportAlertsDirty: false } : prev,
+        )
+      })
+      .catch((error) => {
+        if (isNotificationSettingsApiMissing(error)) {
+          reportAlertsUnsupportedRef.current = true
+          if (__DEV__) console.warn('서버에 제보 알림 설정 API 가 아직 없어(404) 이번 실행 동안 기기에만 저장합니다.')
+          return
+        }
+        // 연결 문제면 dirty 로 남겨 두었다가 재연결·포그라운드 때 다시 보낸다.
+        if (isRetryableError(error)) return
+        // 서버가 거절한 변경은 다시 보내도 같으니 서버 값을 다시 받아 화면을 맞춘다.
+        if (seq === reportAlertsSeqRef.current) {
+          setSettings((prev) => ({ ...prev, reportAlertsDirty: false }))
+          setReportAlertsFetchNonce((n) => n + 1)
+        }
+        if (__DEV__) console.warn('제보 알림 설정이 거절되었습니다:', error)
+      })
+  }, [])
+
+  // 로그아웃하면 이전 계정이 못 올린 변경을 다음 계정에 올리지 않게 dirty 를 지운다.
+  // (처음부터 게스트인 실행에서는 지우지 않는다 — 게스트로 바꾼 값은 로그인 때 올라가야 한다.)
+  const wasLoggedInRef = useRef(isLoggedIn)
+  useEffect(() => {
+    if (wasLoggedInRef.current && !isLoggedIn) {
+      reportAlertsSeqRef.current++
+      setReportAlertsFetchFailed(false)
+      setSettings((prev) => (prev.reportAlertsDirty ? { ...prev, reportAlertsDirty: false } : prev))
+    }
+    wasLoggedInRef.current = isLoggedIn
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!loaded || !isLoggedIn || reportAlertsUnsupportedRef.current) return
+
+    let cancelled = false
+    const token = accessTokenRef.current
+    if (!token) return
+    getNotificationSettings(token)
+      .then((server) => {
+        if (cancelled) return
+        setReportAlertsFetchFailed(false)
+        const current = settingsRef.current
+        const { toPatch } = resolveReportAlertPrefs(toReportAlertPrefs(current), server, current.reportAlertsDirty)
+        setSettings((prev) => {
+          const resolved = resolveReportAlertPrefs(toReportAlertPrefs(prev), server, prev.reportAlertsDirty)
+          return {
+            ...prev,
+            reportStatusAlert: resolved.next.reportStatus,
+            newReportAlert: resolved.next.newReports,
+            reportAlertsDirty: resolved.toPatch !== null,
+          }
+        })
+        if (toPatch) pushReportAlerts(toPatch)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        if (isNotificationSettingsApiMissing(error)) {
+          reportAlertsUnsupportedRef.current = true
+          return
+        }
+        setReportAlertsFetchFailed(isRetryableError(error))
+        if (__DEV__) console.warn('제보 알림 설정을 불러오지 못했습니다:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, loaded, reportAlertsFetchNonce, pushReportAlerts])
+
   const recoverServerSync = useCallback(() => {
     if (!accessToken) return
+    if (!reportAlertsUnsupportedRef.current) {
+      if (reportAlertsFetchFailed) setReportAlertsFetchNonce((n) => n + 1)
+      else if (settingsRef.current.reportAlertsDirty) pushReportAlerts(toReportAlertPrefs(settingsRef.current))
+    }
     if (categoryFetchFailed) setCategoryFetchNonce((n) => n + 1)
     if (pendingCategoryChangesRef.current.size > 0) flushPendingCategoryChanges()
     if (boardQueue.isUnsupported()) return
     if (boardSyncFailed) setBoardSyncNonce((n) => n + 1)
     if (boardQueue.pending.size > 0) boardQueue.flush()
-  }, [accessToken, categoryFetchFailed, flushPendingCategoryChanges, boardSyncFailed, boardQueue])
+  }, [
+    accessToken,
+    categoryFetchFailed,
+    flushPendingCategoryChanges,
+    boardSyncFailed,
+    boardQueue,
+    reportAlertsFetchFailed,
+    pushReportAlerts,
+  ])
 
   useReconnect(recoverServerSync, Boolean(accessToken))
 
@@ -362,6 +481,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [queueBoardChange],
   )
 
+  /** 화면은 바로 바꾸고 dirty 로 표시한 뒤, 로그인 상태면 서버로 올린다. 게스트 값은 로그인 때 올라간다. */
+  const setReportAlert = useCallback(
+    (key: 'reportStatusAlert' | 'newReportAlert', value: boolean) => {
+      const prefs = toReportAlertPrefs({ ...settingsRef.current, [key]: value })
+      setSettings((prev) => ({ ...prev, [key]: value, reportAlertsDirty: true }))
+      if (accessTokenRef.current) pushReportAlerts(prefs)
+    },
+    [pushReportAlerts],
+  )
+
+  const toggleReportStatusAlert = useCallback(
+    () => setReportAlert('reportStatusAlert', !settingsRef.current.reportStatusAlert),
+    [setReportAlert],
+  )
+
+  const toggleNewReportAlert = useCallback(
+    () => setReportAlert('newReportAlert', !settingsRef.current.newReportAlert),
+    [setReportAlert],
+  )
+
   const isDeptAlertOn = useCallback(
     (id: string) => settings.subscribedDepts.includes(id) && !settings.mutedDepts.includes(id),
     [settings.subscribedDepts, settings.mutedDepts],
@@ -382,8 +521,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const resetSettings = useCallback(() => {
     // 초기화하면 구독 게시판이 비므로 서버 구독도 해지한다 — 안 그러면 다음 로그인 때 합치기로 되살아난다.
     for (const id of settingsRef.current.subscribedDepts) queueBoardChange(id, null)
-    setSettings(DEFAULT_SETTINGS)
-  }, [queueBoardChange])
+    // 제보 알림도 기본값으로 서버에 올린다 — 안 그러면 다음 로그인 때 서버 값이 되살아난다.
+    setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: true })
+    if (accessTokenRef.current) pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
+  }, [queueBoardChange, pushReportAlerts])
 
   /**
    * 값을 매 렌더 새 객체로 만들면 설정을 건드리지 않아도 모든 소비자가 다시 그려진다.
@@ -397,6 +538,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleSubscribedDept,
       toggleDeptAlert,
       isDeptAlertOn,
+      toggleReportStatusAlert,
+      toggleNewReportAlert,
       toggleBookmark,
       isBookmarked,
       resetSettings,
@@ -408,6 +551,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleSubscribedDept,
       toggleDeptAlert,
       isDeptAlertOn,
+      toggleReportStatusAlert,
+      toggleNewReportAlert,
       toggleBookmark,
       isBookmarked,
       resetSettings,

@@ -6,7 +6,14 @@ import MapScreen from '../screens/MapScreen'
 import NewsScreen from '../screens/NewsScreen'
 import SettingsScreen from '../screens/SettingsScreen'
 
-const Tab = createBottomTabNavigator()
+/** 하단 탭. 알림 탭처럼 바깥에서 특정 탭으로 보낼 때 `navigate('Main', { screen: 'Map' })` 로 쓴다. */
+export type MainTabParamList = {
+  Map: undefined
+  News: undefined
+  Settings: undefined
+}
+
+const Tab = createBottomTabNavigator<MainTabParamList>()
 
 const TAB_BAR_BASE_STYLE = {
   height: 82,

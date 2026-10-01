@@ -27,6 +27,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
 import { useApiResource } from "../hooks/useApiResource";
 import RetryableError from "../components/common/RetryableError";
+import { useToast } from "../components/common/Toast";
 import { toReportMarkers, visibleReports } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
@@ -598,14 +599,58 @@ export default function MapScreen() {
 
   const handleStartReportPicker = useCallback(() => startPicker("report"), [startPicker]);
 
-  /** 설정의 제휴 제보 창에서 "지도에서 위치 찍기"로 넘어온 요청. 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다. */
+  const toast = useToast();
+  /** 알림발 제보 포커스 요청 순번. 연달아 탭했을 때 늦게 도착한 이전 요청 결과를 버린다. */
+  const focusRequestRef = useRef(0);
+
+  /**
+   * 제보 알림(승인·새 제보)을 탭해 들어온 경우. 제보 레이어를 켜고, 진행 중 제보를 새로 받아 그 제보를 찾아
+   * 시트를 띄우고 지도 가운데로 옮긴다. 레이어 목록은 승인 전에 받아 둔 것일 수 있어 따로 새로 받는다.
+   * 이미 끝났거나 숨겨져 목록에 없으면 안내만 띄운다(지도는 그대로 쓸 수 있다).
+   */
+  const focusReportFromNotification = useCallback(
+    async (reportId: number) => {
+      const request = ++focusRequestRef.current;
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
+      if (reportsOn) reportsResource.retry();
+      else setReportsOn(true);
+      try {
+        const live = visibleReports(await getLiveReports({ accessToken }));
+        if (request !== focusRequestRef.current) return;
+        const found = live.find((r) => r.id === reportId);
+        if (!found) {
+          toast.show({ message: "이 제보는 지금 지도에 없어요. 이미 끝났거나 내려갔어요.", tone: "info" });
+          return;
+        }
+        setSelectedReport(found);
+        postToMap({ type: "focusReport", lat: found.lat, lng: found.lng });
+      } catch {
+        if (request !== focusRequestRef.current) return;
+        toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
+      }
+    },
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast],
+  );
+
+  /**
+   * 다른 화면에서 넘어온 지도 요청(`lib/mapIntents.ts`). 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다.
+   * - 설정의 제휴 제보 창 "지도에서 위치 찍기" → 핀 고르기
+   * - 제보 알림 탭 → 그 제보 포커스
+   */
   const handleMapIntent = useCallback(() => {
     const intent = consumeMapIntent();
     if (intent?.type === "pickPartnerLocation") {
       setPartnerSuggest(null);
       startPicker("partner");
+      return;
     }
-  }, [startPicker]);
+    if (intent?.type === "focusReport") {
+      void focusReportFromNotification(intent.reportId);
+    }
+  }, [startPicker, focusReportFromNotification]);
 
   useFocusEffect(handleMapIntent);
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);

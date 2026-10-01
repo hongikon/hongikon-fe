@@ -1,5 +1,6 @@
 import type { CategoryKey } from '../constants/colors'
 import { normalizeBoardState } from './boardSubscriptionSync'
+import { DEFAULT_REPORT_ALERT_PREFS } from './reportAlertSync'
 
 /**
  * 기기에 저장하는 설정(`@hongik_settings`)의 모양과, 예전 버전이 저장한 값을 지금 모양으로 옮기는 함수.
@@ -7,7 +8,10 @@ import { normalizeBoardState } from './boardSubscriptionSync'
  */
 
 export interface Settings {
-  /** '구독 소식 알림' 전체 스위치. 끄면 이 기기를 푸시 대상에서 뺀다(`usePushNotifications`). */
+  /**
+   * '구독 소식 알림' 전체 스위치. 끄면 이 기기를 푸시 대상에서 뺀다(`usePushNotifications`) —
+   * 기기 단위라 소식뿐 아니라 제보 알림도 함께 오지 않는다.
+   */
   subscriptionAlert: boolean
   /**
    * 알림 받을 분야. 서버 `notification-categories` 와 맞춘다 — 구독한 모든 게시판의 푸시에 적용된다.
@@ -19,6 +23,12 @@ export interface Settings {
   /** 구독은 유지하되 알림을 끈 게시판. 항상 `subscribedDepts` 의 부분집합 — 새로 구독하면 알림은 켜진 채 시작한다. */
   mutedDepts: string[]
   bookmarkedNews: string[]
+  /** 내 제보가 승인·반려되면 알림. 서버 `notification-settings.reportStatus` 와 맞춘다. */
+  reportStatusAlert: boolean
+  /** 캠퍼스에 새 제보가 올라오면 알림(기본 꺼짐). 서버 `notification-settings.newReports` 와 맞춘다. */
+  newReportAlert: boolean
+  /** 위 두 값 중 서버에 아직 못 올린 변경이 있는지(`utils/reportAlertSync.ts`). */
+  reportAlertsDirty: boolean
 }
 
 export const ALL_CATEGORIES: CategoryKey[] = ['공지', '장학', '행사', '수강', '시설', '취업', '상담']
@@ -29,6 +39,9 @@ export const DEFAULT_SETTINGS: Settings = {
   subscribedDepts: [],
   mutedDepts: [],
   bookmarkedNews: [],
+  reportStatusAlert: DEFAULT_REPORT_ALERT_PREFS.reportStatus,
+  newReportAlert: DEFAULT_REPORT_ALERT_PREFS.newReports,
+  reportAlertsDirty: false,
 }
 
 /**

@@ -37,8 +37,8 @@ export interface KeywordSubscription {
 }
 
 /**
- * 자유 키워드 알림 구독. 아직 이 기능을 쓰는 화면이 없다 — 학과/카테고리
- * 구독(`SettingsContext`)과는 다른 축이라, 붙이려면 별도 입력 UI가 필요하다.
+ * 자유 키워드 알림 구독. 제목에 키워드가 들어간 새 소식은 게시판 구독·분야와 관계없이 푸시된다.
+ * 서버에만 저장하고(게스트 불가) 설정 > 키워드 알림(`KeywordAlertsModal`)에서 바로 부른다.
  */
 export function getKeywordSubscriptions(accessToken: string): Promise<KeywordSubscription[]> {
   return apiRequest<{ keywords: KeywordSubscription[] }>(

@@ -743,6 +743,12 @@
           }
         }
 
+        // 제보 알림을 탭해 들어온 경우. 그 제보 자리를 화면 가운데로 가져온다(마커는 setReports 가 그린다).
+        if (msg.type === 'focusReport') {
+          map.setCenter(new naver.maps.LatLng(msg.lat, msg.lng));
+          map.setZoom(msg.zoom || 18);
+        }
+
         if (msg.type === 'showRoute') {
           clearRouteOverlays();
           var routes = msg.routes || [];

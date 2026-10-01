@@ -10,7 +10,7 @@ const NAME_BY_ID = new Map(SUBSCRIBABLE_ITEMS.map((item) => [item.id, item.name]
 const boardName = (id: string) => NAME_BY_ID.get(id) ?? id
 
 /**
- * 설정 토글(북마크·구독·게시판 알림·분야 알림)에 손끝 진동과 토스트를 붙인 버전.
+ * 설정 토글(북마크·구독·게시판 알림·분야 알림·제보 알림)에 손끝 진동과 토스트를 붙인 버전.
  * 여러 화면이 같은 문구를 쓰도록 한곳에 모았다.
  *
  * 돌려주는 함수는 렌더마다 바뀌지 않는다(최신 설정은 ref 로 읽음) — 소식 카드(memo)에 그대로 넘겨도
@@ -23,6 +23,8 @@ export function useFeedbackToggles() {
     toggleSubscribedDept,
     toggleDeptAlert,
     toggleAlertCategory,
+    toggleReportStatusAlert,
+    toggleNewReportAlert,
   } = useSettings()
   const toast = useToast()
   const settingsRef = useRef(settings)
@@ -93,10 +95,34 @@ export function useFeedbackToggles() {
     [toggleAlertCategory, toast],
   )
 
+  const toggleReportStatusAlertWithFeedback = useCallback(() => {
+    const turningOn = !settingsRef.current.reportStatusAlert
+    toggleReportStatusAlert()
+    haptics.tapLight()
+    toast.show(
+      turningOn
+        ? { message: '내 제보가 승인·반려되면 알려드릴게요' }
+        : { message: '내 제보 결과 알림을 껐어요', tone: 'info' },
+    )
+  }, [toggleReportStatusAlert, toast])
+
+  const toggleNewReportAlertWithFeedback = useCallback(() => {
+    const turningOn = !settingsRef.current.newReportAlert
+    toggleNewReportAlert()
+    haptics.tapLight()
+    toast.show(
+      turningOn
+        ? { message: '캠퍼스 새 제보를 알려드릴게요' }
+        : { message: '캠퍼스 새 제보 알림을 껐어요', tone: 'info' },
+    )
+  }, [toggleNewReportAlert, toast])
+
   return {
     toggleBookmark: toggleBookmarkWithFeedback,
     toggleSubscribedDept: toggleSubscriptionWithFeedback,
     toggleDeptAlert: toggleDeptAlertWithFeedback,
     toggleAlertCategory: toggleAlertCategoryWithFeedback,
+    toggleReportStatusAlert: toggleReportStatusAlertWithFeedback,
+    toggleNewReportAlert: toggleNewReportAlertWithFeedback,
   }
 }
