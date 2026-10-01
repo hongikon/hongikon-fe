@@ -320,6 +320,35 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 /**
+ * 액세스 토큰이 만료돼 401 이 났을 때 새 토큰을 받아 주는 함수. AuthContext 가 등록한다.
+ * 받으면 새 액세스 토큰, 못 받으면(리프레시 토큰도 만료 등) null.
+ */
+export type TokenRefresher = (expiredAccessToken: string) => Promise<string | null>
+
+let tokenRefresher: TokenRefresher | null = null
+
+export function setTokenRefresher(refresher: TokenRefresher | null): void {
+  tokenRefresher = refresher
+}
+
+/**
+ * 토큰을 붙인 요청이 401 이면 한 번만 재발급받아 같은 요청을 다시 보낸다.
+ * 액세스 토큰 수명이 30분이라, 이게 없으면 앱을 켜 둔 채 30분이 지나면 로그인이 필요한 기능이 전부 실패했다.
+ * 401 은 서버가 요청을 처리하기 전(인증 필터)에 거절한 것이라 POST 를 다시 보내도 중복 처리되지 않는다.
+ */
+async function withTokenRefresh<T>(accessToken: string | null | undefined, run: (token: string | null | undefined) => Promise<T>): Promise<T> {
+  try {
+    return await run(accessToken)
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401 || !accessToken || !tokenRefresher) throw error
+    const fresh = await tokenRefresher(accessToken)
+    if (!fresh) throw error
+    devLog('액세스 토큰 재발급 후 다시 요청')
+    return run(fresh)
+  }
+}
+
+/**
  * 파일 업로드 전용. `apiRequest` 와 나눈 이유는 Content-Type 때문이다.
  * multipart 는 경계 문자열(boundary)을 런타임이 직접 붙여야 해서, 헤더를
  * 손으로 지정하면 오히려 깨진다.
@@ -332,15 +361,17 @@ export async function apiUpload<T>(
   accessToken: string,
   options: Pick<ApiRequestOptions, 'timeoutMs' | 'retries' | 'signal'> = {},
 ): Promise<T> {
-  const response = await send(path, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: form,
-    timeoutMs: options.timeoutMs ?? UPLOAD_TIMEOUT_MS,
-    retries: Math.max(0, options.retries ?? 0),
-    signal: options.signal,
+  return withTokenRefresh(accessToken, async (token) => {
+    const response = await send(path, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+      timeoutMs: options.timeoutMs ?? UPLOAD_TIMEOUT_MS,
+      retries: Math.max(0, options.retries ?? 0),
+      signal: options.signal,
+    })
+    return parseJson<T>(response)
   })
-  return parseJson<T>(response)
 }
 
 /**
@@ -349,17 +380,20 @@ export async function apiUpload<T>(
  */
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', body, accessToken, timeoutMs, retries, signal } = options
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
-  const response = await send(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    timeoutMs: timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    retries: Math.max(0, retries ?? (IDEMPOTENT_METHODS.has(method) ? DEFAULT_RETRIES : 0)),
-    signal,
+  return withTokenRefresh(accessToken, async (token) => {
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    const response = await send(path, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      timeoutMs: timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      retries: Math.max(0, retries ?? (IDEMPOTENT_METHODS.has(method) ? DEFAULT_RETRIES : 0)),
+      signal,
+    })
+    return parseJson<T>(response)
   })
-  return parseJson<T>(response)
 }

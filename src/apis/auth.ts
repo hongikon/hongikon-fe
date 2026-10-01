@@ -50,6 +50,18 @@ export function exchangeAuthCode(code: string): Promise<TokenResponse> {
 }
 
 /**
+ * 리프레시 토큰으로 새 액세스·리프레시 토큰을 받는다. 서버가 리프레시 토큰을 회전시키므로
+ * (쓰면 옛 값은 무효) 응답의 refreshToken 으로 반드시 바꿔 저장해야 한다. 재시도하지 않는다.
+ */
+export function reissueTokens(refreshToken: string): Promise<TokenResponse> {
+  return apiRequest<TokenResponse>('/auth/reissue', {
+    method: 'POST',
+    body: { refreshToken },
+    retries: 0,
+  })
+}
+
+/**
  * 로그아웃. 전달한 refresh 토큰을 서버에서 폐기(해당 유저의 저장된 refresh 토큰 레코드 삭제)한다.
  * 이미 만료/무효한 토큰이어도 서버가 204로 응답하므로(멱등) 호출부는 실패를 신경 쓰지 않아도 된다 —
  * 다만 네트워크 자체가 안 되는 경우엔 예외가 나므로, 로컬 로그아웃까지 막지 않으려면 호출부에서 감싸야 한다.

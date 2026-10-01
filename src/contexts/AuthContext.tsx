@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react'
 import { Platform } from 'react-native'
@@ -17,9 +18,10 @@ import {
   deleteAccount as deleteAccountRequest,
   exchangeAuthCode,
   logoutRequest,
+  reissueTokens,
   type TokenResponse,
 } from '../apis/auth'
-import { ApiError, isNetworkError } from '../apis/client'
+import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -104,6 +106,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<string | null>(null)
+  /** 동시에 여러 요청이 401 을 받아도 재발급은 한 번만 한다(리프레시 토큰이 회전돼 두 번 쓰면 두 번째가 실패). */
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null)
+
+  const refreshAccessToken = useCallback(async (expiredAccessToken: string): Promise<string | null> => {
+    // 다른 요청이 이미 새 토큰을 받아 두었으면 그걸 쓴다.
+    const stored = await getItem(ACCESS_TOKEN_KEY)
+    if (stored && stored !== expiredAccessToken) return stored
+
+    if (!refreshInFlightRef.current) {
+      refreshInFlightRef.current = (async () => {
+        try {
+          const refreshToken = await getItem(REFRESH_TOKEN_KEY)
+          if (!refreshToken) return null
+          const tokens = await reissueTokens(refreshToken)
+          await saveTokens(tokens)
+          setAccessToken(tokens.accessToken)
+          return tokens.accessToken
+        } catch (error: unknown) {
+          // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
+          if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+            await clearTokens()
+            setAccessToken(null)
+            setLoginError('로그인이 만료되었습니다. 다시 로그인해주세요.')
+            setStatus('signedOut')
+          }
+          return null
+        } finally {
+          refreshInFlightRef.current = null
+        }
+      })()
+    }
+    return refreshInFlightRef.current
+  }, [])
+
+  useEffect(() => {
+    setTokenRefresher(refreshAccessToken)
+    return () => setTokenRefresher(null)
+  }, [refreshAccessToken])
 
   useEffect(() => {
     async function restore() {
