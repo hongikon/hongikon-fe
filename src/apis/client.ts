@@ -34,6 +34,11 @@ export class ApiError extends Error {
   status: number
   /** 개발 빌드에서만 채워진다. 화면에 노출하지 않는다. */
   devDetail?: string
+  /**
+   * 토큰을 막 재발급받아 다시 보냈는데도 401 이 났다. 새 토큰이 무효일 리 없으니 토큰 문제가 아니라
+   * 서버 쪽 사정(예: 없는 경로를 Spring `/error` 가 401 로 돌려주는 경우)이다.
+   */
+  afterTokenRefresh?: boolean
 
   constructor(status: number, message: string, devDetail?: string) {
     super(message)
@@ -170,6 +175,11 @@ export interface ApiRequestOptions {
   retries?: number
   /** 화면을 떠나는 등 호출부가 더는 결과가 필요 없을 때 끊는다. */
   signal?: AbortSignal
+  /**
+   * 401 이어도 앱 전역 재발급(`setTokenRefresher`)을 쓰지 않는다. 로그아웃 정리처럼 저장소 토큰을 이미 지워
+   * 재발급이 의미 없거나, 호출부가 직접 재발급을 다루는 경우에 쓴다.
+   */
+  skipTokenRefresh?: boolean
 }
 
 /**
@@ -336,15 +346,26 @@ export function setTokenRefresher(refresher: TokenRefresher | null): void {
  * 액세스 토큰 수명이 30분이라, 이게 없으면 앱을 켜 둔 채 30분이 지나면 로그인이 필요한 기능이 전부 실패했다.
  * 401 은 서버가 요청을 처리하기 전(인증 필터)에 거절한 것이라 POST 를 다시 보내도 중복 처리되지 않는다.
  */
-async function withTokenRefresh<T>(accessToken: string | null | undefined, run: (token: string | null | undefined) => Promise<T>): Promise<T> {
+async function withTokenRefresh<T>(
+  accessToken: string | null | undefined,
+  run: (token: string | null | undefined) => Promise<T>,
+  skipTokenRefresh = false,
+): Promise<T> {
   try {
     return await run(accessToken)
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 401 || !accessToken || !tokenRefresher) throw error
+    if (!(error instanceof ApiError) || error.status !== 401 || !accessToken || !tokenRefresher || skipTokenRefresh) {
+      throw error
+    }
     const fresh = await tokenRefresher(accessToken)
     if (!fresh) throw error
     devLog('액세스 토큰 재발급 후 다시 요청')
-    return run(fresh)
+    try {
+      return await run(fresh)
+    } catch (retryError) {
+      if (retryError instanceof ApiError && retryError.status === 401) retryError.afterTokenRefresh = true
+      throw retryError
+    }
   }
 }
 
@@ -379,7 +400,7 @@ export async function apiUpload<T>(
  * EXPO_PUBLIC_API_BASE_URL 이 비어 있으면(백엔드 주소 미설정) 바로 에러로 안내한다.
  */
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, accessToken, timeoutMs, retries, signal } = options
+  const { method = 'GET', body, accessToken, timeoutMs, retries, signal, skipTokenRefresh } = options
 
   return withTokenRefresh(accessToken, async (token) => {
     const headers: Record<string, string> = { Accept: 'application/json' }
@@ -395,5 +416,5 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       signal,
     })
     return parseJson<T>(response)
-  })
+  }, skipTokenRefresh)
 }

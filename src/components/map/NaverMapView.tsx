@@ -25,6 +25,12 @@ interface Props {
 const READY_TIMEOUT_MS = 12_000
 /** 자동으로 다시 불러오는 횟수. 넘으면 "다시 시도" 버튼을 띄우고 멈춘다(무한 재시도로 배터리·데이터를 쓰지 않게). */
 const MAX_AUTO_RELOADS = 2
+/**
+ * WebView 프로세스가 죽어 다시 불러오는 횟수 상한(아래 시간 창 안에서). 준비 신호가 오면 위 자동 재시도
+ * 횟수는 0 으로 돌아가서, 크래시는 따로 시간 기준으로 센다 — 안 그러면 "뜨자마자 죽음"이 끝없이 반복된다.
+ */
+const MAX_CRASH_RELOADS = 3
+const CRASH_WINDOW_MS = 60_000
 const READY_MESSAGE = '__hongikonMapReady'
 
 /**
@@ -64,6 +70,7 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
   const webViewRef = useRef<WebViewType>(null)
   const readyRef = useRef(false)
   const autoReloadsRef = useRef(0)
+  const crashTimesRef = useRef<number[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [failed, setFailed] = useState(false)
   const [reloading, setReloading] = useState(false)
@@ -100,6 +107,20 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
     },
     [clearTimer],
   )
+
+  /** 렌더러가 죽었다. 짧은 시간에 여러 번 죽으면 다시 불러오지 않고 "다시 시도" 버튼을 띄운다. */
+  const handleCrash = useCallback(() => {
+    const now = Date.now()
+    crashTimesRef.current = [...crashTimesRef.current.filter((t) => now - t < CRASH_WINDOW_MS), now]
+    if (crashTimesRef.current.length > MAX_CRASH_RELOADS) {
+      clearTimer()
+      readyRef.current = false
+      setReloading(false)
+      setFailed(true)
+      return
+    }
+    reload(true)
+  }, [clearTimer, reload])
 
   // 로딩이 시작될 때마다 제한 시간을 건다. 준비 신호가 오면 handleMessage 에서 푼다.
   const handleLoadStart = useCallback(() => {
@@ -160,8 +181,8 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
         onError={() => reload(false)}
         onHttpError={() => reload(false)}
         // iOS 는 메모리 압박에, 안드로이드는 렌더러 크래시로 WebView 가 흰 화면이 될 수 있다.
-        onContentProcessDidTerminate={() => reload(true)}
-        onRenderProcessGone={() => reload(true)}
+        onContentProcessDidTerminate={handleCrash}
+        onRenderProcessGone={handleCrash}
       />
 
       {failed && (
@@ -170,7 +191,10 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
           <Text style={styles.body}>네트워크 상태를 확인한 뒤 다시 시도해 주세요.</Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => reload(true)}
+            onPress={() => {
+              crashTimesRef.current = []
+              reload(true)
+            }}
             accessibilityRole="button"
             accessibilityLabel="지도 다시 불러오기"
           >

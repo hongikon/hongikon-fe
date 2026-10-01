@@ -20,9 +20,12 @@ interface DeptTreeListProps {
 
 /** 학과 옆 구독 벨. 행 탭(소식 보기)과 분리해 벨만 구독을 토글한다. */
 function SubscribeBell({
+  name,
   subscribed,
   onToggle,
 }: {
+  /** 스크린리더가 "○○ 구독"처럼 무엇을 구독하는지 읽게 한다. */
+  name: string
   subscribed: boolean
   onToggle: () => void
 }) {
@@ -32,7 +35,7 @@ function SubscribeBell({
       onPress={onToggle}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
-      accessibilityLabel={subscribed ? '구독 해제' : '구독'}
+      accessibilityLabel={subscribed ? `${name} 구독 해제` : `${name} 구독`}
     >
       <Ionicons
         name={subscribed ? 'notifications' : 'notifications-outline'}
@@ -67,7 +70,7 @@ function TreeLeafRow({
         <Text style={styles.treeChildName}>{child.name}</Text>
         <Ionicons name="chevron-forward" size={12} color="#ddd" />
       </TouchableOpacity>
-      <SubscribeBell subscribed={subscribed} onToggle={onToggleSubscribe} />
+      <SubscribeBell name={child.name} subscribed={subscribed} onToggle={onToggleSubscribe} />
     </View>
   )
 }
@@ -182,6 +185,7 @@ export default function DeptTreeList({
               <Text style={styles.treeParentName}>{node.name}</Text>
               {isLeaf ? (
                 <SubscribeBell
+                  name={node.name}
                   subscribed={subscribedDepts.includes(node.name)}
                   onToggle={() => onToggleSubscribe(node.name)}
                 />

@@ -13,7 +13,7 @@ interface PrivacyModalProps {
 
 export default function PrivacyModal({ visible, onClose }: PrivacyModalProps) {
   return (
-    <Modal visible={visible} animationType="slide">
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>

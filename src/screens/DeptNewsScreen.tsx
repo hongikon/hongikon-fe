@@ -39,7 +39,12 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
           <Ionicons name="arrow-back" size={17} color="#444" />
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{deptName}</Text>

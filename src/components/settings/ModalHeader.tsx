@@ -11,7 +11,12 @@ interface ModalHeaderProps {
 export default function ModalHeader({ title, onClose }: ModalHeaderProps) {
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={onClose}>
+      <TouchableOpacity
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="뒤로 가기"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
         <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>

@@ -37,7 +37,7 @@ export function registerDevice(
 export function deactivateDevice(
   deviceId: number,
   accessToken: string,
-  options: Pick<ApiRequestOptions, 'retries' | 'timeoutMs'> = {},
+  options: Pick<ApiRequestOptions, 'retries' | 'timeoutMs' | 'skipTokenRefresh'> = {},
 ): Promise<void> {
   return apiRequest<void>(`/users/me/devices/${deviceId}`, {
     method: 'DELETE',

@@ -56,18 +56,34 @@ export function registerPushDevice(
  * 저장된 기기를 서버에서 비활성화한다. 저장된 id 가 없으면 할 일이 없다.
  * 서버가 거절한 경우(404 이미 없음, 403 다른 계정 소유 등)는 다시 보내도 같아 id 를 지운다.
  *
+ * - quick: 로그아웃 — 끊긴 망에서 재시도·백오프로 몇십 초 끌지 않게 한 번만, 짧게 보낸다. 이미 로컬
+ *   로그아웃이 끝난 뒤라 앱 전역의 자동 재발급도 쓰지 않는다.
+ * - reissue: 401(액세스 토큰 만료·없음)이면 한 번 불러 새 토큰으로 다시 보낸다. 로그아웃처럼 저장소의
+ *   토큰을 이미 지워 전역 재발급을 쓸 수 없는 곳에서 미리 꺼내 둔 refresh 토큰으로 받는다.
+ *
  * @returns 연결 문제로 실패해 나중에 다시 시도해야 하면 false.
  */
 export function deactivateStoredPushDevice(
-  accessToken: string,
-  options: { quick?: boolean } = {},
+  accessToken: string | null,
+  options: { quick?: boolean; reissue?: () => Promise<string | null> } = {},
 ): Promise<boolean> {
+  const { quick = false, reissue } = options
   return runSerially(async () => {
     const id = await getStoredDeviceId()
     if (id === null) return true
+    const send = (token: string) =>
+      deactivateDevice(id, token, quick ? { retries: 0, timeoutMs: 5_000, skipTokenRefresh: true } : {})
     try {
-      // quick: 로그아웃 — 끊긴 망에서 재시도·백오프로 버튼이 몇십 초 멈춰 있지 않게 한 번만, 짧게 보낸다.
-      await deactivateDevice(id, accessToken, options.quick ? { retries: 0, timeoutMs: 5_000 } : {})
+      const token = accessToken ?? (await reissue?.()) ?? null
+      if (!token) return false
+      try {
+        await send(token)
+      } catch (error) {
+        if (!reissue || !(error instanceof ApiError) || error.status !== 401) throw error
+        const fresh = await reissue()
+        if (!fresh) throw error
+        await send(fresh)
+      }
     } catch (error) {
       if (isRetryableError(error) || !(error instanceof ApiError)) {
         if (__DEV__) console.warn('기기 비활성화에 실패했습니다(나중에 다시 시도):', error)

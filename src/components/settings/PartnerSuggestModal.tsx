@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -118,8 +118,12 @@ export default function PartnerSuggestModal({
     onPickOnMap?.()
   }
 
+  /** 요청 세대. 창을 닫을 때 올려, 닫은 뒤 늦게 끝난 전송 결과가 다음에 연 빈 창을 건드리지 못하게 한다. */
+  const requestGenRef = useRef(0)
+
   useEffect(() => {
     if (!visible) {
+      requestGenRef.current += 1
       setKind('new')
       setStoreName('')
       setAddress('')
@@ -153,21 +157,25 @@ export default function PartnerSuggestModal({
       return
     }
     setValidation(null)
+    const generation = ++requestGenRef.current
+    const isStale = () => generation !== requestGenRef.current
     setSubmitting(true)
     setSubmitError(null)
     try {
       // POST 라 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 사용자가 직접 다시 보낸다.
       await submitFeedback({ content: buildContent(), contact: contact.trim() || undefined }, accessToken)
+      if (isStale()) return
       setSubmitted(true)
       haptics.success()
     } catch (error) {
+      if (isStale()) return
       setSubmitError({
         message: getErrorMessage(error, '제보를 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
     } finally {
-      setSubmitting(false)
+      if (!isStale()) setSubmitting(false)
     }
   }
 

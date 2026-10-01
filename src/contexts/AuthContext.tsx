@@ -129,6 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storedProvider, setStoredProvider] = useState<LoginProvider>('kakao')
   /** 동시에 여러 요청이 401 을 받아도 재발급은 한 번만 한다(리프레시 토큰이 회전돼 두 번 쓰면 두 번째가 실패). */
   const refreshInFlightRef = useRef<Promise<string | null> | null>(null)
+  /**
+   * 로그인 세션 번호. 로그아웃·탈퇴 때 올린다. 재발급이 도는 사이 로그아웃하면 늦게 온 새 토큰을
+   * 저장하지 않고 버려야 한다 — 안 그러면 로그아웃했는데 저장소에 새 토큰이 되살아난다.
+   */
+  const sessionGenRef = useRef(0)
+  /** 로그아웃 뒤 늦게 도착해 버린 재발급의 액세스 토큰. 로그아웃 정리(기기 해제)가 한 번 쓰고 비운다. */
+  const lateAccessTokenRef = useRef<string | null>(null)
 
   const refreshAccessToken = useCallback(async (expiredAccessToken: string): Promise<string | null> => {
     // 다른 요청이 이미 새 토큰을 받아 두었으면 그걸 쓴다.
@@ -136,21 +143,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored && stored !== expiredAccessToken) return stored
 
     if (!refreshInFlightRef.current) {
+      const generation = sessionGenRef.current
+      const isStale = () => generation !== sessionGenRef.current
+      /** 로그아웃 뒤 도착한 토큰: 저장하지 않고, 새로 발급된 refresh 토큰은 서버에서 폐기한다(실패해도 넘어간다). */
+      const discard = (tokens: TokenResponse) => {
+        lateAccessTokenRef.current = tokens.accessToken
+        logoutRequest(tokens.refreshToken).catch(() => {})
+      }
       refreshInFlightRef.current = (async () => {
         try {
           const refreshToken = await getItem(REFRESH_TOKEN_KEY)
-          if (!refreshToken) return null
+          if (!refreshToken || isStale()) return null
           const tokens = await reissueTokens(refreshToken)
+          if (isStale()) {
+            discard(tokens)
+            return null
+          }
           await saveTokens(tokens)
+          // 저장하는 사이 로그아웃이 끼어들었으면 방금 쓴 값을 다시 지운다.
+          if (isStale()) {
+            await clearTokens()
+            discard(tokens)
+            return null
+          }
           setAccessToken(tokens.accessToken)
           return tokens.accessToken
         } catch (error: unknown) {
           // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
-          if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+          if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
             await clearTokens()
             setAccessToken(null)
             setLoginError('로그인이 만료되었습니다. 다시 로그인해주세요.')
             setStatus('signedOut')
+            // 이 기기의 푸시 등록도 내려 보지만, 유효한 토큰이 없어 대개 401 로 실패한다(재발급할 refresh 토큰도
+            // 무효). 그러면 서버의 기기 행은 활성으로 남고, 이 기기로 다시 로그인할 때 같은 푸시 토큰 재등록이
+            // 새 계정으로 넘긴다. 그 사이 이전 계정 알림이 올 수 있다 — 서버 쪽 정리 없이는 막을 수 없다.
+            void deactivateStoredPushDevice(expiredAccessToken, { quick: true })
+              .catch(() => false)
+              .then(() => forgetStoredPushDevice())
+              .catch(() => {})
           }
           return null
         } finally {
@@ -283,22 +314,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     // 화면은 바로 로그아웃 상태로 돌리고, 서버 정리(기기 해제·refresh 토큰 폐기)는 뒤에서 한다.
     // 예전엔 두 요청을 기다린 뒤에 화면을 바꿔, 망이 느리면 로그아웃 버튼이 안 먹는 것처럼 보였다.
+    // 세션 번호를 먼저 올려, 지금 돌고 있는 재발급이 끝나도 새 토큰을 저장하지 않게 한다.
+    sessionGenRef.current += 1
+    lateAccessTokenRef.current = null
     const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
-    const refreshToken = await getItem(REFRESH_TOKEN_KEY)
+    const storedRefreshToken = await getItem(REFRESH_TOKEN_KEY)
 
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
     setStatus('signedOut')
+    const pendingRefresh = refreshInFlightRef.current
 
     void (async () => {
+      // 재발급이 돌고 있었으면 끝나길 기다린다. 늦게 온 결과는 refreshAccessToken 이 버리고 새 refresh 토큰도
+      // 폐기하지만, 새 액세스 토큰은 아직 유효해 아래 기기 해제에 쓴다.
+      if (pendingRefresh) await pendingRefresh.catch(() => null)
+      let accessToken = lateAccessTokenRef.current ?? storedAccessToken
+      lateAccessTokenRef.current = null
+      let refreshToken = storedRefreshToken
+
       // 이 기기의 푸시 등록을 내린다 — 안 그러면 로그아웃한 폰이 이전 계정의 알림을 계속 받는다.
-      // 저장소의 토큰은 이미 지웠으므로 미리 꺼내 둔 액세스 토큰으로 보낸다(만료돼 있으면 실패하고 넘어간다).
+      // 저장소의 토큰은 이미 지웠으므로 미리 꺼내 둔 토큰으로 보낸다. 액세스 토큰이 만료됐으면(401) 꺼내 둔
+      // refresh 토큰으로 한 번만 재발급받아 다시 보낸다. refresh 토큰은 회전되므로 그 뒤엔 새 값을 폐기해야 한다.
       // 실패해도 이 기기로 다시 로그인하면 같은 푸시 토큰 재등록이 기존 행을 새 계정으로 넘긴다.
-      if (storedAccessToken) {
-        const done = await deactivateStoredPushDevice(storedAccessToken, { quick: true }).catch(() => false)
-        if (!done && __DEV__) console.warn('로그아웃 후 기기 비활성화 실패')
+      let reissued = false
+      const reissue = async (): Promise<string | null> => {
+        if (reissued || !refreshToken) return null
+        reissued = true
+        try {
+          const tokens = await reissueTokens(refreshToken)
+          refreshToken = tokens.refreshToken
+          accessToken = tokens.accessToken
+          return tokens.accessToken
+        } catch {
+          return null
+        }
       }
+      const done = await deactivateStoredPushDevice(accessToken, { quick: true, reissue }).catch(() => false)
+      if (!done && __DEV__) console.warn('로그아웃 후 기기 비활성화 실패')
       await forgetStoredPushDevice().catch(() => {})
       if (refreshToken) {
         try {
@@ -314,6 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!accessToken) throw new Error('로그인 후 이용해주세요.')
 
     await deleteAccountRequest(accessToken)
+    sessionGenRef.current += 1
     // 탈퇴하면 서버가 기기 행까지 지운다(`UserService.withdraw`) — 저장해 둔 id 만 버린다.
     await forgetStoredPushDevice()
     await clearTokens()

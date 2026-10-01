@@ -12,13 +12,33 @@ interface Props {
   onReady?: () => void
 }
 
+/**
+ * 외부 스크립트(네이버 maps.js)를 한 번만 불러온다. 화면이 다시 붙을 때 태그가 이미 있어도
+ * 아직 내려받는 중일 수 있어, 태그가 있다는 것만으로 끝났다고 보지 않고 실제 로드를 기다린다.
+ * 실패한 태그는 지워 다음에 다시 시도할 수 있게 한다.
+ */
 function loadExternalScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
+    if (existing) {
+      if (existing.dataset.loaded === '1' || (window as any).naver?.maps) {
+        resolve()
+        return
+      }
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', reject, { once: true })
+      return
+    }
     const s = document.createElement('script')
     s.src = src
-    s.onload = () => resolve()
-    s.onerror = reject
+    s.onload = () => {
+      s.dataset.loaded = '1'
+      resolve()
+    }
+    s.onerror = (error) => {
+      s.remove()
+      reject(error)
+    }
     document.head.appendChild(s)
   })
 }
@@ -65,14 +85,20 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ html, onMessage },
     const src = extractExternalSrc(html)
     const inline = extractInlineScript(html)
 
+    // 불러오는 사이 화면을 떠났으면 지도를 만들지 않는다(사라진 #map 에 지도가 생기는 것을 막는다).
+    let cancelled = false
     const init = async () => {
       if (src) await loadExternalScript(src)
+      if (cancelled) return
       injectInlineScript(inline)
     }
 
-    init()
+    init().catch((error) => {
+      if (__DEV__) console.warn('네이버 지도 스크립트를 불러오지 못했습니다:', error)
+    })
 
     return () => {
+      cancelled = true
       ;(window as any).ReactNativeWebView = undefined
     }
   }, [])

@@ -54,8 +54,12 @@ export default function MapFilterChips({
   onSelectFacilityKind,
   onToggleReports,
 }: MapFilterChipsProps) {
+  // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
   const facilityCounts = useMemo(
-    () => VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(meta.key) })),
+    () =>
+      VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(meta.key) })).filter(
+        ({ count }) => count > 0,
+      ),
     [],
   )
 
@@ -113,7 +117,6 @@ export default function MapFilterChips({
                 accessibilityLabel={`${meta.key} ${count}곳`}
                 style={[
                   chipStyles.chip,
-                  count === 0 && chipStyles.chipEmpty,
                   isActive && { backgroundColor: meta.color, borderColor: meta.color },
                 ]}
               >

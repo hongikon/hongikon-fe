@@ -132,12 +132,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [categoryFetchFailed, setCategoryFetchFailed] = useState(false)
   const [categoryFetchNonce, setCategoryFetchNonce] = useState(0)
 
+  const isLoggedIn = Boolean(accessToken)
+
   // 로그아웃·계정 전환 시 이전 계정의 미전송 변경을 다른 계정에 보내면 안 된다.
+  // 토큰 재발급(accessToken 값만 바뀜)에는 비우지 않는다 — 계정이 바뀌려면 반드시 로그아웃(null)을 거친다.
   // 서버 값을 받아오는 아래 효과보다 먼저 돌아야 해서 앞에 둔다.
   useEffect(() => {
     pendingCategoryChangesRef.current.clear()
     setCategoryFetchFailed(false)
-  }, [accessToken])
+  }, [isLoggedIn])
 
   /**
    * 로그인하면 서버에 저장된 알림 분야가 기기 로컬 값을 덮는다 — 로그인한
@@ -191,13 +194,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
    * 게시판별 `alertEnabled` 로 대상을 정해서, 로컬에만 두면 아무도 받지 못한다.
    *
    * - 화면은 바로 바꾸고(낙관적 반영) 서버 저장은 게시판별 대기열이 뒤따른다(`createBoardSyncQueue`).
-   * - 서버에 구독 API 가 아직 없으면(404) 이번 실행 동안은 로컬에만 두고 다시 보내지 않는다.
+   * - 서버에 구독 API 가 아직 없으면(404, 또는 재발급 뒤에도 401 — `isSubscriptionApiMissing`) 이번 실행 동안은 로컬에만 두고 다시 보내지 않는다.
    *   다음 실행 때 로그인 합치기가 로컬 상태로 차이를 다시 계산하므로 잃는 값은 없다.
    * - 게스트는 로컬에만 둔다. 로그인하면 합집합으로 합쳐 서버로 올라간다.
    */
   const accessTokenRef = useRef(accessToken)
   accessTokenRef.current = accessToken
-  const isLoggedIn = Boolean(accessToken)
   const boardQueueRef = useRef<ReturnType<typeof createBoardSyncQueue> | null>(null)
   if (!boardQueueRef.current) {
     boardQueueRef.current = createBoardSyncQueue({
@@ -211,7 +213,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       classify: (error) =>
         isSubscriptionApiMissing(error) ? 'unsupported' : isRetryableError(error) ? 'retry' : 'drop',
       onUnsupported: () => {
-        if (__DEV__) console.warn('서버에 게시판 구독 API 가 아직 없어(404) 이번 실행 동안 구독은 기기에만 저장합니다.')
+        if (__DEV__) console.warn('서버에 게시판 구독 API 가 아직 없어(404·재발급 뒤 401) 이번 실행 동안 구독은 기기에만 저장합니다.')
       },
       log: (message, error) => {
         if (__DEV__ && !isSubscriptionApiMissing(error)) console.warn(message, error)
