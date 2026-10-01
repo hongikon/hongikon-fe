@@ -96,7 +96,7 @@ export function diffBoardSubscriptions(
  * 전송 실패를 어떻게 다룰지.
  * - retry: 연결 문제. 값을 남겨 두었다가 재연결·포그라운드 때 다시 보낸다.
  * - drop: 서버가 거절(400 등). 다시 보내도 같아 버린다. 로컬 구독은 피드에도 쓰여 되돌리지 않는다.
- * - unsupported: 서버에 구독 API 가 아직 없다(404). 이번 실행 동안은 보내지 않고 로컬에만 둔다.
+ * - unsupported: 서버에 구독 API 가 아직 없다(404, 또는 토큰 재발급 뒤에도 401). 이번 실행 동안은 보내지 않고 로컬에만 둔다.
  */
 export type SyncFailureKind = 'retry' | 'drop' | 'unsupported'
 
