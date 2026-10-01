@@ -6,7 +6,7 @@
 //    규칙에 걸려 index.html 이 돌아오고(HTTP 200, text/html), 웹판 아이콘이 전부 네모로 깨졌다.
 //    경로의 node_modules → nm, .pnpm → pnpm 으로 옮기고 번들 안의 URL 문자열도 같이 바꾼다.
 //
-// 2) 파비콘 주소에 버전 붙이기
+// 2) 파비콘 주소에 버전 붙이기 (3) 이용약관·개인정보 처리방침 정적 페이지는 맨 아래)
 //    브라우저는 /favicon.ico 를 오래 캐시해서, 브랜드 아이콘으로 바꾼 뒤에도 옛 아이콘이 계속 보였다.
 //    파일 내용 해시를 쿼리로 붙여 아이콘이 바뀔 때만 새로 받게 한다.
 import { createHash } from 'node:crypto'
@@ -95,4 +95,60 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   writeFileSync(indexHtml, html)
 }
 
-console.log(`[fix-web-export] 에셋 ${renames.size}개 경로 변경, 파일 ${rewritten}개 참조 수정, 파비콘 버전 적용`)
+// 3) 이용약관·개인정보 처리방침 정적 페이지(/terms, /privacy)
+//    스토어 심사·외부 링크용. 앱을 띄우지 않고(자바스크립트 없이) 바로 읽히게 정적 HTML 로 만든다.
+//    원문은 앱 안 화면과 같은 src/constants/legalText.ts 하나 — 따로 고치다 내용이 갈라지지 않게 한다.
+const legalSource = readFileSync('src/constants/legalText.ts', 'utf8')
+function legalText(name) {
+  const match = legalSource.match(new RegExp('export const ' + name + ' = `([\\s\\S]*?)`'))
+  if (!match) {
+    console.error(`[fix-web-export] legalText.ts 에서 ${name} 을 찾지 못함`)
+    process.exit(1)
+  }
+  return match[1]
+}
+const escapeHtml = (text) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+function legalPage(title, body) {
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${title} | 홍익온</title>
+<link rel="icon" type="image/png" href="/favicon.png" />
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #fff; color: #111; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  header img { width: 28px; height: 28px; border-radius: 7px; }
+  header span { font-weight: 700; color: #05014A; }
+  h1 { font-size: 24px; margin: 16px 0 24px; }
+  .body { white-space: pre-wrap; line-height: 1.75; font-size: 15px; color: #333; word-break: keep-all; overflow-wrap: anywhere; }
+  footer { margin-top: 40px; font-size: 13px; color: #888; }
+  footer a { color: #05014A; }
+</style>
+</head>
+<body>
+<main>
+  <header><img src="/favicon.png" alt="" /><span>홍익온</span></header>
+  <h1>${title}</h1>
+  <div class="body">${escapeHtml(body)}</div>
+  <footer><a href="/terms">이용약관</a> · <a href="/privacy">개인정보 처리방침</a> · <a href="/">홍익온 열기</a></footer>
+</main>
+</body>
+</html>
+`
+}
+
+for (const [slug, title, name] of [
+  ['privacy', '개인정보 처리방침', 'PRIVACY_TEXT'],
+  ['terms', '이용약관', 'TERMS_TEXT'],
+]) {
+  mkdirSync(join(DIST, slug), { recursive: true })
+  writeFileSync(join(DIST, slug, 'index.html'), legalPage(title, legalText(name)))
+}
+
+console.log(`[fix-web-export] 에셋 ${renames.size}개 경로 변경, 파일 ${rewritten}개 참조 수정, 파비콘 버전 적용, /terms·/privacy 생성`)
