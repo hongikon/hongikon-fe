@@ -18,7 +18,7 @@ import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 type PendingAction = 'kakao' | 'guest' | null
 
 /**
- * 최초 진입 화면. 카카오 로그인 / 애플 로그인(백엔드 미구현으로 준비 중) / 게스트 중 하나를 고른다.
+ * 최초 진입 화면. 카카오 로그인 / 게스트 중 하나를 고른다(Apple 로그인은 v2.0.0 예정).
  * AuthContext.status 가 'signedOut' 일 때만 RootNavigator 가 이 화면을 보여준다.
  */
 export default function WelcomeScreen() {
@@ -88,16 +88,8 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, styles.appleButton]}
-          disabled
-          accessibilityRole="button"
-          accessibilityLabel="Apple로 시작하기, 준비 중"
-          accessibilityState={{ disabled: true }}
-        >
-          <Ionicons name="logo-apple" size={18} color={COLORS.white} />
-          <Text style={styles.appleButtonText}>Apple로 시작하기 · 준비 중</Text>
-        </TouchableOpacity>
+        {/* Apple 로그인은 v2.0.0 에서 추가한다. 미완성 기능(비활성 "준비 중" 버튼)이 보이면 App Store 심사
+            2.1 거절 사유라 그때까지 버튼 자체를 숨긴다. 스타일(appleButton*)은 그때 다시 쓴다. */}
 
         <TouchableOpacity
           style={styles.guestButton}
