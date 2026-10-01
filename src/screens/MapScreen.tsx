@@ -721,12 +721,19 @@ export default function MapScreen() {
       <PartnerNoticeModal />
 
       <View style={styles.mapArea}>
-        <NaverMapView
-          ref={webViewRef}
-          html={mapHTML}
-          onMessage={handleWebViewMessage}
-          onReady={resyncMap}
-        />
+        {/*
+          지도 탭은 탭바가 지도 위에 떠 있다(TabNavigator). 지도 자체는 탭바 위에서 끝나게 해,
+          지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
+          탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
+        */}
+        <View style={[styles.mapCanvas, { marginBottom: tabBarHeight }]}>
+          <NaverMapView
+            ref={webViewRef}
+            html={mapHTML}
+            onMessage={handleWebViewMessage}
+            onReady={resyncMap}
+          />
+        </View>
 
         <View
           pointerEvents="box-none"
@@ -830,7 +837,7 @@ export default function MapScreen() {
 
         {pickingLocation && (
           <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
+            <View pointerEvents="none" style={[styles.pickerMarkerWrap, { bottom: tabBarHeight }]}>
               <View style={styles.pickerCrosshairV} />
               <View style={styles.pickerCrosshairH} />
               <View style={styles.pickerPinAnchor}>
@@ -1245,6 +1252,8 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  // 실제 지도가 그려지는 칸. 탭바 높이만큼 아래를 비운다(JSX 주석 참고). 위치 고르기 중앙 핀도 같은 칸 기준이다.
+  mapCanvas: { flex: 1 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
   // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
