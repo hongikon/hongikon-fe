@@ -53,7 +53,10 @@ export interface AdminReport {
   endsAt: string
   createdAt: string
   authorId: number | null
+  /** 로그인(카카오/Apple) 닉네임 원문. 검토용이라 관리자 화면에만 온다. */
   authorNickname: string | null
+  /** 앱 사용자에게 보이는 이름(앱 닉네임 또는 가린 이름). 앱 닉네임 기능 전 서버는 없음. */
+  authorDisplayName?: string | null
   flagCount: number
   moderationNote: string | null
   reviewedAt: string | null

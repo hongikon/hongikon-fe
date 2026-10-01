@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -27,6 +27,9 @@ import FeedbackModal from '../components/settings/FeedbackModal'
 import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
+import NicknameModal from '../components/settings/NicknameModal'
+import { getMyProfile, isNicknameApiKnownMissing, type MyProfile } from '../apis/users'
+import { useApiResource } from '../hooks/useApiResource'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import * as haptics from '../lib/haptics'
@@ -54,6 +57,7 @@ type ModalType =
   | 'partnerSuggest'
   | 'permissions'
   | 'keywords'
+  | 'nickname'
   | null
 
 export default function SettingsScreen() {
@@ -73,7 +77,7 @@ export default function SettingsScreen() {
   } = useFeedbackToggles()
   const toast = useToast()
 
-  const { status, loginProvider, logout, deleteAccount } = useAuth()
+  const { status, loginProvider, logout, deleteAccount, accessToken } = useAuth()
   const navigation = useNavigation<NavProp>()
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
@@ -171,6 +175,22 @@ export default function SettingsScreen() {
           ? '알림 확인 필요'
           : undefined
   const isGuest = status !== 'authenticated'
+
+  // 앱 닉네임. 백엔드에 API 가 아직 없으면(배포 전) 줄을 숨긴다.
+  // 토큰은 ref 로 읽는다. deps 에 넣으면 401 → 재발급으로 토큰이 바뀔 때마다 다시 불러, 배포 전 서버(없는 경로에 401)에서
+  // 재발급이 꼬리를 문다. 재발급 뒤 재요청은 client 가 알아서 한다.
+  const accessTokenRef = useRef(accessToken)
+  accessTokenRef.current = accessToken
+  const profileResource = useApiResource<MyProfile>(
+    (signal) => getMyProfile(accessTokenRef.current as string, signal),
+    [isGuest],
+    { enabled: !isGuest && !!accessToken && !isNicknameApiKnownMissing(), refetchOnForeground: false },
+  )
+  // 저장 직후 응답을 바로 보여 주고, 다음 조회 결과가 오면 그걸 따른다.
+  const [savedProfile, setSavedProfile] = useState<MyProfile | null>(null)
+  useEffect(() => setSavedProfile(null), [profileResource.data])
+  const profile = savedProfile ?? profileResource.data
+  const nicknameApiMissing = !profile && isNicknameApiKnownMissing()
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
   const detailDimmed = !subscriptionAlert
 
@@ -193,6 +213,20 @@ export default function SettingsScreen() {
                 icon="person-circle-outline"
                 label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
               />
+              {!nicknameApiMissing && (
+                <LinkRow
+                  icon="happy-outline"
+                  label="닉네임"
+                  value={profile ? profile.displayName : profileResource.loading ? '불러오는 중' : '불러오지 못함'}
+                  onPress={
+                    profile
+                      ? () => setActiveModal('nickname')
+                      : profileResource.loading
+                        ? undefined
+                        : profileResource.retry
+                  }
+                />
+              )}
               <LinkRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
             </>
           ) : (
@@ -513,6 +547,15 @@ export default function SettingsScreen() {
       <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
 
       <KeywordAlertsModal visible={activeModal === 'keywords'} onClose={() => setActiveModal(null)} />
+
+      {profile && (
+        <NicknameModal
+          visible={activeModal === 'nickname'}
+          profile={profile}
+          onClose={() => setActiveModal(null)}
+          onSaved={setSavedProfile}
+        />
+      )}
 
       <SubscriptionManagerModal
         visible={subManagerVisible}

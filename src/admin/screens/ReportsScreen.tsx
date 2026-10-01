@@ -258,7 +258,7 @@ function ReportCard({
           text={formatRange(report.startsAt, report.endsAt)}
           textStyle={expired ? styles.expiredText : undefined}
         />
-        <Fact icon="person-outline" text={report.authorNickname ?? (report.authorId !== null ? `사용자 #${report.authorId}` : '알 수 없음')} />
+        <Fact icon="person-outline" text={authorText(report)} />
         <Fact icon="create-outline" text={`${formatDateTime(report.createdAt)} 등록 (${formatRelative(report.createdAt, now)})`} />
       </View>
 
@@ -350,6 +350,13 @@ function ReportCard({
       {actionError ? <InlineError message={actionError} /> : null}
     </Card>
   )
+}
+
+/** 작성자: 로그인 닉네임 원문, 앱에 보이는 이름이 다르면 괄호로 함께. */
+function authorText(report: AdminReport): string {
+  const raw = report.authorNickname ?? (report.authorId !== null ? `사용자 #${report.authorId}` : '알 수 없음')
+  const shown = report.authorDisplayName
+  return shown && shown !== report.authorNickname ? `${raw} (앱 표시: ${shown})` : raw
 }
 
 function Fact({
