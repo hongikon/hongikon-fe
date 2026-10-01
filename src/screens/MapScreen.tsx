@@ -45,6 +45,7 @@ import { formatFloor } from "../utils/floors";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
 import { ROUTE_FINDING_ENABLED } from "../constants/route";
+import { CAMPUS_CENTER, DEFAULT_ZOOM } from "../constants/map";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
   filterPartners,
@@ -167,6 +168,16 @@ export default function MapScreen() {
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   /** 길찾기 버튼. 기능이 꺼져 있으면(ROUTE_FINDING_ENABLED) 버튼 자체를 그리지 않는다. */
   const handleOpenRoute = useCallback(() => setShowRoute(true), []);
+
+  /**
+   * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
+   * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
+   */
+  const handleRecenter = useCallback(() => {
+    webViewRef.current?.injectJavaScript(
+      `if (window.map && window.naver) { map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
+    );
+  }, []);
 
   const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), []);
 
@@ -806,8 +817,13 @@ export default function MapScreen() {
                 <Ionicons name="navigate" size={17} color={COLORS.primary} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.controlBtn}>
-              <Ionicons name="locate-outline" size={17} color={COLORS.primary} />
+            <TouchableOpacity
+              style={styles.controlBtn}
+              onPress={handleRecenter}
+              accessibilityRole="button"
+              accessibilityLabel="캠퍼스로 돌아가기"
+            >
+              <Ionicons name="school-outline" size={17} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
         )}
