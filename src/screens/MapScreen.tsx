@@ -703,7 +703,8 @@ export default function MapScreen() {
   /**
    * 다른 화면에서 넘어온 지도 요청(`lib/mapIntents.ts`). 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다.
    * - 설정의 제휴 제보 창 "지도에서 위치 찍기" → 핀 고르기
-   * - 제보 알림 탭 → 그 제보 포커스
+   * - 제보 알림 탭·내 제보 내역의 표시 중 제보 → 그 제보 포커스
+   * - 내 제보 내역의 "지도로 가서 제보하기" → 제보 위치 고르기
    */
   const handleMapIntent = useCallback(() => {
     const intent = consumeMapIntent();
@@ -715,8 +716,12 @@ export default function MapScreen() {
     }
     if (intent?.type === "focusReport") {
       void focusReportFromNotification(intent.reportId);
+      return;
     }
-  }, [startPicker, focusReportFromNotification]);
+    if (intent?.type === "startReport") {
+      handleStartReportPicker();
+    }
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker]);
 
   useFocusEffect(handleMapIntent);
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
