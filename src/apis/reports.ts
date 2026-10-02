@@ -79,7 +79,7 @@ interface ReportImageUploadTicket {
 }
 
 /**
- * 제보 사진 1장을 올리고, `createReport` 의 `imageKey` 로 넣을 키를 돌려준다.
+ * 제보 사진 1장을 올리고, `createReport` 의 `imageKeys` 에 넣을 키를 돌려준다(여러 장이면 장마다 부른다).
  * 1) 서버에서 S3 presigned PUT URL 을 받고 2) 사진을 S3 로 직접 올린다(백엔드를 거치지 않음).
  * 실패는 전부 `ReportImageUploadError` 로 바꿔 던진다.
  */
@@ -150,8 +150,9 @@ export async function uploadReportImage(
 }
 
 /**
- * 제보 생성. 사진은 `uploadReportImage` 로 먼저 올리고 받은 키를 `imageKey` 로 보낸다.
- * 서버가 사진 보기 URL(`imageUrl`, 1시간 유효)을 붙여 돌려준다.
+ * 제보 생성. 사진은 `uploadReportImage` 로 먼저 올리고 받은 키들을 `imageKeys`(최대 3장)로,
+ * 구버전 서버 대비로 첫 장을 `imageKey` 로도 보낸다. 서버가 사진 보기 URL(`imageUrls`, 첫 장 `imageUrl`, 1시간 유효)을
+ * 붙여 돌려준다. 여러 장 기능 전 서버는 `imageUrls` 없이 첫 장만 붙인다.
  */
 export async function createReport(
   input: CreateReportInput,

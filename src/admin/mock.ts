@@ -77,6 +77,11 @@ const reports: AdminReport[] = [
     startsAt: at(-20), endsAt: at(150), createdAt: at(-18), authorNickname: '붕어빵헌터',
     // 사진 썸네일 확인용(개발 목업 전용 외부 이미지)
     imageUrl: 'https://picsum.photos/seed/hongikon-report/800/600',
+    imageUrls: [
+      'https://picsum.photos/seed/hongikon-report/800/600',
+      'https://picsum.photos/seed/hongikon-report-2/600/800',
+      'https://picsum.photos/seed/hongikon-report-3/800/800',
+    ],
   }),
   baseReport({
     id: 30, status: 'PENDING', category: 'BOOTH', title: '학생회관 1층 동아리 홍보 부스',
@@ -209,6 +214,11 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     report.status = status
     report.reviewedAt = at(0)
     report.moderationNote = typeof body.note === 'string' && body.note ? body.note : report.moderationNote
+    // 서버처럼 반려·삭제하면 사진을 지운다.
+    if (status === 'REJECTED' || status === 'DELETED') {
+      report.imageUrl = null
+      report.imageUrls = []
+    }
     return { ...report }
   }
 

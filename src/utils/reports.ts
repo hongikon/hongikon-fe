@@ -23,6 +23,18 @@ export function promptLogin(message: string, logout: () => void): void {
   ])
 }
 
+/** 서버가 제보에 붙여 주는 사진 최대 장수. */
+export const REPORT_MAX_IMAGES = 3
+
+/**
+ * 제보 사진 보기 URL 목록(등록 순서, 최대 3장). 여러 장 기능 전 서버는 `imageUrls` 없이 `imageUrl` 1장만 준다.
+ */
+export function reportImageUrls(report: { imageUrl?: string | null; imageUrls?: readonly string[] | null }): string[] {
+  const urls = Array.isArray(report.imageUrls) ? report.imageUrls.filter((url) => !!url) : []
+  if (urls.length > 0) return urls.slice(0, REPORT_MAX_IMAGES)
+  return report.imageUrl ? [report.imageUrl] : []
+}
+
 /** 지도에 찍을 제보 마커 하나. WebView 로 넘기는 최소 정보만 담는다. */
 export interface ReportMarker {
   id: number

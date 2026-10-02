@@ -20,6 +20,7 @@ import { ReportAuthorModeration } from '../UserModeration'
 import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
 import { confirmAction } from '../../utils/dialog'
 import { openExternalUrl } from '../../utils/openExternalUrl'
+import { reportImageUrls } from '../../utils/reports'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
 const NOTE_MAX_LENGTH = 200
@@ -190,8 +191,10 @@ function ReportCard({
   const [flags, setFlags] = useState<AdminReportFlag[] | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [flagsError, setFlagsError] = useState<string | null>(null)
-  /** 사진 URL 이 만료(1시간)돼 못 불러온 경우. 새로고침하면 새 URL 을 받는다. */
-  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
+  /** 사진 URL 이 만료(1시간)돼 못 불러온 장. 새로고침하면 새 URL 을 받는다. */
+  const [failedPhotoUrls, setFailedPhotoUrls] = useState<readonly string[]>([])
+  /** 최대 3장(등록 순서). 여러 장 기능 전 서버는 imageUrl 1장만 준다. */
+  const photoUrls = reportImageUrls(report)
 
   const now = Date.now()
   const endsAt = parseServerDate(report.endsAt)
@@ -282,29 +285,37 @@ function ReportCard({
       <Text style={styles.title}>{report.title}</Text>
       {report.content ? <Text style={styles.content}>{report.content}</Text> : <Text style={styles.metaItalic}>(내용 없음)</Text>}
 
-      {report.imageUrl ? (
-        report.imageUrl === failedPhotoUrl ? (
-          <Text style={styles.metaItalic}>사진을 불러오지 못했습니다. 새로고침하면 다시 불러옵니다.</Text>
-        ) : (
-          <Pressable
-            onPress={() => openExternalUrl(report.imageUrl)}
-            accessibilityRole="link"
-            accessibilityLabel="첨부 사진 원본 보기"
-          >
-            <Image
-              source={{ uri: report.imageUrl }}
-              style={app ? styles.photoApp : styles.photo}
-              resizeMode={app ? 'cover' : 'contain'}
-              onError={() => setFailedPhotoUrl(report.imageUrl ?? null)}
-            />
-            {app ? (
-              <View style={styles.photoHint} pointerEvents="none">
-                <Ionicons name="expand-outline" size={12} color={COLORS.white} />
-                <Text style={styles.photoHintText}>원본</Text>
+      {photoUrls.length > 0 ? (
+        <View style={styles.photoRow}>
+          {photoUrls.map((url, index) =>
+            failedPhotoUrls.includes(url) ? (
+              <View key={url} style={[styles.photoFailed, app ? styles.photoAppTile : styles.photoTile]}>
+                <Text style={styles.metaItalic}>사진을 불러오지 못했습니다. 새로고침하면 다시 불러옵니다.</Text>
               </View>
-            ) : null}
-          </Pressable>
-        )
+            ) : (
+              <Pressable
+                key={url}
+                style={app ? styles.photoAppTile : styles.photoTile}
+                onPress={() => openExternalUrl(url)}
+                accessibilityRole="link"
+                accessibilityLabel={photoUrls.length > 1 ? `첨부 사진 ${index + 1}/${photoUrls.length} 원본 보기` : '첨부 사진 원본 보기'}
+              >
+                <Image
+                  source={{ uri: url }}
+                  style={styles.photoImage}
+                  resizeMode={app ? 'cover' : 'contain'}
+                  onError={() => setFailedPhotoUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))}
+                />
+                {app ? (
+                  <View style={styles.photoHint} pointerEvents="none">
+                    <Ionicons name="expand-outline" size={12} color={COLORS.white} />
+                    <Text style={styles.photoHintText}>{photoUrls.length > 1 ? `${index + 1}/${photoUrls.length}` : '원본'}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ),
+          )}
+        </View>
       ) : null}
 
       <View style={styles.facts}>
@@ -458,8 +469,13 @@ const styles = StyleSheet.create({
   categoryText: { fontFamily: FONTS.semibold, fontSize: 12 },
   title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.textPrimary },
   content: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 21, color: COLORS.textPrimary },
-  photo: { width: '100%', maxWidth: 360, height: 220, borderRadius: 8, backgroundColor: '#F2F2F2' },
-  photoApp: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F2F2F2' },
+  // 웹 콘솔은 원본 비율 그대로(contain) 나란히, 앱은 같은 폭 타일(cover)로 나눈다.
+  photoRow: { flexDirection: 'row', gap: 8 },
+  // 좁은 화면에서도 한 줄에 나란히(줄어듦), 넓으면 장당 240 까지.
+  photoTile: { flex: 1, minWidth: 0, maxWidth: 240, height: 200, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F2F2F2' },
+  photoAppTile: { flex: 1, height: 140, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F2F2F2' },
+  photoImage: { width: '100%', height: '100%' },
+  photoFailed: { justifyContent: 'center', padding: 8 },
   photoHint: {
     position: 'absolute',
     right: 8,

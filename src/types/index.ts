@@ -291,6 +291,11 @@ export interface Report {
    * 배포되기 전 서버면 null/없음. 만료되면 이미지 로드가 실패하니 화면은 실패 시 숨긴다.
    */
   imageUrl?: string | null
+  /**
+   * 첨부 사진 보기 URL 들(최대 3장, 등록 순서, presigned GET 약 1시간). 사진이 없으면 `[]`.
+   * 여러 장 기능 전 서버는 필드 자체가 없다 — 화면은 `reportImageUrls` 로 `imageUrl` 과 함께 읽는다.
+   */
+  imageUrls?: string[]
   /** 요청자 본인 작성 여부. 서버가 JWT의 userId로 계산해 내려준다. */
   isMine: boolean
   /**
@@ -324,7 +329,12 @@ export interface CreateReportInput {
   customCategoryLabel?: string
   title: string
   content?: string
-  /** `uploadReportImage` 가 돌려준 S3 키(`reports/{uuid}.jpg`). 사진이 없으면 생략. */
+  /** `uploadReportImage` 가 돌려준 S3 키들(최대 3장, 표시 순서). 사진이 없으면 생략. */
+  imageKeys?: string[]
+  /**
+   * 첫 번째 사진 키. 사진 1장만 받는 구버전 서버 대비로 `imageKeys[0]` 을 함께 보낸다
+   * (새 서버는 `imageKeys` 가 있으면 이 값을 무시한다).
+   */
   imageKey?: string
   startsAt: string
   endsAt: string
