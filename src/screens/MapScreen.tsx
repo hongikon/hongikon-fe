@@ -30,6 +30,7 @@ import Button from "../components/common/Button";
 import RetryableError from "../components/common/RetryableError";
 import { useToast } from "../components/common/Toast";
 import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
+import { useHiddenAuthorKeys, withoutHiddenAuthors } from "../lib/hiddenAuthors";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -158,7 +159,16 @@ export default function MapScreen() {
     [accessToken],
     { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
   );
-  const reports = reportsResource.data ?? EMPTY_REPORTS;
+  // 숨긴 사용자(기기 저장)의 제보는 지도에서 뺀다. 숨기는 순간 마커도 다시 그린다.
+  const hiddenAuthorKeys = useHiddenAuthorKeys();
+  const shownReportData = useMemo(
+    () =>
+      reportsResource.data === undefined
+        ? undefined
+        : withoutHiddenAuthors(reportsResource.data, hiddenAuthorKeys),
+    [reportsResource.data, hiddenAuthorKeys],
+  );
+  const reports = shownReportData ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
@@ -543,8 +553,8 @@ export default function MapScreen() {
     if (facilityKind !== null) {
       postToMap({ type: "setFacilities", markers: facilityMarkers(facilityKind) });
     }
-    if (reportsOn && reportsResource.data !== undefined) {
-      postToMap({ type: "setReports", markers: toReportMarkers(reportsResource.data) });
+    if (reportsOn && shownReportData !== undefined) {
+      postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
     // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
     // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
@@ -552,16 +562,16 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [activeFilter, facilityKind, reportsOn, reportsResource.data, pickingLocation, pickerPurpose, postToMap]);
+  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap]);
 
   /** 제보를 새로 받을 때마다 지도에 올린다. */
   useEffect(() => {
-    if (!reportsOn || reportsResource.data === undefined) return;
+    if (!reportsOn || shownReportData === undefined) return;
     postToMap({
       type: "setReports",
-      markers: toReportMarkers(reportsResource.data),
+      markers: toReportMarkers(shownReportData),
     });
-  }, [reportsOn, reportsResource.data, postToMap]);
+  }, [reportsOn, shownReportData, postToMap]);
 
   /** 제보 버튼. 켜면 지금 진행 중인 제보를 받아 오고, 끄면 지도에서 내린다. */
   const handleToggleReports = useCallback(() => {
@@ -627,7 +637,9 @@ export default function MapScreen() {
       try {
         const live = visibleReports(await getLiveReports({ accessToken }));
         if (request !== focusRequestRef.current) return;
-        const found = live.find((r) => r.id === reportId);
+        const found = live.find(
+          (r) => r.id === reportId && !(r.authorKey && hiddenAuthorKeys.has(r.authorKey)),
+        );
         if (!found) {
           toast.show({ message: "이 제보는 지금 지도에 없어요. 이미 끝났거나 내려갔어요.", tone: "info" });
           return;
@@ -639,7 +651,7 @@ export default function MapScreen() {
         toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
       }
     },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast],
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys],
   );
 
   /**
