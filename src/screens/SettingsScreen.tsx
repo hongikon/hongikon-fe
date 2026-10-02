@@ -52,6 +52,7 @@ import * as haptics from '../lib/haptics'
 import { requestMapIntent } from '../lib/mapIntents'
 import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
+import { promptLogin } from '../utils/reports'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
@@ -183,6 +184,10 @@ export default function SettingsScreen() {
 
   /** 앱 알림을 켤 때 휴대폰 권한을 아직 묻지 않았으면 그때 시스템 창을 띄운다. */
   const handleToggleSubscriptionAlert = () => {
+    if (status !== 'authenticated') {
+      promptLogin('알림은 로그인 후 받을 수 있어요.', logout)
+      return
+    }
     const turningOn = !settings.subscriptionAlert
     toggleSubscriptionAlert()
     haptics.tapLight()
@@ -205,7 +210,13 @@ export default function SettingsScreen() {
     Linking.openSettings().catch(() => notify('설정을 열지 못했어요', '휴대폰 설정 > 홍익온 > 알림에서 허용해 주세요.'))
   }
 
-  const { subscriptionAlert, alertCategories, subscribedDepts, reportStatusAlert, newReportAlert } = settings
+  const { subscribedDepts } = settings
+  // 게스트에게는 알림 값을 모두 꺼짐으로 보여 준다(위 promptAlertLogin 주석). 저장값은 건드리지 않는다.
+  const loggedIn = status === 'authenticated'
+  const subscriptionAlert = loggedIn && settings.subscriptionAlert
+  const reportStatusAlert = loggedIn && settings.reportStatusAlert
+  const newReportAlert = loggedIn && settings.newReportAlert
+  const alertCategories = loggedIn ? settings.alertCategories : []
   // 알림 권한이 꺼져 있으면 '앱 권한' 줄에 바로 보여 찾아 들어가게 한다.
   const permissionSummary =
     permission.status === 'granted'
@@ -216,6 +227,13 @@ export default function SettingsScreen() {
           ? '알림 확인 필요'
           : undefined
   const isGuest = status !== 'authenticated'
+  /**
+   * 알림은 로그인해야 받는다(푸시 기기 등록·알림 설정 모두 계정에 저장). 게스트에게는 알림 스위치를 모두 꺼짐으로
+   * 흐리게 보여 주고, 누르면 로그인을 권한다. 기기에 남은 값(게스트 기본값)은 보여 주지 않는다 — 로그인하면
+   * 계정에 저장된 알림 설정을 불러온다.
+   */
+  const promptAlertLogin = () => promptLogin('알림은 로그인 후 받을 수 있어요.', logout)
+  const guarded = (action: () => void) => (isGuest ? promptAlertLogin : action)
   // 관리자 알림 스위치 — 관리자 계정에만, 서버가 이 설정을 알 때만(모르면 숨김) 보인다.
   const isAdmin = useIsAdmin()
   const adminAlert = useAdminAlertSetting(isAdmin)
@@ -248,6 +266,7 @@ export default function SettingsScreen() {
     !memberCode && (isMemberCodeApiKnownMissing() || memberCodeResource.data === null)
   const memberNumber = memberCode ?? (memberCodeFallback && memberId !== null ? `#${memberId}` : null)
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
+  // 게스트는 subscriptionAlert 가 늘 false 라 함께 흐려진다.
   const detailDimmed = !subscriptionAlert
 
   /** 구독한 게시판을 TREE_DATA 순서(단과대별)로 묶는다. 구독한 순서가 아니라 늘 같은 자리에 보이게 한다. */
@@ -255,7 +274,7 @@ export default function SettingsScreen() {
     const subscribed = new Set(subscribedDepts)
     return groupSubscribableItems(SUBSCRIBABLE_ITEMS.filter((item) => subscribed.has(item.id)))
   }, [subscribedDepts])
-  const alertOnCount = subscribedDepts.filter(isDeptAlertOn).length
+  const alertOnCount = loggedIn ? subscribedDepts.filter(isDeptAlertOn).length : 0
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -327,7 +346,7 @@ export default function SettingsScreen() {
               <View style={styles.guestNoticeBody}>
                 <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
                 <Text style={styles.guestNoticeText}>
-                  위 계정에서 로그인하면 지금 고른 게시판·분야·제보 알림 설정이 그대로 적용돼요.
+                  로그인하면 계정에 저장된 알림 설정을 불러와요. 구독한 게시판은 로그인하지 않아도 소식 탭에서 볼 수 있어요.
                 </Text>
               </View>
               {/* 로그인 버튼은 바로 위 계정 섹션의 "로그인하기" 하나만 둔다(같은 기능 중복 방지). */}
@@ -337,14 +356,17 @@ export default function SettingsScreen() {
             icon="notifications-outline"
             label="구독 소식 알림"
             description={
-              subscriptionAlert
-                ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
-                : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
+              isGuest
+                ? '로그인하면 켤 수 있어요'
+                : subscriptionAlert
+                  ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
+                  : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
             }
             last
             right={
               <ToggleSwitch
                 value={subscriptionAlert}
+                dimmed={isGuest}
                 onToggle={handleToggleSubscriptionAlert}
                 accessibilityLabel="구독 소식 알림"
               />
@@ -379,7 +401,7 @@ export default function SettingsScreen() {
               right={
                 <ToggleSwitch
                   value={reportStatusAlert}
-                  onToggle={toggleReportStatusAlert}
+                  onToggle={guarded(toggleReportStatusAlert)}
                   accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
                 />
               }
@@ -392,7 +414,7 @@ export default function SettingsScreen() {
               right={
                 <ToggleSwitch
                   value={newReportAlert}
-                  onToggle={toggleNewReportAlert}
+                  onToggle={guarded(toggleNewReportAlert)}
                   accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
                 />
               }
@@ -452,14 +474,14 @@ export default function SettingsScreen() {
               <View style={styles.boardListHead}>
                 <Text style={styles.boardListTitle}>게시판별 알림</Text>
                 <Text style={styles.boardListCount}>
-                  {alertOnCount}/{subscribedDepts.length} 켜짐
+                  {isGuest ? '로그인 후 사용' : `${alertOnCount}/${subscribedDepts.length} 켜짐`}
                 </Text>
               </View>
               {subscribedGroups.map((group) => (
                 <View key={group.name} style={styles.boardGroup}>
                   <Text style={styles.boardGroupTitle}>{group.name}</Text>
                   {group.items.map((item) => {
-                    const on = isDeptAlertOn(item.id)
+                    const on = loggedIn && isDeptAlertOn(item.id)
                     return (
                       <View key={item.id} style={styles.boardRow}>
                         <Ionicons
@@ -475,7 +497,7 @@ export default function SettingsScreen() {
                         </Text>
                         <ToggleSwitch
                           value={on}
-                          onToggle={() => toggleDeptAlert(item.id)}
+                          onToggle={guarded(() => toggleDeptAlert(item.id))}
                           accessibilityLabel={`${item.name} 알림 ${on ? '켜짐' : '꺼짐'}`}
                         />
                       </View>
@@ -492,7 +514,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <SectionTitle
             title="알림 받을 분야"
-            meta={`${alertCategories.length}/${ALL_CATEGORIES.length}`}
+            meta={isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
             description="구독한 게시판의 새 소식 중 선택한 분야만 알려드려요"
             style={styles.sectionTitleWithDesc}
           />
@@ -509,7 +531,7 @@ export default function SettingsScreen() {
                       ? { backgroundColor: colors.bg, borderColor: colors.text }
                       : styles.categoryChipOff,
                   ]}
-                  onPress={() => toggleAlertCategory(cat)}
+                  onPress={guarded(() => toggleAlertCategory(cat))}
                   activeOpacity={0.7}
                   accessibilityRole="switch"
                   accessibilityLabel={`${cat} 분야 알림 ${isOn ? '켜짐' : '꺼짐'}`}
@@ -527,7 +549,7 @@ export default function SettingsScreen() {
               )
             })}
           </View>
-          {alertCategories.length === 0 && (
+          {loggedIn && alertCategories.length === 0 && (
             <View style={styles.warnRow}>
               <Ionicons name="alert-circle-outline" size={14} color={COLORS.danger} />
               <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>

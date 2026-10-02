@@ -39,7 +39,12 @@ export function useAdminAlertSetting(active: boolean): {
 
   useEffect(() => {
     const token = tokenRef.current
-    if (!active || !token) return
+    if (!active || !token) {
+      // 로그아웃하면 이전 계정의 값을 들고 있지 않는다(다음 로그인 때 서버에서 다시 받는다).
+      seqRef.current++
+      setState({ status: 'loading' })
+      return
+    }
     let cancelled = false
     setState({ status: 'loading' })
     getNotificationSettings(token)
