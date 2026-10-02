@@ -57,7 +57,7 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 - 혜택 내용과 기간은 업체 사정에 따라 바뀔 수 있어요.
 
 ■ 캠퍼스 제보
-- 행사, 푸드트럭 같은 캠퍼스 소식을 지도에 제보할 수 있어요(로그인 필요).
+- 행사, 푸드트럭 같은 캠퍼스 소식을 지도에 제보할 수 있어요(로그인 필요). 사진은 최대 3장까지 붙일 수 있어요.
 - 제보는 운영진이 확인한 뒤 지도에 표시돼요. 부적절한 제보는 신고하고, 원하지 않는 작성자의 제보는 숨길 수 있어요.
 
 ■ 로그인 없이 둘러보기
@@ -67,8 +67,8 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 
 ■ 앱 접근권한 안내(모두 선택)
 - 알림: 구독한 게시판의 새 공지, 내 제보 처리 결과와 캠퍼스 새 제보 알림
-- 카메라: 제보에 붙일 사진 촬영(카메라로 찍기 버튼을 누를 때만 요청)
-- 사진: 제보에 붙일 사진 선택(앨범에서 고르기 버튼을 누를 때만 요청)
+- 카메라: 제보에 붙일 사진(최대 3장) 촬영(카메라로 찍기 버튼을 누를 때만 요청)
+- 사진: 제보에 붙일 사진(최대 3장) 선택(앨범에서 고르기 버튼을 누를 때만 요청)
 선택 접근권한은 허용하지 않아도 앱을 쓸 수 있고, 해당 기능만 제한돼요. 휴대폰 설정에서 언제든 바꿀 수 있어요.
 위치, 연락처, 마이크 권한은 요청하지 않아요.
 
@@ -164,7 +164,7 @@ HongikOn (홍익온) is a free, unofficial campus companion app for Hongik Unive
 - Account deletion: Settings > scroll to the bottom > 회원 탈퇴. This deletes the account, reports, subscriptions and push tokens immediately. For Sign in with Apple users, the server revokes the Apple token via the REST API.
 
 3) User-generated content (campus reports) and moderation
-- Map tab > "제보하기" button > pick a location on the map > fill in title/content > optionally attach one photo > "제보 올리기". Camera and photo library access are requested only when you tap the camera or album button.
+- Map tab > "제보하기" button > pick a location on the map > fill in title/content > optionally attach up to 3 photos > "제보 올리기". Camera and photo library access are requested only when you tap the camera or album button.
 - Every report is PRE-MODERATED: it is shown to other users only after an admin approves it. During the review period an admin is on call and will approve test reports within about 30 minutes (09:00-24:00 KST). Your own pending report is visible to you.
 - Each report has "신고" (report/flag, with reasons) and "이 사용자 숨기기" (block: hides all reports from this author; manage in Settings > 숨긴 사용자) actions. Reports flagged by 3+ users are hidden automatically until an admin reviews them. Admins can remove content and suspend users. Terms of use (zero tolerance for objectionable content) are linked in Settings > 이용약관.
 - Contact: hongikonsupport@gmail.com, https://hongikon.com/support/

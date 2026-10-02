@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -12,7 +12,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { flagReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
-import { formatFreshness, promptLogin } from '../../utils/reports'
+import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
+import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
@@ -44,8 +45,12 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const authorName = reportAuthorName(report)
   // 작성자 숨기기는 서버가 authorKey 를 줄 때만(배포 전 서버면 메뉴를 숨긴다). 내 제보는 숨길 일이 없다.
   const canHideAuthor = !!report.authorKey && !report.isMine
-  // 사진 URL 은 1시간 뒤 만료된다. 못 불러오면 깨진 칸 대신 숨긴다(다른 제보로 바뀌면 다시 시도).
-  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
+  // 사진 URL 은 1시간 뒤 만료된다. 못 불러온 장은 깨진 칸 대신 숨긴다(다른 제보로 바뀌면 새 URL 이라 다시 시도).
+  const [failedPhotoUrls, setFailedPhotoUrls] = useState<readonly string[]>([])
+  // 최대 3장(등록 순서). 여러 장 기능 전 서버는 imageUrl 1장만 준다.
+  const photoUrls = reportImageUrls(report).filter((url) => !failedPhotoUrls.includes(url))
+  const markPhotoFailed = (url: string) =>
+    setFailedPhotoUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
   const [error, setError] = useState<{
     message: string
     network: boolean
@@ -142,14 +147,30 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       <Text style={styles.title}>{report.title}</Text>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
 
-      {!!report.imageUrl && report.imageUrl !== failedPhotoUrl && (
-        <Image
-          source={{ uri: report.imageUrl }}
-          style={styles.photo}
-          resizeMode="cover"
-          onError={() => setFailedPhotoUrl(report.imageUrl ?? null)}
-          accessibilityLabel="제보 첨부 사진"
-        />
+      {photoUrls.length > 0 && (
+        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 원본(presigned URL)을 브라우저로 연다.
+        <View style={styles.photoRow}>
+          {photoUrls.map((url, index) => (
+            <Pressable
+              key={url}
+              style={[styles.photoTile, photoUrls.length > 1 && styles.photoTileSmall]}
+              onPress={() => openExternalUrl(url)}
+              accessibilityRole="imagebutton"
+              accessibilityLabel={
+                photoUrls.length > 1
+                  ? `제보 첨부 사진 ${index + 1}/${photoUrls.length}, 원본 보기`
+                  : '제보 첨부 사진, 원본 보기'
+              }
+            >
+              <Image
+                source={{ uri: url }}
+                style={styles.photo}
+                resizeMode="cover"
+                onError={() => markPhotoFailed(url)}
+              />
+            </Pressable>
+          ))}
+        </View>
       )}
 
       <View style={styles.footer}>
@@ -256,13 +277,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
-  photo: {
-    width: '100%',
-    height: 160,
-    borderRadius: 12,
-    marginTop: 12,
-    backgroundColor: COLORS.fill,
-  },
+  photoRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  photoTile: { flex: 1, height: 160, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
+  photoTileSmall: { height: 110 },
+  photo: { width: '100%', height: '100%' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

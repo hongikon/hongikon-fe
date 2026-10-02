@@ -45,7 +45,8 @@ import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
 import { BUILDINGS } from '../../constants/buildings'
 import { buildFloorOptions, formatFloor, type FloorOption } from '../../utils/floors'
 import RetryableError from '../common/RetryableError'
-import { promptLogin } from '../../utils/reports'
+import { REPORT_MAX_IMAGES, promptLogin } from '../../utils/reports'
+import { ToastViewport, useToast } from '../common/Toast'
 import { chipStyles } from './chipStyles'
 import type { Report, ReportCategory } from '../../types'
 
@@ -102,6 +103,7 @@ export default function ReportComposerModal({
   onCreated,
 }: ReportComposerModalProps) {
   const { accessToken, logout } = useAuth()
+  const toast = useToast()
   const [category, setCategory] = useState<ReportCategory>('EVENT')
   // '+' 로 확정한 카테고리 라벨. 체크(확정) 전까지는 반영되지 않는다.
   const [customLabel, setCustomLabel] = useState('')
@@ -112,9 +114,13 @@ export default function ReportComposerModal({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [durationHours, setDurationHours] = useState(REPORT_DEFAULT_DURATION_HOURS)
-  const [image, setImage] = useState<PickedReportImage | null>(null)
-  /** 이미 올린 사진의 키. 제보 등록만 실패해 다시 시도할 때 사진을 또 올리지 않게 한다. */
-  const uploadedImageRef = useRef<{ uri: string; key: string } | null>(null)
+  /** 붙인 사진(최대 3장, 고른 순서 = 보이는 순서). */
+  const [images, setImages] = useState<PickedReportImage[]>([])
+  /**
+   * 이미 올린 사진의 키(uri → key). 제보 등록만 실패하거나 중간 장에서 업로드가 끊겨 다시 시도할 때
+   * 올라간 사진을 또 올리지 않게 한다. 서버가 사진을 거절(400)하면 비운다(서버가 지웠을 수 있다).
+   */
+  const uploadedKeysRef = useRef<Map<string, string>>(new Map())
   /** 사진 업로드가 실패해 "사진 없이 올리기"를 보여줄지. */
   const [photoUploadFailed, setPhotoUploadFailed] = useState(false)
   /** 서버에 사진 기능이 아직 없어 사진을 빼고 올렸다 — 완료 화면에서 알려준다. */
@@ -167,8 +173,8 @@ export default function ReportComposerModal({
     setContent('')
     setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
     setFloor(1)
-    setImage(null)
-    uploadedImageRef.current = null
+    setImages([])
+    uploadedKeysRef.current = new Map()
     setPhotoUploadFailed(false)
     setPhotoSkipped(false)
     setError(null)
@@ -230,12 +236,17 @@ export default function ReportComposerModal({
   }
 
   /**
-   * 사진 한 장만 붙인다. 여러 장은 검토 부담만 키우고 지도 배너에서 보여줄 자리도 없다.
+   * 사진은 최대 3장. 앨범은 남은 장수만큼 한 번에 여러 장 고르고(고른 순서 유지), 카메라는 한 번에 1장씩 더한다.
    * 권한은 버튼을 누른 그때만 묻는다(카메라·앨범 각각). 거절된 뒤엔 휴대폰 설정으로 보내는 버튼을 보여준다.
    */
   const handlePickImage = async (source: 'camera' | 'library') => {
     setError(null)
     setBlockedPermission(null)
+    const remaining = REPORT_MAX_IMAGES - images.length
+    if (remaining <= 0) {
+      setError(`사진은 ${REPORT_MAX_IMAGES}장까지 붙일 수 있어요.`)
+      return
+    }
     try {
       // Android 앨범은 시스템 사진 선택기(Photo Picker, 없으면 문서 선택기)로 열려 권한이 필요 없다.
       // 저장소·READ_MEDIA_* 권한은 Play 정책 때문에 매니페스트에서 막아 두었으니(app.json blockedPermissions)
@@ -256,57 +267,92 @@ export default function ReportComposerModal({
         return
       }
 
+      // 남은 자리가 1장이면 단일 선택으로 연다(Android 사진 선택기는 여러 장 모드에서 상한 1을 받지 않는다).
+      const multiple = source === 'library' && remaining > 1
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
-        // JPEG 로 다시 압축해 용량을 줄인다(서버 상한 5MB).
+        // JPEG 로 다시 압축해 용량을 줄인다(서버 상한 장당 5MB).
         quality: 0.7,
         allowsEditing: false,
         // iOS 앨범의 HEIC 사진을 JPEG 로 받아 온다(서버는 JPEG·PNG 만 받음).
         preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+        ...(multiple ? { allowsMultipleSelection: true, selectionLimit: remaining, orderedSelection: true } : {}),
       }
       const result =
         source === 'camera'
           ? await ImagePicker.launchCameraAsync(options)
           : await ImagePicker.launchImageLibraryAsync(options)
       if (result.canceled || result.assets.length === 0) return
-      const asset = result.assets[0]
-      const picked: PickedReportImage = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.fileSize }
-      if (reportImageContentType(picked) === null) {
-        setError('이 형식의 사진은 올릴 수 없어요. 다른 사진을 골라 주세요.')
-        return
+
+      // 웹은 selectionLimit 를 지원하지 않아 더 많이 고를 수 있다 — 앞에서부터 남은 장수만 쓴다.
+      const existing = new Set(images.map((item) => item.uri))
+      const accepted: PickedReportImage[] = []
+      let unsupported = 0
+      let tooLarge = 0
+      let overflow = 0
+      for (const asset of result.assets) {
+        const picked: PickedReportImage = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.fileSize }
+        if (existing.has(picked.uri)) continue
+        if (reportImageContentType(picked) === null) {
+          unsupported += 1
+          continue
+        }
+        if (picked.fileSize && picked.fileSize > REPORT_IMAGE_MAX_BYTES) {
+          tooLarge += 1
+          continue
+        }
+        if (accepted.length >= remaining) {
+          overflow += 1
+          continue
+        }
+        existing.add(picked.uri)
+        accepted.push(picked)
       }
-      if (picked.fileSize && picked.fileSize > REPORT_IMAGE_MAX_BYTES) {
-        setError('사진 용량이 너무 커요. 5MB 이하 사진을 골라 주세요.')
-        return
+      if (accepted.length > 0) {
+        setImages((prev) => [...prev, ...accepted].slice(0, REPORT_MAX_IMAGES))
+        setPhotoUploadFailed(false)
       }
-      setImage(picked)
-      setPhotoUploadFailed(false)
+      const single = result.assets.length === 1
+      if (unsupported > 0) {
+        setError(single ? '이 형식의 사진은 올릴 수 없어요. 다른 사진을 골라 주세요.' : `JPEG·PNG 가 아닌 사진 ${unsupported}장은 뺐어요.`)
+      } else if (tooLarge > 0) {
+        setError(single ? '사진 용량이 너무 커요. 5MB 이하 사진을 골라 주세요.' : `5MB 가 넘는 사진 ${tooLarge}장은 뺐어요.`)
+      } else if (overflow > 0) {
+        setError(`사진은 ${REPORT_MAX_IMAGES}장까지라 ${overflow}장은 뺐어요.`)
+      }
     } catch {
       // 시뮬레이터처럼 카메라가 없는 기기 등
       setError(source === 'camera' ? '이 기기에서는 카메라를 쓸 수 없어요. 앨범에서 골라 주세요.' : '사진을 불러오지 못했어요.')
     }
   }
 
+  const handleRemoveImage = (uri: string) => {
+    setImages((prev) => prev.filter((item) => item.uri !== uri))
+    setPhotoUploadFailed(false)
+    setError(null)
+  }
+
   /** 사진을 올려 키를 받는다. 같은 사진을 이미 올렸으면 그 키를 쓴다. */
   const ensureImageKey = async (picked: PickedReportImage, token: string): Promise<string> => {
-    if (uploadedImageRef.current?.uri === picked.uri) return uploadedImageRef.current.key
+    const cached = uploadedKeysRef.current.get(picked.uri)
+    if (cached) return cached
     const key = await uploadReportImage(picked, token)
-    uploadedImageRef.current = { uri: picked.uri, key }
+    uploadedKeysRef.current.set(picked.uri, key)
     return key
   }
 
   /** 사진 업로드가 실패했을 때 사진을 빼고 바로 올린다. */
   const handleSubmitWithoutPhoto = () => {
-    setImage(null)
-    uploadedImageRef.current = null
-    void submit(null)
+    setImages([])
+    uploadedKeysRef.current = new Map()
+    void submit([])
   }
 
   const handleSubmit = () => {
-    void submit(image)
+    void submit(images)
   }
 
-  const submit = async (picked: PickedReportImage | null) => {
+  const submit = async (picked: readonly PickedReportImage[]) => {
     if (!target || !building || submitting || trimmedTitle.length === 0) return
 
     // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
@@ -326,26 +372,29 @@ export default function ReportComposerModal({
     const startsAt = new Date()
     const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
 
-    let imageKey: string | undefined
+    const imageKeys: string[] = []
     try {
-      // 사진을 먼저 S3 에 올려 키를 받는다. 실패하면 제보는 만들지 않고 작성 내용은 그대로 남긴다
-      // (다시 시도 / 사진 없이 올리기). 서버에 사진 기능이 아직 없으면 사진만 빼고 계속 올린다.
-      if (picked !== null) {
+      // 사진을 한 장씩 차례로 S3 에 올려 키를 받는다(동시에 올리면 느린 와이파이에서 모두 시간 초과 나기 쉽다).
+      // 실패하면 제보는 만들지 않고 작성 내용은 그대로 남긴다(다시 시도 / 사진 없이 올리기). 이미 올린 장은
+      // 다시 시도할 때 키를 재사용한다. 서버에 사진 기능이 아직 없으면 사진만 빼고 계속 올린다.
+      for (let index = 0; index < picked.length; index += 1) {
         try {
-          imageKey = await ensureImageKey(picked, accessToken)
+          imageKeys.push(await ensureImageKey(picked[index], accessToken))
         } catch (caught) {
           if (!(caught instanceof ReportImageUploadError)) throw caught
           if (isStale()) return
           if (caught.kind !== 'unavailable') {
             setPhotoUploadFailed(true)
             setSubmitError({
-              message: caught.message,
+              message: picked.length > 1 ? `${index + 1}번째 사진: ${caught.message}` : caught.message,
               network: false,
               retryable: caught.kind === 'failed',
             })
             return
           }
+          imageKeys.length = 0
           setPhotoSkipped(true)
+          break
         }
       }
 
@@ -357,7 +406,9 @@ export default function ReportComposerModal({
 
       const report = await createReport(
         {
-          imageKey,
+          // 새 서버는 imageKeys(최대 3장)를 쓰고, 1장만 받는 구버전 서버는 imageKey(첫 장)만 읽는다.
+          imageKeys: imageKeys.length > 0 ? imageKeys : undefined,
+          imageKey: imageKeys[0],
           buildingId,
           floor,
           lat: target.lat,
@@ -372,17 +423,24 @@ export default function ReportComposerModal({
         accessToken,
       )
       // 서버에는 이미 올라갔으니 창을 닫았어도 지도 목록은 새로 받게 알린다.
-      // 사진은 서버가 확인 후 보기 URL 을 붙여 준다. 응답에 없으면 방금 고른 사진으로 미리 보여준다.
-      onCreated(imageKey && !report.imageUrl && picked ? { ...report, imageUrl: picked.uri } : report)
-      uploadedImageRef.current = null
+      onCreated(report)
+      uploadedKeysRef.current = new Map()
       if (isStale()) return
       setSubmitted(true)
       haptics.success()
+      // 응답에 imageUrls 가 없으면 사진 1장만 받는 구버전 서버다 — 첫 장(imageKey)만 붙었다.
+      if (imageKeys.length > 1 && !Array.isArray(report.imageUrls)) {
+        toast.show({
+          message: `서버가 아직 사진 1장만 받아 첫 번째 사진만 올렸어요.`,
+          tone: 'info',
+          duration: 4000,
+        })
+      }
     } catch (caught) {
       if (isStale()) return
       // 서버가 사진 확인(업로드 여부·크기·형식)에서 거절했을 수 있다. 다음엔 새로 올리고, 사진 없이 올릴 길도 연다.
-      if (imageKey && caught instanceof ApiError && caught.status === 400) {
-        uploadedImageRef.current = null
+      if (imageKeys.length > 0 && caught instanceof ApiError && caught.status === 400) {
+        uploadedKeysRef.current = new Map()
         setPhotoUploadFailed(true)
         setSubmitError({
           message: '사진을 확인하지 못해 제보를 올리지 못했어요. 다시 시도하거나 사진 없이 올려 주세요.',
@@ -601,13 +659,54 @@ export default function ReportComposerModal({
                       {content.length} / {REPORT_CONTENT_MAX_LENGTH}
                     </Text>
 
-                    <Text style={styles.sectionLabel}>사진 (선택)</Text>
-                    {image === null ? (
+                    <View style={styles.photoHeader}>
+                      <Text style={[styles.sectionLabel, styles.photoHeaderLabel]}>사진 (선택)</Text>
+                      <Text
+                        style={styles.photoCount}
+                        accessibilityLabel={`사진 ${images.length}장, 최대 ${REPORT_MAX_IMAGES}장`}
+                      >
+                        {images.length}/{REPORT_MAX_IMAGES}
+                      </Text>
+                    </View>
+                    {images.length > 0 && (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.photoThumbRow}
+                      >
+                        {images.map((item, index) => (
+                          <View key={item.uri} style={styles.photoPreviewWrap}>
+                            <Image
+                              source={{ uri: item.uri }}
+                              style={styles.photoPreview}
+                              accessibilityLabel={`첨부한 사진 ${index + 1}`}
+                            />
+                            {index === 0 && images.length > 1 && (
+                              <View style={styles.photoCoverBadge} pointerEvents="none">
+                                <Text style={styles.photoCoverText}>대표</Text>
+                              </View>
+                            )}
+                            <TouchableOpacity
+                              style={styles.photoRemove}
+                              onPress={() => handleRemoveImage(item.uri)}
+                              disabled={submitting}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                              accessibilityRole="button"
+                              accessibilityLabel={`첨부한 사진 ${index + 1} 빼기`}
+                            >
+                              <Ionicons name="close" size={16} color={COLORS.white} />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+                    {images.length < REPORT_MAX_IMAGES && (
                       <View style={styles.photoBtnRow}>
                         {Platform.OS !== 'web' && (
                           <TouchableOpacity
                             style={[styles.photoBtn, styles.photoBtnHalf]}
                             onPress={() => handlePickImage('camera')}
+                            disabled={submitting}
                             accessibilityRole="button"
                             accessibilityLabel="카메라로 찍기"
                           >
@@ -618,6 +717,7 @@ export default function ReportComposerModal({
                         <TouchableOpacity
                           style={[styles.photoBtn, styles.photoBtnHalf]}
                           onPress={() => handlePickImage('library')}
+                          disabled={submitting}
                           accessibilityRole="button"
                           accessibilityLabel="앨범에서 고르기"
                         >
@@ -625,21 +725,9 @@ export default function ReportComposerModal({
                           <Text style={styles.photoBtnText}>앨범에서 고르기</Text>
                         </TouchableOpacity>
                       </View>
-                    ) : (
-                      <View style={styles.photoPreviewWrap}>
-                        <Image source={{ uri: image.uri }} style={styles.photoPreview} />
-                        <TouchableOpacity
-                          style={styles.photoRemove}
-                          onPress={() => {
-                            setImage(null)
-                            setPhotoUploadFailed(false)
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel="첨부한 사진 빼기"
-                        >
-                          <Ionicons name="close" size={16} color={COLORS.white} />
-                        </TouchableOpacity>
-                      </View>
+                    )}
+                    {images.length === 0 && (
+                      <Text style={styles.hint}>최대 {REPORT_MAX_IMAGES}장까지 붙일 수 있어요. 촬영 위치 정보는 지우고 올려요.</Text>
                     )}
 
                     <Text style={styles.sectionLabel}>얼마나 진행되나요?</Text>
@@ -676,7 +764,7 @@ export default function ReportComposerModal({
                         retrying={submitting}
                       />
                     )}
-                    {photoUploadFailed && image !== null && (
+                    {photoUploadFailed && images.length > 0 && (
                       <TouchableOpacity
                         style={styles.skipPhotoBtn}
                         onPress={handleSubmitWithoutPhoto}
@@ -719,6 +807,8 @@ export default function ReportComposerModal({
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      {/* Modal 은 루트 위에 따로 떠서 루트 토스트가 가려진다 — 여기 하나 둔다(구서버 "1장만 첨부" 안내). */}
+      <ToastViewport />
       </SafeAreaProvider>
     </Modal>
   )
@@ -805,8 +895,23 @@ const styles = StyleSheet.create({
   photoBtnRow: { flexDirection: 'row', gap: 8 },
   photoBtnHalf: { flex: 1 },
   settingsLink: { fontFamily: FONTS.semibold, fontSize: 12.5, color: COLORS.primary },
+  photoHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  photoHeaderLabel: { flex: 1 },
+  photoCount: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary, marginBottom: 8 },
+  // 지우기 버튼(위·오른쪽으로 6 나감)이 잘리지 않게 위·오른쪽 여백을 둔다.
+  photoThumbRow: { flexDirection: 'row', gap: 10, paddingTop: 6, paddingRight: 6, marginBottom: 10 },
   photoPreviewWrap: { position: 'relative', alignSelf: 'flex-start' },
-  photoPreview: { width: 120, height: 120, borderRadius: 12, backgroundColor: COLORS.fill },
+  photoPreview: { width: 96, height: 96, borderRadius: 12, backgroundColor: COLORS.fill },
+  photoCoverBadge: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  photoCoverText: { fontFamily: FONTS.semibold, fontSize: 10.5, color: COLORS.white },
   photoRemove: {
     position: 'absolute',
     top: -6,
