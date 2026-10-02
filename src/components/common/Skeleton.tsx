@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import {
-  AccessibilityInfo,
   Animated,
   Platform,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { COLORS } from '../../constants/colors'
+import { useReduceMotion } from '../../hooks/useReduceMotion'
 import { CONTENT_MAX_WIDTH } from '../../constants/layout'
 
 /**
@@ -23,22 +23,6 @@ import { CONTENT_MAX_WIDTH } from '../../constants/layout'
 const PulseContext = createContext<Animated.Value | null>(null)
 
 const BLOCK_COLOR = '#ECECEF'
-
-function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false)
-  useEffect(() => {
-    let alive = true
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => alive && setReduce(v))
-      .catch(() => {})
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce)
-    return () => {
-      alive = false
-      sub?.remove()
-    }
-  }, [])
-  return reduce
-}
 
 /** 안의 블록들이 함께 깜빡이게 묶는다. 스크린리더에는 "불러오는 중" 하나로 읽힌다. */
 export function SkeletonGroup({

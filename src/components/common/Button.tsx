@@ -32,6 +32,11 @@ interface ButtonProps {
   /** 아이콘을 글자 뒤에 둔다(바깥으로 나가는 링크의 open-outline 등). */
   iconPosition?: 'left' | 'right'
   disabled?: boolean
+  /**
+   * 비활성처럼 흐리게만 보이고 누를 수는 있다. 필수 칸이 비었을 때 눌러서 무엇이 빠졌는지 알려 주는 제출 버튼에.
+   * (진짜 막아야 하면 `disabled`.)
+   */
+  dimmed?: boolean
   loading?: boolean
   /** 기본은 부모 너비를 꽉 채운다. false 면 글자 길이만큼만 차지한다. */
   fullWidth?: boolean
@@ -67,6 +72,7 @@ export default function Button({
   icon,
   iconPosition = 'left',
   disabled = false,
+  dimmed = false,
   loading = false,
   fullWidth = true,
   style,
@@ -95,7 +101,7 @@ export default function Button({
         palette.border !== undefined && { borderWidth: 1, borderColor: palette.border },
         fullWidth ? styles.full : styles.hug,
         pressed && styles.pressed,
-        disabled && styles.disabled,
+        (disabled || dimmed) && styles.disabled,
         style,
       ]}
       accessibilityRole={accessibilityRole}

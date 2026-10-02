@@ -29,26 +29,35 @@ interface WheelPickerProps<T> {
   onChange: (value: T) => void
   /** 화면 읽기 프로그램이 읽는 이름(예: '시작 날짜'). */
   accessibilityLabel: string
+  /** 한 번에 보이는 칸 수(홀수). 기본 5. 폼 안에 바로 넣는 작은 다이얼은 3. */
+  visibleRows?: number
   style?: StyleProp<ViewStyle>
 }
 
 export const WHEEL_ITEM_HEIGHT = 44
-const VISIBLE_ROWS = 5
-const PAD_ROWS = (VISIBLE_ROWS - 1) / 2
+const DEFAULT_VISIBLE_ROWS = 5
 /** 스크롤이 이만큼(ms) 멈춰 있으면 가장 가까운 칸에 맞춘다. 웹은 스냅 이벤트가 없어 이걸로 맞춘다. */
 const SETTLE_DELAY_MS = 120
 
 /**
  * iOS 식 다이얼(돌려서 고르는 휠). 네이티브 모듈 없이 ScrollView 로만 만들어 OTA·웹에서도 그대로 돈다.
  *
- * - 칸 높이 44, 5칸이 보이고 가운데 띠에 든 칸이 고른 값이다.
+ * - 칸 높이 44, 5칸(visibleRows)이 보이고 가운데 띠에 든 칸이 고른 값이다.
  * - 손을 떼고 멈추면 가장 가까운 칸에 붙는다(네이티브는 snapToInterval, 웹은 멈춘 뒤 scrollTo).
  *   막힌 칸(disabled)에 멈추면 가장 가까운 고를 수 있는 칸으로 옮긴다.
  * - 값이 바뀔 때 짧은 선택 햅틱.
  * - 접근성: adjustable — 화면 읽기 프로그램에서 위·아래로 쓸어 값을 바꾼다(increment/decrement).
  * - 웹: 마우스 휠로 돌리고, 포커스한 뒤 ↑↓ 키로 한 칸씩 옮긴다. 칸을 눌러도 고른다.
  */
-export default function WheelPicker<T>({ items, value, onChange, accessibilityLabel, style }: WheelPickerProps<T>) {
+export default function WheelPicker<T>({
+  items,
+  value,
+  onChange,
+  accessibilityLabel,
+  visibleRows = DEFAULT_VISIBLE_ROWS,
+  style,
+}: WheelPickerProps<T>) {
+  const padRows = Math.max(0, Math.floor((visibleRows - 1) / 2))
   const scrollRef = useRef<ScrollView>(null)
   const selectedIndex = Math.max(0, items.findIndex((item) => item.value === value))
   /** 스크롤 중 가운데에 든 칸(강조용). 멈추면 selectedIndex 와 같아진다. */
@@ -168,7 +177,7 @@ export default function WheelPicker<T>({ items, value, onChange, accessibilityLa
 
   return (
     <View
-      style={[styles.wheel, style]}
+      style={[styles.wheel, { height: WHEEL_ITEM_HEIGHT * (padRows * 2 + 1) }, style]}
       accessible
       focusable
       accessibilityRole="adjustable"
@@ -182,12 +191,14 @@ export default function WheelPicker<T>({ items, value, onChange, accessibilityLa
       onAccessibilityAction={handleAccessibilityAction}
       {...webKeyProps}
     >
-      <View style={styles.band} pointerEvents="none" />
+      <View style={[styles.band, { top: WHEEL_ITEM_HEIGHT * padRows }]} pointerEvents="none" />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_ITEM_HEIGHT}
         decelerationRate="fast"
+        // 세로로 스크롤되는 폼 안에 넣어도(제보 작성의 층 다이얼) Android 에서 다이얼이 먼저 돌게 한다.
+        nestedScrollEnabled
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onScrollBeginDrag={() => {
@@ -206,7 +217,7 @@ export default function WheelPicker<T>({ items, value, onChange, accessibilityLa
           scheduleSettle()
         }}
         contentOffset={{ x: 0, y: selectedIndex * WHEEL_ITEM_HEIGHT }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingVertical: WHEEL_ITEM_HEIGHT * padRows }}
         // 처음 그릴 때 고른 칸으로 맞춘다(웹은 contentOffset 을 무시한다).
         onLayout={() => {
           lastY.current = -1
@@ -244,17 +255,15 @@ export default function WheelPicker<T>({ items, value, onChange, accessibilityLa
 }
 
 const styles = StyleSheet.create({
-  wheel: { height: WHEEL_ITEM_HEIGHT * VISIBLE_ROWS, overflow: 'hidden' },
+  wheel: { overflow: 'hidden' },
   band: {
     position: 'absolute',
     left: 2,
     right: 2,
-    top: WHEEL_ITEM_HEIGHT * PAD_ROWS,
     height: WHEEL_ITEM_HEIGHT,
     borderRadius: 10,
     backgroundColor: COLORS.primarySoft,
   },
-  content: { paddingVertical: WHEEL_ITEM_HEIGHT * PAD_ROWS },
   item: { height: WHEEL_ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   label: { fontFamily: FONTS.regular, fontSize: 16, color: COLORS.textSecondary },
   labelCentered: { fontFamily: FONTS.semibold, fontSize: 17, color: COLORS.primary },

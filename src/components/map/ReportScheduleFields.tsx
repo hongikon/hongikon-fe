@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -17,6 +17,7 @@ import {
   nextStepAfter,
 } from '../../utils/reportSchedule'
 import { chipStyles } from './chipStyles'
+import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import ReportTimeSheet from './ReportTimeSheet'
 
 const MINUTE_MS = 60 * 1000
@@ -76,13 +77,25 @@ interface ReportScheduleFieldsProps {
   /** 지금 시각(부모가 30초마다 갱신). 지난 시각을 막고 '지금 ~' 요약을 맞춘다. */
   now: number
   disabled?: boolean
+  /** 시간이 맞지 않는 채 제출했을 때 요약 카드 테두리를 잠깐 빨갛게 깜빡인다(값이 바뀔 때마다). */
+  flashKey?: number
+  /** 지금 시간 설정이 올릴 수 없는 상태인지. 맞춰지면 깜빡임을 바로 멈춘다. */
+  invalid?: boolean
 }
 
 /**
  * 제보 작성창의 '언제' 영역. 빠른 칩(지금 · 1/2/3/6시간)과, 요약 줄을 누르면 뜨는 다이얼 시트(시작 시각 · 종료 시각).
  * 다이얼은 순수 JS(WheelPicker)라 앱을 다시 빌드하지 않고 OTA·웹에서 그대로 돈다.
  */
-export default function ReportScheduleFields({ value, onChange, now, disabled }: ReportScheduleFieldsProps) {
+export default function ReportScheduleFields({
+  value,
+  onChange,
+  now,
+  disabled,
+  flashKey,
+  invalid = false,
+}: ReportScheduleFieldsProps) {
+  const summaryFlash = useAttentionFlash(flashKey, invalid, COLORS.primarySoft)
   const { startMs, endMs } = resolveSchedule(value, now)
   const scheduled = value.startMode === 'scheduled'
   const firstValidStart = nextStepAfter(now - 1)
@@ -144,8 +157,17 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
 
   return (
     <View>
+      {/* 직접 고르는 칩을 앞에 둔다(시작: 날짜·시간 선택 → 지금, 진행 시간: 종료 직접 → 1·2·3·6시간). 기본 선택은 그대로 '지금'·기본 시간. */}
       <Text style={styles.subLabel}>시작</Text>
       <View style={styles.chipWrap}>
+        <Chip
+          label="날짜·시간 선택"
+          icon="calendar-outline"
+          active={scheduled}
+          disabled={disabled}
+          onPress={() => setSheet('start')}
+          accessibilityLabel="시작 날짜와 시간 고르기"
+        />
         <Chip
           label="지금"
           active={!scheduled}
@@ -164,18 +186,18 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
           }
           accessibilityLabel="지금 시작"
         />
-        <Chip
-          label="날짜·시간 선택"
-          icon="calendar-outline"
-          active={scheduled}
-          disabled={disabled}
-          onPress={() => setSheet('start')}
-          accessibilityLabel="시작 날짜와 시간 고르기"
-        />
       </View>
 
       <Text style={styles.subLabel}>진행 시간</Text>
       <View style={styles.chipWrap}>
+        <Chip
+          label="종료 날짜·시각 직접"
+          icon="time-outline"
+          active={value.endMode === 'custom'}
+          disabled={disabled}
+          onPress={() => setSheet('end')}
+          accessibilityLabel="끝나는 날짜와 시각 직접 고르기"
+        />
         {REPORT_DURATION_OPTIONS_HOURS.map((hours) => (
           <Chip
             key={hours}
@@ -186,18 +208,10 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
             accessibilityLabel={`${hours}시간 동안`}
           />
         ))}
-        <Chip
-          label="종료 날짜·시각 직접"
-          icon="time-outline"
-          active={value.endMode === 'custom'}
-          disabled={disabled}
-          onPress={() => setSheet('end')}
-          accessibilityLabel="끝나는 날짜와 시각 직접 고르기"
-        />
       </View>
 
       {/* 요약 줄. 시작·종료 줄을 누르면 다이얼 시트가 뜬다. */}
-      <View style={styles.summary}>
+      <Animated.View style={[styles.summary, summaryFlash]}>
         <SummaryRow
           label="시작"
           value={scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}
@@ -216,7 +230,7 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
         <Text style={styles.summaryText} accessibilityLabel={`제보 시간 ${summary}`}>
           {summary}
         </Text>
-      </View>
+      </Animated.View>
       <Text style={styles.hint}>
         {scheduled
           ? '운영진이 확인한 뒤, 시작 시각이 되면 지도에 올라가요. 끝나는 시각에 자동으로 내려가요.'
@@ -328,11 +342,14 @@ const styles = StyleSheet.create({
   compactChip: { paddingHorizontal: 9 },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipDisabled: { opacity: 0.4 },
+  // 테두리(평소엔 바탕색과 같아 안 보임)는 시간이 맞지 않을 때 빨갛게 깜빡이는 자리. 그 1px 만큼 안쪽 여백을 줄였다.
   summary: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 10,
+    paddingHorizontal: 11,
+    paddingTop: 3,
+    paddingBottom: 9,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primarySoft,
     backgroundColor: COLORS.primarySoft,
     marginTop: 2,
   },
