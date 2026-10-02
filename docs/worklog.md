@@ -831,29 +831,133 @@ hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
 
 ---
 
+## 2026-10-01 ~ 10-02
+
+**목표 변화**: 실사용 버그(제보 등록·로그아웃·로그인 만료) → 알림 설정 체계(게시판·분야·제보 알림) → 대형 서비스형 UI(온보딩·권한·토스트·스켈레톤·햅틱) → 출시 범위 확정(v1.0.0 iPhone + Apple 로그인 + 폴드) → 약관·처리방침 재작성 → 출시 준비 점검·버그 헌트·보안 점검 → 제보 사진 업로드·앱 닉네임 → 백엔드 PR 정리(#4–#12)
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/components/map/ReportComposerModal.tsx`, `src/apis/buildings.ts`, `src/apis/reports.ts` | 수정 | 제보 등록(건물·층 전송), 상황별 안내, 카메라·앨범(누를 때 권한), 사진 S3 업로드 |
+| `src/utils/jpegPrivacy.ts` | **신규** | 업로드 전 JPEG GPS·XMP, PNG eXIf·텍스트 청크 제거 |
+| `src/contexts/AuthContext.tsx`, `src/apis/client.ts`, `src/lib/pushDevice.ts` | 수정 | 로그아웃 즉시 반영, 재발급 단일 실행·세션 세대 가드, 만료 토큰 로그아웃 시 기기 해제, Apple 로그인 |
+| `src/lib/pkce.ts`, `src/apis/auth.ts` | **신규**/수정 | 카카오 앱 로그인 PKCE |
+| `src/utils/dialog.ts` | **신규** | 웹에서 `Alert` 대신 `confirm`/`alert` |
+| `src/apis/subscriptions.ts`, `src/utils/boardSubscriptionSync.ts`, `src/utils/reportAlertSync.ts`, `src/apis/notificationSettings.ts` | **신규** | 게시판 구독·제보 알림 서버 동기화 |
+| `src/lib/notificationPermission.ts`, `src/components/common/NotificationPrimer.tsx`, `AppPermissionsModal` | **신규** | 첫 실행 알림 권한, 앱 권한 화면 |
+| `src/components/onboarding/**`, `src/lib/onboarding.ts`, `OnboardingGate` | **신규** | 온보딩(소개 → 학과 → 알림) |
+| `Toast`, `Skeleton`, `haptics`, `ToggleSwitch` | **신규** | 공통 UI |
+| `src/constants/layout.ts`, `ContentColumn`, `useCenteredGutter` | **신규** | 폴드·넓은 화면 레이아웃 |
+| `src/navigation/NewsStackNavigator.tsx` | **신규** | 학과 소식을 소식 탭 안으로(탭바 유지) |
+| `src/components/settings/PartnerSuggestModal.tsx`, `NicknameModal`, `src/apis/users.ts`, `src/utils/nickname.ts` | **신규** | 제휴 제보(지도 핀), 앱 닉네임 |
+| `src/constants/legalText.ts`, `scripts/fix-web-export.mjs` | 재작성/수정 | 약관 14조·처리방침 12항, `/privacy`·`/terms` 정적 페이지 |
+| `src/constants/appNotices.ts`, `disclaimer.ts`, `src/lib/appVariant.ts` | 수정/**신규** | 출시 공지, 비공식 고지, 개발자 화면 숨김 |
+| `src/data/news.cs.json`, `constants/crawledNews.ts` | **삭제** | 3.4MB 정적 공지(웹 번들 5.9MB → 2MB) |
+| `src/utils/mapHtml.ts`, `public/map.html` | 수정 | 위치 고르기 목적·거리 상한, postMessage XSS 차단 |
+| `src/utils/openExternalUrl.ts` | **신규** | 외부 링크는 http(s)만 |
+| `app.json`, `netlify.toml` | 수정 | `supportsTablet:false`, Apple 로그인, 안 쓰는 권한 제거, 캐시·보안 헤더 |
+| hongikon-be | PR #4–#12 | 아래 §12 |
+
+커밋(FE): `5aca0e2` ~ `a73dea6` (main 32개). OTA: `preview` 채널, 마지막 그룹 `8163d172`.
+
+---
+
+### 1. 제보가 한 번도 등록되지 않던 문제
+
+9/11 이후 제보 등록이 전부 400 이었다. 서버는 `buildingId`·`floor` 를 필수로 받는데 앱이 보내지 않았다. 앱 건물 이름 → 서버 건물 id(`getServerBuildingId`, 27곳 모두 일치)로 바꿔 보내고 층을 고르게 했다. 실패 문구를 상황별로 나눴다(로그인 필요 → 로그인 안내, 건물 없음, 네트워크). 성공 화면은 "운영진이 확인한 뒤 지도에 올라가요".
+
+### 2. 로그아웃·로그인 만료
+
+- 웹에서 `Alert.alert` 는 아무 동작도 안 해 로그아웃 확인 창이 뜨지 않았다 → `utils/dialog.ts`.
+- 로그아웃은 화면을 바로 바꾸고 서버 정리(토큰 폐기·기기 해제)는 뒤에서 한다. 재발급 중 로그아웃하면 늦게 온 재발급 결과를 버린다(세션 세대 카운터). 액세스 토큰이 만료된 채 로그아웃해도 리프레시로 한 번 재발급해 기기를 해제한다.
+- 구독 API 가 없는 서버(알 수 없는 경로 → 401)를 "로그인 만료"로 오인하지 않게, 재발급 뒤에도 401 이면 미지원으로 보고 그 세션에선 더 부르지 않는다.
+
+### 3. 알림 설정 체계
+
+규칙: **알림 = 구독했고 AND 게시판 알림 켜짐 AND 분야 켜짐**. 게시판별·분야별 토글, 키워드 알림, 제보 알림(내 제보 승인·반려, 캠퍼스 새 제보)을 설정에 두고 서버와 동기화(BE PR #5·#6). 알림 탭 → 제보는 지도로 가서 그 제보를 띄운다(`mapIntents` `focusReport`). 첫 실행에 시스템 알림 허용 창(온보딩이 먼저 물으면 건너뜀), 거절하면 설정 > 알림에서 "설정 열기".
+
+### 4. 대형 서비스형 UI
+
+온보딩(소개 3장 → 내 학과 → 알림), 앱 권한 화면(알림·카메라·사진), 토스트, 스켈레톤, 햅틱. 햅틱·Apple 로그인 같은 새 네이티브 모듈은 `requireOptionalNativeModule` 로 감싸 **구버전 바이너리에 OTA 를 보내도 죽지 않게** 했다(시뮬레이터에서 롤백 없음 확인).
+
+### 5. 출시 범위와 폴드
+
+- v1.0.0: iPhone 전용(`supportsTablet:false`), **Apple 로그인 포함**(가이드라인 4.8), 갤럭시 폴드 지원. v2.0.0: iPad.
+- 폴드: Android 16 은 큰 화면(sw ≥ 600dp)에서 방향 고정을 무시한다. `useWindowDimensions` + 최대 폭 컨테이너(본문 640, 시트 600). 지도 위 검색바·칩은 지도처럼 창 너비를 다 쓴다(10-02).
+- 학과 소식이 루트 스택에 있어 들어가면 탭바가 사라졌다 → 소식 탭 안 스택(`NewsStackNavigator`).
+
+### 6. 약관·처리방침
+
+- 약관 14조 + 부칙으로 재작성. 책임 제한 보강: 제휴 정보(참고 정보, 혜택 미보증, 업체와 분쟁), 알림 누락·지연, 외부 서비스 장애, 이용자 간 분쟁, 보호조치를 다한 뒤의 불법 접근. **모두 "고의 또는 중대한 과실이 없는 한"** — 약관규제법 7조상 전면 면책은 무효.
+- 처리방침 12항. 실제 처리와 맞춤: 북마크는 기기 저장, 제보 사진(선택·30일 삭제·위치정보 제거), 앱 닉네임과 작성자 가림 표시, 위탁·국외이전에 Google FCM·APNs·EAS Update·지도 호스팅(Netlify) 추가와 이전받는 자 연락처, 14세 미만 삭제.
+- 연락처 `hongikonsupport@gmail.com`(약관 14조, 처리방침 7·11항). `hongikon.com/privacy`, `/terms` 는 빌드 때 `legalText.ts` 에서 정적 페이지로 생성.
+- 소셜 로그인만 써도 회원번호·닉네임·푸시 토큰 등을 서버에 저장하므로 **개인정보처리자**다. 책임을 줄이는 길은 문구보다 덜 모으는 것.
+
+### 7. 출시 준비 점검 (`launch-readiness.md`)
+
+🔴 8 · 🟠 36 · 🟢 15. 반영: 길찾기 "다음 업데이트" 안내 제거(2.1), 반응 없던 현위치 버튼 → "캠퍼스로 돌아가기", 2024년 예시 공지 교체, 마이크·Face ID·저장소 권한 제거(다음 네이티브 빌드부터), "앱 상태 확인"·`/temp/*` 운영에서 숨김, 0곳 시설 칩 숨김, 온보딩 문구 사실대로, 게스트 제보는 시작할 때 로그인 안내, 비공식 서비스 고지, NAVER 로고가 탭바에 가리던 문제, 모달 Android 뒤로가기, 해요체 통일(일부), 정적 자산 1년 캐시.
+
+### 8. 버그 헌트 (17건)
+
+로그아웃·재발급 경합, 만료 토큰 로그아웃, 제보 성공 흐름, 창을 닫은 뒤 늦게 오는 결과(요청 세대 ref), 지도 재로드 시 위치 고르기 재동기화, 제휴 위치 취소 시 원래 위치 복원, 가까운 건물 거리 상한(제휴 80m·제보 200m), 소식 기본 탭(구독 → 전체), 토스트 위치, 접근성 레이블, WebView 렌더러 크래시 반복 시 "다시 시도", 북마크 조회 동시 4개 제한·캐시.
+
+### 9. 제보 사진 업로드
+
+비공개 S3 + presigned PUT/GET(BE PR #9). 앱은 올리기 전에 위치 메타데이터를 지우고, 서버는 받은 파일을 다시 검사·재정리해 서버 키로 저장한다. 반려·삭제·탈퇴 시 삭제, 그 외 30일 수명 주기. 서버 미배포(404·503)면 사진 없이 등록하고 안내 → OTA 먼저 내보내도 안전.
+
+### 10. 앱 닉네임
+
+설정 > 계정 > 닉네임(선택). 정하면 제보 작성자로 그 닉네임, 안 정하면 카카오·Apple 닉네임 첫 글자 외 `*`(예: "홍**"). **가림은 서버에서**(BE PR #11) — 공개 응답에 원문 닉네임이 없다. 서버 배포 전에는 앱이 받은 닉네임을 가려서 표시. 2–12자, 사칭 단어(운영·관리자·홍익온·공식·학교 등)·중복 금지, 하루 5회.
+
+### 11. 보안 점검 (`security-audit.md`)
+
+- **Critical C1(배포 완료)**: 지도 페이지가 아무 출처의 `postMessage` 를 받고 마커 색을 `innerHTML` 에 넣어, 외부 페이지가 hongikon.com 에서 스크립트를 실행해 localStorage 토큰을 읽을 수 있었다. 리스너 제거, 색상 `#hex` 만 허용, COOP 헤더. hongikon.com·hongmap12.netlify.app 둘 다 반영 확인.
+- H3: Android 딥링크로 로그인 코드 가로채기 → PKCE(앱·BE #10). 구서버는 추가 파라미터를 무시해 호환.
+- 외부 링크는 http(s)만, `/admin` noindex·no-store.
+- 비밀값: 네이버 지도 Client Secret 일부가 git 기록에 남음(재발급 필요). 그 외 실제 키 없음.
+
+### 12. 백엔드 PR (머지는 백엔드 담당)
+
+| PR | 내용 | SQL |
+|---|---|---|
+| #4 | 장학 분류, `/error` permitAll, JVM UTC | `update_news_category_2026_10_01.sql` |
+| #5 | 게시판 구독 기반 푸시 | `create_user_board_subscriptions.sql` |
+| #6 | 제보 승인·반려·새 제보 알림, 푸시 토큰 로그 가림 | `create_user_notification_settings.sql` |
+| #7 | Apple 로그인(nonce 필수, 토큰 AES-GCM, 폐기 재시도) | `alter_users_add_apple_columns.sql`, `create_apple_pending_revocations.sql` |
+| #8 | 탈퇴 시 분야 알림·문의 이메일 정리 (**출시 차단**) | — |
+| #9 | 제보 사진 S3 | `alter_add_report_image_key.sql` |
+| #10 | PKCE, 세션·JWT 길이, `ADMIN_AUDIT` 로그, nginx | — |
+| #11 | 앱 닉네임, 작성자 가림 | `alter_users_add_app_nickname.sql` |
+| #12 | 배포 가이드 `docs/deploy-order-2026-10.md` | — |
+
+머지 순서 #4 → #8 → #5 → #6 → #7 → #10 → #9 → #11 (8개를 합쳐 테스트 163개 통과, 손으로 풀 충돌 2곳). 배포 전 `JWT_SECRET` 32바이트 이상, Apple 키 없으면 `APPLE_CLIENT_IDS=` 빈 값.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
-| 1 | **iOS 테스트 빌드 다시 만들기 (기기 3대 포함)** | 사용자가 터미널에서 `wt-fe-build` 로 `npx eas-cli build --profile preview --platform ios` → 애플 로그인 직접, 기기 3대 모두 선택 |
-| 2 | **관리자 지정** `UPDATE users SET role='ADMIN'` → `/admin` 에서 제보 승인·문의 확인 | 승인 전까지 제보는 지도에 안 뜬다 |
-| 3 | 앱↔백엔드 API 전수 점검 결과 반영 | 10-01 점검 진행 중 |
-| 4 | **네이버 지도 secret 재발급** | 09-07 확인: 번들 노출됐던 값 그대로. 네이버 콘솔에서 재발급(사용자 직접) |
-| 5 | 카카오 콘솔 앱 이름 '홍대로' → '홍익온', 아이콘 등록 | 동의 화면에 그대로 노출 |
-| 6 | Nginx 443 기본 서버 차단 | IP 로 https 직접 접속 시 200(10-01 §12) |
-| 7 | "원문 보기" 보안 확인 — 평소 크롬·실기기 재확인 후 안내 문구/학교 문의 | 10-01 §10 |
-| 8 | 크롤러 중복 저장 정리, 구독 `category` 다중값 서버 지원 | 10-01 §7 |
-| 9 | 실기기 푸시 수신·알림 탭(콜드 스타트 포함) 확인 | 시뮬레이터는 원격 푸시 불가 |
-| 10 | CSP Report-Only → 강제 전환 | 콘솔 위반 로그 확인 후 |
-| 11 | 개인정보 처리방침 공개 URL | 스토어 심사 필수 |
-| 12 | 스토어 출시 준비(TestFlight 여부 포함) | 개인 개발자 계정은 판매자명이 실명으로 표시 |
-| 13 | 길찾기 재개 (`ROUTE_FINDING_ENABLED`) | 경로망 완성 후. 아래 14~16 선행 |
-| 14 | 출입구 좌표 검증 계속 + `buildings.ts` 반영 | `/temp/dots`로 확인 중. 확정되면 `entranceCheckData.ts`·`TempEntranceDebugScreen.tsx`·`App.tsx`의 분기·`buildMapHTML`의 `entranceDebugMode` 매개변수를 통째로 제거 |
-| 15 | `n56`~`n60`, `n61`~`n67` 갈래를 본 경로망에 연결 | 연결점 사용자 확인 필요 |
-| 16 | `pathNodes.ts` 웨이포인트를 건물/출입구에 연결 | 지금은 `findRoutes()`가 항상 직선거리로 대체됨 |
-| 17 | 북마크·구독 학과 백엔드 연동 | 백엔드는 지원, 지금은 기기 로컬 저장 |
-| 18 | 설정 탭 UI 개선 / 학생 생활 팁 | 설계만 있음 |
-| 19 | 제휴업체 백엔드 이관 | woni 의 `scripts/generate-partners-seed.mjs`(09-30) |
+| 1 | **백엔드 PR #4–#11 머지·배포** | 백엔드 담당. 순서·SQL·env 는 BE `docs/deploy-order-2026-10.md`(PR #12). #8 은 출시 차단 |
+| 2 | **네이버 지도 Client Secret 재발급** + 허용 도메인 제한 | 사용자 직접. git 기록 노출 |
+| 3 | **iOS 네이티브 빌드(v1.0.0 후보)** | Apple 로그인·권한 정리 포함. 사용자가 `wt-fe-build` 에서 `eas build` (애플 로그인 대화형) |
+| 4 | Apple .p8 키 발급 + `APPLE_*`, `APPLE_TOKEN_ENC_KEY` | 없으면 `APPLE_CLIENT_IDS=` 로 Apple 로그인만 끔 |
+| 5 | S3 버킷·IAM·IMDS hop limit 2 | 사진 기능. 가이드 S3 절 |
+| 6 | 처리방침 숫자 채우기: 접속 기록·DB 백업 보관 기간, 보호책임자 실명 여부 | logrotate·RDS 설정과 일치시킬 것 |
+| 7 | `ADMIN_AUDIT` 1년 보관, Docker 로그 제한, RDS 암호화·백업, 루트 MFA·CloudTrail | 안전성 확보조치 기준 |
+| 8 | UGC(가이드라인 1.2): 사용자 차단, 관리자 정지, 지원 페이지 `/support`, 계정 삭제 안내 `/account-deletion` | 지원 이메일 hongikonsupport@gmail.com |
+| 9 | Google Play 비공개 테스트 12명 × 14일 | 개인 계정 의무. 일정상 가장 김 |
+| 10 | App Store Connect: 메타데이터, 개인정보 라벨(사진·닉네임 포함), 스크린샷, 리뷰 노트(제보 즉시 승인) | |
+| 11 | 카카오 콘솔 앱 이름 '홍대로' → '홍익온', 탈퇴 시 카카오 연결 끊기(BE) | |
+| 12 | Nginx 443 기본 서버 차단 | #10 의 주석 블록, nginx 버전 확인 |
+| 13 | 웹 브라우저 뒤로가기(linking 설정) | 학과 소식에서 뒤로가기 시 빈 페이지 |
+| 14 | 남은 합니다체 문구, `entranceCheckData` 번들 제거, `SYSTEM_ALERT_WINDOW` 확인 | 출시 다듬기 잔여 |
+| 15 | 크래시 수집(Sentry), 강제 업데이트·점검 모드 | 신고 항목 추가 필요 |
+| 16 | 크롤러 중복 저장, 구독 `category` 다중값 | 10-01 §7 |
+| 17 | 실기기 푸시 수신·알림 탭 확인 | 시뮬레이터 불가 |
+| 18 | 길찾기 재개(경로망·출입구 검증) | 기존 14~16 |
+| 19 | 제휴업체 백엔드 이관, 학생 생활 팁 | |
 
 ### 출시 범위 (2026-10-02 결정)
 
@@ -868,7 +972,6 @@ hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
 - 학생 생활 팁을 소식 탭 안의 한 갈래로 둘지, 별도 탭으로 둘지 / 정적 JSON으로 먼저 갈지 (`student-tips-design.md` 6절)
 - 드래그 중 네이버 지도 축척막대 숨김(`mapHtml.ts`)을 남길 것인가 (09-28 §1)
 - 네이버 콘솔에 등록된 서비스 URL은 무엇인가 (`/temp/dots` 로컬 접속으로 재확인 시도 중)
-- 어느 플랫폼부터 출시할 것인가
 - `A동 1층 (37.5509723, 126.9260261)` 좌표가 실제 A동이 맞는가
 - `HI_E_BUILDING_ELEVATOR`가 실제로 어느 건물인지
 - R동 "L층"(카페나무·세미나실)과 P동 "N층"(카페)의 정확한 층수 또는 실존 여부
