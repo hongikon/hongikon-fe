@@ -47,6 +47,8 @@ type PermissionView =
   | { kind: 'granted'; limited?: boolean }
   | { kind: 'undetermined'; canAskAgain: boolean }
   | { kind: 'denied'; canAskAgain: boolean }
+  /** 이 기기에선 권한 없이 동작한다(Android 사진 선택기). */
+  | { kind: 'notNeeded' }
 
 function fromNotification(p: NotificationPermission): PermissionView {
   if (p.status === 'unknown' || p.status === 'unsupported') return { kind: 'loading' }
@@ -136,8 +138,10 @@ function openPhoneSettings(what: string) {
 
 export default function AppPermissionsModal({ visible, onClose }: AppPermissionsModalProps) {
   const isWeb = Platform.OS === 'web'
+  // Android 는 시스템 사진 선택기를 써서 사진 권한 자체가 없다(app.json blockedPermissions).
+  const isAndroid = Platform.OS === 'android'
   const notification = fromNotification(useNotificationPermission())
-  const media = useMediaLibraryPermission(visible && !isWeb)
+  const media = useMediaLibraryPermission(visible && !isWeb && !isAndroid)
   const camera = useCameraPermission(visible && !isWeb)
 
   return (
@@ -189,8 +193,12 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <PermissionRow
                   icon="images-outline"
                   title="사진"
-                  purpose="(선택) 제보에 사진을 첨부할 때 앨범에서 골라요. 앨범 버튼을 누를 때만 물어요"
-                  state={media.state}
+                  purpose={
+                    isAndroid
+                      ? '(선택) 제보에 사진을 첨부할 때 휴대폰의 사진 선택 화면에서 골라요. 고른 사진만 전달돼서 따로 권한을 묻지 않아요'
+                      : '(선택) 제보에 사진을 첨부할 때 앨범에서 골라요. 앨범 버튼을 누를 때만 물어요'
+                  }
+                  state={isAndroid ? { kind: 'notNeeded' } : media.state}
                   onRequest={() => {
                     void media.request()
                   }}
@@ -223,6 +231,7 @@ const PILL = {
   denied: { label: '꺼짐', bg: COLORS.dangerSoft, fg: '#B91C1C' },
   undetermined: { label: '아직 묻지 않음', bg: COLORS.fill, fg: COLORS.textSecondary },
   loading: { label: '확인 중', bg: COLORS.fill, fg: COLORS.textTertiary },
+  notNeeded: { label: '권한 필요 없음', bg: COLORS.fill, fg: COLORS.textSecondary },
 } as const
 
 function pillFor(state: PermissionView) {

@@ -237,8 +237,13 @@ export default function ReportComposerModal({
     setError(null)
     setBlockedPermission(null)
     try {
-      const permission =
-        source === 'camera'
+      // Android 앨범은 시스템 사진 선택기(Photo Picker, 없으면 문서 선택기)로 열려 권한이 필요 없다.
+      // 저장소·READ_MEDIA_* 권한은 Play 정책 때문에 매니페스트에서 막아 두었으니(app.json blockedPermissions)
+      // Android 12 이하에서 사진 권한을 물으면 늘 거절로 돌아와 앨범을 못 연다 — 그래서 묻지 않는다.
+      const skipPermission = source === 'library' && Platform.OS === 'android'
+      const permission = skipPermission
+        ? { granted: true }
+        : source === 'camera'
           ? await ImagePicker.requestCameraPermissionsAsync()
           : await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (!permission.granted) {
