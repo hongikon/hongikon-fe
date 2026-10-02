@@ -19,28 +19,37 @@ import type { Facility } from '../types'
  * 2026-08-24 캠퍼스 편의시설 전수 조사 데이터로 채웠다(출처: 사용자 제공 표,
  * `location_id`/`building_code`/`floor_id` 등 원본 컬럼은 여기 옮기며 걷어냈다
  * — `id`/`buildingName`/`floor`/`note` 로 충분히 표현된다). 층 표기가
- * 불명확한 항목("L층"·"N층")은 존재만 확인된 것만 `floor` 를 비운 채 남기고
- * (예: R동 L층 증명서 발급), 나머지는 통째로 제외했다.
+ * 불명확한 항목("L층"·"N층")은 통째로 제외했다.
  * `HI_E_BUILDING_ELEVATOR` 행은 `buildings.ts` 에 대응하는 "E동" 건물이 없어
- * 제외했다 — 어느 건물인지 확인되면 추가한다.
+ * 제외했다(공식 캠퍼스맵상 E동 = 조형관이지만, 엘리베이터 칩은 숨겨져 있어 넣지 않았다).
+ *
+ * 2026-10-02 학교 공식 홈페이지(시설 안내·행정부서 안내) 기준으로 층·호수 보정 — 학기 초 사람이 다시 확인
+ * (출처: hongik.ac.kr 편의시설·공용컴퓨터실·인터넷 증명발급·행정기관·부속기관 안내).
+ * 공식 안내와 어긋난 항목은 고치거나 뺐다 — R동 L층 증명서 출력기(서울캠퍼스 발급기는
+ * 문헌관 1층 한 곳뿐), F동 1층 프린터(공식상 프린터 없는 강의용 PC실).
+ * 공식 표기 "홍문관(R동) 로비층"은 같은 신한은행을 다른 공식 페이지가 "홍문관 1층"으로
+ * 적고 있어 `floor: 1` 로 본다(신뢰도 중간 — 현장 확인 필요).
  */
 export const FACILITIES: readonly Facility[] = [
   // ── 홍문관 R동 ──────────────────────────────────────────
-  { id: 'hi-r-16f-restaurant', kind: '식당', buildingName: '홍문관 R동', floor: 16, note: '마루샤브 스카이' },
-  { id: 'hi-r-9f-printer', kind: '프린터', buildingName: '홍문관 R동', floor: 9, note: 'PC실' },
-  { id: 'hi-r-8f-reading-room', kind: '열람실', buildingName: '홍문관 R동', floor: 8, note: '법학도서관 열람실' },
+  { id: 'hi-r-16f-restaurant', kind: '식당', buildingName: '홍문관 R동', floor: 16, note: '마루샤브(뷔페) · 11:30~21:30' },
+  { id: 'hi-r-9f-printer', kind: '프린터', buildingName: '홍문관 R동', floor: 9, note: 'PC실 · 915호 (프린터 쿼터 충전기)' },
+  { id: 'hi-r-8f-reading-room', kind: '열람실', buildingName: '홍문관 R동', floor: 8, note: '법학도서관 열람실 · 노트북열람실 06:00~23:00' },
   { id: 'hi-r-8f-study-room', kind: '스터디룸', buildingName: '홍문관 R동', floor: 8, note: '공동학습실' },
   { id: 'hi-r-7f-printer', kind: '프린터', buildingName: '홍문관 R동', floor: 7, note: '시각디자인과 프린트실' },
-  { id: 'hi-r-3f-convenience-store', kind: '편의점', buildingName: '홍문관 R동', floor: 3 },
+  { id: 'hi-r-3f-convenience-store', kind: '편의점', buildingName: '홍문관 R동', floor: 3, note: '바이스마트' },
   { id: 'hi-r-2f-cafe-01', kind: '카페', buildingName: '홍문관 R동', floor: 2, note: '파브리카' },
   { id: 'hi-r-2f-cafe-02', kind: '카페', buildingName: '홍문관 R동', floor: 2, note: '그라찌에' },
-  // L층 카페(카페나무)·스터디룸(세미나실)은 정확한 층수를 확인할 수 없어 제외 — 확인되면 추가
-  { id: 'hi-r-lf-certificate-kiosk', kind: '증명서 발급', buildingName: '홍문관 R동', note: '증명서 출력기 (L층, 정확한 층수 미확인)' },
-  { id: 'hi-r-b2f-cafe', kind: '카페', buildingName: '홍문관 R동', floor: -2, note: '프루츠카페' },
+  { id: 'hi-r-2f-exhibition', kind: '행사·전시', buildingName: '홍문관 R동', floor: 2, note: '현대미술관(HoMA) 2관' },
+  // 공식 표기 "로비층"을 1층으로 봄(신뢰도 중간). L층 스터디룸(세미나실)은 여전히 미확인이라 제외.
+  // L층 증명서 출력기는 공식 안내에 없어 뺐다 — 서울캠퍼스 발급기는 문헌관 MH동 1층.
+  { id: 'hi-r-1f-cafe', kind: '카페', buildingName: '홍문관 R동', floor: 1, note: '카페나무 · 로비층(L)' },
+  { id: 'hi-r-b2f-cafe', kind: '카페', buildingName: '홍문관 R동', floor: -2, note: '푸르타(과일주스전문점)' },
+  { id: 'hi-r-b2f-printer', kind: '프린터', buildingName: '홍문관 R동', floor: -2, note: '출력센터(에이제이네트웍스)' },
   { id: 'hi-r-building-elevator', kind: '엘리베이터', buildingName: '홍문관 R동', note: '지도상 엘리베이터 표기(정확한 층 미확인)' },
 
   // ── 제1공학관 K동 ───────────────────────────────────────
-  { id: 'hi-k-6f-printer', kind: '프린터', buildingName: '제1공학관 K동', floor: 6, note: '공용PC실' },
+  { id: 'hi-k-6f-printer', kind: '프린터', buildingName: '제1공학관 K동', floor: 6, note: '공대 PC실 · 611호' },
 
   // ── 체육관 ──────────────────────────────────────────────
   { id: 'hi-gym-building-elevator', kind: '엘리베이터', buildingName: '체육관' },
@@ -56,6 +65,8 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-h-3f-printer', kind: '프린터', buildingName: '중앙도서관 H동', floor: 3, note: '공용PC실' },
   { id: 'hi-h-3f-cafe', kind: '카페', buildingName: '중앙도서관 H동', floor: 3, note: '카페ing' },
   { id: 'hi-h-3f-study-room', kind: '스터디룸', buildingName: '중앙도서관 H동', floor: 3, note: '그룹 스터디룸' },
+  // 공식 안내는 열람팀 업무 설명에서만 확인(신뢰도 중간)
+  { id: 'hi-h-2f-lounge', kind: '라운지', buildingName: '중앙도서관 H동', floor: 2, note: '크리에이티브라운지' },
   { id: 'hi-h-1f-study-room', kind: '스터디룸', buildingName: '중앙도서관 H동', floor: 1, note: '캐럴/미디어룸' },
   { id: 'hi-h-building-elevator', kind: '엘리베이터', buildingName: '중앙도서관 H동' },
 
@@ -64,7 +75,9 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-g-5f-reading-room-01', kind: '열람실', buildingName: '학생회관 G동', floor: 5, note: '일반열람실 1' },
   { id: 'hi-g-5f-reading-room-02', kind: '열람실', buildingName: '학생회관 G동', floor: 5, note: '일반열람실 2' },
   { id: 'hi-g-5f-reading-room-03', kind: '열람실', buildingName: '학생회관 G동', floor: 5, note: '노트북 열람실' },
-  { id: 'hi-g-1f-printer', kind: '프린터', buildingName: '학생회관 G동', floor: 1, note: '출력센터' },
+  // 장애학생지원센터는 행정기관 목록엔 1층, 상세 페이지엔 2층 201호 — 상세 페이지를 따름(현장 확인 필요)
+  { id: 'hi-g-2f-student-affairs', kind: '학생처', buildingName: '학생회관 G동', floor: 2, note: '학생처 학생지원팀·장학팀·장애학생지원센터 · 201호' },
+  { id: 'hi-g-1f-printer', kind: '프린터', buildingName: '학생회관 G동', floor: 1, note: '출력센터(에이제이네트웍스)' },
   { id: 'hi-g-b1f-lounge', kind: '라운지', buildingName: '학생회관 G동', floor: -1 },
   { id: 'hi-g-b1f-study-room', kind: '스터디룸', buildingName: '학생회관 G동', floor: -1, note: '공동학습실' },
 
@@ -83,11 +96,10 @@ export const FACILITIES: readonly Facility[] = [
   // ── 문헌관 MH동 ─────────────────────────────────────────
   { id: 'hi-mh-16f-restaurant', kind: '식당', buildingName: '문헌관 MH동', floor: 16, note: '교직원식당' },
   { id: 'hi-mh-1f-printer', kind: '프린터', buildingName: '문헌관 MH동', floor: 1 },
-  { id: 'hi-mh-1f-certificate-kiosk', kind: '증명서 발급', buildingName: '문헌관 MH동', floor: 1, note: '증명서 출력기' },
+  { id: 'hi-mh-4f-exhibition', kind: '행사·전시', buildingName: '문헌관 MH동', floor: 4, note: '현대미술관(HoMA) 1관' },
+  { id: 'hi-mh-3f-museum', kind: '행사·전시', buildingName: '문헌관 MH동', floor: 3, note: '홍익대학교 박물관' },
+  { id: 'hi-mh-1f-certificate-kiosk', kind: '증명서 발급', buildingName: '문헌관 MH동', floor: 1, note: '학적증명 무인발급기 · 08:00~21:00' },
   { id: 'hi-mh-building-elevator', kind: '엘리베이터', buildingName: '문헌관 MH동' },
-
-  // ── 미술학관 F동 ────────────────────────────────────────
-  { id: 'hi-f-1f-printer', kind: '프린터', buildingName: '미술학관 F동', floor: 1, note: '공용PC실' },
 
   // ── 미술종합강의동 U동 ──────────────────────────────────
   { id: 'hi-u-building-elevator', kind: '엘리베이터', buildingName: '미술종합강의동 U동' },
@@ -98,7 +110,7 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-t-building-elevator', kind: '엘리베이터', buildingName: '제4공학관 T동' },
 
   // ── 인문사회관 B동 ──────────────────────────────────────
-  { id: 'hi-b-1f-printer', kind: '프린터', buildingName: '인문사회관 B동', floor: 1, note: '공용PC실' },
+  { id: 'hi-b-1f-printer', kind: '프린터', buildingName: '인문사회관 B동', floor: 1, note: '경영대학 PC실 · 105호' },
   // 원표는 floor_id가 비어 있으나 location_detail에 "1층"이 명시돼 있어 그대로 반영
   // 좌표: 2026-09-30 사용자 실측(HI_B_1F_흡연장). 원본 (위도, 경도, 고도) 중 앞의 두 값.
   { id: 'hi-b-1f-outdoor-smoking-01', kind: '흡연구역', buildingName: '인문사회관 B동', floor: 1, note: 'B동 1층 흡연구역 (야외)', lat: 37.55062859162865, lng: 126.925791484712 },
@@ -124,7 +136,7 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-dorm2-building-elevator', kind: '엘리베이터', buildingName: '제2기숙사' },
 
   // ── 인문사회관 C동 ──────────────────────────────────────
-  { id: 'hi-c-4f-printer', kind: '프린터', buildingName: '인문사회관 C동', floor: 4, note: '공용PC실' },
+  { id: 'hi-c-4f-printer', kind: '프린터', buildingName: '인문사회관 C동', floor: 4, note: '공용PC실 · 414호 (프린터 쿼터 충전기)' },
   { id: 'hi-c-8f-cafe', kind: '카페', buildingName: '인문사회관 C동', floor: 8, note: '카페나무' },
   { id: 'hi-c-building-elevator', kind: '엘리베이터', buildingName: '인문사회관 C동' },
 
