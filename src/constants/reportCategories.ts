@@ -35,7 +35,9 @@ const META_BY_KEY = new Map(REPORT_CATEGORIES.map((meta) => [meta.key, meta]))
 export function reportCategoryMeta(key: ReportCategory): ReportCategoryMeta {
   const meta = META_BY_KEY.get(key)
   if (!meta) {
-    throw new Error(`알 수 없는 제보 카테고리: ${key}`)
+    // 서버에 새 카테고리가 생기면 OTA 로 아직 못 받은 앱이 지도·시트를 그리다 통째로 죽는다 — '기타'로 보여 준다.
+    if (__DEV__) console.warn(`알 수 없는 제보 카테고리: ${key}`)
+    return META_BY_KEY.get('ETC') as ReportCategoryMeta
   }
   return meta
 }
