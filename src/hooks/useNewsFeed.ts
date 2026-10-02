@@ -231,7 +231,7 @@ export function useNewsFeed(query: NewsFeedQuery, options: UseNewsFeedOptions = 
     refreshing: pending === 'refresh',
     hasNext,
     totalElements,
-    errorMessage: hasError ? getErrorMessage(error, '소식을 불러오지 못했습니다.') : null,
+    errorMessage: hasError ? getErrorMessage(error, '소식을 불러오지 못했어요.') : null,
     isNetworkError: hasError && isNetworkError(error),
     canRetry: hasError && (isRetryableError(error) || !(error instanceof ApiError)),
     retry,

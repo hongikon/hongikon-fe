@@ -43,8 +43,8 @@ export default class ErrorBoundary extends Component<Props, State> {
           <Ionicons name="alert-circle-outline" size={48} color={COLORS.textSecondary} />
           <Text style={styles.title}>문제가 발생했어요</Text>
           <Text style={styles.subtitle}>
-            화면을 불러오는 중 오류가 생겼습니다. 다시 시도해도 계속되면 앱을 완전히
-            종료했다가 다시 열어주세요.
+            화면을 불러오는 중 오류가 생겼어요. 다시 시도해도 계속되면 앱을 완전히
+            종료했다가 다시 열어 주세요.
           </Text>
           <TouchableOpacity
             style={styles.button}

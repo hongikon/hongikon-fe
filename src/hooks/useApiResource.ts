@@ -64,7 +64,7 @@ export function useApiResource<T>(
     enabled = true,
     refetchOnReconnect = true,
     refetchOnForeground = true,
-    fallbackMessage = '정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    fallbackMessage = '정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
   } = options
 
   const [data, setData] = useState<T | undefined>(undefined)

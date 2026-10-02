@@ -87,7 +87,7 @@ export function isAppleSignInCanceled(error: unknown): boolean {
  */
 export async function requestAppleSignIn(): Promise<AppleLoginRequestBody> {
   const pkg = getPackage()
-  if (!pkg) throw new Error('이 기기에서는 Apple 로그인을 사용할 수 없습니다.')
+  if (!pkg) throw new Error('이 기기에서는 Apple 로그인을 쓸 수 없어요.')
   const nonce = createAppleNonce()
   const credential = await pkg.signInAsync({
     requestedScopes: [pkg.AppleAuthenticationScope.FULL_NAME],

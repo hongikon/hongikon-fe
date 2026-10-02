@@ -28,7 +28,7 @@ let apiMissing = false
 
 /** 판정이 끝난 뒤의 호출은 네트워크 없이 바로 이 오류로 실패시킨다(404 와 같은 취급). */
 function missingError(): ApiError {
-  return new ApiError(404, '요청한 정보를 찾을 수 없습니다.')
+  return new ApiError(404, '요청한 정보를 찾을 수 없어요.')
 }
 
 /** 실패가 "API 없음"이면 기억해 둔다. 오류는 그대로 다시 던진다. */

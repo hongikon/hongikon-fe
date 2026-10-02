@@ -80,7 +80,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     } catch (error) {
       if (isStale()) return
       setSubmitError({
-        message: getErrorMessage(error, '문의를 보내지 못했습니다. 잠시 후 다시 시도해주세요.'),
+        message: getErrorMessage(error, '문의를 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })

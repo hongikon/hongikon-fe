@@ -61,7 +61,7 @@ export function useBookmarkedNews(ids: readonly string[]): Omit<ApiResource<News
       return null
     },
     [missingKey],
-    { enabled: missing.length > 0, refetchOnForeground: false, fallbackMessage: '북마크한 소식을 불러오지 못했습니다.' },
+    { enabled: missing.length > 0, refetchOnForeground: false, fallbackMessage: '북마크한 소식을 불러오지 못했어요.' },
   )
 
   const items = useMemo(

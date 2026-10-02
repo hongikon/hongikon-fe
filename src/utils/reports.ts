@@ -11,7 +11,7 @@ import { parseServerTime } from './serverTime'
  */
 export function promptLogin(message: string, logout: () => void): void {
   if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.confirm(`로그인이 필요해요\n${message}`)) {
+    if (typeof window !== 'undefined' && window.confirm(`로그인이 필요해요\n\n${message}`)) {
       logout()
     }
     return

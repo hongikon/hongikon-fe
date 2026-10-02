@@ -38,7 +38,7 @@ const EXECUTION_ENVIRONMENT_LABEL: Record<string, string> = {
 async function fireTestNotification(sample: PushNotificationSample) {
   const { status } = await Notifications.requestPermissionsAsync()
   if (status !== 'granted') {
-    Alert.alert('알림 권한 필요', '기기 설정에서 알림 권한을 허용해주세요.')
+    Alert.alert('알림 권한 필요', '기기 설정에서 알림 권한을 허용해 주세요.')
     return
   }
 

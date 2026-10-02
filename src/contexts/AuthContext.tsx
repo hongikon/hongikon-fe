@@ -115,12 +115,12 @@ function extractAuthCode(redirectedUrl: string): string | null {
  */
 function authExchangeErrorMessage(error: unknown): string {
   if (isNetworkError(error)) {
-    return '네트워크 연결이 불안정해 로그인을 마치지 못했습니다. 연결을 확인한 뒤 다시 로그인해주세요.'
+    return '네트워크 연결이 불안정해 로그인을 마치지 못했어요. 연결을 확인한 뒤 다시 로그인해 주세요.'
   }
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-    return '로그인 정보가 만료되었거나 올바르지 않습니다. 다시 로그인해주세요.'
+    return '로그인 정보가 만료됐거나 올바르지 않아요. 다시 로그인해 주세요.'
   }
-  return '로그인 처리 중 서버에 문제가 생겼습니다. 잠시 후 다시 로그인해주세요.'
+  return '로그인 처리 중 서버에 문제가 생겼어요. 잠시 후 다시 로그인해 주세요.'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const callbackCode = takeWebAuthCallbackCode()
       if (callbackCode !== undefined) {
         if (!callbackCode) {
-          setLoginError('로그인이 취소되었습니다.')
+          setLoginError('로그인이 취소됐어요.')
           setStatus('signedOut')
           return
         }
@@ -260,7 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // /auth/callback 으로 돌아와 restore() 에서 마저 처리한다. 이동하는 동안 버튼은 로딩 상태로 둔다.
     if (isWeb) {
       const url = buildWebKakaoLoginUrl(WEB_AUTH_CALLBACK_PATH)
-      if (!url) throw new Error('로그인 서버 주소가 설정되지 않았습니다.')
+      if (!url) throw new Error('로그인 서버 주소가 설정되지 않았어요.')
       window.location.assign(url)
       return new Promise<void>(() => {})
     }
@@ -270,12 +270,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await WebBrowser.openAuthSessionAsync(buildKakaoLoginUrl(pkce.challenge), AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
-      throw new Error('로그인이 취소되었습니다.')
+      throw new Error('로그인이 취소됐어요.')
     }
 
     const code = extractAuthCode(result.url)
     if (!code) {
-      throw new Error('로그인 응답에서 인가 코드를 찾지 못했습니다.')
+      throw new Error('로그인 응답에서 인가 코드를 찾지 못했어요.')
     }
 
     // 인가 코드는 1회용이라 client 도 자동 재시도하지 않고(POST), 여기서도 다시 보내지 않는다.
@@ -300,7 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: unknown) {
       if (isAppleSignInCanceled(error)) throw error
       if (__DEV__) console.warn('Apple 로그인 실패:', error)
-      throw new Error('Apple 로그인을 마치지 못했습니다. 잠시 후 다시 시도해주세요.')
+      throw new Error('Apple 로그인을 마치지 못했어요. 잠시 후 다시 시도해 주세요.')
     }
 
     // authorizationCode 는 1회용이라 다시 보내지 않는다(카카오 코드 교환과 같은 이유). 실패하면 버튼부터 다시.
@@ -368,7 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const deleteAccount = useCallback(async () => {
-    if (!accessToken) throw new Error('로그인 후 이용해주세요.')
+    if (!accessToken) throw new Error('로그인 후 이용해 주세요.')
 
     await deleteAccountRequest(accessToken)
     sessionGenRef.current += 1
