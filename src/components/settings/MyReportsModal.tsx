@@ -389,10 +389,6 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
         ) : (
           <View />
         )}
-        {status === 'HIDDEN' ? (
-          // 신고로 숨겨진 제보는 운영진 검토가 끝날 때까지 지울 수 없다(서버도 409). 신고 기록을 남기기 위해서다.
-          <Text style={styles.deleteLockedText}>검토가 끝나면 지울 수 있어요</Text>
-        ) : (
           <Pressable
             onPress={() => onDelete(report)}
             disabled={deleting}
@@ -411,7 +407,6 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
               </>
             )}
           </Pressable>
-        )}
       </View>
     </>
   )
@@ -498,6 +493,5 @@ const styles = StyleSheet.create({
   mapLink: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xxs },
   mapLinkText: { ...TYPE.label, color: COLORS.primary },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, minHeight: 24, minWidth: 44, justifyContent: 'flex-end' },
-  deleteLockedText: { fontSize: 12, color: COLORS.textTertiary },
   deleteText: { ...TYPE.caption, color: COLORS.textTertiary },
 })
