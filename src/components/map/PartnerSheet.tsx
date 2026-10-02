@@ -12,6 +12,8 @@ import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../constants/partnerAffiliations";
 import type { Partner } from "../../types";
 import { FONTS } from "../../constants/typography";
+import IconButton from "../common/IconButton";
+import { sheetCloseStyle } from "./chipStyles";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 
@@ -113,13 +115,14 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
         <View style={[styles.badge, { backgroundColor: meta.color }]}>
           <Text style={styles.badgeText}>{partner.category}</Text>
         </View>
-        <TouchableOpacity
+        <IconButton
+          icon="close"
+          size={20}
+          color={COLORS.textTertiary}
           onPress={onClose}
-          accessibilityRole="button"
           accessibilityLabel="닫기"
-        >
-          <Ionicons name="close" size={20} color="#ccc" />
-        </TouchableOpacity>
+          style={sheetCloseStyle}
+        />
       </View>
 
       <Text style={styles.name}>{partner.name}</Text>
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: COLORS.border,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 14,
@@ -263,7 +266,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
-  badgeText: { fontSize: 11, fontFamily: FONTS.bold, color: COLORS.white },
+  badgeText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.white },
   name: {
     fontSize: 18,
     fontFamily: FONTS.bold,
@@ -355,7 +358,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 12,
     lineHeight: 17,
-    color: "#666",
+    color: COLORS.textSecondary,
   },
   // UsageNote 가 항목을 여럿(" / ")으로 쪼갤 때: 라벨 줄 + 그 아래 "- 항목" 줄들.
   usageNoteBlock: { flex: 1, gap: 2 },
@@ -365,7 +368,7 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingVertical: 5,
   },
-  rowText: { fontFamily: FONTS.regular, flex: 1, fontSize: 12.5, lineHeight: 18, color: "#666" },
+  rowText: { fontFamily: FONTS.regular, flex: 1, fontSize: 13, lineHeight: 19, color: COLORS.textSecondary },
   linkBtn: {
     flexDirection: "row",
     alignItems: "center",

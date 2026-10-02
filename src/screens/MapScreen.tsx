@@ -26,6 +26,7 @@ import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
 import { useApiResource } from "../hooks/useApiResource";
+import Button from "../components/common/Button";
 import RetryableError from "../components/common/RetryableError";
 import { useToast } from "../components/common/Toast";
 import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
@@ -155,7 +156,7 @@ export default function MapScreen() {
     async (signal) =>
       visibleReports(await getLiveReports({ accessToken, signal })),
     [accessToken],
-    { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했습니다." },
+    { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
   );
   const reports = reportsResource.data ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
@@ -278,7 +279,7 @@ export default function MapScreen() {
         if (msg.type === "reportLongPress") {
           // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
           if (!accessToken) {
-            promptLogin("제보를 남기려면 로그인해주세요.", logout);
+            promptLogin("제보를 남기려면 로그인해 주세요.", logout);
             return;
           }
           setSelectedBuilding(null);
@@ -596,7 +597,7 @@ export default function MapScreen() {
   /** 제보는 로그인이 필요하다. 게스트는 위치를 고르고 작성창을 다 채운 뒤가 아니라 시작할 때 묻는다. */
   const handleStartReportPicker = useCallback(() => {
     if (!accessToken) {
-      promptLogin("제보를 남기려면 로그인해주세요.", logout);
+      promptLogin("제보를 남기려면 로그인해 주세요.", logout);
       return;
     }
     startPicker("report");
@@ -741,9 +742,9 @@ export default function MapScreen() {
         >
           {mapAuthFailed && (
             <View style={styles.mapErrorNotice}>
-              <Ionicons name="warning" size={15} color="#B45309" />
+              <Ionicons name="warning" size={15} color={COLORS.warningIcon} />
               <Text style={styles.mapErrorText}>
-                지도를 불러오지 못했어요. 네이버 지도 인증에 실패했습니다.
+                지도를 불러오지 못했어요. 네이버 지도 인증에 실패했어요.
               </Text>
               <TouchableOpacity
                 onPress={() => setMapAuthFailed(false)}
@@ -751,14 +752,14 @@ export default function MapScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="닫기"
               >
-                <Ionicons name="close" size={15} color="#B45309" />
+                <Ionicons name="close" size={15} color={COLORS.warningIcon} />
               </TouchableOpacity>
             </View>
           )}
 
           {reportsOn && reportsResource.loading && reportsResource.errorMessage === null && (
             <View style={styles.offscreenNotice}>
-              <ActivityIndicator size="small" color="#6B7280" />
+              <ActivityIndicator size="small" color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>제보를 불러오는 중…</Text>
             </View>
           )}
@@ -780,14 +781,14 @@ export default function MapScreen() {
 
           {reportsEmpty && (
             <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>지금은 진행 중인 제보가 없어요</Text>
             </View>
           )}
 
           {unresolvedCount > 0 && (
             <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>
                 건물을 찾지 못한 편의시설 {unresolvedCount}곳은 지도에서 빠졌어요
               </Text>
@@ -796,7 +797,7 @@ export default function MapScreen() {
 
           {offscreenCount > 0 && (
             <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color="#6B7280" />
+              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>
                 캠퍼스 밖 {offscreenCount}곳은 지도를 줌아웃하면 보여요
               </Text>
@@ -852,8 +853,8 @@ export default function MapScreen() {
             <View style={[styles.pickerTopBar, overlayInset, { top: headerHeight + 8 }]}>
               <Text style={styles.pickerTopText} numberOfLines={2}>
                 {pickerPurpose === "partner"
-                  ? "지도를 움직여 가게 위치에 핀을 맞춰주세요"
-                  : "지도를 움직여 제보할 위치를 맞춰주세요"}
+                  ? "지도를 움직여 가게 위치에 핀을 맞춰 주세요"
+                  : "지도를 움직여 제보할 위치를 맞춰 주세요"}
               </Text>
               <TouchableOpacity
                 onPress={handleCancelReportPicker}
@@ -877,21 +878,11 @@ export default function MapScreen() {
                     : "위치 확인 중..."}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[
-                  styles.pickerConfirmBtn,
-                  !pickerCenter && styles.pickerConfirmBtnDisabled,
-                ]}
+              <Button
+                label={pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
                 onPress={handleConfirmReportPicker}
                 disabled={!pickerCenter}
-                accessibilityRole="button"
-                accessibilityLabel={pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
-                accessibilityState={{ disabled: !pickerCenter }}
-              >
-                <Text style={styles.pickerConfirmText}>
-                  {pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
-                </Text>
-              </TouchableOpacity>
+              />
             </View>
           </>
         )}
@@ -901,7 +892,7 @@ export default function MapScreen() {
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
                 <View
-                  style={[styles.routeDot, { backgroundColor: "#10B981" }]}
+                  style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]}
                 />
                 <Text style={styles.routeLabel} numberOfLines={1}>
                   {buildingLabel(fromBuilding, fromFloor)}
@@ -910,7 +901,7 @@ export default function MapScreen() {
               <Text style={styles.routeArrow}>→</Text>
               <View style={styles.routeRow}>
                 <View
-                  style={[styles.routeDot, { backgroundColor: "#EF4444" }]}
+                  style={[styles.routeDot, { backgroundColor: COLORS.danger }]}
                 />
                 <Text style={styles.routeLabel} numberOfLines={1}>
                   {buildingLabel(toBuilding, toFloor)}
@@ -934,7 +925,7 @@ export default function MapScreen() {
               accessibilityRole="button"
               accessibilityLabel="경로 지우기"
             >
-              <Ionicons name="close" size={16} color="#999" />
+              <Ionicons name="close" size={16} color={COLORS.textTertiary} />
             </TouchableOpacity>
           </View>
         )}
@@ -1001,7 +992,7 @@ export default function MapScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="제휴 업체 검색"
               >
-                <Ionicons name="search" size={16} color="#999" />
+                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
                 <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
               </TouchableOpacity>
             </View>
@@ -1060,7 +1051,7 @@ export default function MapScreen() {
                 setSearchQuery("");
               }}
             >
-              <View style={[styles.inputDot, { backgroundColor: "#10B981" }]} />
+              <View style={[styles.inputDot, { backgroundColor: COLORS.routeFrom }]} />
               <Text
                 style={
                   fromBuilding ? styles.inputFilled : styles.inputPlaceholder
@@ -1082,7 +1073,7 @@ export default function MapScreen() {
                 setSearchQuery("");
               }}
             >
-              <View style={[styles.inputDot, { backgroundColor: "#EF4444" }]} />
+              <View style={[styles.inputDot, { backgroundColor: COLORS.danger }]} />
               <Text
                 style={
                   toBuilding ? styles.inputFilled : styles.inputPlaceholder
@@ -1096,11 +1087,11 @@ export default function MapScreen() {
           {routeTarget && (
             <View style={styles.routeSearch}>
               <View style={styles.routeSearchBar}>
-                <Ionicons name="search" size={16} color="#999" />
+                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
                 <TextInput
                   style={styles.routeSearchInput}
                   placeholder="건물 검색"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={COLORS.textPlaceholder}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoFocus
@@ -1124,7 +1115,7 @@ export default function MapScreen() {
                       <Text style={styles.buildingItemName}>{item.name}</Text>
                       <Text style={styles.buildingItemType}>{item.type}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={14} color="#ddd" />
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
                   </TouchableOpacity>
                 )}
                 contentContainerStyle={styles.buildingList}
@@ -1136,7 +1127,7 @@ export default function MapScreen() {
             <View style={styles.routeResultCard}>
               <View style={styles.routeResultRow}>
                 <View
-                  style={[styles.routeDot, { backgroundColor: "#10B981" }]}
+                  style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]}
                 />
                 <Text style={styles.routeResultName}>{fromBuilding.name}</Text>
               </View>
@@ -1144,12 +1135,12 @@ export default function MapScreen() {
                 label="출발 층"
                 building={fromBuilding}
                 floor={fromFloor}
-                accent="#10B981"
+                accent={COLORS.routeFrom}
                 onChange={setFromFloor}
               />
               <View style={[styles.routeResultRow, styles.routeResultRowSpaced]}>
                 <View
-                  style={[styles.routeDot, { backgroundColor: "#EF4444" }]}
+                  style={[styles.routeDot, { backgroundColor: COLORS.danger }]}
                 />
                 <Text style={styles.routeResultName}>{toBuilding.name}</Text>
               </View>
@@ -1157,7 +1148,7 @@ export default function MapScreen() {
                 label="도착 층"
                 building={toBuilding}
                 floor={toFloor}
-                accent="#EF4444"
+                accent={COLORS.danger}
                 onChange={setToFloor}
               />
 
@@ -1245,7 +1236,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   searchBar: {
-    height: 40,
+    height: 44,
     borderRadius: 12,
     backgroundColor: COLORS.white,
     flexDirection: "row",
@@ -1258,7 +1249,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 13, color: "#bbb" },
+  searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   // 실제 지도가 그려지는 칸. 탭바 높이만큼 아래를 비운다(JSX 주석 참고). 위치 고르기 중앙 핀도 같은 칸 기준이다.
   mapCanvas: { flex: 1 },
@@ -1376,19 +1367,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: COLORS.textPrimary,
   },
-  pickerConfirmBtn: {
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pickerConfirmBtnDisabled: { opacity: 0.4 },
-  pickerConfirmText: {
-    fontFamily: FONTS.semibold,
-    fontSize: 14,
-    color: COLORS.white,
-  },
   controlBtn: {
     width: 40,
     height: 40,
@@ -1410,8 +1388,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   mapErrorNotice: {
-    backgroundColor: "#FEF3C7",
-    borderRadius: 10,
+    backgroundColor: COLORS.warningSoft,
+    borderRadius: 12,
     paddingHorizontal: 11,
     paddingVertical: 8,
     flexDirection: "row",
@@ -1421,11 +1399,11 @@ const styles = StyleSheet.create({
   mapErrorText: {
     flex: 1,
     fontSize: 12,
-    color: "#92400E",
+    color: COLORS.warning,
   },
   offscreenNotice: {
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 11,
     paddingVertical: 7,
     flexDirection: "row",
@@ -1437,7 +1415,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
-  offscreenText: { fontSize: 11.5, color: "#6B7280", fontFamily: FONTS.medium },
+  offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   routeStrip: {
     position: "absolute",
     top: 8,
@@ -1460,14 +1438,14 @@ const styles = StyleSheet.create({
   routeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   routeDot: { width: 8, height: 8, borderRadius: 4 },
   routeLabel: { fontSize: 13, color: COLORS.textPrimary, fontFamily: FONTS.medium },
-  routeArrow: { fontFamily: FONTS.regular, fontSize: 12, color: "#ccc" },
+  routeArrow: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   routeTimeBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   routeTime: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.semibold },
   routeEstimateBadge: {
     fontSize: 9,
     color: COLORS.textSecondary,
     fontFamily: FONTS.medium,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: COLORS.fill,
     borderRadius: 4,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -1481,7 +1459,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#eee",
+    borderBottomColor: COLORS.border,
   },
   routeModalTitle: {
     fontSize: 16,
@@ -1491,7 +1469,7 @@ const styles = StyleSheet.create({
   routeInputs: {
     marginHorizontal: 16,
     marginTop: 16,
-    backgroundColor: "#F7F7F7",
+    backgroundColor: COLORS.fill,
     borderRadius: 14,
     overflow: "hidden",
   },
@@ -1502,13 +1480,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 10,
   },
-  routeInputActive: { backgroundColor: "#EEF0FA" },
+  routeInputActive: { backgroundColor: COLORS.primarySoft },
   inputDot: { width: 10, height: 10, borderRadius: 5 },
-  inputPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: "#bbb" },
+  inputPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
   inputFilled: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.medium },
   inputDivider: {
     height: 0.5,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: COLORS.border,
     marginHorizontal: 14,
   },
   routeSearch: { flex: 1, marginTop: 12 },
@@ -1516,7 +1494,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     height: 38,
     borderRadius: 10,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: COLORS.fill,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
@@ -1530,7 +1508,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#f4f4f4",
+    borderBottomColor: COLORS.border,
     gap: 10,
   },
   buildingItemDot: { width: 10, height: 10, borderRadius: 5 },
@@ -1544,7 +1522,7 @@ const styles = StyleSheet.create({
   routeResultCard: {
     marginHorizontal: 16,
     marginTop: 20,
-    backgroundColor: "#F7F7F7",
+    backgroundColor: COLORS.fill,
     borderRadius: 14,
     padding: 16,
   },
@@ -1558,7 +1536,7 @@ const styles = StyleSheet.create({
   routeAltList: { marginTop: 12, gap: 8 },
   routeAltRow: {
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1566,7 +1544,7 @@ const styles = StyleSheet.create({
   },
   routeAltRowSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: "#EEF0FA",
+    backgroundColor: COLORS.primarySoft,
   },
   routeAltHeader: {
     flexDirection: "row",
@@ -1593,5 +1571,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  routeStartText: { fontSize: 14, color: "#fff", fontFamily: FONTS.semibold },
+  routeStartText: { fontSize: 14, color: COLORS.white, fontFamily: FONTS.semibold },
 });

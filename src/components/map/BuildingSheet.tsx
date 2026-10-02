@@ -9,6 +9,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building } from "../../types";
 import { FONTS } from "../../constants/typography";
+import IconButton from "../common/IconButton";
+import { sheetCloseStyle } from "./chipStyles";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 
@@ -46,13 +48,14 @@ export default function BuildingSheet({
           <View style={[styles.dot, { backgroundColor: building.color }]} />
           <Text style={styles.name}>{building.name}</Text>
         </View>
-        <TouchableOpacity
+        <IconButton
+          icon="close"
+          size={20}
+          color={COLORS.textTertiary}
           onPress={onClose}
-          accessibilityRole="button"
           accessibilityLabel="닫기"
-        >
-          <Ionicons name="close" size={20} color="#ccc" />
-        </TouchableOpacity>
+          style={sheetCloseStyle}
+        />
       </View>
 
       <Text style={styles.type}>
@@ -93,6 +96,7 @@ export default function BuildingSheet({
         <TouchableOpacity
           style={styles.linkBtn}
           onPress={() => openExternalUrl(building.link!.url)}
+          accessibilityRole="link"
         >
           <Ionicons name="open-outline" size={14} color={COLORS.primary} />
           <Text style={styles.linkText}>{building.link.label}</Text>
@@ -101,12 +105,12 @@ export default function BuildingSheet({
 
       {routeFindingEnabled && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom}>
-            <Ionicons name="location" size={14} color="#10B981" />
+          <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom} accessibilityRole="button">
+            <Ionicons name="location" size={14} color={COLORS.routeFrom} />
             <Text style={styles.actionFromText}>출발</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionTo} onPress={onSetTo}>
-            <Ionicons name="flag" size={14} color="#EF4444" />
+          <TouchableOpacity style={styles.actionTo} onPress={onSetTo} accessibilityRole="button">
+            <Ionicons name="flag" size={14} color={COLORS.danger} />
             <Text style={styles.actionToText}>도착</Text>
           </TouchableOpacity>
         </View>
@@ -136,7 +140,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: COLORS.border,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 14,
@@ -174,10 +178,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: COLORS.fill,
   },
   facilityChipText: {
-    fontSize: 11,
+    fontSize: 12,
     color: COLORS.textSecondary,
     fontFamily: FONTS.medium,
   },
@@ -186,18 +190,18 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 6,
     paddingVertical: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: "#f0f0f0",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
     marginBottom: 14,
   },
-  hours: { fontFamily: FONTS.regular, fontSize: 12, color: "#666", lineHeight: 20 },
+  hours: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 6,
   },
-  contact: { fontFamily: FONTS.regular, fontSize: 12, color: "#666" },
+  contact: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
   linkBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -214,24 +218,24 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 10 },
   actionFrom: {
     flex: 1,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#EDFAF3",
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.successSoft,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-  actionFromText: { fontSize: 13, color: "#10B981", fontFamily: FONTS.semibold },
+  actionFromText: { fontSize: 14, color: COLORS.success, fontFamily: FONTS.semibold },
   actionTo: {
     flex: 1,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#FEF2F2",
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.dangerSoft,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-  actionToText: { fontSize: 13, color: "#EF4444", fontFamily: FONTS.semibold },
+  actionToText: { fontSize: 14, color: COLORS.danger, fontFamily: FONTS.semibold },
 });

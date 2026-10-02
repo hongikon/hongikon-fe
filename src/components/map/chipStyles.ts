@@ -29,3 +29,9 @@ export const chipStyles = StyleSheet.create({
   label: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.chipText },
   labelActive: { color: COLORS.white },
 })
+
+/**
+ * 지도 위 시트(건물·제휴업체·제보)의 닫기 버튼. 40×40 터치 영역을 주되 머리줄 높이는 늘리지 않게
+ * 바깥 여백을 음수로 당긴다.
+ */
+export const sheetCloseStyle = { marginVertical: -10, marginRight: -10 } as const

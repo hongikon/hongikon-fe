@@ -3,6 +3,8 @@ import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } fr
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import IconButton from '../common/IconButton'
+import { sheetCloseStyle } from './chipStyles'
 import * as haptics from '../../lib/haptics'
 import { useToast } from '../common/Toast'
 import { reportCategoryMeta } from '../../constants/reportCategories'
@@ -44,7 +46,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const handleFlag = async () => {
     // 제보 신고도 로그인이 필요하다(`POST /reports/{id}/flags` — 게스트는 401).
     if (!accessToken) {
-      promptLogin('제보를 신고하려면 로그인해주세요.', logout)
+      promptLogin('제보를 신고하려면 로그인해 주세요.', logout)
       return
     }
 
@@ -67,7 +69,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
       // 신고는 POST 라 자동으로 다시 보내지 않는다(중복 신고 방지). 연결 문제일 때만
       // "다시 시도" 버튼을 줘서 사용자가 직접 다시 보내게 한다.
       setError({
-        message: getErrorMessage(caught, '신고를 접수하지 못했습니다.'),
+        message: getErrorMessage(caught, '신고를 접수하지 못했어요.'),
         network: isNetworkError(caught),
         retryable: isRetryableError(caught),
       })
@@ -83,13 +85,14 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
           <Ionicons name={meta.icon} size={13} color={COLORS.white} />
           <Text style={styles.badgeText}>{badgeLabel}</Text>
         </View>
-        <TouchableOpacity
+        <IconButton
+          icon="close"
+          size={20}
+          color={COLORS.textTertiary}
           onPress={onClose}
-          accessibilityRole="button"
           accessibilityLabel="닫기"
-        >
-          <Ionicons name="close" size={18} color="#999" />
-        </TouchableOpacity>
+          style={sheetCloseStyle}
+        />
       </View>
 
       <Text style={styles.title}>{report.title}</Text>
@@ -119,10 +122,10 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
             accessibilityState={{ disabled: flagging }}
           >
             {flagging ? (
-              <ActivityIndicator size="small" color="#999" />
+              <ActivityIndicator size="small" color={COLORS.textTertiary} />
             ) : (
               <>
-                <Ionicons name="flag-outline" size={13} color="#999" />
+                <Ionicons name="flag-outline" size={14} color={COLORS.textTertiary} />
                 <Text style={styles.flagText}>신고</Text>
               </>
             )}
@@ -151,8 +154,8 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 12,
     backgroundColor: COLORS.white,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.14,
@@ -168,20 +171,20 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
   },
-  badgeText: { fontFamily: FONTS.semibold, fontSize: 11.5, color: COLORS.white },
+  badgeText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.white },
   title: {
     fontFamily: FONTS.semibold,
-    fontSize: 15.5,
+    fontSize: 16,
     color: COLORS.textPrimary,
     marginTop: 10,
   },
-  freshness: { fontFamily: FONTS.regular, fontSize: 12, color: '#6B7280', marginTop: 5 },
+  freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
   photo: {
     width: '100%',
     height: 160,
-    borderRadius: 10,
-    marginTop: 10,
-    backgroundColor: '#EEE',
+    borderRadius: 12,
+    marginTop: 12,
+    backgroundColor: COLORS.fill,
   },
   footer: {
     flexDirection: 'row',
@@ -189,9 +192,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 12,
   },
-  author: { fontFamily: FONTS.regular, fontSize: 12, color: '#9CA3AF' },
-  flagBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
-  flagText: { fontFamily: FONTS.regular, fontSize: 12, color: '#999' },
-  flaggedText: { fontFamily: FONTS.semibold, fontSize: 12, color: '#B45309' },
+  author: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  flagBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 4 },
+  flagText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  flaggedText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.warningIcon },
   errorBox: { marginTop: 8 },
 })

@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -10,11 +11,13 @@ interface SearchBarProps {
   accessibilityLabel: string
   style?: StyleProp<ViewStyle>
   autoFocus?: boolean
+  /** 창이 뜬 뒤 직접 포커스를 줄 때(Modal onShow 등) */
+  inputRef?: Ref<TextInput>
 }
 
 /**
- * 소식 화면에서 공유하는 검색바.
- * 학과 검색(NewsScreen 의 TreeView)과 소식 검색(북마크·구독·학과별)이 같은 모양을 쓴다.
+ * 앱 공용 검색바.
+ * 소식 검색·학과 검색·구독 관리·제휴 업체 검색·온보딩 학과 고르기가 같은 모양(높이 44·모서리 12·흰 바탕 테두리)을 쓴다.
  */
 export default function SearchBar({
   value,
@@ -23,11 +26,13 @@ export default function SearchBar({
   accessibilityLabel,
   style,
   autoFocus,
+  inputRef,
 }: SearchBarProps) {
   return (
     <View style={[styles.container, style]}>
       <Ionicons name="search" size={18} color={COLORS.textTertiary} />
       <TextInput
+        ref={inputRef}
         style={styles.input}
         placeholder={placeholder}
         placeholderTextColor={COLORS.textPlaceholder}

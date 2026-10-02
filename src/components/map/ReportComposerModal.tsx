@@ -17,8 +17,11 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { FONTS, TYPE } from '../../constants/typography'
 import { SHEET_MAX_WIDTH } from '../../constants/layout'
+import ScreenHeader from '../common/ScreenHeader'
+import Button from '../common/Button'
+import TextField from '../common/TextField'
 import * as haptics from '../../lib/haptics'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
 import {
@@ -303,7 +306,7 @@ export default function ReportComposerModal({
 
     // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
     if (!accessToken) {
-      promptLogin('제보를 등록하려면 로그인해주세요.', logout)
+      promptLogin('제보를 등록하려면 로그인해 주세요.', logout)
       return
     }
 
@@ -402,17 +405,7 @@ export default function ReportComposerModal({
           <TouchableWithoutFeedback onPress={() => {}}>
             <SafeAreaView style={styles.sheet} edges={['bottom']}>
               <View style={styles.handle} />
-              <View style={styles.header}>
-                <TouchableOpacity
-                  onPress={handleClose}
-                  accessibilityRole="button"
-                  accessibilityLabel="닫기"
-                >
-                  <Ionicons name="close" size={22} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>제보하기</Text>
-                <View style={{ width: 22 }} />
-              </View>
+              <ScreenHeader title="제보하기" onBack={handleClose} backIcon="close" />
 
               {submitted ? (
                 <View style={styles.successBox}>
@@ -424,14 +417,7 @@ export default function ReportComposerModal({
                   {photoSkipped && (
                     <Text style={styles.successText}>사진 첨부는 아직 준비 중이라 사진 없이 올렸어요.</Text>
                   )}
-                  <TouchableOpacity
-                    style={[styles.submitBtn, styles.successBtn]}
-                    onPress={handleClose}
-                    accessibilityRole="button"
-                    accessibilityLabel="확인"
-                  >
-                    <Text style={styles.submitText}>확인</Text>
-                  </TouchableOpacity>
+                  <Button label="확인" onPress={handleClose} style={styles.successBtn} />
                 </View>
               ) : (
                 <>
@@ -453,7 +439,7 @@ export default function ReportComposerModal({
 
                     {building === null ? (
                       <View style={styles.errorBox}>
-                        <Ionicons name="information-circle" size={15} color="#B45309" />
+                        <Ionicons name="information-circle" size={15} color={COLORS.warningIcon} />
                         <Text style={styles.errorText}>
                           제보는 건물·층 단위로 올라가요. 창을 닫고 지도에서 핀을 건물 가까이로 옮겨 주세요.
                         </Text>
@@ -548,10 +534,10 @@ export default function ReportComposerModal({
 
                     {customInputOpen && (
                       <View style={styles.customInputRow}>
-                        <TextInput
+                        <TextField
                           style={styles.customInput}
                           placeholder="예: 분실물, 설문조사"
-                          placeholderTextColor="#bbb"
+                          accessibilityLabel="직접 입력할 카테고리"
                           value={customLabelDraft}
                           onChangeText={setCustomLabelDraft}
                           maxLength={REPORT_CUSTOM_CATEGORY_MAX_LENGTH}
@@ -570,7 +556,7 @@ export default function ReportComposerModal({
                           <Ionicons
                             name="checkmark-circle"
                             size={26}
-                            color={customLabelDraft.trim() ? COLORS.primary : '#ddd'}
+                            color={customLabelDraft.trim() ? COLORS.primary : COLORS.iconMuted}
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -579,16 +565,15 @@ export default function ReportComposerModal({
                           accessibilityRole="button"
                           accessibilityLabel="직접 입력 취소"
                         >
-                          <Ionicons name="close-circle" size={26} color="#ccc" />
+                          <Ionicons name="close-circle" size={26} color={COLORS.iconMuted} />
                         </TouchableOpacity>
                       </View>
                     )}
 
                     <Text style={styles.sectionLabel}>제목</Text>
-                    <TextInput
-                      style={styles.titleInput}
+                    <TextField
                       placeholder="예 : 컴퓨터공학과 간식행사"
-                      placeholderTextColor="#bbb"
+                      accessibilityLabel="제목"
                       value={title}
                       onChangeText={setTitle}
                       maxLength={REPORT_TITLE_MAX_LENGTH}
@@ -598,15 +583,14 @@ export default function ReportComposerModal({
                     </Text>
 
                     <Text style={styles.sectionLabel}>설명 (선택)</Text>
-                    <TextInput
-                      style={styles.contentInput}
+                    <TextField
+                      areaHeight={100}
                       placeholder="예 : 학생회비 납부한 컴퓨터공학과 학생만 수령 가능"
-                      placeholderTextColor="#bbb"
+                      accessibilityLabel="설명"
                       value={content}
                       onChangeText={setContent}
                       maxLength={REPORT_CONTENT_MAX_LENGTH}
                       multiline
-                      textAlignVertical="top"
                     />
                     <Text style={styles.counter}>
                       {content.length} / {REPORT_CONTENT_MAX_LENGTH}
@@ -701,7 +685,7 @@ export default function ReportComposerModal({
 
                     {error !== null && (
                       <View style={styles.errorBox}>
-                        <Ionicons name="warning" size={15} color="#B45309" />
+                        <Ionicons name="warning" size={16} color={COLORS.warningIcon} />
                         <Text style={styles.errorText}>{error}</Text>
                         {blockedPermission !== null && (
                           <TouchableOpacity
@@ -717,20 +701,12 @@ export default function ReportComposerModal({
                   </ScrollView>
 
                   <View style={styles.footer}>
-                    <TouchableOpacity
-                      style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+                    <Button
+                      label="제보 올리기"
                       onPress={handleSubmit}
-                      disabled={!canSubmit}
-                      accessibilityRole="button"
-                      accessibilityLabel="제보 올리기"
-                      accessibilityState={{ disabled: !canSubmit }}
-                    >
-                      {submitting ? (
-                        <ActivityIndicator color={COLORS.white} />
-                      ) : (
-                        <Text style={styles.submitText}>제보 올리기</Text>
-                      )}
-                    </TouchableOpacity>
+                      disabled={!canSubmit && !submitting}
+                      loading={submitting}
+                    />
                   </View>
                 </>
               )}
@@ -770,16 +746,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   scrollArea: { flex: 1 },
-  header: {
-    height: 52,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  headerTitle: { fontFamily: FONTS.semibold, fontSize: 16, color: COLORS.textPrimary },
   body: { padding: 16, paddingBottom: 24 },
   locationRow: {
     flexDirection: 'row',
@@ -787,8 +753,8 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    backgroundColor: COLORS.primarySoft,
   },
   locationText: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textPrimary },
   sectionLabel: {
@@ -810,51 +776,21 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  customInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontFamily: FONTS.regular,
-    fontSize: 13.5,
-    color: COLORS.textPrimary,
-  },
-  titleInput: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-  },
-  contentInput: {
-    height: 100,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    borderRadius: 10,
-    padding: 12,
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-  },
+  customInput: { flex: 1, height: 40, fontSize: 14 },
   counter: {
     alignSelf: 'flex-end',
     fontFamily: FONTS.regular,
-    fontSize: 11,
-    color: '#999',
+    fontSize: 12,
+    color: COLORS.textTertiary,
     marginTop: 4,
   },
-  hint: { fontFamily: FONTS.regular, fontSize: 12, color: '#6B7280', marginTop: 8 },
+  hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 8 },
   photoBtn: {
     height: 46,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: COLORS.chipBorder,
-    borderRadius: 10,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -865,7 +801,7 @@ const styles = StyleSheet.create({
   photoBtnHalf: { flex: 1 },
   settingsLink: { fontFamily: FONTS.semibold, fontSize: 12.5, color: COLORS.primary },
   photoPreviewWrap: { position: 'relative', alignSelf: 'flex-start' },
-  photoPreview: { width: 120, height: 120, borderRadius: 10, backgroundColor: '#EEE' },
+  photoPreview: { width: 120, height: 120, borderRadius: 12, backgroundColor: COLORS.fill },
   photoRemove: {
     position: 'absolute',
     top: -6,
@@ -878,15 +814,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  successTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: COLORS.textPrimary },
+  successTitle: { ...TYPE.headline, color: COLORS.textPrimary },
   successText: {
     fontFamily: FONTS.regular,
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: '#6B7280',
+    fontSize: 14,
+    lineHeight: 21,
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
-  successBtn: { alignSelf: 'stretch', marginTop: 12 },
+  successBtn: { marginTop: 12 },
   submitErrorBox: { marginTop: 16 },
   skipPhotoBtn: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 6 },
   skipPhotoText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary, textDecorationLine: 'underline' },
@@ -896,22 +832,13 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 16,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    backgroundColor: COLORS.warningSoft,
   },
-  errorText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, color: '#92400E' },
+  errorText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: COLORS.warning },
   footer: {
     padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
   },
-  submitBtn: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitBtnDisabled: { opacity: 0.4 },
-  submitText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
 })

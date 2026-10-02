@@ -16,6 +16,9 @@ import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { browsePartnersByCategory, searchPartners } from "../../utils/partnerSearch";
 import type { Partner, PartnerCategory } from "../../types";
 import ContentColumn from "../common/ContentColumn";
+import ScreenHeader from "../common/ScreenHeader";
+import EmptyState from "../common/EmptyState";
+import SearchBar from "../news/SearchBar";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -118,7 +121,7 @@ export default function PartnerSearchModal({
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={14} color="#ddd" />
+        <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
       </TouchableOpacity>
     );
   };
@@ -133,42 +136,19 @@ export default function PartnerSearchModal({
       <View style={[styles.container, { paddingTop: topInset }]}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 검색창·목록을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleClose}
-            accessibilityRole="button"
-            accessibilityLabel="검색 닫기"
-          >
-            <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={16} color="#999" />
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              placeholder="제휴 업체 검색"
-              placeholderTextColor="#bbb"
-              value={query}
-              onChangeText={setQuery}
-              returnKeyType="search"
-            />
-            {hasQuery && (
-              <TouchableOpacity
-                onPress={() => setQuery("")}
-                accessibilityRole="button"
-                accessibilityLabel="검색어 지우기"
-              >
-                <Ionicons name="close-circle" size={16} color="#ccc" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+        <ScreenHeader onBack={handleClose} style={styles.header}>
+          <SearchBar
+            inputRef={inputRef}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="제휴 업체 검색"
+            accessibilityLabel="제휴 업체 검색"
+            style={styles.searchBar}
+          />
+        </ScreenHeader>
 
         {hasQuery && results.length === 0 && (
-          <View style={styles.hintBox}>
-            <Ionicons name="search" size={22} color="#ddd" />
-            <Text style={styles.hintText}>검색 결과가 없어요.</Text>
-          </View>
+          <EmptyState icon="search-outline" message="검색 결과가 없어요" style={styles.hintBox} />
         )}
 
         {hasQuery ? (
@@ -231,39 +211,12 @@ export default function PartnerSearchModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#eee",
-  },
-  searchBar: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: "#F0F0F0",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: FONTS.regular,
-    color: COLORS.textPrimary,
-  },
-  hintBox: { alignItems: "center", paddingTop: 40, gap: 6 },
-  hintText: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
-  },
+  header: { paddingRight: 16 },
+  searchBar: { flex: 1 },
+  hintBox: { minHeight: 200 },
   browseHint: {
     fontSize: 12,
+    lineHeight: 17,
     fontFamily: FONTS.regular,
     color: COLORS.textTertiary,
     paddingTop: 14,
@@ -280,7 +233,7 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: { flexDirection: "row", alignItems: "center", gap: 7 },
   sectionHeaderText: { fontSize: 20, fontFamily: FONTS.bold },
   sectionHeaderCount: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontFamily: FONTS.regular,
     color: COLORS.textTertiary,
   },
@@ -289,36 +242,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    paddingVertical: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#f4f4f4",
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
-  dot: { width: 9, height: 9, borderRadius: 4.5, marginTop: 5 },
-  info: { flex: 1, gap: 3 },
+  dot: { width: 9, height: 9, borderRadius: 4.5, marginTop: 6 },
+  info: { flex: 1, gap: 4 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   name: {
-    fontSize: 14.5,
+    fontSize: 15,
     fontFamily: FONTS.semibold,
     color: COLORS.textPrimary,
   },
-  category: { fontSize: 11, fontFamily: FONTS.semibold },
+  category: { fontSize: 12, fontFamily: FONTS.semibold },
   affiliationRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
   affiliationChip: {
     borderWidth: 1,
-    borderColor: "#e2e2e2",
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
+    borderColor: COLORS.chipBorder,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  affiliationChipText: { fontSize: 10, fontFamily: FONTS.regular, color: "#999" },
+  affiliationChipText: { fontSize: 11, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   benefit: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: FONTS.regular,
     color: COLORS.textPrimary,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   address: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontFamily: FONTS.regular,
     color: COLORS.textTertiary,
   },

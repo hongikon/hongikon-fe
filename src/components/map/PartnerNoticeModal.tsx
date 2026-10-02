@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native'
+import { View, Text, StyleSheet, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
+import Button from '../common/Button'
 
 const STORAGE_KEY = '@hongik_partner_notice_seen'
 
@@ -43,9 +44,7 @@ export default function PartnerNoticeModal() {
           </View>
           <Text style={styles.title}>제휴 정보 안내</Text>
           <Text style={styles.body}>{PARTNER_NOTICE_TEXT}</Text>
-          <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-            <Text style={styles.confirmText}>확인했습니다</Text>
-          </TouchableOpacity>
+          <Button label="확인했어요" onPress={handleConfirm} size="md" />
         </View>
       </View>
     </Modal>
@@ -57,21 +56,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: COLORS.scrim,
     paddingHorizontal: 32,
   },
   card: {
     width: '100%',
     maxWidth: DIALOG_MAX_WIDTH,
     backgroundColor: COLORS.white,
-    borderRadius: 18,
-    paddingHorizontal: 22,
+    borderRadius: 20,
+    paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 18,
     alignItems: 'center',
   },
   iconWrap: { marginBottom: 8 },
-  title: { fontSize: 16, fontFamily: FONTS.bold, color: COLORS.textPrimary, marginBottom: 10 },
+  title: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 8 },
   body: {
     fontFamily: FONTS.regular,
     fontSize: 13,
@@ -80,12 +79,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 18,
   },
-  confirmBtn: {
-    alignSelf: 'stretch',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  confirmText: { fontSize: 14, fontFamily: FONTS.bold, color: COLORS.white },
 })
