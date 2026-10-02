@@ -16,9 +16,14 @@ export type NotificationTarget =
   | { kind: 'admin'; intent: AdminIntent }
   | { kind: 'none' }
 
-const ADMIN_TYPES: ReadonlySet<string> = new Set(['ADMIN_REPORT_PENDING', 'ADMIN_REPORT_FLAGGED', 'ADMIN_FEEDBACK'])
+const ADMIN_TYPES: ReadonlySet<string> = new Set([
+  'ADMIN_REPORT_PENDING',
+  'ADMIN_REPORT_REMINDER',
+  'ADMIN_REPORT_FLAGGED',
+  'ADMIN_FEEDBACK',
+])
 
-/** 관리자 알림(`AdminAlertDispatcher`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
+/** 관리자 알림(`AdminAlertDispatcher`, 승인 대기 리마인드 `AdminReportReminder`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
 export function isAdminNotification(data: unknown): boolean {
   return !!data && typeof data === 'object' && ADMIN_TYPES.has(String((data as { type?: unknown }).type))
 }
@@ -51,6 +56,16 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
       return {
         kind: 'admin',
         intent: { section: 'reports', reportFilter: 'PENDING', reportId: toReportId((data as { reportId?: unknown }).reportId) },
+      }
+    // 승인 대기 리마인드("검토 대기 중인 제보가 N건") — 승인 대기 목록을 열고 가장 오래된 제보를 강조한다.
+    case 'ADMIN_REPORT_REMINDER':
+      return {
+        kind: 'admin',
+        intent: {
+          section: 'reports',
+          reportFilter: 'PENDING',
+          reportId: toReportId((data as { oldestReportId?: unknown }).oldestReportId),
+        },
       }
     case 'ADMIN_REPORT_FLAGGED':
       return {
