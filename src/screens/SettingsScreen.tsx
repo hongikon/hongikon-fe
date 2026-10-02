@@ -28,6 +28,9 @@ import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
+import HiddenUsersModal from '../components/settings/HiddenUsersModal'
+import { useHiddenAuthors } from '../lib/hiddenAuthors'
+import { openSitePage } from '../utils/openSitePage'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import { LargeTitleHeader } from '../components/common/ScreenHeader'
@@ -62,6 +65,7 @@ type ModalType =
   | 'permissions'
   | 'keywords'
   | 'nickname'
+  | 'hiddenUsers'
   | null
 
 export default function SettingsScreen() {
@@ -80,6 +84,7 @@ export default function SettingsScreen() {
     toggleNewReportAlert,
   } = useFeedbackToggles()
   const toast = useToast()
+  const hiddenAuthors = useHiddenAuthors()
 
   const { status, loginProvider, logout, deleteAccount, accessToken } = useAuth()
   const navigation = useNavigation<NavProp>()
@@ -462,6 +467,12 @@ export default function SettingsScreen() {
             label="제휴 제보하기"
             onPress={() => setActiveModal('partnerSuggest')}
           />
+          <ListRow
+            icon="eye-off-outline"
+            label="숨긴 사용자"
+            value={hiddenAuthors.length > 0 ? `${hiddenAuthors.length}명` : undefined}
+            onPress={() => setActiveModal('hiddenUsers')}
+          />
           <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
           <ListRow icon="school-outline" label="학교" value="홍익대학교" />
           {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
@@ -474,6 +485,8 @@ export default function SettingsScreen() {
           )}
           <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
+          <ListRow icon="help-buoy-outline" label="고객 지원" value="hongikon.com" onPress={() => openSitePage('/support/')} />
+          <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => openSitePage('/licenses/')} />
           <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
         </View>
 
@@ -518,6 +531,8 @@ export default function SettingsScreen() {
       <TermsModal visible={activeModal === 'terms'} onClose={() => setActiveModal(null)} />
 
       <PrivacyModal visible={activeModal === 'privacy'} onClose={() => setActiveModal(null)} />
+
+      <HiddenUsersModal visible={activeModal === 'hiddenUsers'} onClose={() => setActiveModal(null)} />
 
       <PartnerSuggestModal
         visible={activeModal === 'partnerSuggest'}

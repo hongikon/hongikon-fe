@@ -18,6 +18,8 @@ import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '.
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import Button from '../components/common/Button'
+import TermsModal from '../components/settings/TermsModal'
+import PrivacyModal from '../components/settings/PrivacyModal'
 
 type PendingAction = 'apple' | 'kakao' | 'guest' | null
 
@@ -39,6 +41,7 @@ export default function WelcomeScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false)
   // 웹에선 Alert.alert 가 아무것도 띄우지 않아(react-native-web) 버튼 위에 문구로 보여준다.
   const [inlineError, setInlineError] = useState<string | null>(null)
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null)
   const errorText = inlineError ?? loginError
 
   useEffect(() => {
@@ -144,6 +147,29 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
+        {/* 고지형 동의: 로그인(Apple·카카오)으로 가입하면 약관·처리방침에 동의하는 것으로 본다(이용약관 제4조). */}
+        <Text style={styles.consentNotice}>
+          시작하면{' '}
+          <Text
+            style={styles.consentLink}
+            onPress={() => setLegalModal('terms')}
+            accessibilityRole="link"
+            suppressHighlighting
+          >
+            이용약관
+          </Text>
+          과{' '}
+          <Text
+            style={styles.consentLink}
+            onPress={() => setLegalModal('privacy')}
+            accessibilityRole="link"
+            suppressHighlighting
+          >
+            개인정보 처리방침
+          </Text>
+          에 동의하게 돼요 · 만 14세 이상만 가입할 수 있어요
+        </Text>
+
         <Button
           variant="ghost"
           size="md"
@@ -154,6 +180,9 @@ export default function WelcomeScreen() {
         />
         <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
       </View>
+
+      <TermsModal visible={legalModal === 'terms'} onClose={() => setLegalModal(null)} />
+      <PrivacyModal visible={legalModal === 'privacy'} onClose={() => setLegalModal(null)} />
     </SafeAreaView>
   )
 }
@@ -190,6 +219,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
+  consentNotice: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  consentLink: { fontFamily: FONTS.semibold, color: COLORS.textPrimary, textDecorationLine: 'underline' },
   unofficialNotice: {
     fontSize: 11,
     lineHeight: 16,
