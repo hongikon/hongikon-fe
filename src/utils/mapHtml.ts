@@ -16,6 +16,7 @@ import { COLORS } from '../constants/colors'
 import type { Building } from '../types'
 import { ENTRANCE_CHECK_DATA } from '../debug/entranceCheckData'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
+import { TEMP_ENTRANCE_NODES } from '../debug/tempEntranceNodes'
 
 const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
 
@@ -277,6 +278,64 @@ export function buildMapHTML(
             );
             infowindow.open(map, marker);
           });
+        });
+      });
+
+      // 임시 노드(src/debug/tempEntranceNodes.ts): 기존 출입구 라벨의 새 후보 좌표.
+      // 초록 네모로 찍고, 같은 라벨의 기존 출입구(보라 마름모)까지 점선을 그어 차이를 본다.
+      // 실내 전용 문은 속이 빈 네모. sameAs 가 있으면 가리키는 임시 노드 자리에 찍는다.
+      var TEMP_NODES = ${JSON.stringify(TEMP_ENTRANCE_NODES)};
+      var tempByKey = {};
+      TEMP_NODES.forEach(function(t) { tempByKey[t.buildingName + '#' + t.label] = t; });
+      TEMP_NODES.forEach(function(t) {
+        var anchorNode = t.sameAs ? tempByKey[t.buildingName + '#' + t.sameAs] : null;
+        var lat = anchorNode ? anchorNode.lat : t.lat;
+        var lng = anchorNode ? anchorNode.lng : t.lng;
+        bounds.swLat = Math.min(bounds.swLat, lat);
+        bounds.swLng = Math.min(bounds.swLng, lng);
+        bounds.neLat = Math.max(bounds.neLat, lat);
+        bounds.neLng = Math.max(bounds.neLng, lng);
+
+        var existing = null;
+        BUILDING_ENTRANCES.forEach(function(b) {
+          if (b.name !== t.buildingName) return;
+          b.entrances.forEach(function(e) { if (e.label === t.label) existing = e; });
+        });
+        if (existing) {
+          new naver.maps.Polyline({
+            map: map,
+            path: [new naver.maps.LatLng(existing.lat, existing.lng), new naver.maps.LatLng(lat, lng)],
+            strokeColor: '#16a34a', strokeWeight: 2, strokeOpacity: 0.8, strokeStyle: 'shortdot',
+          });
+        }
+
+        var fill = t.indoorOnly ? '#fff' : '#16a34a';
+        var marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(lat, lng),
+          map: map,
+          zIndex: 97,
+          icon: {
+            content: '<div style="position:relative;width:11px;height:11px;">'
+              + '<div style="width:11px;height:11px;background:' + fill + ';border:2px solid #16a34a;'
+              + 'box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>'
+              + '<span style="position:absolute;left:13px;top:-2px;font-size:9px;font-weight:700;'
+              + 'color:#16a34a;background:rgba(255,255,255,0.9);padding:0 2px;border-radius:2px;white-space:nowrap;">'
+              + 'TEMP ' + t.label + '</span></div>',
+            anchor: new naver.maps.Point(5.5, 5.5),
+          },
+        });
+        naver.maps.Event.addListener(marker, 'click', function() {
+          infowindow.setContent(
+            '<div style="padding:8px;font-size:12px;line-height:1.5;">'
+            + '<b>' + t.buildingName + '</b> &middot; <span style="color:#16a34a">임시 노드</span><br>'
+            + t.label + (t.indoorOnly ? ' (실내 전용 문)' : '') + '<br>'
+            + '받은 좌표 ' + t.lat.toFixed(7) + ', ' + t.lng.toFixed(7) + ' / 3번째 값 ' + t.raw3 + '<br>'
+            + (t.sameAs ? ('지도 표시는 ' + t.sameAs + ' 위경도와 동일<br>') : '')
+            + (existing ? ('기존 좌표 ' + existing.lat.toFixed(7) + ', ' + existing.lng.toFixed(7) + '<br>') : '')
+            + (t.note ? ('<span style="color:#374151">' + t.note + '</span>') : '')
+            + '</div>'
+          );
+          infowindow.open(map, marker);
         });
       });
 

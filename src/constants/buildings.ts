@@ -234,6 +234,10 @@ const BASE_BUILDINGS: Building[] = [
       { label: 'HI_D2_1F_ENTER', lat: 37.5493950637821, lng: 126.9250258889983, minFloor: 1, maxFloor: 1 },
       { label: 'HI_D2_B1_ENTER', lat: 37.54938816237495, lng: 126.92479956756739, minFloor: -1, maxFloor: -1 },
       { label: 'HI_D2_B2_ENTER', lat: 37.549680786236046, lng: 126.92448524177497, minFloor: -2, maxFloor: -2 },
+      // 2026-09-30 제보로 추가. B1_ENTER2 는 향차이 옆(엘리베이터2, B4~2F), 1F_ENTER2 는
+      // 엘리베이터2 로 이어지는 문. 엘리베이터1(이마트 옆, B2~10F)은 남자 기숙사생만 쓴다.
+      { label: 'HI_D2_B1_ENTER2', lat: 37.54945606462429, lng: 126.9244185929437, minFloor: -1, maxFloor: -1 },
+      { label: 'HI_D2_1F_ENTER2', lat: 37.54967562497693, lng: 126.9247751881842, minFloor: 1, maxFloor: 1 },
     ] },
   { name: '인문사회관 C동', lat: 37.5491194, lng: 126.9260797, color: '#DB2777', category: '강의', type: '인문·사회 강의동',
     entrances: [
