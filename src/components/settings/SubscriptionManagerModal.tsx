@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news'
 import { FONTS, TYPE } from '../../constants/typography'
+import { useAuth } from '../../contexts/AuthContext'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
 import { ToastViewport } from '../common/Toast'
@@ -39,6 +40,8 @@ export default function SubscriptionManagerModal({
   // 종(게시판 알림)은 진동·토스트가 붙은 버전을 쓴다. 구독 토글(onToggleDept)은 호출부가 넘긴다.
   const { toggleDeptAlert } = useFeedbackToggles()
   const masterOff = !settings.subscriptionAlert
+  // 게스트도 소식 탭에 보여 줄 게시판은 고를 수 있다. 알림은 로그인해야 받아서 종(게시판 알림)은 숨긴다.
+  const isGuest = useAuth().status !== 'authenticated'
 
   const groups = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -82,7 +85,14 @@ export default function SubscriptionManagerModal({
           style={styles.searchBar}
         />
 
-        {subscribedDepts.length > 0 && (
+        {isGuest ? (
+          <View style={styles.hint}>
+            <Ionicons name="lock-closed-outline" size={13} color={COLORS.textSecondary} />
+            <Text style={styles.hintText}>
+              구독한 게시판의 소식은 소식 탭에서 볼 수 있어요. 알림은 로그인 후 받을 수 있어요.
+            </Text>
+          </View>
+        ) : subscribedDepts.length > 0 && (
           <View style={styles.hint}>
             <Ionicons
               name={masterOff ? 'notifications-off-outline' : 'notifications-outline'}
@@ -118,7 +128,7 @@ export default function SubscriptionManagerModal({
                       >
                         <Text style={styles.rowName}>{item.name}</Text>
                       </TouchableOpacity>
-                      {isOn && (
+                      {isOn && !isGuest && (
                         <TouchableOpacity
                           style={[
                             styles.bellBtn,

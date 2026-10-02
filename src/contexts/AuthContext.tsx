@@ -27,6 +27,7 @@ import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
 import { createPkcePair } from '../lib/pkce'
 import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
+import { clearAccountLinkedSettings } from '../lib/accountData'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
@@ -177,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error: unknown) {
           // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
           if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
+            // 기기에 남은 이전 계정의 구독·알림 설정도 지운다(로그아웃과 같다). 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
+            await clearAccountLinkedSettings()
             await clearTokens()
             setAccessToken(null)
             setLoginError('로그인이 만료됐어요. 다시 로그인해 주세요.')
@@ -328,6 +331,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
     const storedRefreshToken = await getItem(REFRESH_TOKEN_KEY)
 
+    // 같은 기기를 쓰는 다음 사람에게 이 계정의 구독·알림 설정이 보이지 않게 기기 저장값을 지운다.
+    // 서버 값은 그대로라 다시 로그인하면 불러온다. 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
+    // 게스트가 "로그인하기"로 웰컴 화면에 갈 때도 이 함수를 쓰는데, 그때는 계정 설정이 아니라 게스트가 고른
+    // 구독이라 지우지 않는다(로그인하면 계정 구독과 합쳐진다).
+    if (storedAccessToken || storedRefreshToken) await clearAccountLinkedSettings()
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
@@ -379,6 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionGenRef.current += 1
     // 탈퇴하면 서버가 기기 행까지 지운다(`UserService.withdraw`) — 저장해 둔 id 만 버린다.
     await forgetStoredPushDevice()
+    await clearAccountLinkedSettings()
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)

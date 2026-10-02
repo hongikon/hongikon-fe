@@ -44,13 +44,13 @@ import {
 import {
   DEFAULT_SETTINGS,
   restoreSettings,
+  toSignedOutSettings,
   type Settings,
   type StoredSettings,
 } from '../utils/settingsStorage'
+import { SETTINGS_STORAGE_KEY as STORAGE_KEY } from '../lib/accountData'
 
 export { ALL_CATEGORIES } from '../utils/settingsStorage'
-
-const STORAGE_KEY = '@hongik_settings'
 
 interface SettingsContextValue {
   settings: Settings
@@ -328,17 +328,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       })
   }, [])
 
-  // 로그아웃하면 이전 계정이 못 올린 변경을 다음 계정에 올리지 않게 dirty 를 지운다.
-  // (처음부터 게스트인 실행에서는 지우지 않는다 — 게스트로 바꾼 값은 로그인 때 올라가야 한다.)
+  /**
+   * 로그아웃·탈퇴·로그인 만료(로그인 → 비로그인 전환)면 이전 계정의 설정을 화면·기기에서 지운다(`toSignedOutSettings`).
+   * 같은 기기를 쓰는 다음 사람에게 이전 계정의 구독·알림 설정이 보이면 안 된다. 기기 저장값은 `AuthContext` 가
+   * 토큰보다 먼저 지우고(`clearAccountLinkedSettings`), 여기서는 메모리 값과 서버 전송 대기열을 비운다.
+   * 늦게 도착한 응답이 지운 값을 되살리지 않게 제보 알림 요청 번호도 올린다(구독·분야 요청은 위 효과들의 정리가 막는다).
+   *
+   * 처음부터 게스트인 실행에서는 지우지 않는다 — 게스트가 고른 구독은 로그인 때 계정 구독과 합쳐진다.
+   * 다시 로그인하면 로컬이 비어 있으니 아래 합치기 규칙대로 서버 값을 그대로 불러온다(서버 구독을 지우지 않는다).
+   */
   const wasLoggedInRef = useRef(isLoggedIn)
   useEffect(() => {
     if (wasLoggedInRef.current && !isLoggedIn) {
       reportAlertsSeqRef.current++
       setReportAlertsFetchFailed(false)
-      setSettings((prev) => (prev.reportAlertsDirty ? { ...prev, reportAlertsDirty: false } : prev))
+      boardQueue.clear()
+      pendingCategoryChangesRef.current.clear()
+      setSettings((prev) => toSignedOutSettings(prev))
     }
     wasLoggedInRef.current = isLoggedIn
-  }, [isLoggedIn])
+  }, [isLoggedIn, boardQueue])
 
   useEffect(() => {
     if (!loaded || !isLoggedIn || reportAlertsUnsupportedRef.current) return
@@ -523,9 +532,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const resetSettings = useCallback(() => {
     // 초기화하면 구독 게시판이 비므로 서버 구독도 해지한다 — 안 그러면 다음 로그인 때 합치기로 되살아난다.
     for (const id of settingsRef.current.subscribedDepts) queueBoardChange(id, null)
-    // 제보 알림도 기본값으로 서버에 올린다 — 안 그러면 다음 로그인 때 서버 값이 되살아난다.
-    setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: true })
-    if (accessTokenRef.current) pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
+    // 로그인 상태면 제보 알림도 기본값으로 서버에 올린다(못 보내면 dirty 로 남겨 다시 보낸다).
+    // 게스트는 제보 알림을 바꿀 수 없고 계정 값을 덮으면 안 되니 dirty 로 두지 않는다 — 로그인하면 서버 값을 따른다.
+    const loggedIn = Boolean(accessTokenRef.current)
+    setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: loggedIn })
+    if (loggedIn) pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
   }, [queueBoardChange, pushReportAlerts])
 
   /**
