@@ -11,7 +11,7 @@ import { COLORS } from "../../constants/colors";
 import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../constants/partnerAffiliations";
 import type { Partner } from "../../types";
-import { FONTS } from "../../constants/typography";
+import { FONTS, TYPE } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
@@ -30,6 +30,19 @@ interface PartnerSheetProps {
 function splitBulletItems(text: string): string[] {
   const items = text.split(" / ");
   return items.length > 1 ? items : [text];
+}
+
+/**
+ * 주류 혜택이 있는 업체인지. 주점 카테고리는 모두, 그 밖의 업체는 혜택 문구에 술 이름이 있을 때
+ * ("주류 제외"처럼 빼는 말은 제외). 청소년보호법상 청소년(만 19세 미만)에게 주류를 팔 수 없어
+ * 시트에 한 줄 안내를 붙인다(store-submission-kit §3-6).
+ */
+const ALCOHOL_PATTERN = /소주|맥주|생맥|하이볼|와인|칵테일|막걸리|사케|위스키|주류(?!\s*제외)/;
+
+function hasAlcoholBenefit(partner: Partner): boolean {
+  if (partner.category === "주점") return true;
+  const texts = [partner.benefit, ...(partner.affiliationBenefits?.map((item) => item.benefit) ?? [])];
+  return texts.some((text) => !!text && ALCOHOL_PATTERN.test(text));
 }
 
 /** 혜택 본문. 항목이 여럿이면(위 splitBulletItems) 한 줄씩 "- "로 나눠 보여준다. */
@@ -187,6 +200,13 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                 </View>
               );
             })}
+          </View>
+        )}
+
+        {hasAlcoholBenefit(partner) && (
+          <View style={styles.ageNotice}>
+            <Ionicons name="alert-circle-outline" size={13} color={COLORS.textSecondary} />
+            <Text style={styles.ageNoticeText}>만 19세 미만은 주류를 살 수 없어요</Text>
           </View>
         )}
 
@@ -362,6 +382,14 @@ const styles = StyleSheet.create({
   },
   // UsageNote 가 항목을 여럿(" / ")으로 쪼갤 때: 라벨 줄 + 그 아래 "- 항목" 줄들.
   usageNoteBlock: { flex: 1, gap: 2 },
+  ageNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: -4,
+    marginBottom: 8,
+  },
+  ageNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
