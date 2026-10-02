@@ -85,6 +85,8 @@ export type UserStatus = 'ACTIVE' | 'SUSPENDED'
 /** `GET /admin/users` 한 줄(백엔드 `AdminUserResponse`). 연락처는 오지 않는다. */
 export interface AdminUser {
   id: number
+  /** 공개 회원 번호(영문 대문자·숫자 10자리, 예: K7Q2M9XA4D). 회원 번호를 내려 주기 전 서버면 없다 — 그때는 #id 를 보여 준다. */
+  memberCode?: string | null
   /** 로그인(카카오/Apple) 닉네임 원문 */
   nickname: string
   socialType: 'KAKAO' | 'GOOGLE' | 'APPLE' | string

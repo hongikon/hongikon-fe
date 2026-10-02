@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { Platform, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ApiError, getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
@@ -11,6 +11,11 @@ import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
 
 /** 정지 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200
+
+/** 확인 문구 등에 쓰는 회원 표시. 회원 번호가 있으면 그것, 없으면(서버 배포 전) 예전처럼 #id. */
+export function memberLabel(user: Pick<AdminUser, 'id' | 'memberCode'>): string {
+  return user.memberCode ? user.memberCode : `#${user.id}`
+}
 
 /** 서버에 회원 관리 API 가 아직 없을 때(배포 전) 보여 줄 문구. */
 function moderationError(err: unknown, fallback: string): string {
@@ -64,7 +69,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const confirmGrant = () =>
     confirmAction({
       title: '관리자로 지정',
-      message: `#${user.id} ${user.nickname} 님을 관리자로 지정할까요? 제보 검토·회원 정지 등 관리 기능을 모두 쓸 수 있게 됩니다.`,
+      message: `${memberLabel(user)} ${user.nickname} 님을 관리자로 지정할까요? 제보 검토·회원 정지 등 관리 기능을 모두 쓸 수 있게 됩니다.`,
       confirmLabel: '지정',
       onConfirm: () => run(() => grantAdmin(user.id), '관리자로 지정하지 못했습니다. 다시 시도해주세요.', roleError),
     })
@@ -72,7 +77,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const confirmRevoke = () =>
     confirmAction({
       title: '관리자 해제',
-      message: `#${user.id} ${user.nickname} 님의 관리자 권한을 해제할까요? 다음 요청부터 관리 기능을 쓸 수 없습니다.`,
+      message: `${memberLabel(user)} ${user.nickname} 님의 관리자 권한을 해제할까요? 다음 요청부터 관리 기능을 쓸 수 없습니다.`,
       confirmLabel: '해제',
       destructive: true,
       onConfirm: () => run(() => revokeAdmin(user.id), '관리자 권한을 해제하지 못했습니다. 다시 시도해주세요.', roleError),
@@ -85,8 +90,13 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       <View style={styles.row}>
         <Badge label={suspended ? '이용 정지' : '정상'} tone={suspended ? 'danger' : 'success'} />
         {isAdmin ? <Badge label="관리자" tone="info" /> : null}
+        {user.memberCode ? (
+          <Text style={styles.code} selectable accessibilityLabel={`회원 번호 ${user.memberCode}`}>
+            {user.memberCode}
+          </Text>
+        ) : null}
         <Text style={styles.meta}>
-          #{user.id} · {user.nickname} · {user.socialType}
+          {user.memberCode ? `id ${user.id}` : `#${user.id}`} · {user.nickname} · {user.socialType}
         </Text>
       </View>
       {suspended ? (
@@ -211,6 +221,12 @@ const styles = StyleSheet.create({
   box: { gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E7' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
+  code: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' }),
+    fontSize: 13,
+    letterSpacing: 0.5,
+    color: COLORS.textPrimary,
+  },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' },
   actionsStart: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start' },
   inputApp: { minHeight: 44, fontSize: 16 },

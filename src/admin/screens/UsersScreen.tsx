@@ -10,7 +10,7 @@ import { UserModerationPanel } from '../UserModeration'
 
 /**
  * 회원 조회와 이용 정지(약관 제10조, App Store 가이드라인 1.2).
- * 검색어가 비면 정지된 회원 목록, 숫자면 회원 id, 그 밖에는 로그인 닉네임 일부로 찾는다.
+ * 검색어가 비면 정지된 회원 목록. 회원 번호(10자리, 대소문자 무시), 숫자면 회원 id, 그 밖에는 로그인 닉네임 일부로 찾는다.
  */
 export default function UsersScreen() {
   const app = useAdminHost() === 'app'
@@ -50,14 +50,16 @@ export default function UsersScreen() {
     <View>
       <ScreenHeader
         title="회원"
-        subtitle="회원 id 또는 로그인 닉네임으로 찾습니다. 검색어가 없으면 이용 정지된 회원을 보여줍니다. 회원 번호는 앱 설정 > 계정에서 확인할 수 있습니다."
+        subtitle="회원 번호(10자리), 회원 id 또는 로그인 닉네임으로 찾습니다. 검색어가 없으면 이용 정지된 회원을 보여줍니다. 회원 번호는 앱 설정 > 계정에서 확인할 수 있습니다."
       />
       <View style={styles.search}>
         <TextInput
           value={input}
           onChangeText={setInput}
           onSubmitEditing={submit}
-          placeholder="회원 id 또는 닉네임"
+          placeholder="회원 번호(10자리), id 또는 닉네임"
+          autoCapitalize="none"
+          autoCorrect={false}
           placeholderTextColor={COLORS.textPlaceholder}
           style={[styles.input, app && styles.inputApp]}
           returnKeyType="search"

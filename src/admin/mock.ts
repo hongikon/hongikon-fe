@@ -63,10 +63,10 @@ function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id' | 'nickname
 const MOCK_SELF_ID = 1
 
 const users: AdminUser[] = [
-  baseUser({ id: MOCK_SELF_ID, nickname: '운영자', role: 'ADMIN' }),
-  baseUser({ id: 3, nickname: '부운영자', role: 'ADMIN', socialType: 'APPLE' }),
-  baseUser({ id: 7, nickname: '와우산다람쥐' }),
-  baseUser({ id: 12, nickname: '광고봇', status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
+  baseUser({ id: MOCK_SELF_ID, memberCode: 'Q4M8ZT2KXA', nickname: '운영자', role: 'ADMIN' }),
+  baseUser({ id: 3, memberCode: '7HC3P9WD1N', nickname: '부운영자', role: 'ADMIN', socialType: 'APPLE' }),
+  baseUser({ id: 7, memberCode: 'K7Q2M9XA4D', nickname: '와우산다람쥐' }),
+  baseUser({ id: 12, memberCode: 'B0RT5YV8LE', nickname: '광고봇', status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
 ]
 
 const reports: AdminReport[] = [
@@ -213,13 +213,15 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
   }
 
   if (method === 'GET' && pathname === '/admin/users') {
+    // 백엔드 AdminUserService.search 와 같은 규칙: 회원 번호(대소문자 무시) + 숫자면 id, 아니면 닉네임 일부.
     const q = (params.get('q') ?? '').trim()
-    const list = !q
-      ? users.filter((user) => user.status === 'SUSPENDED')
-      : /^\d+$/.test(q)
-        ? users.filter((user) => user.id === Number(q))
-        : users.filter((user) => user.nickname.includes(q))
-    return { users: list }
+    if (!q) return { users: users.filter((user) => user.status === 'SUSPENDED') }
+    const code = q.toUpperCase()
+    const byCode = /^[A-Z0-9]{10}$/.test(code) ? users.filter((user) => user.memberCode === code) : []
+    const rest = /^\d+$/.test(q)
+      ? users.filter((user) => user.id === Number(q))
+      : users.filter((user) => user.nickname.includes(q))
+    return { users: [...byCode, ...rest.filter((user) => !byCode.includes(user))] }
   }
   const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend|grant-admin|revoke-admin))?$/)
   if (userMatch) {

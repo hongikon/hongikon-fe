@@ -248,7 +248,7 @@ export function updateReportStatus(reportId: number, status: ReportTargetStatus,
 
 // ── 회원(이용 정지) ───────────────────────────────────────────────────
 
-/** q: 회원 id(숫자) 또는 닉네임 일부. 비우면 정지된 회원 목록. */
+/** q: 회원 번호(10자리, 대소문자 무시), 회원 id(숫자) 또는 닉네임 일부. 비우면 정지된 회원 목록. */
 export async function searchUsers(q: string, signal?: AbortSignal): Promise<AdminUser[]> {
   const query = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
   const response = await adminRequest<{ users: AdminUser[] }>(`/admin/users${query}`, { signal })
