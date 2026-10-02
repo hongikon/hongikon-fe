@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
-import { Platform } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Modal, Platform, StyleSheet } from 'react-native'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import NotificationStep from '../onboarding/NotificationStep'
+import { COLORS } from '../../constants/colors'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   refreshNotificationPermission,
-  requestNotificationPermission,
 } from '../../lib/notificationPermission'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -29,12 +31,15 @@ const FIRST_LAUNCH_DELAY_MS = 800
  * 로그인한 뒤 한 번 시스템 알림 허용 창을 띄운다(iOS·Android). 알림은 로그인한 계정 기준이라
  * 앱을 처음 켰을 때나 둘러보기(게스트) 중에는 묻지 않는다(10-02 결정).
  * 한 번 물은 뒤엔(허용·거절과 무관) 다시 자동으로 띄우지 않는다 — 설정 > 알림에서 "설정 열기"로 바꿀 수 있다.
- * 허용되면 기기 등록이 바로 이어진다(usePushNotifications 는 권한이 허용된 뒤에만 등록한다). 화면에는 아무것도 그리지 않는다.
+ * 흐름: 앱 소개 → (로그인 또는 둘러보기) → 로그인했으면 알림 안내 화면(NotificationStep) → "알림 받기"를 누를 때만 시스템 허용 창.
+ * 둘러보기(게스트)면 안내 없이 넘어간다. 허용되면 기기 등록이 바로 이어진다(usePushNotifications).
  */
 export default function NotificationPrimer() {
   const startedRef = useRef(false)
   const { status } = useAuth()
   const loggedIn = status === 'authenticated'
+  // 로그인한 뒤 처음 한 번, 시스템 창 전에 앱이 이유를 먼저 보여 주는 안내 화면(NotificationStep).
+  const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
     if (Platform.OS === 'web' || !loggedIn || startedRef.current) return
@@ -45,9 +50,10 @@ export default function NotificationPrimer() {
       try {
         if ((await AsyncStorage.getItem(ASKED_KEY)) === '1' || cancelled) return
         const permission = await refreshNotificationPermission()
-        // 이미 허용했거나(다른 경로로) 더는 물을 수 없으면 묻지 않고 기록만 남긴다.
+        // 이미 허용했거나(다른 경로로) 더는 물을 수 없으면 안내 없이 기록만 남긴다.
         if (permission.status === 'undetermined' && permission.canAskAgain && !cancelled) {
-          await requestNotificationPermission()
+          setShowGuide(true)
+          return
         }
         await AsyncStorage.setItem(ASKED_KEY, '1')
       } catch {
@@ -61,5 +67,31 @@ export default function NotificationPrimer() {
     }
   }, [loggedIn])
 
-  return null
+  // 로그아웃하면 안내를 거두고, 다음 로그인 때 다시 판단한다.
+  useEffect(() => {
+    if (!loggedIn) {
+      setShowGuide(false)
+      startedRef.current = false
+    }
+  }, [loggedIn])
+
+  const handleDone = useCallback(() => {
+    setShowGuide(false)
+    void markNotificationPermissionAsked()
+  }, [])
+
+  if (!showGuide) return null
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={handleDone}>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.guide} edges={['top', 'bottom']}>
+          <NotificationStep onDone={handleDone} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </Modal>
+  )
 }
+
+const styles = StyleSheet.create({
+  guide: { flex: 1, backgroundColor: COLORS.white, paddingHorizontal: 24 },
+})
