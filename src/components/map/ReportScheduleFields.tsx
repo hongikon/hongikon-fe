@@ -158,7 +158,7 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
               startMode: 'now',
               customEndMs:
                 value.endMode === 'custom' && scheduled
-                  ? clampEnd(value.customEndMs + (now - startMs), now)
+                  ? clampEnd(Math.round((value.customEndMs + (now - startMs)) / STEP_MS) * STEP_MS, now)
                   : value.customEndMs,
             })
           }
