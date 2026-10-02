@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -30,6 +31,7 @@ import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
+import { getUserIdFromToken } from '../lib/jwt'
 import { openSitePage } from '../utils/openSitePage'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
@@ -126,6 +128,29 @@ export default function SettingsScreen() {
         }
       },
     })
+  }
+
+  // 회원 번호(토큰 sub = userId). 관리자 지정·문의 때 알려 달라고 보여 준다. 토큰이 이상하면 줄을 숨긴다.
+  const memberId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
+
+  /**
+   * 회원 번호 복사. 앱에는 클립보드 모듈(expo-clipboard)이 없어 — 넣으면 새 빌드가 필요하다 — 웹만 실제로 복사하고,
+   * 앱은 토스트로 번호를 크게 보여 준다.
+   */
+  const handleCopyMemberId = async () => {
+    if (memberId === null) return
+    const text = String(memberId)
+    haptics.tapLight()
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text)
+        toast.show({ message: `회원 번호를 복사했어요 · #${text}` })
+        return
+      } catch {
+        // 권한이 막힌 브라우저 등은 아래처럼 번호만 보여 준다.
+      }
+    }
+    toast.show({ message: `내 회원 번호 · #${text}`, tone: 'info' })
   }
 
   const handleReset = () => {
@@ -235,6 +260,16 @@ export default function SettingsScreen() {
                         ? undefined
                         : profileResource.retry
                   }
+                />
+              )}
+              {memberId !== null && (
+                <ListRow
+                  icon="id-card-outline"
+                  label="회원 번호"
+                  value={`#${memberId}`}
+                  description="관리자 지정이나 문의할 때 이 번호를 알려 주세요."
+                  onPress={() => void handleCopyMemberId()}
+                  accessibilityLabel={`회원 번호 ${memberId}. ${Platform.OS === 'web' ? '눌러서 복사' : '눌러서 번호 보기'}`}
                 />
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
