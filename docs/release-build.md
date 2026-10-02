@@ -161,6 +161,9 @@ eas update --channel production --environment production -m "무엇을 고쳤는
 - 단계적 배포: `... --rollout-percentage 10` 후 `eas update:edit` 로 비율을 올린다.
 - 되돌리기: `eas update:republish --group <이전 업데이트 그룹 ID>` 또는 `eas update:rollback`.
 - OTA 를 올리기 전 확인: `git status` 가 깨끗한지(올리는 건 지금 작업 트리), `npx tsc --noEmit`.
+- **사용자가 알아챌 변화가 있는 스토어 출시·OTA 마다 `src/constants/changelog.ts` 맨 위에 한 항목을 더한다**
+  (설정 > 일반 > 업데이트 내역에 그대로 보인다). 해요체로 짧게, 관리자·보안·내부 작업은 빼고, 서버 배포를 기다리는
+  기능은 실제로 쓸 수 있게 된 뒤에 적는다. 스토어 버전은 `kind: 'app'`, OTA 는 `kind: 'ota'`.
 
 ### OTA 로 되는 것 / 새 네이티브 빌드가 필요한 것
 

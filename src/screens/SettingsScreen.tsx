@@ -10,7 +10,6 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import Constants from 'expo-constants'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
@@ -30,6 +29,7 @@ import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
+import { UpdateHistoryRow } from '../components/settings/UpdateHistoryModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
 import { useIsAdmin } from '../admin/AdminAccess'
 import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
@@ -570,11 +570,7 @@ export default function SettingsScreen() {
             label="공지사항"
             onPress={() => setActiveModal('notices')}
           />
-          <ListRow
-            icon="information-circle-outline"
-            label="앱 버전"
-            value={Constants.expoConfig?.version ?? '-'}
-          />
+          <UpdateHistoryRow />
           <ListRow
             icon="logo-instagram"
             label="제휴 출처"
