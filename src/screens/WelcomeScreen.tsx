@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -20,8 +20,11 @@ import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import Button from '../components/common/Button'
 import TermsModal from '../components/settings/TermsModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
+import SignupConsentSheet from '../components/auth/SignupConsentSheet'
+import { hasCurrentTermsConsent, saveTermsConsent } from '../lib/termsConsent'
 
 type PendingAction = 'apple' | 'kakao' | 'guest' | null
+type LoginAction = 'apple' | 'kakao'
 
 /** 카카오 버튼과 같은 크기·모서리(앱 공용 Button lg 와 같은 48·12). Apple 버튼은 다른 로그인 버튼보다 작거나 아래에 있으면 안 된다(HIG·심사 4.8). */
 const LOGIN_BUTTON_HEIGHT = 48
@@ -34,6 +37,9 @@ const LOGIN_BUTTON_RADIUS = 12
  * Apple 버튼은 iOS 이면서 이 바이너리에 ExpoAppleAuthentication 네이티브 모듈이 있고 기기가 지원할 때만 보인다
  * (src/lib/appleAuth.ts). 웹·안드로이드·모듈 없는 구버전 바이너리(OTA 로 이 JS 를 받은 1.0.0)에서는 숨는다.
  * Apple 이 승인한 시스템 버튼(AppleAuthenticationButton, 검은색)을 그대로 쓰고 카카오 버튼 위에 둔다.
+ *
+ * 로그인 버튼을 누르면, 이 기기에서 지금 판(TERMS_VERSION)의 약관에 동의한 적이 없을 때 먼저 동의 시트
+ * (SignupConsentSheet)를 띄우고, 동의하면 그 로그인을 이어서 연다. 설정의 "로그인하기"도 이 화면으로 와서 같은 길을 탄다.
  */
 export default function WelcomeScreen() {
   const { loginWithKakao, loginWithApple, continueAsGuest, loginError } = useAuth()
@@ -43,6 +49,12 @@ export default function WelcomeScreen() {
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null)
   const errorText = inlineError ?? loginError
+  /** 동의 시트를 띄우게 한 로그인. 시트에서 동의하면 이 로그인을 이어서 연다. */
+  const [consentFor, setConsentFor] = useState<LoginAction | null>(null)
+  /** 시트 문구용. 닫히는 동안에도 문구가 바뀌지 않게 마지막 값을 남겨 둔다. */
+  const [sheetProvider, setSheetProvider] = useState<LoginAction | null>(null)
+  /** 동의 후 시트가 다 내려가면(iOS onDismiss) 시작할 로그인. 시트가 내려가는 중에 시스템 로그인 화면을 띄우면 안 뜰 수 있다. */
+  const afterConsentRef = useRef<LoginAction | null>(null)
 
   useEffect(() => {
     let active = true
@@ -90,6 +102,50 @@ export default function WelcomeScreen() {
     }
   }, [loginWithKakao])
 
+  const startLogin = useCallback(
+    (action: LoginAction) => {
+      if (action === 'apple') void handleAppleLogin()
+      else void handleKakaoLogin()
+    },
+    [handleAppleLogin, handleKakaoLogin],
+  )
+
+  /** 동의 뒤 미뤄 둔 로그인을 한 번만 시작한다(iOS onDismiss 또는 대비용 타이머 중 먼저 부른 쪽). */
+  const runAfterConsent = useCallback(() => {
+    const action = afterConsentRef.current
+    afterConsentRef.current = null
+    if (action) startLogin(action)
+  }, [startLogin])
+
+  /** 로그인 버튼: 이 기기에서 지금 판 약관에 동의했으면 바로, 아니면 동의 시트부터. */
+  const requestLogin = useCallback(
+    async (action: LoginAction) => {
+      setInlineError(null)
+      if (await hasCurrentTermsConsent()) startLogin(action)
+      else {
+        setSheetProvider(action)
+        setConsentFor(action)
+      }
+    },
+    [startLogin],
+  )
+
+  const handleConsentAgree = useCallback(async () => {
+    const action = consentFor
+    if (!action) return
+    await saveTermsConsent()
+    setConsentFor(null)
+    // iOS 는 시트가 완전히 내려간 뒤(onDismiss) 로그인 화면을 띄운다 — 내려가는 중에 Apple·카카오 시트를
+    // 띄우면 뜨지 않을 수 있다. onDismiss 가 오지 않는 경우를 대비해 잠시 뒤에도 한 번 시도한다(먼저 온 쪽만 실행).
+    // 다른 플랫폼은 바로 연다.
+    if (Platform.OS === 'ios') {
+      afterConsentRef.current = action
+      setTimeout(runAfterConsent, 800)
+    } else {
+      startLogin(action)
+    }
+  }, [consentFor, startLogin, runAfterConsent])
+
   const handleGuest = useCallback(async () => {
     setPending('guest')
     try {
@@ -124,7 +180,7 @@ export default function WelcomeScreen() {
               buttonType={appleButton.AppleAuthenticationButtonType.CONTINUE}
               buttonStyle={appleButton.AppleAuthenticationButtonStyle.BLACK}
               cornerRadius={LOGIN_BUTTON_RADIUS}
-              onPress={handleAppleLogin}
+              onPress={() => void requestLogin('apple')}
               style={styles.appleButton}
             />
           </View>
@@ -132,7 +188,7 @@ export default function WelcomeScreen() {
 
         <TouchableOpacity
           style={[styles.button, styles.kakaoButton]}
-          onPress={handleKakaoLogin}
+          onPress={() => void requestLogin('kakao')}
           disabled={isBusy}
           accessibilityRole="button"
           accessibilityLabel="카카오로 시작하기"
@@ -147,27 +203,25 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* 고지형 동의: 로그인(Apple·카카오)으로 가입하면 약관·처리방침에 동의하는 것으로 본다(이용약관 제4조). */}
-        <Text style={styles.consentNotice}>
-          시작하면{' '}
+        {/* 약관 동의는 로그인 버튼을 누르면 뜨는 동의 시트에서 받는다. 여기서는 언제든 읽을 수 있게 링크만 둔다(처리방침은 굵게). */}
+        <Text style={styles.legalLinks}>
           <Text
-            style={styles.consentLink}
+            style={styles.legalLink}
             onPress={() => setLegalModal('terms')}
             accessibilityRole="link"
             suppressHighlighting
           >
             이용약관
           </Text>
-          과{' '}
+          {'  ·  '}
           <Text
-            style={styles.consentLink}
+            style={[styles.legalLink, styles.legalLinkStrong]}
             onPress={() => setLegalModal('privacy')}
             accessibilityRole="link"
             suppressHighlighting
           >
             개인정보 처리방침
           </Text>
-          에 동의하게 돼요 · 만 14세 이상만 가입할 수 있어요
         </Text>
 
         <Button
@@ -183,6 +237,13 @@ export default function WelcomeScreen() {
 
       <TermsModal visible={legalModal === 'terms'} onClose={() => setLegalModal(null)} />
       <PrivacyModal visible={legalModal === 'privacy'} onClose={() => setLegalModal(null)} />
+      <SignupConsentSheet
+        visible={consentFor !== null}
+        provider={sheetProvider}
+        onAgree={() => void handleConsentAgree()}
+        onClose={() => setConsentFor(null)}
+        onDismiss={runAfterConsent}
+      />
     </SafeAreaView>
   )
 }
@@ -219,14 +280,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
-  consentNotice: {
+  legalLinks: {
     fontSize: 12,
     lineHeight: 18,
     fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
+    color: COLORS.textTertiary,
     textAlign: 'center',
   },
-  consentLink: { fontFamily: FONTS.semibold, color: COLORS.textPrimary, textDecorationLine: 'underline' },
+  legalLink: { color: COLORS.textSecondary, textDecorationLine: 'underline' },
+  legalLinkStrong: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   unofficialNotice: {
     fontSize: 11,
     lineHeight: 16,
