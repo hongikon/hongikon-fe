@@ -3,16 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   Modal,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../common/Toast'
@@ -26,6 +23,8 @@ import {
 import RetryableError from '../common/RetryableError'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import Button from '../common/Button'
+import TextField, { FieldLabel } from '../common/TextField'
 
 interface NicknameModalProps {
   visible: boolean
@@ -117,11 +116,10 @@ export default function NicknameModal({ visible, profile, onClose, onSaved }: Ni
           <ContentColumn>
             <ModalHeader title="닉네임" onClose={onClose} />
             <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-              <Text style={styles.label}>앱 닉네임 (선택)</Text>
-              <TextInput
+              <FieldLabel>앱 닉네임 (선택)</FieldLabel>
+              <TextField
                 style={styles.input}
                 placeholder={`${APP_NICKNAME_MAX_LENGTH}자 이내 한글·영문·숫자·_`}
-                placeholderTextColor={COLORS.textPlaceholder}
                 value={value}
                 onChangeText={(text) => {
                   setValue(text)
@@ -159,36 +157,23 @@ export default function NicknameModal({ visible, profile, onClose, onSaved }: Ni
                 />
               )}
 
-              <TouchableOpacity
-                style={[styles.submitButton, !canSave && styles.submitButtonDisabled]}
+              <Button
+                label="저장"
                 onPress={handleSave}
-                disabled={!canSave}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canSave }}
-              >
-                {saving === 'save' ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <Text style={styles.submitButtonText}>저장</Text>
-                )}
-              </TouchableOpacity>
+                disabled={!canSave && saving !== 'save'}
+                loading={saving === 'save'}
+              />
 
               {profile.appNickname ? (
-                <TouchableOpacity
-                  style={styles.clearButton}
+                <Button
+                  variant="ghost"
+                  size="md"
+                  label={`닉네임 지우기 (${profile.maskedDefaultName}(으)로 표시)`}
                   onPress={() => void run('clear')}
-                  disabled={saving !== null}
-                  accessibilityRole="button"
-                >
-                  {saving === 'clear' ? (
-                    <ActivityIndicator color={COLORS.textSecondary} />
-                  ) : (
-                    <Text style={styles.clearButtonText}>
-                      닉네임 지우기 ({profile.maskedDefaultName}(으)로 표시)
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  disabled={saving !== null && saving !== 'clear'}
+                  loading={saving === 'clear'}
+                  style={styles.clearButton}
+                />
               ) : null}
             </KeyboardAvoidingView>
           </ContentColumn>
@@ -201,40 +186,19 @@ export default function NicknameModal({ visible, profile, onClose, onSaved }: Ni
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   body: { flex: 1, padding: 20 },
-  label: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textSecondary, marginBottom: 8 },
-  input: {
-    fontFamily: FONTS.regular,
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 12,
-    height: 46,
-    marginBottom: 8,
-  },
+  input: { marginBottom: 8 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 16 },
-  preview: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, marginBottom: 16 },
+  preview: { ...TYPE.callout, color: COLORS.textSecondary, marginBottom: 16 },
   previewName: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   help: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
+    ...TYPE.caption,
     lineHeight: 18,
     color: COLORS.textSecondary,
-    backgroundColor: COLORS.sectionBg,
-    borderRadius: 10,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 20,
   },
   errorBox: { marginBottom: 12 },
-  submitButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.4 },
-  submitButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
-  clearButton: { height: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  clearButtonText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textSecondary },
+  clearButton: { marginTop: 8 },
 })

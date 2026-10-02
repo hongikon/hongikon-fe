@@ -26,7 +26,7 @@ export default function SearchBar({
 }: SearchBarProps) {
   return (
     <View style={[styles.container, style]}>
-      <Ionicons name="search" size={16} color={COLORS.textTertiary} />
+      <Ionicons name="search" size={18} color={COLORS.textTertiary} />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -45,7 +45,7 @@ export default function SearchBar({
           accessibilityRole="button"
           accessibilityLabel="검색어 지우기"
         >
-          <Ionicons name="close-circle" size={16} color={COLORS.textTertiary} />
+          <Ionicons name="close-circle" size={18} color={COLORS.iconMuted} />
         </TouchableOpacity>
       )}
     </View>
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
-    height: 40,
+    height: 44,
     borderRadius: 12,
     backgroundColor: COLORS.white,
     borderWidth: 1,
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: FONTS.regular,
-    fontSize: 13,
+    fontSize: 15,
     color: COLORS.textPrimary,
     padding: 0,
   },

@@ -3,25 +3,25 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   Modal,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { PARTNER_AFFILIATIONS } from '../../constants/partnerAffiliations'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
-import { chipStyles } from '../map/chipStyles'
+import Button from '../common/Button'
+import Chip from '../common/Chip'
+import TextField, { FieldLabel } from '../common/TextField'
 import ModalHeader from './ModalHeader'
 import { PARTNER_SUGGESTION_PREFIX } from '../../constants/feedback'
 import type { PartnerAffiliation } from '../../types'
@@ -195,9 +195,7 @@ export default function PartnerSuggestModal({
               <Text style={styles.successText}>
                 운영진이 제휴 여부와 혜택을 확인한 뒤 지도에 반영해요.{'\n'}확인에는 며칠 걸릴 수 있어요.
               </Text>
-              <TouchableOpacity style={styles.submitButton} onPress={onClose} activeOpacity={0.8}>
-                <Text style={styles.submitButtonText}>확인</Text>
-              </TouchableOpacity>
+              <Button label="확인" onPress={onClose} />
             </View>
           ) : (
             <KeyboardAvoidingView
@@ -231,17 +229,16 @@ export default function PartnerSuggestModal({
                   })}
                 </View>
 
-                <Text style={styles.label}>가게 이름 *</Text>
-                <TextInput
-                  style={styles.input}
+                <FieldLabel>가게 이름 *</FieldLabel>
+                <TextField
+                  style={styles.field}
                   placeholder="예: 발바리네"
-                  placeholderTextColor={COLORS.textPlaceholder}
                   value={storeName}
                   onChangeText={setStoreName}
                   maxLength={50}
                 />
 
-                <Text style={styles.label}>위치 *</Text>
+                <FieldLabel>위치 *</FieldLabel>
                 {location !== null && (
                   <View style={styles.pickedRow}>
                     <Ionicons name="location" size={15} color={COLORS.primary} />
@@ -251,79 +248,68 @@ export default function PartnerSuggestModal({
                   </View>
                 )}
                 {onPickOnMap !== undefined && (
-                  <TouchableOpacity
-                    style={styles.pickButton}
+                  <Button
+                    variant="outline"
+                    size="md"
+                    icon="pin-outline"
+                    label={location ? '지도에서 다시 찍기' : '지도에서 위치 찍기'}
                     onPress={handlePickOnMap}
-                    activeOpacity={0.8}
-                    accessibilityRole="button"
                     accessibilityLabel={location ? '지도에서 위치 다시 찍기' : '지도에서 위치 찍기'}
-                  >
-                    <Ionicons name="pin-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.pickButtonText}>
-                      {location ? '지도에서 다시 찍기' : '지도에서 위치 찍기'}
-                    </Text>
-                  </TouchableOpacity>
+                    style={styles.pickButton}
+                  />
                 )}
-                <TextInput
-                  style={styles.input}
+                <TextField
+                  style={styles.field}
                   placeholder={location ? '상세 주소·층 (선택, 예: 1층 안쪽)' : '주소나 근처 건물 (예: 와우산로 128 1층)'}
-                  placeholderTextColor={COLORS.textPlaceholder}
                   value={address}
                   onChangeText={setAddress}
                   maxLength={100}
                 />
 
-                <Text style={styles.label}>제휴 소속 (알면 선택)</Text>
+                <FieldLabel>제휴 소속 (알면 선택)</FieldLabel>
                 <View style={styles.chipWrap}>
                   {PARTNER_AFFILIATIONS.map((item) => {
                     const active = affiliation === item
                     return (
-                      <TouchableOpacity
+                      <Chip
                         key={item}
-                        activeOpacity={0.75}
+                        label={item}
+                        selected={active}
                         onPress={() => setAffiliation(active ? null : item)}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        style={[chipStyles.chip, active && styles.chipActive]}
-                      >
-                        <Text style={[chipStyles.label, active && chipStyles.labelActive]}>{item}</Text>
-                      </TouchableOpacity>
+                      />
                     )
                   })}
                 </View>
 
-                <Text style={styles.label}>{kind === 'new' ? '혜택' : '무엇이 다른가요?'}</Text>
-                <TextInput
-                  style={styles.textArea}
+                <FieldLabel>{kind === 'new' ? '혜택' : '무엇이 다른가요?'}</FieldLabel>
+                <TextField
+                  style={styles.field}
+                  areaHeight={100}
                   placeholder={
                     kind === 'new'
                       ? '예: 학생증 제시 시 음료 1개 서비스'
                       : '예: 혜택이 10% 할인에서 음료 서비스로 바뀌었어요'
                   }
-                  placeholderTextColor={COLORS.textPlaceholder}
                   value={benefit}
                   onChangeText={setBenefit}
                   multiline
-                  textAlignVertical="top"
                   maxLength={500}
                 />
 
-                <Text style={styles.label}>출처 (선택)</Text>
-                <TextInput
-                  style={styles.input}
+                <FieldLabel>출처 (선택)</FieldLabel>
+                <TextField
+                  style={styles.field}
                   placeholder="인스타 게시물 링크, 가게 안내문 등"
-                  placeholderTextColor={COLORS.textPlaceholder}
                   value={source}
                   onChangeText={setSource}
                   autoCapitalize="none"
                   maxLength={200}
                 />
 
-                <Text style={styles.label}>답변 받을 이메일 (선택)</Text>
-                <TextInput
-                  style={styles.input}
+                <FieldLabel>답변 받을 이메일 (선택)</FieldLabel>
+                <TextField
+                  style={styles.field}
                   placeholder="example@hongik.ac.kr"
-                  placeholderTextColor={COLORS.textPlaceholder}
                   value={contact}
                   onChangeText={setContact}
                   keyboardType="email-address"
@@ -344,20 +330,12 @@ export default function PartnerSuggestModal({
                   />
                 )}
 
-                <TouchableOpacity
-                  style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                <Button
+                  label="보내기"
                   onPress={handleSubmit}
-                  disabled={submitting}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
+                  loading={submitting}
                   accessibilityLabel="제휴 제보 보내기"
-                >
-                  {submitting ? (
-                    <ActivityIndicator color={COLORS.white} />
-                  ) : (
-                    <Text style={styles.submitButtonText}>보내기</Text>
-                  )}
-                </TouchableOpacity>
+                />
               </ScrollView>
             </KeyboardAvoidingView>
           )}
@@ -372,93 +350,40 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   flex: { flex: 1 },
   body: { padding: 20, paddingBottom: 32 },
-  intro: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    lineHeight: 19,
-    color: COLORS.textSecondary,
-    marginBottom: 16,
-  },
+  intro: { ...TYPE.callout, color: COLORS.textSecondary, marginBottom: 16 },
   kindRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   kindButton: {
     flex: 1,
-    height: 40,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   kindButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  kindText: { fontFamily: FONTS.medium, fontSize: 14, color: COLORS.textPrimary },
+  kindText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textSecondary },
   kindTextActive: { color: COLORS.white },
-  label: {
-    fontFamily: FONTS.medium,
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-  },
-  input: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 12,
-    height: 44,
-    marginBottom: 20,
-  },
-  textArea: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 12,
-    height: 100,
-    marginBottom: 20,
-  },
+  field: { marginBottom: 20 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 20 },
   pickedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#EEF0FF',
-    borderRadius: 10,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,
   },
   pickedText: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
-  pickButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginBottom: 8,
-  },
-  pickButtonText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  pickButton: { marginBottom: 8 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 12 },
   errorBox: { marginBottom: 12 },
-  submitButton: {
-    alignSelf: 'stretch',
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
   successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  successTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: COLORS.textPrimary },
+  successTitle: { ...TYPE.headline, color: COLORS.textPrimary },
   successText: {
-    fontFamily: FONTS.regular,
+    ...TYPE.callout,
     fontSize: 14,
     lineHeight: 21,
     color: COLORS.textSecondary,

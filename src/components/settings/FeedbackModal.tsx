@@ -3,17 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   Modal,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
@@ -21,6 +18,8 @@ import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/cl
 import RetryableError from '../common/RetryableError'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import Button from '../common/Button'
+import TextField, { FieldLabel } from '../common/TextField'
 
 interface FeedbackModalProps {
   visible: boolean
@@ -105,32 +104,30 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             <Text style={styles.successText}>
               운영진이 확인한 뒤{contact.trim() ? ' 적어 주신 이메일로' : ''} 답변드릴게요.
             </Text>
-            <TouchableOpacity style={[styles.submitButton, styles.successButton]} onPress={onClose} activeOpacity={0.8}>
-              <Text style={styles.submitButtonText}>확인</Text>
-            </TouchableOpacity>
+            <Button label="확인" onPress={onClose} style={styles.successButton} />
           </View>
         ) : (
         <KeyboardAvoidingView
           style={styles.body}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Text style={styles.label}>내용</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="불편한 점이나 제안하고 싶은 내용을 적어주세요"
-            placeholderTextColor={COLORS.textPlaceholder}
+          <FieldLabel>내용</FieldLabel>
+          <TextField
+            style={styles.field}
+            areaHeight={160}
+            placeholder="불편한 점이나 제안하고 싶은 내용을 적어 주세요"
             value={content}
             maxLength={1000}
             onChangeText={setContent}
             multiline
-            textAlignVertical="top"
+            accessibilityLabel="문의 내용"
           />
 
-          <Text style={styles.label}>답변 받을 이메일 (선택)</Text>
-          <TextInput
-            style={styles.input}
+          <FieldLabel>답변 받을 이메일 (선택)</FieldLabel>
+          <TextField
+            style={styles.fieldLast}
             placeholder="example@hongik.ac.kr"
-            placeholderTextColor={COLORS.textPlaceholder}
+            accessibilityLabel="답변 받을 이메일"
             value={contact}
             maxLength={100}
             onChangeText={setContact}
@@ -151,18 +148,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
             />
           )}
 
-          <TouchableOpacity
-            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={submitting}
-            activeOpacity={0.8}
-          >
-            {submitting ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.submitButtonText}>보내기</Text>
-            )}
-          </TouchableOpacity>
+          <Button label="보내기" onPress={handleSubmit} loading={submitting} accessibilityLabel="문의 보내기" />
         </KeyboardAvoidingView>
         )}
         </ContentColumn>
@@ -175,45 +161,12 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   body: { flex: 1, padding: 20 },
-  label: {
-    fontFamily: FONTS.medium,
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-  },
-  textArea: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 12,
-    height: 160,
-    marginBottom: 20,
-  },
-  input: {
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 12,
-    height: 44,
-    marginBottom: 24,
-  },
+  field: { marginBottom: 20 },
+  fieldLast: { marginBottom: 24 },
   errorBox: { marginBottom: 12 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 12 },
-  submitButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
   successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  successTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: COLORS.textPrimary },
-  successText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
-  successButton: { alignSelf: 'stretch', marginTop: 8 },
+  successTitle: { ...TYPE.headline, color: COLORS.textPrimary },
+  successText: { ...TYPE.callout, fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+  successButton: { marginTop: 8 },
 })

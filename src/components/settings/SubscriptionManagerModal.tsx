@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Modal,
 } from 'react-native'
@@ -12,11 +11,14 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news'
-import { FONTS } from '../../constants/typography'
+import { FONTS, TYPE } from '../../constants/typography'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
 import { ToastViewport } from '../common/Toast'
 import ContentColumn from '../common/ContentColumn'
+import EmptyState from '../common/EmptyState'
+import SearchBar from '../news/SearchBar'
+import ModalHeader from './ModalHeader'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
@@ -57,33 +59,28 @@ export default function SubscriptionManagerModal({
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.title}>구독 관리</Text>
-          <TouchableOpacity onPress={onClose} accessibilityRole="button">
-            <Text style={styles.done}>완료</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={COLORS.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="기관·학과 검색"
-            placeholderTextColor={COLORS.textPlaceholder}
-            value={query}
-            onChangeText={setQuery}
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Ionicons name="close-circle" size={16} color={COLORS.textTertiary} />
+        <ModalHeader
+          title="구독 관리"
+          onClose={onClose}
+          right={
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.doneBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.done}>완료</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          }
+        />
+
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          placeholder="기관·학과 검색"
+          accessibilityLabel="기관·학과 검색"
+          style={styles.searchBar}
+        />
 
         {subscribedDepts.length > 0 && (
           <View style={styles.hint}>
@@ -102,10 +99,7 @@ export default function SubscriptionManagerModal({
 
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {groups.length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="search-outline" size={36} color="#ddd" />
-              <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
-            </View>
+            <EmptyState icon="search-outline" message="검색 결과가 없어요" />
           ) : (
             groups.map((group) => (
               <View key={group.name} style={styles.group}>
@@ -180,53 +174,31 @@ export default function SubscriptionManagerModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
-  },
-  title: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  doneBtn: { minWidth: 40, height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   done: {
     fontSize: 15,
     fontFamily: FONTS.semibold,
     color: COLORS.primary,
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 14,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F3F3F3',
-  },
-  searchInput: { fontFamily: FONTS.regular, flex: 1, fontSize: 14, color: COLORS.textPrimary, padding: 0 },
+  searchBar: { marginHorizontal: 16, marginVertical: 12 },
   list: { flex: 1 },
-  listContent: { paddingHorizontal: 14 },
+  listContent: { paddingHorizontal: 16 },
   group: { marginBottom: 18 },
   groupTitle: {
-    fontSize: 11,
-    fontFamily: FONTS.bold,
-    color: COLORS.textTertiary,
-    letterSpacing: 0.4,
+    ...TYPE.section,
+    color: COLORS.textSecondary,
     marginBottom: 4,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 11,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
+    minHeight: 52,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
   rowNameArea: { flex: 1, marginRight: 12, paddingVertical: 2 },
-  rowName: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  rowName: { ...TYPE.body, color: COLORS.textPrimary },
   bellBtn: {
     width: 28,
     height: 28,
@@ -235,24 +207,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 8,
   },
-  bellBtnOn: { backgroundColor: '#ECEBF5' },
-  bellBtnOff: { backgroundColor: '#F3F3F3' },
+  bellBtnOn: { backgroundColor: COLORS.primarySoft },
+  bellBtnOff: { backgroundColor: COLORS.fill },
   dimmed: { opacity: 0.45 },
   hint: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginHorizontal: 14,
+    marginHorizontal: 16,
     marginTop: -2,
     marginBottom: 12,
   },
-  hintText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: COLORS.textSecondary },
+  hintText: { ...TYPE.caption, flex: 1, color: COLORS.textSecondary },
   subBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    height: 32,
+    paddingHorizontal: 12,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.primary,
@@ -261,7 +233,5 @@ const styles = StyleSheet.create({
   subBtnOn: { backgroundColor: COLORS.primary },
   subBtnText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.primary },
   subBtnTextOn: { color: COLORS.white },
-  empty: { height: 260, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
   bottomSpacer: { height: 24 },
 })

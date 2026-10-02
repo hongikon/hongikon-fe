@@ -5,14 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { TYPE } from '../../constants/typography'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   createKeywordSubscription,
@@ -24,6 +23,10 @@ import { ApiError, getErrorMessage } from '../../apis/client'
 import { useToast } from '../common/Toast'
 import * as haptics from '../../lib/haptics'
 import ModalHeader from './ModalHeader'
+import ContentColumn from '../common/ContentColumn'
+import Button from '../common/Button'
+import EmptyState from '../common/EmptyState'
+import TextField from '../common/TextField'
 
 interface KeywordAlertsModalProps {
   visible: boolean
@@ -119,32 +122,30 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+          <ContentColumn>
           <ModalHeader title="키워드 알림" onClose={onClose} />
           <View style={styles.inputRow}>
-            <TextInput
+            <TextField
               style={styles.input}
               value={input}
               onChangeText={setInput}
               placeholder="예: 장학금, 해커톤"
-              placeholderTextColor={COLORS.textTertiary}
               maxLength={MAX_KEYWORD_LENGTH}
               returnKeyType="done"
               onSubmitEditing={handleAdd}
               accessibilityLabel="알림 받을 키워드"
             />
-            <TouchableOpacity
-              style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
+            <Button
+              label="추가"
+              size="md"
+              fullWidth={false}
               onPress={handleAdd}
-              disabled={!canAdd}
-              accessibilityRole="button"
+              disabled={!canAdd && !submitting}
+              loading={submitting}
               accessibilityLabel="키워드 추가"
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : (
-                <Text style={styles.addBtnText}>추가</Text>
-              )}
-            </TouchableOpacity>
+              style={styles.addBtn}
+            />
           </View>
           <Text style={[styles.hint, (duplicate || full) && styles.hintWarn]}>{hint}</Text>
 
@@ -155,13 +156,11 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
             {loadError !== null && (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{loadError}</Text>
-                <TouchableOpacity onPress={load} accessibilityRole="button">
-                  <Text style={styles.retryText}>다시 시도</Text>
-                </TouchableOpacity>
+                <Button label="다시 시도" variant="secondary" size="sm" fullWidth={false} onPress={load} />
               </View>
             )}
             {keywords !== null && keywords.length === 0 && (
-              <Text style={styles.empty}>등록한 키워드가 없어요</Text>
+              <EmptyState icon="pricetag-outline" message="등록한 키워드가 없어요" style={styles.empty} />
             )}
             {list.map((item) => (
               <View key={item.id} style={styles.keywordRow}>
@@ -175,11 +174,12 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
                   accessibilityRole="button"
                   accessibilityLabel={`${item.keyword} 키워드 지우기`}
                 >
-                  <Ionicons name="close-circle" size={18} color={COLORS.textTertiary} />
+                  <Ionicons name="close-circle" size={20} color={COLORS.iconMuted} />
                 </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
+          </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
@@ -189,32 +189,10 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 },
-  input: {
-    flex: 1,
-    height: 42,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-  },
-  addBtn: {
-    height: 42,
-    minWidth: 56,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-  },
-  addBtnDisabled: { opacity: 0.4 },
-  addBtnText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.white },
+  input: { flex: 1 },
+  addBtn: { minWidth: 64, height: 46 },
   hint: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    lineHeight: 17,
+    ...TYPE.caption,
     color: COLORS.textSecondary,
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -225,22 +203,15 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   loading: { marginTop: 24 },
   errorBox: { alignItems: 'center', gap: 8, marginTop: 24 },
-  errorText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
-  retryText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
-  empty: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: COLORS.textTertiary,
-    textAlign: 'center',
-    marginTop: 24,
-  },
+  errorText: { ...TYPE.callout, color: COLORS.textSecondary },
+  empty: { minHeight: 200 },
   keywordRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
+    minHeight: 52,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
-  keywordText: { flex: 1, fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  keywordText: { ...TYPE.body, flex: 1, color: COLORS.textPrimary },
 })

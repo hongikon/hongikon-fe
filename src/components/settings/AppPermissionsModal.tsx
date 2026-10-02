@@ -23,6 +23,7 @@ import {
 import { notify } from '../../utils/dialog'
 import * as haptics from '../../lib/haptics'
 import ModalHeader from './ModalHeader'
+import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
 
 interface AppPermissionsModalProps {
@@ -217,11 +218,11 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
 }
 
 const PILL = {
-  granted: { label: '허용됨', bg: '#E8F6EE', fg: '#15803D' },
-  limited: { label: '일부 허용', bg: '#FEF3C7', fg: '#92400E' },
-  denied: { label: '꺼짐', bg: '#FDECEC', fg: '#B91C1C' },
-  undetermined: { label: '아직 묻지 않음', bg: '#F1F1F4', fg: '#6B6B76' },
-  loading: { label: '확인 중', bg: '#F1F1F4', fg: '#9A9AA5' },
+  granted: { label: '허용됨', bg: COLORS.successSoft, fg: COLORS.success },
+  limited: { label: '일부 허용', bg: COLORS.warningSoft, fg: COLORS.warning },
+  denied: { label: '꺼짐', bg: COLORS.dangerSoft, fg: '#B91C1C' },
+  undetermined: { label: '아직 묻지 않음', bg: COLORS.fill, fg: COLORS.textSecondary },
+  loading: { label: '확인 중', bg: COLORS.fill, fg: COLORS.textTertiary },
 } as const
 
 function pillFor(state: PermissionView) {
@@ -269,28 +270,26 @@ function PermissionRow({
       </View>
 
       {canAsk && (
-        <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+        <Button
+          label="허용하기"
+          size="md"
           onPress={() => {
             haptics.tapLight()
             onRequest()
           }}
-          accessibilityRole="button"
           accessibilityLabel={`${title} 권한 허용하기`}
-        >
-          <Text style={styles.primaryBtnText}>허용하기</Text>
-        </Pressable>
+        />
       )}
       {blocked && (
-        <Pressable
-          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+        <Button
+          label="설정 열기"
+          variant="secondary"
+          size="md"
+          icon="open-outline"
+          iconPosition="right"
           onPress={() => openPhoneSettings(settingsName)}
-          accessibilityRole="button"
           accessibilityLabel={`휴대폰 설정에서 ${title} 권한 켜기`}
-        >
-          <Text style={styles.secondaryBtnText}>설정 열기</Text>
-          <Ionicons name="open-outline" size={14} color={COLORS.primary} />
-        </Pressable>
+        />
       )}
       {state.kind === 'granted' && (
         <Pressable
@@ -303,7 +302,7 @@ function PermissionRow({
           <Text style={styles.linkBtnText}>
             {state.limited ? '휴대폰 설정에서 전체 허용으로 바꾸기' : '휴대폰 설정에서 바꾸기'}
           </Text>
-          <Ionicons name="chevron-forward" size={12} color={COLORS.textTertiary} />
+          <Ionicons name="chevron-forward" size={14} color={COLORS.textTertiary} />
         </Pressable>
       )}
     </View>
@@ -331,34 +330,15 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#EEF0FA',
+    backgroundColor: COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowBody: { flex: 1, gap: 3 },
   rowTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.textPrimary },
-  rowPurpose: { fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
+  rowPurpose: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
   pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-  pillText: { fontFamily: FONTS.semibold, fontSize: 11.5 },
-  primaryBtn: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.white },
-  secondaryBtn: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#EEF0FA',
-    flexDirection: 'row',
-    gap: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryBtnText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary },
-  pressed: { opacity: 0.75 },
+  pillText: { fontFamily: FONTS.semibold, fontSize: 12 },
   linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 50, marginTop: -4 },
   linkBtnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   webNote: {
@@ -382,11 +362,11 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#F3F3F5',
+    backgroundColor: COLORS.fill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoBody: { flex: 1, gap: 3, paddingTop: 1 },
   infoTitle: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },
-  infoText: { fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: COLORS.textSecondary },
+  infoText: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
 })

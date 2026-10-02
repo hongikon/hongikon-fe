@@ -33,6 +33,7 @@ export default function NoticeListModal({
               key={notice.id}
               style={styles.item}
               onPress={() => onSelectNotice(notice)}
+              accessibilityRole="button"
             >
               <Text style={styles.itemTitle}>{notice.title}</Text>
               <Text style={styles.itemDate}>{notice.date}</Text>
@@ -48,12 +49,12 @@ export default function NoticeListModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  body: { padding: 20 },
+  body: { paddingHorizontal: 16 },
   item: {
     paddingVertical: 14,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
-  itemTitle: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, marginBottom: 3 },
-  itemDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#bbb' },
+  itemTitle: { fontSize: 15, fontFamily: FONTS.medium, color: COLORS.textPrimary, marginBottom: 4 },
+  itemDate: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
 })

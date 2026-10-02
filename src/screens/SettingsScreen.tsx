@@ -28,6 +28,10 @@ import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
+import ListRow from '../components/common/ListRow'
+import SectionTitle from '../components/common/SectionTitle'
+import Button from '../components/common/Button'
+import { LargeTitleHeader } from '../components/common/ScreenHeader'
 import { getMyProfile, isNicknameApiKnownMissing, type MyProfile } from '../apis/users'
 import { useApiResource } from '../hooks/useApiResource'
 import { useToast } from '../components/common/Toast'
@@ -41,7 +45,8 @@ import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
-import { FONTS } from '../constants/typography'
+import { FONTS, TYPE } from '../constants/typography'
+import { RADIUS, SPACING } from '../constants/spacing'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
 
@@ -203,18 +208,19 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <LargeTitleHeader title="설정" style={layoutStyles.readable} />
       <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>계정</Text>
+          <SectionTitle title="계정" />
           {status === 'authenticated' ? (
             <>
-              <LinkRow
+              <ListRow
                 icon="person-circle-outline"
                 label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
               />
               {!nicknameApiMissing && (
-                <LinkRow
+                <ListRow
                   icon="happy-outline"
                   label="닉네임"
                   value={profile ? profile.displayName : profileResource.loading ? '불러오는 중' : '불러오지 못함'}
@@ -227,20 +233,21 @@ export default function SettingsScreen() {
                   }
                 />
               )}
-              <LinkRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
+              <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
             </>
           ) : (
-            <LinkRow
+            <ListRow
               icon="log-in-outline"
               label="로그인하기"
               value="게스트로 이용 중"
+              last
               onPress={handleGoToLogin}
             />
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>알림</Text>
+          <SectionTitle title="알림" />
           {isGuest && (
             <View style={styles.guestNotice}>
               <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
@@ -250,37 +257,35 @@ export default function SettingsScreen() {
                   지금 고른 게시판·분야·제보 알림 설정은 로그인하면 그대로 적용돼요.
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.guestNoticeBtn}
+              <Button
+                label="로그인"
+                size="sm"
+                fullWidth={false}
                 onPress={handleGoToLogin}
-                accessibilityRole="button"
                 accessibilityLabel="로그인하기"
-              >
-                <Text style={styles.guestNoticeBtnText}>로그인</Text>
-              </TouchableOpacity>
+              />
             </View>
           )}
-          <View style={[styles.row, styles.rowLast]}>
-            <View style={styles.rowLabel}>
-              <Ionicons name="notifications-outline" size={17} color={COLORS.textSecondary} />
-              <View style={styles.rowLabelStack}>
-                <Text style={styles.rowLabelText}>구독 소식 알림</Text>
-                <Text style={styles.rowSubText}>
-                  {subscriptionAlert
-                    ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
-                    : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'}
-                </Text>
-              </View>
-            </View>
-            <ToggleSwitch
-              value={subscriptionAlert}
-              onToggle={handleToggleSubscriptionAlert}
-              accessibilityLabel="구독 소식 알림"
-            />
-          </View>
+          <ListRow
+            icon="notifications-outline"
+            label="구독 소식 알림"
+            description={
+              subscriptionAlert
+                ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
+                : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
+            }
+            last
+            right={
+              <ToggleSwitch
+                value={subscriptionAlert}
+                onToggle={handleToggleSubscriptionAlert}
+                accessibilityLabel="구독 소식 알림"
+              />
+            }
+          />
           {subscriptionAlert && status === 'authenticated' && systemBlocked && (
             <View style={styles.permissionCard}>
-              <Ionicons name="alert-circle-outline" size={17} color="#B45309" />
+              <Ionicons name="alert-circle-outline" size={18} color={COLORS.warningIcon} />
               <Text style={styles.permissionText}>
                 {permission.status === 'denied'
                   ? '휴대폰 설정에서 홍익온 알림이 꺼져 있어 알림이 오지 않아요.'
@@ -300,49 +305,44 @@ export default function SettingsScreen() {
           {/* 제보 알림. 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
           <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
             <Text style={styles.subGroupTitle}>제보 알림</Text>
-            <View style={styles.subRow}>
-              <View style={styles.rowLabel}>
-                <Ionicons name="checkmark-done-outline" size={17} color={COLORS.textSecondary} />
-                <View style={styles.rowLabelStack}>
-                  <Text style={styles.rowLabelText}>내 제보 결과 알림</Text>
-                  <Text style={styles.rowSubText}>올린 제보가 지도에 올라가거나 반려되면 알려드려요</Text>
-                </View>
-              </View>
-              <ToggleSwitch
-                value={reportStatusAlert}
-                onToggle={toggleReportStatusAlert}
-                accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
-              />
-            </View>
-            <View style={[styles.subRow, styles.rowLast]}>
-              <View style={styles.rowLabel}>
-                <Ionicons name="megaphone-outline" size={17} color={COLORS.textSecondary} />
-                <View style={styles.rowLabelStack}>
-                  <Text style={styles.rowLabelText}>캠퍼스 새 제보 알림</Text>
-                  <Text style={styles.rowSubText}>
-                    새 제보가 지도에 올라오면 알려드려요 · 30분에 한 번까지
-                  </Text>
-                </View>
-              </View>
-              <ToggleSwitch
-                value={newReportAlert}
-                onToggle={toggleNewReportAlert}
-                accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
-              />
-            </View>
+            <ListRow
+              icon="checkmark-done-outline"
+              label="내 제보 결과 알림"
+              description="올린 제보가 지도에 올라가거나 반려되면 알려드려요"
+              right={
+                <ToggleSwitch
+                  value={reportStatusAlert}
+                  onToggle={toggleReportStatusAlert}
+                  accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
+                />
+              }
+            />
+            <ListRow
+              icon="megaphone-outline"
+              label="캠퍼스 새 제보 알림"
+              description="새 제보가 지도에 올라오면 알려드려요 · 30분에 한 번까지"
+              last
+              right={
+                <ToggleSwitch
+                  value={newReportAlert}
+                  onToggle={toggleNewReportAlert}
+                  accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
+                />
+              }
+            />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>구독 게시판</Text>
-          <LinkRow
+          <SectionTitle title="구독 게시판" />
+          <ListRow
             icon="bookmarks-outline"
             label="구독 관리"
             value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
             onPress={() => setSubManagerVisible(true)}
           />
           {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
-          <LinkRow
+          <ListRow
             icon="pricetag-outline"
             label="키워드 알림"
             value={isGuest ? '로그인 후 사용' : undefined}
@@ -369,8 +369,8 @@ export default function SettingsScreen() {
                       <View key={item.id} style={styles.boardRow}>
                         <Ionicons
                           name={on ? 'notifications' : 'notifications-off-outline'}
-                          size={14}
-                          color={on ? COLORS.primary : COLORS.textTertiary}
+                          size={16}
+                          color={on ? COLORS.primary : COLORS.iconMuted}
                         />
                         <Text
                           style={[styles.boardName, !on && styles.boardNameOff]}
@@ -395,13 +395,12 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleInline]}>알림 받을 분야</Text>
-            <Text style={styles.sectionCount}>
-              {alertCategories.length}/{ALL_CATEGORIES.length}
-            </Text>
-          </View>
-          <Text style={styles.sectionDesc}>구독한 게시판의 새 소식 중 선택한 분야만 알려드려요</Text>
+          <SectionTitle
+            title="알림 받을 분야"
+            meta={`${alertCategories.length}/${ALL_CATEGORIES.length}`}
+            description="구독한 게시판의 새 소식 중 선택한 분야만 알려드려요"
+            style={styles.sectionTitleWithDesc}
+          />
           <View style={[styles.categoryGrid, detailDimmed && styles.dimmed]}>
             {ALL_CATEGORIES.map((cat) => {
               const isOn = alertCategories.includes(cat)
@@ -423,7 +422,7 @@ export default function SettingsScreen() {
                 >
                   <Ionicons
                     name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={13}
+                    size={14}
                     color={isOn ? colors.text : COLORS.textTertiary}
                   />
                   <Text style={[styles.categoryChipText, { color: isOn ? colors.text : COLORS.textTertiary }]}>
@@ -435,54 +434,54 @@ export default function SettingsScreen() {
           </View>
           {alertCategories.length === 0 && (
             <View style={styles.warnRow}>
-              <Ionicons name="alert-circle-outline" size={13} color={COLORS.danger} />
+              <Ionicons name="alert-circle-outline" size={14} color={COLORS.danger} />
               <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
             </View>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>일반</Text>
-          <LinkRow
+          <SectionTitle title="일반" />
+          <ListRow
             icon="key-outline"
             label="앱 권한"
             value={permissionSummary}
             onPress={() => setActiveModal('permissions')}
           />
-          <LinkRow
+          <ListRow
             icon="megaphone-outline"
             label="공지사항"
             onPress={() => setActiveModal('notices')}
           />
-          <LinkRow
+          <ListRow
             icon="information-circle-outline"
             label="앱 버전"
             value={Constants.expoConfig?.version ?? '-'}
           />
-          <LinkRow
+          <ListRow
             icon="logo-instagram"
             label="제휴 출처"
             value={`${PARTNER_SOURCES.length}개 소속`}
             onPress={() => setActiveModal('sources')}
           />
-          <LinkRow
+          <ListRow
             icon="storefront-outline"
             label="제휴 제보하기"
             onPress={() => setActiveModal('partnerSuggest')}
           />
-          <LinkRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
-          <LinkRow icon="school-outline" label="학교" value="홍익대학교" />
+          <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
+          <ListRow icon="school-outline" label="학교" value="홍익대학교" />
           {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
           {SHOW_DEVELOPER_TOOLS && (
-            <LinkRow
+            <ListRow
               icon="pulse-outline"
               label="앱 상태 확인"
               onPress={() => navigation.navigate('AppStatus')}
             />
           )}
-          <LinkRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
-          <LinkRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
-          <LinkRow icon="refresh-outline" label="설정 초기화" danger onPress={handleReset} />
+          <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
+          <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
+          <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
         </View>
 
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
@@ -564,203 +563,126 @@ export default function SettingsScreen() {
   )
 }
 
-interface LinkRowProps {
-  icon: keyof typeof Ionicons.glyphMap
-  label: string
-  value?: string
-  danger?: boolean
-  onPress?: () => void
-}
-
-function LinkRow({ icon, label, value, danger = false, onPress }: LinkRowProps) {
-  return (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={onPress}
-      disabled={!onPress}
-      // 누를 수 없는 줄(앱 버전 등)은 버튼으로 읽히지 않게 한다.
-      accessibilityRole={onPress ? 'button' : undefined}
-    >
-      <View style={styles.rowLabel}>
-        <Ionicons name={icon} size={17} color={danger ? COLORS.danger : COLORS.textSecondary} />
-        <Text style={[styles.rowLabelText, danger && styles.dangerText]}>{label}</Text>
-      </View>
-      <View style={styles.rowValue}>
-        {value && <Text style={styles.rowValueText}>{value}</Text>}
-        {!danger && onPress && <Ionicons name="chevron-forward" size={13} color="#ddd" />}
-      </View>
-    </TouchableOpacity>
-  )
-}
-
 const styles = StyleSheet.create({
-  // SafeAreaView 상단 인셋은 첫 section의 흰 배경과 맞춰 흰색으로 둔다.
-  // 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
+  // SafeAreaView 상단 인셋·큰 제목 줄은 흰색, 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
   container: { flex: 1, backgroundColor: COLORS.white },
-  scroll: { flex: 1, backgroundColor: COLORS.sectionBg },
-  section: { backgroundColor: COLORS.white, marginBottom: 8 },
-  sectionTitle: { fontFamily: FONTS.regular,
-    fontSize: 10,
-    color: COLORS.textTertiary,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
-    letterSpacing: 0.6,
-  },
-  sectionDesc: { fontFamily: FONTS.regular,
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    lineHeight: 17,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
-  },
-  rowLabel: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  rowLabelText: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
-  dangerText: { color: COLORS.danger },
-  rowValue: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  rowValueText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
+  scroll: { flex: 1, backgroundColor: COLORS.background },
+  section: { backgroundColor: COLORS.white, marginBottom: SPACING.sm },
+  sectionTitleWithDesc: { paddingBottom: SPACING.md },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingBottom: 14,
-    gap: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+    gap: SPACING.sm,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    gap: SPACING.xs,
+    height: 34,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
   },
   categoryChipOff: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E0E0E0',
+    backgroundColor: COLORS.fill,
+    borderColor: COLORS.border,
   },
-  categoryChipText: { fontSize: 13, fontFamily: FONTS.medium },
+  categoryChipText: { ...TYPE.label, fontSize: 13 },
   dimmed: { opacity: 0.45 },
-  rowLast: { borderBottomWidth: 0 },
-  subGroup: { borderTopWidth: 0.5, borderTopColor: '#f4f4f4', paddingTop: 4 },
+  subGroup: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
   subGroupTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
+    ...TYPE.caption,
+    fontFamily: FONTS.semibold,
     color: COLORS.textTertiary,
-    letterSpacing: 0.4,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
   },
-  subRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#f4f4f4',
-  },
-  rowLabelStack: { flex: 1, gap: 2 },
-  rowSubText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, lineHeight: 16 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
-  sectionTitleInline: { flex: 1 },
-  sectionCount: { fontFamily: FONTS.medium, fontSize: 11, color: COLORS.textTertiary, paddingTop: 6 },
   guestNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 12,
-    marginTop: 4,
-    marginBottom: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#F4F3FA',
+    gap: SPACING.md,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.xs,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primarySoft,
   },
-  guestNoticeBody: { flex: 1, gap: 2 },
-  guestNoticeTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.textPrimary },
-  guestNoticeText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 16, color: COLORS.textSecondary },
-  guestNoticeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
+  guestNoticeBody: { flex: 1, gap: SPACING.xxs },
+  guestNoticeTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  guestNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
+  boardList: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
   },
-  guestNoticeBtnText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.white },
-  boardList: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   boardListHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
-  boardListTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.textPrimary },
-  boardListCount: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textTertiary },
-  boardGroup: { marginTop: 8 },
+  boardListTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  boardListCount: { ...TYPE.caption, color: COLORS.textTertiary },
+  boardGroup: { marginTop: SPACING.sm },
   boardGroupTitle: {
-    fontFamily: FONTS.bold,
-    fontSize: 11,
+    ...TYPE.caption,
+    fontFamily: FONTS.semibold,
     color: COLORS.textTertiary,
-    letterSpacing: 0.4,
-    marginBottom: 2,
+    marginBottom: SPACING.xxs,
   },
   boardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
-  boardName: { flex: 1, fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary },
+  boardName: { ...TYPE.body, flex: 1, color: COLORS.textPrimary },
   boardNameOff: { color: COLORS.textSecondary },
   emptyHint: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    lineHeight: 17,
+    ...TYPE.caption,
     color: COLORS.textTertiary,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
-  warnRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingBottom: 14, marginTop: -4 },
-  warnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.danger },
-  brandFooter: { alignItems: 'center', paddingTop: 16, opacity: 0.35 },
+  warnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+    marginTop: -SPACING.xs,
+  },
+  warnText: { ...TYPE.caption, color: COLORS.danger },
+  brandFooter: { alignItems: 'center', paddingTop: SPACING.lg, opacity: 0.35 },
   unofficialNotice: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontFamily: FONTS.regular,
+    ...TYPE.caption,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    marginTop: 10,
+    paddingHorizontal: SPACING.xxxl,
+    marginTop: SPACING.sm,
   },
   permissionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#FFF7ED',
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.warningSoft,
   },
-  permissionText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: '#92400E' },
-  permissionAction: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
-  withdrawLink: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16, marginTop: 8 },
+  permissionText: { ...TYPE.caption, flex: 1, color: COLORS.warning },
+  permissionAction: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.primary },
+  withdrawLink: { alignSelf: 'center', paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
   withdrawText: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
+    ...TYPE.caption,
     color: COLORS.textSecondary,
     textDecorationLine: 'underline',
   },
-  bottomSpacer: { height: 16 },
+  bottomSpacer: { height: SPACING.lg },
 })

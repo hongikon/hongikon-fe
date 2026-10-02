@@ -38,7 +38,7 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   body: { flex: 1, padding: 20 },
-  date: { fontFamily: FONTS.regular, fontSize: 12, color: '#bbb', marginBottom: 8 },
-  title: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
-  text: { fontFamily: FONTS.regular, fontSize: 13, color: '#666', lineHeight: 22 },
+  date: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary, marginBottom: 8 },
+  title: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
+  text: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 22 },
 })

@@ -34,12 +34,13 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
                   key={link.url}
                   style={styles.linkRow}
                   onPress={() => openExternalUrl(link.url)}
+                  accessibilityRole="link"
                 >
                   <Ionicons name="link-outline" size={14} color={COLORS.primary} />
                   <Text style={styles.linkText} numberOfLines={1}>
                     {link.label}
                   </Text>
-                  <Ionicons name="open-outline" size={13} color="#ccc" />
+                  <Ionicons name="open-outline" size={14} color={COLORS.chevron} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -63,8 +64,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   card: {
-    backgroundColor: COLORS.sectionBg,
-    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
   },

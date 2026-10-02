@@ -34,6 +34,6 @@ export default function PrivacyModal({ visible, onClose }: PrivacyModalProps) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   body: { flex: 1, padding: 20 },
-  title: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
-  text: { fontFamily: FONTS.regular, fontSize: 13, color: '#666', lineHeight: 22 },
+  title: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
+  text: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 22 },
 })
