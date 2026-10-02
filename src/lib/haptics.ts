@@ -70,3 +70,14 @@ export function warning(): void {
 export function selection(): void {
   run((mod) => mod.selectionAsync?.())
 }
+
+/**
+ * 스위치를 켰을 때. 아이폰 무음 스위치를 진동 쪽으로 넘길 때처럼 "스르륵 → 딸깍" 두 박자로 흘러가게 한다:
+ * 부드러운 진동(soft)으로 시작해 아주 짧게 뒤에 또렷한 진동(rigid)으로 끝낸다. 간격은 실기기에서 조절한다.
+ */
+const SWITCH_ON_GAP_MS = 70
+
+export function switchOn(): void {
+  run((mod) => mod.impactAsync?.('soft'))
+  setTimeout(() => run((mod) => mod.impactAsync?.('rigid')), SWITCH_ON_GAP_MS)
+}

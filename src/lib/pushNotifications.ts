@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSettings } from '../contexts/SettingsContext'
 import { requestMapIntent } from './mapIntents'
 import { isAdminNotification, notificationTarget } from '../utils/notificationRouting'
+import { requestSettingsIntent } from './settingsIntents'
 import { navigateToAdminTab, notifyAdminAlertReceived, requestAdminIntent } from './adminIntents'
 import { useIsAdmin } from '../admin/AdminAccess'
 import type { PushNotificationData } from '../types'
@@ -93,7 +94,8 @@ function flushPendingNotification(): void {
  * - NEWS: 상세 화면(id로 상세 API 조회)
  * - REPORT_STATUS(승인)·REPORT_NEW: 지도 탭 + 그 제보 포커스 요청(`mapIntents` focusReport) — MapScreen 이
  *   진행 중 제보를 받아 찾아 띄운다. 지도가 아직 안 떠 있으면(콜드 스타트) 지도 탭이 포커스될 때 처리한다.
- * - REPORT_STATUS(반려): 지도에 없는 제보라 지도 탭만 연다.
+ * - REPORT_STATUS(반려): 지도에 없는 제보라 설정 탭 + 내 제보 내역(`settingsIntents` openMyReports)을 열어 사유를 보여 준다.
+ *   서버에 내역 API 가 없으면(배포 전) 내역 창이 "준비 중" 안내를 띄운다.
  * - ADMIN_*: 관리 탭 + 해당 섹션(`adminIntents`). 관리 탭은 서버가 관리자라고 답한 뒤에 붙으므로, 아직 없으면
  *   요청만 남겨 두고 `AdminAccessProvider` 가 확인을 마친 뒤 관리 탭을 열거나(관리자) 지도 탭 + 안내(아님)로 처리한다.
  */
@@ -108,6 +110,10 @@ function routeForNotification(data: PushNotificationData): void {
     case 'map':
       if (target.focusReportId !== null) requestMapIntent({ type: 'focusReport', reportId: target.focusReportId })
       navigationRef.navigate('Main', { screen: 'Map' })
+      return
+    case 'myReports':
+      requestSettingsIntent({ type: 'openMyReports', reportId: target.reportId })
+      navigationRef.navigate('Main', { screen: 'Settings' })
       return
     case 'admin':
       requestAdminIntent(target.intent)

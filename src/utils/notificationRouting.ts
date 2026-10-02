@@ -7,18 +7,25 @@ import type { AdminIntent } from '../lib/adminIntents'
  *
  * - `news`: 소식 상세(서버 id — 상세 화면이 `GET /news/{id}` 로 받아 그린다).
  * - `map`: 지도 탭. `focusReportId` 가 있으면 그 제보를 찾아 지도 가운데에 띄운다.
+ * - `myReports`: 설정 탭의 내 제보 내역(반려 알림 — 반려된 제보는 지도에 없어 사유를 볼 곳이 내역뿐이다). `reportId` 를 맨 위에 강조한다.
  * - `admin`: 관리 탭의 해당 섹션(제보 승인 대기·숨김, 문의). 관리자가 아니면 지도로 돌린다(`AdminAccessProvider`).
  * - `none`: 형식이 이상한 payload — 조용히 무시한다.
  */
 export type NotificationTarget =
   | { kind: 'news'; newsId: string }
   | { kind: 'map'; focusReportId: number | null }
+  | { kind: 'myReports'; reportId: number | null }
   | { kind: 'admin'; intent: AdminIntent }
   | { kind: 'none' }
 
-const ADMIN_TYPES: ReadonlySet<string> = new Set(['ADMIN_REPORT_PENDING', 'ADMIN_REPORT_FLAGGED', 'ADMIN_FEEDBACK'])
+const ADMIN_TYPES: ReadonlySet<string> = new Set([
+  'ADMIN_REPORT_PENDING',
+  'ADMIN_REPORT_REMINDER',
+  'ADMIN_REPORT_FLAGGED',
+  'ADMIN_FEEDBACK',
+])
 
-/** 관리자 알림(`AdminAlertDispatcher`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
+/** 관리자 알림(`AdminAlertDispatcher`, 승인 대기 리마인드 `AdminReportReminder`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
 export function isAdminNotification(data: unknown): boolean {
   return !!data && typeof data === 'object' && ADMIN_TYPES.has(String((data as { type?: unknown }).type))
 }
@@ -40,8 +47,10 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
       return /^\d+$/.test(newsId) ? { kind: 'news', newsId } : { kind: 'none' }
     }
     case 'REPORT_STATUS': {
-      // 반려된 제보는 지도에 없으니 지도만 연다.
+      // 승인: 지도에서 그 제보를 띄운다. 반려: 지도에 없으니 내 제보 내역에서 사유와 함께 보여 준다.
+      // 그 밖의 상태(앞으로 생길 값)는 지도만 연다.
       const { status, reportId } = data as { status?: unknown; reportId?: unknown }
+      if (status === 'REJECTED') return { kind: 'myReports', reportId: toReportId(reportId) }
       return { kind: 'map', focusReportId: status === 'ACTIVE' ? toReportId(reportId) : null }
     }
     case 'REPORT_NEW':
@@ -51,6 +60,16 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
       return {
         kind: 'admin',
         intent: { section: 'reports', reportFilter: 'PENDING', reportId: toReportId((data as { reportId?: unknown }).reportId) },
+      }
+    // 승인 대기 리마인드("검토 대기 중인 제보가 N건") — 승인 대기 목록을 열고 가장 오래된 제보를 강조한다.
+    case 'ADMIN_REPORT_REMINDER':
+      return {
+        kind: 'admin',
+        intent: {
+          section: 'reports',
+          reportFilter: 'PENDING',
+          reportId: toReportId((data as { oldestReportId?: unknown }).oldestReportId),
+        },
       }
     case 'ADMIN_REPORT_FLAGGED':
       return {

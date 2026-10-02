@@ -1,7 +1,7 @@
 import { navigationRef } from '../navigation/navigationRef'
 
 /**
- * 관리자 알림(ADMIN_*)을 탭했을 때 관리 탭에 넘기는 한 번짜리 요청 — `mapIntents` 와 같은 방식.
+ * 관리자 알림(ADMIN_*, 승인 대기 리마인드 ADMIN_REPORT_REMINDER 포함)을 탭했을 때 관리 탭에 넘기는 한 번짜리 요청 — `mapIntents` 와 같은 방식.
  * - reports: 제보 검토 섹션을 그 필터(승인 대기 / 숨김)로 열고, reportId 가 있으면 그 제보를 맨 위에 강조한다.
  * - feedback: 문의 섹션을 열고, feedbackId 가 있으면 그 문의를 맨 위에 강조한다.
  *

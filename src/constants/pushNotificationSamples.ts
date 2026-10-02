@@ -2,7 +2,7 @@ import type { PushNotificationData } from '../types'
 
 /**
  * 알림 포맷을 눈으로 확인하기 위한 표본. 제목·본문은 서버 발송부(hongikon-be `NewsPushDispatcher`,
- * `ReportPushDispatcher`, `AdminAlertDispatcher`)가 실제로 채우는 문구와 같게 맞췄다.
+ * `ReportPushDispatcher`, `AdminAlertDispatcher`, `AdminReportReminder`)가 실제로 채우는 문구와 같게 맞췄다.
  * 관리자 알림 표본은 관리자 계정이면 관리 탭으로, 아니면 지도 탭 + 안내로 열린다.
  * `AppStatusScreen`(기기 내 로컬 알림 — 탭하면 실제 푸시와 같은 라우팅)과
  * `TempNotificationPreviewScreen`(`/temp/notifications`, 웹 카드 미리보기) 양쪽이 같은 표본을 쓴다.
@@ -59,6 +59,13 @@ export const PUSH_NOTIFICATION_SAMPLES: PushNotificationSample[] = [
     title: '[관리] 새 제보 3건 승인 대기',
     body: `최근: ${SAMPLE_REPORT_TITLE} · 학생회관 1층`,
     data: { type: 'ADMIN_REPORT_PENDING', reportId: SAMPLE_REPORT_ID, count: 3 },
+  },
+  {
+    label: '[관리] 승인 대기 리마인드',
+    channelId: 'admin',
+    title: '[관리] 검토 대기 중인 제보가 2건 있어요',
+    body: '가장 오래된 것 45분 전',
+    data: { type: 'ADMIN_REPORT_REMINDER', oldestReportId: SAMPLE_REPORT_ID, count: 2 },
   },
   {
     label: '[관리] 새 문의',

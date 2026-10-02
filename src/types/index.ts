@@ -96,6 +96,7 @@ export type FacilityKind =
   | '라운지'
   | '수면실'
   | '학생처'
+  | '학과사무실'
   | '행사·전시'
   | '흡연구역'
   | '엘리베이터'
@@ -383,5 +384,7 @@ export type PushNotificationData =
       reportId: number
     }
   | { type: 'ADMIN_REPORT_PENDING'; reportId: number; count?: number }
+  /** 승인 대기 리마인드(`AdminReportReminder`) — count: 30분 넘게 대기 중인 제보 수, oldestReportId: 가장 오래된 대기 제보 */
+  | { type: 'ADMIN_REPORT_REMINDER'; oldestReportId: number; count?: number }
   | { type: 'ADMIN_REPORT_FLAGGED'; reportId: number; count?: number }
   | { type: 'ADMIN_FEEDBACK'; feedbackId: number; count?: number }
