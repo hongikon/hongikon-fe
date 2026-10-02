@@ -1019,6 +1019,17 @@ export function buildMapHTML(
         }
 
         // 제보 알림을 탭해 들어온 경우. 그 제보 자리를 화면 가운데로 가져온다(마커는 setReports 가 그린다).
+        // 관리자 "지도에서 보기": 승인 전 제보도 볼 수 있게 그 좌표에 임시 핀 하나를 찍는다(다음 미리보기나 다시 불러오면 사라짐).
+        if (msg.type === 'previewPin') {
+          if (window.__previewPin) window.__previewPin.setMap(null);
+          window.__previewPin = new naver.maps.Marker({
+            position: new naver.maps.LatLng(msg.lat, msg.lng),
+            map: map,
+            zIndex: 1000,
+            title: msg.label || '제보 위치',
+          });
+        }
+
         if (msg.type === 'focusReport') {
           map.setCenter(new naver.maps.LatLng(msg.lat, msg.lng));
           map.setZoom(msg.zoom || 18);

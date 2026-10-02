@@ -22,6 +22,8 @@ import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, 
 import { confirmAction } from '../../utils/dialog'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportImageUrls } from '../../utils/reports'
+import { requestMapIntent } from '../../lib/mapIntents'
+import { navigationRef } from '../../navigation/navigationRef'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
 const NOTE_MAX_LENGTH = 200
@@ -265,7 +267,14 @@ function ReportCard({
 
   const openMap = () => {
     if (report.lat === null || report.lng === null) return
-    openExternalUrl(`https://map.naver.com/p/search/${report.lat},${report.lng}`)
+    if (app) {
+      // 앱 관리 탭: 우리 지도 탭으로 옮겨 그 좌표에 핀을 찍는다(승인 전 제보도 확인 가능).
+      requestMapIntent({ type: 'previewLocation', lat: report.lat, lng: report.lng, label: report.title })
+      if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Map' })
+      return
+    }
+    // 웹 /admin: 좌표 검색이 정확한 구글 지도로 연다(네이버 좌표 검색은 위치가 어긋났다).
+    openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${report.lat},${report.lng}`)
   }
 
   const location = [report.buildingName, report.floor !== null ? `${report.floor}층` : null].filter(Boolean).join(' ')

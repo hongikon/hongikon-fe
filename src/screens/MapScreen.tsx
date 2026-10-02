@@ -744,8 +744,18 @@ export default function MapScreen() {
     }
     if (intent?.type === "startReport") {
       handleStartReportPicker();
+      return;
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker]);
+    if (intent?.type === "previewLocation") {
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
+      postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: 18 });
+      postToMap({ type: "previewPin", lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치" });
+      toast.show({ message: `제보 위치 · ${intent.label ?? "지도 가운데"}`, tone: "info" });
+    }
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, postToMap, toast]);
 
   useFocusEffect(handleMapIntent);
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
