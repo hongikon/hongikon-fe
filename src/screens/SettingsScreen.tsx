@@ -38,7 +38,13 @@ import { openSitePage } from '../utils/openSitePage'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import { LargeTitleHeader } from '../components/common/ScreenHeader'
-import { getMyProfile, isNicknameApiKnownMissing, type MyProfile } from '../apis/users'
+import {
+  getMyMemberCode,
+  getMyProfile,
+  isMemberCodeApiKnownMissing,
+  isNicknameApiKnownMissing,
+  type MyProfile,
+} from '../apis/users'
 import { useApiResource } from '../hooks/useApiResource'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
@@ -132,27 +138,26 @@ export default function SettingsScreen() {
     })
   }
 
-  // 회원 번호(토큰 sub = userId). 관리자 지정·문의 때 알려 달라고 보여 준다. 토큰이 이상하면 줄을 숨긴다.
+  // 회원 번호. 서버가 주는 공개 번호(K7Q2M9XA4D)를 보여 주고, 서버 배포 전에는 예전처럼 토큰 sub(= userId)를 #123 으로 보여 준다.
+  // 관리자 지정·문의 때 알려 달라고 보여 준다. 토큰이 이상하면 줄을 숨긴다.
   const memberId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
 
   /**
    * 회원 번호 복사. 앱에는 클립보드 모듈(expo-clipboard)이 없어 — 넣으면 새 빌드가 필요하다 — 웹만 실제로 복사하고,
    * 앱은 토스트로 번호를 크게 보여 준다.
    */
-  const handleCopyMemberId = async () => {
-    if (memberId === null) return
-    const text = String(memberId)
+  const handleCopyMemberNumber = async (text: string) => {
     haptics.tapLight()
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       try {
-        await navigator.clipboard.writeText(text)
-        toast.show({ message: `회원 번호를 복사했어요 · #${text}` })
+        await navigator.clipboard.writeText(text.replace(/^#/, ''))
+        toast.show({ message: `회원 번호를 복사했어요 · ${text}` })
         return
       } catch {
         // 권한이 막힌 브라우저 등은 아래처럼 번호만 보여 준다.
       }
     }
-    toast.show({ message: `내 회원 번호 · #${text}`, tone: 'info' })
+    toast.show({ message: `내 회원 번호 · ${text}`, tone: 'info' })
   }
 
   const handleReset = () => {
@@ -230,6 +235,18 @@ export default function SettingsScreen() {
   useEffect(() => setSavedProfile(null), [profileResource.data])
   const profile = savedProfile ?? profileResource.data
   const nicknameApiMissing = !profile && isNicknameApiKnownMissing()
+
+  // 공개 회원 번호. 닉네임과 같은 이유로 토큰은 ref 로 읽고, API 가 없으면(배포 전) 다시 부르지 않는다.
+  const memberCodeResource = useApiResource<string | null>(
+    (signal) => getMyMemberCode(accessTokenRef.current as string, signal),
+    [isGuest],
+    { enabled: !isGuest && !!accessToken && !isMemberCodeApiKnownMissing(), refetchOnForeground: false },
+  )
+  const memberCode = memberCodeResource.data ?? profile?.memberCode ?? null
+  // 서버에 회원 번호가 없을 때(배포 전·빈 값)만 예전 #id 표시로 돌아간다. 불러오는 중·일시 오류에는 id 를 내보이지 않는다.
+  const memberCodeFallback =
+    !memberCode && (isMemberCodeApiKnownMissing() || memberCodeResource.data === null)
+  const memberNumber = memberCode ?? (memberCodeFallback && memberId !== null ? `#${memberId}` : null)
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
   const detailDimmed = !subscriptionAlert
 
@@ -271,10 +288,22 @@ export default function SettingsScreen() {
                 <ListRow
                   icon="id-card-outline"
                   label="회원 번호"
-                  value={`#${memberId}`}
+                  value={
+                    memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')
+                  }
                   description="관리자 지정이나 문의할 때 이 번호를 알려 주세요."
-                  onPress={() => void handleCopyMemberId()}
-                  accessibilityLabel={`회원 번호 ${memberId}. ${Platform.OS === 'web' ? '눌러서 복사' : '눌러서 번호 보기'}`}
+                  onPress={
+                    memberNumber
+                      ? () => void handleCopyMemberNumber(memberNumber)
+                      : memberCodeResource.loading
+                        ? undefined
+                        : memberCodeResource.retry
+                  }
+                  accessibilityLabel={
+                    memberNumber
+                      ? `회원 번호 ${memberNumber.replace(/^#/, '')}. ${Platform.OS === 'web' ? '눌러서 복사' : '눌러서 번호 보기'}`
+                      : '회원 번호'
+                  }
                 />
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />

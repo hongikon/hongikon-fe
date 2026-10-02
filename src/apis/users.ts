@@ -11,6 +11,8 @@ export interface MyProfile {
   displayName: string
   /** 앱 닉네임을 지웠을 때 보일 이름(로그인 닉네임 첫 글자만 남기고 가린 값). */
   maskedDefaultName: string
+  /** 공개 회원 번호(영문 대문자·숫자 10자리, 예: K7Q2M9XA4D). 지금 서버의 `/users/me` 에는 없고 `getMyMemberCode` 로 따로 받는다 — 나중에 실리면 그대로 쓴다. */
+  memberCode?: string | null
 }
 
 /**
@@ -72,4 +74,34 @@ export function updateAppNickname(nickname: string, accessToken: string): Promis
 /** 앱 닉네임을 지우고 가린 로그인 닉네임으로 돌아간다. */
 export function clearAppNickname(accessToken: string): Promise<MyProfile> {
   return apiRequest<MyProfile>('/users/me/nickname', { method: 'DELETE', accessToken, retries: 0 })
+}
+
+/** `GET /users/me/member-code` (hongikon-be `MemberCodeController`). */
+interface MemberCodeResponse {
+  memberCode: string | null
+}
+
+/** 공개 회원 번호 형식: 영문 대문자·숫자 10자리. 다른 값이 오면 쓰지 않고 예전 표시(#id)로 돌아간다. */
+const MEMBER_CODE_PATTERN = /^[A-Z0-9]{10}$/
+
+/** 닉네임 API 와 같은 이유로, 회원 번호 API 가 없다고 판정되면 앱을 다시 켤 때까지 부르지 않는다. */
+let memberCodeApiMissing = false
+
+export function isMemberCodeApiKnownMissing(): boolean {
+  return memberCodeApiMissing
+}
+
+/**
+ * 내 공개 회원 번호(예: `K7Q2M9XA4D`). 순번인 회원 id 대신 설정 화면에 보여 준다.
+ * 서버 배포 전(404/405/재발급 뒤 401)이면 `isMemberCodeApiKnownMissing()` 가 true 가 되고, 화면은 예전처럼 `#id` 를 보여 준다.
+ */
+export async function getMyMemberCode(accessToken: string, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const response = await apiRequest<MemberCodeResponse>('/users/me/member-code', { accessToken, signal })
+    const code = typeof response?.memberCode === 'string' ? response.memberCode.trim().toUpperCase() : ''
+    return MEMBER_CODE_PATTERN.test(code) ? code : null
+  } catch (error) {
+    if (isNicknameApiMissing(error)) memberCodeApiMissing = true
+    throw error
+  }
 }
