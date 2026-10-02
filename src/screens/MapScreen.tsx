@@ -618,15 +618,12 @@ export default function MapScreen() {
       postToMap({ type: "clearReports" });
       return;
     }
-    // 켤 때는 편의시설·제휴 갈래를 정리한다(최상단 칩은 한 번에 하나).
-    setLayer(null);
+    // '제보'는 '이벤트' 갈래 안의 하위 칩이다. 갈래(layer)는 그대로 두고 열려 있던 배너만 닫는다 —
+    // 예전엔 여기서 layer 까지 비워 '이벤트' 줄이 통째로 사라졌다. 편의시설·제휴 정리는 갈래를 바꿀 때(handleSelectLayer) 한다.
     setSelectedPartner(null);
     setSelectedBuilding(null);
-    setSelectedAffiliation(null);
-    setSelectedCategory(null);
-    postToMap({ type: "clearPartners" });
-    applyFacilityKind(null);
-  }, [reportsOn, postToMap, applyFacilityKind]);
+    setSelectedFacilityBuilding(null);
+  }, [reportsOn, postToMap]);
 
   /**
    * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
