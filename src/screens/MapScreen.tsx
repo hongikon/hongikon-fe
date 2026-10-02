@@ -15,6 +15,8 @@ import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import FloorChips from "../components/map/FloorChips";
 import BuildingSheet from "../components/map/BuildingSheet";
+import FacilitySheet from "../components/map/FacilitySheet";
+import { FACILITIES } from "../constants/facilities";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import PartnerSuggestModal from "../components/settings/PartnerSuggestModal";
@@ -172,6 +174,8 @@ export default function MapScreen() {
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
+  /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
+  const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
@@ -265,6 +269,7 @@ export default function MapScreen() {
         if (msg.type === "buildingTap") {
           const building = BUILDINGS.find((b) => b.name === msg.name) ?? null;
           setSelectedPartner(null);
+          setSelectedFacilityBuilding(null);
           setSelectedBuilding(building);
           return;
         }
@@ -272,6 +277,7 @@ export default function MapScreen() {
         if (msg.type === "partnerTap") {
           const partner = PARTNERS.find((p) => p.id === msg.id) ?? null;
           setSelectedBuilding(null);
+          setSelectedFacilityBuilding(null);
           setSelectedPartner(partner);
           return;
         }
@@ -279,6 +285,7 @@ export default function MapScreen() {
         if (msg.type === "reportTap") {
           const found = reports.find((r) => r.id === msg.id) ?? null;
           setSelectedBuilding(null);
+          setSelectedFacilityBuilding(null);
           setSelectedPartner(null);
           setSelectedReport(found);
           return;
@@ -302,18 +309,19 @@ export default function MapScreen() {
           return;
         }
 
-        // 편의시설 전용 배너는 아직 없다. 그 시설이 있는 건물 배너를 대신 띄운다.
+        // 편의시설 핀: 건물 소개가 아니라 그 시설이 몇 층 어디에 있는지 보여 준다(FacilitySheet).
         if (msg.type === "facilityTap") {
-          const building =
-            BUILDINGS.find((b) => b.name === msg.buildingName) ?? null;
           setSelectedPartner(null);
-          setSelectedBuilding(building);
+          setSelectedBuilding(null);
+          setSelectedReport(null);
+          setSelectedFacilityBuilding(msg.buildingName ?? null);
           return;
         }
 
         // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
         if (msg.type === "buildingDismiss") {
           setSelectedBuilding(null);
+          setSelectedFacilityBuilding(null);
           return;
         }
 
@@ -503,6 +511,7 @@ export default function MapScreen() {
   const applyFacilityKind = useCallback(
     (next: FacilityKind | null) => {
       setFacilityKind(next);
+      setSelectedFacilityBuilding(null);
       if (next === null) {
         postToMap({ type: "clearFacilities" });
         return;
@@ -1003,6 +1012,17 @@ export default function MapScreen() {
 
           {selectedPartner && (
             <PartnerSheet partner={selectedPartner} onClose={handleClosePartner} />
+          )}
+
+          {selectedFacilityBuilding && facilityKind && (
+            <FacilitySheet
+              kind={facilityKind}
+              buildingName={selectedFacilityBuilding}
+              items={FACILITIES.filter(
+                (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
+              )}
+              onClose={() => setSelectedFacilityBuilding(null)}
+            />
           )}
 
           {selectedReport && (

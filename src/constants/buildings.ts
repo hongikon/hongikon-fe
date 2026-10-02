@@ -150,7 +150,6 @@ const BASE_BUILDINGS: Building[] = [
       { label: 'HI_Z4_1F_6_ENTER', lat: 37.550356529076105, lng: 126.92447607260678, minFloor: 1, maxFloor: 1 },
     ] },
   { name: '문헌관 MH동', lat: 37.5506803, lng: 126.9259832, color: '#10B981', category: '강의', type: '미술대학 강의동',
-    description: '미술대학이 주로 이용하고, 1층에 교학처 등 행정시설이 있어요.',
     entrances: [
       { label: 'HI_MH_1F_ENTER', lat: 37.55072454638785, lng: 126.92583369557815, minFloor: 1, maxFloor: 1 },
       { label: 'HI_MH_4F_ENTER', lat: 37.55074043984462, lng: 126.92603454986464, minFloor: 4, maxFloor: 4 },
