@@ -245,7 +245,8 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /** 서버 안내 문구를 믿고 꺼낼 상태 코드(입력·상태 검증 실패). */
-const SERVER_MESSAGE_STATUSES = new Set([400, 409, 422])
+// 403(정지 회원 안내)·404(서버가 직접 준 "없는 제보" — 경로 자체가 없으면 문구가 없다)·429(빈도 제한 안내)도 서버 문구를 읽는다.
+const SERVER_MESSAGE_STATUSES = new Set([400, 403, 404, 409, 422, 429])
 const SERVER_MESSAGE_MAX_LENGTH = 200
 
 /** 실패 응답 본문에서 개발용 원문과(개발 빌드만) 사용자용 서버 문구(`{ message }`, 일부 상태 코드만)를 꺼낸다. */

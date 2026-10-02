@@ -59,14 +59,15 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 ■ 캠퍼스 제보
 - 행사, 푸드트럭 같은 캠퍼스 소식을 지도에 제보할 수 있어요(로그인 필요). 사진은 최대 3장까지 붙일 수 있어요.
 - 제보는 운영진이 확인한 뒤 지도에 표시돼요. 부적절한 제보는 신고하고, 원하지 않는 작성자의 제보는 숨길 수 있어요.
+- 제보에 댓글·답글로 지금 상황을 덧붙일 수 있어요(로그인 필요). 부적절한 댓글도 신고하거나 작성자를 숨길 수 있어요.
 
 ■ 로그인 없이 둘러보기
 - 지도, 공지, 제휴 정보는 로그인 없이 볼 수 있어요.
-- 공지 알림, 제보, 신고는 카카오 또는 Apple로 로그인한 뒤에 쓸 수 있어요.
+- 공지 알림, 제보, 댓글, 신고는 카카오 또는 Apple로 로그인한 뒤에 쓸 수 있어요.
 - 설정 > 회원 탈퇴에서 언제든 계정과 데이터를 삭제할 수 있어요.
 
 ■ 앱 접근권한 안내(모두 선택)
-- 알림: 구독한 게시판의 새 공지, 내 제보 처리 결과와 캠퍼스 새 제보 알림
+- 알림: 구독한 게시판의 새 공지, 내 제보 처리 결과·새 댓글과 캠퍼스 새 제보 알림
 - 카메라: 제보에 붙일 사진(최대 3장) 촬영(카메라로 찍기 버튼을 누를 때만 요청)
 - 사진: 제보에 붙일 사진(최대 3장) 선택(앨범에서 고르기 버튼을 누를 때만 요청)
 선택 접근권한은 허용하지 않아도 앱을 쓸 수 있고, 해당 기능만 제한돼요. 휴대폰 설정에서 언제든 바꿀 수 있어요.
@@ -118,7 +119,7 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 | 연락처 정보 › 이메일 주소 | 문의·정보 제보의 답변용 이메일(선택) | 예 | 아니요 | 앱 기능 |
 | 사용자 콘텐츠 › 사진 또는 비디오 | 제보 첨부 사진 | 예 | 아니요 | 앱 기능 |
 | 사용자 콘텐츠 › 고객 지원 | 문의 내용 | 예 | 아니요 | 앱 기능 |
-| 사용자 콘텐츠 › 기타 사용자 콘텐츠 | 제보(지도에서 고른 좌표 포함), 신고 사유, 정보 제보, 알림 키워드 | 예 | 아니요 | 앱 기능 |
+| 사용자 콘텐츠 › 기타 사용자 콘텐츠 | 제보(지도에서 고른 좌표 포함), 제보 댓글, 신고 사유, 정보 제보, 알림 키워드 | 예 | 아니요 | 앱 기능 |
 | 식별자 › 사용자 ID | 카카오 회원번호, Apple 사용자 식별자, 내부 회원번호 | 예 | 아니요 | 앱 기능 |
 | 식별자 › 기기 ID | Expo 푸시 토큰 | 예 | 아니요 | 앱 기능 |
 | 진단 › 충돌 데이터 | expo-updates 오류 보고 | **아니요** | 아니요 | 앱 기능 |
@@ -161,12 +162,13 @@ HongikOn (홍익온) is a free, unofficial campus companion app for Hongik Unive
 2) Signing in
 - Sign in with Apple is available on the welcome screen and in Settings > 로그인하기. You can also use the Kakao demo account in the Sign-In fields above.
 - Before the first sign-in on a device, a short sheet asks you to accept the Terms of Use, confirm you have read the Privacy Policy, and confirm you are 14 or older. Check "모두 확인하고 동의해요" and tap "동의하고 시작하기".
-- Account deletion: Settings > scroll to the bottom > 회원 탈퇴. This deletes the account, reports, subscriptions and push tokens immediately. For Sign in with Apple users, the server revokes the Apple token via the REST API.
+- Account deletion: Settings > scroll to the bottom > 회원 탈퇴. This deletes the account, reports, comments, subscriptions and push tokens immediately. For Sign in with Apple users, the server revokes the Apple token via the REST API.
 
 3) User-generated content (campus reports) and moderation
 - Map tab > "제보하기" button > pick a location on the map > fill in title/content > optionally attach up to 3 photos > "제보 올리기". Camera and photo library access are requested only when you tap the camera or album button.
 - Every report is PRE-MODERATED: it is shown to other users only after an admin approves it. During the review period an admin is on call and will approve test reports within about 30 minutes (09:00-24:00 KST). Your own pending report is visible to you.
-- Each report has "신고" (report/flag, with reasons) and "이 사용자 숨기기" (block: hides all reports from this author; manage in Settings > 숨긴 사용자) actions. Reports flagged by 3+ users are hidden automatically until an admin reviews them. Admins can remove content and suspend users. Terms of use (zero tolerance for objectionable content) are linked in Settings > 이용약관.
+- Each report has "신고" (report/flag, with reasons) and "이 사용자 숨기기" (block: hides all reports from this author; manage in Settings > 숨긴 사용자) actions. Reports flagged by 3+ users are hidden automatically until an admin reviews them. Admins can remove content and suspend users.
+- Comments on reports: open an approved report on the map; signed-in users can comment and reply one level deep (max 200 characters, rate-limited). Comments appear immediately (post-moderation). Every comment/reply by another user has a "⋮" menu with "신고하기" (flag with the same reasons) and "이 사용자 숨기기" (block the author; blocked authors' reports and comments are both hidden); reports use the same "⋮" menu. A comment flagged by 3 users is hidden automatically; admins can hide, delete or restore comments from the admin console, and suspended users cannot comment. Guests can read comments but must sign in to write or flag. Terms of use (zero tolerance for objectionable content) are linked in Settings > 이용약관.
 - Contact: hongikonsupport@gmail.com, https://hongikon.com/support/
 
 4) Other notes
@@ -176,4 +178,4 @@ HongikOn (홍익온) is a free, unofficial campus companion app for Hongik Unive
 - Some UI copy is Korean only, because the app targets Korean university students.
 ```
 
-제출 전 확인: 메모의 기능(신고 사유, 숨기기, 자동 숨김 3회, 관리자 정지, Apple 토큰 폐기)이 운영 서버에 배포돼 있어야 한다. 없는 기능이 있으면 해당 문장을 지운다.
+제출 전 확인: 메모의 기능(신고 사유, 숨기기, 자동 숨김 3회, 관리자 정지, Apple 토큰 폐기, 제보 댓글과 댓글 신고·자동 숨김)이 운영 서버에 배포돼 있어야 한다. 없는 기능이 있으면 해당 문장을 지운다.

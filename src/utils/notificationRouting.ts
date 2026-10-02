@@ -54,6 +54,8 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
       return { kind: 'map', focusReportId: status === 'ACTIVE' ? toReportId(reportId) : null }
     }
     case 'REPORT_NEW':
+    // 내 제보에 댓글이 달림 — 지도에서 그 제보 시트(댓글 미리보기 포함)를 연다.
+    case 'REPORT_COMMENT':
       return { kind: 'map', focusReportId: toReportId((data as { reportId?: unknown }).reportId) }
     // 관리자 알림. 묶음 알림("새 제보 3건")이면 id 는 마지막 건이다 — 그 건을 맨 위에 강조하고 나머지는 목록에 있다.
     case 'ADMIN_REPORT_PENDING':

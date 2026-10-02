@@ -71,6 +71,27 @@ export interface AdminReportFlag {
   createdAt: string
 }
 
+/** 댓글 상태(hongikon-be `ReportCommentStatus`). 공개 목록에는 VISIBLE 만 나간다. */
+export type AdminCommentStatus = 'VISIBLE' | 'HIDDEN' | 'DELETED'
+
+/** `GET /admin/reports/{id}/comments` 의 한 줄(`AdminCommentResponse`). 숨김·삭제 포함, 작성자 id·로그인 닉네임 원문. */
+export interface AdminComment {
+  id: number
+  reportId: number
+  /** 답글이면 최상위 댓글 id */
+  parentId?: number | null
+  content: string
+  status: AdminCommentStatus
+  authorId: number
+  authorNickname: string | null
+  authorDisplayName: string | null
+  flagCount: number
+  /** 사유별 신고 수. 예: { SPAM: 2, PRIVACY: 1 } */
+  flagReasons: Partial<Record<FlagReason, number>>
+  createdAt: string
+  reviewedAt: string | null
+}
+
 export interface AdminFeedback {
   id: number
   content: string

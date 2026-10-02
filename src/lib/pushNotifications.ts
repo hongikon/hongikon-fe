@@ -92,7 +92,7 @@ function flushPendingNotification(): void {
 /**
  * 알림을 탭했을 때 이동할 화면(`utils/notificationRouting.ts` 가 정한다).
  * - NEWS: 상세 화면(id로 상세 API 조회)
- * - REPORT_STATUS(승인)·REPORT_NEW: 지도 탭 + 그 제보 포커스 요청(`mapIntents` focusReport) — MapScreen 이
+ * - REPORT_STATUS(승인)·REPORT_NEW·REPORT_COMMENT(내 제보에 댓글): 지도 탭 + 그 제보 포커스 요청(`mapIntents` focusReport) — MapScreen 이
  *   진행 중 제보를 받아 찾아 띄운다. 지도가 아직 안 떠 있으면(콜드 스타트) 지도 탭이 포커스될 때 처리한다.
  * - REPORT_STATUS(반려): 지도에 없는 제보라 설정 탭 + 내 제보 내역(`settingsIntents` openMyReports)을 열어 사유를 보여 준다.
  *   서버에 내역 API 가 없으면(배포 전) 내역 창이 "준비 중" 안내를 띄운다.
