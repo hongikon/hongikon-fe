@@ -16,6 +16,7 @@ import {
   reportCategoryLabel,
 } from '../format'
 import type { AdminOverview, AdminReport, AdminReportFlag, ReportStatus, ReportStatusFilter, ReportTargetStatus } from '../types'
+import { ReportAuthorModeration } from '../UserModeration'
 import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, type Tone } from '../ui'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
@@ -259,6 +260,7 @@ function ReportCard({
           textStyle={expired ? styles.expiredText : undefined}
         />
         <Fact icon="person-outline" text={authorText(report)} />
+        {report.authorId !== null ? <ReportAuthorModeration authorId={report.authorId} /> : null}
         <Fact icon="create-outline" text={`${formatDateTime(report.createdAt)} 등록 (${formatRelative(report.createdAt, now)})`} />
       </View>
 

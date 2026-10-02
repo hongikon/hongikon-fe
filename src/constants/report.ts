@@ -1,3 +1,5 @@
+import type { ReportFlagReason } from '../types'
+
 /**
  * 지도를 이만큼 길게 누르면 제보 작성이 열린다.
  *
@@ -30,3 +32,15 @@ export const REPORT_DURATION_OPTIONS_HOURS: readonly number[] = [1, 2, 3, 6]
 
 /** 작성창을 열었을 때 미리 골라져 있는 지속 시간. */
 export const REPORT_DEFAULT_DURATION_HOURS = 2
+
+/**
+ * 제보 신고 사유(`POST /reports/{id}/flags` 의 reason). 서버 `ReportService.FLAG_REASONS` 와 같다.
+ * PRIVACY 는 서버에 나중에 추가됐다 — 구버전 서버가 400 을 주면 ETC 로 다시 보낸다(ReportSheet).
+ */
+export const REPORT_FLAG_REASONS: readonly { value: ReportFlagReason; label: string }[] = [
+  { value: 'FALSE_INFO', label: '허위 정보' },
+  { value: 'SPAM', label: '스팸·광고' },
+  { value: 'INAPPROPRIATE', label: '욕설·혐오' },
+  { value: 'PRIVACY', label: '개인정보 노출' },
+  { value: 'ETC', label: '기타' },
+]

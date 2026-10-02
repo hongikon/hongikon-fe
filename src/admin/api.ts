@@ -3,6 +3,7 @@ import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenRespo
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import type {
   AdminFeedback,
+  AdminUser,
   AdminOverview,
   AdminReport,
   AdminReportFlag,
@@ -183,6 +184,28 @@ export function updateReportStatus(reportId: number, status: ReportTargetStatus,
     body: note ? { status, note } : { status },
     retries: 0,
   })
+}
+
+// ── 회원(이용 정지) ───────────────────────────────────────────────────
+
+/** q: 회원 id(숫자) 또는 닉네임 일부. 비우면 정지된 회원 목록. */
+export async function searchUsers(q: string, signal?: AbortSignal): Promise<AdminUser[]> {
+  const query = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
+  const response = await adminRequest<{ users: AdminUser[] }>(`/admin/users${query}`, { signal })
+  return response?.users ?? []
+}
+
+export function fetchUser(userId: number, signal?: AbortSignal): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}`, { signal })
+}
+
+/** 이용 정지. 정지된 회원은 로그인·조회는 되지만 제보·신고·문의·닉네임 변경이 막힌다. 사유 필수. */
+export function suspendUser(userId: number, reason: string): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/suspend`, { method: 'POST', body: { reason }, retries: 0 })
+}
+
+export function unsuspendUser(userId: number): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/unsuspend`, { method: 'POST', retries: 0 })
 }
 
 // ── 문의 ──────────────────────────────────────────────────────────────

@@ -260,7 +260,7 @@ export type ReportStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'HIDDEN' | 'DELET
 /**
  * 신고 사유. `hongikon-be`의 `ReportService.FLAG_REASONS`와 값이 일치한다.
  */
-export type ReportFlagReason = 'FALSE_INFO' | 'SPAM' | 'INAPPROPRIATE' | 'ETC'
+export type ReportFlagReason = 'FALSE_INFO' | 'SPAM' | 'INAPPROPRIATE' | 'PRIVACY' | 'ETC'
 
 /**
  * 지도의 한 지점에 남긴 실시간 제보. `POST /reports`·`GET /reports` 응답 형태를 따른다.
@@ -293,6 +293,11 @@ export interface Report {
   imageUrl?: string | null
   /** 요청자 본인 작성 여부. 서버가 JWT의 userId로 계산해 내려준다. */
   isMine: boolean
+  /**
+   * 작성자 식별값(서버가 사용자 id 로 만든 불투명한 해시, id 가 아님). "이 사용자의 제보 숨기기"에 쓴다.
+   * 이 기능 전 서버는 없음 — 그때는 숨기기 메뉴를 보이지 않는다(`src/lib/hiddenAuthors.ts`).
+   */
+  authorKey?: string | null
   startsAt: string
   endsAt: string
   status: ReportStatus

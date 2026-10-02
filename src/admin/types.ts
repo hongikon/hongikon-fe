@@ -12,7 +12,7 @@ export type ReportStatusFilter = Exclude<ReportStatus, 'DELETED'> | 'ALL'
 /** PATCH 로 바꿀 수 있는 목표 상태. PENDING 으로 되돌리는 건 허용되지 않는다. */
 export type ReportTargetStatus = Exclude<ReportStatus, 'PENDING'>
 
-export type FlagReason = 'FALSE_INFO' | 'SPAM' | 'INAPPROPRIATE' | 'ETC'
+export type FlagReason = 'FALSE_INFO' | 'SPAM' | 'INAPPROPRIATE' | 'PRIVACY' | 'ETC'
 
 export type FeedbackStatus = 'OPEN' | 'RESOLVED'
 export type FeedbackStatusFilter = FeedbackStatus | 'ALL'
@@ -80,4 +80,19 @@ export interface AdminFeedback {
   resolvedAt: string | null
 }
 
-export type AdminSection = 'dashboard' | 'reports' | 'feedback' | 'tools'
+export type UserStatus = 'ACTIVE' | 'SUSPENDED'
+
+/** `GET /admin/users` 한 줄(백엔드 `AdminUserResponse`). 연락처는 오지 않는다. */
+export interface AdminUser {
+  id: number
+  /** 로그인(카카오/Apple) 닉네임 원문 */
+  nickname: string
+  socialType: 'KAKAO' | 'GOOGLE' | 'APPLE' | string
+  role: 'USER' | 'ADMIN' | string
+  status: UserStatus
+  suspendedReason: string | null
+  suspendedAt: string | null
+  createdAt: string
+}
+
+export type AdminSection = 'dashboard' | 'reports' | 'users' | 'feedback' | 'tools'
