@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Pressable, StyleSheet } from 'react-native'
 import { COLORS } from '../../constants/colors'
+import * as haptics from '../../lib/haptics'
 
 interface ToggleSwitchProps {
   value: boolean
@@ -45,7 +46,11 @@ export default function ToggleSwitch({
 
   return (
     <Pressable
-      onPress={onToggle}
+      onPress={() => {
+        // 꺼짐 → 켜짐으로 바꿀 때만 가볍게 진동한다(끌 때는 조용히).
+        if (!value) haptics.selection()
+        onToggle()
+      }}
       hitSlop={8}
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
