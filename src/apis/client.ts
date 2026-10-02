@@ -188,6 +188,8 @@ export interface ApiRequestOptions {
    * 재발급이 의미 없거나, 호출부가 직접 재발급을 다루는 경우에 쓴다.
    */
   skipTokenRefresh?: boolean
+  /** 추가 요청 헤더(예: 조회 수 중복 방지용 `X-Install-Id`). Authorization·Content-Type 은 여기서 덮어쓰지 않는다. */
+  headers?: Record<string, string>
 }
 
 /**
@@ -436,7 +438,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const { method = 'GET', body, accessToken, timeoutMs, retries, signal, skipTokenRefresh } = options
 
   return withTokenRefresh(accessToken, async (token) => {
-    const headers: Record<string, string> = { Accept: 'application/json' }
+    const headers: Record<string, string> = { ...(options.headers ?? {}), Accept: 'application/json' }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     if (token) headers.Authorization = `Bearer ${token}`
 

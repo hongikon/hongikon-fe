@@ -322,6 +322,21 @@ export type ReportListItem = Omit<Report, 'content' | 'status'> & {
    * 시트는 댓글 목록을 받아 본 뒤 그 수(`totalElements`)를 쓴다.
    */
   commentCount?: number | null
+  /**
+   * 커뮤니티(🔥·관심·조회) 필드 — hongikon-be `feat/report-community`. 그 전 서버는 없음 → 각 기능을 숨긴다.
+   * fireCount: 🔥 총 수, recentFireCount: 최근 60분 🔥 수, hot: 최근 60분 🔥 5개 이상(서버 설정값).
+   */
+  fireCount?: number
+  recentFireCount?: number
+  hot?: boolean
+  /** 내가 🔥 를 눌렀는지(게스트는 false). */
+  firedByMe?: boolean
+  /** 관심 제보로 등록했는지(게스트는 false). */
+  followedByMe?: boolean
+  /** 조회 수(하루 한 번씩 센 익명 집계). */
+  viewCount?: number
+  /** 내 제보일 때만: 이 제보 알림(댓글·🔥 기념) 받는지. 남의 제보·구서버는 null/없음. */
+  notifyEnabled?: boolean | null
 }
 
 /**
@@ -346,6 +361,10 @@ export interface ReportComment {
   replies?: ReportComment[] | null
   /** 최상위 댓글에만: 공개 답글 수. */
   replyCount?: number
+  /** 👍 수. 댓글 좋아요 기능 전 서버는 없음 → 👍 버튼을 숨긴다. */
+  likeCount?: number
+  /** 내가 👍 를 눌렀는지(게스트는 false). */
+  likedByMe?: boolean
 }
 
 /** `GET /reports/{id}/comments` 응답. 페이지 단위는 최상위 댓글. */
@@ -441,6 +460,10 @@ export type PushNotificationData =
       reportId: number
       commentId?: number
     }
+  /** 내 제보의 🔥 가 10·50·100개를 넘음(`ReportFirePushDispatcher`). */
+  | { type: 'REPORT_FIRE'; reportId: number; milestone?: number }
+  /** 관심 제보 알림 — 시작(START)·곧 끝남(ENDING)·새 댓글 묶음(COMMENT). */
+  | { type: 'REPORT_FOLLOW'; reportId: number; kind?: 'START' | 'ENDING' | 'COMMENT' }
   | { type: 'ADMIN_REPORT_PENDING'; reportId: number; count?: number }
   /** 승인 대기 리마인드(`AdminReportReminder`) — count: 30분 넘게 대기 중인 제보 수, oldestReportId: 가장 오래된 대기 제보 */
   | { type: 'ADMIN_REPORT_REMINDER'; oldestReportId: number; count?: number }

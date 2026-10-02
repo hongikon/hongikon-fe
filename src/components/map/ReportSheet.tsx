@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -20,6 +20,11 @@ import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
 import ReportCommentsSection from './comments/ReportCommentsSection'
 import ModerationMenu from './ModerationMenu'
+import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
+import ReportOwnerMenu from './ReportOwnerMenu'
+import HotBadge from '../common/HotBadge'
+import { useSettings } from '../../contexts/SettingsContext'
+import { communityErrorMessage, isCommunityApiMissing, recordReportView, setReportNotifications } from '../../apis/community'
 import type { ReportFlagReason, ReportListItem } from '../../types'
 
 interface ReportSheetProps {
@@ -34,8 +39,52 @@ interface ReportSheetProps {
  * content 를 뺀다). 제목·카테고리·시간·사진(서버가 준 presigned URL)까지만 보여주고, 본문이 필요해지면
  * 단건 조회 엔드포인트가 생긴 뒤에 붙인다.
  */
-export default function ReportSheet({ report, onClose }: ReportSheetProps) {
+export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
   const { accessToken, logout } = useAuth()
+  const { settings } = useSettings()
+  // 🔥·관심·조회 수·알림 설정은 시트에서 바로 바뀐다. 목록(지도)을 다시 받기 전까지 시트 사본에 덮어 둔다.
+  const [patch, setPatch] = useState<ReportCommunityPatch & { notifyEnabled?: boolean | null }>({})
+  useEffect(() => setPatch({}), [reportProp.id])
+  const report: ReportListItem = { ...reportProp, ...patch }
+  const applyPatch = (next: ReportCommunityPatch & { notifyEnabled?: boolean | null }) =>
+    setPatch((prev) => ({ ...prev, ...next }))
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
+  // 시트를 열 때 조회 1회(서버가 계정·설치 id 로 하루 한 번만 센다). 조회 수 기능 전 서버면 부르지 않는다.
+  const tracksViews = typeof reportProp.viewCount === 'number'
+  useEffect(() => {
+    if (!tracksViews) return
+    let alive = true
+    void recordReportView(reportProp.id, accessToken).then((result) => {
+      if (alive && result && typeof result.viewCount === 'number') {
+        setPatch((prev) => ({ ...prev, viewCount: result.viewCount }))
+      }
+    })
+    return () => {
+      alive = false
+    }
+    // 토큰이 바뀌어도(재발급) 다시 세지 않는다 — 제보가 바뀔 때만.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportProp.id, tracksViews])
+  const canToggleNotify = report.isMine && typeof report.notifyEnabled === 'boolean' && !!accessToken
+  const handleToggleNotify = async () => {
+    if (!accessToken || typeof report.notifyEnabled !== 'boolean') return
+    const next = !report.notifyEnabled
+    applyPatch({ notifyEnabled: next })
+    try {
+      const result = await setReportNotifications(report.id, next, accessToken)
+      applyPatch({ notifyEnabled: result.enabled })
+      haptics.success()
+      toast.show({ message: result.enabled ? '이 제보 알림을 켰어요' : '이 제보 알림을 껐어요' })
+    } catch (caught) {
+      applyPatch({ notifyEnabled: !next })
+      toast.show({
+        message: isCommunityApiMissing(caught, true)
+          ? '아직 이 기능을 쓸 수 없어요'
+          : communityErrorMessage(caught, '알림 설정을 바꾸지 못했어요.'),
+        tone: 'warning',
+      })
+    }
+  }
   const meta = reportCategoryMeta(report.category)
   const badgeLabel = report.customCategoryLabel || meta.label
   const upcoming = isUpcomingReport(report)
@@ -137,6 +186,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
             <Ionicons name={meta.icon} size={13} color={COLORS.white} />
             <Text style={styles.badgeText}>{badgeLabel}</Text>
           </View>
+          {report.hot ? <HotBadge /> : null}
           {upcoming && (
             // 아직 시작 전인 예정 제보. 지도 마커도 속이 빈 배지로 따로 보인다.
             <View style={[styles.badge, styles.upcomingBadge]} accessibilityLabel="예정 제보, 아직 시작 전">
@@ -184,6 +234,8 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
         </View>
       )}
 
+      <ReportActionRow report={report} onPatch={applyPatch} />
+
       <View style={styles.footer}>
         <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
         <View style={styles.actions}>
@@ -192,6 +244,18 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
           ) : flagged ? (
             <Text style={styles.flaggedText}>신고 접수됨</Text>
           ) : null}
+          {/* 내 제보는 ⋯ 에 "이 제보 알림 끄기/켜기"(서버가 notifyEnabled 를 줄 때만). */}
+          {canToggleNotify && (
+            <TouchableOpacity
+              style={styles.moreBtn}
+              onPress={() => setOwnerMenuOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`내 제보 메뉴(이 제보 알림 ${report.notifyEnabled ? '끄기' : '켜기'})`}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textTertiary} />
+            </TouchableOpacity>
+          )}
           {/* 내 제보에는 숨기기·신고가 필요 없다. 남의 제보는 ⋮ 메뉴 하나로 모은다. */}
           {!report.isMine && (
             <TouchableOpacity
@@ -207,6 +271,16 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
           )}
         </View>
       </View>
+
+      {canToggleNotify && (
+        <ReportOwnerMenu
+          visible={ownerMenuOpen}
+          onClose={() => setOwnerMenuOpen(false)}
+          notifyEnabled={!!report.notifyEnabled}
+          globalOff={!settings.reportStatusAlert}
+          onToggleNotify={() => void handleToggleNotify()}
+        />
+      )}
 
       <ModerationMenu
         visible={menuOpen}

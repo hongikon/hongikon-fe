@@ -45,8 +45,8 @@ export default function ModerationMenu({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="메뉴 닫기">
-        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]} onPress={() => {}}>
+      <Pressable style={menuStyles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="메뉴 닫기">
+        <Pressable style={[menuStyles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]} onPress={() => {}}>
           {step === 'menu' ? (
             <View accessibilityRole="menu">
               {canHide ? (
@@ -77,11 +77,11 @@ export default function ModerationMenu({
             </View>
           ) : (
             <View accessibilityRole="radiogroup" accessibilityLabel={`${target} 신고 사유`}>
-              <Text style={styles.title}>신고 사유를 골라 주세요</Text>
+              <Text style={menuStyles.title}>신고 사유를 골라 주세요</Text>
               {REPORT_FLAG_REASONS.map((item) => (
                 <TouchableOpacity
                   key={item.value}
-                  style={styles.reason}
+                  style={menuStyles.reason}
                   onPress={() => {
                     onClose()
                     onFlag(item.value)
@@ -89,15 +89,15 @@ export default function ModerationMenu({
                   accessibilityRole="button"
                   accessibilityLabel={`${item.label}(으)로 신고하기`}
                 >
-                  <Text style={styles.reasonText}>{item.label}</Text>
+                  <Text style={menuStyles.reasonText}>{item.label}</Text>
                   <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
                 </TouchableOpacity>
               ))}
-              <Text style={styles.hint}>운영진이 확인한 뒤 조치해요. 신고가 쌓이면 바로 숨겨져요.</Text>
+              <Text style={menuStyles.hint}>운영진이 확인한 뒤 조치해요. 신고가 쌓이면 바로 숨겨져요.</Text>
             </View>
           )}
-          <TouchableOpacity style={styles.cancel} onPress={onClose} accessibilityRole="button">
-            <Text style={styles.cancelText}>취소</Text>
+          <TouchableOpacity style={menuStyles.cancel} onPress={onClose} accessibilityRole="button">
+            <Text style={menuStyles.cancelText}>취소</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -105,7 +105,7 @@ export default function ModerationMenu({
   )
 }
 
-function MenuRow({
+export function MenuRow({
   icon,
   label,
   hint,
@@ -122,24 +122,24 @@ function MenuRow({
 }) {
   return (
     <TouchableOpacity
-      style={[styles.row, disabled && styles.rowDisabled]}
+      style={[menuStyles.row, disabled && menuStyles.rowDisabled]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="menuitem"
       accessibilityState={{ disabled }}
     >
-      <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>
+      <View style={[menuStyles.rowIcon, danger && menuStyles.rowIconDanger]}>
         <Ionicons name={icon} size={18} color={danger ? COLORS.danger : COLORS.textSecondary} />
       </View>
-      <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
-        <Text style={styles.rowHint}>{hint}</Text>
+      <View style={menuStyles.rowText}>
+        <Text style={[menuStyles.rowLabel, danger && menuStyles.rowLabelDanger]}>{label}</Text>
+        <Text style={menuStyles.rowHint}>{hint}</Text>
       </View>
     </TouchableOpacity>
   )
 }
 
-const styles = StyleSheet.create({
+export const menuStyles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: 'flex-end', backgroundColor: COLORS.scrim },
   sheet: {
     width: '100%',

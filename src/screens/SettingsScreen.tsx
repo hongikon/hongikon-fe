@@ -404,7 +404,7 @@ export default function SettingsScreen() {
             <ListRow
               icon="checkmark-done-outline"
               label="내 제보 결과 알림"
-              description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리면 알려드려요"
+              description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 🔥 가 모이면 알려드려요"
               right={
                 <ToggleSwitch
                   value={reportStatusAlert}

@@ -56,6 +56,14 @@ export const COLORS = {
   warningSoft: '#FEF3C7',
 
   toggleOff: '#D4D4D4',
+  /**
+   * 🔥(불) 공감 — ui-shots/fire-icon/FINAL.md. 불꽃 바깥 #0B1A8C, 아래 그림자 #05014A(.45), 안쪽 흰색.
+   * 버튼: 안 누름은 회색 테두리 1.5px(fireChipBorder), 누름은 fire 2px. HOT 배지 바탕은 primary, 불꽃은 hotFlame.
+   */
+  fire: '#0B1A8C',
+  fireShade: '#05014A',
+  fireChipBorder: '#DFE2EC',
+  hotFlame: '#4C63FF',
   /** 반투명 검은 막(모달 뒤) */
   scrim: 'rgba(0,0,0,0.45)',
 } as const
