@@ -32,6 +32,7 @@ import Button from "../components/common/Button";
 import RetryableError from "../components/common/RetryableError";
 import { useToast } from "../components/common/Toast";
 import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
+import { parseServerTime } from "../utils/serverTime";
 import { useHiddenAuthorKeys, withoutHiddenAuthors } from "../lib/hiddenAuthors";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
@@ -157,7 +158,8 @@ export default function MapScreen() {
   // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
   const reportsResource = useApiResource(
     async (signal) =>
-      visibleReports(await getLiveReports({ accessToken, signal })),
+      // 24시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
+      visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
     [accessToken],
     { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
   );
@@ -577,6 +579,27 @@ export default function MapScreen() {
     }
   }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap]);
 
+  /**
+   * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
+   * 새로 받은 목록에 또 예정 제보가 있으면 다음 시작 시각으로 다시 맞춰진다.
+   */
+  const nextUpcomingStart = useMemo(() => {
+    const now = Date.now();
+    let next = Infinity;
+    for (const report of shownReportData ?? EMPTY_REPORTS) {
+      const start = parseServerTime(report.startsAt);
+      if (start > now && start < next) next = start;
+    }
+    return Number.isFinite(next) ? next : null;
+  }, [shownReportData]);
+  const retryReports = reportsResource.retry;
+  useEffect(() => {
+    if (!reportsOn || nextUpcomingStart === null) return;
+    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(24시간 안).
+    const timer = setTimeout(() => retryReports(), Math.max(0, nextUpcomingStart - Date.now()) + 5000);
+    return () => clearTimeout(timer);
+  }, [reportsOn, nextUpcomingStart, retryReports]);
+
   /** 제보를 새로 받을 때마다 지도에 올린다. */
   useEffect(() => {
     if (!reportsOn || shownReportData === undefined) return;
@@ -681,13 +704,14 @@ export default function MapScreen() {
       if (reportsOn) reportsResource.retry();
       else setReportsOn(true);
       try {
-        const live = visibleReports(await getLiveReports({ accessToken }));
+        const live = visibleReports(await getLiveReports({ accessToken, includeUpcoming: true }));
         if (request !== focusRequestRef.current) return;
         const found = live.find(
           (r) => r.id === reportId && !(r.authorKey && hiddenAuthorKeys.has(r.authorKey)),
         );
         if (!found) {
-          toast.show({ message: "이 제보는 지금 지도에 없어요. 이미 끝났거나 내려갔어요.", tone: "info" });
+          // 예정 제보는 24시간 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
+          toast.show({ message: "이 제보는 지금 지도에 없어요. 아직 시작 전이거나 이미 끝났어요.", tone: "info" });
           return;
         }
         setSelectedReport(found);

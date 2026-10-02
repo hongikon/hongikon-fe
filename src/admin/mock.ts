@@ -21,6 +21,12 @@ function at(minutes: number): string {
   return new Date(Date.now() + minutes * 60_000).toISOString().slice(0, 19)
 }
 
+/** 내일 hour 시 정각(한국 시간)의 LocalDateTime 문자열(UTC, 존 없음). 예정 제보 예시용. */
+function tomorrowKst(hour: number): string {
+  const kstMidnightMs = Math.floor((Date.now() + 9 * 3_600_000) / 86_400_000) * 86_400_000 - 9 * 3_600_000
+  return new Date(kstMidnightMs + 86_400_000 + hour * 3_600_000).toISOString().slice(0, 19)
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -87,6 +93,12 @@ const reports: AdminReport[] = [
     id: 30, status: 'PENDING', category: 'BOOTH', title: '학생회관 1층 동아리 홍보 부스',
     content: '밴드 동아리 신입 부원 모집합니다! 간식 나눠드려요.',
     buildingId: 5, buildingName: '학생회관(S동)', floor: 1, createdAt: at(-65), authorNickname: '브레멘',
+  }),
+  baseReport({
+    // 예정 제보: 내일 11:00~15:00(미리 올림). 승인해도 시작 시각에 지도에 뜬다.
+    id: 33, status: 'PENDING', category: 'FOOD_TRUCK', title: '정문 붕어빵 트럭 (내일)',
+    content: '내일 오전 11시부터 3시까지 정문 앞에 붕어빵 트럭 와요.',
+    startsAt: tomorrowKst(11), endsAt: tomorrowKst(15), createdAt: at(-5),
   }),
   baseReport({
     id: 29, status: 'PENDING', category: 'ETC', customCategoryLabel: '분실물', title: '에어팟 케이스 주웠습니다',

@@ -2,6 +2,7 @@ import { Alert, Platform } from 'react-native'
 import { reportCategoryMeta } from '../constants/reportCategories'
 import type { ReportCategory, ReportListItem } from '../types'
 import { parseServerTime } from './serverTime'
+import { formatServerSchedule, formatStartShort, isUpcomingReport } from './reportSchedule'
 
 /**
  * 로그인이 필요한 동작(제보 작성·신고)을 막았을 때 띄운다.
@@ -43,6 +44,8 @@ export interface ReportMarker {
   lng: number
   color: string
   label: string
+  /** 아직 시작 전(예정). 지도에서 속이 빈 배지와 시작 시각으로 따로 보인다. */
+  upcoming?: boolean
 }
 
 const KST_OFFSET_MINUTES = 9 * 60
@@ -75,7 +78,11 @@ export function formatElapsed(iso: string, now: number = Date.now()): string {
  * 배너에 쓰는 신선도 한 줄. 예: '12분 전 등록 · 18시까지'
  * 제보는 지금 벌어지는 일이라, 언제 올라왔고 언제 끝나는지가 본문만큼 중요하다.
  */
-export function formatFreshness(report: Pick<ReportListItem, 'createdAt' | 'endsAt'>): string {
+export function formatFreshness(report: Pick<ReportListItem, 'createdAt' | 'endsAt'> & { startsAt?: string }): string {
+  // 예정 제보는 언제 시작하는지가 먼저다. 예: '예정 · 10/3(토) 11:00 ~ 15:00'
+  if (report.startsAt && isUpcomingReport({ startsAt: report.startsAt })) {
+    return `예정 · ${formatServerSchedule(report.startsAt, report.endsAt)}`
+  }
   return `${formatElapsed(report.createdAt)} 등록 · ${formatKstTime(report.endsAt)}까지`
 }
 
@@ -94,12 +101,18 @@ export function visibleReports(
 }
 
 export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarker[] {
-  return reports.map((report) => ({
-    id: report.id,
-    category: report.category,
-    lat: report.lat,
-    lng: report.lng,
-    color: reportCategoryMeta(report.category).color,
-    label: report.title,
-  }))
+  const now = Date.now()
+  return reports.map((report) => {
+    const upcoming = isUpcomingReport(report, now)
+    return {
+      id: report.id,
+      category: report.category,
+      lat: report.lat,
+      lng: report.lng,
+      color: reportCategoryMeta(report.category).color,
+      // 예정 제보는 이름 앞에 시작 시각을 붙인다(예: '내일 11:00 · 붕어빵 트럭').
+      label: upcoming ? `${formatStartShort(parseServerTime(report.startsAt), now)} · ${report.title}` : report.title,
+      upcoming,
+    }
+  })
 }
