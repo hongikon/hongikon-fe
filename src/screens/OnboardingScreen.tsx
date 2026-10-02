@@ -15,30 +15,17 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { useAuth } from '../contexts/AuthContext'
 import { completeOnboarding } from '../lib/onboarding'
-import { refreshNotificationPermission } from '../lib/notificationPermission'
-import { markNotificationPermissionAsked } from '../components/common/NotificationPrimer'
 import ContentColumn from '../components/common/ContentColumn'
 import IntroSlides from '../components/onboarding/IntroSlides'
 import DeptPickStep from '../components/onboarding/DeptPickStep'
-import NotificationStep from '../components/onboarding/NotificationStep'
 import PermissionNoticeStep from '../components/onboarding/PermissionNoticeStep'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
-type Step = 'intro' | 'depts' | 'permissions' | 'notifications'
+type Step = 'intro' | 'depts' | 'permissions'
 
 /**
- * 시스템 허용 창을 지금 띄울 수 있는지. 웹(원격 푸시 없음)이거나 이미 허용·거절이 정해졌으면
- * 알림 단계를 통째로 건너뛴다 — 띄울 수도 없는 버튼을 보여주지 않는다.
- */
-async function canAskNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'web') return false
-  const permission = await refreshNotificationPermission()
-  return permission.status === 'undetermined' && permission.canAskAgain
-}
-
-/**
- * 첫 실행 온보딩: 소개(2~3장) → 내 학과 고르기 → 앱 접근권한 안내(네이티브만) → 알림 허용(네이티브만)
- * → 웰컴(로그인/둘러보기).
+ * 첫 실행 온보딩: 소개(2~3장) → 내 학과 고르기 → 앱 접근권한 안내(네이티브만) → 웰컴(로그인/둘러보기).
+ * 알림 허용은 첫 실행에서 묻지 않는다 — 알림은 로그인한 계정 기준이라, 로그인한 뒤에 NotificationPrimer 가 한 번 묻는다(10-02 결정).
  * 접근권한 안내는 정보통신망법 제22조의2의 "앱 최초 실행 시" 고지라, 알림 허용 창을 띄울 수 없는 기기
  * (이미 허용·거절)에서도 보여 준다. 웹은 접근권한이 없어 건너뛴다.
  * RootNavigator 가 온보딩을 끝내지 않았을 때만 이 화면을 맨 앞에 둔다(`src/lib/onboarding.ts`).
@@ -48,8 +35,6 @@ export default function OnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { status } = useAuth()
   const [step, setStep] = useState<Step>('intro')
-  const askableRef = useRef<Promise<boolean> | null>(null)
-  if (!askableRef.current) askableRef.current = canAskNotificationPermission().catch(() => false)
 
   // 단계가 바뀔 때 살짝 떠오르며 나타난다(웹에서도 같게 보이도록 JS 드라이버).
   const appear = useRef(new Animated.Value(1)).current
@@ -70,14 +55,8 @@ export default function OnboardingScreen() {
     else setStep('permissions')
   }, [finish])
 
-  const goAfterPermissions = useCallback(async () => {
-    if (await askableRef.current) {
-      // 이 단계가 허용 창을 맡는다. 온보딩 뒤 NotificationPrimer 가 다시 묻지 않게 바로 기록한다.
-      void markNotificationPermissionAsked()
-      setStep('notifications')
-    } else {
-      finish()
-    }
+  const goAfterPermissions = useCallback(() => {
+    finish()
   }, [finish])
 
   const goBack = useCallback((): boolean => {
@@ -87,10 +66,6 @@ export default function OnboardingScreen() {
     }
     if (step === 'permissions') {
       setStep('depts')
-      return true
-    }
-    if (step === 'notifications') {
-      setStep('permissions')
       return true
     }
     return false
@@ -129,7 +104,6 @@ export default function OnboardingScreen() {
           {step === 'intro' && <IntroSlides onDone={() => setStep('depts')} />}
           {step === 'depts' && <DeptPickStep onNext={goAfterDepts} />}
           {step === 'permissions' && <PermissionNoticeStep onNext={goAfterPermissions} />}
-          {step === 'notifications' && <NotificationStep onDone={finish} />}
         </Animated.View>
       </KeyboardAvoidingView>
       </ContentColumn>

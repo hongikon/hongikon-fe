@@ -5,7 +5,7 @@ import {
   refreshNotificationPermission,
   requestNotificationPermission,
 } from '../../lib/notificationPermission'
-import { useOnboardingDone } from '../../lib/onboarding'
+import { useAuth } from '../../contexts/AuthContext'
 
 /** 최초 실행 때 한 번 물었는지. 한 번 물은 뒤엔 다시 자동으로 띄우지 않는다(설정 화면에서 켤 수 있다). */
 const ASKED_KEY = '@hongikon_notification_permission_asked'
@@ -22,22 +22,22 @@ export async function markNotificationPermissionAsked(): Promise<void> {
   }
 }
 
-/** 스플래시가 내려가고 첫 화면이 보인 뒤에 띄우려고 잠깐 기다린다. */
+/** 로그인 직후 화면이 바뀐 뒤에 띄우려고 잠깐 기다린다. */
 const FIRST_LAUNCH_DELAY_MS = 800
 
 /**
- * 앱을 처음 켰을 때 시스템 알림 허용 창을 띄운다(iOS·Android, 로그인 여부와 무관).
- * 처음 설치한 사용자는 온보딩의 알림 단계가 먼저 묻는다 — 그래서 온보딩이 끝날 때까지 기다렸다가,
- * 온보딩이 남긴 기록(ASKED_KEY)을 보고 그냥 넘어간다. 온보딩 없이 들어온 예전 사용자에게만 실제로 띄운다.
- * 허용되면 로그인한 뒤 기기 등록이 바로 이어진다(usePushNotifications 는 권한이 허용된 뒤에만 등록한다).
- * 거절하면 설정 > 알림에서 "설정 열기"로 되돌릴 수 있다. 화면에는 아무것도 그리지 않는다.
+ * 로그인한 뒤 한 번 시스템 알림 허용 창을 띄운다(iOS·Android). 알림은 로그인한 계정 기준이라
+ * 앱을 처음 켰을 때나 둘러보기(게스트) 중에는 묻지 않는다(10-02 결정).
+ * 한 번 물은 뒤엔(허용·거절과 무관) 다시 자동으로 띄우지 않는다 — 설정 > 알림에서 "설정 열기"로 바꿀 수 있다.
+ * 허용되면 기기 등록이 바로 이어진다(usePushNotifications 는 권한이 허용된 뒤에만 등록한다). 화면에는 아무것도 그리지 않는다.
  */
 export default function NotificationPrimer() {
   const startedRef = useRef(false)
-  const onboardingDone = useOnboardingDone()
+  const { status } = useAuth()
+  const loggedIn = status === 'authenticated'
 
   useEffect(() => {
-    if (Platform.OS === 'web' || !onboardingDone || startedRef.current) return
+    if (Platform.OS === 'web' || !loggedIn || startedRef.current) return
     startedRef.current = true
 
     let cancelled = false
@@ -59,7 +59,7 @@ export default function NotificationPrimer() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [onboardingDone])
+  }, [loggedIn])
 
   return null
 }

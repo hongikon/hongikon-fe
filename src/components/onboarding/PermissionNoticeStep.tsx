@@ -26,7 +26,7 @@ const PERMISSIONS: PermissionItem[] = [
   {
     icon: 'notifications-outline',
     name: '알림',
-    reason: '구독한 게시판의 새 공지, 내 제보 처리 결과와 캠퍼스 새 제보 알림',
+    reason: '로그인하면 구독한 게시판의 새 공지, 내 제보 처리 결과와 캠퍼스 새 제보를 알려 드려요',
   },
   {
     icon: 'camera-outline',
@@ -47,7 +47,7 @@ const PERMISSIONS: PermissionItem[] = [
 /**
  * 온보딩 "앱 접근권한 안내"(iOS·Android 만). 정보통신망법 제22조의2·시행령 제9조의2의 앱 최초 실행 시 고지.
  * 필수/선택 구분, 권한별 항목·이유, 선택 권한은 허용하지 않아도 된다는 사실을 알린다.
- * 여기서는 아무 권한도 요청하지 않는다 — 알림은 다음 단계, 카메라·사진은 해당 버튼을 누를 때 묻는다.
+ * 여기서는 아무 권한도 요청하지 않는다 — 알림은 로그인한 뒤, 카메라·사진은 해당 버튼을 누를 때 묻는다.
  */
 export default function PermissionNoticeStep({ onNext }: PermissionNoticeStepProps) {
   return (
