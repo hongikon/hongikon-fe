@@ -9,6 +9,8 @@ interface ToggleSwitchProps {
   accessibilityLabel: string
   /** 전체 알림이 꺼져 있을 때처럼 "눌러도 지금은 효과가 없다"를 보여줄 때. 누를 수는 있다. */
   dimmed?: boolean
+  /** 눌러도 값이 바뀌지 않는 스위치(게스트 — 누르면 로그인 안내). 켜짐 진동을 내지 않는다. */
+  locked?: boolean
 }
 
 /** 앱 전체에서 스위치는 이 한 가지 크기만 쓴다(화면마다 크기가 달라 보이지 않게). */
@@ -24,6 +26,7 @@ export default function ToggleSwitch({
   onToggle,
   accessibilityLabel,
   dimmed = false,
+  locked = false,
 }: ToggleSwitchProps) {
   const { width, height, thumb } = SIZE
   const progress = useRef(new Animated.Value(value ? 1 : 0)).current
@@ -48,7 +51,7 @@ export default function ToggleSwitch({
     <Pressable
       onPress={() => {
         // 꺼짐 → 켜짐으로 바꿀 때만 무음 스위치처럼 두 박자로 진동한다(끌 때는 조용히).
-        if (!value) haptics.switchOn()
+        if (!value && !locked) haptics.switchOn()
         onToggle()
       }}
       hitSlop={8}

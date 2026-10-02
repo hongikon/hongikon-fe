@@ -376,6 +376,7 @@ export default function SettingsScreen() {
                 value={subscriptionAlert}
                 dimmed={isGuest}
                 onToggle={handleToggleSubscriptionAlert}
+                locked={isGuest}
                 accessibilityLabel="구독 소식 알림"
               />
             }
@@ -410,6 +411,7 @@ export default function SettingsScreen() {
                 <ToggleSwitch
                   value={reportStatusAlert}
                   onToggle={guarded(toggleReportStatusAlert)}
+                  locked={isGuest}
                   accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
                 />
               }
@@ -423,6 +425,7 @@ export default function SettingsScreen() {
                 <ToggleSwitch
                   value={newReportAlert}
                   onToggle={guarded(toggleNewReportAlert)}
+                  locked={isGuest}
                   accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
                 />
               }
