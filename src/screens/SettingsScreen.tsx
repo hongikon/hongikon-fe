@@ -353,7 +353,7 @@ export default function SettingsScreen() {
             <ListRow
               icon="megaphone-outline"
               label="캠퍼스 새 제보 알림"
-              description="새 제보가 지도에 올라오면 알려드려요 · 30분에 한 번까지"
+              description="운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰려도 알림은 30분에 한 번만 와요."
               last
               right={
                 <ToggleSwitch
