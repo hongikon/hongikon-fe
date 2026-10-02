@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -140,26 +139,8 @@ export default function SettingsScreen() {
   }
 
   // 회원 번호. 서버가 주는 공개 번호(K7Q2M9XA4D)를 보여 주고, 서버 배포 전에는 예전처럼 토큰 sub(= userId)를 #123 으로 보여 준다.
-  // 관리자 지정·문의 때 알려 달라고 보여 준다. 토큰이 이상하면 줄을 숨긴다.
+  // 누르는 동작 없이 보여 주기만 한다. 토큰이 이상하면 줄을 숨긴다.
   const memberId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
-
-  /**
-   * 회원 번호 복사. 앱에는 클립보드 모듈(expo-clipboard)이 없어 — 넣으면 새 빌드가 필요하다 — 웹만 실제로 복사하고,
-   * 앱은 토스트로 번호를 크게 보여 준다.
-   */
-  const handleCopyMemberNumber = async (text: string) => {
-    haptics.tapLight()
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text.replace(/^#/, ''))
-        toast.show({ message: `회원 번호를 복사했어요 · ${text}` })
-        return
-      } catch {
-        // 권한이 막힌 브라우저 등은 아래처럼 번호만 보여 준다.
-      }
-    }
-    toast.show({ message: `내 회원 번호 · ${text}`, tone: 'info' })
-  }
 
   const handleReset = () => {
     confirmAction({
@@ -305,19 +286,7 @@ export default function SettingsScreen() {
                   value={
                     memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')
                   }
-                  description="관리자 지정이나 문의할 때 이 번호를 알려 주세요."
-                  onPress={
-                    memberNumber
-                      ? () => void handleCopyMemberNumber(memberNumber)
-                      : memberCodeResource.loading
-                        ? undefined
-                        : memberCodeResource.retry
-                  }
-                  accessibilityLabel={
-                    memberNumber
-                      ? `회원 번호 ${memberNumber.replace(/^#/, '')}. ${Platform.OS === 'web' ? '눌러서 복사' : '눌러서 번호 보기'}`
-                      : '회원 번호'
-                  }
+                  accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
