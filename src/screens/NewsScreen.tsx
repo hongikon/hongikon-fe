@@ -21,6 +21,10 @@ import NewsList from '../components/news/NewsList'
 import DeptTreeList from '../components/news/DeptTreeList'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import RetryableError from '../components/common/RetryableError'
+import { LargeTitleHeader } from '../components/common/ScreenHeader'
+import IconButton from '../components/common/IconButton'
+import EmptyState from '../components/common/EmptyState'
+import Button from '../components/common/Button'
 
 type TabType = '북마크' | '구독' | '전체'
 // 소식 탭 스택(학과 소식) 안에 있으면서 루트 스택(상세·검색)으로도 이동한다.
@@ -63,7 +67,7 @@ export default function NewsScreen() {
     ? { ...bookmarked, retrying: bookmarked.refreshing || bookmarked.loading }
     : { ...subscribedFeed, retrying: subscribedFeed.loading || subscribedFeed.loadingMore || subscribedFeed.refreshing }
   const emptyMessage =
-    activeTab === '북마크' ? '북마크한 소식이 없습니다' : '구독한 기관·학과의 소식이 없습니다'
+    activeTab === '북마크' ? '북마크한 소식이 없어요' : '구독한 기관·학과의 소식이 없어요'
 
   // NewsList 로 넘기는 콜백은 렌더마다 새로 만들면 안 된다.
   // 새로 만들면 목록의 모든 카드가 memo 를 통과해 다시 그려진다.
@@ -79,17 +83,11 @@ export default function NewsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={[styles.header, layoutStyles.readable]}>
-        <Text style={styles.headerTitle}>소식</Text>
-        <TouchableOpacity
-          style={styles.searchBtn}
-          onPress={() => navigation.navigate('NewsSearch')}
-          accessibilityRole="button"
-          accessibilityLabel="검색"
-        >
-          <Ionicons name="search" size={20} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <LargeTitleHeader
+        title="소식"
+        style={layoutStyles.readable}
+        right={<IconButton icon="search" onPress={() => navigation.navigate('NewsSearch')} accessibilityLabel="검색" />}
+      />
 
       <View style={styles.tabBar}>
         {/* 밑줄은 화면 끝까지, 탭 세 개는 목록과 같은 가운데 폭 안에 둔다. */}
@@ -197,6 +195,7 @@ export default function NewsScreen() {
                       <TouchableOpacity
                         style={styles.chipAdd}
                         onPress={() => setSubManagerOpen(true)}
+                        accessibilityRole="button"
                       >
                         <Ionicons name="add" size={13} color={COLORS.primary} />
                         <Text style={styles.chipAddText}>학과 추가</Text>
@@ -208,20 +207,21 @@ export default function NewsScreen() {
             </View>
           }
           empty={
-            <View style={styles.emptyState}>
-              <Ionicons
-                name={activeTab === '북마크' ? 'bookmark-outline' : 'notifications-outline'}
-                size={40}
-                color="#ddd"
-              />
-              <Text style={styles.emptyText}>{emptyMessage}</Text>
-              {activeTab === '구독' && settings.subscribedDepts.length === 0 && (
-                <TouchableOpacity style={styles.cta} onPress={() => setSubManagerOpen(true)}>
-                  <Ionicons name="add" size={16} color={COLORS.white} />
-                  <Text style={styles.ctaText}>학과 구독하기</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <EmptyState
+              icon={activeTab === '북마크' ? 'bookmark-outline' : 'notifications-outline'}
+              message={emptyMessage}
+              action={
+                activeTab === '구독' && settings.subscribedDepts.length === 0 ? (
+                  <Button
+                    label="학과 구독하기"
+                    icon="add"
+                    size="md"
+                    fullWidth={false}
+                    onPress={() => setSubManagerOpen(true)}
+                  />
+                ) : undefined
+              }
+            />
           }
         />
       )}
@@ -240,46 +240,27 @@ const styles = StyleSheet.create({
   // SafeAreaView 상단 인셋(노치 아래 여백)은 바로 밑 header 와 같은 흰색이어야 한다.
   // 콘텐츠의 회색 배경은 DeptTreeList/NewsList 가 각자 칠한다.
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    backgroundColor: COLORS.white,
-  },
-  headerTitle: { fontSize: 20, fontFamily: FONTS.bold, color: COLORS.textPrimary },
-  searchBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   tabBar: {
     backgroundColor: COLORS.white,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#E8E8E8',
+    borderBottomColor: COLORS.border,
   },
   tabRow: { flexDirection: 'row' },
   tab: { flex: 1, alignItems: 'center', paddingTop: 10 },
-  tabText: { fontSize: 14, color: '#BFBFBF', fontFamily: FONTS.medium, paddingBottom: 10 },
+  tabText: { fontSize: 15, color: COLORS.textTertiary, fontFamily: FONTS.medium, paddingBottom: 10 },
   tabTextActive: { color: COLORS.textPrimary, fontFamily: FONTS.bold },
   tabIndicator: { width: '60%', height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
   tabIndicatorActive: { backgroundColor: COLORS.primary },
 
   // 카드 스타일은 components/news/NewsCard.tsx 로, 학과 트리는 components/news/DeptTreeList.tsx 로 옮겼다.
 
-  emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 
   feedError: { marginHorizontal: 12, marginTop: 12 },
 
   listHeaderGroup: { gap: 10 },
-  hub: { backgroundColor: COLORS.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  hub: { backgroundColor: COLORS.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12 },
   hubHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  hubLabel: { fontSize: 12, fontFamily: FONTS.bold, color: '#9a9aa5', letterSpacing: 0.3 },
+  hubLabel: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
   hubManage: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2, paddingLeft: 8 },
   hubManageText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.primary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
@@ -310,18 +291,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 15,
     borderWidth: 1.2,
-    borderColor: '#c8c7d6',
+    borderColor: COLORS.chipBorder,
     borderStyle: 'dashed',
   },
   chipAddText: { color: COLORS.primary, fontSize: 12, fontFamily: FONTS.semibold },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 13,
-  },
-  ctaText: { color: COLORS.white, fontSize: 14, fontFamily: FONTS.semibold },
 })

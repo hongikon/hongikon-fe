@@ -12,6 +12,9 @@ import { getNewsById } from '../apis/news'
 import { backendDetailToNewsItem } from '../utils/newsMapping'
 import { FONTS } from '../constants/typography'
 import RetryableError from '../components/common/RetryableError'
+import ScreenHeader from '../components/common/ScreenHeader'
+import IconButton from '../components/common/IconButton'
+import Button from '../components/common/Button'
 import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Skeleton'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import type { NewsItem } from '../types'
@@ -35,7 +38,7 @@ function useEnhancedNewsItem(params: RootStackParamList['NewsDetail']) {
   const detail = useApiResource(
     (signal) => getNewsById(backendId as number, signal),
     [backendId],
-    { enabled: backendId !== null, fallbackMessage: '소식 본문을 불러오지 못했습니다.' },
+    { enabled: backendId !== null, fallbackMessage: '소식 본문을 불러오지 못했어요.' },
   )
 
   // 상세가 열린 채로 다른 소식 알림을 누르면 같은 화면의 params 만 바뀐다. useApiResource 는 실패해도
@@ -52,17 +55,8 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
   if (!item) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={[styles.header, layoutStyles.readable]}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-            accessibilityLabel="뒤로 가기"
-          >
-            <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>소식 상세</Text>
-          <View style={styles.headerSpacer} />
+        <View style={styles.headerBar}>
+          <ScreenHeader title="소식 상세" onBack={() => navigation.goBack()} border={false} style={layoutStyles.readable} />
         </View>
         {detail.errorMessage ? (
           <RetryableError
@@ -98,28 +92,21 @@ function NewsDetailBody({
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="뒤로 가기"
-        >
-          <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>소식 상세</Text>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => toggleBookmark(item.id)}
-          accessibilityRole="button"
-          accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
-        >
-          <Ionicons
-            name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-            size={19}
-            color={bookmarked ? COLORS.primary : COLORS.textSecondary}
-          />
-        </TouchableOpacity>
+      <View style={styles.headerBar}>
+        <ScreenHeader
+          title="소식 상세"
+          onBack={onBack}
+          border={false}
+          style={layoutStyles.readable}
+          right={
+            <IconButton
+              icon={bookmarked ? 'bookmark' : 'bookmark-outline'}
+              color={bookmarked ? COLORS.primary : COLORS.textSecondary}
+              onPress={() => toggleBookmark(item.id)}
+              accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
+            />
+          }
+        />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, layoutStyles.readable]}>
@@ -136,7 +123,7 @@ function NewsDetailBody({
         <Text style={styles.title}>{item.title}</Text>
 
         <View style={styles.sourceRow}>
-          <Ionicons name="business-outline" size={14} color="#bbb" />
+          <Ionicons name="business-outline" size={14} color={COLORS.textTertiary} />
           <Text style={styles.sourceName}>{item.source}</Text>
         </View>
 
@@ -153,8 +140,8 @@ function NewsDetailBody({
         {!loadingMore && item.preview.length === 0 && (
           <Text style={styles.bodyPlaceholder}>
             {item.images?.length
-              ? '본문이 이미지로만 되어 있습니다. 원문에서 확인하세요.'
-              : '본문 미리보기가 없습니다. 원문에서 확인하세요.'}
+              ? '본문이 이미지로만 되어 있어요. 원문에서 확인해 주세요.'
+              : '본문 미리보기가 없어요. 원문에서 확인해 주세요.'}
           </Text>
         )}
 
@@ -176,17 +163,14 @@ function NewsDetailBody({
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.linkBtn}
+        <Button
+          variant="secondary"
+          icon="open-outline"
+          label={item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'}
           onPress={() => openExternalUrl(item.link, 'https://www.hongik.ac.kr')}
           accessibilityRole="link"
           accessibilityLabel={item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'}
-        >
-          <Ionicons name="open-outline" size={16} color={COLORS.primary} />
-          <Text style={styles.linkText}>
-            {item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'}
-          </Text>
-        </TouchableOpacity>
+        />
       </ScrollView>
     </SafeAreaView>
   )
@@ -194,25 +178,7 @@ function NewsDetailBody({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: '#f4f4f4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  headerSpacer: { width: 34, height: 34 },
+  headerBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   loadError: { margin: 16 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
@@ -222,9 +188,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 11, fontFamily: FONTS.semibold },
-  date: { fontFamily: FONTS.regular, fontSize: 12, color: '#bbb' },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badgeText: { fontSize: 12, fontFamily: FONTS.semibold },
+  date: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   title: {
     fontSize: 20,
     fontFamily: FONTS.bold,
@@ -239,38 +205,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sourceName: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
-  divider: { height: 0.5, backgroundColor: '#eee', marginBottom: 20 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginBottom: 20 },
   body: { fontFamily: FONTS.regular,
     fontSize: 15,
-    color: '#444',
+    color: COLORS.textPrimary,
     lineHeight: 24,
     marginBottom: 12,
   },
   bodyPlaceholder: { fontFamily: FONTS.regular,
     fontSize: 13,
-    color: '#bbb',
-    fontStyle: 'italic',
+    color: COLORS.textTertiary,
     marginBottom: 24,
   },
   attachBox: {
-    backgroundColor: '#FAFAFC',
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 14,
     gap: 8,
     marginTop: 8,
     marginBottom: 24,
   },
-  attachLabel: { fontSize: 11, fontFamily: FONTS.bold, color: '#9a9aa5', letterSpacing: 0.3 },
+  attachLabel: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
   attachRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   attachName: { flex: 1, fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
-  linkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#EEF0FA',
-  },
-  linkText: { fontSize: 14, color: COLORS.primary, fontFamily: FONTS.medium },
 })

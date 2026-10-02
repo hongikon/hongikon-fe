@@ -5,6 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
 import type { TreeChild, TreeNode } from '../../types'
+import EmptyState from '../common/EmptyState'
 
 interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
@@ -40,7 +41,7 @@ function SubscribeBell({
       <Ionicons
         name={subscribed ? 'notifications' : 'notifications-outline'}
         size={15}
-        color={subscribed ? COLORS.white : '#c0c0c0'}
+        color={subscribed ? COLORS.white : COLORS.iconInactive}
       />
     </TouchableOpacity>
   )
@@ -66,9 +67,10 @@ function TreeLeafRow({
       <TouchableOpacity
         style={styles.treeChildTap}
         onPress={() => onSelectDept(child.id, child.name)}
+        accessibilityRole="button"
       >
         <Text style={styles.treeChildName}>{child.name}</Text>
-        <Ionicons name="chevron-forward" size={12} color="#ddd" />
+        <Ionicons name="chevron-forward" size={14} color={COLORS.chevron} />
       </TouchableOpacity>
       <SubscribeBell name={child.name} subscribed={subscribed} onToggle={onToggleSubscribe} />
     </View>
@@ -106,7 +108,7 @@ function TreeSubGroup({
       >
         <Text style={styles.treeChildPrefix}>ㄴ</Text>
         <Text style={styles.treeSubGroupName}>{group.name}</Text>
-        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={13} color="#bbb" />
+        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textTertiary} />
       </TouchableOpacity>
 
       {isOpen &&
@@ -155,10 +157,7 @@ export default function DeptTreeList({
   if (results.length === 0) {
     return (
       <View style={styles.treeScroll}>
-        <View style={styles.emptyState}>
-          <Ionicons name="search-outline" size={40} color="#ddd" />
-          <Text style={styles.emptyText}>'{query.trim()}' 검색 결과가 없습니다</Text>
-        </View>
+        <EmptyState icon="search-outline" message={`'${query.trim()}' 검색 결과가 없어요`} />
       </View>
     )
   }
@@ -181,6 +180,8 @@ export default function DeptTreeList({
               onPress={() =>
                 isLeaf ? onSelectDept(node.name, node.name) : toggleNode(node.name)
               }
+              accessibilityRole="button"
+              accessibilityState={isLeaf ? undefined : { expanded: isOpen }}
             >
               <Text style={styles.treeParentName}>{node.name}</Text>
               {isLeaf ? (
@@ -192,8 +193,8 @@ export default function DeptTreeList({
               ) : (
                 <Ionicons
                   name={isOpen ? 'chevron-up' : 'chevron-down'}
-                  size={15}
-                  color="#bbb"
+                  size={16}
+                  color={COLORS.textTertiary}
                 />
               )}
             </TouchableOpacity>
@@ -231,41 +232,42 @@ export default function DeptTreeList({
 
 const styles = StyleSheet.create({
   treeScroll: { flex: 1, backgroundColor: COLORS.background },
-  treeContent: { padding: 10, gap: 6 },
-  treeCard: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden' },
+  treeContent: { padding: 12, gap: 8 },
+  treeCard: { backgroundColor: COLORS.white, borderRadius: 16, overflow: 'hidden' },
   treeParent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 13,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  treeParentName: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  treeChildren: { borderTopWidth: 0.5, borderTopColor: '#f2f2f2' },
+  treeParentName: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  treeChildren: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.divider },
   treeChild: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderTopWidth: 0.5,
-    borderTopColor: '#f8f8f8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 46,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.divider,
     gap: 7,
   },
   // 학부 아래 전공 줄. 한 단계 더 들어갔다는 걸 들여쓰기와 배경으로 보여준다.
-  treeGrandChild: { paddingLeft: 30, backgroundColor: '#fbfbfd' },
-  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: '#444' },
+  treeGrandChild: { paddingLeft: 32, backgroundColor: '#FAFAFA' },
+  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: COLORS.textPrimary },
   treeChildTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: '#c8c8c8', width: 14 },
-  treeChildName: { fontFamily: FONTS.regular, fontSize: 13, color: '#444', flex: 1 },
+  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.iconMuted, width: 14 },
+  treeChildName: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary, flex: 1 },
   bell: {
     width: 30,
     height: 30,
-    borderRadius: 9,
-    borderWidth: 1.2,
-    borderColor: '#e2e2e2',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: COLORS.chipBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bellOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 })

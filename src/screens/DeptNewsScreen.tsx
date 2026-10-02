@@ -17,6 +17,8 @@ import { NewsListSkeleton } from '../components/common/Skeleton'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import RetryableError from '../components/common/RetryableError'
+import ScreenHeader from '../components/common/ScreenHeader'
+import EmptyState from '../components/common/EmptyState'
 import type { NewsItem } from '../types'
 
 type Props = CompositeScreenProps<
@@ -43,16 +45,13 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="뒤로 가기"
-        >
-          <Ionicons name="arrow-back" size={17} color="#444" />
-        </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{deptName}</Text>
+      <View style={styles.headerBar}>
+        <ScreenHeader
+          title={deptName}
+          onBack={() => navigation.goBack()}
+          border={false}
+          style={layoutStyles.readable}
+        />
       </View>
       {/* 검색창이 목록 헤더라, 검색어를 바꿔 다시 받는 동안에도 목록은 그대로 두고(입력 포커스 유지)
           로딩·오류는 빈 목록 자리에 보여준다. */}
@@ -94,16 +93,10 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
               onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
             />
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name={isSearching ? 'search-outline' : 'file-tray-outline'}
-                size={40}
-                color="#ddd"
-              />
-              <Text style={styles.emptyText}>
-                {isSearching ? `'${keyword}' 검색 결과가 없습니다` : '등록된 소식이 없습니다'}
-              </Text>
-            </View>
+            <EmptyState
+              icon={isSearching ? 'search-outline' : 'file-tray-outline'}
+              message={isSearching ? `'${keyword}' 검색 결과가 없어요` : '등록된 소식이 없어요'}
+            />
           )
         }
       />
@@ -113,26 +106,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ebebeb',
-    gap: 8,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: '#f4f4f4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary, flex: 1 },
-  emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  // 아래 구분선은 화면 끝까지, 머리줄 안 내용은 가운데 읽기 폭으로.
+  headerBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   feedError: { marginTop: 12 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
 })

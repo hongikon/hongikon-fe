@@ -43,7 +43,7 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
             <Ionicons
               name={bookmarked ? 'bookmark' : 'bookmark-outline'}
               size={16}
-              color={bookmarked ? COLORS.primary : '#ccc'}
+              color={bookmarked ? COLORS.primary : COLORS.iconMuted}
             />
           </TouchableOpacity>
         </View>
@@ -51,7 +51,7 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
       <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
       <Text style={styles.cardPreview} numberOfLines={1}>{item.preview}</Text>
       <View style={styles.cardSource}>
-        <Ionicons name="business-outline" size={12} color="#ccc" />
+        <Ionicons name="business-outline" size={12} color={COLORS.textTertiary} />
         <Text style={styles.cardSourceName}>{item.source}</Text>
       </View>
     </TouchableOpacity>
@@ -65,7 +65,7 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
 export default memo(NewsCardComponent)
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.white, borderRadius: 14, padding: 14 },
+  card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16 },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -73,21 +73,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontFamily: FONTS.semibold },
+  badgeText: { fontSize: 11, fontFamily: FONTS.semibold },
   cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  cardDate: { fontFamily: FONTS.regular, fontSize: 11, color: '#ccc' },
+  cardDate: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: FONTS.semibold,
     color: COLORS.textPrimary,
-    lineHeight: 20,
+    lineHeight: 21,
     marginBottom: 4,
   },
   cardPreview: {
     fontFamily: FONTS.regular,
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textSecondary,
-    lineHeight: 17,
+    lineHeight: 19,
     marginBottom: 10,
   },
   cardSource: {
@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingTop: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: '#f2f2f2',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.divider,
   },
-  cardSourceName: { fontSize: 11, color: '#aaa', fontFamily: FONTS.medium },
+  cardSourceName: { fontSize: 12, color: COLORS.textTertiary, fontFamily: FONTS.medium },
 })

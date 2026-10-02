@@ -19,6 +19,9 @@ import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
 import DeptTreeList from '../components/news/DeptTreeList'
 import RetryableError from '../components/common/RetryableError'
+import ScreenHeader from '../components/common/ScreenHeader'
+import EmptyState from '../components/common/EmptyState'
+import Chip from '../components/common/Chip'
 import type { NewsItem } from '../types'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsSearch'>
@@ -61,10 +64,7 @@ export default function NewsSearchScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={17} color="#444" />
-        </TouchableOpacity>
+      <ScreenHeader onBack={() => navigation.goBack()} border={false} style={[styles.header, layoutStyles.readable]}>
         <SearchBar
           value={active.query}
           onChangeText={active.setQuery}
@@ -73,26 +73,22 @@ export default function NewsSearchScreen({ navigation }: Props) {
           style={styles.searchBar}
           autoFocus
         />
-      </View>
+      </ScreenHeader>
 
-      <View style={[styles.modeRow, layoutStyles.readable]}>
+      <View style={[styles.modeRow, layoutStyles.readable]} accessibilityRole="radiogroup">
         {MODES.map((m) => {
           const isActive = mode === m
           return (
-            <TouchableOpacity
+            <Chip
               key={m}
-              style={[styles.modeChip, isActive && styles.modeChipActive]}
+              label={m}
+              selected={isActive}
+              role="radio"
               onPress={() => {
                 if (m !== mode) haptics.selection()
                 setMode(m)
               }}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isActive }}
-            >
-              <Text style={[styles.modeChipText, isActive && styles.modeChipTextActive]}>
-                {m}
-              </Text>
-            </TouchableOpacity>
+            />
           )
         })}
       </View>
@@ -128,14 +124,10 @@ export default function NewsSearchScreen({ navigation }: Props) {
                 onRetry={newsFeed.canRetry ? newsFeed.retry : undefined}
               />
             ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={40} color="#ddd" />
-                <Text style={styles.emptyText}>
-                  {isSearchingPosts
-                      ? `'${keyword}' 검색 결과가 없습니다`
-                      : '등록된 소식이 없습니다'}
-                </Text>
-              </View>
+              <EmptyState
+                icon="search-outline"
+                message={isSearchingPosts ? `'${keyword}' 검색 결과가 없어요` : '등록된 소식이 없어요'}
+              />
             )
           }
         />
@@ -155,42 +147,15 @@ export default function NewsSearchScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 10,
-    backgroundColor: COLORS.white,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    backgroundColor: '#f4f4f4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  header: { paddingRight: 16 },
   searchBar: { flex: 1 },
   modeRow: {
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E8E8E8',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
-  modeChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 15,
-    backgroundColor: '#f4f4f4',
-  },
-  modeChipActive: { backgroundColor: COLORS.primary },
-  modeChipText: { fontSize: 13, fontFamily: FONTS.semibold, color: '#999' },
-  modeChipTextActive: { color: COLORS.white },
-  emptyState: { height: 280, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText: { fontFamily: FONTS.regular, fontSize: 13, color: '#ccc' },
   feedError: { marginTop: 12 },
 })
