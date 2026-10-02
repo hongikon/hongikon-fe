@@ -18,6 +18,7 @@ import { layoutStyles } from '../constants/layout'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
+import BoardAlertsModal from '../components/settings/BoardAlertsModal'
 import ToggleSwitch from '../components/settings/ToggleSwitch'
 import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
@@ -57,7 +58,6 @@ import { requestNotificationPermission, useNotificationPermission } from '../lib
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
-import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../constants/news'
 import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
 import type { RootStackParamList } from '../navigation/RootNavigator'
@@ -90,7 +90,6 @@ export default function SettingsScreen() {
   const {
     toggleAlertCategory,
     toggleSubscribedDept,
-    toggleDeptAlert,
     toggleReportStatusAlert,
     toggleNewReportAlert,
   } = useFeedbackToggles()
@@ -102,6 +101,7 @@ export default function SettingsScreen() {
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
   const [subManagerVisible, setSubManagerVisible] = useState(false)
+  const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
 
   const handleLogout = () => {
@@ -269,11 +269,6 @@ export default function SettingsScreen() {
   // 게스트는 subscriptionAlert 가 늘 false 라 함께 흐려진다.
   const detailDimmed = !subscriptionAlert
 
-  /** 구독한 게시판을 TREE_DATA 순서(단과대별)로 묶는다. 구독한 순서가 아니라 늘 같은 자리에 보이게 한다. */
-  const subscribedGroups = useMemo(() => {
-    const subscribed = new Set(subscribedDepts)
-    return groupSubscribableItems(SUBSCRIBABLE_ITEMS.filter((item) => subscribed.has(item.id)))
-  }, [subscribedDepts])
   const alertOnCount = loggedIn ? subscribedDepts.filter(isDeptAlertOn).length : 0
 
   return (
@@ -469,46 +464,21 @@ export default function SettingsScreen() {
                 : setActiveModal('keywords')
             }
           />
-          {subscribedGroups.length > 0 ? (
-            <View style={[styles.boardList, detailDimmed && styles.dimmed]}>
-              <View style={styles.boardListHead}>
-                <Text style={styles.boardListTitle}>게시판별 알림</Text>
-                <Text style={styles.boardListCount}>
-                  {isGuest ? '로그인 후 사용' : `${alertOnCount}/${subscribedDepts.length} 켜짐`}
-                </Text>
-              </View>
-              {subscribedGroups.map((group) => (
-                <View key={group.name} style={styles.boardGroup}>
-                  <Text style={styles.boardGroupTitle}>{group.name}</Text>
-                  {group.items.map((item) => {
-                    const on = loggedIn && isDeptAlertOn(item.id)
-                    return (
-                      <View key={item.id} style={styles.boardRow}>
-                        <Ionicons
-                          name={on ? 'notifications' : 'notifications-off-outline'}
-                          size={16}
-                          color={on ? COLORS.primary : COLORS.iconMuted}
-                        />
-                        <Text
-                          style={[styles.boardName, !on && styles.boardNameOff]}
-                          numberOfLines={1}
-                        >
-                          {item.name}
-                        </Text>
-                        <ToggleSwitch
-                          value={on}
-                          onToggle={guarded(() => toggleDeptAlert(item.id))}
-                          accessibilityLabel={`${item.name} 알림 ${on ? '켜짐' : '꺼짐'}`}
-                        />
-                      </View>
-                    )
-                  })}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyHint}>게시판을 구독하면 여기서 게시판마다 알림을 켜고 끌 수 있어요</Text>
-          )}
+          {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
+          <ListRow
+            icon="notifications-circle-outline"
+            label="게시판별 알림"
+            value={
+              isGuest
+                ? '로그인 후 사용'
+                : subscribedDepts.length > 0
+                  ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
+                  : '구독한 게시판 없음'
+            }
+            last
+            style={detailDimmed ? styles.dimmed : undefined}
+            onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
+          />
         </View>
 
         <View style={styles.section}>
@@ -680,6 +650,16 @@ export default function SettingsScreen() {
         />
       )}
 
+      <BoardAlertsModal
+        visible={boardAlertsVisible}
+        onClose={() => setBoardAlertsVisible(false)}
+        onOpenSubscriptions={() => {
+          // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
+          setBoardAlertsVisible(false)
+          setTimeout(() => setSubManagerVisible(true), 400)
+        }}
+      />
+
       <SubscriptionManagerModal
         visible={subManagerVisible}
         onClose={() => setSubManagerVisible(false)}
@@ -740,42 +720,6 @@ const styles = StyleSheet.create({
   guestNoticeBody: { flex: 1, gap: SPACING.xxs },
   guestNoticeTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   guestNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
-  boardList: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.border,
-  },
-  boardListHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.xs,
-  },
-  boardListTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  boardListCount: { ...TYPE.caption, color: COLORS.textTertiary },
-  boardGroup: { marginTop: SPACING.sm },
-  boardGroupTitle: {
-    ...TYPE.caption,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textTertiary,
-    marginBottom: SPACING.xxs,
-  },
-  boardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
-  },
-  boardName: { ...TYPE.body, flex: 1, color: COLORS.textPrimary },
-  boardNameOff: { color: COLORS.textSecondary },
-  emptyHint: {
-    ...TYPE.caption,
-    color: COLORS.textTertiary,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-  },
   warnRow: {
     flexDirection: 'row',
     alignItems: 'center',
