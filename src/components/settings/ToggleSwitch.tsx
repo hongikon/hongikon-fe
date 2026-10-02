@@ -47,8 +47,8 @@ export default function ToggleSwitch({
   return (
     <Pressable
       onPress={() => {
-        // 꺼짐 → 켜짐으로 바꿀 때만 가볍게 진동한다(끌 때는 조용히).
-        if (!value) haptics.selection()
+        // 꺼짐 → 켜짐으로 바꿀 때만 무음 스위치처럼 두 박자로 진동한다(끌 때는 조용히).
+        if (!value) haptics.switchOn()
         onToggle()
       }}
       hitSlop={8}
