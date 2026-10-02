@@ -33,7 +33,7 @@ export default function TabNavigator() {
         tabBarInactiveTintColor: COLORS.iconInactive,
         tabBarStyle: TAB_BAR_BASE_STYLE,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontFamily: FONTS.medium,
         },
       }}

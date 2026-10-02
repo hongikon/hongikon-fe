@@ -1,39 +1,14 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import type { ReactNode } from 'react'
+import ScreenHeader from '../common/ScreenHeader'
 
 interface ModalHeaderProps {
   title: string
   onClose: () => void
+  /** 오른쪽 자리(완료 등) */
+  right?: ReactNode
 }
 
-export default function ModalHeader({ title, onClose }: ModalHeaderProps) {
-  return (
-    <View style={styles.header}>
-      <TouchableOpacity
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel="뒤로 가기"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
-      </TouchableOpacity>
-      <Text style={styles.title}>{title}</Text>
-      <View style={{ width: 22 }} />
-    </View>
-  )
+/** 전체 화면 창(설정의 각 창)의 머리줄. 쌓인 화면과 같은 ScreenHeader 를 쓴다. */
+export default function ModalHeader({ title, onClose, right }: ModalHeaderProps) {
+  return <ScreenHeader title={title} onBack={onClose} right={right} />
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
-  },
-  title: { fontSize: 16, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-})
