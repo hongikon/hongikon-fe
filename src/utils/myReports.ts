@@ -35,7 +35,8 @@ export const STATUS_META: Record<MyReportDisplayStatus, StatusMeta> = {
     bg: COLORS.warningSoft,
   },
   SCHEDULED: {
-    label: '승인됨 · 시작 전',
+    // 지도 시트·관리 화면의 '예정'과 같은 말.
+    label: '예정 · 승인됨',
     hint: '시작 시각이 되면 지도에 나타나요.',
     icon: 'calendar-outline',
     fg: COLORS.primary,
