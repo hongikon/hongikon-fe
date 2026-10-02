@@ -9,7 +9,8 @@ import { parseServerTime } from './serverTime'
 export function resolveDisplayStatus(report: MyReport, now: number = Date.now()): MyReportDisplayStatus {
   if (report.displayStatus && report.displayStatus in STATUS_META) return report.displayStatus
   const { status } = report
-  if (status !== 'PENDING' && status !== 'ACTIVE') return status
+  // 모르는 저장 상태(서버에 새로 생긴 값)는 STATUS_META 에 없어 카드가 그리다 죽는다 — 끝난 제보로 보여 준다.
+  if (status !== 'PENDING' && status !== 'ACTIVE') return status in STATUS_META ? status : 'ENDED'
   const endsAt = parseServerTime(report.endsAt)
   if (!Number.isNaN(endsAt) && endsAt < now) return 'ENDED'
   const startsAt = parseServerTime(report.startsAt)
