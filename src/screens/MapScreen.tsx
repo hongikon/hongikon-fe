@@ -52,7 +52,7 @@ import { formatFloor } from "../utils/floors";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
 import { ROUTE_FINDING_ENABLED } from "../constants/route";
-import { CAMPUS_CENTER, DEFAULT_ZOOM } from "../constants/map";
+import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML } from "../utils/mapHtml";
 import {
   filterPartners,
@@ -429,7 +429,7 @@ export default function MapScreen() {
         partners: [toMarker(partner)],
         bounds: null,
       });
-      postToMap({ type: "focusPartner", id: partner.id, zoom: 18 });
+      postToMap({ type: "focusPartner", id: partner.id, zoom: FOCUS_ZOOM });
     },
     [postToMap],
   );
@@ -822,7 +822,7 @@ export default function MapScreen() {
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
       // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
-      postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: 18 });
+      postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: FOCUS_ZOOM });
       postToMap({ type: "previewPin", lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치" });
       toast.show({ message: `제보 위치 · ${intent.label ?? "지도 가운데"}`, tone: "info" });
     }

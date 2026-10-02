@@ -3,6 +3,7 @@ import {
   BUILDING_PIN_WIDTH_SELECTED_PX,
   CAMPUS_CENTER,
   DEFAULT_ZOOM,
+  FOCUS_ZOOM,
   MARKER_CLICK_GUARD_MS,
   PARTNER_BADGE_SIZE_PX,
   PARTNER_BADGE_SIZE_SELECTED_PX,
@@ -355,6 +356,12 @@ export function buildMapHTML(
     var selectedPartnerId = null;
     // 마커 클릭이 지도 클릭으로도 전달되는 경우가 있어, 직후의 배경 클릭을 무시한다.
     var lastMarkerClickAt = 0;
+
+    // 하나를 눌러 볼 때(건물·제휴·편의시설·제보·검색) 항상 같은 배율로 그 자리를 가운데에 둔다.
+    function focusOn(lat, lng) {
+      map.setCenter(new naver.maps.LatLng(lat, lng));
+      map.setZoom(${FOCUS_ZOOM});
+    }
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
     // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
     // order: 그 조합의 고정 순서(currentPartners 순서). index: 지금 몇 번째인지.
@@ -559,6 +566,7 @@ export function buildMapHTML(
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
+          if (!pickerActive) focusOn(partner.lat, partner.lng);
           selectPartner(partner.id);
         });
         partnerMarkers.push(marker);
@@ -634,6 +642,7 @@ export function buildMapHTML(
         naver.maps.Event.addListener(marker, 'click', function() {
           if (pickerActive) return;
           lastMarkerClickAt = new Date().getTime();
+          focusOn(item.lat, item.lng);
           post({ type: 'reportTap', id: item.id });
         });
         reportMarkers.push(marker);
@@ -720,7 +729,7 @@ export function buildMapHTML(
         naver.maps.Event.addListener(marker, 'click', function() {
           if (pickerActive) return;
           lastMarkerClickAt = new Date().getTime();
-          // 편의시설 전용 배너는 아직 없다. 건물 배너를 대신 띄운다.
+          focusOn(item.lat, item.lng);
           post({ type: 'facilityTap', buildingName: item.buildingName });
         });
         facilityMarkers.push(marker);
@@ -799,6 +808,7 @@ export function buildMapHTML(
           lastMarkerClickAt = new Date().getTime();
           selectedBuildingName = building.name;
           renderBuildings();
+          focusOn(building.lat, building.lng);
           post({ type: 'buildingTap', name: building.name });
         });
         buildingMarkers.push(marker);
@@ -932,6 +942,7 @@ export function buildMapHTML(
       }
 
       if (hit) {
+        focusOn(hit.lat, hit.lng);
         post({ type: 'buildingTap', name: hit.name });
       } else if (nextName === null && selectedBuildingName === null) {
         // 빈 곳을 눌렀으면 핀뿐 아니라 건물 배너도 닫는다.
@@ -1084,8 +1095,7 @@ export function buildMapHTML(
           renderPartners();
           var focused = currentPartners.filter(function(p) { return p.id === msg.id; })[0];
           if (focused) {
-            map.setCenter(new naver.maps.LatLng(focused.lat, focused.lng));
-            map.setZoom(msg.zoom || 18);
+            focusOn(focused.lat, focused.lng);
           }
         }
 
@@ -1102,8 +1112,7 @@ export function buildMapHTML(
         }
 
         if (msg.type === 'focusReport') {
-          map.setCenter(new naver.maps.LatLng(msg.lat, msg.lng));
-          map.setZoom(msg.zoom || 18);
+          focusOn(msg.lat, msg.lng);
         }
 
         if (msg.type === 'showRoute') {
