@@ -309,7 +309,6 @@ export default function SettingsScreen() {
                 </View>
               </View>
               <ToggleSwitch
-                size="small"
                 value={reportStatusAlert}
                 onToggle={toggleReportStatusAlert}
                 accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
@@ -326,7 +325,6 @@ export default function SettingsScreen() {
                 </View>
               </View>
               <ToggleSwitch
-                size="small"
                 value={newReportAlert}
                 onToggle={toggleNewReportAlert}
                 accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
@@ -381,7 +379,6 @@ export default function SettingsScreen() {
                           {item.name}
                         </Text>
                         <ToggleSwitch
-                          size="small"
                           value={on}
                           onToggle={() => toggleDeptAlert(item.id)}
                           accessibilityLabel={`${item.name} 알림 ${on ? '켜짐' : '꺼짐'}`}

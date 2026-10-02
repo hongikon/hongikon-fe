@@ -8,14 +8,10 @@ interface ToggleSwitchProps {
   accessibilityLabel: string
   /** 전체 알림이 꺼져 있을 때처럼 "눌러도 지금은 효과가 없다"를 보여줄 때. 누를 수는 있다. */
   dimmed?: boolean
-  /** 게시판 목록처럼 줄이 많은 곳에서 쓰는 작은 크기. */
-  size?: 'regular' | 'small'
 }
 
-const SIZES = {
-  regular: { width: 44, height: 26, thumb: 22 },
-  small: { width: 38, height: 22, thumb: 18 },
-} as const
+/** 앱 전체에서 스위치는 이 한 가지 크기만 쓴다(화면마다 크기가 달라 보이지 않게). */
+const SIZE = { width: 44, height: 26, thumb: 22 } as const
 const PADDING = 2
 
 /**
@@ -27,9 +23,8 @@ export default function ToggleSwitch({
   onToggle,
   accessibilityLabel,
   dimmed = false,
-  size = 'regular',
 }: ToggleSwitchProps) {
-  const { width, height, thumb } = SIZES[size]
+  const { width, height, thumb } = SIZE
   const progress = useRef(new Animated.Value(value ? 1 : 0)).current
 
   useEffect(() => {
