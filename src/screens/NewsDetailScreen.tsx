@@ -89,6 +89,9 @@ function NewsDetailBody({
   const { toggleBookmark } = useFeedbackToggles()
   const catColor = CATEGORY_COLORS[item.category as CategoryKey]
   const bookmarked = isBookmarked(item.id)
+  const originalLabel = item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'
+  const originalA11yLabel = item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'
+  const openOriginal = () => openExternalUrl(item.link, 'https://www.hongik.ac.kr')
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -120,12 +123,26 @@ function NewsDetailBody({
           </Text>
         </View>
 
-        <Text style={styles.title}>{item.title}</Text>
-
+        {/* 출처 게시판을 제목보다 먼저 보여 준다 — 학교 홈페이지 글을 옮겨 보여 준다는 걸 분명히 한다(스토어 5.2.2). */}
         <View style={styles.sourceRow}>
           <Ionicons name="business-outline" size={14} color={COLORS.textTertiary} />
-          <Text style={styles.sourceName}>{item.source}</Text>
+          <Text style={styles.sourceName} numberOfLines={1}>
+            <Text style={styles.sourceLabel}>출처{'  '}</Text>
+            {item.source}
+          </Text>
         </View>
+
+        <Text style={styles.title}>{item.title}</Text>
+
+        {/* 원문 보기가 이 화면의 주된 행동이다. 본문은 참고용 요약이라 원문 확인을 먼저 권한다. */}
+        <Button
+          icon="open-outline"
+          label={originalLabel}
+          onPress={openOriginal}
+          accessibilityRole="link"
+          accessibilityLabel={originalA11yLabel}
+          style={styles.originalButton}
+        />
 
         <View style={styles.divider} />
 
@@ -163,13 +180,14 @@ function NewsDetailBody({
           </View>
         )}
 
+        {/* 긴 본문을 다 읽은 뒤에도 다시 올라가지 않고 원문을 열 수 있게 아래에도 둔다(보조 모양). */}
         <Button
           variant="secondary"
           icon="open-outline"
-          label={item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'}
-          onPress={() => openExternalUrl(item.link, 'https://www.hongik.ac.kr')}
+          label={originalLabel}
+          onPress={openOriginal}
           accessibilityRole="link"
-          accessibilityLabel={item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'}
+          accessibilityLabel={originalA11yLabel}
         />
       </ScrollView>
     </SafeAreaView>
@@ -202,9 +220,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  sourceName: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  sourceName: { flex: 1, fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  sourceLabel: { fontFamily: FONTS.semibold, color: COLORS.textTertiary },
+  originalButton: { marginTop: 4, marginBottom: 20 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginBottom: 20 },
   body: { fontFamily: FONTS.regular,
     fontSize: 15,
