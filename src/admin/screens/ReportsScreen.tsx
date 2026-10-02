@@ -15,6 +15,7 @@ import {
   reportCategoryColor,
   reportCategoryLabel,
 } from '../format'
+import { formatServerSchedule } from '../../utils/reportSchedule'
 import type { AdminOverview, AdminReport, AdminReportFlag, ReportStatus, ReportStatusFilter, ReportTargetStatus } from '../types'
 import { ReportAuthorModeration } from '../UserModeration'
 import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
@@ -224,9 +225,14 @@ function ReportCard({
       return
     }
     const meta = ACTION_CONFIRM[kind]
+    // 예정 제보는 승인해도 시작 시각이 돼야 지도에 뜬다 — 바로 보인다고 안내하지 않는다.
+    const baseMessage =
+      upcoming && (kind === 'approve' || kind === 'reopen')
+        ? `시작 시각(${formatServerSchedule(report.startsAt, report.endsAt)})이 되면 지도와 목록에 보입니다.`
+        : meta.message
     confirmAction({
       title: meta.title,
-      message: noteText ? `${meta.message}\n\n사유: ${noteText}` : meta.message,
+      message: noteText ? `${baseMessage}\n\n사유: ${noteText}` : baseMessage,
       confirmLabel: ACTION_META[kind].label,
       destructive: meta.destructive,
       onConfirm: () => runAction(kind, noteText),
@@ -276,7 +282,7 @@ function ReportCard({
               {reportCategoryLabel(report.category, report.customCategoryLabel)}
             </Text>
           </View>
-          {expired ? <Badge label="이미 종료됨" tone="danger" /> : upcoming ? <Badge label="시작 전" tone="info" /> : null}
+          {expired ? <Badge label="이미 종료됨" tone="danger" /> : upcoming ? <Badge label="예정 · 시작 전" tone="info" /> : null}
           {movedOut ? <Badge label="방금 처리함" tone="info" /> : null}
         </View>
         <Text style={styles.meta}>#{report.id}</Text>
@@ -327,9 +333,13 @@ function ReportCard({
           ) : null}
         </Fact>
         <Fact
-          icon="time-outline"
-          text={formatRange(report.startsAt, report.endsAt)}
-          textStyle={expired ? styles.expiredText : undefined}
+          icon={upcoming ? 'calendar-outline' : 'time-outline'}
+          text={
+            upcoming
+              ? `예정 ${formatServerSchedule(report.startsAt, report.endsAt)} (${formatRelative(report.startsAt, now)} 시작)`
+              : formatRange(report.startsAt, report.endsAt)
+          }
+          textStyle={expired ? styles.expiredText : upcoming ? styles.upcomingText : undefined}
         />
         <Fact icon="person-outline" text={authorText(report)} />
         {report.authorId !== null ? <ReportAuthorModeration authorId={report.authorId} /> : null}
@@ -490,6 +500,7 @@ const styles = StyleSheet.create({
   },
   photoHintText: { fontFamily: FONTS.medium, fontSize: 11, color: COLORS.white },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
+  upcomingText: { fontFamily: FONTS.semibold, color: COLORS.primary },
   metaItalic: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   facts: { gap: 6 },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },

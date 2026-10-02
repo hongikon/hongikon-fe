@@ -25,7 +25,8 @@ import {
   isMyReportsApiMissing,
   type MyReport,
 } from '../../apis/myReports'
-import { formatDateTime, formatRange } from '../../admin/format'
+import { formatDateTime } from '../../admin/format'
+import { formatServerSchedule, isUpcomingReport } from '../../utils/reportSchedule'
 import { formatFloor } from '../../utils/floors'
 import { reportImageUrls } from '../../utils/reports'
 import { mergeReportPages, resolveDisplayStatus, STATUS_META } from '../../utils/myReports'
@@ -302,6 +303,8 @@ interface MyReportCardProps {
 
 const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting, onShowOnMap, onDelete }: MyReportCardProps) {
   const status = resolveDisplayStatus(report)
+  // 승인 대기·승인된 제보 중 아직 시작 전인 것(끝난·반려된 제보엔 붙이지 않는다).
+  const upcoming = (status === 'PENDING' || status === 'SCHEDULED') && isUpcomingReport(report)
   const meta = STATUS_META[status]
   const category = CATEGORY_BY_KEY.get(report.category)
   const place = placeLabel(report)
@@ -343,8 +346,12 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
         )}
       </View>
       <View style={styles.metaItem}>
-        <Ionicons name="time-outline" size={13} color={COLORS.textTertiary} />
-        <Text style={styles.metaText}>{formatRange(report.startsAt, report.endsAt)}</Text>
+        <Ionicons name={upcoming ? 'calendar-outline' : 'time-outline'} size={13} color={COLORS.textTertiary} />
+        {/* 지도·시트와 같은 형식(여러 날이면 끝 날짜도). 시작 전이면 '예정'을 붙인다. */}
+        <Text style={styles.metaText}>
+          {upcoming ? '예정 · ' : ''}
+          {formatServerSchedule(report.startsAt, report.endsAt)}
+        </Text>
       </View>
 
       {visiblePhotos.length > 0 && (

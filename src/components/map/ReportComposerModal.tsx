@@ -28,9 +28,14 @@ import {
   REPORT_CONTENT_MAX_LENGTH,
   REPORT_CUSTOM_CATEGORY_MAX_LENGTH,
   REPORT_DEFAULT_DURATION_HOURS,
-  REPORT_DURATION_OPTIONS_HOURS,
   REPORT_TITLE_MAX_LENGTH,
 } from '../../constants/report'
+import ReportScheduleFields, {
+  initialReportSchedule,
+  resolveSchedule,
+  type ReportSchedule,
+} from './ReportScheduleFields'
+import { formatClock, formatDay, scheduleError } from '../../utils/reportSchedule'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   REPORT_IMAGE_MAX_BYTES,
@@ -77,6 +82,10 @@ const FALLBACK_FLOOR_OPTIONS: FloorOption[] = [-1, 1, 2, 3, 4, 5, 6].map((value)
 function reportSubmitErrorMessage(error: unknown): string {
   if (isNetworkError(error)) return '인터넷 연결이 불안정해 제보를 올리지 못했어요. 연결을 확인하고 다시 시도해 주세요.'
   if (error instanceof ApiError) {
+    // 시작·종료 시각 규칙(예정 제보)에 걸리면 서버가 해요체 문구를 준다 — 그대로 보여 준다.
+    if (error.status === 400 && error.serverMessage && /시각|진행 시간|진행 기간/.test(error.serverMessage)) {
+      return error.serverMessage
+    }
     if (error.status === 400) return '제보 내용이 올바르지 않아요. 위치(건물·층)와 제목을 다시 확인해 주세요.'
     if (error.status === 401) return '로그인이 만료됐어요. 다시 로그인한 뒤 제보해 주세요.'
     if (error.status === 403) return '이 계정으로는 제보를 올릴 수 없어요.'
@@ -113,7 +122,12 @@ export default function ReportComposerModal({
   const [customInputOpen, setCustomInputOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [durationHours, setDurationHours] = useState(REPORT_DEFAULT_DURATION_HOURS)
+  /** 언제: 시작(지금/날짜·시간)과 끝(진행 시간/종료 시각). */
+  const [schedule, setSchedule] = useState<ReportSchedule>(() => initialReportSchedule(REPORT_DEFAULT_DURATION_HOURS))
+  /** 화면의 '지금'. 열려 있는 동안 30초마다 갱신해 지난 시각 칩을 막고 '지금 ~' 요약을 맞춘다. */
+  const [now, setNow] = useState(() => Date.now())
+  /** 접수된 예정 제보의 시작(ms). 완료 화면 문구에 쓴다. 지금 시작이면 null. */
+  const [submittedStartMs, setSubmittedStartMs] = useState<number | null>(null)
   /** 붙인 사진(최대 3장, 고른 순서 = 보이는 순서). */
   const [images, setImages] = useState<PickedReportImage[]>([])
   /**
@@ -162,7 +176,9 @@ export default function ReportComposerModal({
 
   const trimmedTitle = title.trim()
   const trimmedCustomLabel = customLabel.trim()
-  const canSubmit = trimmedTitle.length > 0 && building !== null && !submitting
+  const { startMs: shownStartMs, endMs: shownEndMs } = resolveSchedule(schedule, now)
+  const scheduleProblem = scheduleError(shownStartMs, shownEndMs, now)
+  const canSubmit = trimmedTitle.length > 0 && building !== null && !submitting && scheduleProblem === null
 
   const reset = () => {
     setCategory('EVENT')
@@ -171,7 +187,9 @@ export default function ReportComposerModal({
     setCustomInputOpen(false)
     setTitle('')
     setContent('')
-    setDurationHours(REPORT_DEFAULT_DURATION_HOURS)
+    setSchedule(initialReportSchedule(REPORT_DEFAULT_DURATION_HOURS))
+    setNow(Date.now())
+    setSubmittedStartMs(null)
     setFloor(1)
     setImages([])
     uploadedKeysRef.current = new Map()
@@ -228,6 +246,11 @@ export default function ReportComposerModal({
   useEffect(() => {
     if (target === null) requestGenRef.current += 1
   }, [target])
+  useEffect(() => {
+    if (target === null || submitted) return
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [target, submitted])
 
   const handleClose = () => {
     requestGenRef.current += 1
@@ -368,9 +391,18 @@ export default function ReportComposerModal({
     setSubmitError(null)
     setPhotoUploadFailed(false)
 
-    // 시작은 지금, 종료는 고른 시간 뒤. 서버에는 UTC ISO-8601 로 보낸다.
-    const startsAt = new Date()
-    const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
+    // '지금'이면 누른 순간이 시작, 아니면 고른 시각. 서버에는 UTC ISO-8601 로 보낸다.
+    const submitNow = Date.now()
+    const resolved = resolveSchedule(schedule, submitNow)
+    const problem = scheduleError(resolved.startMs, resolved.endMs, submitNow)
+    if (problem) {
+      setNow(submitNow)
+      setSubmitting(false)
+      setSubmitError({ message: problem, network: false, retryable: false })
+      return
+    }
+    const startsAt = new Date(resolved.startMs)
+    const endsAt = new Date(resolved.endMs)
 
     const imageKeys: string[] = []
     try {
@@ -426,6 +458,7 @@ export default function ReportComposerModal({
       onCreated(report)
       uploadedKeysRef.current = new Map()
       if (isStale()) return
+      setSubmittedStartMs(schedule.startMode === 'scheduled' ? resolved.startMs : null)
       setSubmitted(true)
       haptics.success()
       // 응답에 imageUrls 가 없으면 사진 1장만 받는 구버전 서버다 — 첫 장(imageKey)만 붙었다.
@@ -475,7 +508,10 @@ export default function ReportComposerModal({
                   <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
                   <Text style={styles.successTitle}>제보가 접수됐어요</Text>
                   <Text style={styles.successText}>
-                    운영진이 확인한 뒤 지도에 올라가요.{'\n'}잘못된 정보나 광고는 올라가지 않을 수 있어요.
+                    {submittedStartMs !== null
+                      ? `운영진이 확인하면 ${formatDay(submittedStartMs)} ${formatClock(submittedStartMs)}부터 지도에 보여요.`
+                      : '운영진이 확인한 뒤 지도에 올라가요.'}
+                    {'\n'}잘못된 정보나 광고는 올라가지 않을 수 있어요.
                   </Text>
                   {photoSkipped && (
                     <Text style={styles.successText}>사진 첨부는 아직 준비 중이라 사진 없이 올렸어요.</Text>
@@ -730,30 +766,14 @@ export default function ReportComposerModal({
                       <Text style={styles.hint}>최대 {REPORT_MAX_IMAGES}장까지 붙일 수 있어요. 촬영 위치 정보는 지우고 올려요.</Text>
                     )}
 
-                    <Text style={styles.sectionLabel}>얼마나 진행되나요?</Text>
-                    <View style={styles.chipWrap}>
-                      {REPORT_DURATION_OPTIONS_HOURS.map((hours) => {
-                        const isActive = durationHours === hours
-                        return (
-                          <TouchableOpacity
-                            key={hours}
-                            activeOpacity={0.75}
-                            onPress={() => setDurationHours(hours)}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: isActive }}
-                            accessibilityLabel={`${hours}시간 동안`}
-                            style={[chipStyles.chip, isActive && styles.durationChipActive]}
-                          >
-                            <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                              {hours}시간
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      })}
-                    </View>
-                    <Text style={styles.hint}>
-                      지금부터 {durationHours}시간 뒤에 지도에서 자동으로 내려갑니다.
-                    </Text>
+                    <Text style={styles.sectionLabel}>언제인가요?</Text>
+                    <ReportScheduleFields value={schedule} onChange={setSchedule} now={now} disabled={submitting} />
+                    {scheduleProblem !== null && (
+                      <View style={styles.errorBox}>
+                        <Ionicons name="warning" size={16} color={COLORS.warningIcon} />
+                        <Text style={styles.errorText}>{scheduleProblem}</Text>
+                      </View>
+                    )}
 
                     {submitError !== null && (
                       <RetryableError

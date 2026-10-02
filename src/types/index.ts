@@ -304,6 +304,7 @@ export interface Report {
    * 이 기능 전 서버는 없음 — 그때는 숨기기 메뉴를 보이지 않는다(`src/lib/hiddenAuthors.ts`).
    */
   authorKey?: string | null
+  /** 시작 시각(UTC). 미리 올린 예정 제보는 미래일 수 있다 — `include=upcoming` 목록에서만 시작 전 제보가 온다. */
   startsAt: string
   endsAt: string
   status: ReportStatus
@@ -337,7 +338,9 @@ export interface CreateReportInput {
    * (새 서버는 `imageKeys` 가 있으면 이 값을 무시한다).
    */
   imageKey?: string
+  /** UTC ISO. 지금 ~ 14일 안(예정 제보). 서버 규칙은 `utils/reportSchedule.ts` 참고. */
   startsAt: string
+  /** UTC ISO. 시작보다 뒤, 최대 7일(여러 날 행사). */
   endsAt: string
 }
 

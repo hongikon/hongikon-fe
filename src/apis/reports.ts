@@ -14,6 +14,11 @@ interface GetLiveReportsOptions {
   accessToken?: string | null
   /** 레이어를 끄거나 화면을 떠나면 진행 중인 요청을 끊는다(`useApiResource`). */
   signal?: AbortSignal
+  /**
+   * 24시간 안에 시작할 예정 제보도 함께 받는다(`include=upcoming`, 진행 중 제보 뒤에 시작 순으로 붙음).
+   * 예정 제보 기능 전 서버는 이 값을 모르고 무시해 진행 중 제보만 준다.
+   */
+  includeUpcoming?: boolean
 }
 
 /** 서버(`POST /reports/images`)가 받는 최대 크기. 응답의 `maxBytes` 가 오면 그 값을 따른다. */
@@ -171,6 +176,7 @@ export async function getLiveReports(
 ): Promise<ReportListItem[]> {
   const params = new URLSearchParams({ live: 'true' })
   if (options.buildingId !== undefined) params.set('buildingId', String(options.buildingId))
+  if (options.includeUpcoming) params.set('include', 'upcoming')
 
   const { reports } = await apiRequest<{ reports: ReportListItem[] }>(
     `/reports?${params.toString()}`,

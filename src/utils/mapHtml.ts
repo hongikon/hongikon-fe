@@ -509,17 +509,25 @@ export function buildMapHTML(
     // ── 제보 표시 ───────────────────────────────────────────
     // 지금 벌어지는 일이라 다른 마커보다 눈에 먼저 띄어야 한다. zIndex 를 가장
     // 높게 두고, 배지에 옅은 테두리 링을 둘러 '살아있는 정보'로 읽히게 한다.
+    // 예정 제보(item.upcoming)는 속이 흰 배지 + 카테고리색 점선 테두리로, 지금 진행 중인 제보와 한눈에 갈린다.
     function reportLabelHTML(item) {
       var badge = 30;
-      var badgeEl = '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
-        + 'background:' + safeColor(item.color) + ';box-shadow:0 2px 6px rgba(0,0,0,0.3),0 0 0 3px rgba(255,255,255,0.95);'
-        + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
-        + '<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" style="display:block;">'
-        + '<path d="M5 3h11l-1.6 3.4L16 9.8H7v10.9H5V3z"/></svg></div>';
+      var color = safeColor(item.color);
+      var badgeEl = item.upcoming
+        ? '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;box-sizing:border-box;'
+          + 'background:#fff;border:2px dashed ' + color + ';box-shadow:0 2px 6px rgba(0,0,0,0.22);'
+          + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
+          + '<svg viewBox="0 0 24 24" width="15" height="15" fill="' + color + '" style="display:block;">'
+          + '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 5v4.6l3.2 1.9-.8 1.3L11 12.4V7h2z"/></svg></div>'
+        : '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
+          + 'background:' + color + ';box-shadow:0 2px 6px rgba(0,0,0,0.3),0 0 0 3px rgba(255,255,255,0.95);'
+          + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
+          + '<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" style="display:block;">'
+          + '<path d="M5 3h11l-1.6 3.4L16 9.8H7v10.9H5V3z"/></svg></div>';
 
       var nameEl = '<div style="margin-top:3px;white-space:nowrap;max-width:150px;overflow:hidden;'
         + 'text-overflow:ellipsis;font-family:' + PARTNER_FONT
-        + ';font-size:11.5px;font-weight:700;color:#1f2937;letter-spacing:-0.2px;'
+        + ';font-size:11.5px;font-weight:700;color:' + (item.upcoming ? '#4b5563' : '#1f2937') + ';letter-spacing:-0.2px;'
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
         + escapeHTML(item.label) + '</div>';
 
@@ -543,7 +551,8 @@ export function buildMapHTML(
         var marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(item.lat, item.lng),
           map: map,
-          zIndex: 300,
+          // 진행 중 제보가 예정 제보 위로 오게 한다.
+          zIndex: item.upcoming ? 290 : 300,
           icon: {
             content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
               + reportLabelHTML(item) + '</div>',

@@ -13,6 +13,7 @@ import { flagReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
+import { isUpcomingReport } from '../../utils/reportSchedule'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
@@ -36,6 +37,7 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   const { accessToken, logout } = useAuth()
   const meta = reportCategoryMeta(report.category)
   const badgeLabel = report.customCategoryLabel || meta.label
+  const upcoming = isUpcomingReport(report)
   const toast = useToast()
   const [flagging, setFlagging] = useState(false)
   const [flagged, setFlagged] = useState(false)
@@ -130,9 +132,18 @@ export default function ReportSheet({ report, onClose }: ReportSheetProps) {
   return (
     <View style={styles.sheet}>
       <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: meta.color }]}>
-          <Ionicons name={meta.icon} size={13} color={COLORS.white} />
-          <Text style={styles.badgeText}>{badgeLabel}</Text>
+        <View style={styles.badges}>
+          <View style={[styles.badge, { backgroundColor: meta.color }]}>
+            <Ionicons name={meta.icon} size={13} color={COLORS.white} />
+            <Text style={styles.badgeText}>{badgeLabel}</Text>
+          </View>
+          {upcoming && (
+            // 아직 시작 전인 예정 제보. 지도 마커도 속이 빈 배지로 따로 보인다.
+            <View style={[styles.badge, styles.upcomingBadge]} accessibilityLabel="예정 제보, 아직 시작 전">
+              <Ionicons name="time-outline" size={13} color={COLORS.primary} />
+              <Text style={[styles.badgeText, styles.upcomingBadgeText]}>예정</Text>
+            </View>
+          )}
         </View>
         <IconButton
           icon="close"
@@ -261,6 +272,9 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  upcomingBadge: { backgroundColor: COLORS.primarySoft },
+  upcomingBadgeText: { color: COLORS.primary },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
