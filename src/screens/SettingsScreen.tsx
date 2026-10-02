@@ -31,6 +31,8 @@ import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
+import { useIsAdmin } from '../admin/AdminAccess'
+import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
 import { openSitePage } from '../utils/openSitePage'
 import ListRow from '../components/common/ListRow'
@@ -209,6 +211,9 @@ export default function SettingsScreen() {
           ? '알림 확인 필요'
           : undefined
   const isGuest = status !== 'authenticated'
+  // 관리자 알림 스위치 — 관리자 계정에만, 서버가 이 설정을 알 때만(모르면 숨김) 보인다.
+  const isAdmin = useIsAdmin()
+  const adminAlert = useAdminAlertSetting(isAdmin)
 
   // 앱 닉네임. 백엔드에 API 가 아직 없으면(배포 전) 줄을 숨긴다.
   // 토큰은 ref 로 읽는다. deps 에 넣으면 401 → 재발급으로 토큰이 바뀔 때마다 다시 불러, 배포 전 서버(없는 경로에 401)에서
@@ -364,6 +369,34 @@ export default function SettingsScreen() {
               }
             />
           </View>
+          {isAdmin && adminAlert.state.status !== 'unsupported' && (
+            <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
+              <Text style={styles.subGroupTitle}>관리자</Text>
+              <ListRow
+                icon="shield-checkmark-outline"
+                label="관리자 알림"
+                description="새 제보 승인 대기·새 문의·신고로 자동 숨김된 제보를 알려드려요. 몰리면 2분에 한 번 묶어서 와요."
+                value={
+                  adminAlert.state.status === 'loading'
+                    ? '불러오는 중'
+                    : adminAlert.state.status === 'error'
+                      ? '다시 시도'
+                      : undefined
+                }
+                onPress={adminAlert.state.status === 'error' ? adminAlert.retry : undefined}
+                last
+                right={
+                  adminAlert.state.status === 'ready' ? (
+                    <ToggleSwitch
+                      value={adminAlert.state.enabled}
+                      onToggle={adminAlert.toggle}
+                      accessibilityLabel={`관리자 알림 ${adminAlert.state.enabled ? '켜짐' : '꺼짐'}`}
+                    />
+                  ) : undefined
+                }
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
