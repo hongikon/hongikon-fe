@@ -59,8 +59,12 @@ function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id' | 'nickname
   }
 }
 
+/** 목업에서 "지금 로그인한 관리자"의 회원 id. 자기 자신의 관리자 해제는 400 으로 막는다. */
+const MOCK_SELF_ID = 1
+
 const users: AdminUser[] = [
-  baseUser({ id: 1, nickname: '운영자', role: 'ADMIN' }),
+  baseUser({ id: MOCK_SELF_ID, nickname: '운영자', role: 'ADMIN' }),
+  baseUser({ id: 3, nickname: '부운영자', role: 'ADMIN', socialType: 'APPLE' }),
   baseUser({ id: 7, nickname: '와우산다람쥐' }),
   baseUser({ id: 12, nickname: '광고봇', status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
 ]
@@ -217,7 +221,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
         : users.filter((user) => user.nickname.includes(q))
     return { users: list }
   }
-  const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend))?$/)
+  const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend|grant-admin|revoke-admin))?$/)
   if (userMatch) {
     const user = users.find((item) => item.id === Number(userMatch[1]))
     if (!user) throw notFound()
@@ -233,6 +237,21 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
       user.status = 'ACTIVE'
       user.suspendedReason = null
       user.suspendedAt = null
+      return { ...user }
+    }
+    // 백엔드 AdminUserService.grantAdmin / revokeAdmin 과 같은 규칙·문구.
+    if (method === 'POST' && userMatch[3] === 'grant-admin') {
+      if (user.status === 'SUSPENDED') {
+        throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, '정지된 회원은 관리자로 지정할 수 없어요. 먼저 정지를 해제해 주세요.')
+      }
+      user.role = 'ADMIN'
+      return { ...user }
+    }
+    if (method === 'POST' && userMatch[3] === 'revoke-admin') {
+      if (user.id === MOCK_SELF_ID) {
+        throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, '자기 자신의 관리자 권한은 해제할 수 없어요.')
+      }
+      user.role = 'USER'
       return { ...user }
     }
   }

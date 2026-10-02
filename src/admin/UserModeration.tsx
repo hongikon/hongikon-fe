@@ -3,7 +3,8 @@ import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { ApiError, getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { fetchUser, suspendUser, unsuspendUser } from './api'
+import { confirmAction } from '../utils/dialog'
+import { fetchUser, grantAdmin, revokeAdmin, suspendUser, unsuspendUser } from './api'
 import { formatDateTime } from './format'
 import type { AdminUser } from './types'
 import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
@@ -15,6 +16,21 @@ const REASON_MAX_LENGTH = 200
 function moderationError(err: unknown, fallback: string): string {
   if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
     return '회원을 찾을 수 없거나, 서버에 회원 관리 기능이 아직 배포되지 않았습니다.'
+  }
+  return getErrorMessage(err, fallback)
+}
+
+/**
+ * 관리자 지정·해제 오류 문구. 400 은 서버가 쓴 이유(자기 자신 해제, 정지된 회원 지정)를 그대로 보여 준다.
+ * 회원은 이미 불러와 있으니 404/405 는 "경로가 없다" — 서버가 아직 배포 전이다. 앱 토큰으로 보낼 때는
+ * 없는 경로를 Spring `/error` 가 401 로 돌려주기도 해서, 재발급 뒤에도 401 이면 같은 경우로 본다.
+ */
+function roleError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 404 || err.status === 405 || (err.status === 401 && err.afterTokenRefresh)) {
+      return '서버 업데이트 후 사용할 수 있어요.'
+    }
+    if (err.status === 400 && err.serverMessage) return err.serverMessage
   }
   return getErrorMessage(err, fallback)
 }
@@ -32,7 +48,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const suspended = user.status === 'SUSPENDED'
   const isAdmin = user.role === 'ADMIN'
 
-  const run = (task: () => Promise<AdminUser>, fallback: string) => {
+  const run = (task: () => Promise<AdminUser>, fallback: string, toMessage = moderationError) => {
     setBusy(true)
     setError(null)
     task()
@@ -41,9 +57,26 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
         setReason('')
         onChanged(updated)
       })
-      .catch((err: unknown) => setError(moderationError(err, fallback)))
+      .catch((err: unknown) => setError(toMessage(err, fallback)))
       .finally(() => setBusy(false))
   }
+
+  const confirmGrant = () =>
+    confirmAction({
+      title: '관리자로 지정',
+      message: `#${user.id} ${user.nickname} 님을 관리자로 지정할까요? 제보 검토·회원 정지 등 관리 기능을 모두 쓸 수 있게 됩니다.`,
+      confirmLabel: '지정',
+      onConfirm: () => run(() => grantAdmin(user.id), '관리자로 지정하지 못했습니다. 다시 시도해주세요.', roleError),
+    })
+
+  const confirmRevoke = () =>
+    confirmAction({
+      title: '관리자 해제',
+      message: `#${user.id} ${user.nickname} 님의 관리자 권한을 해제할까요? 다음 요청부터 관리 기능을 쓸 수 없습니다.`,
+      confirmLabel: '해제',
+      destructive: true,
+      onConfirm: () => run(() => revokeAdmin(user.id), '관리자 권한을 해제하지 못했습니다. 다시 시도해주세요.', roleError),
+    })
 
   const trimmed = reason.trim()
 
@@ -51,9 +84,9 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
     <View style={styles.panel}>
       <View style={styles.row}>
         <Badge label={suspended ? '이용 정지' : '정상'} tone={suspended ? 'danger' : 'success'} />
+        {isAdmin ? <Badge label="관리자" tone="info" /> : null}
         <Text style={styles.meta}>
           #{user.id} · {user.nickname} · {user.socialType}
-          {isAdmin ? ' · 관리자' : ''}
         </Text>
       </View>
       {suspended ? (
@@ -91,6 +124,25 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
         </ConfirmBar>
       ) : (
         <View style={styles.actions}>
+          {/* 정지된 회원은 관리자로 지정할 수 없다(서버도 400). 먼저 정지를 풀어야 한다. */}
+          {isAdmin ? (
+            <Button
+              label="관리자 해제"
+              icon="shield-outline"
+              variant="ghost"
+              onPress={confirmRevoke}
+              disabled={busy}
+              small
+            />
+          ) : !suspended ? (
+            <Button
+              label="관리자로 지정"
+              icon="shield-checkmark-outline"
+              onPress={confirmGrant}
+              disabled={busy}
+              small
+            />
+          ) : null}
           {suspended ? (
             <Button
               label="정지 해제"
@@ -100,7 +152,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
               small
             />
           ) : !isAdmin ? (
-            <Button label="이용 정지" icon="ban-outline" variant="danger" onPress={() => setConfirming(true)} small />
+            <Button label="이용 정지" icon="ban-outline" variant="danger" onPress={() => setConfirming(true)} disabled={busy} small />
           ) : null}
         </View>
       )}
@@ -159,7 +211,7 @@ const styles = StyleSheet.create({
   box: { gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E7' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
-  actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+  actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' },
   actionsStart: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start' },
   inputApp: { minHeight: 44, fontSize: 16 },
   input: {

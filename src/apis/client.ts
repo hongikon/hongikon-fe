@@ -39,12 +39,19 @@ export class ApiError extends Error {
    * 서버 쪽 사정(예: 없는 경로를 Spring `/error` 가 401 로 돌려주는 경우)이다.
    */
   afterTokenRefresh?: boolean
+  /**
+   * 400/409/422 응답 본문 `{ "message": "..." }` 의 문구. 서버가 사용자에게 보여 주려고 쓴 짧은 한국어 안내
+   * (예: "자기 자신의 관리자 권한은 해제할 수 없어요.")만 담는다 — HTML·긴 원문은 버린다.
+   * `message` 는 그대로 상태 코드별 문구라, 서버 문구를 보여 줄지는 호출부가 고른다.
+   */
+  serverMessage?: string
 
-  constructor(status: number, message: string, devDetail?: string) {
+  constructor(status: number, message: string, devDetail?: string, serverMessage?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     if (__DEV__ && devDetail) this.devDetail = devDetail
+    if (serverMessage) this.serverMessage = serverMessage
   }
 }
 
@@ -237,10 +244,33 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   })
 }
 
-async function readDevDetail(response: Response): Promise<string | undefined> {
-  if (!__DEV__) return undefined
+/** 서버 안내 문구를 믿고 꺼낼 상태 코드(입력·상태 검증 실패). */
+const SERVER_MESSAGE_STATUSES = new Set([400, 409, 422])
+const SERVER_MESSAGE_MAX_LENGTH = 200
+
+/** 실패 응답 본문에서 개발용 원문과(개발 빌드만) 사용자용 서버 문구(`{ message }`, 일부 상태 코드만)를 꺼낸다. */
+async function readFailureBody(response: Response): Promise<{ devDetail?: string; serverMessage?: string }> {
+  const wantsMessage = SERVER_MESSAGE_STATUSES.has(response.status)
+  if (!__DEV__ && !wantsMessage) return {}
   const text = await response.text().catch(() => '')
-  return text.slice(0, DEV_DETAIL_MAX_LENGTH) || undefined
+  let serverMessage: string | undefined
+  if (wantsMessage && text) {
+    try {
+      const parsed: unknown = JSON.parse(text)
+      const message = parsed && typeof parsed === 'object' ? (parsed as { message?: unknown }).message : undefined
+      if (
+        typeof message === 'string' &&
+        message.trim() &&
+        message.length <= SERVER_MESSAGE_MAX_LENGTH &&
+        !/[<>]/.test(message)
+      ) {
+        serverMessage = message.trim()
+      }
+    } catch {
+      // JSON 이 아니면(프록시 HTML 등) 서버 문구는 없다.
+    }
+  }
+  return { devDetail: __DEV__ ? text.slice(0, DEV_DETAIL_MAX_LENGTH) || undefined : undefined, serverMessage }
 }
 
 interface SendOptions {
@@ -298,7 +328,8 @@ async function send(path: string, options: SendOptions): Promise<Response> {
       const { status } = response
       emitOutcome(status === 502 || status === 503 || status === 504 ? 'unreachable' : 'reachable')
       retryAfterMs = status === 429 || status === 503 ? parseRetryAfter(response.headers.get('Retry-After')) : null
-      failure = new ApiError(status, friendlyMessageForStatus(status), await readDevDetail(response))
+      const { devDetail, serverMessage } = await readFailureBody(response)
+      failure = new ApiError(status, friendlyMessageForStatus(status), devDetail, serverMessage)
     }
 
     const canRetry =

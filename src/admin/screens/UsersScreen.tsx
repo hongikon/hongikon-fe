@@ -50,7 +50,7 @@ export default function UsersScreen() {
     <View>
       <ScreenHeader
         title="회원"
-        subtitle="회원 id 또는 로그인 닉네임으로 찾습니다. 검색어가 없으면 이용 정지된 회원을 보여줍니다."
+        subtitle="회원 id 또는 로그인 닉네임으로 찾습니다. 검색어가 없으면 이용 정지된 회원을 보여줍니다. 회원 번호는 앱 설정 > 계정에서 확인할 수 있습니다."
       />
       <View style={styles.search}>
         <TextInput

@@ -268,6 +268,16 @@ export function unsuspendUser(userId: number): Promise<AdminUser> {
   return adminRequest<AdminUser>(`/admin/users/${userId}/unsuspend`, { method: 'POST', retries: 0 })
 }
 
+/** 관리자로 지정(백엔드 PR #13). 정지된 회원은 400. 응답은 바뀐 회원(role 포함). */
+export function grantAdmin(userId: number): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/grant-admin`, { method: 'POST', retries: 0 })
+}
+
+/** 관리자 권한 해제. 자기 자신은 400(콘솔에서 스스로 쫓겨나거나 관리자가 0명이 되지 않게). */
+export function revokeAdmin(userId: number): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/revoke-admin`, { method: 'POST', retries: 0 })
+}
+
 // ── 문의 ──────────────────────────────────────────────────────────────
 
 export async function fetchFeedback(status: FeedbackStatusFilter, signal?: AbortSignal): Promise<AdminFeedback[]> {
