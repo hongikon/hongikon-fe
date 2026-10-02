@@ -330,6 +330,14 @@ export default function PartnerSuggestModal({
                   />
                 )}
 
+                {/* 보내기 바로 위 한 줄 안내(토스식). 운영진 확인 후 반영된다는 걸 미리 알린다. */}
+                <View style={styles.submitNote}>
+                  <Ionicons name="information-circle-outline" size={14} color={COLORS.textTertiary} />
+                  <Text style={styles.submitNoteText}>
+                    운영진이 사실을 확인한 뒤 반영해요. 확인이 어려우면 반영되지 않을 수 있어요.
+                  </Text>
+                </View>
+
                 <Button
                   label="보내기"
                   onPress={handleSubmit}
@@ -380,6 +388,8 @@ const styles = StyleSheet.create({
   pickButton: { marginBottom: 8 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 12 },
   errorBox: { marginBottom: 12 },
+  submitNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 10 },
+  submitNoteText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: COLORS.textTertiary },
   successBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   successTitle: { ...TYPE.headline, color: COLORS.textPrimary },
   successText: {
