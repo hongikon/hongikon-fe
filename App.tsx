@@ -21,6 +21,7 @@ import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
 import { AdminAccessProvider } from './src/admin/AdminAccess'
+import { requestMapIntent } from './src/lib/mapIntents'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -66,6 +67,30 @@ const isAdminPath =
   Platform.OS === 'web' &&
   typeof window !== 'undefined' &&
   /^\/admin(\/|$)/.test(window.location.pathname)
+
+/**
+ * 공유 링크 `https://hongikon.com/r/{id}`(제보 시트의 "공유"). Netlify 의 SPA 대체 규칙이 index.html 을 돌려주고,
+ * 여기서 지도에 "그 제보 띄우기" 요청을 남긴 뒤 주소를 `/` 로 바꾼다(새로고침해도 다시 열리지 않게).
+ * 지도 탭이 포커스될 때 요청을 꺼내 제보 레이어를 켜고 시트를 연다. 끝났거나 내려간 제보면 안내만 띄운다.
+ */
+export function sharedReportIdFromPath(pathname: string): number | null {
+  const m = /^\/r\/(\d{1,12})\/?$/.exec(pathname)
+  if (!m) return null
+  const id = Number(m[1])
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  const sharedId = sharedReportIdFromPath(window.location.pathname)
+  if (sharedId !== null) {
+    requestMapIntent({ type: 'focusReport', reportId: sharedId })
+    try {
+      window.history.replaceState(null, '', '/')
+    } catch {
+      // 주소를 못 바꿔도 제보는 연다.
+    }
+  }
+}
 
 // 폰트가 준비될 때까지 스플래시를 띄워 둔다. 그렇게 하지 않으면
 // 시스템 폰트로 한 프레임 그려졌다가 Pretendard 로 바뀌며 글자가 튄다.

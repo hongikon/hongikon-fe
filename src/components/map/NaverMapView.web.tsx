@@ -8,7 +8,7 @@ export interface NaverMapViewHandle {
 interface Props {
   html: string
   onMessage: (event: { nativeEvent: { data: string } }) => void
-  /** 네이티브(NaverMapView.tsx)와 props 를 맞추려고만 둔다. 웹은 같은 페이지 안이라 다시 불러올 일이 없다. */
+  /** 지도 스크립트를 처음 실행한 뒤 한 번 부른다(그 전에 보낸 마커·이동 명령을 다시 보내게). */
   onReady?: () => void
 }
 
@@ -67,9 +67,11 @@ function extractInlineScript(html: string): string {
   return parts.join('\n')
 }
 
-const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ html, onMessage }, ref) => {
+const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ html, onMessage, onReady }, ref) => {
   const onMessageRef = useRef(onMessage)
   useEffect(() => { onMessageRef.current = onMessage }, [onMessage])
+  const onReadyRef = useRef(onReady)
+  useEffect(() => { onReadyRef.current = onReady }, [onReady])
 
   useImperativeHandle(ref, () => ({
     injectJavaScript: (js: string) => {
@@ -91,6 +93,8 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ html, onMessage },
       if (src) await loadExternalScript(src)
       if (cancelled) return
       injectInlineScript(inline)
+      // 지도가 뜨기 전에 보낸 명령(공유 링크 /r/{id} 로 연 제보로 옮기기 등)은 사라진다. 뜬 뒤 화면 상태를 다시 그리게 알린다.
+      onReadyRef.current?.()
     }
 
     init().catch((error) => {

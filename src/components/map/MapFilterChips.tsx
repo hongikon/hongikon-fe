@@ -7,6 +7,7 @@ import { chipStyles } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import type { FacilityKind, MapLayer } from '../../types'
 import * as haptics from '../../lib/haptics'
+import FlameIcon from '../common/FlameIcon'
 
 const LAYERS: readonly {
   key: MapLayer
@@ -36,6 +37,10 @@ interface MapFilterChipsProps {
   onSelectLayer: (value: MapLayer) => void
   onSelectFacilityKind: (value: FacilityKind) => void
   onToggleReports: () => void
+  /** '🔥 HOT' 칩 선택 상태. 서버가 🔥 를 모르면(hotAvailable=false) 칩을 그리지 않는다. */
+  hotOn?: boolean
+  hotAvailable?: boolean
+  onToggleHot?: () => void
 }
 
 /**
@@ -55,6 +60,9 @@ export default function MapFilterChips({
   onSelectLayer,
   onSelectFacilityKind,
   onToggleReports,
+  hotOn = false,
+  hotAvailable = false,
+  onToggleHot,
 }: MapFilterChipsProps) {
   // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
   const facilityCounts = useMemo(
@@ -183,6 +191,23 @@ export default function MapFilterChips({
             <ChipIcon name="megaphone" color={COLORS.primary} active={reportsOn} />
             <Text style={[chipStyles.label, reportsOn && chipStyles.labelActive]}>제보</Text>
           </TouchableOpacity>
+
+          {hotAvailable && onToggleHot ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => {
+                haptics.selection()
+                onToggleHot()
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: hotOn }}
+              accessibilityLabel={hotOn ? 'HOT 제보만 보기 끄기' : 'HOT 제보만 보기'}
+              style={[chipStyles.chip, hotOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+            >
+              <FlameIcon variant={hotOn ? 'hot' : 'full'} size={15} />
+              <Text style={[chipStyles.label, hotOn && chipStyles.labelActive]}>HOT</Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       )}
     </>

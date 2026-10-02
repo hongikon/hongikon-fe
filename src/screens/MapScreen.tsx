@@ -27,6 +27,8 @@ import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
+import { getHotReports, hasCommunityFields } from "../apis/community";
+import HotReportList from "../components/map/HotReportList";
 import { useApiResource } from "../hooks/useApiResource";
 import Button from "../components/common/Button";
 import RetryableError from "../components/common/RetryableError";
@@ -155,14 +157,26 @@ export default function MapScreen() {
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
   const [reportsOn, setReportsOn] = useState(false);
+  /**
+   * '🔥 HOT' 칩. 켜면 제보 레이어를 HOT·인기 제보(`GET /reports?sort=hot`, 최근 60분 🔥 순)로만 채우고 위에 짧은 목록을 띄운다.
+   * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
+   */
+  const [hotOnly, setHotOnly] = useState(false);
+  /** 서버가 🔥 를 아는지(목록 항목에 fireCount 가 오는지). 모르면 HOT 칩을 숨긴다(커뮤니티 기능 배포 전). */
+  const [hotAvailable, setHotAvailable] = useState(false);
   // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
   const reportsResource = useApiResource(
     async (signal) =>
-      // 24시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
-      visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
-    [accessToken],
+      hotOnly
+        ? visibleReports(await getHotReports({ accessToken, signal }))
+        : // 24시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
+          visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
+    [accessToken, hotOnly],
     { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
   );
+  useEffect(() => {
+    if (!hotOnly && hasCommunityFields(reportsResource.data)) setHotAvailable(true);
+  }, [reportsResource.data, hotOnly]);
   // 숨긴 사용자(기기 저장)의 제보는 지도에서 뺀다. 숨기는 순간 마커도 다시 그린다.
   const hiddenAuthorKeys = useHiddenAuthorKeys();
   const shownReportData = useMemo(
@@ -553,6 +567,7 @@ export default function MapScreen() {
       applyFacilityKind(null);
       // 이벤트(제보) 칩과도 한 번에 하나만 켠다. 안 그러면 편의시설·제휴로 넘어가도 제보 마커와 시트가 남는다.
       setReportsOn(false);
+      setHotOnly(false);
       setSelectedReport(null);
       postToMap({ type: "clearReports" });
     },
@@ -578,6 +593,9 @@ export default function MapScreen() {
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
+    // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
+    const opened = selectedReportRef.current;
+    if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
     // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
     // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
     if (pickingLocation) {
@@ -618,8 +636,10 @@ export default function MapScreen() {
 
   /** 제보 버튼. 켜면 지금 진행 중인 제보를 받아 오고, 끄면 지도에서 내린다. */
   const handleToggleReports = useCallback(() => {
-    const next = !reportsOn;
+    // HOT 만 보고 있었으면 '제보'를 눌렀을 때 전체 제보로 바꾼다(끄지 않는다).
+    const next = !(reportsOn && !hotOnly);
     setReportsOn(next);
+    setHotOnly(false);
     setSelectedReport(null);
     if (!next) {
       postToMap({ type: "clearReports" });
@@ -630,7 +650,33 @@ export default function MapScreen() {
     setSelectedPartner(null);
     setSelectedBuilding(null);
     setSelectedFacilityBuilding(null);
-  }, [reportsOn, postToMap]);
+  }, [reportsOn, hotOnly, postToMap]);
+
+  /** '🔥 HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 제보 레이어를 끈다. */
+  const handleToggleHot = useCallback(() => {
+    const next = !hotOnly;
+    setHotOnly(next);
+    setReportsOn(next);
+    setSelectedReport(null);
+    postToMap({ type: "clearReports" });
+    if (next) {
+      setSelectedPartner(null);
+      setSelectedBuilding(null);
+      setSelectedFacilityBuilding(null);
+    }
+  }, [hotOnly, postToMap]);
+
+  /** '이벤트' 갈래를 열면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
+  useEffect(() => {
+    if (layer !== "이벤트" || hotAvailable) return;
+    const controller = new AbortController();
+    getLiveReports({ accessToken, signal: controller.signal })
+      .then((list) => {
+        if (!controller.signal.aborted && hasCommunityFields(list)) setHotAvailable(true);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [layer, hotAvailable, accessToken]);
 
   /**
    * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
@@ -723,6 +769,8 @@ export default function MapScreen() {
         applyFacilityKind(null);
       }
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
+      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다).
+      setHotOnly(false);
       if (reportsOn) reportsResource.retry();
       else setReportsOn(true);
       try {
@@ -899,10 +947,24 @@ export default function MapScreen() {
             />
           )}
 
+          {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
+          {hotOnly && reportsOn && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
+            <HotReportList
+              reports={reports}
+              selectedId={null}
+              onSelect={(report) => {
+                setSelectedReport(report);
+                postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
+              }}
+            />
+          )}
+
           {reportsEmpty && (
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>지금은 진행 중인 제보가 없어요</Text>
+              <Text style={styles.offscreenText}>
+                {hotOnly ? "지금은 HOT 제보가 없어요. 제보에 🔥 를 붙여 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
+              </Text>
             </View>
           )}
 
@@ -1131,10 +1193,13 @@ export default function MapScreen() {
             <MapFilterChips
               layer={layer}
               facilityKind={facilityKind}
-              reportsOn={reportsOn}
+              reportsOn={reportsOn && !hotOnly}
+              hotOn={hotOnly}
+              hotAvailable={hotAvailable}
               onSelectLayer={handleSelectLayer}
               onSelectFacilityKind={handleSelectFacilityKind}
               onToggleReports={handleToggleReports}
+              onToggleHot={handleToggleHot}
             />
 
             {layer === "제휴업체" && (

@@ -584,6 +584,17 @@ export function buildMapHTML(
           + '<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" style="display:block;">'
           + '<path d="M5 3h11l-1.6 3.4L16 9.8H7v10.9H5V3z"/></svg></div>';
 
+      // HOT(최근 60분 🔥 5개 이상) 제보는 배지 오른쪽 위에 흰 원 + 🔥 불꽃(FINAL.md 지도 마커: 불꽃 #0B1A8C, 안쪽 흰색)을 붙인다.
+      if (item.hot) {
+        badgeEl = '<div style="position:relative;width:' + badge + 'px;height:' + badge + 'px;">' + badgeEl
+          + '<div style="position:absolute;top:-8px;right:-11px;width:20px;height:20px;border-radius:50%;background:#fff;'
+          + 'box-shadow:0 1px 4px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">'
+          + '<svg viewBox="0 4 64 52" width="13" height="13" style="display:block;">'
+          + '<path fill="#0B1A8C" d="M32 3c4 10 16 15 16 30 0 10-7 18-16 18s-16-8-16-18c0-8 5-12 7-18 2 5 4 7 7 8-1-8 0-13 2-20z"/>'
+          + '<path fill="#fff" d="M31 25c3 6 8 9 8 16 0 5-3 8-7 8s-7-3-7-8c0-4 2-6 3-9 1 2 2 3 4 4-1-4-1-8-1-11z"/>'
+          + '</svg></div></div>';
+      }
+
       var nameEl = '<div style="margin-top:3px;white-space:nowrap;max-width:150px;overflow:hidden;'
         + 'text-overflow:ellipsis;font-family:' + PARTNER_FONT
         + ';font-size:11.5px;font-weight:700;color:' + (item.upcoming ? '#4b5563' : '#1f2937') + ';letter-spacing:-0.2px;'
@@ -611,7 +622,8 @@ export function buildMapHTML(
           position: new naver.maps.LatLng(item.lat, item.lng),
           map: map,
           // 진행 중 제보가 예정 제보 위로 오게 한다.
-          zIndex: item.upcoming ? 290 : 300,
+          // HOT 제보는 다른 제보 위로 올린다.
+          zIndex: item.upcoming ? 290 : item.hot ? 310 : 300,
           icon: {
             content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
               + reportLabelHTML(item) + '</div>',

@@ -46,6 +46,8 @@ export interface ReportMarker {
   label: string
   /** 아직 시작 전(예정). 지도에서 속이 빈 배지와 시작 시각으로 따로 보인다. */
   upcoming?: boolean
+  /** HOT(최근 60분 🔥 가 몰림). 지도에서 배지 오른쪽 위에 🔥 원이 붙는다. 커뮤니티 기능 전 서버는 없음. */
+  hot?: boolean
 }
 
 const KST_OFFSET_MINUTES = 9 * 60
@@ -116,6 +118,7 @@ export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarke
       // 예정 제보는 이름 앞에 시작 시각을 붙인다(예: '내일 11:00 · 붕어빵 트럭').
       label: upcoming ? `${formatStartShort(parseServerTime(report.startsAt), now)} · ${report.title}` : report.title,
       upcoming,
+      hot: !upcoming && report.hot === true,
     }
   })
 }
