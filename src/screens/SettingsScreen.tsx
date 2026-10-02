@@ -51,7 +51,6 @@ import { getMyReportCount, isMyReportsApiKnownMissing, type MyReportCount } from
 import { consumeSettingsIntent, subscribeSettingsIntent } from '../lib/settingsIntents'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
-import * as haptics from '../lib/haptics'
 import { requestMapIntent } from '../lib/mapIntents'
 import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
@@ -174,8 +173,7 @@ export default function SettingsScreen() {
       return
     }
     const turningOn = !settings.subscriptionAlert
-    toggleSubscriptionAlert()
-    haptics.tapLight()
+    toggleSubscriptionAlert() // 진동은 ToggleSwitch 가 켤 때만 낸다(두 번 울리지 않게).
     toast.show(
       turningOn
         ? { message: '구독 소식 알림을 켰어요' }

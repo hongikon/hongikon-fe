@@ -306,6 +306,8 @@ export default function MapScreen() {
           }
           setSelectedBuilding(null);
           setSelectedPartner(null);
+          setSelectedReport(null);
+          setSelectedFacilityBuilding(null);
           setReportTarget({
             lat: msg.lat,
             lng: msg.lng,
@@ -404,6 +406,8 @@ export default function MapScreen() {
       setSelectedAffiliation(null);
       setSelectedCategory(null);
       setSelectedBuilding(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
       setSelectedPartner(partner);
 
       postToMap({

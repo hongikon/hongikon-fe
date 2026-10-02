@@ -337,7 +337,7 @@ function ReportCard({
         <Fact icon="location-outline" text={location || '건물 지정 없음(지도 위치)'}>
           {report.lat !== null && report.lng !== null ? (
             <Pressable onPress={openMap} accessibilityRole="link" hitSlop={12}>
-              <Text style={styles.link}>지도에서 보기 ↗</Text>
+              <Text style={styles.link}>{app ? '지도에서 보기' : '지도에서 보기 ↗'}</Text>
             </Pressable>
           ) : null}
         </Fact>

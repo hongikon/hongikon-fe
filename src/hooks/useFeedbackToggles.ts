@@ -71,7 +71,6 @@ export function useFeedbackToggles() {
       if (!current.subscribedDepts.includes(id)) return
       const turningOn = current.mutedDepts.includes(id)
       toggleDeptAlert(id)
-      haptics.tapLight()
       toast.show(
         turningOn
           ? { message: `${boardName(id)} 알림을 켰어요` }
@@ -98,7 +97,6 @@ export function useFeedbackToggles() {
   const toggleReportStatusAlertWithFeedback = useCallback(() => {
     const turningOn = !settingsRef.current.reportStatusAlert
     toggleReportStatusAlert()
-    haptics.tapLight()
     toast.show(
       turningOn
         ? { message: '내 제보가 승인·반려되면 알려드릴게요' }
@@ -109,7 +107,6 @@ export function useFeedbackToggles() {
   const toggleNewReportAlertWithFeedback = useCallback(() => {
     const turningOn = !settingsRef.current.newReportAlert
     toggleNewReportAlert()
-    haptics.tapLight()
     toast.show(
       turningOn
         ? { message: '캠퍼스 새 제보를 알려드릴게요' }
