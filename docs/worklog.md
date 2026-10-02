@@ -935,13 +935,61 @@ hongikon-be `c48442c`(09-29, 백엔드 담당 작업 기록) pull 받음.
 
 ---
 
+## 2026-10-02 (오후)
+
+**목표 변화**: 스토어 제출 준비(앱 ID 변경·빌드 설정·고지) → 앱 전체 UI 통일 → 운영 기능(관리 탭·관리자 알림·회원 번호) → 지도 버그·편의시설 상세 → 제보 사진 최대 3장 → iOS 27 대비
+
+커밋(FE): `4ef69c6` ~ `2bc4304` (main 36개). OTA: `preview` 채널, `pnpm run update:preview`(아래 §3)로 배포. 백엔드 쪽은 hongikon-be `docs/worklog.md`(PR #9·#12~#15) 참고.
+
+### 1. 앱 ID `com.hongikon.app`
+출시 전에 `com.hongmap.alimi` → `com.hongikon.app`(테스트 `.preview`, 개발 `.dev`). App Store Connect 에 올리면 못 바꾸기 때문. Apple Developer 에 새 App ID 등록(Sign In with Apple·Push, `.preview` 는 primary 로 그룹), Sign in with Apple 키 생성(Team ID `GB56N8GWDQ`). 새 ID 테스트 빌드 `6b8b5bd5` 확인. 카카오는 웹 방식 로그인이라 콘솔 변경 불필요. Expo 프로젝트 이름(`hongik-alimi`)은 projectId 에 묶여 그대로 둠. 네이버 지도 콘솔 서비스 URL·번들 ID 정리, Client Secret 재발급(코드에서 쓰지 않음 — `.env` 만).
+
+### 2. 스토어 제출 준비 (`store-submission-kit.md`, `launch-checklist.md`)
+- iOS 개인정보 매니페스트(`ios.privacyManifests`), `CFBundleDevelopmentRegion: ko`, 세로 고정.
+- Android: `SYSTEM_ALERT_WINDOW`·`READ_MEDIA_*` 등 차단. 앨범은 시스템 사진 선택기(권한 없음) — Android 12 이하에서 앨범이 안 열리던 문제 수정.
+- `eas.json` production(store·app-bundle·environment), submit 설정(`ascAppId` 는 App Store Connect 앱 생성 후).
+- 첫 로그인 동의 창(`SignupConsentSheet`, 약관 버전 `TERMS_VERSION`), 온보딩 접근권한 안내 단계, 앱 권한 화면 "모두 선택" 안내.
+- 처리방침: 법적 근거, 쿠키·기기 저장, 국외 이전(FCM·APNs·EAS Update·Netlify 지도), 앱 접근권한, 북마크 기기 저장, 닉네임 가림, 사진 최대 3장·30일.
+- 약관: 책임 제한(제휴 정보·알림 지연·외부 서비스·이용자 간 분쟁), 무관용·24시간 조치·숨기기.
+- 정적 페이지 `/support/`, `/account-deletion/`, `/licenses/`(빌드 때 생성). 비공식 서비스 고지. 주류 제휴 "만 19세 미만" 안내. 소식 상세 출처 표시·원문 보기 주 버튼.
+- `store/ios-ko.md`, `store/play-ko.md`: 콘솔 붙여 넣기용 문안.
+- 결정: 한국만 출시, 주점 제휴 유지(13+ / Play 18+), 학교 협조 요청 안 함.
+
+### 3. OTA 안전장치
+`eas update` 는 eas.json 빌드 env 를 안 써서 정식 앱에 개발자 도구가 켜질 수 있었다 → `scripts/eas-update.mjs` + `pnpm run update:{preview,production}` 만 쓴다(pnpm 의 `--` 도 받음).
+
+### 4. 앱 전체 UI 통일
+색(WCAG AA 대비)·간격·반경·글자 크기 토큰, 공통 부품(Button·IconButton·ScreenHeader·ListRow·SectionTitle·EmptyState·Chip·TextField). 설정 큰 제목, 섹션 제목 13px, 모든 줄 `ListRow`, 스위치 크기 하나로. 남은 합니다체 → 해요체. 설정 알림 섹션의 중복 로그인 버튼 제거. 전후 스크린샷 `ui-shots/`.
+
+### 5. 운영 기능
+- **관리 탭**: ADMIN 이면 하단 4번째 "관리" 탭(대시보드·제보 검토·문의·회원·운영 도구, 승인 대기 배지). `GET /admin/overview` 로 판별(로그인·복귀·탭 열 때), 403 이면 탭 닫고 지도로. 키보드가 반려·정지 사유 입력을 가리던 문제 수정(시뮬레이터 확인).
+- **관리자 알림**: Android `admin` 채널, `[관리]` 제목, 누르면 관리 탭 해당 섹션·항목 강조, 관리자만 보이는 설정 스위치. (BE #14)
+- **회원 번호**: 설정 > 계정. 영문 대문자·숫자 10자리(BE #15). 서버 배포 전엔 `#id`. 관리 탭에서 회원 번호로 검색, 관리자 지정·해제 버튼. 이메일은 수집하지 않기로 함(최소 수집).
+- 제보 작성자 숨기기·신고 사유, 관리자 회원 정지(BE #13).
+
+### 6. 지도
+- 이벤트·편의시설·제휴 칩을 한 번에 하나로 — 넘어가도 제보 마커·시트가 남던 잔상 수정.
+- 제보 목록을 지도 탭에 올 때·1분마다 새로 받음. 승인 후 반려·숨김된 제보가 남던 문제 수정, 열린 시트도 닫음.
+- 편의시설 핀 → 건물 소개 대신 `FacilitySheet`(그 시설의 층·위치). 엘리베이터 칩 숨김. 문헌관 설명 삭제. 캠퍼스 새 제보 알림 설명 문구 수정.
+
+### 7. 제보 사진 최대 3장
+앨범 여러 장 선택(남은 장수 제한)·카메라 1장씩, 썸네일·빼기·"n/3". 장마다 메타데이터 제거 후 순서대로 업로드, 재시도 시 키 재사용. 구서버면 첫 장만 + 안내. 제보 시트·관리 화면에서 3장 표시.
+
+### 8. iOS 27 대비
+Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실행 즉시 종료(Apple TN3187). 지금 EAS(SDK 57)는 Xcode 26.6 이라 해당 없음. `expo-build-properties` `ios.enableSceneSupport: true` 로 미리 켬(다음 네이티브 빌드부터). `docs/release-build.md` §6.
+
+### 9. 학교 홈페이지 시설 조사 (`campus-facilities-research.md`)
+학생처(G동 2층 201호) 등 층·호수 다수 확인, 기존 데이터 오류(홍문관 L층 증명서 발급기, F동 프린터, 가게 이름) 발견. **주의**: 학교 robots.txt 가 ClaudeBot 등 AI 크롤러를 사이트 전체 차단하는데 일반 브라우저 UA 로 수집함 — 다시 하지 않음. 반영 방식은 결정 대기.
+
+---
+
 ## 다음 작업
 
 | 우선순위 | 항목 | 비고 |
 |---|---|---|
 | 1 | **백엔드 PR #4–#11 머지·배포** | 백엔드 담당. 순서·SQL·env 는 BE `docs/deploy-order-2026-10.md`(PR #12). #8 은 출시 차단 |
-| 2 | **네이버 지도 Client Secret 재발급** + 허용 도메인 제한 | 사용자 직접. git 기록 노출 |
-| 3 | **iOS 네이티브 빌드(v1.0.0 후보)** | Apple 로그인·권한 정리 포함. 사용자가 `wt-fe-build` 에서 `eas build` (애플 로그인 대화형) |
+| 2 | 학교 홈페이지 시설 데이터 반영 방식 결정 | `campus-facilities-research.md` |
+| 3 | **iOS 네이티브 빌드(v1.0.0 후보)** | 새 ID·UIScene·권한 정리 포함. 실기기 확인 항목은 `docs/release-build.md` |
 | 4 | Apple .p8 키 발급 + `APPLE_*`, `APPLE_TOKEN_ENC_KEY` | 없으면 `APPLE_CLIENT_IDS=` 로 Apple 로그인만 끔 |
 | 5 | S3 버킷·IAM·IMDS hop limit 2 | 사진 기능. 가이드 S3 절 |
 | 6 | 처리방침 숫자 채우기: 접속 기록·DB 백업 보관 기간, 보호책임자 실명 여부 | logrotate·RDS 설정과 일치시킬 것 |
