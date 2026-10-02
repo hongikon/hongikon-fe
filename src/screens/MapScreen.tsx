@@ -272,6 +272,8 @@ export default function MapScreen() {
           const building = BUILDINGS.find((b) => b.name === msg.name) ?? null;
           setSelectedPartner(null);
           setSelectedFacilityBuilding(null);
+          // 배너는 모두 같은 자리(아래)에 겹쳐 그려진다. 제보 시트를 닫지 않으면 새 건물 배너가 그 밑에 가려진다.
+          setSelectedReport(null);
           setSelectedBuilding(building);
           return;
         }
@@ -280,6 +282,7 @@ export default function MapScreen() {
           const partner = PARTNERS.find((p) => p.id === msg.id) ?? null;
           setSelectedBuilding(null);
           setSelectedFacilityBuilding(null);
+          setSelectedReport(null);
           setSelectedPartner(partner);
           return;
         }
@@ -639,13 +642,20 @@ export default function MapScreen() {
     }, [reportsOn, refetchReports]),
   );
 
-  /** 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다. */
+  /**
+   * 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다.
+   * 목록이 새로 왔을 때만 본다 — 시트를 연 순간에 보면 알림 탭(focusReportFromNotification)이 따로 받아 연
+   * 방금 승인된 제보가, 아직 도착하지 않은 레이어 새 목록 대신 이전 목록과 비교돼 바로 닫힌다.
+   */
+  const selectedReportRef = useRef(selectedReport);
+  selectedReportRef.current = selectedReport;
   useEffect(() => {
-    if (!selectedReport || shownReportData === undefined) return;
-    if (!shownReportData.some((r) => r.id === selectedReport.id)) {
+    const current = selectedReportRef.current;
+    if (!current || shownReportData === undefined) return;
+    if (!shownReportData.some((r) => r.id === current.id)) {
       setSelectedReport(null);
     }
-  }, [shownReportData, selectedReport]);
+  }, [shownReportData]);
 
   /**
    * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
@@ -662,6 +672,7 @@ export default function MapScreen() {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
       setPickerCenter(null);
       setPickerPurpose(purpose);
       setPickingLocation(true);
@@ -697,6 +708,16 @@ export default function MapScreen() {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+      // 제보는 '이벤트' 갈래의 하위 칩이다. 다른 갈래(편의시설·제휴)를 보고 있었으면 그 마커를 거두고 '이벤트'로 옮긴다 —
+      // 안 그러면 편의시설 핀과 제보 마커가 섞이고, 제보를 끌 '제보' 칩도 화면에 없다(갈래는 한 번에 하나).
+      if (layer !== "이벤트") {
+        setLayer("이벤트");
+        setSelectedAffiliation(null);
+        setSelectedCategory(null);
+        postToMap({ type: "clearPartners" });
+        applyFacilityKind(null);
+      }
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
       if (reportsOn) reportsResource.retry();
       else setReportsOn(true);
@@ -718,7 +739,7 @@ export default function MapScreen() {
         toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
       }
     },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys],
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, layer, applyFacilityKind],
   );
 
   /**
@@ -747,6 +768,7 @@ export default function MapScreen() {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
       // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
       postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: 18 });
       postToMap({ type: "previewPin", lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치" });
