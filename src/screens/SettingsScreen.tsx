@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
@@ -29,6 +29,7 @@ import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
+import MyReportsModal from '../components/settings/MyReportsModal'
 import { UpdateHistoryRow } from '../components/settings/UpdateHistoryModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
 import { useIsAdmin } from '../admin/AdminAccess'
@@ -46,6 +47,8 @@ import {
   type MyProfile,
 } from '../apis/users'
 import { useApiResource } from '../hooks/useApiResource'
+import { getMyReportCount, isMyReportsApiKnownMissing, type MyReportCount } from '../apis/myReports'
+import { consumeSettingsIntent, subscribeSettingsIntent } from '../lib/settingsIntents'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import * as haptics from '../lib/haptics'
@@ -76,6 +79,7 @@ type ModalType =
   | 'keywords'
   | 'nickname'
   | 'hiddenUsers'
+  | 'myReports'
   | null
 
 export default function SettingsScreen() {
@@ -246,6 +250,34 @@ export default function SettingsScreen() {
   const memberCodeFallback =
     !memberCode && (isMemberCodeApiKnownMissing() || memberCodeResource.data === null)
   const memberNumber = memberCode ?? (memberCodeFallback && memberId !== null ? `#${memberId}` : null)
+
+  // 내 제보 내역. 개수(승인 대기 배지)를 먼저 받아, 서버에 API 가 없으면(배포 전 404/405/재발급 뒤 401) 줄을 숨긴다.
+  const myReportCountResource = useApiResource<MyReportCount>(
+    (signal) => getMyReportCount(accessTokenRef.current as string, signal),
+    [isGuest],
+    { enabled: !isGuest && !!accessToken && !isMyReportsApiKnownMissing() },
+  )
+  const myReportsApiMissing = isMyReportsApiKnownMissing()
+  const myReportPending = myReportCountResource.data?.pending ?? 0
+  /** 반려 알림으로 들어왔을 때 내역에서 강조할 제보 */
+  const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
+
+  // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
+  const handleSettingsIntent = useCallback(() => {
+    const intent = consumeSettingsIntent()
+    if (intent?.type !== 'openMyReports' || isGuest) return
+    setHighlightReportId(intent.reportId)
+    setActiveModal('myReports')
+  }, [isGuest])
+  useFocusEffect(handleSettingsIntent)
+  useEffect(() => subscribeSettingsIntent(handleSettingsIntent), [handleSettingsIntent])
+
+  const goToMap = (afterClose: () => void) => {
+    setActiveModal(null)
+    afterClose()
+    // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
+    ;(navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
+  }
   // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
   // 게스트는 subscriptionAlert 가 늘 false 라 함께 흐려진다.
   const detailDimmed = !subscriptionAlert
@@ -287,6 +319,18 @@ export default function SettingsScreen() {
                     memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')
                   }
                   accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
+                />
+              )}
+              {!myReportsApiMissing && (
+                <ListRow
+                  icon="megaphone-outline"
+                  label="내 제보 내역"
+                  badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+                  onPress={() => {
+                    setHighlightReportId(null)
+                    setActiveModal('myReports')
+                  }}
+                  accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
                 />
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
@@ -587,6 +631,17 @@ export default function SettingsScreen() {
       <PrivacyModal visible={activeModal === 'privacy'} onClose={() => setActiveModal(null)} />
 
       <HiddenUsersModal visible={activeModal === 'hiddenUsers'} onClose={() => setActiveModal(null)} />
+
+      {!isGuest && (
+        <MyReportsModal
+          visible={activeModal === 'myReports'}
+          onClose={() => setActiveModal(null)}
+          highlightReportId={highlightReportId}
+          onChanged={myReportCountResource.retry}
+          onShowOnMap={(reportId) => goToMap(() => requestMapIntent({ type: 'focusReport', reportId }))}
+          onStartReport={() => goToMap(() => requestMapIntent({ type: 'startReport' }))}
+        />
+      )}
 
       <PartnerSuggestModal
         visible={activeModal === 'partnerSuggest'}

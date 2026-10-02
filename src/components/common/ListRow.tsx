@@ -12,6 +12,8 @@ interface ListRowProps {
   description?: string
   /** 오른쪽 회색 값(앱 버전·개수 등) */
   value?: string
+  /** 값 자리 앞의 작은 강조 배지(승인 대기 개수 등). */
+  badge?: string
   /** 빨간 글자. 로그아웃·초기화처럼 되돌리기 어려운 행동. */
   danger?: boolean
   onPress?: () => void
@@ -32,6 +34,7 @@ export default function ListRow({
   icon,
   description,
   value,
+  badge,
   danger = false,
   onPress,
   right,
@@ -49,6 +52,13 @@ export default function ListRow({
         <Text style={[styles.label, danger && styles.danger]}>{label}</Text>
         {description !== undefined && <Text style={styles.description}>{description}</Text>}
       </View>
+      {badge !== undefined && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText} numberOfLines={1}>
+            {badge}
+          </Text>
+        </View>
+      )}
       {value !== undefined && (
         <Text style={styles.value} numberOfLines={1}>
           {value}
@@ -95,4 +105,11 @@ const styles = StyleSheet.create({
   danger: { color: COLORS.danger },
   description: { ...TYPE.caption, color: COLORS.textSecondary },
   value: { ...TYPE.callout, color: COLORS.textTertiary, maxWidth: '45%' },
+  badge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xxs,
+    borderRadius: 999,
+    backgroundColor: COLORS.warningSoft,
+  },
+  badgeText: { ...TYPE.label, color: COLORS.warning },
 })
