@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 
 interface RetryableErrorProps {
@@ -81,9 +82,9 @@ export default function RetryableError({
   )
 }
 
-/** 기존 지도·제보 오류 안내(`#FEF3C7`/`#92400E`)와 같은 톤을 쓴다. */
-const BG_COLOR = '#FEF3C7'
-const TEXT_COLOR = '#92400E'
+/** 지도·제보·설정의 다른 주의 안내와 같은 경고 색(COLORS.warning*)을 쓴다. */
+const BG_COLOR = COLORS.warningSoft
+const TEXT_COLOR = COLORS.warning
 
 const styles = StyleSheet.create({
   box: {
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: BG_COLOR,
   },
   chip: {

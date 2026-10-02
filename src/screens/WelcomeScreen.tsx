@@ -17,12 +17,13 @@ import { useAuth } from '../contexts/AuthContext'
 import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '../lib/appleAuth'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
+import Button from '../components/common/Button'
 
 type PendingAction = 'apple' | 'kakao' | 'guest' | null
 
-/** 카카오 버튼과 같은 크기·모서리. Apple 버튼은 다른 로그인 버튼보다 작거나 아래에 있으면 안 된다(HIG·심사 4.8). */
-const LOGIN_BUTTON_HEIGHT = 50
-const LOGIN_BUTTON_RADIUS = 14
+/** 카카오 버튼과 같은 크기·모서리(앱 공용 Button lg 와 같은 48·12). Apple 버튼은 다른 로그인 버튼보다 작거나 아래에 있으면 안 된다(HIG·심사 4.8). */
+const LOGIN_BUTTON_HEIGHT = 48
+const LOGIN_BUTTON_RADIUS = 12
 
 /**
  * 최초 진입 화면. Apple 로그인(iOS) / 카카오 로그인 / 게스트 중 하나를 고른다.
@@ -58,7 +59,7 @@ export default function WelcomeScreen() {
     } catch (error: unknown) {
       // 사용자가 Apple 시트를 닫은 건 오류가 아니다 — 아무것도 띄우지 않는다.
       if (isAppleSignInCanceled(error)) return
-      const message = error instanceof Error ? error.message : '로그인에 실패했습니다.'
+      const message = error instanceof Error ? error.message : '로그인에 실패했어요.'
       if (Platform.OS === 'web') {
         setInlineError(message)
       } else {
@@ -75,7 +76,7 @@ export default function WelcomeScreen() {
     try {
       await loginWithKakao()
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '로그인에 실패했습니다.'
+      const message = error instanceof Error ? error.message : '로그인에 실패했어요.'
       if (Platform.OS === 'web') {
         setInlineError(message)
       } else {
@@ -143,17 +144,14 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.guestButton}
+        <Button
+          variant="ghost"
+          size="md"
+          label={pending === 'guest' ? '이동 중…' : '둘러보기'}
           onPress={handleGuest}
           disabled={isBusy}
-          accessibilityRole="button"
           accessibilityLabel="둘러보기"
-        >
-          <Text style={styles.guestButtonText}>
-            {pending === 'guest' ? '이동 중…' : '둘러보기'}
-          </Text>
-        </TouchableOpacity>
+        />
         <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
       </View>
     </SafeAreaView>
@@ -192,8 +190,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
-  guestButton: { alignItems: 'center', paddingVertical: 12 },
-  guestButtonText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   unofficialNotice: {
     fontSize: 11,
     lineHeight: 16,

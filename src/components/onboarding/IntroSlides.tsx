@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     fontFamily: FONTS.regular,
-    color: '#6B6B76',
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
   dots: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 20,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D9D9E0' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.toggleOff },
   dotActive: { width: 18, backgroundColor: COLORS.primary },
   bottom: { paddingHorizontal: 20, paddingBottom: 12 },
 })

@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   cardApp: { flex: 1, fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
   cardTime: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   cardTitle: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  cardBody: { marginTop: 2, fontSize: 13, fontFamily: FONTS.regular, color: '#6B6B76' },
+  cardBody: { marginTop: 2, fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   bell: {
     position: 'absolute',
     top: 14,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     fontFamily: FONTS.regular,
-    color: '#6B6B76',
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
   bottom: { paddingHorizontal: 20, paddingBottom: 4 },

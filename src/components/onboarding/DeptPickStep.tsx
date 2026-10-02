@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   head: { paddingHorizontal: 20, paddingTop: 8 },
   title: { fontSize: 24, lineHeight: 33, fontFamily: FONTS.bold, color: COLORS.textPrimary, letterSpacing: -0.4 },
-  subtitle: { marginTop: 8, fontSize: 14, lineHeight: 21, fontFamily: FONTS.regular, color: '#6B6B76' },
-  search: { marginTop: 20, height: 44, backgroundColor: '#F5F5F7', borderColor: '#F5F5F7' },
+  subtitle: { marginTop: 8, fontSize: 14, lineHeight: 21, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  search: { marginTop: 20 },
   chip: {
     marginTop: 12,
     alignSelf: 'flex-start',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
   },
-  rowPressed: { backgroundColor: '#F6F6F8' },
+  rowPressed: { backgroundColor: COLORS.fill },
   rowName: { flex: 1, marginRight: 12, fontSize: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   rowNameOn: { fontFamily: FONTS.semibold, color: COLORS.primary },
   check: {
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#D5D5DC',
+    borderColor: COLORS.toggleOff,
     alignItems: 'center',
     justifyContent: 'center',
   },
