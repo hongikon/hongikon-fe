@@ -21,9 +21,10 @@ import ContentColumn from '../components/common/ContentColumn'
 import IntroSlides from '../components/onboarding/IntroSlides'
 import DeptPickStep from '../components/onboarding/DeptPickStep'
 import NotificationStep from '../components/onboarding/NotificationStep'
+import PermissionNoticeStep from '../components/onboarding/PermissionNoticeStep'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
-type Step = 'intro' | 'depts' | 'notifications'
+type Step = 'intro' | 'depts' | 'permissions' | 'notifications'
 
 /**
  * 시스템 허용 창을 지금 띄울 수 있는지. 웹(원격 푸시 없음)이거나 이미 허용·거절이 정해졌으면
@@ -36,7 +37,10 @@ async function canAskNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * 첫 실행 온보딩: 소개(2~3장) → 내 학과 고르기 → 알림 허용(네이티브만) → 웰컴(로그인/둘러보기).
+ * 첫 실행 온보딩: 소개(2~3장) → 내 학과 고르기 → 앱 접근권한 안내(네이티브만) → 알림 허용(네이티브만)
+ * → 웰컴(로그인/둘러보기).
+ * 접근권한 안내는 정보통신망법 제22조의2의 "앱 최초 실행 시" 고지라, 알림 허용 창을 띄울 수 없는 기기
+ * (이미 허용·거절)에서도 보여 준다. 웹은 접근권한이 없어 건너뛴다.
  * RootNavigator 가 온보딩을 끝내지 않았을 때만 이 화면을 맨 앞에 둔다(`src/lib/onboarding.ts`).
  * 단계는 한 화면 안에서 바꾼다 — 단계마다 스택 화면을 쌓으면 웰컴으로 넘어갈 때 정리할 게 많아진다.
  */
@@ -61,7 +65,12 @@ export default function OnboardingScreen() {
     void completeOnboarding()
   }, [status, navigation])
 
-  const goAfterDepts = useCallback(async () => {
+  const goAfterDepts = useCallback(() => {
+    if (Platform.OS === 'web') finish()
+    else setStep('permissions')
+  }, [finish])
+
+  const goAfterPermissions = useCallback(async () => {
     if (await askableRef.current) {
       // 이 단계가 허용 창을 맡는다. 온보딩 뒤 NotificationPrimer 가 다시 묻지 않게 바로 기록한다.
       void markNotificationPermissionAsked()
@@ -76,8 +85,12 @@ export default function OnboardingScreen() {
       setStep('intro')
       return true
     }
-    if (step === 'notifications') {
+    if (step === 'permissions') {
       setStep('depts')
+      return true
+    }
+    if (step === 'notifications') {
+      setStep('permissions')
       return true
     }
     return false
@@ -115,6 +128,7 @@ export default function OnboardingScreen() {
         <Animated.View style={[styles.flex, { opacity: appear, transform: [{ translateY }] }]}>
           {step === 'intro' && <IntroSlides onDone={() => setStep('depts')} />}
           {step === 'depts' && <DeptPickStep onNext={goAfterDepts} />}
+          {step === 'permissions' && <PermissionNoticeStep onNext={goAfterPermissions} />}
           {step === 'notifications' && <NotificationStep onDone={finish} />}
         </Animated.View>
       </KeyboardAvoidingView>

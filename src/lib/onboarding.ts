@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 /**
- * 첫 실행 온보딩(소개 → 내 학과 고르기 → 알림 허용)을 마쳤는지 앱 전체가 함께 본다.
+ * 첫 실행 온보딩(소개 → 내 학과 고르기 → 앱 접근권한 안내 → 알림 허용)을 마쳤는지 앱 전체가 함께 본다.
  *
  * 저장값(`@hongikon_onboarding_done`)
  * - '1': 끝냄(또는 이 기능이 생기기 전부터 쓰던 사용자라 조용히 끝냄 처리)
