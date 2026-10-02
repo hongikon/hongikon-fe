@@ -2,6 +2,7 @@ import { ApiError, type ApiRequestOptions } from '../apis/client'
 import type { MockMode } from './session'
 import type {
   AdminFeedback,
+  AdminUser,
   AdminOverview,
   AdminReport,
   AdminReportFlag,
@@ -45,6 +46,24 @@ function baseReport(partial: Partial<AdminReport> & Pick<AdminReport, 'id' | 'st
     ...partial,
   }
 }
+
+function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id' | 'nickname'>): AdminUser {
+  return {
+    socialType: 'KAKAO',
+    role: 'USER',
+    status: 'ACTIVE',
+    suspendedReason: null,
+    suspendedAt: null,
+    createdAt: at(-60 * 24 * 20),
+    ...partial,
+  }
+}
+
+const users: AdminUser[] = [
+  baseUser({ id: 1, nickname: '운영자', role: 'ADMIN' }),
+  baseUser({ id: 7, nickname: '와우산다람쥐' }),
+  baseUser({ id: 12, nickname: '광고봇', status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
+]
 
 const reports: AdminReport[] = [
   baseReport({
@@ -185,6 +204,35 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     report.reviewedAt = at(0)
     report.moderationNote = typeof body.note === 'string' && body.note ? body.note : report.moderationNote
     return { ...report }
+  }
+
+  if (method === 'GET' && pathname === '/admin/users') {
+    const q = (params.get('q') ?? '').trim()
+    const list = !q
+      ? users.filter((user) => user.status === 'SUSPENDED')
+      : /^\d+$/.test(q)
+        ? users.filter((user) => user.id === Number(q))
+        : users.filter((user) => user.nickname.includes(q))
+    return { users: list }
+  }
+  const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend))?$/)
+  if (userMatch) {
+    const user = users.find((item) => item.id === Number(userMatch[1]))
+    if (!user) throw notFound()
+    if (method === 'GET' && !userMatch[3]) return { ...user }
+    if (method === 'POST' && userMatch[3] === 'suspend') {
+      if (user.role === 'ADMIN') throw new ApiError(400, '관리자 계정은 정지할 수 없습니다.')
+      user.status = 'SUSPENDED'
+      user.suspendedReason = typeof body.reason === 'string' ? body.reason : null
+      user.suspendedAt = at(0)
+      return { ...user }
+    }
+    if (method === 'POST' && userMatch[3] === 'unsuspend') {
+      user.status = 'ACTIVE'
+      user.suspendedReason = null
+      user.suspendedAt = null
+      return { ...user }
+    }
   }
 
   if (method === 'GET' && pathname === '/admin/feedback') {

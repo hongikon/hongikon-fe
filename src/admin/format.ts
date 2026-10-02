@@ -82,8 +82,9 @@ export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
 
 export const FLAG_REASON_LABEL: Record<FlagReason, string> = {
   FALSE_INFO: '허위 정보',
-  SPAM: '스팸',
-  INAPPROPRIATE: '부적절',
+  SPAM: '스팸·광고',
+  INAPPROPRIATE: '욕설·혐오',
+  PRIVACY: '개인정보 노출',
   ETC: '기타',
 }
 
