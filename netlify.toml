@@ -24,6 +24,24 @@
   status = 200
   force = true
 
+# 빌드 때 만드는 정적 안내 페이지(scripts/static-pages.mjs). 실제 파일이 있으면 Netlify 는 아래 SPA 대체 규칙을
+# 적용하지 않지만, 끝 슬래시 없는 주소(/support)도 앱(SPA) 대신 정적 페이지가 뜨도록 명시해 둔다.
+# 스토어(App Store 지원 URL·Google Play 계정 삭제 URL)와 크롤러 User-Agent 가 이 주소를 가리킨다.
+[[redirects]]
+  from = "/support"
+  to = "/support/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/account-deletion"
+  to = "/account-deletion/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/licenses"
+  to = "/licenses/index.html"
+  status = 200
+
 # 단일 페이지 앱이라 /temp/dots 같은 경로로 새로고침해도 index.html 을 돌려준다.
 [[redirects]]
   from = "/*"

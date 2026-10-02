@@ -6,12 +6,13 @@
 //    규칙에 걸려 index.html 이 돌아오고(HTTP 200, text/html), 웹판 아이콘이 전부 네모로 깨졌다.
 //    경로의 node_modules → nm, .pnpm → pnpm 으로 옮기고 번들 안의 URL 문자열도 같이 바꾼다.
 //
-// 2) 파비콘 주소에 버전 붙이기 (3) 이용약관·개인정보 처리방침 정적 페이지는 맨 아래)
+// 2) 파비콘 주소에 버전 붙이기 (3) 이용약관·개인정보 처리방침·지원·계정 삭제·라이선스 정적 페이지는 맨 아래)
 //    브라우저는 /favicon.ico 를 오래 캐시해서, 브랜드 아이콘으로 바꾼 뒤에도 옛 아이콘이 계속 보였다.
 //    파일 내용 해시를 쿼리로 붙여 아이콘이 바뀔 때만 새로 받게 한다.
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
+import { accountDeletionPage, collectLicenses, legalPage, licensesPage, supportPage } from './static-pages.mjs'
 
 const DIST = 'dist'
 const ASSETS = join(DIST, 'assets')
@@ -95,60 +96,54 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   writeFileSync(indexHtml, html)
 }
 
-// 3) 이용약관·개인정보 처리방침 정적 페이지(/terms, /privacy)
-//    스토어 심사·외부 링크용. 앱을 띄우지 않고(자바스크립트 없이) 바로 읽히게 정적 HTML 로 만든다.
-//    원문은 앱 안 화면과 같은 src/constants/legalText.ts 하나 — 따로 고치다 내용이 갈라지지 않게 한다.
+// 3) 정적 안내 페이지(/terms, /privacy, /support, /account-deletion, /licenses)
+//    스토어 심사·외부 링크용. 앱을 띄우지 않고(자바스크립트 없이) 바로 읽히게 정적 HTML 로 만든다(scripts/static-pages.mjs).
+//    약관·처리방침 원문은 앱 안 화면과 같은 src/constants/legalText.ts 하나 — 따로 고치다 내용이 갈라지지 않게 한다.
+//    Netlify 는 실제 파일이 있는 경로에 SPA 대체 규칙(/* → /index.html)을 적용하지 않는다(netlify.toml 에 명시 규칙도 있음).
 const legalSource = readFileSync('src/constants/legalText.ts', 'utf8')
-function legalText(name) {
-  const match = legalSource.match(new RegExp('export const ' + name + ' = `([\\s\\S]*?)`'))
+function constantText(source, name, file) {
+  // 여는 따옴표(백틱 또는 ')와 같은 따옴표에서 끝낸다(본문의 다른 따옴표에서 잘리지 않게).
+  const match = source.match(new RegExp('export const ' + name + " = ([`'])([\\s\\S]*?)\\1"))
   if (!match) {
-    console.error(`[fix-web-export] legalText.ts 에서 ${name} 을 찾지 못함`)
+    console.error(`[fix-web-export] ${file} 에서 ${name} 을 찾지 못함`)
     process.exit(1)
   }
-  return match[1]
+  return match[2]
 }
-const escapeHtml = (text) =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const unofficialNotice = constantText(readFileSync('src/constants/disclaimer.ts', 'utf8'), 'UNOFFICIAL_NOTICE', 'disclaimer.ts')
 
-function legalPage(title, body) {
-  return `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${title} | 홍익온</title>
-<link rel="icon" type="image/png" href="/favicon.png" />
-<style>
-  :root { color-scheme: light; }
-  body { margin: 0; background: #fff; color: #111; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
-  header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  header img { width: 28px; height: 28px; border-radius: 7px; }
-  header span { font-weight: 700; color: #05014A; }
-  h1 { font-size: 24px; margin: 16px 0 24px; }
-  .body { white-space: pre-wrap; line-height: 1.75; font-size: 15px; color: #333; word-break: keep-all; overflow-wrap: anywhere; }
-  footer { margin-top: 40px; font-size: 13px; color: #888; }
-  footer a { color: #05014A; }
-</style>
-</head>
-<body>
-<main>
-  <header><img src="/favicon.png" alt="" /><span>홍익온</span></header>
-  <h1>${title}</h1>
-  <div class="body">${escapeHtml(body)}</div>
-  <footer><a href="/terms">이용약관</a> · <a href="/privacy">개인정보 처리방침</a> · <a href="/">홍익온 열기</a></footer>
-</main>
-</body>
-</html>
-`
+// 오픈소스 라이선스: 앱에 들어가는 패키지(prod)와 번들한 글꼴(Pretendard, SIL OFL 1.1).
+let packages
+try {
+  packages = collectLicenses()
+} catch (error) {
+  console.error('[fix-web-export] pnpm licenses list 실패 — /licenses 를 만들 수 없음', error)
+  process.exit(1)
 }
+const fonts = [
+  {
+    name: 'Pretendard',
+    versions: [],
+    license: 'SIL Open Font License 1.1',
+    author: 'Kil Hyung-jin',
+    homepage: 'https://github.com/orioncactus/pretendard',
+    text: readFileSync('assets/fonts/Pretendard-LICENSE.txt', 'utf8').trim(),
+  },
+]
 
-for (const [slug, title, name] of [
-  ['privacy', '개인정보 처리방침', 'PRIVACY_TEXT'],
-  ['terms', '이용약관', 'TERMS_TEXT'],
-]) {
+const pages = [
+  ['privacy', legalPage('개인정보 처리방침', constantText(legalSource, 'PRIVACY_TEXT', 'legalText.ts'))],
+  ['terms', legalPage('이용약관', constantText(legalSource, 'TERMS_TEXT', 'legalText.ts'))],
+  ['support', supportPage(unofficialNotice)],
+  ['account-deletion', accountDeletionPage()],
+  ['licenses', licensesPage(packages, fonts)],
+]
+for (const [slug, html] of pages) {
   mkdirSync(join(DIST, slug), { recursive: true })
-  writeFileSync(join(DIST, slug, 'index.html'), legalPage(title, legalText(name)))
+  writeFileSync(join(DIST, slug, 'index.html'), html)
 }
 
-console.log(`[fix-web-export] 에셋 ${renames.size}개 경로 변경, 파일 ${rewritten}개 참조 수정, 파비콘 버전 적용, /terms·/privacy 생성`)
+console.log(
+  `[fix-web-export] 에셋 ${renames.size}개 경로 변경, 파일 ${rewritten}개 참조 수정, 파비콘 버전 적용, ` +
+    `정적 페이지 ${pages.map(([slug]) => '/' + slug).join('·')} 생성(라이선스 ${packages.length}개)`,
+)
