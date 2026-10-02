@@ -150,7 +150,18 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
           label="지금"
           active={!scheduled}
           disabled={disabled}
-          onPress={() => onChange({ ...value, startMode: 'now' })}
+          onPress={() =>
+            // 직접 고른 종료도 시작을 옮길 때(setStart)처럼 진행 기간을 유지한 채 지금 기준으로 당긴다.
+            // 안 그러면 며칠 뒤로 잡아 둔 종료가 그대로 남아 '지금 ~ 10/12' 처럼 늘어나거나 7일 상한에 걸린다.
+            onChange({
+              ...value,
+              startMode: 'now',
+              customEndMs:
+                value.endMode === 'custom' && scheduled
+                  ? clampEnd(value.customEndMs + (now - startMs), now)
+                  : value.customEndMs,
+            })
+          }
           accessibilityLabel="지금 시작"
         />
         <Chip
