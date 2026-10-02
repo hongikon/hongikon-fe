@@ -18,7 +18,7 @@ import { RADIUS, SPACING } from '../../constants/spacing'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
 import { deleteReport } from '../../apis/reports'
-import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../apis/client'
+import { ApiError, getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../apis/client'
 import {
   getMyReports,
   isMyReportsApiKnownMissing,
@@ -180,7 +180,13 @@ export default function MyReportsModal({
           toast.show({ message: '제보를 삭제했어요' })
           onChangedRef.current?.()
         } catch (error) {
-          toast.show({ message: getErrorMessage(error, '삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.'), tone: 'warning' })
+          const conflict = error instanceof ApiError && error.status === 409
+          toast.show({
+            message: conflict
+              ? '신고로 검토 중인 제보는 운영진 검토가 끝난 뒤에 지울 수 있어요.'
+              : getErrorMessage(error, '삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
+            tone: 'warning',
+          })
         } finally {
           setDeletingId(null)
         }
@@ -376,24 +382,29 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
         ) : (
           <View />
         )}
-        <Pressable
-          onPress={() => onDelete(report)}
-          disabled={deleting}
-          hitSlop={8}
-          style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`${report.title} 제보 삭제`}
-          accessibilityState={{ disabled: deleting, busy: deleting }}
-        >
-          {deleting ? (
-            <ActivityIndicator size="small" color={COLORS.textTertiary} />
-          ) : (
-            <>
-              <Ionicons name="trash-outline" size={14} color={COLORS.textTertiary} />
-              <Text style={styles.deleteText}>삭제</Text>
-            </>
-          )}
-        </Pressable>
+        {status === 'HIDDEN' ? (
+          // 신고로 숨겨진 제보는 운영진 검토가 끝날 때까지 지울 수 없다(서버도 409). 신고 기록을 남기기 위해서다.
+          <Text style={styles.deleteLockedText}>검토가 끝나면 지울 수 있어요</Text>
+        ) : (
+          <Pressable
+            onPress={() => onDelete(report)}
+            disabled={deleting}
+            hitSlop={8}
+            style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`${report.title} 제보 삭제`}
+            accessibilityState={{ disabled: deleting, busy: deleting }}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={COLORS.textTertiary} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={14} color={COLORS.textTertiary} />
+                <Text style={styles.deleteText}>삭제</Text>
+              </>
+            )}
+          </Pressable>
+        )}
       </View>
     </>
   )
@@ -480,5 +491,6 @@ const styles = StyleSheet.create({
   mapLink: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xxs },
   mapLinkText: { ...TYPE.label, color: COLORS.primary },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, minHeight: 24, minWidth: 44, justifyContent: 'flex-end' },
+  deleteLockedText: { fontSize: 12, color: COLORS.textTertiary },
   deleteText: { ...TYPE.caption, color: COLORS.textTertiary },
 })
