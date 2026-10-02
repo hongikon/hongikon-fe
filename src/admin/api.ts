@@ -2,6 +2,8 @@ import { apiRequest, ApiError, NetworkError, RequestCancelledError, type ApiRequ
 import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenResponse } from '../apis/auth'
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import type {
+  AdminComment,
+  AdminCommentStatus,
   AdminFeedback,
   AdminUser,
   AdminOverview,
@@ -247,6 +249,24 @@ export function updateReportStatus(reportId: number, status: ReportTargetStatus,
     body: note ? { status, note } : { status },
     retries: 0,
   })
+}
+
+// ── 제보 댓글 ─────────────────────────────────────────────────────────
+
+/** 제보의 댓글 전체(숨김·삭제 포함, 오래된 순). 서버에 댓글 기능이 없으면(배포 전) 404 — `isAdminCommentsMissing`. */
+export async function fetchReportComments(reportId: number, signal?: AbortSignal): Promise<AdminComment[]> {
+  const response = await adminRequest<{ comments: AdminComment[] }>(`/admin/reports/${reportId}/comments`, { signal })
+  return response?.comments ?? []
+}
+
+/** 댓글 숨김(HIDDEN)·삭제(DELETED)·다시 공개(VISIBLE). 응답은 바뀐 댓글. */
+export function updateCommentStatus(commentId: number, status: AdminCommentStatus): Promise<AdminComment> {
+  return adminRequest<AdminComment>(`/admin/comments/${commentId}`, { method: 'PATCH', body: { status }, retries: 0 })
+}
+
+/** 댓글 관리 API 가 서버에 없는지(배포 전 404·405). 서버가 직접 준 "없는 제보" 404 는 문구가 있어 구별된다. */
+export function isAdminCommentsMissing(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 405 || (error.status === 404 && !error.serverMessage))
 }
 
 // ── 회원(이용 정지) ───────────────────────────────────────────────────

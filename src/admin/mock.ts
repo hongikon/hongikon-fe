@@ -1,6 +1,8 @@
 import { ApiError, type ApiRequestOptions } from '../apis/client'
 import type { MockMode } from './session'
 import type {
+  AdminComment,
+  AdminCommentStatus,
   AdminFeedback,
   AdminUser,
   AdminOverview,
@@ -128,6 +130,39 @@ const reports: AdminReport[] = [
   }),
 ]
 
+function baseComment(partial: Partial<AdminComment> & Pick<AdminComment, 'id' | 'reportId' | 'content'>): AdminComment {
+  return {
+    status: 'VISIBLE',
+    authorId: 12,
+    authorNickname: '김홍익',
+    authorDisplayName: '김**',
+    flagCount: 0,
+    flagReasons: {},
+    createdAt: at(-30),
+    reviewedAt: null,
+    ...partial,
+  }
+}
+
+/** 제보 댓글(id 오름차순 = 오래된 순). */
+const comments: AdminComment[] = [
+  baseComment({ id: 101, reportId: 25, content: '지금 3층 엘리베이터 앞까지 줄 있어요', createdAt: at(-40) }),
+  baseComment({
+    id: 102, reportId: 25, content: '자리 아직 남았나요?', authorId: 15, authorNickname: '이마포',
+    authorDisplayName: '와우산고양이', createdAt: at(-25),
+  }),
+  baseComment({
+    id: 103, reportId: 25, content: '010-1234-5678 로 연락 주세요 자리 팔아요', status: 'HIDDEN', authorId: 21,
+    authorNickname: '박광고', authorDisplayName: '박**', flagCount: 3, flagReasons: { SPAM: 2, PRIVACY: 1 },
+    createdAt: at(-15),
+  }),
+  baseComment({
+    id: 104, reportId: 25, parentId: 101, content: '저도 지금 줄 서 있어요', authorId: 15, authorNickname: '이마포',
+    authorDisplayName: '와우산고양이', createdAt: at(-10),
+  }),
+  baseComment({ id: 105, reportId: 27, content: '신청곡 받나요?', createdAt: at(-5) }),
+]
+
 const flags: Record<number, AdminReportFlag[]> = {
   27: [{ id: 11, reason: 'FALSE_INFO', reporterNickname: '지나가던학생', createdAt: at(-100) }],
   22: [
@@ -213,6 +248,25 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
   const flagMatch = pathname.match(/^\/admin\/reports\/(\d+)\/flags$/)
   if (method === 'GET' && flagMatch) {
     return { flags: flags[Number(flagMatch[1])] ?? [] }
+  }
+
+  const commentListMatch = pathname.match(/^\/admin\/reports\/(\d+)\/comments$/)
+  if (method === 'GET' && commentListMatch) {
+    const reportId = Number(commentListMatch[1])
+    return { comments: comments.filter((comment) => comment.reportId === reportId).map((comment) => ({ ...comment })) }
+  }
+
+  const commentMatch = pathname.match(/^\/admin\/comments\/(\d+)$/)
+  if (method === 'PATCH' && commentMatch) {
+    const comment = comments.find((item) => item.id === Number(commentMatch[1]))
+    if (!comment) throw notFound()
+    const status = body.status as AdminCommentStatus
+    if (!['VISIBLE', 'HIDDEN', 'DELETED'].includes(status)) {
+      throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해주세요.')
+    }
+    comment.status = status
+    comment.reviewedAt = at(0)
+    return { ...comment }
   }
 
   const reportMatch = pathname.match(/^\/admin\/reports\/(\d+)$/)

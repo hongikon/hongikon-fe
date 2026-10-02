@@ -18,6 +18,7 @@ import {
 import { formatServerSchedule } from '../../utils/reportSchedule'
 import type { AdminOverview, AdminReport, AdminReportFlag, ReportStatus, ReportStatusFilter, ReportTargetStatus } from '../types'
 import { ReportAuthorModeration } from '../UserModeration'
+import { ReportCommentsPanel } from '../ReportComments'
 import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
 import { confirmAction } from '../../utils/dialog'
 import { openExternalUrl } from '../../utils/openExternalUrl'
@@ -386,6 +387,9 @@ function ReportCard({
           ) : null}
         </View>
       ) : null}
+
+      {/* 댓글은 지도에 공개된 적이 있는 제보에만 달린다 — 승인 대기 제보에는 감춘다. */}
+      {report.status !== 'PENDING' ? <ReportCommentsPanel reportId={report.id} /> : null}
 
       {confirming === 'reject' ? (
         <ConfirmBar

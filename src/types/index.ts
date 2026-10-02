@@ -316,7 +316,56 @@ export interface Report {
  * 내려오지 않는다 — 목록 조회는 서버가 이미 살아있는(ACTIVE, live) 제보만 쿼리해
  * 돌려주므로 상태를 따로 알려줄 필요가 없다. 상태를 보려면 상세(`Report`)가 필요하다.
  */
-export type ReportListItem = Omit<Report, 'content' | 'status'>
+export type ReportListItem = Omit<Report, 'content' | 'status'> & {
+  /**
+   * 공개 댓글 수(`GET /reports` 목록에서만, 서버가 한 번에 세어 준다). 댓글 기능 전 서버는 없음 —
+   * 시트는 댓글 목록을 받아 본 뒤 그 수(`totalElements`)를 쓴다.
+   */
+  commentCount?: number | null
+}
+
+/**
+ * 제보 댓글(`GET /reports/{id}/comments` 의 항목, hongikon-be `CommentResponse`).
+ * 작성자는 표시 이름과 불투명한 `authorKey` 만 온다(사용자 id 는 오지 않음). 시각은 존 없는 UTC(`parseServerTime`).
+ */
+export interface ReportComment {
+  id: number
+  reportId: number
+  /** 답글이면 최상위 댓글 id(답글은 한 단계만), 최상위 댓글이면 null. 답글 기능 전 서버는 없음. */
+  parentId?: number | null
+  /** 지웠거나(DELETED) 숨겼지만 답글이 남아 자리만 보이는 댓글이면 그 상태 — 이때 내용·작성자는 null. */
+  placeholder?: 'DELETED' | 'HIDDEN' | null
+  content: string | null
+  /** 앱 닉네임 또는 가린 로그인 닉네임(서버가 가려서 준다). 자리 표시면 null. */
+  authorDisplayName: string | null
+  /** "이 사용자 숨기기"용 — 제보의 `authorKey` 와 같은 값. 서버 키가 없거나 자리 표시면 null. */
+  authorKey: string | null
+  isMine: boolean
+  createdAt: string
+  /** 최상위 댓글에만: 공개 답글 앞쪽 최대 3개(오래된 순). */
+  replies?: ReportComment[] | null
+  /** 최상위 댓글에만: 공개 답글 수. */
+  replyCount?: number
+}
+
+/** `GET /reports/{id}/comments` 응답. 페이지 단위는 최상위 댓글. */
+export interface ReportCommentPage {
+  content: ReportComment[]
+  page: number
+  size: number
+  /** 최상위 댓글 수(자리 표시 포함). */
+  totalElements: number
+  totalPages: number
+  hasNext: boolean
+  /** 답글을 포함한 공개 댓글 수("댓글 N"). 답글 기능 전 서버는 없음 → totalElements 를 쓴다. */
+  commentCount?: number
+}
+
+/** `POST /reports/{id}/comments/{commentId}/flags` 응답. hidden: 이번 신고로 자동 숨김됐는지. */
+export interface ReportCommentFlagResult {
+  flagCount: number
+  hidden: boolean
+}
 
 /** `POST /reports` 요청 바디. */
 export interface CreateReportInput {
@@ -382,6 +431,15 @@ export type PushNotificationData =
   | {
       type: 'REPORT_NEW'
       reportId: number
+    }
+  /**
+   * 내 제보에 댓글, 또는 내 댓글에 답글이 달림(`ReportCommentPushDispatcher`, 같은 제보·댓글은 10분에 한 번).
+   * 답글이면 commentId(최상위 댓글)가 함께 온다. 탭하면 지도에서 그 제보 시트를 연다.
+   */
+  | {
+      type: 'REPORT_COMMENT'
+      reportId: number
+      commentId?: number
     }
   | { type: 'ADMIN_REPORT_PENDING'; reportId: number; count?: number }
   /** 승인 대기 리마인드(`AdminReportReminder`) — count: 30분 넘게 대기 중인 제보 수, oldestReportId: 가장 오래된 대기 제보 */
