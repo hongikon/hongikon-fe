@@ -1,4 +1,4 @@
-import { Animated, View, Text, StyleSheet } from "react-native";
+import { Animated, View, Text, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
@@ -26,6 +26,8 @@ export default function FacilitySheet({ kind, buildingName, items, onClose }: Fa
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
   const color = meta?.color ?? COLORS.primary;
   const sorted = [...items].sort((a, b) => (b.floor ?? -99) - (a.floor ?? -99));
+  // 학과사무실처럼 한 건물에 줄이 많은 경우(C동 13곳) 시트가 화면을 덮지 않게 목록만 스크롤한다.
+  const { height: windowHeight } = useWindowDimensions();
 
   return (
     <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
@@ -55,7 +57,12 @@ export default function FacilitySheet({ kind, buildingName, items, onClose }: Fa
         />
       </View>
 
-      <View style={styles.list}>
+      <ScrollView
+        style={{ maxHeight: windowHeight * 0.5 }}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={sorted.length > 6}
+        bounces={false}
+      >
         {sorted.map((item) => (
           <View
             key={item.id}
@@ -69,7 +76,7 @@ export default function FacilitySheet({ kind, buildingName, items, onClose }: Fa
             <Text style={styles.note}>{item.note ?? kind}</Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </Animated.View>
   );
 }
