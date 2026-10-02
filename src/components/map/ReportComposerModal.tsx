@@ -48,7 +48,6 @@ import {
 import { getServerBuildingId } from '../../apis/buildings'
 import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
 import { BUILDINGS } from '../../constants/buildings'
-import { buildFloorOptions, formatFloor, type FloorOption } from '../../utils/floors'
 import RetryableError from '../common/RetryableError'
 import { REPORT_MAX_IMAGES, promptLogin } from '../../utils/reports'
 import { ToastViewport, useToast } from '../common/Toast'
@@ -69,11 +68,8 @@ interface ReportComposerModalProps {
   onCreated: (report: Report) => void
 }
 
-/** 층수가 확인되지 않은 건물에서 고를 수 있게 하는 기본 층 목록(B1~6F). */
-const FALLBACK_FLOOR_OPTIONS: FloorOption[] = [-1, 1, 2, 3, 4, 5, 6].map((value) => ({
-  label: formatFloor(value),
-  value,
-}))
+/** 층 입력 상한(캠퍼스 최고층 건물 + 여유). */
+const MAX_FLOOR = 30
 
 /**
  * 등록 실패를 사용자가 다음에 뭘 해야 하는지 알 수 있는 문구로 바꾼다.
@@ -162,23 +158,18 @@ export default function ReportComposerModal({
     () => (target?.buildingName ? BUILDINGS.find((b) => b.name === target.buildingName) ?? null : null),
     [target?.buildingName],
   )
-  const floorOptions = useMemo(() => {
-    const options = building ? buildFloorOptions(building) : []
-    return options.length > 0 ? options : FALLBACK_FLOOR_OPTIONS
-  }, [building])
-  const [floor, setFloor] = useState(1)
-  // 다른 건물로 바뀌면 그 건물에 있는 층으로 맞춘다(기본 1층).
-  useEffect(() => {
-    if (!floorOptions.some((option) => option.value === floor)) {
-      setFloor(floorOptions.some((option) => option.value === 1) ? 1 : floorOptions[0].value)
-    }
-  }, [floorOptions, floor])
+  // 층은 숫자로 직접 입력한다(뒤에 F 를 붙여 보여 줌). 지하는 '지하' 토글로 음수(B1 = -1)로 보낸다. 서버는 정수 층을 받는다.
+  const [floorText, setFloorText] = useState('1')
+  const [basement, setBasement] = useState(false)
+  const floorNumber = Number.parseInt(floorText, 10)
+  const floorValid = Number.isInteger(floorNumber) && floorNumber >= 1 && floorNumber <= MAX_FLOOR
+  const floor = floorValid ? (basement ? -floorNumber : floorNumber) : 1
 
   const trimmedTitle = title.trim()
   const trimmedCustomLabel = customLabel.trim()
   const { startMs: shownStartMs, endMs: shownEndMs } = resolveSchedule(schedule, now)
   const scheduleProblem = scheduleError(shownStartMs, shownEndMs, now)
-  const canSubmit = trimmedTitle.length > 0 && building !== null && !submitting && scheduleProblem === null
+  const canSubmit = trimmedTitle.length > 0 && building !== null && floorValid && !submitting && scheduleProblem === null
 
   const reset = () => {
     setCategory('EVENT')
@@ -190,7 +181,8 @@ export default function ReportComposerModal({
     setSchedule(initialReportSchedule(REPORT_DEFAULT_DURATION_HOURS))
     setNow(Date.now())
     setSubmittedStartMs(null)
-    setFloor(1)
+    setFloorText('1')
+    setBasement(false)
     setImages([])
     uploadedKeysRef.current = new Map()
     setPhotoUploadFailed(false)
@@ -546,26 +538,34 @@ export default function ReportComposerModal({
                     ) : (
                       <>
                         <Text style={styles.sectionLabel}>몇 층인가요?</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.floorRow}>
-                          {floorOptions.map((option) => {
-                            const isActive = floor === option.value
-                            return (
-                              <TouchableOpacity
-                                key={option.value}
-                                activeOpacity={0.75}
-                                onPress={() => setFloor(option.value)}
-                                accessibilityRole="button"
-                                accessibilityState={{ selected: isActive }}
-                                accessibilityLabel={`${option.label}`}
-                                style={[chipStyles.chip, isActive && styles.durationChipActive]}
-                              >
-                                <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                                  {option.label}
-                                </Text>
-                              </TouchableOpacity>
-                            )
-                          })}
-                        </ScrollView>
+                        <View style={styles.floorRow}>
+                          <TouchableOpacity
+                            activeOpacity={0.75}
+                            onPress={() => setBasement((v) => !v)}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: basement }}
+                            accessibilityLabel="지하"
+                            style={[chipStyles.chip, basement && styles.durationChipActive]}
+                          >
+                            <Text style={[chipStyles.label, basement && chipStyles.labelActive]}>지하</Text>
+                          </TouchableOpacity>
+                          <View style={styles.floorInputWrap}>
+                            {basement && <Text style={styles.floorAffix}>B</Text>}
+                            <TextField
+                              value={floorText}
+                              onChangeText={(text) => setFloorText(text.replace(/[^0-9]/g, '').slice(0, 2))}
+                              keyboardType="number-pad"
+                              inputMode="numeric"
+                              maxLength={2}
+                              style={styles.floorInput}
+                              accessibilityLabel={basement ? '지하 몇 층' : '몇 층'}
+                            />
+                            {!basement && <Text style={styles.floorAffix}>F</Text>}
+                          </View>
+                        </View>
+                        {!floorValid && (
+                          <Text style={styles.floorHint}>{`1~${MAX_FLOOR} 사이 숫자로 입력해 주세요.`}</Text>
+                        )}
                       </>
                     )}
 
@@ -880,7 +880,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  floorRow: { flexDirection: 'row', gap: 7, paddingRight: 4 },
+  floorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  floorInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  floorInput: { width: 64, textAlign: 'center' },
+  floorAffix: { fontSize: 16, color: COLORS.textPrimary },
+  floorHint: { marginTop: 6, fontSize: 12, color: COLORS.danger },
   durationChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   customChipAdd: { borderStyle: 'dashed', borderColor: COLORS.primary },
   customChipAddText: { color: COLORS.primary },
