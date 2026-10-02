@@ -157,8 +157,8 @@ export default function ReportScheduleFields({
 
   return (
     <View>
-      {/* 직접 고르는 칩을 앞에 둔다(시작: 날짜·시간 선택 → 지금, 진행 시간: 종료 직접 → 1·2·3·6시간). 기본 선택은 그대로 '지금'·기본 시간. */}
-      <Text style={styles.subLabel}>시작</Text>
+      {/* 직접 고르는 칩을 앞에 둔다(시작 시각: 날짜·시간 선택 → 지금, 종료 시각: 날짜·시간 선택 → 1·2·3·6시간 뒤). 기본 선택은 그대로 '지금'·기본 시간. */}
+      <Text style={styles.subLabel}>시작 시각</Text>
       <View style={styles.chipWrap}>
         <Chip
           label="날짜·시간 선택"
@@ -188,10 +188,10 @@ export default function ReportScheduleFields({
         />
       </View>
 
-      <Text style={styles.subLabel}>진행 시간</Text>
+      <Text style={styles.subLabel}>종료 시각</Text>
       <View style={styles.chipWrap}>
         <Chip
-          label="종료 날짜·시각 선택"
+          label="날짜·시간 선택"
           icon="time-outline"
           active={value.endMode === 'custom'}
           disabled={disabled}
@@ -201,11 +201,11 @@ export default function ReportScheduleFields({
         {REPORT_DURATION_OPTIONS_HOURS.map((hours) => (
           <Chip
             key={hours}
-            label={`${hours}시간`}
+            label={`${hours}시간 뒤`}
             active={value.endMode === 'duration' && value.durationHours === hours}
             disabled={disabled}
             onPress={() => onChange({ ...value, endMode: 'duration', durationHours: hours })}
-            accessibilityLabel={`${hours}시간 동안`}
+            accessibilityLabel={`시작하고 ${hours}시간 뒤에 종료`}
           />
         ))}
       </View>
@@ -213,19 +213,19 @@ export default function ReportScheduleFields({
       {/* 요약 줄. 시작·종료 줄을 누르면 다이얼 시트가 뜬다. */}
       <Animated.View style={[styles.summary, summaryFlash]}>
         <SummaryRow
-          label="시작"
+          label="시작 시각"
           value={scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}
           onPress={() => setSheet('start')}
           disabled={disabled}
-          accessibilityLabel={`시작 ${scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}, 바꾸기`}
+          accessibilityLabel={`시작 시각 ${scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}, 바꾸기`}
         />
         <View style={styles.summaryDivider} />
         <SummaryRow
-          label="종료"
+          label="종료 시각"
           value={`${formatDay(endMs)} ${formatClock(endMs)}`}
           onPress={() => setSheet('end')}
           disabled={disabled}
-          accessibilityLabel={`종료 ${formatDay(endMs)} ${formatClock(endMs)}, 바꾸기`}
+          accessibilityLabel={`종료 시각 ${formatDay(endMs)} ${formatClock(endMs)}, 바꾸기`}
         />
         <Text style={styles.summaryText} accessibilityLabel={`제보 시간 ${summary}`}>
           {summary}
