@@ -191,7 +191,7 @@ export default function ReportScheduleFields({
       <Text style={styles.subLabel}>진행 시간</Text>
       <View style={styles.chipWrap}>
         <Chip
-          label="종료 날짜·시각 직접"
+          label="종료 날짜·시각 선택"
           icon="time-outline"
           active={value.endMode === 'custom'}
           disabled={disabled}
