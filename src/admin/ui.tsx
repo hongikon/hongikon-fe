@@ -1,10 +1,13 @@
-import { createContext, useContext, type ComponentProps, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ComponentProps, type ReactNode, type RefObject } from 'react'
 import {
   ActivityIndicator,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type StyleProp,
   type TextStyle,
@@ -31,6 +34,55 @@ export const AdminHostProvider = AdminHostContext.Provider
 
 export function useAdminHost(): AdminHost {
   return useContext(AdminHostContext)
+}
+
+/**
+ * 앱 관리 탭의 세로 스크롤을 안쪽 부품이 움직일 수 있게 한다(AdminTabScreen 이 넣는다, 웹 콘솔은 없음).
+ * ScrollView 의 automaticallyAdjustKeyboardInsets 는 포커스된 입력칸의 윗부분만 키보드 위로 올려서,
+ * 그 아래 확인 버튼(반려·이용 정지)이 키보드에 가린다. ConfirmBar 가 이걸로 자기 전체를 키보드 위로 올린다.
+ */
+export interface AdminScrollHandle {
+  /** 지금 위치에서 dy 만큼 아래로(양수) 스크롤한다. */
+  scrollBy: (dy: number) => void
+}
+
+const AdminScrollContext = createContext<AdminScrollHandle | null>(null)
+
+export const AdminScrollProvider = AdminScrollContext.Provider
+
+/** 키보드 윗변과 확인 막대 사이에 남길 여백 */
+const KEYBOARD_REVEAL_GAP = 12
+
+/**
+ * 앱(iOS·Android)에서 키보드가 올라오면, 포커스된 입력칸이 `box` 안에 있을 때 `box` 전체(입력칸 + 버튼)가
+ * 키보드 위로 보이도록 스크롤한다. 키보드가 이미 떠 있는 채로 열려도(다른 칸에서 넘어옴) 한 번 맞춘다.
+ */
+function useRevealAboveKeyboard(box: RefObject<View | null>, enabled: boolean): void {
+  const scroll = useContext(AdminScrollContext)
+  useEffect(() => {
+    if (!enabled || !scroll || Platform.OS === 'web') return
+    let cancelled = false
+    const reveal = (keyboardTop: number) => {
+      const focused = TextInput.State.currentlyFocusedInput()
+      const target = box.current
+      if (!focused || !target) return
+      target.measureInWindow((_x, y, _w, height) => {
+        focused.measureInWindow((_fx, focusedY) => {
+          if (cancelled || focusedY < y || focusedY > y + height) return
+          const overflow = y + height + KEYBOARD_REVEAL_GAP - keyboardTop
+          if (overflow > 0) scroll.scrollBy(overflow)
+        })
+      })
+    }
+    const subscription = Keyboard.addListener('keyboardDidShow', (event) => reveal(event.endCoordinates.screenY))
+    const metrics = Keyboard.isVisible() ? Keyboard.metrics() : undefined
+    const timer = metrics ? setTimeout(() => reveal(metrics.screenY), 250) : null
+    return () => {
+      cancelled = true
+      subscription.remove()
+      if (timer) clearTimeout(timer)
+    }
+  }, [box, enabled, scroll])
 }
 
 export const ADMIN_COLORS = {
@@ -270,8 +322,11 @@ export function ConfirmBar({
   children?: ReactNode
 }) {
   const app = useAdminHost() === 'app'
+  const boxRef = useRef<View>(null)
+  // 사유 입력칸(children)이 있을 때만 — 키보드가 확인 버튼을 가리지 않게 막대 전체를 키보드 위로 올린다.
+  useRevealAboveKeyboard(boxRef, app && children != null)
   return (
-    <View style={[styles.confirm, danger && styles.confirmDanger, app && styles.confirmApp]}>
+    <View ref={boxRef} style={[styles.confirm, danger && styles.confirmDanger, app && styles.confirmApp]}>
       <Text style={styles.confirmText}>{message}</Text>
       {children}
       <View style={styles.confirmActions}>

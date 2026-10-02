@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
@@ -12,7 +12,7 @@ import { useAdminOverview } from './AdminAccess'
 import { consumeAdminIntent, subscribeAdminIntent, type AdminIntent } from '../lib/adminIntents'
 import { getMockMode } from './api'
 import type { AdminSection } from './types'
-import { ADMIN_COLORS, AdminHostProvider } from './ui'
+import { ADMIN_COLORS, AdminHostProvider, AdminScrollProvider, type AdminScrollHandle } from './ui'
 import DashboardScreen from './screens/DashboardScreen'
 import ReportsScreen from './screens/ReportsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
@@ -52,6 +52,13 @@ export default function AdminTabScreen() {
     setSection(intent.section)
     scrollRef.current?.scrollTo({ y: 0, animated: false })
   }, [])
+  const scrollYRef = useRef(0)
+  const scrollHandle = useMemo<AdminScrollHandle>(
+    () => ({
+      scrollBy: (dy) => scrollRef.current?.scrollTo({ y: Math.max(0, scrollYRef.current + dy), animated: true }),
+    }),
+    [],
+  )
 
   // 탭에 들어올 때마다 다시 묻는다 — 권한이 회수됐으면 403 으로 탭이 닫히고, 배지 수도 맞춘다.
   useFocusEffect(
@@ -169,10 +176,15 @@ export default function AdminTabScreen() {
           contentContainerStyle={[styles.content, layoutStyles.readable]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          // iOS: 키보드가 올라오면 그만큼 아래 여백을 넣어 반려·정지 사유 입력칸이 가려지지 않게 한다.
+          // iOS: 키보드가 올라오면 그만큼 아래 여백을 넣는다. 이것만으로는 입력칸 윗부분만 보이고 확인 버튼이 가려져서,
+          // ConfirmBar 가 AdminScrollProvider 로 자기 전체(입력칸 + 버튼)를 키보드 위로 올린다(ui.tsx).
           automaticallyAdjustKeyboardInsets
+          onScroll={(event) => {
+            scrollYRef.current = event.nativeEvent.contentOffset.y
+          }}
+          scrollEventThrottle={16}
         >
-          {content}
+          <AdminScrollProvider value={scrollHandle}>{content}</AdminScrollProvider>
         </ScrollView>
       </SafeAreaView>
     </AdminHostProvider>
