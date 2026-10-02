@@ -13,7 +13,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.hongmap.alimi",
+      "bundleIdentifier": "com.hongikon.app",
       "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -25,7 +25,7 @@
       }
     },
     "android": {
-      "package": "com.hongmap.alimi",
+      "package": "com.hongikon.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1833DB",

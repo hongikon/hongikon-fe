@@ -35,7 +35,7 @@ const ID_SUFFIX: Record<AppVariant, string> = {
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const baseId = config.ios?.bundleIdentifier ?? 'com.hongmap.alimi'
+  const baseId = config.ios?.bundleIdentifier ?? 'com.hongikon.app'
   const id = `${baseId}${ID_SUFFIX[VARIANT]}`
 
   return {
