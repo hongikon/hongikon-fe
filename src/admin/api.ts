@@ -1,4 +1,4 @@
-import { apiRequest, ApiError, NetworkError, type ApiRequestOptions } from '../apis/client'
+import { apiRequest, ApiError, NetworkError, RequestCancelledError, type ApiRequestOptions } from '../apis/client'
 import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenResponse } from '../apis/auth'
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import type {
@@ -147,7 +147,10 @@ async function adminRequest<T>(path: string, options: AdminRequestOptions = {}):
   if (__DEV__ && activeMockMode) {
     const { handleMockRequest } = await import('./mock')
     try {
-      return (await handleMockRequest(path, options, activeMockMode)) as T
+      const result = (await handleMockRequest(path, options, activeMockMode)) as T
+      // 실제 요청(apiRequest)처럼, 기다리는 사이 취소된 요청의 응답은 버린다 — 안 그러면 늦게 온 이전 검색 결과가 덮어쓴다.
+      if (options.signal?.aborted) throw new RequestCancelledError()
+      return result
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) emitAuth('forbidden')
       throw error
