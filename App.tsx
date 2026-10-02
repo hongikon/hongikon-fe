@@ -20,6 +20,7 @@ import { TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debu
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
+import { AdminAccessProvider } from './src/admin/AdminAccess'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -58,8 +59,8 @@ const tempDebugMode: TempDebugMode | null =
 
 /**
  * 웹 관리자 콘솔(`/admin`, `/admin/...`). 앱의 로그인(AuthProvider)·내비게이션과 완전히 따로 돈다 —
- * 토큰도 별도(sessionStorage)다. `AdminEntry` 는 네이티브에선 null, 웹에선 지연 로드라
- * 앱 번들에는 관리자 코드가 실리지 않는다.
+ * 토큰도 별도(sessionStorage)다. `AdminEntry` 는 네이티브에선 null, 웹에선 지연 로드다.
+ * 앱 안(네이티브·웹 앱)에서는 관리자 계정이면 하단 "관리" 탭으로 같은 화면들을 쓴다(`AdminAccess`, `AdminTabScreen`).
  */
 const isAdminPath =
   Platform.OS === 'web' &&
@@ -112,6 +113,8 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider><ToastProvider>
         <AuthProvider>
+          {/* 관리자 여부(관리 탭)는 앱 로그인 토큰으로 서버에 물어 본다. 토스트를 쓰므로 ToastProvider 안. */}
+          <AdminAccessProvider>
           {/* 온보딩을 보여줄지 정한 뒤에 설정을 불러온다(순서가 중요 — OnboardingGate 주석). */}
           <OnboardingGate>
           <SettingsProvider>
@@ -126,6 +129,7 @@ export default function App() {
             </NavigationContainer>
           </SettingsProvider>
           </OnboardingGate>
+          </AdminAccessProvider>
         </AuthProvider>
       </ToastProvider></SafeAreaProvider>
     </ErrorBoundary>

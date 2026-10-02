@@ -85,6 +85,11 @@ interface AuthContextValue {
   continueAsGuest: () => Promise<void>
   logout: () => Promise<void>
   deleteAccount: () => Promise<void>
+  /**
+   * 만료된 액세스 토큰으로 새 토큰을 받는다(동시 요청은 한 번만 재발급). refresh 토큰도 무효면 로그아웃까지 한다.
+   * 보통은 `apiRequest` 가 알아서 쓰고, 관리 탭처럼 토큰을 직접 붙이는 곳만 부른다.
+   */
+  refreshAccessToken: (expiredAccessToken: string) => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -393,8 +398,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       continueAsGuest,
       logout,
       deleteAccount,
+      refreshAccessToken,
     }),
-    [status, accessToken, loginError, loginProvider, loginWithKakao, loginWithApple, continueAsGuest, logout, deleteAccount],
+    [
+      status,
+      accessToken,
+      loginError,
+      loginProvider,
+      loginWithKakao,
+      loginWithApple,
+      continueAsGuest,
+      logout,
+      deleteAccount,
+      refreshAccessToken,
+    ],
   )
 
   if (status === 'loading') return <AppLoadingScreen />

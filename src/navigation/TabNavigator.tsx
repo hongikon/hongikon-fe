@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react'
+import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { NavigatorScreenParams } from '@react-navigation/native'
@@ -6,12 +8,32 @@ import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
 import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigator'
 import SettingsScreen from '../screens/SettingsScreen'
+import { useAdminOverview, useIsAdmin } from '../admin/AdminAccess'
+
+/** 관리 탭 화면은 관리자만 쓰니 처음 열 때 불러온다(웹 번들에서 나머지 사용자에게 싣지 않는다). */
+const AdminTabScreen = lazy(() => import('../admin/AdminTabScreen'))
+
+function AdminTab() {
+  return (
+    <Suspense
+      fallback={
+        <View style={styles.loading}>
+          <ActivityIndicator color={COLORS.primary} />
+        </View>
+      }
+    >
+      <AdminTabScreen />
+    </Suspense>
+  )
+}
 
 /** 하단 탭. 알림 탭처럼 바깥에서 특정 탭으로 보낼 때 `navigate('Main', { screen: 'Map' })` 로 쓴다. */
 export type MainTabParamList = {
   Map: undefined
   News: NavigatorScreenParams<NewsStackParamList> | undefined
   Settings: undefined
+  /** 관리자 계정에만 붙는다(`useIsAdmin`). */
+  Admin: undefined
 }
 
 const Tab = createBottomTabNavigator<MainTabParamList>()
@@ -25,6 +47,8 @@ const TAB_BAR_BASE_STYLE = {
 }
 
 export default function TabNavigator() {
+  const isAdmin = useIsAdmin()
+  const pending = useAdminOverview().data?.reports.pending ?? 0
   return (
     <Tab.Navigator
       screenOptions={{
@@ -72,6 +96,25 @@ export default function TabNavigator() {
           ),
         }}
       />
+      {isAdmin ? (
+        <Tab.Screen
+          name="Admin"
+          component={AdminTab}
+          options={{
+            tabBarLabel: '관리',
+            tabBarAccessibilityLabel: pending > 0 ? `관리, 승인 대기 제보 ${pending}건` : '관리',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+            ),
+            tabBarBadge: pending > 0 ? (pending > 99 ? '99+' : pending) : undefined,
+            tabBarBadgeStyle: { fontFamily: FONTS.semibold, fontSize: 10 },
+          }}
+        />
+      ) : null}
     </Tab.Navigator>
   )
 }
+
+const styles = StyleSheet.create({
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
+})
