@@ -5,11 +5,11 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { REPORT_DURATION_OPTIONS_HOURS } from '../../constants/report'
 import {
-  REPORT_MAX_DURATION_HOURS,
+  REPORT_MAX_DURATION_DAYS,
   REPORT_START_MAX_DAYS,
   REPORT_TIME_STEP_MINUTES,
   dayChipLabel,
-  formatClock,
+  formatDay,
   formatDurationMinutes,
   formatScheduleRange,
   kstDateTime,
@@ -22,13 +22,14 @@ const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
 const DAY_MS = 24 * HOUR_MS
 const STEP_MS = REPORT_TIME_STEP_MINUTES * MINUTE_MS
-const MAX_DURATION_MS = REPORT_MAX_DURATION_HOURS * HOUR_MS
+const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
 const MINUTE_OPTIONS = Array.from({ length: 60 / REPORT_TIME_STEP_MINUTES }, (_, i) => i * REPORT_TIME_STEP_MINUTES)
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const DAY_OFFSETS = Array.from({ length: REPORT_START_MAX_DAYS }, (_, i) => i)
 
 /**
- * 제보 시각. 시작은 '지금' 또는 고른 시각(오늘부터 14일 안, 10분 단위), 끝은 진행 시간 프리셋 또는 직접 고른 시각.
+ * 제보 시각. 시작은 '지금' 또는 고른 시각(오늘부터 14일 안, 10분 단위), 끝은 진행 시간 프리셋 또는 직접 고른 날짜·시각
+ * (시작부터 최대 7일 — 여러 날 행사).
  * 고른 시작·종료는 epoch ms(UTC)로 들고 있고 화면엔 한국 시간으로 보인다.
  */
 export interface ReportSchedule {
@@ -64,7 +65,7 @@ export function resolveSchedule(schedule: ReportSchedule, now: number = Date.now
   return { startMs, endMs }
 }
 
-/** 시작 이후, 최대 12시간 안의 가장 가까운 10분 단위 종료로 맞춘다. */
+/** 시작 이후, 최대 7일 안의 가장 가까운 10분 단위 종료로 맞춘다. */
 function clampEnd(endMs: number, startMs: number): number {
   const earliest = Math.ceil((startMs + 1) / STEP_MS) * STEP_MS
   const latest = Math.floor((startMs + MAX_DURATION_MS) / STEP_MS) * STEP_MS
@@ -126,18 +127,17 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
   }
   const pickMinute = (minute: number) => setStart(kstDateTime(selectedDay, selectedHour, minute, now))
 
-  // 직접 고르는 종료: 시작이 든 시(정각)부터 12시간 뒤까지 시 칩, 그리고 10분 칩.
-  const baseHourMs = Math.floor(startMs / HOUR_MS) * HOUR_MS
-  const endHourIndex = Math.floor((value.customEndMs - baseHourMs) / HOUR_MS)
+  // 직접 고르는 종료: 날짜(시작한 날 ~ 7일 뒤) · 시(0~23) · 10분 칩. 한국 시간 기준.
+  const startDayMidnight = kstMidnight(startMs)
+  const endDayIndex = Math.floor((value.customEndMs - startDayMidnight) / DAY_MS)
+  const endHour = Math.floor((value.customEndMs - startDayMidnight - endDayIndex * DAY_MS) / HOUR_MS)
   const endMinute = Math.round((value.customEndMs % HOUR_MS) / MINUTE_MS)
+  const endAt = (day: number, hour: number, minute: number) =>
+    startDayMidnight + day * DAY_MS + hour * HOUR_MS + minute * MINUTE_MS
   const endValid = (candidate: number) => candidate > startMs && candidate - startMs <= MAX_DURATION_MS
-  const pickEndHour = (index: number) => {
-    const candidate = baseHourMs + index * HOUR_MS + endMinute * MINUTE_MS
+  const setEnd = (candidate: number) =>
     onChange({ ...value, endMode: 'custom', customEndMs: clampEnd(candidate, startMs) })
-  }
-  const pickEndMinute = (minute: number) => {
-    onChange({ ...value, endMode: 'custom', customEndMs: baseHourMs + endHourIndex * HOUR_MS + minute * MINUTE_MS })
-  }
+  const endDayOptions = Array.from({ length: REPORT_MAX_DURATION_DAYS + 1 }, (_, day) => day)
   const openCustomEnd = () => {
     // 지금 고른 진행 시간의 끝(10분 단위로 올림)에서 시작한다.
     const preset = Math.ceil((startMs + value.durationHours * HOUR_MS) / STEP_MS) * STEP_MS
@@ -235,46 +235,57 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
           />
         ))}
         <Chip
-          label="종료 시각 직접"
+          label="종료 날짜·시각 직접"
           icon="time-outline"
           active={value.endMode === 'custom'}
           disabled={disabled}
           onPress={value.endMode === 'custom' ? () => {} : openCustomEnd}
-          accessibilityLabel="끝나는 시각 직접 고르기"
+          accessibilityLabel="끝나는 날짜와 시각 직접 고르기"
         />
       </View>
 
       {value.endMode === 'custom' && (
         <View style={styles.pickerBox}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {Array.from({ length: REPORT_MAX_DURATION_HOURS + 1 }, (_, index) => {
-              const hourStart = baseHourMs + index * HOUR_MS
-              // 이 시에 고를 수 있는 10분 칸이 하나도 없으면 뺀다.
-              const any = MINUTE_OPTIONS.some((minute) => endValid(hourStart + minute * MINUTE_MS))
-              if (!any) return null
-              const nextDay = Math.floor((hourStart - kstMidnight(startMs)) / DAY_MS) > 0
-              const clock = formatClock(hourStart).slice(0, 2)
+            {endDayOptions.map((day) => {
+              // 그날 고를 수 있는 칸이 하나도 없으면(7일째 시작 시각 뒤 등) 뺀다.
+              if (!endValid(endAt(day, 0, 0)) && !endValid(endAt(day, 23, 50))) return null
               return (
                 <Chip
-                  key={index}
-                  label={`${nextDay ? '다음날 ' : ''}${Number(clock)}시`}
-                  active={index === endHourIndex}
+                  key={day}
+                  label={formatDay(endAt(day, 12, 0))}
+                  active={day === endDayIndex}
                   disabled={disabled}
-                  onPress={() => pickEndHour(index)}
+                  onPress={() => setEnd(endAt(day, endHour, endMinute))}
+                />
+              )
+            })}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+            {HOURS.map((hour) => {
+              const any = MINUTE_OPTIONS.some((minute) => endValid(endAt(endDayIndex, hour, minute)))
+              if (!any) return null
+              return (
+                <Chip
+                  key={hour}
+                  label={`${hour}시`}
+                  active={hour === endHour}
+                  disabled={disabled}
+                  onPress={() => setEnd(endAt(endDayIndex, hour, endMinute))}
                 />
               )
             })}
           </ScrollView>
           <View style={styles.chipWrap}>
             {MINUTE_OPTIONS.map((minute) => {
-              const candidate = baseHourMs + endHourIndex * HOUR_MS + minute * MINUTE_MS
+              const candidate = endAt(endDayIndex, endHour, minute)
               return (
                 <Chip
                   key={minute}
                   label={`${minute < 10 ? '0' : ''}${minute}분`}
                   active={minute === endMinute}
                   disabled={disabled || !endValid(candidate)}
-                  onPress={() => pickEndMinute(minute)}
+                  onPress={() => setEnd(candidate)}
                   compact
                 />
               )

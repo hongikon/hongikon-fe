@@ -339,7 +339,7 @@ export interface CreateReportInput {
   imageKey?: string
   /** UTC ISO. 지금 ~ 14일 안(예정 제보). 서버 규칙은 `utils/reportSchedule.ts` 참고. */
   startsAt: string
-  /** UTC ISO. 시작보다 뒤, 최대 12시간. */
+  /** UTC ISO. 시작보다 뒤, 최대 7일(여러 날 행사). */
   endsAt: string
 }
 

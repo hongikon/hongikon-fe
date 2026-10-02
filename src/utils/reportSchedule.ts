@@ -3,13 +3,14 @@ import { parseServerTime } from './serverTime'
 /**
  * 예정 제보 — 시작·종료 시각 고르기와 표시.
  *
- * 규칙은 서버(`ReportService.validateSchedule`)와 같다: 시작은 지금 ~ 14일 안, 종료는 시작보다 뒤이고 최대 12시간.
+ * 규칙은 서버(`ReportService.validateSchedule`)와 같다: 시작은 지금 ~ 14일 안, 종료는 시작보다 뒤이고 최대 7일.
  * 시각은 모두 한국 시간(고정 +9, 서머타임 없음)으로 고르고 보여 주며, 서버에는 UTC ISO(`toISOString`)로 보낸다.
  * `Intl` 의 timeZone 을 쓰지 않는 이유는 `formatKstTime`(utils/reports.ts)과 같다(Hermes 빌드마다 다름).
  */
 
 export const REPORT_START_MAX_DAYS = 14
-export const REPORT_MAX_DURATION_HOURS = 12
+/** 진행 기간 상한(일). 여러 날 행사도 올릴 수 있다 — 길이는 작성자가 정하고 운영진이 검토한다. */
+export const REPORT_MAX_DURATION_DAYS = 7
 /** 시각을 고르는 간격(분). */
 export const REPORT_TIME_STEP_MINUTES = 10
 
@@ -88,10 +89,12 @@ export function formatScheduleRange(startMs: number, endMs: number, startLabel?:
   return `${start} ~ ${end}`
 }
 
-/** `2시간` · `1시간 30분` · `40분` */
+/** `2시간` · `1시간 30분` · `40분` · `2일 7시간` · `3일` (하루가 넘으면 분은 뺀다) */
 export function formatDurationMinutes(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60)
+  const days = Math.floor(totalMinutes / (24 * 60))
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
   const minutes = totalMinutes % 60
+  if (days > 0) return hours === 0 ? `${days}일` : `${days}일 ${hours}시간`
   if (hours === 0) return `${minutes}분`
   return minutes === 0 ? `${hours}시간` : `${hours}시간 ${minutes}분`
 }
@@ -102,6 +105,11 @@ export function nextStepAfter(now: number = Date.now()): number {
   return Math.floor(now / step) * step + step
 }
 
+/** 같은 날(한국 시간)인지. */
+export function isSameKstDay(a: number, b: number): boolean {
+  return kstParts(a).dayIndex === kstParts(b).dayIndex
+}
+
 /** 시작 시각 확인. 문제가 없으면 null, 있으면 서버와 같은 해요체 문구. */
 export function scheduleError(startMs: number, endMs: number, now: number = Date.now()): string | null {
   if (startMs < now - MINUTE_MS) return '시작 시각이 이미 지났어요. 지금 또는 이후 시각을 골라 주세요.'
@@ -109,8 +117,8 @@ export function scheduleError(startMs: number, endMs: number, now: number = Date
     return `시작 시각은 오늘부터 ${REPORT_START_MAX_DAYS}일 안으로 골라 주세요.`
   }
   if (endMs <= startMs) return '종료 시각은 시작 시각보다 뒤여야 해요.'
-  if (endMs - startMs > REPORT_MAX_DURATION_HOURS * HOUR_MS) {
-    return `진행 시간은 최대 ${REPORT_MAX_DURATION_HOURS}시간까지 정할 수 있어요.`
+  if (endMs - startMs > REPORT_MAX_DURATION_DAYS * DAY_MS) {
+    return `진행 기간은 최대 ${REPORT_MAX_DURATION_DAYS}일까지 정할 수 있어요.`
   }
   if (endMs <= now) return '종료 시각이 이미 지났어요. 시간을 다시 골라 주세요.'
   return null

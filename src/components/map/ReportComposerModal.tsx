@@ -83,7 +83,7 @@ function reportSubmitErrorMessage(error: unknown): string {
   if (isNetworkError(error)) return '인터넷 연결이 불안정해 제보를 올리지 못했어요. 연결을 확인하고 다시 시도해 주세요.'
   if (error instanceof ApiError) {
     // 시작·종료 시각 규칙(예정 제보)에 걸리면 서버가 해요체 문구를 준다 — 그대로 보여 준다.
-    if (error.status === 400 && error.serverMessage && /시각|진행 시간/.test(error.serverMessage)) {
+    if (error.status === 400 && error.serverMessage && /시각|진행 시간|진행 기간/.test(error.serverMessage)) {
       return error.serverMessage
     }
     if (error.status === 400) return '제보 내용이 올바르지 않아요. 위치(건물·층)와 제목을 다시 확인해 주세요.'

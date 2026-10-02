@@ -2,7 +2,7 @@ import { Alert, Platform } from 'react-native'
 import { reportCategoryMeta } from '../constants/reportCategories'
 import type { ReportCategory, ReportListItem } from '../types'
 import { parseServerTime } from './serverTime'
-import { formatServerSchedule, formatStartShort, isUpcomingReport } from './reportSchedule'
+import { formatDay, formatServerSchedule, formatStartShort, isSameKstDay, isUpcomingReport } from './reportSchedule'
 
 /**
  * 로그인이 필요한 동작(제보 작성·신고)을 막았을 때 띄운다.
@@ -83,7 +83,10 @@ export function formatFreshness(report: Pick<ReportListItem, 'createdAt' | 'ends
   if (report.startsAt && isUpcomingReport({ startsAt: report.startsAt })) {
     return `예정 · ${formatServerSchedule(report.startsAt, report.endsAt)}`
   }
-  return `${formatElapsed(report.createdAt)} 등록 · ${formatKstTime(report.endsAt)}까지`
+  // 여러 날 제보는 끝나는 날짜도 적는다. 예: '2시간 전 등록 · 10/5(월) 18시까지'
+  const endMs = parseServerTime(report.endsAt)
+  const endText = isSameKstDay(endMs, Date.now()) ? formatKstTime(report.endsAt) : `${formatDay(endMs)} ${formatKstTime(report.endsAt)}`
+  return `${formatElapsed(report.createdAt)} 등록 · ${endText}까지`
 }
 
 /**
