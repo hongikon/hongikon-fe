@@ -24,7 +24,7 @@
 
     var container = document.getElementById('map');
     var map = new naver.maps.Map(container, {
-      center: new naver.maps.LatLng(37.5508, 126.9237),
+      center: new naver.maps.LatLng(37.55016, 126.9252),
       zoom: 17,
       scaleControl: true,
     });
@@ -696,7 +696,7 @@
           selectedPartnerId = null;
           overlapCycle.key = null;
           removePartnerOverlays();
-          map.setCenter(new naver.maps.LatLng(37.5508, 126.9237));
+          map.setCenter(new naver.maps.LatLng(37.55016, 126.9252));
           map.setZoom(17);
         }
 
@@ -822,7 +822,7 @@
 
         if (msg.type === 'clearRoute') {
           clearRouteOverlays();
-          map.setCenter(new naver.maps.LatLng(37.5508, 126.9237));
+          map.setCenter(new naver.maps.LatLng(37.55016, 126.9252));
           map.setZoom(17);
         }
 

@@ -7,8 +7,11 @@
  */
 export const MAP_PAGE_URL = 'https://hongmap12.netlify.app/map.html'
 
-/** 캠퍼스 중심. 지도 초기 위치이자 제휴 마커 화면 맞춤의 기준점이다. */
-export const CAMPUS_CENTER = { lat: 37.5508, lng: 126.9237 } as const
+/**
+ * 캠퍼스 중심. 지도 초기 위치이자 "캠퍼스로 돌아가기"·제휴 마커 화면 맞춤의 기준점이다.
+ * 제4공학관 T동 5층 입구(HI_T_5F_ENTER)보다 조금 동쪽 — 처음 켰을 때 캠퍼스 본관 쪽이 화면 가운데 오게(10-02 요청).
+ */
+export const CAMPUS_CENTER = { lat: 37.55016, lng: 126.9252 } as const
 
 /** 지도 초기 줌 레벨. 캠퍼스 전체가 한 화면에 들어온다. */
 export const DEFAULT_ZOOM = 17
