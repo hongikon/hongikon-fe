@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -9,23 +9,21 @@ import {
   REPORT_START_MAX_DAYS,
   REPORT_TIME_STEP_MINUTES,
   dayChipLabel,
+  formatClock,
   formatDay,
   formatDurationMinutes,
   formatScheduleRange,
-  kstDateTime,
   kstMidnight,
   nextStepAfter,
 } from '../../utils/reportSchedule'
 import { chipStyles } from './chipStyles'
+import ReportTimeSheet from './ReportTimeSheet'
 
 const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
 const DAY_MS = 24 * HOUR_MS
 const STEP_MS = REPORT_TIME_STEP_MINUTES * MINUTE_MS
 const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
-const MINUTE_OPTIONS = Array.from({ length: 60 / REPORT_TIME_STEP_MINUTES }, (_, i) => i * REPORT_TIME_STEP_MINUTES)
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
-const DAY_OFFSETS = Array.from({ length: REPORT_START_MAX_DAYS }, (_, i) => i)
 
 /**
  * 제보 시각. 시작은 '지금' 또는 고른 시각(오늘부터 14일 안, 10분 단위), 끝은 진행 시간 프리셋 또는 직접 고른 날짜·시각
@@ -75,22 +73,23 @@ function clampEnd(endMs: number, startMs: number): number {
 interface ReportScheduleFieldsProps {
   value: ReportSchedule
   onChange: (next: ReportSchedule) => void
-  /** 지금 시각(부모가 30초마다 갱신). 지난 시각 칩을 막고 '지금 ~' 요약을 맞춘다. */
+  /** 지금 시각(부모가 30초마다 갱신). 지난 시각을 막고 '지금 ~' 요약을 맞춘다. */
   now: number
   disabled?: boolean
 }
 
-/** 제보 작성창의 '언제' 영역. 네이티브 시간 선택기 없이 칩으로 고른다(앱 다시 빌드 없이 OTA 가능). */
+/**
+ * 제보 작성창의 '언제' 영역. 빠른 칩(지금 · 1/2/3/6시간)과, 요약 줄을 누르면 뜨는 다이얼 시트(시작 시각 · 종료 시각).
+ * 다이얼은 순수 JS(WheelPicker)라 앱을 다시 빌드하지 않고 OTA·웹에서 그대로 돈다.
+ */
 export default function ReportScheduleFields({ value, onChange, now, disabled }: ReportScheduleFieldsProps) {
   const { startMs, endMs } = resolveSchedule(value, now)
   const scheduled = value.startMode === 'scheduled'
-  const todayMidnight = kstMidnight(now)
-  const selectedDay = Math.floor((value.scheduledStartMs - todayMidnight) / DAY_MS)
-  const selectedHour = Math.floor((value.scheduledStartMs - todayMidnight - selectedDay * DAY_MS) / HOUR_MS)
-  const selectedMinute = Math.round((value.scheduledStartMs % HOUR_MS) / MINUTE_MS)
   const firstValidStart = nextStepAfter(now - 1)
+  const todayMidnight = kstMidnight(now)
+  const [sheet, setSheet] = useState<'start' | 'end' | null>(null)
 
-  /** 시작을 바꾼다. 직접 고른 종료는 진행 시간을 유지한 채 같이 옮긴다. */
+  /** 시작을 바꾼다. 직접 고른 종료는 진행 기간을 유지한 채 같이 옮긴다. */
   const setStart = (nextStartMs: number) => {
     const delta = nextStartMs - startMs
     onChange({
@@ -115,37 +114,33 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
     }
   }, [value, now])
 
-  const pickDay = (day: number) => {
-    let next = kstDateTime(day, selectedHour, selectedMinute, now)
-    if (next < firstValidStart) next = firstValidStart
-    setStart(next)
-  }
-  const pickHour = (hour: number) => {
-    let next = kstDateTime(selectedDay, hour, selectedMinute, now)
-    if (next < firstValidStart) next = firstValidStart
-    setStart(next)
-  }
-  const pickMinute = (minute: number) => setStart(kstDateTime(selectedDay, selectedHour, minute, now))
+  // 시작 다이얼: 오늘부터 14일, 지금 이후 10분 칸.
+  const startValid = useCallback(
+    (ms: number) => ms >= firstValidStart && ms < todayMidnight + REPORT_START_MAX_DAYS * DAY_MS,
+    [firstValidStart, todayMidnight],
+  )
+  const startDayLabel = useCallback((index: number) => dayChipLabel(index, now), [now])
 
-  // 직접 고르는 종료: 날짜(시작한 날 ~ 7일 뒤) · 시(0~23) · 10분 칩. 한국 시간 기준.
-  const startDayMidnight = kstMidnight(startMs)
-  const endDayIndex = Math.floor((value.customEndMs - startDayMidnight) / DAY_MS)
-  const endHour = Math.floor((value.customEndMs - startDayMidnight - endDayIndex * DAY_MS) / HOUR_MS)
-  const endMinute = Math.round((value.customEndMs % HOUR_MS) / MINUTE_MS)
-  const endAt = (day: number, hour: number, minute: number) =>
-    startDayMidnight + day * DAY_MS + hour * HOUR_MS + minute * MINUTE_MS
-  const endValid = (candidate: number) => candidate > startMs && candidate - startMs <= MAX_DURATION_MS
-  const setEnd = (candidate: number) =>
-    onChange({ ...value, endMode: 'custom', customEndMs: clampEnd(candidate, startMs) })
-  const endDayOptions = Array.from({ length: REPORT_MAX_DURATION_DAYS + 1 }, (_, day) => day)
-  const openCustomEnd = () => {
-    // 지금 고른 진행 시간의 끝(10분 단위로 올림)에서 시작한다.
-    const preset = Math.ceil((startMs + value.durationHours * HOUR_MS) / STEP_MS) * STEP_MS
-    onChange({ ...value, endMode: 'custom', customEndMs: clampEnd(preset, startMs) })
-  }
+  // 종료 다이얼: 시작한 날부터 7일 뒤까지, 시작보다 뒤이고 7일 이내.
+  const endBase = kstMidnight(startMs)
+  const endValid = useCallback(
+    (ms: number) => ms > startMs && ms - startMs <= MAX_DURATION_MS && ms > now,
+    [startMs, now],
+  )
+  const endDayLabel = useCallback(
+    (index: number) => dayChipLabel(Math.round((endBase + index * DAY_MS - todayMidnight) / DAY_MS), now),
+    [endBase, todayMidnight, now],
+  )
+  const endInitial =
+    value.endMode === 'custom' ? value.customEndMs : clampEnd(Math.ceil(endMs / STEP_MS) * STEP_MS, startMs)
+  const startInitial = scheduled
+    ? value.scheduledStartMs
+    : value.scheduledStartMs >= firstValidStart
+      ? value.scheduledStartMs
+      : defaultScheduledStart(now)
 
-  const durationMinutes = Math.round((endMs - startMs) / MINUTE_MS)
-  const summary = `${formatScheduleRange(startMs, endMs, scheduled ? undefined : '지금')} · ${formatDurationMinutes(Math.max(durationMinutes, 0))}`
+  const durationMinutes = Math.max(Math.round((endMs - startMs) / MINUTE_MS), 0)
+  const summary = `${formatScheduleRange(startMs, endMs, scheduled ? undefined : '지금')} · ${formatDurationMinutes(durationMinutes)}`
 
   return (
     <View>
@@ -163,64 +158,10 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
           icon="calendar-outline"
           active={scheduled}
           disabled={disabled}
-          onPress={() => {
-            if (scheduled) return
-            const start = value.scheduledStartMs >= firstValidStart ? value.scheduledStartMs : defaultScheduledStart(now)
-            setStart(start)
-          }}
+          onPress={() => setSheet('start')}
           accessibilityLabel="시작 날짜와 시간 고르기"
         />
       </View>
-
-      {scheduled && (
-        <View style={styles.pickerBox}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {DAY_OFFSETS.map((day) => {
-              // 오늘인데 남은 칸이 없으면(23:50 이후) 오늘 칩은 막는다.
-              const dayDisabled = kstDateTime(day, 23, 50, now) < firstValidStart
-              return (
-                <Chip
-                  key={day}
-                  label={dayChipLabel(day, now)}
-                  active={day === selectedDay}
-                  disabled={disabled || dayDisabled}
-                  onPress={() => pickDay(day)}
-                />
-              )
-            })}
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {HOURS.map((hour) => {
-              const past = kstDateTime(selectedDay, hour, 60 - REPORT_TIME_STEP_MINUTES, now) < firstValidStart
-              if (past) return null
-              return (
-                <Chip
-                  key={hour}
-                  label={`${hour}시`}
-                  active={hour === selectedHour}
-                  disabled={disabled}
-                  onPress={() => pickHour(hour)}
-                />
-              )
-            })}
-          </ScrollView>
-          <View style={styles.chipWrap}>
-            {MINUTE_OPTIONS.map((minute) => {
-              const past = kstDateTime(selectedDay, selectedHour, minute, now) < firstValidStart
-              return (
-                <Chip
-                  key={minute}
-                  label={`${minute < 10 ? '0' : ''}${minute}분`}
-                  active={minute === selectedMinute}
-                  disabled={disabled || past}
-                  onPress={() => pickMinute(minute)}
-                  compact
-                />
-              )
-            })}
-          </View>
-        </View>
-      )}
 
       <Text style={styles.subLabel}>진행 시간</Text>
       <View style={styles.chipWrap}>
@@ -239,71 +180,96 @@ export default function ReportScheduleFields({ value, onChange, now, disabled }:
           icon="time-outline"
           active={value.endMode === 'custom'}
           disabled={disabled}
-          onPress={value.endMode === 'custom' ? () => {} : openCustomEnd}
+          onPress={() => setSheet('end')}
           accessibilityLabel="끝나는 날짜와 시각 직접 고르기"
         />
       </View>
 
-      {value.endMode === 'custom' && (
-        <View style={styles.pickerBox}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {endDayOptions.map((day) => {
-              // 그날 고를 수 있는 칸이 하나도 없으면(7일째 시작 시각 뒤 등) 뺀다.
-              if (!endValid(endAt(day, 0, 0)) && !endValid(endAt(day, 23, 50))) return null
-              return (
-                <Chip
-                  key={day}
-                  label={formatDay(endAt(day, 12, 0))}
-                  active={day === endDayIndex}
-                  disabled={disabled}
-                  onPress={() => setEnd(endAt(day, endHour, endMinute))}
-                />
-              )
-            })}
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {HOURS.map((hour) => {
-              const any = MINUTE_OPTIONS.some((minute) => endValid(endAt(endDayIndex, hour, minute)))
-              if (!any) return null
-              return (
-                <Chip
-                  key={hour}
-                  label={`${hour}시`}
-                  active={hour === endHour}
-                  disabled={disabled}
-                  onPress={() => setEnd(endAt(endDayIndex, hour, endMinute))}
-                />
-              )
-            })}
-          </ScrollView>
-          <View style={styles.chipWrap}>
-            {MINUTE_OPTIONS.map((minute) => {
-              const candidate = endAt(endDayIndex, endHour, minute)
-              return (
-                <Chip
-                  key={minute}
-                  label={`${minute < 10 ? '0' : ''}${minute}분`}
-                  active={minute === endMinute}
-                  disabled={disabled || !endValid(candidate)}
-                  onPress={() => setEnd(candidate)}
-                  compact
-                />
-              )
-            })}
-          </View>
-        </View>
-      )}
-
-      <View style={styles.summary} accessibilityRole="summary" accessibilityLabel={`제보 시간 ${summary}`}>
-        <Ionicons name="calendar-clear-outline" size={15} color={COLORS.primary} />
-        <Text style={styles.summaryText}>{summary}</Text>
+      {/* 요약 줄. 시작·종료 줄을 누르면 다이얼 시트가 뜬다. */}
+      <View style={styles.summary}>
+        <SummaryRow
+          label="시작"
+          value={scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}
+          onPress={() => setSheet('start')}
+          disabled={disabled}
+          accessibilityLabel={`시작 ${scheduled ? `${formatDay(startMs)} ${formatClock(startMs)}` : '지금'}, 바꾸기`}
+        />
+        <View style={styles.summaryDivider} />
+        <SummaryRow
+          label="종료"
+          value={`${formatDay(endMs)} ${formatClock(endMs)}`}
+          onPress={() => setSheet('end')}
+          disabled={disabled}
+          accessibilityLabel={`종료 ${formatDay(endMs)} ${formatClock(endMs)}, 바꾸기`}
+        />
+        <Text style={styles.summaryText} accessibilityLabel={`제보 시간 ${summary}`}>
+          {summary}
+        </Text>
       </View>
       <Text style={styles.hint}>
         {scheduled
           ? '운영진이 확인한 뒤, 시작 시각이 되면 지도에 올라가요. 끝나는 시각에 자동으로 내려가요.'
           : '운영진이 확인한 뒤 지도에 올라가고, 끝나는 시각에 자동으로 내려가요.'}
       </Text>
+
+      <ReportTimeSheet
+        visible={sheet === 'start'}
+        title="시작 시각"
+        baseMidnight={todayMidnight}
+        dayCount={REPORT_START_MAX_DAYS}
+        dayLabel={startDayLabel}
+        isValid={startValid}
+        initialMs={startInitial}
+        onCancel={() => setSheet(null)}
+        onConfirm={(ms) => {
+          setSheet(null)
+          setStart(ms)
+        }}
+      />
+      <ReportTimeSheet
+        visible={sheet === 'end'}
+        title="종료 시각"
+        baseMidnight={endBase}
+        dayCount={REPORT_MAX_DURATION_DAYS + 1}
+        dayLabel={endDayLabel}
+        isValid={endValid}
+        initialMs={endInitial}
+        onCancel={() => setSheet(null)}
+        onConfirm={(ms) => {
+          setSheet(null)
+          onChange({ ...value, endMode: 'custom', customEndMs: ms })
+        }}
+      />
     </View>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  onPress,
+  disabled,
+  accessibilityLabel,
+}: {
+  label: string
+  value: string
+  onPress: () => void
+  disabled?: boolean
+  accessibilityLabel: string
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.summaryRow}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
+      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+    </TouchableOpacity>
   )
 }
 
@@ -348,28 +314,21 @@ function Chip({
 const styles = StyleSheet.create({
   subLabel: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginBottom: 6, marginTop: 4 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 8 },
-  row: { flexDirection: 'row', gap: 7, paddingRight: 4 },
-  pickerBox: {
-    gap: 8,
-    padding: 10,
-    paddingBottom: 2,
-    marginBottom: 10,
-    borderRadius: 12,
-    backgroundColor: COLORS.fill,
-  },
   compactChip: { paddingHorizontal: 9 },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipDisabled: { opacity: 0.4 },
   summary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
     paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 10,
     borderRadius: 12,
     backgroundColor: COLORS.primarySoft,
     marginTop: 2,
   },
-  summaryText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 13.5, color: COLORS.primary },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 8 },
+  summaryLabel: { width: 32, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
+  summaryValue: { flex: 1, fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.primary },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.chipBorder },
+  summaryText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, marginTop: 6 },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 8 },
 })
