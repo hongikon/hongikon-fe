@@ -47,7 +47,7 @@ export const FACILITIES: readonly Facility[] = [
   // 공식 표기 "로비층"을 1층으로 봄(신뢰도 중간). L층 스터디룸(세미나실)은 여전히 미확인이라 제외.
   // L층 증명서 출력기는 공식 안내(문헌관 MH동 1층만 나옴)에는 없지만 2026-10-02 사용자가 현장에서 확인해 둔다.
   { id: 'hi-r-1f-cafe', kind: '카페', buildingName: '홍문관 R동', floor: 1, note: '카페나무 · 로비층(L)' },
-  { id: 'hi-r-1f-certificate-kiosk', kind: '증명서 발급', buildingName: '홍문관 R동', floor: 1, note: '증명서 출력기 · 로비층(L) · 현장 확인됨(10-02 사용자)' },
+  { id: 'hi-r-1f-certificate-kiosk', kind: '증명서 발급', buildingName: '홍문관 R동', floor: 1, note: '증명서 출력기 · 로비층(L)' },
   { id: 'hi-r-b2f-cafe', kind: '카페', buildingName: '홍문관 R동', floor: -2, note: '푸르타(과일주스전문점)' },
   { id: 'hi-r-b2f-printer', kind: '프린터', buildingName: '홍문관 R동', floor: -2, note: '출력센터(에이제이네트웍스)' },
   { id: 'hi-r-building-elevator', kind: '엘리베이터', buildingName: '홍문관 R동', note: '지도상 엘리베이터 표기(정확한 층 미확인)' },
@@ -149,8 +149,8 @@ export const FACILITIES: readonly Facility[] = [
   { id: 'hi-u-3f-dept-oriental-painting', kind: '학과사무실', buildingName: '미술종합강의동 U동', floor: 3, note: '동양화과 사무실 · 304호 · 02-320-1205' },
 
   // ── 제4공학관 T동 ───────────────────────────────────────
-  { id: 'hi-t-4f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 4 },
-  { id: 'hi-t-3f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 3 },
+  { id: 'hi-t-4f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 4, note: '일반 열람실 · 노트북 열람실' },
+  { id: 'hi-t-3f-reading-room', kind: '열람실', buildingName: '제4공학관 T동', floor: 3, note: '일반 열람실 · 노트북 열람실' },
   { id: 'hi-t-building-elevator', kind: '엘리베이터', buildingName: '제4공학관 T동' },
   // 학과사무실 (학과 소개 페이지 dept_info)
   { id: 'hi-t-9f-dept-industrial', kind: '학과사무실', buildingName: '제4공학관 T동', floor: 9, note: '산업·데이터공학과·데이터사이언스전공 사무실 · 904호 · 02-320-1132' },
