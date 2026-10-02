@@ -30,7 +30,6 @@ import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
-import Button from '../components/common/Button'
 import { LargeTitleHeader } from '../components/common/ScreenHeader'
 import { getMyProfile, isNicknameApiKnownMissing, type MyProfile } from '../apis/users'
 import { useApiResource } from '../hooks/useApiResource'
@@ -254,16 +253,10 @@ export default function SettingsScreen() {
               <View style={styles.guestNoticeBody}>
                 <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
                 <Text style={styles.guestNoticeText}>
-                  지금 고른 게시판·분야·제보 알림 설정은 로그인하면 그대로 적용돼요.
+                  위 계정에서 로그인하면 지금 고른 게시판·분야·제보 알림 설정이 그대로 적용돼요.
                 </Text>
               </View>
-              <Button
-                label="로그인"
-                size="sm"
-                fullWidth={false}
-                onPress={handleGoToLogin}
-                accessibilityLabel="로그인하기"
-              />
+              {/* 로그인 버튼은 바로 위 계정 섹션의 "로그인하기" 하나만 둔다(같은 기능 중복 방지). */}
             </View>
           )}
           <ListRow
