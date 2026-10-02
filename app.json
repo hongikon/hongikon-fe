@@ -177,7 +177,15 @@
         }
       ],
       "expo-status-bar",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
