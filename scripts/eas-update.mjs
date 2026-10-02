@@ -20,7 +20,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ALLOWED = ['production', 'preview']
-const [profileName, ...rest] = process.argv.slice(2)
+// `pnpm run update:preview -- --message ...` 처럼 넘어오는 맨 앞 '--' 는 버린다.
+const [profileName, ...rest] = process.argv.slice(2).filter((a, i) => !(i === 1 && a === '--'))
 
 if (!ALLOWED.includes(profileName)) {
   console.error(`사용법: node scripts/eas-update.mjs <${ALLOWED.join('|')}> -m "메시지"`)
