@@ -44,7 +44,8 @@ async function fireTestNotification(sample: PushNotificationSample) {
 
   await Notifications.scheduleNotificationAsync({
     content: { title: sample.title, body: sample.body, data: sample.data },
-    trigger: null,
+    // Android: 서버 푸시처럼 채널을 지정한다(관리자 표본은 "관리자 알림" 채널 — 관리자 계정에서만 만들어진다).
+    trigger: Platform.OS === 'android' && sample.channelId ? { channelId: sample.channelId } : null,
   })
 }
 

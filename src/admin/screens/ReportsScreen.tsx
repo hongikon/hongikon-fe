@@ -67,8 +67,20 @@ function actionsFor(status: ReportStatus): ActionKind[] {
   }
 }
 
-export default function ReportsScreen({ onChanged, overview }: { onChanged: () => void; overview: AdminOverview | null }) {
-  const [filter, setFilter] = useState<ReportStatusFilter>('PENDING')
+export default function ReportsScreen({
+  onChanged,
+  overview,
+  initialFilter,
+  focusReportId = null,
+}: {
+  onChanged: () => void
+  overview: AdminOverview | null
+  /** 처음 열 필터(관리자 알림: 승인 대기 → PENDING, 자동 숨김 → HIDDEN). 기본 PENDING */
+  initialFilter?: ReportStatusFilter
+  /** 관리자 알림으로 연 제보. 목록에 있으면 맨 위로 올려 강조한다. */
+  focusReportId?: number | null
+}) {
+  const [filter, setFilter] = useState<ReportStatusFilter>(initialFilter ?? 'PENDING')
   const [reports, setReports] = useState<AdminReport[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -134,8 +146,14 @@ export default function ReportsScreen({ onChanged, overview }: { onChanged: () =
         <EmptyState message={filter === 'PENDING' ? '승인 대기 중인 제보가 없습니다.' : '해당하는 제보가 없습니다.'} />
       ) : (
         <View style={styles.list}>
-          {reports.map((report) => (
-            <ReportCard key={report.id} report={report} filter={filter} onUpdated={handleUpdated} />
+          {withFocusedFirst(reports, focusReportId).map((report) => (
+            <ReportCard
+              key={report.id}
+              report={report}
+              filter={filter}
+              onUpdated={handleUpdated}
+              highlighted={report.id === focusReportId}
+            />
           ))}
         </View>
       )}
@@ -143,14 +161,23 @@ export default function ReportsScreen({ onChanged, overview }: { onChanged: () =
   )
 }
 
+/** 알림으로 연 항목을 맨 위로(나머지 순서는 그대로). */
+function withFocusedFirst<T extends { id: number }>(items: T[], focusId: number | null): T[] {
+  if (focusId === null) return items
+  const focused = items.find((item) => item.id === focusId)
+  return focused ? [focused, ...items.filter((item) => item !== focused)] : items
+}
+
 function ReportCard({
   report,
   filter,
   onUpdated,
+  highlighted = false,
 }: {
   report: AdminReport
   filter: ReportStatusFilter
   onUpdated: (report: AdminReport) => void
+  highlighted?: boolean
 }) {
   const app = useAdminHost() === 'app'
   /** 펼친 확인 단계. 반려는 사유 입력, 삭제는 한 번 더 확인. */
@@ -237,7 +264,7 @@ function ReportCard({
   const trimmedNote = note.trim()
 
   return (
-    <Card style={[styles.card, movedOut && styles.cardMoved]}>
+    <Card style={[styles.card, highlighted && styles.cardHighlighted, movedOut && styles.cardMoved]}>
       <View style={styles.cardTop}>
         <View style={styles.badges}>
           <Badge label={REPORT_STATUS_LABEL[report.status]} tone={STATUS_TONE[report.status]} />
@@ -424,6 +451,7 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   card: { gap: 10 },
   cardMoved: { opacity: 0.7, borderStyle: 'dashed' },
+  cardHighlighted: { borderColor: COLORS.primary, borderWidth: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flexShrink: 1 },
   categoryChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },

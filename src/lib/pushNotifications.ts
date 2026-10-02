@@ -10,18 +10,48 @@ import { deactivateStoredPushDevice, registerPushDevice } from './pushDevice'
 import { useAuth } from '../contexts/AuthContext'
 import { useSettings } from '../contexts/SettingsContext'
 import { requestMapIntent } from './mapIntents'
-import { notificationTarget } from '../utils/notificationRouting'
+import { isAdminNotification, notificationTarget } from '../utils/notificationRouting'
+import { navigateToAdminTab, notifyAdminAlertReceived, requestAdminIntent } from './adminIntents'
+import { useIsAdmin } from '../admin/AdminAccess'
 import type { PushNotificationData } from '../types'
 
-/** 앱이 켜져 있을 때 알림을 어떻게 보여줄지. 배너·목록엔 띄우되 배지·소리는 안 쓴다. */
+/**
+ * 앱이 켜져 있을 때 알림을 어떻게 보여줄지. 배너·목록엔 띄우되 배지는 안 쓴다.
+ * 관리자 알림(ADMIN_*)은 처리할 일이 생긴 것이라 앱을 보고 있어도 배너와 함께 소리도 낸다.
+ */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const admin = isAdminNotification(notification.request.content.data)
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: admin,
+      shouldSetBadge: false,
+    }
+  },
 })
+
+/** 관리자 알림 Android 채널. 서버(`AdminAlertDispatcher`)가 `channelId: "admin"` 으로 보낸다. */
+export const ADMIN_NOTIFICATION_CHANNEL_ID = 'admin'
+
+/**
+ * Android 알림 채널 "관리자 알림"(중요도 높음 — 헤드업 표시)을 만든다. 같은 id 로 다시 불러도 안전하다(이름·설명만 갱신).
+ * JS 런타임 호출이라 OTA 로 배포된다. 관리자 계정에서만 만든다 — 일반 사용자의 휴대폰 알림 설정에 "관리자 알림"이 보이지 않게.
+ * 채널이 아직 없는 기기로 온 관리자 알림은 Expo 기본 채널로 표시된다(유실되지 않음).
+ */
+function ensureAdminNotificationChannel(): void {
+  if (Platform.OS !== 'android') return
+  Notifications.setNotificationChannelAsync(ADMIN_NOTIFICATION_CHANNEL_ID, {
+    name: '관리자 알림',
+    description: '새 제보 승인 대기, 새 문의, 신고로 자동 숨김된 제보',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'default',
+    vibrationPattern: [0, 250, 250, 250],
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+  }).catch((error) => {
+    if (__DEV__) console.warn('관리자 알림 채널을 만들지 못했습니다:', error)
+  })
+}
 
 /**
  * 아직 처리하지 못한 알림 탭. 앱이 꺼진 상태에서 알림으로 켜지면(콜드 스타트) 내비게이션이
@@ -64,6 +94,8 @@ function flushPendingNotification(): void {
  * - REPORT_STATUS(승인)·REPORT_NEW: 지도 탭 + 그 제보 포커스 요청(`mapIntents` focusReport) — MapScreen 이
  *   진행 중 제보를 받아 찾아 띄운다. 지도가 아직 안 떠 있으면(콜드 스타트) 지도 탭이 포커스될 때 처리한다.
  * - REPORT_STATUS(반려): 지도에 없는 제보라 지도 탭만 연다.
+ * - ADMIN_*: 관리 탭 + 해당 섹션(`adminIntents`). 관리 탭은 서버가 관리자라고 답한 뒤에 붙으므로, 아직 없으면
+ *   요청만 남겨 두고 `AdminAccessProvider` 가 확인을 마친 뒤 관리 탭을 열거나(관리자) 지도 탭 + 안내(아님)로 처리한다.
  */
 function routeForNotification(data: PushNotificationData): void {
   if (!navigationRef.isReady()) return
@@ -76,6 +108,10 @@ function routeForNotification(data: PushNotificationData): void {
     case 'map':
       if (target.focusReportId !== null) requestMapIntent({ type: 'focusReport', reportId: target.focusReportId })
       navigationRef.navigate('Main', { screen: 'Map' })
+      return
+    case 'admin':
+      requestAdminIntent(target.intent)
+      navigateToAdminTab()
       return
     case 'none':
       return
@@ -111,6 +147,7 @@ export function usePushNotifications(): void {
   const { accessToken, status } = useAuth()
   const { settings } = useSettings()
   const alertEnabled = settings.subscriptionAlert
+  const isAdmin = useIsAdmin()
   const registeredTokenRef = useRef<string | null>(null)
   /**
    * 기기 등록·비활성화가 연결 문제로 실패했는지. 사용자가 볼 화면이 없는 백그라운드 작업이라
@@ -140,6 +177,20 @@ export function usePushNotifications(): void {
     })
     return () => subscription.remove()
   }, [accessToken])
+
+  // 관리자로 확인되면 Android "관리자 알림" 채널을 만든다.
+  useEffect(() => {
+    if (isAdmin) ensureAdminNotificationChannel()
+  }, [isAdmin])
+
+  // 앱이 켜져 있을 때 관리자 알림이 오면 관리 탭 배지·대시보드 수치를 다시 받는다.
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+      if (isAdminNotification(notification.request.content.data)) notifyAdminAlertReceived()
+    })
+    return () => subscription.remove()
+  }, [])
 
   // 앱이 켜져 있거나 백그라운드일 때 알림 탭
   useEffect(() => {

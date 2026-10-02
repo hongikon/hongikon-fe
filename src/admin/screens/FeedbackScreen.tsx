@@ -10,7 +10,16 @@ import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, Scre
 import { PARTNER_SUGGESTION_PREFIX } from '../../constants/feedback'
 
 /** 앱 설정 > 문의하기로 들어온 의견. 처리 완료/다시 열기만 한다(답장은 연락처로 직접). */
-export default function FeedbackScreen({ onChanged, overview }: { onChanged: () => void; overview: AdminOverview | null }) {
+export default function FeedbackScreen({
+  onChanged,
+  overview,
+  focusFeedbackId = null,
+}: {
+  onChanged: () => void
+  overview: AdminOverview | null
+  /** 관리자 알림으로 연 문의. 목록에 있으면 맨 위로 올려 강조한다. */
+  focusFeedbackId?: number | null
+}) {
   const [filter, setFilter] = useState<FeedbackStatusFilter>('OPEN')
   const [items, setItems] = useState<AdminFeedback[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,8 +78,14 @@ export default function FeedbackScreen({ onChanged, overview }: { onChanged: () 
         <EmptyState message={filter === 'OPEN' ? '미처리 문의가 없습니다.' : '해당하는 문의가 없습니다.'} />
       ) : (
         <View style={styles.list}>
-          {items.map((item) => (
-            <FeedbackCard key={item.id} item={item} movedOut={filter !== 'ALL' && item.status !== filter} onUpdated={handleUpdated} />
+          {withFocusedFirst(items, focusFeedbackId).map((item) => (
+            <FeedbackCard
+              key={item.id}
+              item={item}
+              movedOut={filter !== 'ALL' && item.status !== filter}
+              highlighted={item.id === focusFeedbackId}
+              onUpdated={handleUpdated}
+            />
           ))}
         </View>
       )}
@@ -78,13 +93,22 @@ export default function FeedbackScreen({ onChanged, overview }: { onChanged: () 
   )
 }
 
+/** 알림으로 연 항목을 맨 위로(나머지 순서는 그대로). */
+function withFocusedFirst<T extends { id: number }>(items: T[], focusId: number | null): T[] {
+  if (focusId === null) return items
+  const focused = items.find((item) => item.id === focusId)
+  return focused ? [focused, ...items.filter((item) => item !== focused)] : items
+}
+
 function FeedbackCard({
   item,
   movedOut,
+  highlighted = false,
   onUpdated,
 }: {
   item: AdminFeedback
   movedOut: boolean
+  highlighted?: boolean
   onUpdated: (item: AdminFeedback) => void
 }) {
   const [pending, setPending] = useState(false)
@@ -101,7 +125,7 @@ function FeedbackCard({
   }
 
   return (
-    <Card style={[styles.card, movedOut && styles.cardMoved]}>
+    <Card style={[styles.card, highlighted && styles.cardHighlighted, movedOut && styles.cardMoved]}>
       <View style={styles.top}>
         <View style={styles.badges}>
           <Badge label={resolved ? '처리 완료' : '미처리'} tone={resolved ? 'success' : 'warning'} />
@@ -148,6 +172,7 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   card: { gap: 10 },
   cardMoved: { opacity: 0.7, borderStyle: 'dashed' },
+  cardHighlighted: { borderColor: COLORS.primary, borderWidth: 2 },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },

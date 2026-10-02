@@ -5,6 +5,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/common/Toast'
 import { fetchOverview, setAdminAuthAdapter, setMockMode, subscribeAdminAuth } from './api'
 import { resolveMockMode } from './session'
+import { navigationRef } from '../navigation/navigationRef'
+import {
+  consumeAdminIntent,
+  navigateToAdminTab,
+  peekAdminIntent,
+  subscribeAdminAlertReceived,
+  subscribeAdminIntent,
+} from '../lib/adminIntents'
 import type { AdminOverview, OverviewState } from './types'
 
 /**
@@ -23,6 +31,8 @@ import type { AdminOverview, OverviewState } from './types'
 
 /** 앱이 앞으로 올 때 다시 묻는 최소 간격 */
 const FOREGROUND_PROBE_INTERVAL_MS = 60_000
+/** 관리자로 확인된 뒤 관리 탭이 하단 탭에 붙기를 기다리는 최대 시간(관리자 알림 탭 처리) */
+const ADMIN_TAB_WAIT_MS = 3_000
 
 interface AdminAccessValue {
   isAdmin: boolean
@@ -33,6 +43,9 @@ const AdminAccessContext = createContext<AdminAccessValue | null>(null)
 
 export function AdminAccessProvider({ children }: { children: ReactNode }) {
   const { status, accessToken, refreshAccessToken } = useAuth()
+  /** 이번 로그인 세션에서 관리자 여부를 한 번이라도 물어 답(성공·실패)을 받았는지 — 관리자 알림 탭 처리용. */
+  const [probed, setProbed] = useState(false)
+  const [intentNonce, setIntentNonce] = useState(0)
   const toast = useToast()
   const authenticated = status === 'authenticated' && !!accessToken
 
@@ -83,6 +96,7 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
     setLoading(false)
     setError(null)
     setUpdatedAt(null)
+    setProbed(false)
   }, [])
 
   const refresh = useCallback(() => {
@@ -108,6 +122,7 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         if (abortRef.current === controller) setLoading(false)
+        if (!controller.signal.aborted && generation === generationRef.current) setProbed(true)
       })
   }, [])
 
@@ -142,6 +157,43 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   useEffect(() => () => abortRef.current?.abort(), [])
+
+  // 앱이 켜져 있을 때 관리자 알림이 오면 배지·대시보드 수치를 바로 다시 받는다.
+  useEffect(
+    () =>
+      subscribeAdminAlertReceived(() => {
+        if (isAdminRef.current) refresh()
+      }),
+    [refresh],
+  )
+
+  /**
+   * 관리자 알림(ADMIN_*)을 탭했는데 관리 탭이 아직 없을 때(콜드 스타트 — 관리자 확인 전) 여기서 마무리한다.
+   * 확인이 끝나면 관리자는 관리 탭으로(섹션은 관리 탭이 요청을 꺼내 연다), 아니면 요청을 버리고 지도 탭 + 안내.
+   * (관리 탭이 이미 있으면 알림 처리 쪽에서 바로 옮기고, 관리 탭이 요청을 꺼내 가 여기서는 할 일이 없다.)
+   */
+  useEffect(() => subscribeAdminIntent(() => setIntentNonce((n) => n + 1)), [])
+
+  useEffect(() => {
+    if (!peekAdminIntent() || status === 'loading') return
+    // 로그인했는데 아직 답을 못 받았으면 기다린다(답이 오면 probed 가 바뀌어 다시 돈다).
+    if (authenticated && !probed) return
+
+    if (authenticated && isAdmin) {
+      if (navigateToAdminTab()) return
+      // 관리자로 바뀐 직후라 관리 탭이 아직 하단 탭에 안 붙었을 수 있다 — 잠깐 다시 시도한다.
+      const startedAt = Date.now()
+      const timer = setInterval(() => {
+        if (!peekAdminIntent() || navigateToAdminTab() || Date.now() - startedAt > ADMIN_TAB_WAIT_MS) clearInterval(timer)
+      }, 200)
+      return () => clearInterval(timer)
+    }
+
+    // 관리자가 아니게 됐거나(권한 회수) 로그아웃·게스트, 또는 확인 요청이 실패했다.
+    consumeAdminIntent()
+    if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Map' })
+    toast.show({ message: '관리자 권한을 확인하지 못해 지도를 열었어요.', tone: 'warning' })
+  }, [intentNonce, status, authenticated, probed, isAdmin, toast])
 
   const value = useMemo<AdminAccessValue>(
     () => ({

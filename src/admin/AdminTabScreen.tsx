@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
@@ -9,6 +9,7 @@ import { layoutStyles } from '../constants/layout'
 import { RADIUS, SCREEN_GUTTER, SPACING } from '../constants/spacing'
 import { LargeTitleHeader } from '../components/common/ScreenHeader'
 import { useAdminOverview } from './AdminAccess'
+import { consumeAdminIntent, subscribeAdminIntent, type AdminIntent } from '../lib/adminIntents'
 import { getMockMode } from './api'
 import type { AdminSection } from './types'
 import { ADMIN_COLORS, AdminHostProvider } from './ui'
@@ -37,15 +38,43 @@ export default function AdminTabScreen() {
   const { refresh } = overview
   const [section, setSection] = useState<AdminSection>('dashboard')
   const scrollRef = useRef<ScrollView>(null)
+  /**
+   * 관리자 알림을 눌러 들어왔을 때 연 섹션의 필터·강조할 항목. key 가 바뀌면 그 섹션 화면을 새로 그려 필터를 다시 적용한다.
+   * 사용자가 섹션을 직접 바꾸면 지운다.
+   */
+  const [focus, setFocus] = useState<{ intent: AdminIntent; key: number } | null>(null)
+
+  /** 관리자 알림(`adminIntents`)으로 넘어온 요청이 있으면 그 섹션을 연다. */
+  const applyIntent = useCallback(() => {
+    const intent = consumeAdminIntent()
+    if (!intent) return
+    setFocus({ intent, key: Date.now() })
+    setSection(intent.section)
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  }, [])
 
   // 탭에 들어올 때마다 다시 묻는다 — 권한이 회수됐으면 403 으로 탭이 닫히고, 배지 수도 맞춘다.
   useFocusEffect(
     useCallback(() => {
       refresh()
-    }, [refresh]),
+      applyIntent()
+    }, [refresh, applyIntent]),
+  )
+
+  // 관리 탭을 보고 있는 중에 관리자 알림을 누른 경우(포커스가 바뀌지 않는다).
+  const isFocused = useIsFocused()
+  const isFocusedRef = useRef(isFocused)
+  isFocusedRef.current = isFocused
+  useEffect(
+    () =>
+      subscribeAdminIntent(() => {
+        if (isFocusedRef.current) applyIntent()
+      }),
+    [applyIntent],
   )
 
   const navigate = useCallback((next: AdminSection) => {
+    setFocus(null)
     setSection(next)
     scrollRef.current?.scrollTo({ y: 0, animated: false })
   }, [])
@@ -58,10 +87,30 @@ export default function AdminTabScreen() {
     return 0
   }
 
+  const reportFocus = focus?.intent.section === 'reports' ? focus.intent : null
+  const feedbackFocus = focus?.intent.section === 'feedback' ? focus.intent : null
+
   let content
-  if (section === 'reports') content = <ReportsScreen onChanged={refresh} overview={data} />
+  if (section === 'reports')
+    content = (
+      <ReportsScreen
+        key={reportFocus ? focus?.key : 'reports'}
+        onChanged={refresh}
+        overview={data}
+        initialFilter={reportFocus?.reportFilter}
+        focusReportId={reportFocus?.reportId ?? null}
+      />
+    )
   else if (section === 'users') content = <UsersScreen />
-  else if (section === 'feedback') content = <FeedbackScreen onChanged={refresh} overview={data} />
+  else if (section === 'feedback')
+    content = (
+      <FeedbackScreen
+        key={feedbackFocus ? focus?.key : 'feedback'}
+        onChanged={refresh}
+        overview={data}
+        focusFeedbackId={feedbackFocus?.feedbackId ?? null}
+      />
+    )
   else if (section === 'tools') content = <ToolsScreen onChanged={refresh} />
   else content = <DashboardScreen overview={overview} onNavigate={navigate} />
 

@@ -1,4 +1,5 @@
 import type { PushNotificationData } from '../types'
+import type { AdminIntent } from '../lib/adminIntents'
 
 /**
  * 알림을 탭했을 때 갈 곳. 화면 이동 자체는 `lib/pushNotifications.ts` 가 한다 — 이 파일은 React·Expo 에
@@ -6,12 +7,21 @@ import type { PushNotificationData } from '../types'
  *
  * - `news`: 소식 상세(서버 id — 상세 화면이 `GET /news/{id}` 로 받아 그린다).
  * - `map`: 지도 탭. `focusReportId` 가 있으면 그 제보를 찾아 지도 가운데에 띄운다.
+ * - `admin`: 관리 탭의 해당 섹션(제보 승인 대기·숨김, 문의). 관리자가 아니면 지도로 돌린다(`AdminAccessProvider`).
  * - `none`: 형식이 이상한 payload — 조용히 무시한다.
  */
 export type NotificationTarget =
   | { kind: 'news'; newsId: string }
   | { kind: 'map'; focusReportId: number | null }
+  | { kind: 'admin'; intent: AdminIntent }
   | { kind: 'none' }
+
+const ADMIN_TYPES: ReadonlySet<string> = new Set(['ADMIN_REPORT_PENDING', 'ADMIN_REPORT_FLAGGED', 'ADMIN_FEEDBACK'])
+
+/** 관리자 알림(`AdminAlertDispatcher`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
+export function isAdminNotification(data: unknown): boolean {
+  return !!data && typeof data === 'object' && ADMIN_TYPES.has(String((data as { type?: unknown }).type))
+}
 
 function toReportId(value: unknown): number | null {
   const n = typeof value === 'string' ? Number(value.trim()) : value
@@ -36,6 +46,22 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
     }
     case 'REPORT_NEW':
       return { kind: 'map', focusReportId: toReportId((data as { reportId?: unknown }).reportId) }
+    // 관리자 알림. 묶음 알림("새 제보 3건")이면 id 는 마지막 건이다 — 그 건을 맨 위에 강조하고 나머지는 목록에 있다.
+    case 'ADMIN_REPORT_PENDING':
+      return {
+        kind: 'admin',
+        intent: { section: 'reports', reportFilter: 'PENDING', reportId: toReportId((data as { reportId?: unknown }).reportId) },
+      }
+    case 'ADMIN_REPORT_FLAGGED':
+      return {
+        kind: 'admin',
+        intent: { section: 'reports', reportFilter: 'HIDDEN', reportId: toReportId((data as { reportId?: unknown }).reportId) },
+      }
+    case 'ADMIN_FEEDBACK':
+      return {
+        kind: 'admin',
+        intent: { section: 'feedback', feedbackId: toReportId((data as { feedbackId?: unknown }).feedbackId) },
+      }
     default:
       // 모르는 type(앞으로 생길 알림)은 앱을 기본 화면으로만 연다.
       return { kind: 'map', focusReportId: null }

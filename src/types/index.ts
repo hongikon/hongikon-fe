@@ -345,6 +345,8 @@ export interface ReportFlagResult {
  * - NEWS: `NewsPushDispatcher` — `{type: "NEWS", newsId}`
  * - REPORT_STATUS: `ReportPushDispatcher` — 내 제보가 승인(ACTIVE)·반려(REJECTED)됐을 때 작성자에게
  * - REPORT_NEW: `ReportPushDispatcher` — 새 제보가 처음 지도에 올라갔을 때 새 제보 알림을 켠 유저에게
+ * - ADMIN_*: `AdminAlertDispatcher` — 관리자에게만. 새 제보 승인 대기·새 문의·신고 누적 자동 숨김.
+ *   제목은 "[관리] …", Android 채널 `admin`. 몰리면 서버가 2분에 한 번 묶어 `count` 에 건수를 담는다(id 는 마지막 건).
  *
  * 제목·본문은 서버가 채워 보내고, `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
  * (`src/utils/notificationRouting.ts`, `src/lib/pushNotifications.ts`).
@@ -367,3 +369,6 @@ export type PushNotificationData =
       type: 'REPORT_NEW'
       reportId: number
     }
+  | { type: 'ADMIN_REPORT_PENDING'; reportId: number; count?: number }
+  | { type: 'ADMIN_REPORT_FLAGGED'; reportId: number; count?: number }
+  | { type: 'ADMIN_FEEDBACK'; feedbackId: number; count?: number }
