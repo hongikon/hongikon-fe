@@ -51,10 +51,10 @@ const SLIDES: readonly Slide[] = [
     icon: 'megaphone',
     badges: [
       { icon: 'flash-outline', label: '캠퍼스 제보' },
-      { icon: 'storefront-outline', label: '제휴 제보' },
+      { icon: 'storefront-outline', label: '정보 제보' },
     ],
     title: '캠퍼스 소식은\n함께 만들어요',
-    body: '로그인하면 누구나 캠퍼스 상황과 제휴 가게를\n제보할 수 있어요(운영진 확인 후 표시).',
+    body: '로그인하면 누구나 캠퍼스 상황과 제휴·행사 정보를\n제보할 수 있어요(운영진 확인 후 표시).',
   },
 ]
 

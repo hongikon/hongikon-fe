@@ -11,7 +11,7 @@ interface TextFieldProps extends TextInputProps {
 }
 
 /**
- * 앱 공용 입력칸. 흰 바탕 + 옅은 테두리, 높이 46, 모서리 12, 글자 15 로 문의·닉네임·제휴 제보·제보 작성이 같은 모양을 쓴다.
+ * 앱 공용 입력칸. 흰 바탕 + 옅은 테두리, 높이 46, 모서리 12, 글자 15 로 문의·닉네임·정보 제보·제보 작성이 같은 모양을 쓴다.
  * placeholder 색도 여기서 정해 화면마다 다르게 옅어지지 않게 한다.
  */
 const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   area: { paddingTop: SPACING.md, paddingBottom: SPACING.md },
 })
 
-/** 입력칸 위 이름. 문의·닉네임·제휴 제보·제보 작성이 같은 크기·색을 쓴다. */
+/** 입력칸 위 이름. 문의·닉네임·정보 제보·제보 작성이 같은 크기·색을 쓴다. */
 export function FieldLabel({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) {
   return <Text style={[labelStyles.label, style]}>{children}</Text>
 }

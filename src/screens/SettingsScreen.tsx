@@ -24,7 +24,7 @@ import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
-import PartnerSuggestModal from '../components/settings/PartnerSuggestModal'
+import InfoSuggestModal from '../components/settings/InfoSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
 import NicknameModal from '../components/settings/NicknameModal'
@@ -73,7 +73,7 @@ type ModalType =
   | 'terms'
   | 'privacy'
   | 'feedback'
-  | 'partnerSuggest'
+  | 'infoSuggest'
   | 'permissions'
   | 'keywords'
   | 'nickname'
@@ -563,8 +563,8 @@ export default function SettingsScreen() {
           />
           <ListRow
             icon="storefront-outline"
-            label="제휴 제보하기"
-            onPress={() => setActiveModal('partnerSuggest')}
+            label="정보 제보하기"
+            onPress={() => setActiveModal('infoSuggest')}
           />
           <ListRow
             icon="eye-off-outline"
@@ -644,8 +644,8 @@ export default function SettingsScreen() {
         />
       )}
 
-      <PartnerSuggestModal
-        visible={activeModal === 'partnerSuggest'}
+      <InfoSuggestModal
+        visible={activeModal === 'infoSuggest'}
         onClose={() => setActiveModal(null)}
         onPickOnMap={() => {
           // 창을 닫고 지도 탭으로 옮겨 핀을 고르게 한다. 지도 화면이 요청을 받아 같은 제보 창을 다시 연다.

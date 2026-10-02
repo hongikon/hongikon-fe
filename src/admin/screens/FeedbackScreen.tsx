@@ -7,7 +7,7 @@ import { fetchFeedback, updateFeedbackStatus } from '../api'
 import { formatDateTime, formatRelative } from '../format'
 import type { AdminFeedback, AdminOverview, FeedbackStatusFilter } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
-import { PARTNER_SUGGESTION_PREFIX } from '../../constants/feedback'
+import { INFO_SUGGESTION_BADGES, infoSuggestTypeOf } from '../../constants/feedback'
 
 /** 앱 설정 > 문의하기로 들어온 의견. 처리 완료/다시 열기만 한다(답장은 연락처로 직접). */
 export default function FeedbackScreen({
@@ -114,6 +114,8 @@ function FeedbackCard({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const resolved = item.status === 'RESOLVED'
+  // 설정 > 정보 제보하기로 들어온 문의면 종류(제휴·전시·행사·시설 정보·기타)를 표시한다.
+  const suggestType = infoSuggestTypeOf(item.content)
 
   const toggle = () => {
     setPending(true)
@@ -129,7 +131,7 @@ function FeedbackCard({
       <View style={styles.top}>
         <View style={styles.badges}>
           <Badge label={resolved ? '처리 완료' : '미처리'} tone={resolved ? 'success' : 'warning'} />
-          {item.content.startsWith(PARTNER_SUGGESTION_PREFIX) ? <Badge label="제휴 제보" tone="info" /> : null}
+          {suggestType !== null ? <Badge label={INFO_SUGGESTION_BADGES[suggestType]} tone="info" /> : null}
           {movedOut ? <Badge label="방금 처리함" tone="info" /> : null}
         </View>
         <Text style={styles.meta}>#{item.id}</Text>

@@ -21,7 +21,7 @@ import { TEMP_ENTRANCE_NODES } from '../debug/tempEntranceNodes'
 const NAVER_MAP_CLIENT_ID = process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? ''
 
 /**
- * 제휴 제보 핀의 "○○관 근처" 표시 거리 상한(건물 중심 기준). 제휴 업체는 대개 캠퍼스 밖이라
+ * 정보 제보(제휴) 핀의 "○○관 근처" 표시 거리 상한(건물 중심 기준). 제휴 업체는 대개 캠퍼스 밖이라
  * 이보다 멀면 건물명을 붙이지 않는다.
  */
 const PARTNER_LABEL_MAX_METERS = 80

@@ -19,8 +19,8 @@ import FacilitySheet from "../components/map/FacilitySheet";
 import { FACILITIES } from "../constants/facilities";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
-import PartnerSuggestModal from "../components/settings/PartnerSuggestModal";
-import type { PartnerSuggestLocation } from "../components/settings/PartnerSuggestModal";
+import InfoSuggestModal from "../components/settings/InfoSuggestModal";
+import type { InfoSuggestLocation } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect } from "@react-navigation/native";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
@@ -143,10 +143,10 @@ export default function MapScreen() {
   // 제보 위치 선택 모드. 켜져 있으면 화면 중앙에 고정된 핀 아래로 지도를
   // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
   const [pickingLocation, setPickingLocation] = useState(false);
-  /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 제휴 제보(partner). 확인 버튼 문구와 다음 창이 달라진다. */
+  /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
   const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner">("report");
-  /** 제휴 제보 창. null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
-  const [partnerSuggest, setPartnerSuggest] = useState<{ location: PartnerSuggestLocation | null } | null>(null);
+  /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
+  const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null } | null>(null);
   const [pickerCenter, setPickerCenter] = useState<{
     lat: number;
     lng: number;
@@ -694,8 +694,8 @@ export default function MapScreen() {
     startPicker("report");
   }, [accessToken, logout, startPicker]);
 
-  /** 제휴 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
-  const partnerLocationBeforePickRef = useRef<PartnerSuggestLocation | null>(null);
+  /** 정보 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
+  const partnerLocationBeforePickRef = useRef<InfoSuggestLocation | null>(null);
 
   const toast = useToast();
   /** 알림발 제보 포커스 요청 순번. 연달아 탭했을 때 늦게 도착한 이전 요청 결과를 버린다. */
@@ -748,7 +748,7 @@ export default function MapScreen() {
 
   /**
    * 다른 화면에서 넘어온 지도 요청(`lib/mapIntents.ts`). 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다.
-   * - 설정의 제휴 제보 창 "지도에서 위치 찍기" → 핀 고르기
+   * - 설정의 정보 제보 창 "지도에서 위치 찍기" → 핀 고르기
    * - 제보 알림 탭·내 제보 내역의 표시 중 제보 → 그 제보 포커스
    * - 내 제보 내역의 "지도로 가서 제보하기" → 제보 위치 고르기
    */
@@ -787,13 +787,13 @@ export default function MapScreen() {
     setPickingLocation(false);
     setPickerCenter(null);
     postToMap({ type: "stopLocationPicker" });
-    // 제휴 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
+    // 정보 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
     if (pickerPurpose === "partner") {
       setPartnerSuggest({ location: partnerLocationBeforePickRef.current });
     }
   }, [pickerPurpose, postToMap]);
 
-  /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 제휴 제보면 제휴 제보 창을 연다. */
+  /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
     if (!pickerCenter) return;
     setPickingLocation(false);
@@ -999,7 +999,7 @@ export default function MapScreen() {
                 </Text>
               </View>
               <Button
-                label={pickerPurpose === "partner" ? "이 위치로 제휴 제보" : "이 위치 제보하기"}
+                label={pickerPurpose === "partner" ? "이 위치로 정보 제보" : "이 위치 제보하기"}
                 onPress={handleConfirmReportPicker}
                 disabled={!pickerCenter}
               />
@@ -1334,7 +1334,7 @@ export default function MapScreen() {
         onCreated={handleReportCreated}
       />
 
-      <PartnerSuggestModal
+      <InfoSuggestModal
         visible={partnerSuggest !== null}
         location={partnerSuggest?.location ?? null}
         onClose={() => setPartnerSuggest(null)}
