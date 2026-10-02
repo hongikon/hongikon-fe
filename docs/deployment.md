@@ -49,6 +49,8 @@ eas submit --profile production --platform android|ios
 
 `production` 은 `appVersionSource: remote` + `autoIncrement` 라 빌드 번호를 EAS가 올린다. 사용자에게 보이는 `version` 은 `app.json` 에서 직접 올린다.
 
+스토어 제출·TestFlight·OTA 규칙·콘솔 체크리스트는 [release-build.md](./release-build.md) 를 본다.
+
 ## 실행 환경 (개발 / 테스트 / 운영)
 
 `app.config.ts` 가 `APP_VARIANT` 에 따라 앱 이름과 패키지 id 를 갈라준다. 패키지 id 가 달라
@@ -57,9 +59,9 @@ eas submit --profile production --platform android|ios
 
 | 환경 | 만드는 법 | 앱 이름 | 패키지 id |
 |---|---|---|---|
-| 개발 | `pnpm dev` (또는 `eas build --profile development`) | 홍익온 (개발) | `com.hongmap.alimi.dev` |
-| 테스트 | `eas build --profile preview` | 홍익온 (테스트) | `com.hongmap.alimi.preview` |
-| 운영 | `eas build --profile production` | 홍익온 | `com.hongmap.alimi` |
+| 개발 | `pnpm dev` (또는 `eas build --profile development`) | 홍익온 (개발) | `com.hongikon.app.dev` |
+| 테스트 | `eas build --profile preview` | 홍익온 (테스트) | `com.hongikon.app.preview` |
+| 운영 | `eas build --profile production` | 홍익온 | `com.hongikon.app` |
 
 카카오 로그인 복귀 주소(`hongikon://`)는 백엔드가 고정으로 들고 있어 세 빌드가 같다. 두 개
 이상 깔려 있으면 로그인 후 어느 앱으로 돌아갈지 OS 가 고르므로, 로그인 흐름을 검증할 땐

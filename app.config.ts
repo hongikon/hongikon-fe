@@ -43,7 +43,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,
     slug: config.slug ?? 'hongik-alimi',
     ios: { ...config.ios, bundleIdentifier: id },
-    android: { ...config.android, package: id },
+    android: {
+      ...config.android,
+      package: id,
+      // Android 푸시(FCM)에 필요한 Firebase 설정 파일. 시크릿은 아니지만 패키지 id 마다 달라서
+      // EAS 파일 환경 변수(GOOGLE_SERVICES_JSON)로 넣는다 — docs/release-build.md 참고.
+      // 값이 없으면(로컬·웹) 지금처럼 FCM 없이 빌드된다.
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? config.android?.googleServicesFile,
+    },
     extra: {
       ...config.extra,
       /** 앱 상태 화면에 무엇으로 빌드된 앱인지 보여 주려고 남긴다. */

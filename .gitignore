@@ -60,3 +60,6 @@ files.zip
 # Local Netlify folder
 .netlify
 partners_seed.sql
+
+# EAS Submit 용 Google Play 서비스 계정 키 등 — 절대 커밋하지 않는다
+secrets/
