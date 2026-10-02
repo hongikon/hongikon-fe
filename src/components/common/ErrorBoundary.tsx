@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -37,7 +37,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children
 
+    // 이 경계는 App 의 SafeAreaProvider 바깥에 있다. 웹 SafeAreaView 는 Provider 가 없으면 그 자리에서 다시 던져
+    // 대체 화면 대신 흰 화면이 된다 — 여기서 따로 감싼다.
     return (
+      <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.content}>
           <Ionicons name="alert-circle-outline" size={48} color={COLORS.textSecondary} />
@@ -56,6 +59,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      </SafeAreaProvider>
     )
   }
 }
