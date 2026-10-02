@@ -151,7 +151,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
           </View>
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, layoutStyles.readable]}>
             <Text style={styles.lead}>
-              홍익온이 휴대폰에 요청하는 권한이에요.{'\n'}필요한 순간에만 쓰고, 언제든 바꿀 수 있어요.
+              홍익온이 휴대폰에 요청하는 권한은 아래 세 가지뿐이에요. 모두 선택 권한이라 허용하지 않아도 홍익온을 쓸 수 있고, 그 기능만 쓸 수 없어요. 필요한 순간에만 묻고, 언제든 바꿀 수 있어요.
             </Text>
 
             {isWeb ? (
@@ -166,7 +166,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <PermissionRow
                   icon="notifications-outline"
                   title="알림"
-                  purpose="구독한 게시판의 새 소식을 알려드려요"
+                  purpose="(선택) 구독한 게시판의 새 소식과 내 제보 승인·반려, 캠퍼스 새 제보를 알려드려요"
                   state={notification}
                   onRequest={() => {
                     void requestNotificationPermission()
@@ -177,7 +177,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <PermissionRow
                   icon="camera-outline"
                   title="카메라"
-                  purpose="제보할 때 현장 사진을 바로 찍어요"
+                  purpose="(선택) 제보할 때 현장 사진을 바로 찍어요. 카메라 버튼을 누를 때만 물어요"
                   state={camera.state}
                   onRequest={() => {
                     void camera.request()
@@ -188,7 +188,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <PermissionRow
                   icon="images-outline"
                   title="사진"
-                  purpose="제보에 사진을 첨부할 때 앨범에서 골라요"
+                  purpose="(선택) 제보에 사진을 첨부할 때 앨범에서 골라요. 앨범 버튼을 누를 때만 물어요"
                   state={media.state}
                   onRequest={() => {
                     void media.request()
@@ -203,9 +203,9 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <Ionicons name="location-outline" size={17} color={COLORS.textSecondary} />
               </View>
               <View style={styles.infoBody}>
-                <Text style={styles.infoTitle}>위치(GPS)는 사용하지 않아요</Text>
+                <Text style={styles.infoTitle}>위치(GPS)·마이크·연락처는 사용하지 않아요</Text>
                 <Text style={styles.infoText}>
-                  기기 위치를 수집하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.
+                  기기 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.
                 </Text>
               </View>
             </View>
