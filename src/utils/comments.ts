@@ -13,12 +13,39 @@ export function formatCommentTime(iso: string, now: number = Date.now()): string
   return `${Math.floor(hours / 24)}일 전`
 }
 
-/** 페이지를 이어 붙인다. 그사이 새 댓글을 직접 붙였으면 같은 id 는 한 번만 남긴다. 오래된 순(id 오름차순). */
-export function mergeComments(prev: readonly ReportComment[], next: readonly ReportComment[]): ReportComment[] {
+/**
+ * 페이지를 이어 붙인다. 그사이 새 댓글을 직접 붙였으면 같은 id 는 한 번만 남긴다.
+ * order: 'oldest'(기본, id 오름차순) / 'latest'(id 내림차순) / 'popular'(서버가 준 순서 유지 — 새 것은 뒤에).
+ */
+export function mergeComments(
+  prev: readonly ReportComment[],
+  next: readonly ReportComment[],
+  order: 'oldest' | 'latest' | 'popular' = 'oldest',
+): ReportComment[] {
   const byId = new Map<number, ReportComment>()
   for (const comment of prev) byId.set(comment.id, comment)
   for (const comment of next) byId.set(comment.id, comment)
-  return [...byId.values()].sort((a, b) => a.id - b.id)
+  const merged = [...byId.values()]
+  if (order === 'popular') return merged
+  return merged.sort((a, b) => (order === 'latest' ? b.id - a.id : a.id - b.id))
+}
+
+/** 목록(최상위 + 답글) 안의 댓글 하나에 값을 덮어쓴다(👍 등). */
+export function patchComment(
+  items: readonly ReportComment[],
+  commentId: number,
+  patch: Partial<ReportComment>,
+): ReportComment[] {
+  return items.map((top) => {
+    if (top.id === commentId) return { ...top, ...patch }
+    if (!top.replies?.some((r) => r.id === commentId)) return top
+    return { ...top, replies: top.replies.map((r) => (r.id === commentId ? { ...r, ...patch } : r)) }
+  })
+}
+
+/** 서버가 댓글 👍 를 아는지(첫 댓글에 likeCount 가 있는지). */
+export function supportsCommentLikes(items: readonly ReportComment[]): boolean {
+  return items.some((c) => typeof c.likeCount === 'number')
 }
 
 /** 숨긴 사용자의 댓글을 뺀다. authorKey 가 없는 댓글은 그대로 둔다. */

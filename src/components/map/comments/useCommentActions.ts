@@ -5,6 +5,7 @@ import * as haptics from '../../../lib/haptics'
 import { hideAuthor } from '../../../lib/hiddenAuthors'
 import { ApiError, getErrorMessage } from '../../../apis/client'
 import { deleteReportComment, flagReportComment } from '../../../apis/comments'
+import { communityErrorMessage, setCommentLike } from '../../../apis/community'
 import { confirmAction } from '../../../utils/dialog'
 import { promptLogin } from '../../../utils/reports'
 import type { ReportComment, ReportFlagReason } from '../../../types'
@@ -13,7 +14,12 @@ import type { ReportComment, ReportFlagReason } from '../../../types'
  * 댓글 한 줄에서 하는 일(내 댓글 지우기·남의 댓글 신고·작성자 숨기기). 시트 미리보기와 전체 댓글 창이 같이 쓴다.
  * `onRemoved` 는 목록에서 빼야 할 때(지움·신고로 자동 숨김) 부른다. 작성자 숨기기는 `useHiddenAuthorKeys` 가 걸러 준다.
  */
-export function useCommentActions(reportId: number, onRemoved: (commentId: number) => void) {
+export function useCommentActions(
+  reportId: number,
+  onRemoved: (commentId: number) => void,
+  /** 👍 처럼 목록 안에서 값만 바뀔 때(낙관적 반영·실패 시 되돌리기). */
+  onUpdated?: (commentId: number, patch: Partial<ReportComment>) => void,
+) {
   const { accessToken, logout } = useAuth()
   const toast = useToast()
   /** 지우는 중·신고 보내는 중인 댓글. */
@@ -115,5 +121,31 @@ export function useCommentActions(reportId: number, onRemoved: (commentId: numbe
     [toast],
   )
 
-  return { pendingId, flaggedIds, remove, flag, canFlag, hide }
+  /** 👍 켜기·끄기. 내 댓글은 누를 수 없다(서버 400). 게스트는 로그인 안내. */
+  const like = useCallback(
+    (comment: ReportComment) => {
+      if (comment.isMine) {
+        toast.show({ message: '내 댓글에는 좋아요를 누를 수 없어요', tone: 'info' })
+        return
+      }
+      if (!accessToken) {
+        promptLogin('좋아요를 누르려면 로그인해 주세요.', logout)
+        return
+      }
+      const next = !comment.likedByMe
+      const before = { likedByMe: !!comment.likedByMe, likeCount: comment.likeCount ?? 0 }
+      if (next) haptics.switchOn()
+      else haptics.tapLight()
+      onUpdated?.(comment.id, { likedByMe: next, likeCount: Math.max(0, before.likeCount + (next ? 1 : -1)) })
+      setCommentLike(reportId, comment.id, next, accessToken)
+        .then((result) => onUpdated?.(comment.id, { likedByMe: result.liked, likeCount: result.likeCount }))
+        .catch((error: unknown) => {
+          onUpdated?.(comment.id, before)
+          toast.show({ message: communityErrorMessage(error, '좋아요를 반영하지 못했어요.'), tone: 'warning' })
+        })
+    },
+    [accessToken, logout, reportId, onUpdated, toast],
+  )
+
+  return { pendingId, flaggedIds, remove, flag, canFlag, hide, like }
 }

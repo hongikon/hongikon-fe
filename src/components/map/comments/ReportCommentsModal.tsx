@@ -18,8 +18,9 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { ToastViewport, useToast } from '../../common/Toast'
 import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
 import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
-import { COMMENTS_PAGE_SIZE, getCommentReplies, getReportComments } from '../../../apis/comments'
-import { mergeComments } from '../../../utils/comments'
+import { COMMENTS_PAGE_SIZE, getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
+import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
+import * as haptics from '../../../lib/haptics'
 import { promptLogin } from '../../../utils/reports'
 import ModalHeader from '../../settings/ModalHeader'
 import ContentColumn from '../../common/ContentColumn'
@@ -71,6 +72,14 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null)
   const [focusKey, setFocusKey] = useState(0)
   const [menuFor, setMenuFor] = useState<ReportComment | null>(null)
+  /**
+   * 정렬. 서버가 👍 를 알면(likeCount 가 옴) 최신순·인기순을 고르게 하고 기본은 최신순(새 댓글이 위).
+   * 모르는 서버(좋아요 기능 전)는 예전처럼 오래된 순(새 댓글이 아래)만.
+   */
+  const [order, setOrder] = useState<CommentOrder>('oldest')
+  const [likesSupported, setLikesSupported] = useState(false)
+  const orderRef = useRef(order)
+  orderRef.current = order
   const pageRef = useRef(0)
   const hasNextRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
@@ -87,14 +96,24 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
       if (mode === 'refresh') setRefreshing(true)
       if (mode === 'more') setLoadingMore(true)
       try {
+        const requested = orderRef.current
         const result = await getReportComments(report.id, {
           page,
           size: COMMENTS_PAGE_SIZE,
+          order: requested,
           accessToken: tokenRef.current,
           signal: controller.signal,
         })
         if (controller.signal.aborted) return
-        setItems((prev) => (page === 0 ? result.content : mergeComments(prev, result.content)))
+        // 첫 페이지에서 👍 를 아는 서버로 확인되면 최신순으로 바꿔 다시 받는다(한 번만).
+        if (page === 0 && requested === 'oldest' && supportsCommentLikes(result.content)) {
+          setLikesSupported(true)
+          setOrder('latest')
+          orderRef.current = 'latest'
+          void load(0, mode === 'more' ? 'initial' : mode)
+          return
+        }
+        setItems((prev) => (page === 0 ? result.content : mergeComments(prev, result.content, requested)))
         setCount(result.commentCount ?? result.totalElements)
         pageRef.current = page
         hasNextRef.current = result.hasNext
@@ -126,6 +145,9 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     }
     setItems([])
     setReplyTo(null)
+    setOrder('oldest')
+    orderRef.current = 'oldest'
+    setLikesSupported(false)
     pageRef.current = 0
     hasNextRef.current = false
     void load(0, 'initial')
@@ -148,8 +170,24 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     )
     setCount((prev) => Math.max(0, prev - 1))
   }, [])
-  const actions = useCommentActions(report.id, handleRemoved)
+  const handleUpdated = useCallback((commentId: number, patch: Partial<ReportComment>) => {
+    setItems((prev) => patchComment(prev, commentId, patch))
+  }, [])
+  const actions = useCommentActions(report.id, handleRemoved, handleUpdated)
 
+  const changeOrder = useCallback(
+    (next: CommentOrder) => {
+      if (next === orderRef.current) return
+      haptics.selection()
+      setOrder(next)
+      orderRef.current = next
+      void load(0, 'initial')
+    },
+    [load],
+  )
+
+  const likesSupportedRef = useRef(likesSupported)
+  likesSupportedRef.current = likesSupported
   const handlePosted = useCallback((comment: ReportComment) => {
     setCount((prev) => prev + 1)
     if (comment.parentId) {
@@ -163,8 +201,16 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
       setReplyTo(null)
       return
     }
-    setItems((prev) => mergeComments(prev, [{ ...comment, replies: [], replyCount: 0 }]))
-    // 새 댓글은 맨 아래(오래된 순)라 끝으로 내린다.
+    const current = orderRef.current
+    const fresh = { ...comment, replies: [], replyCount: 0, likeCount: comment.likeCount ?? (likesSupportedRef.current ? 0 : undefined) }
+    if (current === 'latest') {
+      // 최신순이면 맨 위에 붙이고 위로 올린다.
+      setItems((prev) => mergeComments(prev, [fresh], 'latest'))
+      setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 80)
+      return
+    }
+    setItems((prev) => mergeComments(prev, [fresh], current))
+    // 오래된 순·인기순(새 댓글은 👍 0개)이면 맨 아래라 끝으로 내린다.
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)
   }, [])
 
@@ -207,7 +253,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     ({ item }: { item: ReportComment }) => {
       const replies = item.replies ?? []
       const more = Math.max(0, (item.replyCount ?? replies.length) - replies.length)
-      const handlers = { onReply: handleReply, onDelete: actions.remove, onOpenMenu: setMenuFor }
+      const handlers = { onReply: handleReply, onDelete: actions.remove, onOpenMenu: setMenuFor, onLike: actions.like }
       return (
         <View>
           <CommentItem
@@ -247,7 +293,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         </View>
       )
     },
-    [actions.pendingId, actions.flaggedIds, actions.remove, handleReply, loadMoreReplies, loadingReplies],
+    [actions.pendingId, actions.flaggedIds, actions.remove, actions.like, handleReply, loadMoreReplies, loadingReplies],
   )
 
   return (
@@ -256,9 +302,33 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
             <ModalHeader title={state.kind === 'ready' ? `댓글 ${count}` : '댓글'} onClose={onClose} />
-            <Text style={styles.reportTitle} numberOfLines={1}>
-              {report.title}
-            </Text>
+            <View style={styles.subHeader}>
+              <Text style={styles.reportTitle} numberOfLines={1}>
+                {report.title}
+              </Text>
+              {likesSupported ? (
+                <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel="댓글 정렬">
+                  {(['popular', 'latest'] as const).map((value) => {
+                    const active = order === value
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => changeOrder(value)}
+                        hitSlop={6}
+                        style={styles.sortItem}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                      >
+                        {active ? <View style={styles.sortDot} /> : null}
+                        <Text style={[styles.sortText, active && styles.sortTextActive]}>
+                          {value === 'popular' ? '인기순' : '최신순'}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              ) : null}
+            </View>
             <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
               {state.kind === 'loading' ? (
                 <CommentsSkeleton />
@@ -348,15 +418,21 @@ function CommentsSkeleton() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   column: { flex: 1 },
-  reportTitle: {
-    fontFamily: FONTS.regular,
-    fontSize: 12,
-    color: COLORS.textTertiary,
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.divider,
   },
+  reportTitle: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sortItem: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 },
+  sortDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.primary },
+  sortText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textTertiary },
+  sortTextActive: { fontFamily: FONTS.semibold, color: COLORS.primary },
   body: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   listContent: { paddingHorizontal: 16, paddingBottom: 16 },

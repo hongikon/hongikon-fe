@@ -9,6 +9,8 @@ import type { ReportComment, ReportCommentFlagResult, ReportCommentPage, ReportF
  * 서버에 댓글 기능이 아직 없으면(배포 전) 화면은 댓글 UI 를 통째로 감춘다 — `isCommentsApiMissing`.
  */
 
+export type CommentOrder = 'oldest' | 'latest' | 'popular'
+
 /** 서버 `ReportComment.MAX_LENGTH` 와 같다(앞뒤 공백을 지운 뒤 글자 수). */
 export const COMMENT_MAX_LENGTH = 200
 export const COMMENTS_PAGE_SIZE = 20
@@ -46,7 +48,8 @@ export async function getReportComments(
   options: {
     page?: number
     size?: number
-    order?: 'oldest' | 'latest'
+    /** oldest(기본·서버 기본값) / latest(최신순) / popular(인기순 — 👍 많은 순, 좋아요 기능 전 서버는 무시하고 오래된 순). */
+    order?: CommentOrder
     accessToken?: string | null
     signal?: AbortSignal
   } = {},
@@ -55,7 +58,7 @@ export async function getReportComments(
     page: String(options.page ?? 0),
     size: String(options.size ?? COMMENTS_PAGE_SIZE),
   })
-  if (options.order === 'latest') params.set('order', 'latest')
+  if (options.order === 'latest' || options.order === 'popular') params.set('order', options.order)
   try {
     const page = await apiRequest<ReportCommentPage>(`/reports/${reportId}/comments?${params.toString()}`, {
       accessToken: options.accessToken,

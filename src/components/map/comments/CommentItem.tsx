@@ -11,6 +11,8 @@ export interface CommentItemHandlers {
   onReply: (target: ReportComment) => void
   onDelete: (comment: ReportComment) => void
   onOpenMenu: (comment: ReportComment) => void
+  /** 👍 켜기·끄기. 서버가 likeCount 를 주지 않으면(좋아요 기능 전) 버튼이 없다. */
+  onLike?: (comment: ReportComment) => void
 }
 
 interface CommentItemProps extends CommentItemHandlers {
@@ -29,7 +31,7 @@ const PLACEHOLDER_TEXT: Record<'DELETED' | 'HIDDEN', string> = {
  * 댓글 한 개: 동그라미(첫 글자) · 이름 · 시각, 아래 본문, 그 아래 "답글 달기".
  * 내 댓글은 오른쪽에 "삭제"만, 남의 댓글은 ⋮(숨기기·신고 메뉴). 지운 댓글 자리는 회색 안내만 보인다.
  */
-function CommentItem({ comment, reply = false, pending, flagged, onReply, onDelete, onOpenMenu }: CommentItemProps) {
+function CommentItem({ comment, reply = false, pending, flagged, onReply, onDelete, onOpenMenu, onLike }: CommentItemProps) {
   const placeholder = comment.placeholder ?? null
   const time = formatCommentTime(comment.createdAt)
   const name = comment.authorDisplayName ?? ''
@@ -75,15 +77,37 @@ function CommentItem({ comment, reply = false, pending, flagged, onReply, onDele
               )}
             </View>
             <Text style={styles.body}>{comment.content}</Text>
-            <Pressable
-              onPress={() => onReply(comment)}
-              hitSlop={8}
-              style={styles.replyAction}
-              accessibilityRole="button"
-              accessibilityLabel={`${name}님에게 답글 달기`}
-            >
-              <Text style={styles.replyActionLabel}>답글 달기</Text>
-            </Pressable>
+            <View style={styles.actions}>
+              {typeof comment.likeCount === 'number' ? (
+                <Pressable
+                  onPress={() => onLike?.(comment)}
+                  disabled={!onLike}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.like, comment.likedByMe && styles.likeOn, pressed && styles.likePressed]}
+                  accessibilityRole={comment.isMine ? 'text' : 'button'}
+                  accessibilityState={{ selected: !!comment.likedByMe }}
+                  accessibilityLabel={
+                    comment.isMine
+                      ? `좋아요 ${comment.likeCount}개`
+                      : `좋아요 ${comment.likeCount}개, ${comment.likedByMe ? '내가 눌렀어요. 누르면 취소해요' : '눌러서 좋아요'}`
+                  }
+                >
+                  <Text style={styles.likeEmoji}>👍</Text>
+                  {comment.likeCount > 0 ? (
+                    <Text style={[styles.likeCount, comment.likedByMe && styles.likeCountOn]}>{comment.likeCount}</Text>
+                  ) : null}
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={() => onReply(comment)}
+                hitSlop={8}
+                style={styles.replyAction}
+                accessibilityRole="button"
+                accessibilityLabel={`${name}님에게 답글 달기`}
+              >
+                <Text style={styles.replyActionLabel}>답글 달기</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </View>
@@ -117,6 +141,22 @@ const styles = StyleSheet.create({
   more: { width: 28, height: 24, alignItems: 'flex-end', justifyContent: 'center' },
   body: { fontFamily: FONTS.regular, fontSize: 14.5, lineHeight: 21, color: COLORS.textPrimary, marginTop: 3 },
   placeholder: { fontFamily: FONTS.regular, fontSize: 13.5, color: COLORS.textTertiary, paddingVertical: 6 },
-  replyAction: { alignSelf: 'flex-start', marginTop: 6, minHeight: 20, justifyContent: 'center' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 6 },
+  replyAction: { alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' },
+  like: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.fireChipBorder,
+  },
+  likeOn: { borderColor: COLORS.fire, backgroundColor: COLORS.primarySoft },
+  likePressed: { opacity: 0.7 },
+  likeEmoji: { fontSize: 12 },
+  likeCount: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.textSecondary, fontVariant: ['tabular-nums'] },
+  likeCountOn: { color: COLORS.fire },
   replyActionLabel: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.textTertiary },
 })
