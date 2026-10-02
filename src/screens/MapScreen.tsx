@@ -533,6 +533,10 @@ export default function MapScreen() {
       setSelectedCategory(null);
       postToMap({ type: "clearPartners" });
       applyFacilityKind(null);
+      // 이벤트(제보) 칩과도 한 번에 하나만 켠다. 안 그러면 편의시설·제휴로 넘어가도 제보 마커와 시트가 남는다.
+      setReportsOn(false);
+      setSelectedReport(null);
+      postToMap({ type: "clearReports" });
     },
     [layer, postToMap, applyFacilityKind],
   );
@@ -578,8 +582,41 @@ export default function MapScreen() {
     const next = !reportsOn;
     setReportsOn(next);
     setSelectedReport(null);
-    if (!next) postToMap({ type: "clearReports" });
-  }, [reportsOn, postToMap]);
+    if (!next) {
+      postToMap({ type: "clearReports" });
+      return;
+    }
+    // 켤 때는 편의시설·제휴 갈래를 정리한다(최상단 칩은 한 번에 하나).
+    setLayer(null);
+    setSelectedPartner(null);
+    setSelectedBuilding(null);
+    setSelectedAffiliation(null);
+    setSelectedCategory(null);
+    postToMap({ type: "clearPartners" });
+    applyFacilityKind(null);
+  }, [reportsOn, postToMap, applyFacilityKind]);
+
+  /**
+   * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
+   * 서버 목록에서 빠지는데, 예전엔 앱을 백그라운드에 보냈다 와야만 다시 받아서 지도에 계속 남았다.
+   */
+  const refetchReports = reportsResource.retry;
+  useFocusEffect(
+    useCallback(() => {
+      if (!reportsOn) return;
+      refetchReports();
+      const timer = setInterval(refetchReports, 60_000);
+      return () => clearInterval(timer);
+    }, [reportsOn, refetchReports]),
+  );
+
+  /** 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다. */
+  useEffect(() => {
+    if (!selectedReport || shownReportData === undefined) return;
+    if (!shownReportData.some((r) => r.id === selectedReport.id)) {
+      setSelectedReport(null);
+    }
+  }, [shownReportData, selectedReport]);
 
   /**
    * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
