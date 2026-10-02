@@ -6,7 +6,7 @@ import { FONTS } from '../constants/typography'
 import { fetchUser, suspendUser, unsuspendUser } from './api'
 import { formatDateTime } from './format'
 import type { AdminUser } from './types'
-import { Badge, Button, ConfirmBar, InlineError } from './ui'
+import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
 
 /** 정지 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200
@@ -24,6 +24,7 @@ function moderationError(err: unknown, fallback: string): string {
  * 정지된 회원은 로그인·조회는 되고 제보·신고·문의·닉네임 변경만 막힌다(백엔드 SuspendedUserInterceptor).
  */
 export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onChanged: (user: AdminUser) => void }) {
+  const app = useAdminHost() === 'app'
   const [confirming, setConfirming] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -82,8 +83,9 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
             placeholder="예: 욕설이 담긴 제보 반복"
             placeholderTextColor={COLORS.textPlaceholder}
             maxLength={REASON_MAX_LENGTH}
-            style={styles.input}
+            style={[styles.input, app && styles.inputApp]}
             autoFocus
+            accessibilityLabel="정지 사유"
             editable={!busy}
           />
         </ConfirmBar>
@@ -159,6 +161,7 @@ const styles = StyleSheet.create({
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
   actionsStart: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start' },
+  inputApp: { minHeight: 44, fontSize: 16 },
   input: {
     fontFamily: FONTS.regular,
     fontSize: 14,

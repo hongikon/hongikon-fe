@@ -5,7 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { searchUsers } from '../api'
 import type { AdminUser } from '../types'
-import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
+import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader, useAdminHost } from '../ui'
 import { UserModerationPanel } from '../UserModeration'
 
 /**
@@ -13,6 +13,7 @@ import { UserModerationPanel } from '../UserModeration'
  * 검색어가 비면 정지된 회원 목록, 숫자면 회원 id, 그 밖에는 로그인 닉네임 일부로 찾는다.
  */
 export default function UsersScreen() {
+  const app = useAdminHost() === 'app'
   const [input, setInput] = useState('')
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState<AdminUser[] | null>(null)
@@ -58,7 +59,7 @@ export default function UsersScreen() {
           onSubmitEditing={submit}
           placeholder="회원 id 또는 닉네임"
           placeholderTextColor={COLORS.textPlaceholder}
-          style={styles.input}
+          style={[styles.input, app && styles.inputApp]}
           returnKeyType="search"
           accessibilityLabel="회원 검색"
         />
@@ -97,6 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  inputApp: { minHeight: 44, fontSize: 16 },
   error: { marginBottom: 12 },
   list: { gap: 12 },
 })

@@ -71,6 +71,8 @@ const reports: AdminReport[] = [
     content: '팥/슈크림 3개 2천원. 줄이 좀 깁니다. 5시까지 있는다고 하네요.',
     buildingId: 1, buildingName: '홍문관(R동)', floor: null, lat: 37.5513, lng: 126.9245,
     startsAt: at(-20), endsAt: at(150), createdAt: at(-18), authorNickname: '붕어빵헌터',
+    // 사진 썸네일 확인용(개발 목업 전용 외부 이미지)
+    imageUrl: 'https://picsum.photos/seed/hongikon-report/800/600',
   }),
   baseReport({
     id: 30, status: 'PENDING', category: 'BOOTH', title: '학생회관 1층 동아리 홍보 부스',

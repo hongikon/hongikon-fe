@@ -1,7 +1,8 @@
-import type { ComponentProps, ReactNode } from 'react'
+import { createContext, useContext, type ComponentProps, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,8 +13,25 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
+import AppButton, { type ButtonVariant as AppButtonVariant } from '../components/common/Button'
 
 /** 관리자 화면 공통 부품. 앱 화면과 섞이지 않게 이 폴더 안에서만 쓴다. */
+
+/**
+ * 관리자 화면이 어디에 그려지는지.
+ * - 'console': 웹 `/admin` 콘솔(데스크톱 위주, 기존 모양 그대로)
+ * - 'app': 앱 하단 "관리" 탭(폰 너비). 누르는 것은 앱 공용 버튼(높이 44)으로, 되돌리기 어려운 처리는
+ *   `utils/dialog.ts` 의 확인 창으로 묻는다.
+ */
+export type AdminHost = 'console' | 'app'
+
+const AdminHostContext = createContext<AdminHost>('console')
+
+export const AdminHostProvider = AdminHostContext.Provider
+
+export function useAdminHost(): AdminHost {
+  return useContext(AdminHostContext)
+}
 
 export const ADMIN_COLORS = {
   ...COLORS,
@@ -64,7 +82,31 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>
 }
 
+const APP_VARIANT: Record<ButtonVariant, AppButtonVariant> = {
+  primary: 'primary',
+  secondary: 'outline',
+  danger: 'destructive',
+  ghost: 'ghost',
+}
+
 export function Button({ label, onPress, variant = 'secondary', disabled, loading, icon, small, style }: ButtonProps) {
+  const host = useAdminHost()
+  if (host === 'app') {
+    // 폰에서는 작은 버튼도 터치 최소 크기(44)를 지킨다.
+    return (
+      <AppButton
+        label={label}
+        onPress={onPress}
+        variant={APP_VARIANT[variant]}
+        size="md"
+        icon={icon}
+        disabled={disabled}
+        loading={loading}
+        fullWidth={false}
+        style={style}
+      />
+    )
+  }
   const inactive = disabled || loading
   const palette = BUTTON_PALETTE[variant]
   return (
@@ -105,10 +147,13 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
 }
 
 export function ScreenHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  const app = useAdminHost() === 'app'
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, app && styles.headerApp]}>
       <View style={styles.headerText}>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={[styles.headerTitle, app && styles.headerTitleApp]} accessibilityRole="header">
+          {title}
+        </Text>
         {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
       </View>
       {right ? <View style={styles.headerRight}>{right}</View> : null}
@@ -161,9 +206,8 @@ export function FilterTabs<T extends string>({
   value: T
   onChange: (value: T) => void
 }) {
-  return (
-    <View style={styles.tabs} accessibilityRole="tablist">
-      {options.map((option) => {
+  const app = useAdminHost() === 'app'
+  const items = options.map((option) => {
         const selected = option.value === value
         return (
           <Pressable
@@ -171,7 +215,8 @@ export function FilterTabs<T extends string>({
             onPress={() => onChange(option.value)}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            style={[styles.tab, selected && styles.tabSelected]}
+            hitSlop={app ? 4 : undefined}
+            style={[styles.tab, app && styles.tabApp, selected && styles.tabSelected]}
           >
             <Text style={[styles.tabText, selected && styles.tabTextSelected]}>{option.label}</Text>
             {option.count !== undefined && option.count > 0 ? (
@@ -181,7 +226,24 @@ export function FilterTabs<T extends string>({
             ) : null}
           </Pressable>
         )
-      })}
+      })
+  if (app) {
+    // 폰에서는 줄바꿈 대신 가로로 넘긴다(필터가 두 줄이 되면 목록이 그만큼 밀린다).
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabsScrollContent}
+        accessibilityRole="tablist"
+      >
+        {items}
+      </ScrollView>
+    )
+  }
+  return (
+    <View style={styles.tabs} accessibilityRole="tablist">
+      {items}
     </View>
   )
 }
@@ -207,13 +269,21 @@ export function ConfirmBar({
   danger?: boolean
   children?: ReactNode
 }) {
+  const app = useAdminHost() === 'app'
   return (
-    <View style={[styles.confirm, danger && styles.confirmDanger]}>
+    <View style={[styles.confirm, danger && styles.confirmDanger, app && styles.confirmApp]}>
       <Text style={styles.confirmText}>{message}</Text>
       {children}
       <View style={styles.confirmActions}>
-        <Button label="취소" onPress={onCancel} disabled={busy} small />
-        <Button label={confirmLabel} onPress={onConfirm} loading={busy} variant={danger ? 'danger' : 'primary'} small />
+        <Button label="취소" onPress={onCancel} disabled={busy} small style={app ? styles.confirmButtonApp : undefined} />
+        <Button
+          label={confirmLabel}
+          onPress={onConfirm}
+          loading={busy}
+          variant={danger ? 'danger' : 'primary'}
+          small
+          style={app ? styles.confirmButtonApp : undefined}
+        />
       </View>
     </View>
   )
@@ -272,7 +342,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerText: { flexShrink: 1, gap: 4 },
+  headerApp: { alignItems: 'flex-start', marginBottom: 12 },
   headerTitle: { fontFamily: FONTS.bold, fontSize: 22, color: COLORS.textPrimary },
+  headerTitleApp: { fontSize: 18 },
   headerSubtitle: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   error: {
@@ -300,6 +372,9 @@ const styles = StyleSheet.create({
     borderColor: '#D4D4D8',
     backgroundColor: COLORS.white,
   },
+  tabApp: { minHeight: 36, paddingHorizontal: 14 },
+  tabsScroll: { flexGrow: 0, marginBottom: 12, marginHorizontal: -16 },
+  tabsScrollContent: { gap: 6, paddingHorizontal: 16 },
   tabSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   tabText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
   tabTextSelected: { color: COLORS.white },
@@ -314,8 +389,11 @@ const styles = StyleSheet.create({
     backgroundColor: ADMIN_COLORS.infoBg,
   },
   confirmDanger: { backgroundColor: ADMIN_COLORS.dangerBg },
+  // 앱 버튼의 '위험' 색(옅은 빨강 바탕)이 빨간 막대 위에서 묻히지 않게 회색 바탕 + 테두리로 바꾼다.
+  confirmApp: { backgroundColor: ADMIN_COLORS.neutralBg, borderWidth: 1, borderColor: COLORS.border },
   confirmText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary, lineHeight: 19 },
   confirmActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  confirmButtonApp: { flex: 1, alignSelf: 'auto' },
   labelValue: { gap: 2 },
   label: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   value: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.textPrimary },

@@ -17,7 +17,9 @@ import {
 } from '../format'
 import type { AdminOverview, AdminReport, AdminReportFlag, ReportStatus, ReportStatusFilter, ReportTargetStatus } from '../types'
 import { ReportAuthorModeration } from '../UserModeration'
-import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, type Tone } from '../ui'
+import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
+import { confirmAction } from '../../utils/dialog'
+import { openExternalUrl } from '../../utils/openExternalUrl'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
 const NOTE_MAX_LENGTH = 200
@@ -31,6 +33,15 @@ const STATUS_TONE: Record<ReportStatus, Tone> = {
 }
 
 type ActionKind = 'approve' | 'reopen' | 'reject' | 'hide' | 'delete'
+
+/** 앱 관리 탭에서 처리 전에 묻는 문구. 반려는 사유를 적은 뒤에 묻는다. */
+const ACTION_CONFIRM: Record<ActionKind, { title: string; message: string; destructive?: boolean }> = {
+  approve: { title: '제보를 승인할까요?', message: '승인하면 바로 지도와 목록에 보입니다.' },
+  reopen: { title: '다시 공개할까요?', message: '숨겼던 제보가 다시 지도와 목록에 보입니다.' },
+  reject: { title: '제보를 반려할까요?', message: '반려하면 지도와 목록에 보이지 않습니다.', destructive: true },
+  hide: { title: '제보를 숨길까요?', message: '지도와 목록에서 내려갑니다. 나중에 다시 공개할 수 있습니다.', destructive: true },
+  delete: { title: '제보를 삭제할까요?', message: '목록과 지도에서 사라지며 이 화면에서는 되돌릴 수 없습니다.', destructive: true },
+}
 
 const ACTION_META: Record<ActionKind, { label: string; target: ReportTargetStatus }> = {
   approve: { label: '승인', target: 'ACTIVE' },
@@ -141,6 +152,7 @@ function ReportCard({
   filter: ReportStatusFilter
   onUpdated: (report: AdminReport) => void
 }) {
+  const app = useAdminHost() === 'app'
   /** 펼친 확인 단계. 반려는 사유 입력, 삭제는 한 번 더 확인. */
   const [confirming, setConfirming] = useState<'reject' | 'delete' | null>(null)
   const [pending, setPending] = useState<ActionKind | null>(null)
@@ -175,13 +187,29 @@ function ReportCard({
       .finally(() => setPending(null))
   }
 
+  /** 앱에서는 처리 전에 확인 창으로 한 번 묻는다(폰에서 잘못 누르기 쉽다). 웹 콘솔은 기존대로 바로 처리. */
+  const confirmThenRun = (kind: ActionKind, noteText?: string) => {
+    if (!app) {
+      runAction(kind, noteText)
+      return
+    }
+    const meta = ACTION_CONFIRM[kind]
+    confirmAction({
+      title: meta.title,
+      message: noteText ? `${meta.message}\n\n사유: ${noteText}` : meta.message,
+      confirmLabel: ACTION_META[kind].label,
+      destructive: meta.destructive,
+      onConfirm: () => runAction(kind, noteText),
+    })
+  }
+
   const onActionPress = (kind: ActionKind) => {
     setActionError(null)
-    if (kind === 'reject' || kind === 'delete') {
+    if (kind === 'reject' || (kind === 'delete' && !app)) {
       setConfirming(kind)
       return
     }
-    runAction(kind)
+    confirmThenRun(kind)
   }
 
   const loadFlags = () => {
@@ -201,7 +229,7 @@ function ReportCard({
 
   const openMap = () => {
     if (report.lat === null || report.lng === null) return
-    window.open(`https://map.naver.com/p/search/${report.lat},${report.lng}`, '_blank', 'noopener,noreferrer')
+    openExternalUrl(`https://map.naver.com/p/search/${report.lat},${report.lng}`)
   }
 
   const location = [report.buildingName, report.floor !== null ? `${report.floor}층` : null].filter(Boolean).join(' ')
@@ -232,16 +260,22 @@ function ReportCard({
           <Text style={styles.metaItalic}>사진을 불러오지 못했습니다. 새로고침하면 다시 불러옵니다.</Text>
         ) : (
           <Pressable
-            onPress={() => window.open(report.imageUrl ?? '', '_blank', 'noopener,noreferrer')}
+            onPress={() => openExternalUrl(report.imageUrl)}
             accessibilityRole="link"
             accessibilityLabel="첨부 사진 원본 보기"
           >
             <Image
               source={{ uri: report.imageUrl }}
-              style={styles.photo}
-              resizeMode="contain"
+              style={app ? styles.photoApp : styles.photo}
+              resizeMode={app ? 'cover' : 'contain'}
               onError={() => setFailedPhotoUrl(report.imageUrl ?? null)}
             />
+            {app ? (
+              <View style={styles.photoHint} pointerEvents="none">
+                <Ionicons name="expand-outline" size={12} color={COLORS.white} />
+                <Text style={styles.photoHintText}>원본</Text>
+              </View>
+            ) : null}
           </Pressable>
         )
       ) : null}
@@ -249,7 +283,7 @@ function ReportCard({
       <View style={styles.facts}>
         <Fact icon="location-outline" text={location || '건물 지정 없음(지도 위치)'}>
           {report.lat !== null && report.lng !== null ? (
-            <Pressable onPress={openMap} accessibilityRole="link">
+            <Pressable onPress={openMap} accessibilityRole="link" hitSlop={12}>
               <Text style={styles.link}>지도에서 보기 ↗</Text>
             </Pressable>
           ) : null}
@@ -273,7 +307,7 @@ function ReportCard({
 
       {report.flagCount > 0 ? (
         <View>
-          <Pressable onPress={toggleFlags} accessibilityRole="button" style={styles.flagToggle}>
+          <Pressable onPress={toggleFlags} accessibilityRole="button" hitSlop={12} style={styles.flagToggle}>
             <Ionicons name="alert-circle-outline" size={16} color={COLORS.danger} />
             <Text style={styles.flagToggleText}>신고 {report.flagCount}건</Text>
             <Ionicons name={flagsOpen ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.danger} />
@@ -308,7 +342,7 @@ function ReportCard({
               setActionError('반려 사유를 입력해주세요.')
               return
             }
-            runAction('reject', trimmedNote)
+            confirmThenRun('reject', trimmedNote)
           }}
         >
           <TextInput
@@ -317,9 +351,13 @@ function ReportCard({
             placeholder="예: 캠퍼스 현장 정보가 아닌 광고입니다"
             placeholderTextColor={COLORS.textPlaceholder}
             maxLength={NOTE_MAX_LENGTH}
-            style={styles.noteInput}
+            style={[styles.noteInput, app && styles.noteInputApp]}
             autoFocus
             editable={!busy}
+            multiline={app}
+            returnKeyType="done"
+            submitBehavior={app ? 'blurAndSubmit' : undefined}
+            accessibilityLabel="반려 사유"
           />
           <Text style={styles.counter}>
             {note.length}/{NOTE_MAX_LENGTH}
@@ -335,7 +373,7 @@ function ReportCard({
           onConfirm={() => runAction('delete')}
         />
       ) : (
-        <View style={styles.actions}>
+        <View style={[styles.actions, app && styles.actionsApp]}>
           {actionsFor(report.status).map((kind) => (
             <Button
               key={kind}
@@ -393,6 +431,20 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.textPrimary },
   content: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 21, color: COLORS.textPrimary },
   photo: { width: '100%', maxWidth: 360, height: 220, borderRadius: 8, backgroundColor: '#F2F2F2' },
+  photoApp: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F2F2F2' },
+  photoHint: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  photoHintText: { fontFamily: FONTS.medium, fontSize: 11, color: COLORS.white },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   metaItalic: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   facts: { gap: 6 },
@@ -407,6 +459,7 @@ const styles = StyleSheet.create({
   flags: { gap: 6, marginTop: 6, paddingLeft: 20 },
   flagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', marginTop: 4 },
+  actionsApp: { justifyContent: 'flex-start' },
   noteInput: {
     fontFamily: FONTS.regular,
     fontSize: 14,
@@ -418,5 +471,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  noteInputApp: { minHeight: 72, fontSize: 15, textAlignVertical: 'top', paddingVertical: 10 },
   counter: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary, textAlign: 'right' },
 })

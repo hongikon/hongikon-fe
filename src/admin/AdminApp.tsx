@@ -6,7 +6,7 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { completeLogin, fetchOverview, logout, setMockMode, subscribeAdminAuth } from './api'
 import { clearMockMode, getTokens, resolveMockMode, type MockMode } from './session'
-import type { AdminOverview, AdminSection } from './types'
+import type { AdminOverview, AdminSection, OverviewState } from './types'
 import { ADMIN_COLORS, Loading } from './ui'
 import LoginScreen from './screens/LoginScreen'
 import ForbiddenScreen from './screens/ForbiddenScreen'
@@ -93,14 +93,7 @@ function exchangeErrorMessage(error: unknown): string {
   return getErrorMessage(error, '로그인 처리 중 문제가 생겼습니다. 다시 로그인해주세요.')
 }
 
-export interface OverviewState {
-  data: AdminOverview | null
-  loading: boolean
-  error: string | null
-  /** 마지막으로 성공한 시각(ms) */
-  updatedAt: number | null
-  refresh: () => void
-}
+export type { OverviewState } from './types'
 
 export default function AdminApp() {
   useAdminDocumentHead()

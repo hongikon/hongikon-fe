@@ -66,6 +66,28 @@ function emitAuth(event: AdminAuthEvent): void {
   authListeners.forEach((listener) => listener(event))
 }
 
+// ── 앱 안에서 쓸 때(관리 탭): 앱 로그인 토큰 주입 ─────────────────────────
+
+/**
+ * 앱의 하단 "관리" 탭에서 쓸 때는 관리자 전용 로그인(sessionStorage) 대신 앱의 로그인(AuthContext)을 그대로 쓴다.
+ * AdminAccessProvider 가 등록하고, 웹 `/admin` 콘솔은 등록하지 않아 기존 흐름(별도 로그인)이 그대로다.
+ */
+export interface AdminAuthAdapter {
+  /** 지금 앱이 들고 있는 액세스 토큰. 로그아웃·게스트면 null. */
+  getAccessToken: () => string | null
+  /**
+   * 만료된 토큰을 넘기면 재발급한 새 토큰(실패 시 null). 앱 AuthContext 의 재발급을 그대로 쓴다 —
+   * refresh 토큰이 무효면 거기서 로그아웃까지 처리하므로 여기서는 세션을 지우지 않는다.
+   */
+  refreshAccessToken: (expiredAccessToken: string) => Promise<string | null>
+}
+
+let authAdapter: AdminAuthAdapter | null = null
+
+export function setAdminAuthAdapter(adapter: AdminAuthAdapter | null): void {
+  authAdapter = adapter
+}
+
 // ── 목업 ──────────────────────────────────────────────────────────────
 
 let activeMockMode: MockMode | null = null
@@ -73,6 +95,11 @@ let activeMockMode: MockMode | null = null
 /** AdminApp 이 시작할 때 한 번 정한다. 운영 빌드에서는 항상 null 이 들어온다. */
 export function setMockMode(mode: MockMode | null): void {
   activeMockMode = __DEV__ ? mode : null
+}
+
+/** 지금 목업으로 도는지(화면에 "목업 데이터" 표시용). 운영 빌드에서는 항상 null. */
+export function getMockMode(): MockMode | null {
+  return activeMockMode
 }
 
 // ── 공통 요청 ─────────────────────────────────────────────────────────
@@ -127,6 +154,8 @@ async function adminRequest<T>(path: string, options: AdminRequestOptions = {}):
     }
   }
 
+  if (authAdapter) return appAdminRequest<T>(authAdapter, path, options)
+
   const tokens = getTokens()
   if (!tokens) throw sessionExpired()
 
@@ -153,6 +182,37 @@ async function adminRequest<T>(path: string, options: AdminRequestOptions = {}):
     if (error instanceof ApiError && error.status === 401) throw sessionExpired()
     if (error instanceof ApiError && error.status === 403) emitAuth('forbidden')
     throw error
+  }
+}
+
+/**
+ * 앱 토큰으로 보내는 관리자 요청. 401 이면 앱의 재발급을 한 번만 거쳐 다시 보내고, 403 은 'forbidden' 을 알린다
+ * (관리 탭을 닫는다). 401 이 끝내 풀리지 않아도 여기서는 로그아웃시키지 않는다 — 앱 AuthContext 의 몫이다.
+ */
+async function appAdminRequest<T>(adapter: AdminAuthAdapter, path: string, options: AdminRequestOptions): Promise<T> {
+  const token = adapter.getAccessToken()
+  if (!token) throw new ApiError(401, '로그인 후 이용해 주세요.')
+
+  const send = (accessToken: string) => apiRequest<T>(path, { ...options, accessToken, skipTokenRefresh: true })
+
+  try {
+    return await send(token)
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error
+    if (error.status === 403) {
+      emitAuth('forbidden')
+      throw error
+    }
+    if (error.status !== 401) throw error
+    const fresh = await adapter.refreshAccessToken(token)
+    if (!fresh) throw error
+    try {
+      return await send(fresh)
+    } catch (retryError) {
+      if (retryError instanceof ApiError && retryError.status === 403) emitAuth('forbidden')
+      if (retryError instanceof ApiError && retryError.status === 401) retryError.afterTokenRefresh = true
+      throw retryError
+    }
   }
 }
 

@@ -96,3 +96,13 @@ export interface AdminUser {
 }
 
 export type AdminSection = 'dashboard' | 'reports' | 'users' | 'feedback' | 'tools'
+
+/** 대시보드 수치와 그 요청 상태. 웹 콘솔은 AdminApp, 앱 관리 탭은 AdminAccessProvider 가 들고 있다. */
+export interface OverviewState {
+  data: AdminOverview | null
+  loading: boolean
+  error: string | null
+  /** 마지막으로 성공한 시각(ms) */
+  updatedAt: number | null
+  refresh: () => void
+}

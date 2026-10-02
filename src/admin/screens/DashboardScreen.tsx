@@ -2,9 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import type { OverviewState } from '../AdminApp'
 import { formatDateTime, formatDuration, formatNumber, formatRelative } from '../format'
-import type { AdminSection } from '../types'
+import type { AdminSection, OverviewState } from '../types'
 import { ADMIN_COLORS, Badge, Button, Card, InlineError, LabelValue, Loading, ScreenHeader } from '../ui'
 
 /** 한눈에 보는 운영 현황. 수치는 AdminApp 이 들고 있는 overview 를 그대로 쓴다. */
@@ -157,7 +156,7 @@ function Tile({
       <View style={styles.tileHeader}>
         <Text style={styles.tileTitle}>{title}</Text>
         {onPress && actionLabel ? (
-          <Pressable onPress={onPress} accessibilityRole="link">
+          <Pressable onPress={onPress} accessibilityRole="link" hitSlop={12}>
             <Text style={styles.tileAction}>{actionLabel}</Text>
           </Pressable>
         ) : null}
