@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
 
-// 처리방침 3항(탈퇴 시 삭제)과 같은 내용만 적는다. 정지·위반 처리 이력이 있으면 재가입 확인용 기록만 1년 분리 보관(아래 note) — 백엔드 WithdrawRetention.
+// 처리방침 3항(탈퇴 시 삭제)과 같은 내용만 적는다. 정지·위반 삭제 이력이 있으면 재가입 확인용 기록만 1년 분리 보관(아래 note) — 백엔드 WithdrawRetention.
 const DELETED_ITEMS = [
   '회원 정보와 앱 닉네임',
   '올린 제보와 사진, 댓글·답글',
