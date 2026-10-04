@@ -56,7 +56,7 @@
     "production": {
       "ios": {
         "appleTeamId": "GB56N8GWDQ",
-        "ascAppId": "TODO",
+        "ascAppId": "6818954901",
         "bundleIdentifier": "com.hongikon.app"
       },
       "android": {
