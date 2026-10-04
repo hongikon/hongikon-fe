@@ -48,7 +48,12 @@ import {
   type Settings,
   type StoredSettings,
 } from '../utils/settingsStorage'
-import { SETTINGS_STORAGE_KEY as STORAGE_KEY } from '../lib/accountData'
+import {
+  SETTINGS_STORAGE_KEY as STORAGE_KEY,
+  getAccountPushEnabled,
+  saveAccountPushEnabled,
+} from '../lib/accountData'
+import { getUserIdFromToken } from '../lib/jwt'
 
 export { ALL_CATEGORIES } from '../utils/settingsStorage'
 
@@ -73,6 +78,12 @@ interface SettingsContextValue {
    * "이 계정에 이미 구독이 있으면 건너뛰기"를 판단할 때 쓴다.
    */
   boardSubscriptionsReady: boolean
+  /**
+   * '구독 소식 알림' 스위치(`subscriptionAlert`)를 믿고 볼 수 있는지. 게스트는 늘 true, 로그인 상태면 이 계정의 마지막 값을
+   * 되살린 뒤에 true. 그 전의 값은 게스트 기본값(켜짐)이라, 푸시 기기 등록(`usePushNotifications`)이 이걸 기다린다 —
+   * 꺼 둔 계정이 로그인하자마자 한 번 등록됐다 내려가지 않게.
+   */
+  pushPrefReady: boolean
 }
 
 /** 앱이 그릴 수 있는 게시판(TREE_DATA 리프). 서버에서만 온 모르는 sourceId 를 거르는 데 쓴다. */
@@ -361,6 +372,67 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     wasLoggedInRef.current = isLoggedIn
   }, [isLoggedIn, boardQueue])
 
+  /**
+   * '구독 소식 알림' 스위치의 계정별 값(`getAccountPushEnabled` 주석). 로그인하면 그 계정의 마지막 값을 되살리고,
+   * 로그인 중 바꾸면(토글·초기화) 그 계정 칸에 적는다. 로그아웃하면 위 효과가 게스트 기본값(켜짐)으로 돌리지만 계정 칸은
+   * 건드리지 않는다 — 적는 곳이 토글·초기화뿐이라 로그아웃·게스트 값이 계정 값을 덮지 않는다.
+   *
+   * 업데이트 직후 이미 로그인된 채 켠 실행: 그 계정 칸이 비어 있으면 지금 기기 값(`@hongik_settings` 에서 불러온 값)이 곧
+   * 그 계정의 값이라 그대로 칸에 옮겨 적는다(꺼 둔 사람이 업데이트로 다시 켜지지 않게). 로그아웃 뒤 새로 로그인한 계정은
+   * 칸이 비어 있으면 켜짐(이 기기에서 처음 보는 계정). 회원 번호를 못 읽는 토큰이면 계정별로 두지 않고 지금 값을 쓴다.
+   */
+  const accountId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
+  const accountIdRef = useRef(accountId)
+  accountIdRef.current = accountId
+  /** 앱을 켤 때부터 로그인돼 있던 계정. 로그아웃하면 지운다 — 그 뒤의 로그인은 "새로 로그인"이다. */
+  const launchAccountIdRef = useRef<number | null | undefined>(isLoggedIn ? accountId : undefined)
+  /** 스위치 값을 되살린 계정(회원 번호를 모르면 'unknown'). 로그인 상태가 아니면 null. */
+  const [pushPrefFor, setPushPrefFor] = useState<number | 'unknown' | null>(null)
+  /** 되살리는 사이 사용자가 스위치를 바꿨으면(그 값을 이미 계정 칸에 적었다) 늦게 읽은 값으로 덮지 않는다. */
+  const pushPrefTouchedRef = useRef(false)
+
+  useEffect(() => {
+    if (isLoggedIn) return
+    launchAccountIdRef.current = undefined
+    setPushPrefFor(null)
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!loaded || !isLoggedIn) return
+    if (accountId === null) {
+      setPushPrefFor('unknown')
+      return
+    }
+    if (pushPrefFor === accountId) return
+    let cancelled = false
+    pushPrefTouchedRef.current = false
+    void getAccountPushEnabled(accountId).then((stored) => {
+      if (cancelled) return
+      if (pushPrefTouchedRef.current) {
+        // 방금 사용자가 고른 값이 이긴다.
+      } else if (stored !== null) {
+        setSettings((prev) => (prev.subscriptionAlert === stored ? prev : { ...prev, subscriptionAlert: stored }))
+      } else if (launchAccountIdRef.current === accountId) {
+        // 업데이트 직후: 지금 기기 값을 이 계정 칸으로 옮긴다.
+        void saveAccountPushEnabled(accountId, settingsRef.current.subscriptionAlert)
+      } else {
+        setSettings((prev) => (prev.subscriptionAlert ? prev : { ...prev, subscriptionAlert: true }))
+      }
+      setPushPrefFor(accountId)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [loaded, isLoggedIn, accountId, pushPrefFor])
+
+  /** 로그인 중 스위치 값을 바꿨으면 이 계정 칸에도 적는다. 게스트(토큰 없음)·회원 번호를 모르는 토큰이면 적지 않는다. */
+  const rememberAccountPushPref = useCallback((enabled: boolean) => {
+    const id = accountIdRef.current
+    if (!accessTokenRef.current || id === null) return
+    pushPrefTouchedRef.current = true
+    void saveAccountPushEnabled(id, enabled)
+  }, [])
+
   useEffect(() => {
     if (!loaded || !isLoggedIn || reportAlertsUnsupportedRef.current) return
 
@@ -431,8 +503,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [accessToken, recoverServerSync])
 
   const toggleSubscriptionAlert = useCallback(() => {
-    setSettings((prev) => ({ ...prev, subscriptionAlert: !prev.subscriptionAlert }))
-  }, [])
+    // 갱신 함수 밖에서 다음 값을 정해 계정 칸에도 적는다(갱신 함수는 순수해야 한다 — 위 저장 효과 주석).
+    // 계정 값을 되살리기 전(로그인 직후 몇 ms)에 누르면 그 누름이 마지막 값이 된다 — 사용자가 방금 고른 값이라 맞다
+    // (`pushPrefTouchedRef`).
+    const next = !settingsRef.current.subscriptionAlert
+    setSettings((prev) => ({ ...prev, subscriptionAlert: next }))
+    rememberAccountPushPref(next)
+  }, [rememberAccountPushPref])
 
   /** 알림 분야 하나를 화면(로컬 설정)에서 켜거나 끈다. */
   const applyLocalCategory = useCallback((cat: CategoryKey, enabled: boolean) => {
@@ -569,14 +646,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     )
     if (!loggedIn) pendingCategoryChangesRef.current.clear()
     setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: loggedIn })
+    // 알림 스위치도 기본값(켜짐)이 되니 로그인 상태면 이 계정 칸에도 적는다(게스트는 계정 칸을 건드리지 않는다).
+    rememberAccountPushPref(DEFAULT_SETTINGS.subscriptionAlert)
     if (loggedIn) {
       pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
       for (const cat of disabledCategories) syncAlertCategory(cat, true)
     }
-  }, [queueBoardChange, pushReportAlerts, syncAlertCategory])
+  }, [queueBoardChange, pushReportAlerts, syncAlertCategory, rememberAccountPushPref])
 
   // 서버 구독 API 가 없다고 이미 판정됐으면 합치기 효과가 돌지 않으므로 기다릴 것도 없다.
   const boardSubscriptionsReady = !isLoggedIn || boardMergeSettled || boardQueue.isUnsupported()
+  const pushPrefReady = !isLoggedIn || pushPrefFor === (accountId ?? 'unknown')
 
   /**
    * 값을 매 렌더 새 객체로 만들면 설정을 건드리지 않아도 모든 소비자가 다시 그려진다.
@@ -596,6 +676,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       isBookmarked,
       resetSettings,
       boardSubscriptionsReady,
+      pushPrefReady,
     }),
     [
       settings,
@@ -610,6 +691,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       isBookmarked,
       resetSettings,
       boardSubscriptionsReady,
+      pushPrefReady,
     ]
   )
 

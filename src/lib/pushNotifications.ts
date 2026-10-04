@@ -172,7 +172,7 @@ async function getExpoPushToken(): Promise<string | null> {
 export function usePushNotifications(): void {
   const permission = useNotificationPermission()
   const { accessToken, status } = useAuth()
-  const { settings } = useSettings()
+  const { settings, pushPrefReady } = useSettings()
   const alertEnabled = settings.subscriptionAlert
   const isAdmin = useIsAdmin()
   const registeredTokenRef = useRef<string | null>(null)
@@ -243,6 +243,9 @@ export function usePushNotifications(): void {
 
   useEffect(() => {
     if (Platform.OS === 'web' || !accessToken) return
+    // 로그인 직후 이 계정의 알림 스위치 값을 되살리기 전에는 아무것도 하지 않는다(`pushPrefReady` 주석). 그 전의 값은 게스트
+    // 기본값(켜짐)이라 꺼 둔 계정도 한 번 등록됐다가 내려가고, 그 사이 푸시가 올 수 있었다. 되살린 뒤 이 효과가 다시 돈다.
+    if (!pushPrefReady) return
 
     if (!alertEnabled) {
       // 꺼짐: 권한을 묻지 않고, 등록돼 있던 기기만 서버에서 내린다. 다시 켜면 새로 등록하게 기억을 지운다.
@@ -284,5 +287,5 @@ export function usePushNotifications(): void {
     return () => {
       cancelled = true
     }
-  }, [accessToken, alertEnabled, retryNonce, permission.status])
+  }, [accessToken, alertEnabled, pushPrefReady, retryNonce, permission.status])
 }

@@ -27,7 +27,9 @@ import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
 import { createPkcePair } from '../lib/pkce'
 import { deactivateStoredPushDevice, forgetStoredPushDevice, pushRegistrationMark } from '../lib/pushDevice'
-import { clearAccountLinkedSettings } from '../lib/accountData'
+import { clearAccountLinkedDeviceData, deleteWithdrawnAccountData } from '../lib/accountData'
+import { setHiddenAuthorsOwner } from '../lib/hiddenAuthors'
+import { getUserIdFromToken } from '../lib/jwt'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
@@ -189,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setAccessToken(latestAccess)
               return latestAccess
             }
-            await clearAccountLinkedSettings()
+            await clearAccountLinkedDeviceData()
             await clearTokens()
             if (isStale()) return null
             setAccessToken(null)
@@ -229,8 +231,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setAccessToken(latestAccess)
               return latestAccess
             }
-            // 기기에 남은 이전 계정의 구독·알림 설정도 지운다(로그아웃과 같다). 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
-            await clearAccountLinkedSettings()
+            // 기기에 남은 이전 계정의 구독·알림 설정·약관 동의 기록도 지운다(로그아웃과 같다). 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
+            await clearAccountLinkedDeviceData()
             await clearTokens()
             setAccessToken(null)
             setLoginError('로그인이 만료됐어요. 다시 로그인해 주세요.')
@@ -264,6 +266,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(tokens.accessToken)
     setStatus('authenticated')
   }, [])
+
+  // 숨긴 사용자 목록의 칸을 지금 로그인 상태에 맞춘다(`hiddenAuthors.ts`). 로그인이면 그 계정 칸, 아니면(둘러보기·로그아웃)
+  // 게스트 칸. 토큰 재발급은 회원 번호가 같아 칸이 그대로고, 계정이 바뀌려면 반드시 로그아웃(게스트 칸)을 거친다.
+  // 상태 복원 전(loading)에는 정하지 않는다 — 그동안 아무것도 불러오지 않아 다른 칸의 목록이 한 번 비치지 않는다.
+  // 자식의 구독(useSyncExternalStore)이 먼저 붙고 이 효과가 뒤에 돌아도, 칸을 모르는 동안은 불러오지 않으니 같은 결과다.
+  useEffect(() => {
+    if (status === 'loading') return
+    setHiddenAuthorsOwner(
+      status === 'authenticated' ? { kind: 'account', userId: getUserIdFromToken(accessToken) } : { kind: 'guest' },
+    )
+  }, [status, accessToken])
 
   useEffect(() => {
     setTokenRefresher(refreshAccessToken)
@@ -391,11 +404,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
     const storedRefreshToken = await getItem(REFRESH_TOKEN_KEY)
 
-    // 같은 기기를 쓰는 다음 사람에게 이 계정의 구독·알림 설정이 보이지 않게 기기 저장값을 지운다.
-    // 서버 값은 그대로라 다시 로그인하면 불러온다. 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
+    // 같은 기기를 쓰는 다음 사람에게 이 계정의 구독·알림 설정이 보이지 않게 기기 저장값을 지우고, 약관 동의 기록도 지워
+    // 다음에 로그인하는 사람에게 다시 묻는다(`clearAccountLinkedDeviceData`). 서버 값은 그대로라 다시 로그인하면 불러온다.
+    // 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석. 숨긴 사용자 목록·알림 스위치는 계정 칸에 남고 화면만
+    // 게스트 칸으로 바뀐다(아래 status 효과, `SettingsContext`).
     // 게스트가 "로그인하기"로 웰컴 화면에 갈 때도 이 함수를 쓰는데, 그때는 계정 설정이 아니라 게스트가 고른
     // 구독이라 지우지 않는다(로그인하면 계정 구독과 합쳐진다).
-    if (storedAccessToken || storedRefreshToken) await clearAccountLinkedSettings()
+    if (storedAccessToken || storedRefreshToken) await clearAccountLinkedDeviceData()
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
@@ -454,7 +469,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionGenRef.current += 1
     // 탈퇴하면 서버가 기기 행까지 지운다(`UserService.withdraw`) — 저장해 둔 id 만 버린다.
     await forgetStoredPushDevice()
-    await clearAccountLinkedSettings()
+    await clearAccountLinkedDeviceData()
     await clearTokens()
     await deleteItem(GUEST_FLAG_KEY)
     setAccessToken(null)
