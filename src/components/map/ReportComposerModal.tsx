@@ -73,14 +73,16 @@ interface ReportComposerModalProps {
   onCreated: (report: Report) => void
 }
 
-/** 층 다이얼 상한(캠퍼스 최고층 건물 + 여유). */
+/** 층 다이얼 상한(캠퍼스 최고층 건물 + 여유). 지하는 서버 검증(-10층까지)에 맞춰 B10 까지. */
 const MAX_FLOOR = 30
+const MAX_BASEMENT = 10
 
 const FLOOR_LEVEL_ITEMS: readonly WheelItem<boolean>[] = [
   { value: false, label: '지상' },
   { value: true, label: '지하' },
 ]
 const FLOOR_NUMBERS = Array.from({ length: MAX_FLOOR }, (_, index) => index + 1)
+const BASEMENT_NUMBERS = FLOOR_NUMBERS.slice(0, MAX_BASEMENT)
 /** 층 표시: 지상 3층 = '3F', 지하 1층 = 'B1'. */
 function formatFloor(basement: boolean, floorNumber: number): string {
   return basement ? `B${floorNumber}` : `${floorNumber}F`
@@ -184,9 +186,13 @@ export default function ReportComposerModal({
   const [floorNumber, setFloorNumber] = useState(1)
   const floor = basement ? -floorNumber : floorNumber
   const floorItems = useMemo<WheelItem<number>[]>(
-    () => FLOOR_NUMBERS.map((value) => ({ value, label: formatFloor(basement, value) })),
+    () => (basement ? BASEMENT_NUMBERS : FLOOR_NUMBERS).map((value) => ({ value, label: formatFloor(basement, value) })),
     [basement],
   )
+  // 지상 15층에서 지하로 바꾸면 B15 가 되지 않게 B10 으로 맞춘다.
+  useEffect(() => {
+    if (basement && floorNumber > MAX_BASEMENT) setFloorNumber(MAX_BASEMENT)
+  }, [basement, floorNumber])
 
   const trimmedTitle = title.trim()
   const trimmedCustomLabel = customLabel.trim()

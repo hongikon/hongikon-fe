@@ -417,9 +417,13 @@ export interface CreateReportFlagInput {
   reason: ReportFlagReason
 }
 
-/** `POST /reports/{id}/flags` 응답(`ReportFlagResponse`). `flagCount`는 항상 내려온다. */
+/**
+ * `POST /reports/{id}/flags` 응답. 새 서버(BE #28)는 누적 신고 수를 숨기고 `{ flagged: true }` 만 준다.
+ * 예전 서버는 `flagCount`. 앱은 응답 값을 쓰지 않는다.
+ */
 export interface ReportFlagResult {
-  flagCount: number
+  flagged?: boolean
+  flagCount?: number
 }
 
 /**

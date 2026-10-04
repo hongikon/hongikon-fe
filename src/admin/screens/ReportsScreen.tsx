@@ -143,7 +143,8 @@ function actionsFor(status: ReportStatus): ActionKind[] {
     case 'HIDDEN':
       return ['reopen', 'reject', 'delete']
     case 'REJECTED':
-      return ['approve', 'delete']
+      // 반려하면 사진이 지워져 다시 공개할 수 없다(서버도 400, BE #28) — 지우기만 남긴다.
+      return ['delete']
     default:
       return []
   }
