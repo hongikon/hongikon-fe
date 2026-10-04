@@ -38,6 +38,7 @@ export const WEB_LINKING: LinkingOptions<RootStackParamList> = {
       AppStatus: 'app-status',
       Welcome: 'welcome',
       Onboarding: 'onboarding',
+      DeptPick: 'onboarding/depts',
     },
   },
   // 목록에서 연 상세는 소식 요약 객체(item)를 들고 있다. 그대로 두면 주소에 객체가 실리므로
@@ -67,6 +68,7 @@ const TITLES: Record<string, string> = {
   Settings: '설정',
   Admin: '관리',
   AppStatus: '앱 상태',
+  DeptPick: '학과 고르기',
 }
 
 /** 브라우저 탭 제목. 정적 안내 페이지(`scripts/static-pages.mjs`)와 같은 "화면 | 홍익온" 형식. */

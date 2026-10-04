@@ -59,7 +59,7 @@ const SLIDES: readonly Slide[] = [
 ]
 
 interface IntroSlidesProps {
-  /** 마지막 장에서 "시작하기" 또는 "건너뛰기"를 누르면 다음 단계(학과 고르기)로 넘어간다. */
+  /** 마지막 장에서 "시작하기" 또는 "건너뛰기"를 누르면 다음 단계(접근권한 안내, 웹은 웰컴)로 넘어간다. */
   onDone: () => void
 }
 
