@@ -4,9 +4,9 @@ import { ApiError, getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { confirmAction } from '../utils/dialog'
-import { fetchUser, grantAdmin, revokeAdmin, suspendUser, unsuspendUser } from './api'
+import { fetchUser, grantAdmin, revealLoginName, revokeAdmin, suspendUser, unsuspendUser } from './api'
 import { formatDateTime } from './format'
-import type { AdminUser } from './types'
+import type { AdminLoginName, AdminUser } from './types'
 import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
 
 /** 정지 사유 최대 길이(서버 제한과 같다). */
@@ -15,6 +15,14 @@ const REASON_MAX_LENGTH = 200
 /** 확인 문구 등에 쓰는 회원 표시. 회원 번호가 있으면 그것, 없으면(서버 배포 전) 예전처럼 #id. */
 export function memberLabel(user: Pick<AdminUser, 'id' | 'memberCode'>): string {
   return user.memberCode ? user.memberCode : `#${user.id}`
+}
+
+/**
+ * 카드 제목에 쓸 이름: 앱 닉네임 → 표시 이름(앱 닉네임이 없으면 가린 이름 "홍**") 순. 로그인 닉네임 원문(nickname)은
+ * 쓰지 않는다 — 예전 서버는 nickname 에 원문을 넣어 보냈기 때문(개인정보 최소 처리).
+ */
+export function memberName(user: Pick<AdminUser, 'appNickname' | 'displayName'>): string {
+  return user.appNickname || user.displayName || '이름 없음'
 }
 
 /** 서버에 회원 관리 API 가 아직 없을 때(배포 전) 보여 줄 문구. */
@@ -69,7 +77,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const confirmGrant = () =>
     confirmAction({
       title: '관리자로 지정',
-      message: `${memberLabel(user)} ${user.nickname} 님을 관리자로 지정할까요? 제보 검토·회원 정지 등 관리 기능을 모두 쓸 수 있게 됩니다.`,
+      message: `${memberName(user)}(${memberLabel(user)}) 님을 관리자로 지정할까요? 제보 검토·회원 정지 등 관리 기능을 모두 쓸 수 있게 됩니다.`,
       confirmLabel: '지정',
       onConfirm: () => run(() => grantAdmin(user.id), '관리자로 지정하지 못했습니다. 다시 시도해주세요.', roleError),
     })
@@ -77,28 +85,38 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const confirmRevoke = () =>
     confirmAction({
       title: '관리자 해제',
-      message: `${memberLabel(user)} ${user.nickname} 님의 관리자 권한을 해제할까요? 다음 요청부터 관리 기능을 쓸 수 없습니다.`,
+      message: `${memberName(user)}(${memberLabel(user)}) 님의 관리자 권한을 해제할까요? 다음 요청부터 관리 기능을 쓸 수 없습니다.`,
       confirmLabel: '해제',
       destructive: true,
       onConfirm: () => run(() => revokeAdmin(user.id), '관리자 권한을 해제하지 못했습니다. 다시 시도해주세요.', roleError),
     })
 
   const trimmed = reason.trim()
+  // appNickname 키가 null 로 왔을 때만 "앱 닉네임 없음" — 키가 아예 없으면(예전 서버) 유무를 알 수 없어 표시하지 않는다.
+  const noAppNickname = 'appNickname' in user && !user.appNickname
 
   return (
     <View style={styles.panel}>
-      <View style={styles.row}>
-        <Badge label={suspended ? '이용 정지' : '정상'} tone={suspended ? 'danger' : 'success'} />
-        {isAdmin ? <Badge label="관리자" tone="info" /> : null}
+      {/* 제목: 앱에 보이는 이름 + 회원 번호. 로그인 닉네임 원문은 아래 "로그인 닉네임 보기"로만. */}
+      <View style={styles.titleRow}>
+        <Text style={styles.name} selectable numberOfLines={1}>
+          {memberName(user)}
+        </Text>
+        {noAppNickname ? <Text style={styles.hint}>앱 닉네임 없음</Text> : null}
         {user.memberCode ? (
           <Text style={styles.code} selectable accessibilityLabel={`회원 번호 ${user.memberCode}`}>
             {user.memberCode}
           </Text>
         ) : null}
+      </View>
+      <View style={styles.row}>
+        <Badge label={suspended ? '이용 정지' : '정상'} tone={suspended ? 'danger' : 'success'} />
+        {isAdmin ? <Badge label="관리자" tone="info" /> : null}
         <Text style={styles.meta}>
-          {user.memberCode ? `id ${user.id}` : `#${user.id}`} · {user.nickname} · {user.socialType}
+          {user.memberCode ? `id ${user.id}` : `#${user.id}`} · {user.socialType}
         </Text>
       </View>
+      <LoginNameReveal userId={user.id} />
       {suspended ? (
         <Text style={styles.meta}>
           {formatDateTime(user.suspendedAt)} 정지 · 사유: {user.suspendedReason ?? '(없음)'}
@@ -190,6 +208,62 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   )
 }
 
+/**
+ * 열람 오류 문구. 이 기능 전 서버는 경로가 없어 404/405(앱 토큰이면 재발급 뒤 401) — 그때는 업데이트 안내.
+ * 서버가 이유를 적어 보낸 404(없는 회원 등)는 그 문구를 그대로 보여 준다.
+ */
+function revealError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 404 && err.serverMessage) return err.serverMessage
+    if (err.status === 404 || err.status === 405 || (err.status === 401 && err.afterTokenRefresh)) {
+      return '서버 업데이트 후 사용할 수 있어요.'
+    }
+  }
+  return getErrorMessage(err, '로그인 닉네임을 불러오지 못했습니다. 다시 시도해주세요.')
+}
+
+const SOCIAL_LABEL: Record<string, string> = { KAKAO: '카카오', APPLE: 'Apple', GOOGLE: 'Google' }
+
+/**
+ * "로그인 닉네임 보기" — 누를 때만 서버에서 원문을 받아 이 자리에 보여 준다. 실명일 수 있는 값이라 미리 불러오거나
+ * 자동으로 다시 시도하지 않고, "숨기기"를 누르거나 카드가 사라지면 값도 메모리에서 지운다(다시 보려면 다시 누른다).
+ */
+function LoginNameReveal({ userId }: { userId: number }) {
+  const [value, setValue] = useState<AdminLoginName | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const reveal = () => {
+    setLoading(true)
+    setError(null)
+    revealLoginName(userId)
+      .then(setValue)
+      .catch((err: unknown) => setError(revealError(err)))
+      .finally(() => setLoading(false))
+  }
+
+  if (value) {
+    return (
+      <View style={styles.reveal}>
+        <Text style={styles.revealText} selectable>
+          로그인 닉네임: <Text style={styles.revealValue}>{value.loginNickname}</Text>
+          {' '}({SOCIAL_LABEL[value.socialType] ?? value.socialType})
+        </Text>
+        <View style={styles.actionsStart}>
+          <Button label="숨기기" icon="eye-off-outline" variant="ghost" onPress={() => setValue(null)} small />
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.revealRow}>
+      <Button label="로그인 닉네임 보기" icon="eye-outline" variant="ghost" onPress={reveal} loading={loading} small />
+      {error ? <InlineError message={error} /> : null}
+    </View>
+  )
+}
+
 /** 제보 카드 안의 "작성자 관리". 누르면 그때 회원 정보를 불러온다. */
 export function ReportAuthorModeration({ authorId }: { authorId: number }) {
   const [open, setOpen] = useState(false)
@@ -243,6 +317,13 @@ const styles = StyleSheet.create({
   priorNote: { fontFamily: FONTS.regular, fontSize: 11.5, color: COLORS.textTertiary, marginTop: 2 },
   box: { gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E7' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
+  name: { fontFamily: FONTS.semibold, fontSize: 16, color: COLORS.textPrimary, flexShrink: 1 },
+  hint: { fontFamily: FONTS.regular, fontSize: 11.5, color: COLORS.textTertiary },
+  reveal: { gap: 2, padding: 8, borderRadius: 8, backgroundColor: COLORS.background },
+  revealRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  revealText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
+  revealValue: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   code: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' }),

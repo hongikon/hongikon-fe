@@ -4,7 +4,7 @@ import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { fetchFeedback, updateFeedbackStatus } from '../api'
-import { formatDateTime, formatRelative } from '../format'
+import { formatDateTime, formatMemberRef, formatRelative } from '../format'
 import type { AdminFeedback, AdminOverview, FeedbackStatusFilter } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
 import { INFO_SUGGESTION_BADGES, infoSuggestTypeOf } from '../../constants/feedback'
@@ -143,7 +143,11 @@ function FeedbackCard({
 
       <View style={styles.facts}>
         <Text style={styles.fact}>
-          작성자 <Text style={styles.factStrong}>{item.userId !== null ? item.userNickname ?? `사용자 #${item.userId}` : '비로그인'}</Text>
+          {/* 표시 이름 + 회원 번호만. userNickname(예전 서버는 로그인 닉네임 원문)은 쓰지 않는다. */}
+          작성자{' '}
+          <Text style={styles.factStrong}>
+            {item.userId !== null ? formatMemberRef(item.userDisplayName, item.userMemberCode, item.userId) : '비로그인'}
+          </Text>
         </Text>
         <Text style={styles.fact}>
           연락처 <Text selectable style={styles.factStrong}>{item.contact ?? '없음'}</Text>

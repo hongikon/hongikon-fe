@@ -6,7 +6,7 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { confirmAction } from '../utils/dialog'
 import { fetchReportComments, isAdminCommentsMissing, updateCommentStatus } from './api'
-import { FLAG_REASON_LABEL, formatDateTime, formatRelative } from './format'
+import { FLAG_REASON_LABEL, formatDateTime, formatMemberRef, formatRelative } from './format'
 import type { AdminComment, AdminCommentStatus, FlagReason } from './types'
 import { Badge, Button, InlineError, useAdminHost, type Tone } from './ui'
 
@@ -140,10 +140,8 @@ export function ReportCommentsPanel({ reportId }: { reportId: number }) {
             const reasons = Object.entries(comment.flagReasons ?? {})
               .map(([reason, count]) => `${FLAG_REASON_LABEL[reason as FlagReason] ?? reason} ${count}`)
               .join(', ')
-            const author = comment.authorNickname ?? `사용자 #${comment.authorId}`
-            const shown = comment.authorDisplayName && comment.authorDisplayName !== comment.authorNickname
-              ? ` (앱 표시: ${comment.authorDisplayName})`
-              : ''
+            // 표시 이름 + 회원 번호만. authorNickname(예전 서버는 로그인 닉네임 원문)은 쓰지 않는다(개인정보 최소 처리).
+            const author = formatMemberRef(comment.authorDisplayName, comment.authorMemberCode, comment.authorId)
             return (
               <View
                 key={comment.id}
@@ -157,8 +155,7 @@ export function ReportCommentsPanel({ reportId }: { reportId: number }) {
                 </View>
                 <Text style={styles.content}>{comment.content}</Text>
                 <Text style={styles.meta}>
-                  {author}
-                  {shown} · 회원 #{comment.authorId} · {formatDateTime(comment.createdAt)} ({formatRelative(comment.createdAt, now)})
+                  {author} · {formatDateTime(comment.createdAt)} ({formatRelative(comment.createdAt, now)})
                 </Text>
                 {comment.reviewedAt ? <Text style={styles.meta}>관리자 처리: {formatDateTime(comment.reviewedAt)}</Text> : null}
                 {actionsFor(comment).length > 0 ? (

@@ -5,6 +5,7 @@ import type {
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
+  AdminLoginName,
   AdminUser,
   AdminOverview,
   AdminReport,
@@ -281,7 +282,10 @@ export function isAdminCommentsMissing(error: unknown): boolean {
 
 // ── 회원(이용 정지) ───────────────────────────────────────────────────
 
-/** q: 회원 번호(10자리, 대소문자 무시), 회원 id(숫자) 또는 닉네임 일부. 비우면 정지된 회원 목록. */
+/**
+ * q: 회원 번호(10자리, 대소문자 무시), 회원 id(숫자) 또는 앱 닉네임 일부. 비우면 정지된 회원 목록.
+ * 로그인 닉네임으로는 찾지 않는다(서버도 안 찾는다 — 개인정보 최소 처리).
+ */
 export async function searchUsers(q: string, signal?: AbortSignal): Promise<AdminUser[]> {
   const query = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
   const response = await adminRequest<{ users: AdminUser[] }>(`/admin/users${query}`, { signal })
@@ -290,6 +294,14 @@ export async function searchUsers(q: string, signal?: AbortSignal): Promise<Admi
 
 export function fetchUser(userId: number, signal?: AbortSignal): Promise<AdminUser> {
   return adminRequest<AdminUser>(`/admin/users/${userId}`, { signal })
+}
+
+/**
+ * 로그인(카카오/Apple) 닉네임 원문 열람. 실명일 수 있는 값이라 버튼을 눌렀을 때만 부르고 다시 보내지 않는다(retries 0).
+ * 이 기능 전 서버면 404(경로 없음) — 화면은 "서버 업데이트 후 사용 가능"으로 안내한다.
+ */
+export function revealLoginName(userId: number): Promise<AdminLoginName> {
+  return adminRequest<AdminLoginName>(`/admin/users/${userId}/login-name`, { retries: 0 })
 }
 
 /** 이용 정지. 정지된 회원은 로그인·조회는 되지만 제보·신고·문의·닉네임 변경이 막힌다. 사유 필수. */

@@ -101,3 +101,21 @@ export function reportCategoryLabel(category: ReportCategory, customLabel: strin
 export function reportCategoryColor(category: ReportCategory): string {
   return REPORT_CATEGORIES.find((item) => item.key === category)?.color ?? '#64748B'
 }
+
+/**
+ * 관리자 화면에서 회원을 가리키는 한 줄: "앱 표시 이름 · 회원 번호". 로그인(카카오/Apple) 닉네임 원문은 쓰지 않는다
+ * (개인정보 보호법 제3조 최소 처리 — 원문은 회원 카드의 "로그인 닉네임 보기"로만).
+ * - 표시 이름이 없으면(예전 서버가 원문만 보낸 경우 등) 이름 없이 회원 번호만.
+ * - 회원 번호를 아직 안 보내는 서버면 #id, id 도 없으면 이름만(둘 다 없으면 fallback).
+ */
+export function formatMemberRef(
+  displayName: string | null | undefined,
+  memberCode: string | null | undefined,
+  id: number | null | undefined,
+  fallback = '알 수 없음',
+): string {
+  const code = memberCode ? memberCode : id !== null && id !== undefined ? `#${id}` : null
+  const name = displayName?.trim() ? displayName.trim() : null
+  if (name && code) return `${name} · ${code}`
+  return name ?? code ?? fallback
+}

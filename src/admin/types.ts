@@ -55,10 +55,15 @@ export interface AdminReport {
   endsAt: string
   createdAt: string
   authorId: number | null
-  /** 로그인(카카오/Apple) 닉네임 원문. 검토용이라 관리자 화면에만 온다. */
-  authorNickname: string | null
-  /** 앱 사용자에게 보이는 이름(앱 닉네임 또는 가린 이름). 앱 닉네임 기능 전 서버는 없음. */
+  /**
+   * 화면에 쓰지 않는다. 예전 서버는 로그인(카카오/Apple) 닉네임 원문을, 새 서버는 authorDisplayName 과 같은 값을 보낸다
+   * (개인정보 최소 처리 — 원문은 회원 카드의 "로그인 닉네임 보기"로만).
+   */
+  authorNickname?: string | null
+  /** 앱 사용자에게 보이는 이름(앱 닉네임 또는 가린 이름 "홍**"). 앱 닉네임 기능 전 서버는 없음. */
   authorDisplayName?: string | null
+  /** 작성자 공개 회원 번호(K7Q2M9XA4D). 로그인 닉네임 가리기 전 서버는 없다 — 그때는 #id. */
+  authorMemberCode?: string | null
   flagCount: number
   moderationNote: string | null
   reviewedAt: string | null
@@ -67,14 +72,23 @@ export interface AdminReport {
 export interface AdminReportFlag {
   id: number
   reason: FlagReason
-  reporterNickname: string | null
+  /** 화면에 쓰지 않는다. 예전 서버는 로그인 닉네임 원문, 새 서버는 reporterDisplayName 과 같은 값. */
+  reporterNickname?: string | null
   createdAt: string
+  /** 아래 셋은 로그인 닉네임 가리기 이후 서버만 보낸다. 없으면 신고자 이름 없이 보여 준다. */
+  reporterId?: number | null
+  /** 앱 닉네임 또는 가린 이름("홍**") */
+  reporterDisplayName?: string | null
+  reporterMemberCode?: string | null
 }
 
 /** 댓글 상태(hongikon-be `ReportCommentStatus`). 공개 목록에는 VISIBLE 만 나간다. */
 export type AdminCommentStatus = 'VISIBLE' | 'HIDDEN' | 'DELETED'
 
-/** `GET /admin/reports/{id}/comments` 의 한 줄(`AdminCommentResponse`). 숨김·삭제 포함, 작성자 id·로그인 닉네임 원문. */
+/**
+ * `GET /admin/reports/{id}/comments` 의 한 줄(`AdminCommentResponse`). 숨김·삭제 포함.
+ * 작성자는 표시 이름 + 회원 번호로만 보여 준다 — authorNickname(로그인 닉네임 원문일 수 있음)은 화면에 쓰지 않는다.
+ */
 export interface AdminComment {
   id: number
   reportId: number
@@ -83,8 +97,11 @@ export interface AdminComment {
   content: string
   status: AdminCommentStatus
   authorId: number
-  authorNickname: string | null
+  /** 화면에 쓰지 않는다(예전 서버는 로그인 닉네임 원문). */
+  authorNickname?: string | null
   authorDisplayName: string | null
+  /** 작성자 공개 회원 번호. 서버가 아직 안 보내면 #id. */
+  authorMemberCode?: string | null
   flagCount: number
   /** 사유별 신고 수. 예: { SPAM: 2, PRIVACY: 1 } */
   flagReasons: Partial<Record<FlagReason, number>>
@@ -97,21 +114,35 @@ export interface AdminFeedback {
   content: string
   contact: string | null
   userId: number | null
-  userNickname: string | null
+  /** 화면에 쓰지 않는다. 예전 서버는 로그인 닉네임 원문, 새 서버는 userDisplayName 과 같은 값. */
+  userNickname?: string | null
   status: FeedbackStatus
   createdAt: string
   resolvedAt: string | null
+  /** 작성자 표시 이름(앱 닉네임 또는 "홍**")·회원 번호. 로그인 닉네임 가리기 전 서버는 없다. */
+  userDisplayName?: string | null
+  userMemberCode?: string | null
 }
 
 export type UserStatus = 'ACTIVE' | 'SUSPENDED'
 
-/** `GET /admin/users` 한 줄(백엔드 `AdminUserResponse`). 연락처는 오지 않는다. */
+/**
+ * `GET /admin/users` 한 줄(백엔드 `AdminUserResponse`). 연락처·로그인 닉네임 원문은 오지 않는다(개인정보 최소 처리) —
+ * 원문은 `revealLoginName`(GET /admin/users/{id}/login-name)으로만 본다.
+ */
 export interface AdminUser {
   id: number
   /** 공개 회원 번호(영문 대문자·숫자 10자리, 예: K7Q2M9XA4D). 회원 번호를 내려 주기 전 서버면 없다 — 그때는 #id 를 보여 준다. */
   memberCode?: string | null
-  /** 로그인(카카오/Apple) 닉네임 원문 */
-  nickname: string
+  /** 화면에 쓰지 않는다. 예전 서버는 로그인 닉네임 원문, 새 서버는 displayName 과 같은 값. */
+  nickname?: string | null
+  /** 앱 사용자에게 보이는 이름(앱 닉네임, 없으면 가린 이름 "홍**"). */
+  displayName?: string | null
+  /**
+   * 회원이 직접 정한 앱 닉네임. 없으면 null(→ 카드에 "앱 닉네임 없음"). 키 자체가 없으면 로그인 닉네임 가리기 전
+   * 서버라 앱 닉네임 유무를 알 수 없다.
+   */
+  appNickname?: string | null
   socialType: 'KAKAO' | 'GOOGLE' | 'APPLE' | string
   role: 'USER' | 'ADMIN' | string
   status: UserStatus
@@ -123,6 +154,13 @@ export interface AdminUser {
    * 해당 없거나 그 기능 전 서버면 null/없음.
    */
   priorHistory?: AdminUserPriorHistory | null
+}
+
+/** `GET /admin/users/{id}/login-name` — 로그인(카카오/Apple) 닉네임 원문. 버튼을 눌렀을 때만 부른다. */
+export interface AdminLoginName {
+  userId: number
+  loginNickname: string
+  socialType: string
 }
 
 export interface AdminUserPriorHistory {

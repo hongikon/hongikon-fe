@@ -4,6 +4,7 @@ import type {
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
+  AdminLoginName,
   AdminUser,
   AdminOverview,
   AdminReport,
@@ -33,6 +34,42 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** 서버 DisplayNames.mask 와 같은 규칙: "홍길동" → "홍**", 한 글자면 "홍*". */
+function mask(name: string): string {
+  const chars = Array.from(name.trim())
+  if (chars.length === 0) return '익명'
+  return chars[0] + '*'.repeat(Math.max(1, chars.length - 1))
+}
+
+/**
+ * 목업 회원 원장. 로그인 닉네임 원문(loginNickname)은 여기에만 두고 목록·상세 응답에는 싣지 않는다 — 실제 서버처럼
+ * `/admin/users/{id}/login-name` 으로만 돌려준다.
+ */
+const members: Record<number, { loginNickname: string; appNickname: string | null; memberCode: string }> = {
+  1: { loginNickname: '김운영', appNickname: '운영자', memberCode: 'Q4M8ZT2KXA' },
+  3: { loginNickname: '박부운', appNickname: null, memberCode: '7HC3P9WD1N' },
+  7: { loginNickname: '홍길동', appNickname: '와우', memberCode: 'K7Q2M9XA4D' },
+  12: { loginNickname: '광고계정', appNickname: '광고봇', memberCode: 'B0RT5YV8LE' },
+  15: { loginNickname: '이마포', appNickname: '와우산고양이', memberCode: 'M2X9QWER7T' },
+  21: { loginNickname: '박광고', appNickname: null, memberCode: 'Z8N4KD0P3S' },
+  31: { loginNickname: '정붕어', appNickname: '붕어빵헌터', memberCode: 'H5T1BB7LQ2' },
+  32: { loginNickname: '한밴드', appNickname: '브레멘', memberCode: 'R3V6NM2C8E' },
+  40: { loginNickname: '오지나', appNickname: null, memberCode: 'P9W2EX5U1J' },
+  41: { loginNickname: '홍대생', appNickname: '홍대생1', memberCode: 'C4L8YG6T0A' },
+  42: { loginNickname: '밤공대', appNickname: '밤샘공대생', memberCode: 'U7D3HS9K2F' },
+}
+
+/** 앱에 보이는 이름(앱 닉네임, 없으면 가린 로그인 닉네임). 서버 User.getDisplayName 과 같다. */
+function displayNameOf(id: number | null): string | null {
+  if (id === null) return null
+  const member = members[id]
+  return member ? member.appNickname ?? mask(member.loginNickname) : null
+}
+
+function memberCodeOf(id: number | null): string | null {
+  return id === null ? null : members[id]?.memberCode ?? null
+}
+
 function baseReport(partial: Partial<AdminReport> & Pick<AdminReport, 'id' | 'status' | 'title'>): AdminReport {
   return {
     category: 'EVENT',
@@ -47,7 +84,6 @@ function baseReport(partial: Partial<AdminReport> & Pick<AdminReport, 'id' | 'st
     endsAt: at(120),
     createdAt: at(-45),
     authorId: 7,
-    authorNickname: '와우산다람쥐',
     flagCount: 0,
     moderationNote: null,
     reviewedAt: null,
@@ -55,8 +91,15 @@ function baseReport(partial: Partial<AdminReport> & Pick<AdminReport, 'id' | 'st
   }
 }
 
-function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id' | 'nickname'>): AdminUser {
+/** 새 서버 응답 모양: 작성자는 표시 이름 + 회원 번호, authorNickname 은 표시 이름과 같은 값(구버전 화면 호환 키). */
+function reportResponse(report: AdminReport): AdminReport {
+  const name = displayNameOf(report.authorId)
+  return { ...report, authorNickname: name, authorDisplayName: name, authorMemberCode: memberCodeOf(report.authorId) }
+}
+
+function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id'>): AdminUser {
   return {
+    memberCode: memberCodeOf(partial.id),
     socialType: 'KAKAO',
     role: 'USER',
     status: 'ACTIVE',
@@ -71,18 +114,31 @@ function baseUser(partial: Partial<AdminUser> & Pick<AdminUser, 'id' | 'nickname
 const MOCK_SELF_ID = 1
 
 const users: AdminUser[] = [
-  baseUser({ id: MOCK_SELF_ID, memberCode: 'Q4M8ZT2KXA', nickname: '운영자', role: 'ADMIN' }),
-  baseUser({ id: 3, memberCode: '7HC3P9WD1N', nickname: '부운영자', role: 'ADMIN', socialType: 'APPLE' }),
-  baseUser({ id: 7, memberCode: 'K7Q2M9XA4D', nickname: '와우산다람쥐' }),
-  baseUser({ id: 12, memberCode: 'B0RT5YV8LE', nickname: '광고봇', status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
+  baseUser({ id: MOCK_SELF_ID, role: 'ADMIN' }),
+  baseUser({ id: 3, role: 'ADMIN', socialType: 'APPLE' }),
+  baseUser({ id: 7 }),
+  baseUser({ id: 12, status: 'SUSPENDED', suspendedReason: '광고 제보 반복', suspendedAt: at(-60 * 5) }),
+  baseUser({ id: 15 }),
+  baseUser({ id: 21 }),
+  baseUser({ id: 31, socialType: 'APPLE' }),
+  baseUser({ id: 32 }),
+  baseUser({ id: 40 }),
+  baseUser({ id: 41 }),
+  baseUser({ id: 42 }),
 ]
+
+/** 새 서버 응답 모양: 로그인 닉네임 원문 없이 표시 이름·앱 닉네임만. nickname 은 표시 이름과 같은 값(구버전 화면 호환 키). */
+function userResponse(user: AdminUser): AdminUser {
+  const name = displayNameOf(user.id)
+  return { ...user, nickname: name, displayName: name, appNickname: members[user.id]?.appNickname ?? null }
+}
 
 const reports: AdminReport[] = [
   baseReport({
     id: 31, status: 'PENDING', category: 'FOOD_TRUCK', title: '홍문관 앞 붕어빵 트럭 왔어요',
     content: '팥/슈크림 3개 2천원. 줄이 좀 깁니다. 5시까지 있는다고 하네요.',
     buildingId: 1, buildingName: '홍문관(R동)', floor: null, lat: 37.5513, lng: 126.9245,
-    startsAt: at(-20), endsAt: at(150), createdAt: at(-18), authorNickname: '붕어빵헌터',
+    startsAt: at(-20), endsAt: at(150), createdAt: at(-18), authorId: 31,
     // 사진 썸네일 확인용(개발 목업 전용 외부 이미지)
     imageUrl: 'https://picsum.photos/seed/hongikon-report/800/600',
     imageUrls: [
@@ -94,7 +150,7 @@ const reports: AdminReport[] = [
   baseReport({
     id: 30, status: 'PENDING', category: 'BOOTH', title: '학생회관 1층 동아리 홍보 부스',
     content: '밴드 동아리 신입 부원 모집합니다! 간식 나눠드려요.',
-    buildingId: 5, buildingName: '학생회관(S동)', floor: 1, createdAt: at(-65), authorNickname: '브레멘',
+    buildingId: 5, buildingName: '학생회관(S동)', floor: 1, createdAt: at(-65), authorId: 32,
   }),
   baseReport({
     // 예정 제보: 내일 11:00~15:00(미리 올림). 승인해도 시작 시각에 지도에 뜬다.
@@ -105,7 +161,7 @@ const reports: AdminReport[] = [
   baseReport({
     id: 29, status: 'PENDING', category: 'ETC', customCategoryLabel: '분실물', title: '에어팟 케이스 주웠습니다',
     content: 'T동 1층 엘리베이터 앞에서 흰색 에어팟 프로 케이스 주웠어요. 과사에 맡겨둘게요.',
-    startsAt: at(-300), endsAt: at(-60), createdAt: at(-310), authorId: null, authorNickname: null,
+    startsAt: at(-300), endsAt: at(-60), createdAt: at(-310), authorId: null,
   }),
   baseReport({
     id: 27, status: 'ACTIVE', category: 'PERFORMANCE', title: '와우 스테이지 버스킹',
@@ -121,7 +177,7 @@ const reports: AdminReport[] = [
   baseReport({
     id: 22, status: 'HIDDEN', category: 'FOOD_TRUCK', title: '무료 커피 나눔 (광고 아님)',
     content: '링크 들어가서 회원가입하면 쿠폰 드려요 → bit.ly/xxxx', flagCount: 4,
-    createdAt: at(-400), authorNickname: 'coffee_event_01',
+    createdAt: at(-400), authorId: 21,
   }),
   baseReport({
     id: 19, status: 'REJECTED', category: 'ETC', customCategoryLabel: '홍보', title: '과외 구합니다',
@@ -134,8 +190,7 @@ function baseComment(partial: Partial<AdminComment> & Pick<AdminComment, 'id' | 
   return {
     status: 'VISIBLE',
     authorId: 12,
-    authorNickname: '김홍익',
-    authorDisplayName: '김**',
+    authorDisplayName: '광고봇',
     flagCount: 0,
     flagReasons: {},
     createdAt: at(-30),
@@ -148,49 +203,65 @@ function baseComment(partial: Partial<AdminComment> & Pick<AdminComment, 'id' | 
 const comments: AdminComment[] = [
   baseComment({ id: 101, reportId: 25, content: '지금 3층 엘리베이터 앞까지 줄 있어요', createdAt: at(-40) }),
   baseComment({
-    id: 102, reportId: 25, content: '자리 아직 남았나요?', authorId: 15, authorNickname: '이마포',
+    id: 102, reportId: 25, content: '자리 아직 남았나요?', authorId: 15,
     authorDisplayName: '와우산고양이', createdAt: at(-25),
   }),
   baseComment({
     id: 103, reportId: 25, content: '010-1234-5678 로 연락 주세요 자리 팔아요', status: 'HIDDEN', authorId: 21,
-    authorNickname: '박광고', authorDisplayName: '박**', flagCount: 3, flagReasons: { SPAM: 2, PRIVACY: 1 },
+    authorDisplayName: '박**', flagCount: 3, flagReasons: { SPAM: 2, PRIVACY: 1 },
     createdAt: at(-15),
   }),
   baseComment({
-    id: 104, reportId: 25, parentId: 101, content: '저도 지금 줄 서 있어요', authorId: 15, authorNickname: '이마포',
+    id: 104, reportId: 25, parentId: 101, content: '저도 지금 줄 서 있어요', authorId: 15,
     authorDisplayName: '와우산고양이', createdAt: at(-10),
   }),
   baseComment({ id: 105, reportId: 27, content: '신청곡 받나요?', createdAt: at(-5) }),
 ]
 
+/** 신고. 응답 때 flagResponse 로 신고자 표시 이름·회원 번호를 채운다. reporterId null 은 서버에 없는 경우(방어 코드 확인용). */
 const flags: Record<number, AdminReportFlag[]> = {
-  27: [{ id: 11, reason: 'FALSE_INFO', reporterNickname: '지나가던학생', createdAt: at(-100) }],
+  27: [{ id: 11, reason: 'FALSE_INFO', reporterId: 40, createdAt: at(-100) }],
   22: [
-    { id: 7, reason: 'SPAM', reporterNickname: '홍대생1', createdAt: at(-390) },
-    { id: 8, reason: 'SPAM', reporterNickname: null, createdAt: at(-380) },
-    { id: 9, reason: 'INAPPROPRIATE', reporterNickname: '와우산다람쥐', createdAt: at(-370) },
-    { id: 10, reason: 'ETC', reporterNickname: '밤샘공대생', createdAt: at(-360) },
+    { id: 7, reason: 'SPAM', reporterId: 41, createdAt: at(-390) },
+    { id: 8, reason: 'SPAM', reporterId: null, createdAt: at(-380) },
+    { id: 9, reason: 'INAPPROPRIATE', reporterId: 7, createdAt: at(-370) },
+    { id: 10, reason: 'ETC', reporterId: 42, createdAt: at(-360) },
   ],
+}
+
+function flagResponse(flag: AdminReportFlag): AdminReportFlag {
+  const id = flag.reporterId ?? null
+  const name = displayNameOf(id) ?? '익명'
+  return { ...flag, reporterNickname: name, reporterDisplayName: name, reporterMemberCode: memberCodeOf(id) }
+}
+
+function commentResponse(comment: AdminComment): AdminComment {
+  return { ...comment, authorNickname: comment.authorDisplayName, authorMemberCode: memberCodeOf(comment.authorId) }
+}
+
+function feedbackResponse(item: AdminFeedback): AdminFeedback {
+  const name = displayNameOf(item.userId)
+  return { ...item, userNickname: name, userDisplayName: name, userMemberCode: memberCodeOf(item.userId) }
 }
 
 const feedback: AdminFeedback[] = [
   {
-    id: 14, status: 'OPEN', createdAt: at(-15), resolvedAt: null, userId: 7, userNickname: '와우산다람쥐',
+    id: 14, status: 'OPEN', createdAt: at(-15), resolvedAt: null, userId: 7,
     contact: null,
     content: '지도에서 제4공학관 입구 위치가 실제랑 달라요. 정문 쪽 입구가 빠져 있습니다.',
   },
   {
-    id: 13, status: 'OPEN', createdAt: at(-240), resolvedAt: null, userId: null, userNickname: null,
+    id: 13, status: 'OPEN', createdAt: at(-240), resolvedAt: null, userId: null,
     contact: 'student@g.hongik.ac.kr',
     content: '컴퓨터공학과 공지가 소식 탭에 안 올라오는 것 같아요. 어제 올라온 수강신청 공지가 없습니다.',
   },
   {
-    id: 12, status: 'OPEN', createdAt: at(-1440), resolvedAt: null, userId: 21, userNickname: '밤샘공대생',
+    id: 12, status: 'OPEN', createdAt: at(-1440), resolvedAt: null, userId: 21,
     contact: '010-0000-0000',
     content: '다크모드 지원 계획 있나요?',
   },
   {
-    id: 9, status: 'RESOLVED', createdAt: at(-4000), resolvedAt: at(-3000), userId: 3, userNickname: '브레멘',
+    id: 9, status: 'RESOLVED', createdAt: at(-4000), resolvedAt: at(-3000), userId: 3,
     contact: null,
     content: '알림이 두 번씩 와요.',
   },
@@ -242,18 +313,18 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     const list = reports
       .filter((report) => report.status !== 'DELETED' && (status === 'ALL' || report.status === status))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    return { reports: list.map((report) => ({ ...report })) }
+    return { reports: list.map(reportResponse) }
   }
 
   const flagMatch = pathname.match(/^\/admin\/reports\/(\d+)\/flags$/)
   if (method === 'GET' && flagMatch) {
-    return { flags: flags[Number(flagMatch[1])] ?? [] }
+    return { flags: (flags[Number(flagMatch[1])] ?? []).map(flagResponse) }
   }
 
   const commentListMatch = pathname.match(/^\/admin\/reports\/(\d+)\/comments$/)
   if (method === 'GET' && commentListMatch) {
     const reportId = Number(commentListMatch[1])
-    return { comments: comments.filter((comment) => comment.reportId === reportId).map((comment) => ({ ...comment })) }
+    return { comments: comments.filter((comment) => comment.reportId === reportId).map(commentResponse) }
   }
 
   const commentMatch = pathname.match(/^\/admin\/comments\/(\d+)$/)
@@ -266,7 +337,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     }
     comment.status = status
     comment.reviewedAt = at(0)
-    return { ...comment }
+    return commentResponse(comment)
   }
 
   const reportMatch = pathname.match(/^\/admin\/reports\/(\d+)$/)
@@ -285,37 +356,54 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
       report.imageUrl = null
       report.imageUrls = []
     }
-    return { ...report }
+    return reportResponse(report)
   }
 
   if (method === 'GET' && pathname === '/admin/users') {
-    // 백엔드 AdminUserService.search 와 같은 규칙: 회원 번호(대소문자 무시) + 숫자면 id, 아니면 닉네임 일부.
+    // 백엔드 AdminUserService.search 와 같은 규칙: 회원 번호(대소문자 무시) + 숫자면 id, 아니면 앱 닉네임 일부.
+    // 로그인 닉네임으로는 찾지 않는다(개인정보 최소 처리).
     const q = (params.get('q') ?? '').trim()
-    if (!q) return { users: users.filter((user) => user.status === 'SUSPENDED') }
+    if (!q) return { users: users.filter((user) => user.status === 'SUSPENDED').map(userResponse) }
     const code = q.toUpperCase()
     const byCode = /^[A-Z0-9]{10}$/.test(code) ? users.filter((user) => user.memberCode === code) : []
     const rest = /^\d+$/.test(q)
       ? users.filter((user) => user.id === Number(q))
-      : users.filter((user) => user.nickname.includes(q))
-    return { users: [...byCode, ...rest.filter((user) => !byCode.includes(user))] }
+      : users.filter((user) => members[user.id]?.appNickname?.includes(q))
+    return { users: [...byCode, ...rest.filter((user) => !byCode.includes(user))].map(userResponse) }
   }
+  const loginNameMatch = pathname.match(/^\/admin\/users\/(\d+)\/login-name$/)
+  if (method === 'GET' && loginNameMatch) {
+    const id = Number(loginNameMatch[1])
+    const member = members[id]
+    if (!users.some((user) => user.id === id) || !member) {
+      throw new ApiError(404, '요청한 정보를 찾을 수 없습니다.', undefined, '존재하지 않는 회원입니다.')
+    }
+    const user = users.find((item) => item.id === id)
+    const response: AdminLoginName = {
+      userId: id,
+      loginNickname: member.loginNickname,
+      socialType: user?.socialType ?? 'KAKAO',
+    }
+    return response
+  }
+
   const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend|grant-admin|revoke-admin))?$/)
   if (userMatch) {
     const user = users.find((item) => item.id === Number(userMatch[1]))
     if (!user) throw notFound()
-    if (method === 'GET' && !userMatch[3]) return { ...user }
+    if (method === 'GET' && !userMatch[3]) return userResponse(user)
     if (method === 'POST' && userMatch[3] === 'suspend') {
       if (user.role === 'ADMIN') throw new ApiError(400, '관리자 계정은 정지할 수 없습니다.')
       user.status = 'SUSPENDED'
       user.suspendedReason = typeof body.reason === 'string' ? body.reason : null
       user.suspendedAt = at(0)
-      return { ...user }
+      return userResponse(user)
     }
     if (method === 'POST' && userMatch[3] === 'unsuspend') {
       user.status = 'ACTIVE'
       user.suspendedReason = null
       user.suspendedAt = null
-      return { ...user }
+      return userResponse(user)
     }
     // 백엔드 AdminUserService.grantAdmin / revokeAdmin 과 같은 규칙·문구.
     if (method === 'POST' && userMatch[3] === 'grant-admin') {
@@ -323,14 +411,14 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
         throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, '정지된 회원은 관리자로 지정할 수 없어요. 먼저 정지를 해제해 주세요.')
       }
       user.role = 'ADMIN'
-      return { ...user }
+      return userResponse(user)
     }
     if (method === 'POST' && userMatch[3] === 'revoke-admin') {
       if (user.id === MOCK_SELF_ID) {
         throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, '자기 자신의 관리자 권한은 해제할 수 없어요.')
       }
       user.role = 'USER'
-      return { ...user }
+      return userResponse(user)
     }
   }
 
@@ -339,7 +427,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     const list = feedback
       .filter((item) => status === 'ALL' || item.status === status)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    return { feedback: list.map((item) => ({ ...item })) }
+    return { feedback: list.map(feedbackResponse) }
   }
 
   const feedbackMatch = pathname.match(/^\/admin\/feedback\/(\d+)$/)
@@ -348,7 +436,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     if (!item) throw notFound()
     item.status = body.status as FeedbackStatus
     item.resolvedAt = item.status === 'RESOLVED' ? at(0) : null
-    return { ...item }
+    return feedbackResponse(item)
   }
 
   if (method === 'POST' && pathname === '/crawler/trigger') {

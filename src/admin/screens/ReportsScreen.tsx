@@ -9,6 +9,7 @@ import {
   FLAG_REASON_LABEL,
   REPORT_STATUS_LABEL,
   formatDateTime,
+  formatMemberRef,
   formatRange,
   formatRelative,
   parseServerDate,
@@ -522,7 +523,9 @@ function ReportCard({
                 <View key={flag.id} style={styles.flagRow}>
                   <Badge label={FLAG_REASON_LABEL[flag.reason] ?? flag.reason} tone="danger" />
                   <Text style={styles.meta}>
-                    {flag.reporterNickname ?? '익명'} · {formatDateTime(flag.createdAt)}
+                    {/* 신고자는 표시 이름 + 회원 번호만. reporterNickname(예전 서버는 로그인 닉네임 원문)은 쓰지 않는다. */}
+                    {formatMemberRef(flag.reporterDisplayName, flag.reporterMemberCode, flag.reporterId, '신고자')} ·{' '}
+                    {formatDateTime(flag.createdAt)}
                   </Text>
                 </View>
               ))}
@@ -597,11 +600,12 @@ function ReportCard({
   )
 }
 
-/** 작성자: 로그인 닉네임 원문, 앱에 보이는 이름이 다르면 괄호로 함께. */
+/**
+ * 작성자: 앱에 보이는 이름 · 회원 번호(없으면 #id). 로그인 닉네임 원문은 보여 주지 않는다(개인정보 최소 처리) —
+ * 필요하면 "작성자 관리" → "로그인 닉네임 보기". 예전 서버의 authorNickname 은 원문이라 쓰지 않는다.
+ */
 function authorText(report: AdminReport): string {
-  const raw = report.authorNickname ?? (report.authorId !== null ? `사용자 #${report.authorId}` : '알 수 없음')
-  const shown = report.authorDisplayName
-  return shown && shown !== report.authorNickname ? `${raw} (앱 표시: ${shown})` : raw
+  return formatMemberRef(report.authorDisplayName, report.authorMemberCode, report.authorId)
 }
 
 function Fact({
