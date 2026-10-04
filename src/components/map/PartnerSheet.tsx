@@ -16,6 +16,7 @@ import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
 import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
 import { openExternalUrl } from "../../utils/openExternalUrl";
+import { openNaverMapPlace } from "../../utils/openNaverMap";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -235,6 +236,20 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
           </View>
         )}
 
+        {/* 영업시간·메뉴·리뷰는 네이버 지도 장소 화면에서 본다(크롤링하지 않고 그 화면으로 보내기만 한다). */}
+        <TouchableOpacity
+          style={styles.naverBtn}
+          onPress={() => openNaverMapPlace(partner)}
+          accessibilityRole="link"
+          accessibilityLabel={`${partner.name} 네이버 지도에서 영업시간과 메뉴 보기`}
+        >
+          <View style={styles.naverBadge}>
+            <Text style={styles.naverBadgeText}>N</Text>
+          </View>
+          <Text style={styles.naverText}>네이버 지도에서 영업시간·메뉴 보기</Text>
+          <Ionicons name="open-outline" size={14} color={COLORS.textTertiary} />
+        </TouchableOpacity>
+
         {partner.link && (
           <TouchableOpacity
             style={styles.linkBtn}
@@ -397,6 +412,27 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   rowText: { fontFamily: FONTS.regular, flex: 1, fontSize: 13, lineHeight: 19, color: COLORS.textSecondary },
+  naverBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.fill,
+  },
+  // 네이버 지도 쪽으로 넘어간다는 걸 알아보게 하는 작은 'N' 표시(네이버 로고 이미지는 쓰지 않는다).
+  naverBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    backgroundColor: "#03C75A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  naverBadgeText: { color: COLORS.white, fontFamily: FONTS.bold, fontSize: 12, lineHeight: 14 },
+  naverText: { flex: 1, fontSize: 13.5, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
   linkBtn: {
     flexDirection: "row",
     alignItems: "center",
