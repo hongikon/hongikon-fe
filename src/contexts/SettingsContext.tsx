@@ -434,25 +434,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, subscriptionAlert: !prev.subscriptionAlert }))
   }, [])
 
+  /** 알림 분야 하나를 화면(로컬 설정)에서 켜거나 끈다. */
+  const applyLocalCategory = useCallback((cat: CategoryKey, enabled: boolean) => {
+    setSettings((prev) => {
+      const without = prev.alertCategories.filter((c) => c !== cat)
+      return { ...prev, alertCategories: enabled ? [...without, cat] : without }
+    })
+  }, [])
+
   /**
-   * 화면은 바로 바꾸고(낙관적 반영) 서버 저장은 뒤따른다. 서버 호출은 setSettings 갱신 함수
-   * 밖에서 한다 — 갱신 함수는 순수해야 하고, React 가 두 번 부르면 요청도 두 번 나간다.
+   * 알림 분야 하나의 새 값을 서버로 보낸다(로그인 상태만). 토글과 설정 초기화가 같이 쓴다.
+   * 보내기 전 pending 에 적어 두어, 그 사이 서버 값을 다시 받아도(토큰 재발급 등) 이 값이 이긴다.
    */
-  const toggleAlertCategory = useCallback(
-    (cat: CategoryKey) => {
-      const nextEnabled = !settingsRef.current.alertCategories.includes(cat)
-      const applyLocal = (enabled: boolean) =>
-        setSettings((prev) => {
-          const without = prev.alertCategories.filter((c) => c !== cat)
-          return { ...prev, alertCategories: enabled ? [...without, cat] : without }
-        })
-
-      applyLocal(nextEnabled)
-      if (!accessToken) return
-
+  const syncAlertCategory = useCallback(
+    (cat: CategoryKey, nextEnabled: boolean) => {
+      const token = accessTokenRef.current
+      if (!token) return
       const pending = pendingCategoryChangesRef.current
       pending.set(cat, nextEnabled)
-      setNotificationCategoryEnabled(cat, nextEnabled, accessToken)
+      setNotificationCategoryEnabled(cat, nextEnabled, token)
         .then(() => {
           if (pending.get(cat) === nextEnabled) pending.delete(cat)
         })
@@ -465,12 +465,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           // 서버가 거절한 변경(권한·입력 오류)은 다시 보내도 같으니 화면을 서버 상태로 되돌린다.
           if (pending.get(cat) === nextEnabled) {
             pending.delete(cat)
-            applyLocal(!nextEnabled)
+            applyLocalCategory(cat, !nextEnabled)
           }
           if (__DEV__) console.warn('알림 분야 설정이 거절되었습니다:', error)
         })
     },
-    [accessToken],
+    [applyLocalCategory],
+  )
+
+  /**
+   * 화면은 바로 바꾸고(낙관적 반영) 서버 저장은 뒤따른다. 서버 호출은 setSettings 갱신 함수
+   * 밖에서 한다 — 갱신 함수는 순수해야 하고, React 가 두 번 부르면 요청도 두 번 나간다.
+   */
+  const toggleAlertCategory = useCallback(
+    (cat: CategoryKey) => {
+      const nextEnabled = !settingsRef.current.alertCategories.includes(cat)
+      applyLocalCategory(cat, nextEnabled)
+      syncAlertCategory(cat, nextEnabled)
+    },
+    [applyLocalCategory, syncAlertCategory],
   )
 
   /**
@@ -547,9 +560,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     // 로그인 상태면 제보 알림도 기본값으로 서버에 올린다(못 보내면 dirty 로 남겨 다시 보낸다).
     // 게스트는 제보 알림을 바꿀 수 없고 계정 값을 덮으면 안 되니 dirty 로 두지 않는다 — 로그인하면 서버 값을 따른다.
     const loggedIn = Boolean(accessTokenRef.current)
+    // 알림 분야는 기본값(전부 켜짐)으로 돌린다. 로그인 상태면 지금 꺼진 분야마다 켜기를 서버로 보낸다(토글과 같은 길) —
+    // 예전엔 화면에서만 켜고 서버엔 안 보내, 토큰 재발급·재실행 때 서버 값(꺼짐)이 다시 덮었다. 꺼짐으로 남아 있던
+    // 미전송 변경도 켜기로 덮인다. 남는 미전송 값은 모두 '켜짐'(초기화와 같은 값)이라 그대로 두어야 아직 못 보낸
+    // 켜기가 재연결 때 마저 나간다. 게스트는 서버에 보낼 게 없어 비운다.
+    const disabledCategories = DEFAULT_SETTINGS.alertCategories.filter(
+      (cat) => !settingsRef.current.alertCategories.includes(cat),
+    )
+    if (!loggedIn) pendingCategoryChangesRef.current.clear()
     setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: loggedIn })
-    if (loggedIn) pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
-  }, [queueBoardChange, pushReportAlerts])
+    if (loggedIn) {
+      pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
+      for (const cat of disabledCategories) syncAlertCategory(cat, true)
+    }
+  }, [queueBoardChange, pushReportAlerts, syncAlertCategory])
 
   // 서버 구독 API 가 없다고 이미 판정됐으면 합치기 효과가 돌지 않으므로 기다릴 것도 없다.
   const boardSubscriptionsReady = !isLoggedIn || boardMergeSettled || boardQueue.isUnsupported()
