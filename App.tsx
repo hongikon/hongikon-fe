@@ -9,6 +9,7 @@ import { SettingsProvider } from './src/contexts/SettingsContext'
 import { AuthProvider } from './src/contexts/AuthContext'
 import RootNavigator from './src/navigation/RootNavigator'
 import { navigationRef } from './src/navigation/navigationRef'
+import { WEB_LINKING, formatDocumentTitle } from './src/navigation/linking'
 import { usePushNotifications } from './src/lib/pushNotifications'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
 import UpdateBanner from './src/components/common/UpdateBanner'
@@ -143,7 +144,12 @@ export default function App() {
           {/* 온보딩을 보여줄지 정한 뒤에 설정을 불러온다(순서가 중요 — OnboardingGate 주석). */}
           <OnboardingGate>
           <SettingsProvider>
-            <NavigationContainer ref={navigationRef}>
+            {/* 웹만 화면마다 주소를 붙이고 브라우저 방문 기록과 잇는다(`src/navigation/linking.ts`). */}
+            <NavigationContainer
+              ref={navigationRef}
+              linking={Platform.OS === 'web' ? WEB_LINKING : undefined}
+              documentTitle={{ formatter: (_options, route) => formatDocumentTitle(route?.name, route?.params) }}
+            >
               <PushNotificationsBridge />
               <RootNavigator />
               {/* 모든 화면 위에 떠야 해서 내비게이터 뒤(위 레이어)에 둔다. 네이티브 Modal 위로는 못 올라간다. */}
