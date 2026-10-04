@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { fetchReportFlags, fetchReports, updateReportStatus } from '../api'
+import { fetchReportFlags, fetchReports, updateReportStatus, type ReportDateRange } from '../api'
 import {
   FLAG_REASON_LABEL,
   REPORT_STATUS_LABEL,
@@ -38,6 +38,82 @@ const STATUS_TONE: Record<ReportStatus, Tone> = {
 }
 
 type ActionKind = 'approve' | 'reopen' | 'reject' | 'hide' | 'delete'
+
+/**
+ * 탭 값. 서버 상태 필터에 화면 전용 'ENDED' 를 더한다 — 서버는 승인한 제보를 끝나는 시각이 지나도 ACTIVE 로 두고
+ * 지도 목록(live)에서만 빼기 때문에, '노출 중'은 아직 끝나지 않은 ACTIVE, '종료'는 끝난 ACTIVE 로 나눠 보여 준다.
+ */
+type ScreenFilter = ReportStatusFilter | 'ENDED'
+
+const PERIOD_TABS = [
+  { value: 'all' as const, label: '전체 기간' },
+  { value: 'today' as const, label: '오늘' },
+  { value: 'week' as const, label: '최근 7일' },
+  { value: 'month' as const, label: '최근 30일' },
+  { value: 'day' as const, label: '날짜 지정' },
+]
+
+/** 등록일 기간. 'day' 는 하루를 골라 ‹ › 로 앞뒤 날짜를 넘겨 본다. */
+type Period = 'all' | 'today' | 'week' | 'month' | 'day'
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** ms → 한국 날짜 'yyyy-MM-dd'. */
+function kstDate(ms: number): string {
+  return new Date(ms + KST_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+/** 'yyyy-MM-dd' → '10.5 (일)' */
+function formatDayLabel(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return `${y}.${m}.${d} (${weekday})`
+}
+
+function shiftDay(day: string, delta: number): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d) + delta * DAY_MS).toISOString().slice(0, 10)
+}
+
+/** 기간 → 서버에 보낼 from·to(한국 날짜, 포함). 'all' 은 비운다. */
+function periodRange(period: Period, day: string, now: number = Date.now()): ReportDateRange {
+  const today = kstDate(now)
+  switch (period) {
+    case 'today':
+      return { from: today, to: today }
+    case 'week':
+      return { from: kstDate(now - 6 * DAY_MS), to: today }
+    case 'month':
+      return { from: kstDate(now - 29 * DAY_MS), to: today }
+    case 'day':
+      return { from: day, to: day }
+    default:
+      return {}
+  }
+}
+
+/** 등록일이 기간 안인지(서버가 from·to 를 모를 때 화면에서 거르는 데 쓴다). */
+function inRange(report: AdminReport, range: ReportDateRange): boolean {
+  if (!range.from && !range.to) return true
+  const created = parseServerDate(report.createdAt)
+  if (!created) return true
+  const day = kstDate(created.getTime())
+  return (!range.from || day >= range.from) && (!range.to || day <= range.to)
+}
+
+function isEnded(report: AdminReport, now: number = Date.now()): boolean {
+  const endsAt = parseServerDate(report.endsAt)
+  return !!endsAt && endsAt.getTime() < now
+}
+
+/** 이 탭에 이 제보가 들어가는지(처리 직후 '방금 처리함' 표시에도 쓴다). */
+function belongsTo(report: AdminReport, filter: ScreenFilter): boolean {
+  if (filter === 'ALL') return true
+  if (filter === 'ENDED') return report.status === 'ACTIVE' && isEnded(report)
+  if (filter === 'ACTIVE') return report.status === 'ACTIVE' && !isEnded(report)
+  return report.status === filter
+}
 
 /** 앱 관리 탭에서 처리 전에 묻는 문구. 반려는 사유를 적은 뒤에 묻는다. */
 const ACTION_CONFIRM: Record<ActionKind, { title: string; message: string; destructive?: boolean }> = {
@@ -85,7 +161,9 @@ export default function ReportsScreen({
   /** 관리자 알림으로 연 제보. 목록에 있으면 맨 위로 올려 강조한다. */
   focusReportId?: number | null
 }) {
-  const [filter, setFilter] = useState<ReportStatusFilter>(initialFilter ?? 'PENDING')
+  const [filter, setFilter] = useState<ScreenFilter>(initialFilter ?? 'PENDING')
+  const [period, setPeriod] = useState<Period>('all')
+  const [day, setDay] = useState(() => kstDate(Date.now()))
   const [reports, setReports] = useState<AdminReport[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,8 +173,16 @@ export default function ReportsScreen({
     const controller = new AbortController()
     setLoading(true)
     setError(null)
-    fetchReports(filter, controller.signal)
-      .then((list) => setReports(list))
+    // '종료'는 서버의 ACTIVE 목록에서 끝난 것만, '노출 중'은 아직 끝나지 않은 것만 남긴다.
+    const range = periodRange(period, day)
+    fetchReports(filter === 'ENDED' ? 'ACTIVE' : filter, controller.signal, range)
+      .then((list) =>
+        setReports(
+          list.filter(
+            (item) => inRange(item, range) && (filter === 'ACTIVE' || filter === 'ENDED' ? belongsTo(item, filter) : true),
+          ),
+        ),
+      )
       .catch((err: unknown) => {
         if (isCancelledError(err)) return
         setError(getErrorMessage(err, '제보 목록을 불러오지 못했습니다.'))
@@ -105,9 +191,9 @@ export default function ReportsScreen({
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [filter, reloadKey])
+  }, [filter, period, day, reloadKey])
 
-  const changeFilter = (next: ReportStatusFilter) => {
+  const changeFilter = (next: ScreenFilter) => {
     if (next === filter) return
     setReports(null)
     setFilter(next)
@@ -130,6 +216,7 @@ export default function ReportsScreen({
   const tabs = [
     { value: 'PENDING' as const, label: '승인 대기', count: overview?.reports.pending },
     { value: 'ACTIVE' as const, label: '노출 중' },
+    { value: 'ENDED' as const, label: '종료' },
     { value: 'HIDDEN' as const, label: '숨김', count: overview?.reports.hidden },
     { value: 'REJECTED' as const, label: '반려' },
     { value: 'ALL' as const, label: '전체' },
@@ -143,12 +230,60 @@ export default function ReportsScreen({
         right={<Button label="새로고침" icon="refresh" onPress={() => setReloadKey((key) => key + 1)} loading={loading && !!reports} small />}
       />
       <FilterTabs options={tabs} value={filter} onChange={changeFilter} />
+      {/* 등록일 기간. '날짜 지정'이면 하루씩 ‹ › 로 넘겨 본다(오늘 이후로는 못 간다). */}
+      <FilterTabs
+        options={PERIOD_TABS}
+        value={period}
+        onChange={(next) => {
+          setReports(null)
+          setPeriod(next)
+        }}
+      />
+      {period === 'day' ? (
+        <View style={styles.dayRow}>
+          <Pressable
+            onPress={() => {
+              setReports(null)
+              setDay((d) => shiftDay(d, -1))
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="전날"
+            style={styles.dayArrow}
+          >
+            <Ionicons name="chevron-back" size={18} color={COLORS.primary} />
+          </Pressable>
+          <Text style={styles.dayLabel}>{formatDayLabel(day)} 등록</Text>
+          <Pressable
+            onPress={() => {
+              if (day >= kstDate(Date.now())) return
+              setReports(null)
+              setDay((d) => shiftDay(d, 1))
+            }}
+            disabled={day >= kstDate(Date.now())}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="다음 날"
+            style={[styles.dayArrow, day >= kstDate(Date.now()) && styles.dayArrowDisabled]}
+          >
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {error ? <InlineError message={error} onRetry={() => setReloadKey((key) => key + 1)} style={styles.listError} /> : null}
       {!reports ? (
         loading ? <Loading /> : null
       ) : reports.length === 0 ? (
-        <EmptyState message={filter === 'PENDING' ? '승인 대기 중인 제보가 없습니다.' : '해당하는 제보가 없습니다.'} />
+        <EmptyState
+          message={
+            period !== 'all'
+              ? '이 기간에 등록된 제보가 없습니다.'
+              : filter === 'PENDING'
+                ? '승인 대기 중인 제보가 없습니다.'
+                : '해당하는 제보가 없습니다.'
+          }
+        />
       ) : (
         <View style={styles.list}>
           {withFocusedFirst(reports, focusReportId).map((report) => (
@@ -180,7 +315,7 @@ function ReportCard({
   highlighted = false,
 }: {
   report: AdminReport
-  filter: ReportStatusFilter
+  filter: ScreenFilter
   onUpdated: (report: AdminReport) => void
   highlighted?: boolean
 }) {
@@ -206,7 +341,7 @@ function ReportCard({
   const expired = !!endsAt && endsAt.getTime() < now
   const upcoming = !!startsAt && startsAt.getTime() > now
   /** 필터 탭과 상태가 달라졌다 = 방금 이 화면에서 처리했다. */
-  const movedOut = filter !== 'ALL' && report.status !== filter
+  const movedOut = !belongsTo(report, filter)
 
   const runAction = (kind: ActionKind, noteText?: string) => {
     setPending(kind)
@@ -286,13 +421,22 @@ function ReportCard({
     <Card style={[styles.card, highlighted && styles.cardHighlighted, movedOut && styles.cardMoved]}>
       <View style={styles.cardTop}>
         <View style={styles.badges}>
-          <Badge label={REPORT_STATUS_LABEL[report.status]} tone={STATUS_TONE[report.status]} />
+          {/* 승인됐지만 끝나는 시각이 지난 제보는 지도에 없다 — '노출 중' 대신 '종료'로 보인다. */}
+          {report.status === 'ACTIVE' && expired ? (
+            <Badge label="종료" tone="neutral" />
+          ) : (
+            <Badge label={REPORT_STATUS_LABEL[report.status]} tone={STATUS_TONE[report.status]} />
+          )}
           <View style={[styles.categoryChip, { borderColor: reportCategoryColor(report.category) }]}>
             <Text style={[styles.categoryText, { color: reportCategoryColor(report.category) }]}>
               {reportCategoryLabel(report.category, report.customCategoryLabel)}
             </Text>
           </View>
-          {expired ? <Badge label="이미 종료됨" tone="danger" /> : upcoming ? <Badge label="예정 · 시작 전" tone="info" /> : null}
+          {expired && report.status !== 'ACTIVE' ? (
+            <Badge label="이미 종료됨" tone="danger" />
+          ) : !expired && upcoming ? (
+            <Badge label="예정 · 시작 전" tone="info" />
+          ) : null}
           {movedOut ? <Badge label="방금 처리함" tone="info" /> : null}
         </View>
         <Text style={styles.meta}>#{report.id}</Text>
@@ -481,6 +625,10 @@ function Fact({
 }
 
 const styles = StyleSheet.create({
+  dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 12 },
+  dayArrow: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primarySoft },
+  dayArrowDisabled: { opacity: 0.35 },
+  dayLabel: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary, minWidth: 150, textAlign: 'center' },
   listError: { marginBottom: 12 },
   list: { gap: 12 },
   card: { gap: 10 },

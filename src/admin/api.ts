@@ -229,11 +229,21 @@ export function fetchOverview(signal?: AbortSignal): Promise<AdminOverview> {
 
 // ── 제보 검토 ─────────────────────────────────────────────────────────
 
-export async function fetchReports(status: ReportStatusFilter, signal?: AbortSignal): Promise<AdminReport[]> {
-  const response = await adminRequest<{ reports: AdminReport[] }>(
-    `/admin/reports?status=${encodeURIComponent(status)}`,
-    { signal },
-  )
+/** 등록일 기간(한국 날짜 yyyy-MM-dd, 둘 다 포함). 이 파라미터를 모르는 구서버는 무시하고 전체를 준다 — 화면이 한 번 더 거른다. */
+export interface ReportDateRange {
+  from?: string
+  to?: string
+}
+
+export async function fetchReports(
+  status: ReportStatusFilter,
+  signal?: AbortSignal,
+  range?: ReportDateRange,
+): Promise<AdminReport[]> {
+  const params = new URLSearchParams({ status })
+  if (range?.from) params.set('from', range.from)
+  if (range?.to) params.set('to', range.to)
+  const response = await adminRequest<{ reports: AdminReport[] }>(`/admin/reports?${params.toString()}`, { signal })
   return response?.reports ?? []
 }
 
