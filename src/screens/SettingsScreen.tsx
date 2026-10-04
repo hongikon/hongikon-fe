@@ -292,6 +292,20 @@ export default function SettingsScreen() {
       <LargeTitleHeader title="설정" style={layoutStyles.readable} />
       <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
 
+        {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
+        {status === 'authenticated' && profile?.status === 'SUSPENDED' && (
+          <View style={styles.suspendedBox} accessibilityRole="alert">
+            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+            <View style={styles.suspendedBody}>
+              <Text style={styles.suspendedTitle}>이용이 제한된 계정이에요</Text>
+              <Text style={styles.suspendedText}>
+                {profile.suspendedReason ? `사유: ${profile.suspendedReason}\n` : ''}
+                제보·신고·문의를 할 수 없어요. 이의가 있으면 제한 알림을 받은 날부터 14일 안에 hongikonsupport@gmail.com 으로 알려 주세요.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <SectionTitle title="계정" />
           {status === 'authenticated' ? (
@@ -748,6 +762,19 @@ const styles = StyleSheet.create({
   guestNoticeBody: { flex: 1, gap: SPACING.xxs },
   guestNoticeTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   guestNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
+  suspendedBox: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.dangerSoft,
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  suspendedBody: { flex: 1, gap: 4 },
+  suspendedTitle: { ...TYPE.subhead, color: COLORS.danger },
+  suspendedText: { ...TYPE.caption, color: COLORS.danger },
   warnRow: {
     flexDirection: 'row',
     alignItems: 'center',

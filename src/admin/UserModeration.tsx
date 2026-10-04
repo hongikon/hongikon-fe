@@ -104,10 +104,29 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
           {formatDateTime(user.suspendedAt)} 정지 · 사유: {user.suspendedReason ?? '(없음)'}
         </Text>
       ) : null}
+      {/* 정지·위반 삭제 이력이 있던 계정으로 다시 가입한 회원. 판단은 관리자가 한다(자동 정지 없음). */}
+      {user.priorHistory ? (
+        <View style={styles.prior}>
+          <Text style={styles.priorTitle}>재가입 회원 · 이전 이용 제한 이력</Text>
+          <Text style={styles.priorText}>
+            {formatDateTime(user.priorHistory.withdrawnAt)} 탈퇴
+            {user.priorHistory.wasSuspendedAtWithdrawal ? ' (탈퇴 당시 정지 중)' : ''}
+          </Text>
+          {user.priorHistory.suspendedAt ? (
+            <Text style={styles.priorText}>
+              {formatDateTime(user.priorHistory.suspendedAt)} 정지 · 사유: {user.priorHistory.suspendedReason ?? '(없음)'}
+            </Text>
+          ) : null}
+          {user.priorHistory.violationReportCount > 0 ? (
+            <Text style={styles.priorText}>위반으로 삭제된 제보 {user.priorHistory.violationReportCount}건</Text>
+          ) : null}
+          <Text style={styles.priorNote}>기록 보관 기한 {formatDateTime(user.priorHistory.retainUntil)}</Text>
+        </View>
+      ) : null}
 
       {confirming ? (
         <ConfirmBar
-          message="이 회원의 이용을 정지할까요? 로그인과 조회는 되지만 제보·신고·문의·닉네임 변경이 막힙니다. 사유는 관리자 기록용입니다."
+          message="이 회원의 이용을 정지할까요? 로그인과 조회는 되지만 제보·신고·문의·닉네임 변경이 막힙니다. 사유는 회원에게 알림으로 전달되고(약관 제10조), 회원은 14일 안에 이의를 제기할 수 있습니다."
           confirmLabel="이용 정지"
           danger
           busy={busy}
@@ -218,6 +237,10 @@ export function ReportAuthorModeration({ authorId }: { authorId: number }) {
 
 const styles = StyleSheet.create({
   panel: { gap: 6 },
+  prior: { gap: 2, padding: 10, borderRadius: 8, backgroundColor: COLORS.warningSoft },
+  priorTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.warning },
+  priorText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.warning },
+  priorNote: { fontFamily: FONTS.regular, fontSize: 11.5, color: COLORS.textTertiary, marginTop: 2 },
   box: { gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E7' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   meta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },

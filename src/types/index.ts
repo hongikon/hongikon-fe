@@ -469,3 +469,8 @@ export type PushNotificationData =
   | { type: 'ADMIN_REPORT_REMINDER'; oldestReportId: number; count?: number }
   | { type: 'ADMIN_REPORT_FLAGGED'; reportId: number; count?: number }
   | { type: 'ADMIN_FEEDBACK'; feedbackId: number; count?: number }
+  /** 정지·위반 삭제 이력이 있던 계정으로 다시 가입함(관리자 알림). userId: 새로 가입한 회원 id. */
+  | { type: 'ADMIN_MEMBER_REJOINED'; userId: number; count?: number }
+  /** 내 계정 이용 제한·해제(`AccountStatusPushDispatcher`). 사유는 알림 본문에 있다. 탭하면 설정(정지 안내)을 연다. */
+  | { type: 'ACCOUNT_SUSPENDED' }
+  | { type: 'ACCOUNT_UNSUSPENDED' }

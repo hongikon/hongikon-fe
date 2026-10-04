@@ -96,6 +96,7 @@ export default function AdminTabScreen() {
 
   const reportFocus = focus?.intent.section === 'reports' ? focus.intent : null
   const feedbackFocus = focus?.intent.section === 'feedback' ? focus.intent : null
+  const usersFocus = focus?.intent.section === 'users' ? focus.intent : null
 
   let content
   if (section === 'reports')
@@ -108,7 +109,13 @@ export default function AdminTabScreen() {
         focusReportId={reportFocus?.reportId ?? null}
       />
     )
-  else if (section === 'users') content = <UsersScreen />
+  else if (section === 'users')
+    content = (
+      <UsersScreen
+        key={usersFocus ? focus?.key : 'users'}
+        initialQuery={usersFocus?.userId != null ? String(usersFocus.userId) : ''}
+      />
+    )
   else if (section === 'feedback')
     content = (
       <FeedbackScreen

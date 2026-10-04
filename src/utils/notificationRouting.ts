@@ -16,6 +16,7 @@ export type NotificationTarget =
   | { kind: 'map'; focusReportId: number | null }
   | { kind: 'myReports'; reportId: number | null }
   | { kind: 'admin'; intent: AdminIntent }
+  | { kind: 'settings' }
   | { kind: 'none' }
 
 const ADMIN_TYPES: ReadonlySet<string> = new Set([
@@ -23,6 +24,7 @@ const ADMIN_TYPES: ReadonlySet<string> = new Set([
   'ADMIN_REPORT_REMINDER',
   'ADMIN_REPORT_FLAGGED',
   'ADMIN_FEEDBACK',
+  'ADMIN_MEMBER_REJOINED',
 ])
 
 /** 관리자 알림(`AdminAlertDispatcher`, 승인 대기 리마인드 `AdminReportReminder`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
@@ -86,6 +88,15 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
         kind: 'admin',
         intent: { section: 'feedback', feedbackId: toReportId((data as { feedbackId?: unknown }).feedbackId) },
       }
+    case 'ADMIN_MEMBER_REJOINED':
+      return {
+        kind: 'admin',
+        intent: { section: 'users', userId: toReportId((data as { userId?: unknown }).userId) },
+      }
+    // 내 계정 이용 제한·해제 — 설정 화면 맨 위 안내(사유·이의 제기)를 연다.
+    case 'ACCOUNT_SUSPENDED':
+    case 'ACCOUNT_UNSUSPENDED':
+      return { kind: 'settings' }
     default:
       // 모르는 type(앞으로 생길 알림)은 앱을 기본 화면으로만 연다.
       return { kind: 'map', focusReportId: null }

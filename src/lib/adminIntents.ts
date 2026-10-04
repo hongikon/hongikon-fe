@@ -13,6 +13,8 @@ import { navigationRef } from '../navigation/navigationRef'
 export type AdminIntent =
   | { section: 'reports'; reportFilter: 'PENDING' | 'HIDDEN'; reportId: number | null }
   | { section: 'feedback'; feedbackId: number | null }
+  /** 정지 이력 회원 재가입(ADMIN_MEMBER_REJOINED) — 회원 화면을 그 회원 id 로 검색해 연다. */
+  | { section: 'users'; userId: number | null }
 
 let pending: AdminIntent | null = null
 const intentListeners = new Set<() => void>()

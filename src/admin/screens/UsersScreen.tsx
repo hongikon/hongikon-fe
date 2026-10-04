@@ -12,10 +12,11 @@ import { UserModerationPanel } from '../UserModeration'
  * 회원 조회와 이용 정지(약관 제10조, App Store 가이드라인 1.2).
  * 검색어가 비면 정지된 회원 목록. 회원 번호(10자리, 대소문자 무시), 숫자면 회원 id, 그 밖에는 로그인 닉네임 일부로 찾는다.
  */
-export default function UsersScreen() {
+/** initialQuery: 관리자 알림(재가입 회원)으로 들어오면 그 회원 id 로 바로 검색한다. */
+export default function UsersScreen({ initialQuery = '' }: { initialQuery?: string } = {}) {
   const app = useAdminHost() === 'app'
-  const [input, setInput] = useState('')
-  const [query, setQuery] = useState('')
+  const [input, setInput] = useState(initialQuery)
+  const [query, setQuery] = useState(initialQuery)
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

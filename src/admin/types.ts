@@ -118,6 +118,22 @@ export interface AdminUser {
   suspendedReason: string | null
   suspendedAt: string | null
   createdAt: string
+  /**
+   * 정지·위반 삭제 이력이 있던 계정으로 다시 가입한 회원의 이전 기록(탈퇴 후 1년 분리 보관, 백엔드 WithdrawRetention).
+   * 해당 없거나 그 기능 전 서버면 null/없음.
+   */
+  priorHistory?: AdminUserPriorHistory | null
+}
+
+export interface AdminUserPriorHistory {
+  withdrawnAt: string
+  retainUntil: string
+  rejoinedAt: string | null
+  suspendedAt: string | null
+  suspendedReason: string | null
+  wasSuspendedAtWithdrawal: boolean
+  /** 운영진이 위반으로 삭제한 제보 수 */
+  violationReportCount: number
 }
 
 export type AdminSection = 'dashboard' | 'reports' | 'users' | 'feedback' | 'tools'

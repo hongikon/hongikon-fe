@@ -13,6 +13,11 @@ export interface MyProfile {
   maskedDefaultName: string
   /** 공개 회원 번호(영문 대문자·숫자 10자리, 예: K7Q2M9XA4D). 지금 서버의 `/users/me` 에는 없고 `getMyMemberCode` 로 따로 받는다 — 나중에 실리면 그대로 쓴다. */
   memberCode?: string | null
+  /** 이용 상태. 정지면 설정 화면에 사유·이의 제기 안내를 띄운다. 이 필드 전 서버는 없음(= 정상으로 본다). */
+  status?: 'ACTIVE' | 'SUSPENDED' | string
+  suspendedReason?: string | null
+  /** 서버 시각(UTC, 존 없음) */
+  suspendedAt?: string | null
 }
 
 /**
