@@ -158,8 +158,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutRequest(tokens.refreshToken).catch(() => {})
       }
       refreshInFlightRef.current = (async () => {
+        let refreshToken: string | null = null
         try {
-          const refreshToken = await getItem(REFRESH_TOKEN_KEY)
+          refreshToken = await getItem(REFRESH_TOKEN_KEY)
           if (!refreshToken || isStale()) return null
           const tokens = await reissueTokens(refreshToken)
           if (isStale()) {
@@ -177,7 +178,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return tokens.accessToken
         } catch (error: unknown) {
           // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
+          // 단, 그 사이 다른 탭(웹은 같은 저장소를 쓴다)이 먼저 재발급해 저장소의 토큰이 바뀌었으면 그 토큰을 쓴다 —
+          // 여기서 저장소를 지우면 멀쩡한 다른 탭까지 로그아웃된다(서버는 세션별 토큰 + 60초 유예, BE #24).
           if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
+            const [latestRefresh, latestAccess] = await Promise.all([getItem(REFRESH_TOKEN_KEY), getItem(ACCESS_TOKEN_KEY)])
+            if (latestRefresh && latestRefresh !== refreshToken && latestAccess && latestAccess !== expiredAccessToken) {
+              setAccessToken(latestAccess)
+              return latestAccess
+            }
             // 기기에 남은 이전 계정의 구독·알림 설정도 지운다(로그아웃과 같다). 토큰보다 먼저 지운다 — `clearAccountLinkedSettings` 주석.
             await clearAccountLinkedSettings()
             await clearTokens()
