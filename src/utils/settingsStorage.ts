@@ -102,8 +102,10 @@ export function restoreSettings(parsed: StoredSettings): { settings: Settings; c
  *
  * 남기는 것: 북마크(기기 기능 — 서버에 저장하지 않는다).
  * 지우는 것: 게시판 구독·게시판별 알림, 구독 소식 알림 스위치, 알림 분야, 제보 알림 두 개와 미전송 표시(dirty).
- * 모두 계정(서버)에 저장되는 값이라, 남겨 두면 같은 기기를 쓰는 다음 사람에게 이전 계정 설정이 보인다.
+ * 구독 소식 알림 스위치를 뺀 나머지는 계정(서버)에 저장되는 값이라, 남겨 두면 같은 기기를 쓰는 다음 사람에게 이전 계정 설정이 보인다.
  * 다시 로그인하면 `SettingsContext` 가 서버 값을 불러온다(로컬이 비어 있어 서버 구독을 지우지 않는다).
+ * 구독 소식 알림 스위치는 서버에 없는 기기 값이라 게스트 기본값(켜짐)으로 돌리되, 그 계정의 마지막 값은 계정 칸
+ * (`@hongikon_push_enabled:u:{회원 번호}`, `lib/accountData.ts`)에 따로 남아 다시 로그인하면 되살아난다.
  */
 export function toSignedOutSettings(settings: Pick<Settings, 'bookmarkedNews'>): Settings {
   return { ...DEFAULT_SETTINGS, bookmarkedNews: settings.bookmarkedNews }
