@@ -41,10 +41,12 @@ interface ReportCommentsModalProps {
 }
 
 /**
- * 한 번에 보여 줄 최상위 댓글 수. 넘으면 목록 끝에 '이전 댓글 보기'(인기순은 '댓글 더 보기') 버튼을 두고,
- * 누를 때마다 이만큼 더 받는다 — 댓글이 많아도 창이 끝없이 길어지지 않고 최근 대화가 먼저 보인다.
+ * 처음에 보여 줄 최상위 댓글 수. 더 있으면 목록 끝에 '이전 댓글 N개 보기'(인기순은 '댓글 N개 더 보기') 버튼을 두고,
+ * 누르면 나머지를 한 번에 모두 펼친다 — 처음 열 땐 최근 대화만 짧게, 원하면 전부 본다.
  */
 const COMMENTS_MODAL_PAGE_SIZE = 10
+/** '나머지 보기'로 한 번에 받는 최대 페이지 수(10개 × 30 = 300개). 이보다 많으면 버튼이 다시 남는다. */
+const LOAD_REST_MAX_PAGES = 30
 
 type LoadState =
   | { kind: 'loading' }
@@ -90,6 +92,8 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   const hasNextRef = useRef(false)
   /** 더 받을 댓글이 있는지 — '이전 댓글 보기' 버튼을 그릴지(ref 는 화면을 다시 그리지 않아 따로 둔다). */
   const [hasNext, setHasNext] = useState(false)
+  /** 최상위 댓글 전체 수(답글 제외) — 버튼의 '나머지 N개' 계산용. */
+  const [topTotal, setTopTotal] = useState(0)
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<FlatList<ReportComment>>(null)
   const tokenRef = useRef(accessToken)
@@ -123,6 +127,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         }
         setItems((prev) => (page === 0 ? result.content : mergeComments(prev, result.content, requested)))
         setCount(result.commentCount ?? result.totalElements)
+        setTopTotal(result.totalElements)
         pageRef.current = page
         hasNextRef.current = result.hasNext
         setHasNext(result.hasNext)
@@ -146,6 +151,22 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     },
     [report.id, toast],
   )
+
+  /** 나머지 댓글을 한 번에 모두 펼친다(10개씩 페이지를 이어 받음). 실패하면 그때까지 받은 것만 두고 버튼이 남는다. */
+  const loadingRestRef = useRef(false)
+  const loadRest = useCallback(async () => {
+    if (loadingRestRef.current) return
+    loadingRestRef.current = true
+    try {
+      for (let i = 0; i < LOAD_REST_MAX_PAGES && hasNextRef.current; i += 1) {
+        const before = pageRef.current
+        await load(before + 1, 'more')
+        if (pageRef.current === before) break // 실패(토스트가 이미 떴음) — 같은 페이지를 다시 시도하지 않는다.
+      }
+    } finally {
+      loadingRestRef.current = false
+    }
+  }, [load])
 
   useEffect(() => {
     if (!visible) {
@@ -376,12 +397,18 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                       // 최신순(새 댓글이 위)이면 아래로 더 받는 게 지난 댓글이라 '이전 댓글 보기'.
                       // 인기순·오래된 순(구서버)은 순위·시간이 이어지니 '댓글 더 보기'.
                       <Pressable
-                        onPress={() => void load(pageRef.current + 1, 'more')}
+                        onPress={() => void loadRest()}
                         style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]}
                         accessibilityRole="button"
                         hitSlop={6}
                       >
-                        <Text style={styles.moreText}>{order === 'latest' ? '이전 댓글 보기' : '댓글 더 보기'}</Text>
+                        <Text style={styles.moreText}>
+                          {(() => {
+                            const rest = Math.max(0, topTotal - items.length)
+                            const n = rest > 0 ? ` ${rest}개` : ''
+                            return order === 'latest' ? `이전 댓글${n} 보기` : `댓글${n} 더 보기`
+                          })()}
+                        </Text>
                       </Pressable>
                     ) : null
                   }
