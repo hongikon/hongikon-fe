@@ -18,7 +18,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { ToastViewport, useToast } from '../../common/Toast'
 import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
 import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
-import { COMMENTS_PAGE_SIZE, getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
+import { getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
 import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
 import * as haptics from '../../../lib/haptics'
 import { promptLogin } from '../../../utils/reports'
@@ -40,6 +40,12 @@ interface ReportCommentsModalProps {
   focusInput?: boolean
 }
 
+/**
+ * 한 번에 보여 줄 최상위 댓글 수. 넘으면 목록 끝에 '이전 댓글 보기'(인기순은 '댓글 더 보기') 버튼을 두고,
+ * 누를 때마다 이만큼 더 받는다 — 댓글이 많아도 창이 끝없이 길어지지 않고 최근 대화가 먼저 보인다.
+ */
+const COMMENTS_MODAL_PAGE_SIZE = 10
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'ready' }
@@ -55,8 +61,8 @@ function visibleThreads(items: readonly ReportComment[], hidden: ReadonlySet<str
 }
 
 /**
- * 제보 댓글 전체. 오래된 순(최신이 맨 아래), 최상위 댓글 아래 답글을 들여 써서 보여 준다(한 단계).
- * 끝까지 내리면 다음 페이지, 당겨서 새로고침, 아래 고정 입력줄(키보드가 가리지 않게 KeyboardAvoidingView).
+ * 제보 댓글 전체. 최상위 댓글 아래 답글을 들여 써서 보여 준다(한 단계).
+ * 처음엔 10개만 보이고, 더 있으면 목록 끝 '이전 댓글 보기' 버튼으로 10개씩 더 받는다. 당겨서 새로고침, 아래 고정 입력줄(키보드가 가리지 않게 KeyboardAvoidingView).
  * 쓰고 나면 맨 아래로 내린다. 답글은 "답글 달기" → 입력줄 위 "○○님에게 답글" 칩.
  */
 export default function ReportCommentsModal({ visible, report, onClose, focusInput = false }: ReportCommentsModalProps) {
@@ -82,6 +88,8 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   orderRef.current = order
   const pageRef = useRef(0)
   const hasNextRef = useRef(false)
+  /** 더 받을 댓글이 있는지 — '이전 댓글 보기' 버튼을 그릴지(ref 는 화면을 다시 그리지 않아 따로 둔다). */
+  const [hasNext, setHasNext] = useState(false)
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<FlatList<ReportComment>>(null)
   const tokenRef = useRef(accessToken)
@@ -99,7 +107,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         const requested = orderRef.current
         const result = await getReportComments(report.id, {
           page,
-          size: COMMENTS_PAGE_SIZE,
+          size: COMMENTS_MODAL_PAGE_SIZE,
           order: requested,
           accessToken: tokenRef.current,
           signal: controller.signal,
@@ -117,6 +125,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         setCount(result.commentCount ?? result.totalElements)
         pageRef.current = page
         hasNextRef.current = result.hasNext
+        setHasNext(result.hasNext)
         setState({ kind: 'ready' })
       } catch (error) {
         if (controller.signal.aborted || isCancelledError(error)) return
@@ -150,6 +159,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     setLikesSupported(false)
     pageRef.current = 0
     hasNextRef.current = false
+    setHasNext(false)
     void load(0, 'initial')
     if (focusInput) setFocusKey((key) => key + 1)
   }, [visible, load, focusInput])
@@ -350,10 +360,6 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                   contentContainerStyle={shown.length === 0 ? styles.emptyContainer : styles.listContent}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="interactive"
-                  onEndReachedThreshold={0.4}
-                  onEndReached={() => {
-                    if (hasNextRef.current && !loadingMore) void load(pageRef.current + 1, 'more')
-                  }}
                   refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(0, 'refresh')} />}
                   ListEmptyComponent={
                     <View style={styles.empty}>
@@ -363,7 +369,22 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                       )}
                     </View>
                   }
-                  ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footer} color={COLORS.textTertiary} /> : null}
+                  ListFooterComponent={
+                    loadingMore ? (
+                      <ActivityIndicator style={styles.footer} color={COLORS.textTertiary} />
+                    ) : hasNext && shown.length > 0 ? (
+                      // 최신순(새 댓글이 위)이면 아래로 더 받는 게 지난 댓글이라 '이전 댓글 보기'.
+                      // 인기순·오래된 순(구서버)은 순위·시간이 이어지니 '댓글 더 보기'.
+                      <Pressable
+                        onPress={() => void load(pageRef.current + 1, 'more')}
+                        style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]}
+                        accessibilityRole="button"
+                        hitSlop={6}
+                      >
+                        <Text style={styles.moreText}>{order === 'latest' ? '이전 댓글 보기' : '댓글 더 보기'}</Text>
+                      </Pressable>
+                    ) : null
+                  }
                 />
               )}
               <View style={styles.composer}>
@@ -417,6 +438,16 @@ function CommentsSkeleton() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
+  moreButton: {
+    alignSelf: 'center',
+    marginVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: COLORS.primarySoft,
+  },
+  moreButtonPressed: { opacity: 0.7 },
+  moreText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   column: { flex: 1 },
   subHeader: {
     flexDirection: 'row',
