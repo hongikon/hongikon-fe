@@ -579,6 +579,9 @@ export default function MapScreen() {
    * 다시 불러오면 페이지가 새로 떠서, 그 사이 보낸 마커 명령이 사라지기 때문이다(NaverMapView 참고).
    */
   const resyncMap = useCallback(() => {
+    // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
+    // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
+    handleRecenter();
     if (hasActiveFilter(activeFilter)) {
       const partners = filterPartners(activeFilter);
       postToMap({
@@ -602,7 +605,7 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap]);
+  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter]);
 
   /**
    * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
