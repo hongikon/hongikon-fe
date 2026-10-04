@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
-import { accountDeletionPage, collectLicenses, legalPage, licensesPage, supportPage } from './static-pages.mjs'
+import { accountDeletionPage, legalPage, licensesPage, supportPage } from './static-pages.mjs'
 
 const DIST = 'dist'
 const ASSETS = join(DIST, 'assets')
@@ -112,24 +112,21 @@ function constantText(source, name, file) {
 }
 const unofficialNotice = constantText(readFileSync('src/constants/disclaimer.ts', 'utf8'), 'UNOFFICIAL_NOTICE', 'disclaimer.ts')
 
-// 오픈소스 라이선스: 앱에 들어가는 패키지(prod)와 번들한 글꼴(Pretendard, SIL OFL 1.1).
-let packages
-try {
-  packages = collectLicenses()
-} catch (error) {
-  console.error('[fix-web-export] pnpm licenses list 실패 — /licenses 를 만들 수 없음', error)
-  process.exit(1)
-}
-const fonts = [
-  {
-    name: 'Pretendard',
-    versions: [],
-    license: 'SIL Open Font License 1.1',
-    author: 'Kil Hyung-jin',
-    homepage: 'https://github.com/orioncactus/pretendard',
-    text: readFileSync('assets/fonts/Pretendard-LICENSE.txt', 'utf8').trim(),
-  },
-]
+// 오픈소스 라이선스: 앱 안 화면과 같은 목록(src/constants/openSourceLicenses.json, `pnpm licenses:generate` 로 만들어 커밋).
+// 배포 중에 `pnpm licenses list` 를 돌리지 않는다 — Netlify 가 캐시에서 되살린 node_modules 에는 pnpm 의
+// 패키지 색인 파일이 없어 ERR_PNPM_MISSING_PACKAGE_INDEX_FILE 로 실패했고, 그 탓에 2026-10-02 부터
+// 모든 배포가 멈춰 /support·/licenses·/account-deletion 이 올라가지 못했다(배포 로그로 확인, 2026-10-04).
+const licenseData = JSON.parse(readFileSync('src/constants/openSourceLicenses.json', 'utf8'))
+const expandLicense = ({ n, v, l, a, h, t }) => ({
+  name: n,
+  versions: v ? v.split(', ') : [],
+  license: l,
+  author: a,
+  homepage: h,
+  text: t >= 0 ? licenseData.texts[t] : '',
+})
+const packages = licenseData.packages.map(expandLicense)
+const fonts = licenseData.fonts.map(expandLicense)
 
 const pages = [
   ['privacy', legalPage('개인정보 처리방침', constantText(legalSource, 'PRIVACY_TEXT', 'legalText.ts'))],
