@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
-import { useAuth } from '../contexts/AuthContext'
+import { isKakaoLoginCanceled, useAuth } from '../contexts/AuthContext'
 import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '../lib/appleAuth'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
@@ -91,6 +91,8 @@ export default function WelcomeScreen() {
     try {
       await loginWithKakao()
     } catch (error: unknown) {
+      // 로그인 창을 닫은 건 오류가 아니다 — Apple 과 같이 아무것도 띄우지 않는다.
+      if (isKakaoLoginCanceled(error)) return
       const message = error instanceof Error ? error.message : '로그인에 실패했어요.'
       if (Platform.OS === 'web') {
         setInlineError(message)

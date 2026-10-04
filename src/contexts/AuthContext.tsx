@@ -77,6 +77,7 @@ interface AuthContextValue {
   loginError: string | null
   /** 로그인한 계정 종류. 로그인 상태가 아니면 null. */
   loginProvider: LoginProvider | null
+  /** 사용자가 로그인 창을 닫으면 {@link isKakaoLoginCanceled} 로 가릴 수 있는 오류를 던진다. 그 밖의 실패는 보여줄 문구를 담은 Error. */
   loginWithKakao: () => Promise<void>
   /**
    * Sign in with Apple(iOS). 사용자가 Apple 시트를 닫으면 ERR_REQUEST_CANCELED 오류를 그대로 던진다
@@ -104,6 +105,21 @@ async function clearTokens(): Promise<void> {
   await deleteItem(ACCESS_TOKEN_KEY)
   await deleteItem(REFRESH_TOKEN_KEY)
   await deleteItem(LOGIN_PROVIDER_KEY)
+}
+
+/**
+ * 사용자가 카카오 로그인 창을 닫았다(openAuthSessionAsync 가 cancel·dismiss). 오류가 아니라
+ * 웰컴 화면은 {@link isKakaoLoginCanceled} 로 걸러 아무것도 띄우지 않는다(Apple 시트 닫기와 같다).
+ */
+class KakaoLoginCanceledError extends Error {
+  constructor() {
+    super('로그인이 취소됐어요.')
+    this.name = 'KakaoLoginCanceledError'
+  }
+}
+
+export function isKakaoLoginCanceled(error: unknown): boolean {
+  return error instanceof KakaoLoginCanceledError
 }
 
 /** 백엔드가 되돌려준 리다이렉트 URL에서 1회용 인가 코드를 뽑아낸다. 못 찾으면 null. */
@@ -316,7 +332,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await WebBrowser.openAuthSessionAsync(buildKakaoLoginUrl(pkce.challenge), AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
-      throw new Error('로그인이 취소됐어요.')
+      // 창을 닫은 것(cancel·dismiss)은 조용히 넘기게 따로 표시한다. 예전엔 '카카오 로그인 실패' 알림이 떴다.
+      // locked(다른 인증 창이 이미 열려 있음) 등은 그대로 실패로 알린다.
+      if (result.type === 'cancel' || result.type === 'dismiss') throw new KakaoLoginCanceledError()
+      throw new Error('로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.')
     }
 
     const code = extractAuthCode(result.url)
