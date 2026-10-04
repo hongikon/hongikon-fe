@@ -601,7 +601,12 @@ export default function ReportComposerModal({
     } catch (caught) {
       if (isStale()) return
       // 서버가 사진 확인(업로드 여부·크기·형식)에서 거절했을 수 있다. 다음엔 새로 올리고, 사진 없이 올릴 길도 연다.
-      if (imageKeys.length > 0 && caught instanceof ApiError && caught.status === 400) {
+      // 사진 문제로 보는 건 서버 문구가 없거나(구버전·프록시) 문구가 사진 이야기일 때만이다 — 서버의 사진 거절 문구는
+      // 모두 '사진'을 담는다(BE ReportImageService). 그 밖의 400(건물·시각·제목 등)은 아래 일반 안내로 알리고 올린 사진 키는
+      // 남겨 둔다 — 예전엔 사진만 붙어 있으면 모든 400 을 사진 문제로 보여 엉뚱한 안내와 함께 다시 올려야 했다.
+      const photoRejected =
+        caught instanceof ApiError && (!caught.serverMessage || caught.serverMessage.includes('사진'))
+      if (imageKeys.length > 0 && caught instanceof ApiError && caught.status === 400 && photoRejected) {
         uploadedKeysRef.current = new Map()
         setPhotoUploadFailed(true)
         setSubmitError({
