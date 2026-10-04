@@ -166,7 +166,11 @@ export function createBoardSyncQueue(options: BoardSyncQueueOptions): BoardSyncQ
       } finally {
         inFlight.delete(sourceId)
       }
-      if (sent && pending.has(sourceId)) flushOne(sourceId)
+      // 보내는 사이 값이 또 바뀌었으면 이어 보낸다. 실패했어도 새 값이 쌓였으면 그 값은 아직 한 번도 안 보냈으니
+      // 보낸다(예전엔 성공했을 때만 이어 보내 마지막 변경이 다음 재연결까지 묶였다). 실패한 값 그대로 남은
+      // 경우(retry)는 여기서 다시 보내지 않는다 — 같은 값을 곧바로 되풀이하면 연결이 없는 동안 끝없이 돈다.
+      // 재시도는 재연결·포그라운드의 flush 몫이다.
+      if (pending.has(sourceId) && (sent || pending.get(sourceId) !== target)) flushOne(sourceId)
     })
     inFlight.set(sourceId, run)
   }

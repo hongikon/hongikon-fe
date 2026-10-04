@@ -64,14 +64,19 @@ export function formatKstTime(iso: string): string {
   return minutes === 0 ? `${hours}시` : `${hours}시 ${minutes}분`
 }
 
-/** '방금 전' · '12분 전' · '3시간 전'. 하루가 넘으면 날짜 대신 '하루 전' 으로 끊는다. */
+/**
+ * '방금 전' · '12분 전' · '3시간 전' · '하루 전' · '5일 전'.
+ * 여러 날 이어지는 제보(축제·공사)는 며칠 전에 올라온 것일 수 있어 하루를 넘겨도 날 수를 센다
+ * (예전엔 하루만 넘으면 일주일 전 제보도 '하루 전'이라 방금 올라온 것처럼 보였다).
+ */
 export function formatElapsed(iso: string, now: number = Date.now()): string {
   const minutes = Math.floor((now - parseServerTime(iso)) / 60000)
   if (minutes < 1) return '방금 전'
   if (minutes < 60) return `${minutes}분 전`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}시간 전`
-  return '하루 전'
+  const days = Math.floor(hours / 24)
+  return days === 1 ? '하루 전' : `${days}일 전`
 }
 
 /**

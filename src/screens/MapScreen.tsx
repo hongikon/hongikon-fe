@@ -1153,7 +1153,10 @@ export default function MapScreen() {
           )}
 
           {selectedReport && (
+            // 제보마다 새로 그린다. 시트 안의 🔥·관심·신고 요청 중 상태와 늦게 온 응답·오류·메뉴가 다른 제보로
+            // 넘어가지 않게(예전엔 마커만 바꿔 누르면 앞 제보의 응답이 뒤 제보 시트에 덮였다).
             <ReportSheet
+              key={selectedReport.id}
               report={selectedReport}
               onClose={() => setSelectedReport(null)}
             />

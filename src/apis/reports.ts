@@ -91,6 +91,8 @@ interface ReportImageUploadTicket {
 export async function uploadReportImage(
   image: PickedReportImage,
   accessToken: string,
+  /** 작성창을 닫으면 끊는다 — 발급 요청과 S3 PUT 을 함께 멈춘다(ReportImageUploadError 'failed' 로 끝난다). */
+  signal?: AbortSignal,
 ): Promise<string> {
   const contentType = reportImageContentType(image)
   if (contentType === null) {
@@ -106,6 +108,7 @@ export async function uploadReportImage(
       method: 'POST',
       body: { contentType },
       accessToken,
+      signal,
     })
   } catch (caught) {
     // 백엔드 배포 전(엔드포인트 없음 404/405)이거나 저장소 미설정(503).
@@ -121,6 +124,9 @@ export async function uploadReportImage(
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), IMAGE_PUT_TIMEOUT_MS)
+  const forwardAbort = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  else signal?.addEventListener('abort', forwardAbort)
   try {
     // 로컬 파일(file://, 웹은 blob:/data:)을 읽어, 촬영 위치 등 메타데이터(JPEG GPS·XMP, PNG eXIf·텍스트)를 지운 뒤 PUT 한다.
     const blob = await (await fetch(image.uri)).blob()
@@ -151,6 +157,7 @@ export async function uploadReportImage(
     )
   } finally {
     clearTimeout(timer)
+    signal?.removeEventListener('abort', forwardAbort)
   }
 }
 

@@ -346,6 +346,13 @@ export default function ReportComposerModal({
    * (안 그러면 다음에 연 빈 작성창에 이전 실패 안내나 "접수됐어요"가 뜬다).
    */
   const requestGenRef = useRef(0)
+  /** 진행 중인 등록의 사진 업로드를 끊는 컨트롤러. 창을 닫을 때(세대를 올릴 때) 같이 끊는다. */
+  const submitAbortRef = useRef<AbortController | null>(null)
+  const cancelPendingSubmit = () => {
+    requestGenRef.current += 1
+    submitAbortRef.current?.abort()
+    submitAbortRef.current = null
+  }
 
   // 닫혀 있다가(null) 새 위치로 열릴 때마다 처음 상태로 시작한다. 이전 등록의 "접수됐어요" 화면이
   // 남아 있으면 안 된다. 렌더 중에 바로 맞춰야 열리는 첫 화면부터 깨끗하다.
@@ -355,7 +362,8 @@ export default function ReportComposerModal({
     if (prevTarget === null && target !== null) reset()
   }
   useEffect(() => {
-    if (target === null) requestGenRef.current += 1
+    if (target === null) cancelPendingSubmit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target])
   useEffect(() => {
     if (target === null || submitted) return
@@ -364,7 +372,7 @@ export default function ReportComposerModal({
   }, [target, submitted])
 
   const handleClose = () => {
-    requestGenRef.current += 1
+    cancelPendingSubmit()
     reset()
     onClose()
   }
@@ -467,10 +475,10 @@ export default function ReportComposerModal({
   }
 
   /** 사진을 올려 키를 받는다. 같은 사진을 이미 올렸으면 그 키를 쓴다. */
-  const ensureImageKey = async (picked: PickedReportImage, token: string): Promise<string> => {
+  const ensureImageKey = async (picked: PickedReportImage, token: string, signal?: AbortSignal): Promise<string> => {
     const cached = uploadedKeysRef.current.get(picked.uri)
     if (cached) return cached
-    const key = await uploadReportImage(picked, token)
+    const key = await uploadReportImage(picked, token, signal)
     uploadedKeysRef.current.set(picked.uri, key)
     return key
   }
@@ -499,6 +507,8 @@ export default function ReportComposerModal({
 
     const generation = ++requestGenRef.current
     const isStale = () => generation !== requestGenRef.current
+    const abort = new AbortController()
+    submitAbortRef.current = abort
     setSubmitting(true)
     setError(null)
     setSubmitError(null)
@@ -524,7 +534,7 @@ export default function ReportComposerModal({
       // 다시 시도할 때 키를 재사용한다. 서버에 사진 기능이 아직 없으면 사진만 빼고 계속 올린다.
       for (let index = 0; index < picked.length; index += 1) {
         try {
-          imageKeys.push(await ensureImageKey(picked[index], accessToken))
+          imageKeys.push(await ensureImageKey(picked[index], accessToken, abort.signal))
         } catch (caught) {
           if (!(caught instanceof ReportImageUploadError)) throw caught
           if (isStale()) return
@@ -541,13 +551,19 @@ export default function ReportComposerModal({
           setPhotoSkipped(true)
           break
         }
+        // 올리는 사이 창을 닫았으면 남은 사진도, 제보 등록도 하지 않는다. 예전엔 실패했을 때만 확인해 닫은 뒤에도
+        // 나머지를 올리고 제보까지 만들었다 — 사용자는 취소했다고 여겨 다시 써 올리면 같은 제보가 두 번 생긴다.
+        if (isStale()) return
       }
 
+      if (isStale()) return
       // 앱 건물 이름 → 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400).
       const buildingId = await getServerBuildingId(building.name)
       if (buildingId === null) {
         throw new Error('이 건물은 아직 제보를 받을 수 없어요. 가까운 다른 건물로 위치를 옮겨 주세요.')
       }
+      // 등록 요청은 보내고 나면 되돌릴 수 없다 — 보내기 직전이 닫힌 걸 알아챌 마지막 자리다.
+      if (isStale()) return
 
       const report = await createReport(
         {
@@ -585,7 +601,12 @@ export default function ReportComposerModal({
     } catch (caught) {
       if (isStale()) return
       // 서버가 사진 확인(업로드 여부·크기·형식)에서 거절했을 수 있다. 다음엔 새로 올리고, 사진 없이 올릴 길도 연다.
-      if (imageKeys.length > 0 && caught instanceof ApiError && caught.status === 400) {
+      // 사진 문제로 보는 건 서버 문구가 없거나(구버전·프록시) 문구가 사진 이야기일 때만이다 — 서버의 사진 거절 문구는
+      // 모두 '사진'을 담는다(BE ReportImageService). 그 밖의 400(건물·시각·제목 등)은 아래 일반 안내로 알리고 올린 사진 키는
+      // 남겨 둔다 — 예전엔 사진만 붙어 있으면 모든 400 을 사진 문제로 보여 엉뚱한 안내와 함께 다시 올려야 했다.
+      const photoRejected =
+        caught instanceof ApiError && (!caught.serverMessage || caught.serverMessage.includes('사진'))
+      if (imageKeys.length > 0 && caught instanceof ApiError && caught.status === 400 && photoRejected) {
         uploadedKeysRef.current = new Map()
         setPhotoUploadFailed(true)
         setSubmitError({
@@ -601,6 +622,7 @@ export default function ReportComposerModal({
         retryable: isRetryableError(caught),
       })
     } finally {
+      if (submitAbortRef.current === abort) submitAbortRef.current = null
       if (!isStale()) setSubmitting(false)
     }
   }

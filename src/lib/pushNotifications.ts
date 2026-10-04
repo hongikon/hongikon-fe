@@ -87,6 +87,23 @@ function flushPendingNotification(): void {
   if (!canRouteTo(routeName)) return
   pendingNotification = null
   routeForNotification(data)
+  forgetLastNotificationResponse()
+}
+
+/**
+ * 처리한 알림 탭을 네이티브의 '마지막 알림 응답'에서 지운다. 안 지우면 JS 만 다시 띄울 때(OTA 적용
+ * `Updates.reloadAsync` 등) 콜드 스타트 조회(`getLastNotificationResponseAsync`)가 같은 응답을 다시 돌려줘
+ * 오래전 알림 화면으로 또 이동한다(`lastHandledNotificationId` 는 JS 메모리라 다시 띄우면 사라진다).
+ * 이동한 뒤에 지운다 — 이동 전에 다시 띄워지면 그때 다시 처리하게 둔다.
+ * 함수가 없는 옛 네이티브 빌드에 OTA 로 나가도 던지지 않게(UnavailabilityError) 감싼다.
+ */
+function forgetLastNotificationResponse(): void {
+  if (Platform.OS === 'web' || typeof Notifications.clearLastNotificationResponse !== 'function') return
+  try {
+    Notifications.clearLastNotificationResponse()
+  } catch (error) {
+    if (__DEV__) console.warn('마지막 알림 응답을 지우지 못했습니다:', error)
+  }
 }
 
 /**

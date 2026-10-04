@@ -26,7 +26,7 @@ import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
 import { createPkcePair } from '../lib/pkce'
-import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
+import { deactivateStoredPushDevice, forgetStoredPushDevice, pushRegistrationMark } from '../lib/pushDevice'
 import { clearAccountLinkedSettings } from '../lib/accountData'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -77,6 +77,7 @@ interface AuthContextValue {
   loginError: string | null
   /** 로그인한 계정 종류. 로그인 상태가 아니면 null. */
   loginProvider: LoginProvider | null
+  /** 사용자가 로그인 창을 닫으면 {@link isKakaoLoginCanceled} 로 가릴 수 있는 오류를 던진다. 그 밖의 실패는 보여줄 문구를 담은 Error. */
   loginWithKakao: () => Promise<void>
   /**
    * Sign in with Apple(iOS). 사용자가 Apple 시트를 닫으면 ERR_REQUEST_CANCELED 오류를 그대로 던진다
@@ -104,6 +105,21 @@ async function clearTokens(): Promise<void> {
   await deleteItem(ACCESS_TOKEN_KEY)
   await deleteItem(REFRESH_TOKEN_KEY)
   await deleteItem(LOGIN_PROVIDER_KEY)
+}
+
+/**
+ * 사용자가 카카오 로그인 창을 닫았다(openAuthSessionAsync 가 cancel·dismiss). 오류가 아니라
+ * 웰컴 화면은 {@link isKakaoLoginCanceled} 로 걸러 아무것도 띄우지 않는다(Apple 시트 닫기와 같다).
+ */
+class KakaoLoginCanceledError extends Error {
+  constructor() {
+    super('로그인이 취소됐어요.')
+    this.name = 'KakaoLoginCanceledError'
+  }
+}
+
+export function isKakaoLoginCanceled(error: unknown): boolean {
+  return error instanceof KakaoLoginCanceledError
 }
 
 /** 백엔드가 되돌려준 리다이렉트 URL에서 1회용 인가 코드를 뽑아낸다. 못 찾으면 null. */
@@ -161,7 +177,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let refreshToken: string | null = null
         try {
           refreshToken = await getItem(REFRESH_TOKEN_KEY)
-          if (!refreshToken || isStale()) return null
+          if (isStale()) return null
+          if (!refreshToken) {
+            // 저장소에 refresh 토큰이 없다 — 웹에서 다른 탭이 로그아웃(같은 저장소를 지운다)했거나, 저장이 반쯤
+            // 끝난 채 앱이 꺼졌다. 예전엔 null 만 돌려줘 이 탭은 'authenticated' 인 채 요청마다 401 → 재발급 실패를
+            // 되풀이했다. 그사이 다른 탭이 새로 로그인해 새 토큰을 저장했으면 그걸 쓰고, 아니면 이 탭도 로그아웃
+            // 상태로 돌린다. 서버 정리(기기 해제·토큰 폐기)는 로그아웃한 쪽이 이미 했거나 쓸 refresh 토큰이 없어 하지 않는다.
+            const latestAccess = await getItem(ACCESS_TOKEN_KEY)
+            if (isStale()) return null
+            if (latestAccess && latestAccess !== expiredAccessToken) {
+              setAccessToken(latestAccess)
+              return latestAccess
+            }
+            await clearAccountLinkedSettings()
+            await clearTokens()
+            if (isStale()) return null
+            setAccessToken(null)
+            setStatus('signedOut')
+            return null
+          }
           const tokens = await reissueTokens(refreshToken)
           if (isStale()) {
             discard(tokens)
@@ -178,9 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return tokens.accessToken
         } catch (error: unknown) {
           // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
+          // 408(요청 시간 초과)·429(요청 과다)는 4xx 지만 토큰 문제가 아니라 잠깐의 상태라 네트워크 문제처럼 넘긴다
+          // (예전엔 이것도 만료로 보고 로그아웃시켰다).
           // 단, 그 사이 다른 탭(웹은 같은 저장소를 쓴다)이 먼저 재발급해 저장소의 토큰이 바뀌었으면 그 토큰을 쓴다 —
           // 여기서 저장소를 지우면 멀쩡한 다른 탭까지 로그아웃된다(서버는 세션별 토큰 + 60초 유예, BE #24).
-          if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
+          if (
+            !isStale() &&
+            error instanceof ApiError &&
+            error.status >= 400 &&
+            error.status < 500 &&
+            error.status !== 408 &&
+            error.status !== 429
+          ) {
             const [latestRefresh, latestAccess] = await Promise.all([getItem(REFRESH_TOKEN_KEY), getItem(ACCESS_TOKEN_KEY)])
             if (latestRefresh && latestRefresh !== refreshToken && latestAccess && latestAccess !== expiredAccessToken) {
               setAccessToken(latestAccess)
@@ -195,10 +238,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // 이 기기의 푸시 등록도 내려 보지만, 유효한 토큰이 없어 대개 401 로 실패한다(재발급할 refresh 토큰도
             // 무효). 그러면 서버의 기기 행은 활성으로 남고, 이 기기로 다시 로그인할 때 같은 푸시 토큰 재등록이
             // 새 계정으로 넘긴다. 그 사이 이전 계정 알림이 올 수 있다 — 서버 쪽 정리 없이는 막을 수 없다.
-            void deactivateStoredPushDevice(expiredAccessToken, { quick: true })
-              .catch(() => false)
-              .then(() => forgetStoredPushDevice())
-              .catch(() => {})
+            // 저장된 id 지우기는 같은 작업 안에서 한다(forget) — 따로 줄을 세우면 곧바로 다시 로그인한 계정의
+            // 등록이 사이에 끼어 새 id 를 지운다. before: 그 뒤 등록이 쓴 id 면 건드리지 않는다(logout 과 같다).
+            void deactivateStoredPushDevice(expiredAccessToken, {
+              quick: true,
+              before: pushRegistrationMark(),
+              forget: true,
+            }).catch(() => {})
           }
           return null
         } finally {
@@ -286,7 +332,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await WebBrowser.openAuthSessionAsync(buildKakaoLoginUrl(pkce.challenge), AUTH_REDIRECT_URI)
 
     if (result.type !== 'success') {
-      throw new Error('로그인이 취소됐어요.')
+      // 창을 닫은 것(cancel·dismiss)은 조용히 넘기게 따로 표시한다. 예전엔 '카카오 로그인 실패' 알림이 떴다.
+      // locked(다른 인증 창이 이미 열려 있음) 등은 그대로 실패로 알린다.
+      if (result.type === 'cancel' || result.type === 'dismiss') throw new KakaoLoginCanceledError()
+      throw new Error('로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.')
     }
 
     const code = extractAuthCode(result.url)
@@ -336,6 +385,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 세션 번호를 먼저 올려, 지금 돌고 있는 재발급이 끝나도 새 토큰을 저장하지 않게 한다.
     sessionGenRef.current += 1
     lateAccessTokenRef.current = null
+    // 이 시점까지 부른 푸시 등록 번호. 아래 기기 해제는 재발급을 기다린 뒤에야 줄을 서서, 그 사이 곧바로 다시
+    // 로그인한 계정의 등록이 먼저 돌 수 있다 — 그 등록이 쓴 id 는 이전 계정 토큰으로 내리거나 지우지 않는다.
+    const pushMark = pushRegistrationMark()
     const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
     const storedRefreshToken = await getItem(REFRESH_TOKEN_KEY)
 
@@ -375,9 +427,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return null
         }
       }
-      const done = await deactivateStoredPushDevice(accessToken, { quick: true, reissue }).catch(() => false)
+      // 실패해도 저장된 id 는 지운다(forget). 비활성화와 같은 작업 안에서 지워야 한다 — 예전엔 비활성화가 끝난 뒤
+      // 따로 줄을 세워, 그 사이 곧바로 다시 로그인한 계정의 등록이 끼면 새 계정의 id 를 지웠다(그 계정은 알림
+      // 끄기·로그아웃 때 기기를 못 내려 푸시가 계속 왔다).
+      const done = await deactivateStoredPushDevice(accessToken, {
+        quick: true,
+        reissue,
+        before: pushMark,
+        forget: true,
+      }).catch(() => false)
       if (!done && __DEV__) console.warn('로그아웃 후 기기 비활성화 실패')
-      await forgetStoredPushDevice().catch(() => {})
       if (refreshToken) {
         try {
           await logoutRequest(refreshToken)
