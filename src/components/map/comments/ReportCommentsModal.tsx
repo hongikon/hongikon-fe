@@ -94,19 +94,31 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   const [hasNext, setHasNext] = useState(false)
   /** 최상위 댓글 전체 수(답글 제외) — 버튼의 '나머지 N개' 계산용. */
   const [topTotal, setTopTotal] = useState(0)
+  /**
+   * 마지막으로 받은 페이지 뒤에 목록에서 빠진 최상위 댓글 수(지움·신고 숨김). 서버는 page·size 오프셋으로 끊어 주는데,
+   * 앞쪽 댓글이 빠지면 뒤 댓글이 한 칸씩 당겨져 다음 페이지를 그대로 받으면 경계의 댓글을 건너뛴다.
+   * 0 보다 크면 그만큼 앞에서부터 다시 받는다(`nextPageToLoad`) — 겹친 댓글은 mergeComments 가 id 로 걸러 준다.
+   * "삭제된 댓글" 자리로 남긴 것도 센다 — 서버 목록에 남아 있었다면 한 페이지를 더 겹쳐 받을 뿐 건너뛰지는 않는다.
+   */
+  const removedTopRef = useRef(0)
+  const itemsRef = useRef(items)
+  itemsRef.current = items
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<FlatList<ReportComment>>(null)
   const tokenRef = useRef(accessToken)
   tokenRef.current = accessToken
 
+  /** 받아 넣었으면 true. 실패·취소, 정렬을 바꿔 처음부터 다시 받으러 간 경우는 false. */
   const load = useCallback(
-    async (page: number, mode: 'initial' | 'refresh' | 'more') => {
+    async (page: number, mode: 'initial' | 'refresh' | 'more'): Promise<boolean> => {
       if (mode !== 'more') controllerRef.current?.abort()
       const controller = new AbortController()
       controllerRef.current = controller
       if (mode === 'initial') setState({ kind: 'loading' })
       if (mode === 'refresh') setRefreshing(true)
       if (mode === 'more') setLoadingMore(true)
+      // 이 요청을 보낼 때까지 빠진 수. 응답을 받는 사이 또 빠진 것은 다음 요청 몫으로 남긴다.
+      const removedAtRequest = removedTopRef.current
       try {
         const requested = orderRef.current
         const result = await getReportComments(report.id, {
@@ -116,24 +128,27 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
           accessToken: tokenRef.current,
           signal: controller.signal,
         })
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) return false
         // 첫 페이지에서 👍 를 아는 서버로 확인되면 최신순으로 바꿔 다시 받는다(한 번만).
-        if (page === 0 && requested === 'oldest' && supportsCommentLikes(result.content)) {
+        if (page === 0 && mode !== 'more' && requested === 'oldest' && supportsCommentLikes(result.content)) {
           setLikesSupported(true)
           setOrder('latest')
           orderRef.current = 'latest'
-          void load(0, mode === 'more' ? 'initial' : mode)
-          return
+          void load(0, mode)
+          return false
         }
-        setItems((prev) => (page === 0 ? result.content : mergeComments(prev, result.content, requested)))
+        // 처음·새로고침은 갈아 끼우고, 더 받기는 합친다(빠진 댓글 때문에 0쪽을 다시 받을 때도 합친다).
+        setItems((prev) => (mode !== 'more' ? result.content : mergeComments(prev, result.content, requested)))
         setCount(result.commentCount ?? result.totalElements)
         setTopTotal(result.totalElements)
+        removedTopRef.current = mode === 'more' ? Math.max(0, removedTopRef.current - removedAtRequest) : 0
         pageRef.current = page
         hasNextRef.current = result.hasNext
         setHasNext(result.hasNext)
         setState({ kind: 'ready' })
+        return true
       } catch (error) {
-        if (controller.signal.aborted || isCancelledError(error)) return
+        if (controller.signal.aborted || isCancelledError(error)) return false
         if (mode === 'more') {
           toast.show({ message: getErrorMessage(error, '댓글을 더 불러오지 못했어요.'), tone: 'warning' })
         } else {
@@ -144,6 +159,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
             retryable: isRetryableError(error),
           })
         }
+        return false
       } finally {
         if (mode === 'refresh') setRefreshing(false)
         if (mode === 'more') setLoadingMore(false)
@@ -152,6 +168,18 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     [report.id, toast],
   )
 
+  /**
+   * 다음에 받을 페이지. 받은 뒤 빠진 최상위 댓글이 없으면 바로 다음 쪽, 있으면 서버 목록에서 아직 못 본 첫 댓글
+   * (지금까지 받은 수 − 빠진 수 번째)이 든 쪽을 다시 받는다. 예: 10개씩 2쪽(20개)을 받고 1개를 지웠으면 19번째가
+   * 든 1쪽을 다시 받아 당겨진 1개를 얻는다(이미 있는 9개는 id 로 합쳐진다).
+   */
+  const nextPageToLoad = useCallback(() => {
+    const removed = removedTopRef.current
+    if (removed === 0) return pageRef.current + 1
+    const consumed = (pageRef.current + 1) * COMMENTS_MODAL_PAGE_SIZE
+    return Math.max(0, Math.floor((consumed - removed) / COMMENTS_MODAL_PAGE_SIZE))
+  }, [])
+
   /** 나머지 댓글을 한 번에 모두 펼친다(10개씩 페이지를 이어 받음). 실패하면 그때까지 받은 것만 두고 버튼이 남는다. */
   const loadingRestRef = useRef(false)
   const loadRest = useCallback(async () => {
@@ -159,14 +187,13 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     loadingRestRef.current = true
     try {
       for (let i = 0; i < LOAD_REST_MAX_PAGES && hasNextRef.current; i += 1) {
-        const before = pageRef.current
-        await load(before + 1, 'more')
-        if (pageRef.current === before) break // 실패(토스트가 이미 떴음) — 같은 페이지를 다시 시도하지 않는다.
+        // 실패(토스트가 이미 떴음)면 멈춘다 — 같은 페이지를 다시 시도하지 않는다.
+        if (!(await load(nextPageToLoad(), 'more'))) break
       }
     } finally {
       loadingRestRef.current = false
     }
-  }, [load])
+  }, [load, nextPageToLoad])
 
   useEffect(() => {
     if (!visible) {
@@ -179,6 +206,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     orderRef.current = 'oldest'
     setLikesSupported(false)
     pageRef.current = 0
+    removedTopRef.current = 0
     hasNextRef.current = false
     setHasNext(false)
     void load(0, 'initial')
@@ -187,6 +215,19 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
 
   /** 지웠거나 신고로 숨겨진 댓글을 목록에서 정리한다. 답글이 남은 최상위 댓글은 "삭제된 댓글" 자리로 바꾼다. */
   const handleRemoved = useCallback((commentId: number) => {
+    // 최상위 댓글이 빠지면 다음 페이지 경계가 당겨진다(removedTopRef). 자리까지 없어지면 '나머지 N개' 계산의 전체 수도 줄인다.
+    // 답글이 다 빠져 "삭제된 댓글" 자리만 남은 최상위 댓글도 아래에서 함께 없어지니 같이 센다.
+    const removedTop = itemsRef.current.find((top) => top.id === commentId)
+    const emptiedPlaceholder = itemsRef.current.find(
+      (top) =>
+        !!top.placeholder &&
+        !!top.replies?.some((r) => r.id === commentId) &&
+        Math.max(0, (top.replyCount ?? top.replies.length) - 1) === 0,
+    )
+    if (removedTop || emptiedPlaceholder) {
+      removedTopRef.current += 1
+      if (emptiedPlaceholder || (removedTop?.replyCount ?? 0) === 0) setTopTotal((prev) => Math.max(0, prev - 1))
+    }
     setItems((prev) =>
       prev.flatMap((top) => {
         if (top.id === commentId) {
@@ -232,6 +273,8 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
       setReplyTo(null)
       return
     }
+    // 새 최상위 댓글은 목록에도 전체 수에도 하나씩 더해 '나머지 N개'가 그대로 맞게 한다.
+    setTopTotal((prev) => prev + 1)
     const current = orderRef.current
     const fresh = { ...comment, replies: [], replyCount: 0, likeCount: comment.likeCount ?? (likesSupportedRef.current ? 0 : undefined) }
     if (current === 'latest') {
@@ -384,7 +427,9 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                   refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(0, 'refresh')} />}
                   ListEmptyComponent={
                     <View style={styles.empty}>
-                      <Text style={styles.emptyTitle}>{count > 0 ? '숨긴 사용자의 댓글만 있어요' : '첫 댓글을 남겨 보세요'}</Text>
+                      <Text style={styles.emptyTitle}>
+                        {count > 0 ? (hasNext ? '불러온 댓글은 모두 숨긴 사용자의 댓글이에요' : '숨긴 사용자의 댓글만 있어요') : '첫 댓글을 남겨 보세요'}
+                      </Text>
                       {count > 0 ? null : (
                         <Text style={styles.emptyBody}>줄이 긴지, 아직 남았는지 지금 상황을 알려 주면 다른 학생들에게 도움이 돼요.</Text>
                       )}
@@ -393,7 +438,9 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                   ListFooterComponent={
                     loadingMore ? (
                       <ActivityIndicator style={styles.footer} color={COLORS.textTertiary} />
-                    ) : hasNext && shown.length > 0 ? (
+                    ) : hasNext ? (
+                      // 첫 페이지가 모두 숨긴 사용자의 댓글이라 보이는 게 없어도 버튼은 둔다(빈 안내 아래에 같이 뜬다) —
+                      // 예전엔 보이는 댓글이 없으면 버튼을 숨겨 나머지 댓글을 볼 길이 없었다.
                       // 최신순(새 댓글이 위)이면 아래로 더 받는 게 지난 댓글이라 '이전 댓글 보기'.
                       // 인기순·오래된 순(구서버)은 순위·시간이 이어지니 '댓글 더 보기'.
                       <Pressable
