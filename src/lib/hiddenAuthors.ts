@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { ANONYMOUS_NAME } from '../utils/nickname'
 
 /**
  * "이 사용자의 제보 숨기기"(App Store 가이드라인 1.2의 사용자 차단). 기기에만 저장하고 서버로 보내지 않는다.
@@ -9,13 +10,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
  */
 
 const STORAGE_KEY = '@hongikon_hidden_authors'
+/** 앱 닉네임이 없는 사용자(가린 로그인 이름·익명)를 목록에서 부르는 이름. */
+export const HIDDEN_ANONYMOUS_LABEL = '익명 사용자'
+
+/**
+ * 숨긴 목록에 남길 이름. 앱 닉네임(한글·영문·숫자·_)만 그대로 두고, 가린 카카오·Apple 이름('홍**')이나 '익명'은
+ * '익명 사용자'로 바꾼다 — 성씨 같은 실명 일부로 상대가 누군지 짐작되지 않게 한다. 앱 닉네임에는 '*'가 들어갈 수 없다.
+ */
+export function hiddenAuthorLabel(name: string | null | undefined): string {
+  const trimmed = name?.trim()
+  if (!trimmed || trimmed === ANONYMOUS_NAME || trimmed.includes('*')) return HIDDEN_ANONYMOUS_LABEL
+  return trimmed
+}
 /** 너무 길어지지 않게 최근 것만 남긴다. */
 const MAX_ENTRIES = 500
 
 export interface HiddenAuthor {
   /** 서버가 준 authorKey. */
   key: string
-  /** 숨길 때 보이던 작성자 이름(가린 닉네임). 목록에서 알아보기 위한 표시용. */
+  /** 목록에 보일 이름: 앱 닉네임, 없으면 '익명 사용자'(`hiddenAuthorLabel`). */
   label: string
   /** 숨긴 시각(ISO). */
   hiddenAt: string
@@ -57,7 +70,8 @@ function ensureLoaded(): Promise<void> {
         // 불러오기 전에 이미 숨긴 항목(빠른 탭)이 있으면 함께 남긴다.
         const restored = parsed.filter(isHiddenAuthor).map((entry) => ({
           key: entry.key,
-          label: entry.label,
+          // 예전 버전이 저장한 가린 실명('홍**')도 불러올 때 '익명 사용자'로 바꾼다.
+          label: hiddenAuthorLabel(entry.label),
           hiddenAt: typeof entry.hiddenAt === 'string' ? entry.hiddenAt : new Date(0).toISOString(),
         }))
         const merged = [...entries, ...restored.filter((entry) => !keySet.has(entry.key))]
@@ -83,7 +97,7 @@ function subscribe(listener: () => void) {
 
 export function hideAuthor(key: string, label: string): void {
   if (!key || keySet.has(key)) return
-  const next = [{ key, label, hiddenAt: new Date().toISOString() }, ...entries].slice(0, MAX_ENTRIES)
+  const next = [{ key, label: hiddenAuthorLabel(label), hiddenAt: new Date().toISOString() }, ...entries].slice(0, MAX_ENTRIES)
   emit(next)
   // 불러오기 전이면 불러온 뒤(합쳐진 목록으로) 저장한다.
   void ensureLoaded().then(persist)

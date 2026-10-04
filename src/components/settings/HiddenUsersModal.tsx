@@ -16,15 +16,10 @@ interface HiddenUsersModalProps {
   onClose: () => void
 }
 
-/** 날짜만(YYYY.MM.DD). 숨긴 시각은 기기 시간 기준이라 서버 시각 처리가 필요 없다. */
-function formatDate(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime()) || date.getTime() === 0) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} 숨김`
-}
-
-/** 설정 > 일반 > 숨긴 사용자. 제보 시트에서 "이 사용자 숨기기"로 숨긴 작성자를 다시 보이게 한다. */
+/**
+ * 설정 > 일반 > 숨긴 사용자. 제보 시트에서 "이 사용자 숨기기"로 숨긴 작성자를 다시 보이게 한다.
+ * 상대가 누군지 드러나지 않게 이름(앱 닉네임 또는 '익명 사용자')만 보이고, 숨긴 날짜 같은 다른 정보는 두지 않는다.
+ */
 export default function HiddenUsersModal({ visible, onClose }: HiddenUsersModalProps) {
   const hidden = useHiddenAuthors()
   const toast = useToast()
@@ -54,7 +49,6 @@ export default function HiddenUsersModal({ visible, onClose }: HiddenUsersModalP
                   key={entry.key}
                   icon="person-outline"
                   label={entry.label}
-                  description={formatDate(entry.hiddenAt) || undefined}
                   last={index === hidden.length - 1}
                   right={
                     <Button
@@ -64,7 +58,7 @@ export default function HiddenUsersModal({ visible, onClose }: HiddenUsersModalP
                       fullWidth={false}
                       onPress={() => {
                         unhideAuthor(entry.key)
-                        toast.show({ message: `${entry.label}님의 제보를 다시 보여 드려요`, tone: 'info' })
+                        toast.show({ message: '이 사용자의 제보를 다시 보여 드려요', tone: 'info' })
                       }}
                       accessibilityLabel={`${entry.label} 다시 보기`}
                     />
