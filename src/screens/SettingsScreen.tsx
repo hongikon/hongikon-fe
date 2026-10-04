@@ -23,6 +23,7 @@ import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
 import LicensesModal from '../components/settings/LicensesModal'
+import SupportModal from '../components/settings/SupportModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
@@ -72,6 +73,7 @@ type ModalType =
   | 'sources'
   | 'terms'
   | 'licenses'
+  | 'support'
   | 'privacy'
   | 'feedback'
   | 'infoSuggest'
@@ -582,6 +584,7 @@ export default function SettingsScreen() {
             />
           )}
           <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
+          <ListRow icon="help-buoy-outline" label="고객 지원" value="문의·자주 묻는 질문" onPress={() => setActiveModal('support')} />
           <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
           <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} />
           <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
@@ -656,6 +659,12 @@ export default function SettingsScreen() {
       />
 
       <FeedbackModal visible={activeModal === 'feedback'} onClose={() => setActiveModal(null)} />
+      {/* 고객 지원 › 앱에서 문의 보내기는 이 창을 닫고 문의하기 창을 연다(공지 목록 › 상세와 같은 방식). */}
+      <SupportModal
+        visible={activeModal === 'support'}
+        onClose={() => setActiveModal(null)}
+        onOpenFeedback={() => setActiveModal('feedback')}
+      />
 
       <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
 
