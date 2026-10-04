@@ -8,18 +8,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
-// 이용약관 제9조(이용자의 의무)·제10조(이용 제한, 무관용)를 제보에 맞게 풀어 쓴 것. 약관을 바꾸면 함께 고친다.
+// 이용약관 제8조 제3항(금지 게시물)·제9조·제10조(사유 통지·이의 제기)를 제보에 맞게 풀어 쓴 것. 약관을 바꾸면 함께 고친다.
+// '경고 없이 정지'는 불공정 약관 소지(공정위 2019 SNS 약관 시정)가 있어 쓰지 않는다.
 const RULES = [
   '욕설·비하·혐오 표현, 특정인이나 단체를 비방하는 내용',
   '음란하거나 선정적인 사진·글, 신체 사진',
-  '특정인을 몰래 찍거나 알아볼 수 있게 찍은 사진, 이름·연락처 같은 개인정보',
+  '동의 없이 특정인을 몰래 찍었거나 특정인을 겨냥해 얼굴이 뚜렷이 보이게 찍은 사진, 이름·연락처 같은 개인정보',
   '사실이 아닌 정보, 홍보·광고, 같은 내용 반복',
   '남의 사진·글을 허락 없이 올리는 것(초상권·저작권 침해)',
 ] as const
 
 /**
  * 제보 작성 창의 '제보 시 유의사항'. '제보 올리기' 버튼 바로 위에 접혀 있고, 누르면 펼쳐진다.
- * 무엇을 올리면 안 되는지와 어기면 경고 없이 정지될 수 있다는 것을 올리기 전에 알린다(에브리타임 커뮤니티 이용규칙과 같은 취지).
+ * 무엇을 올리면 안 되는지와 어기면 이용이 제한될 수 있다는 것을 올리기 전에 알린다(에브리타임 커뮤니티 이용규칙과 같은 취지).
  */
 export default function ReportGuidelines() {
   const [open, setOpen] = useState(false)
@@ -48,7 +49,7 @@ export default function ReportGuidelines() {
       {open ? (
         <View style={styles.body}>
           <Text style={styles.lead}>
-            아래 내용이 담긴 제보는 삭제되고, 무관용 원칙에 따라 경고 없이 이용이 정지될 수 있어요.
+            아래 내용이 담긴 제보는 삭제되며, 위반 정도에 따라 이용이 제한될 수 있어요.
           </Text>
           {RULES.map((rule) => (
             <View key={rule} style={styles.ruleRow}>
@@ -60,11 +61,11 @@ export default function ReportGuidelines() {
           <View style={styles.tip}>
             <Ionicons name="camera-outline" size={14} color={COLORS.primary} style={styles.ruleIcon} />
             <Text style={styles.tipText}>
-              행사 현장에 사람이 작게 함께 찍히는 건 괜찮아요. 누군가의 얼굴이 크게 나왔다면 다른 사진을 골라 주세요.
+              행사 현장에 사람이 작게 함께 찍히는 건 일반적으로 괜찮지만, 사진 속 당사자가 요청하면 삭제해요. 누군가의 얼굴이 크게 나왔다면 다른 사진을 골라 주세요.
             </Text>
           </View>
           <Text style={styles.foot}>
-            정지 이력은 탈퇴한 뒤에도 1년 동안 보관돼요. 자세한 내용은 설정 › 이용약관 제9·10조에서 볼 수 있어요.
+            이용 제한은 사유와 함께 알려 드리고, 14일 안에 이의를 제기할 수 있어요. 자세한 내용은 설정 › 이용약관 제8~10조에서 볼 수 있어요.
           </Text>
         </View>
       ) : null}
