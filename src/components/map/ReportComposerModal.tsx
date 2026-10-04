@@ -23,6 +23,7 @@ import { FONTS, TYPE } from '../../constants/typography'
 import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import ScreenHeader from '../common/ScreenHeader'
 import Button from '../common/Button'
+import ReportGuidelines from './ReportGuidelines'
 import TextField from '../common/TextField'
 import * as haptics from '../../lib/haptics'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
@@ -958,6 +959,8 @@ export default function ReportComposerModal({
                   </View>
 
                   <View style={styles.footer}>
+                    {/* 올리기 전에 볼 수 있게 버튼 바로 위에 접어 둔다(누르면 펼쳐짐). */}
+                    <ReportGuidelines />
                     {/* 필수 항목이 비면 흐리게만 보이고 누를 수 있다 — 누르면 빠진 칸을 알려 준다. */}
                     <Button
                       label="제보 올리기"
