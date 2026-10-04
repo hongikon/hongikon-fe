@@ -23,11 +23,18 @@ import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
 import { AdminAccessProvider } from './src/admin/AdminAccess'
 import { requestMapIntent } from './src/lib/mapIntents'
+import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
 function PushNotificationsBridge() {
   usePushNotifications()
+  return null
+}
+
+/** 웹: 로그인 전에 연 주소로 로그인·둘러보기 뒤 돌아간다(`src/lib/webReturnPath.ts`). navigationRef·linking 을 쓰므로 NavigationContainer 안. */
+function WebReturnPathBridge() {
+  useWebReturnPath()
   return null
 }
 
@@ -82,6 +89,8 @@ export function sharedReportIdFromPath(pathname: string): number | null {
 }
 
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  // 아래 공유 링크 처리가 주소를 `/` 로 바꾸기 전에, 처음 연 주소부터 적어 둔다.
+  captureWebReturnPath()
   const sharedId = sharedReportIdFromPath(window.location.pathname)
   if (sharedId !== null) {
     requestMapIntent({ type: 'focusReport', reportId: sharedId })
@@ -151,6 +160,7 @@ export default function App() {
               documentTitle={{ formatter: (_options, route) => formatDocumentTitle(route?.name, route?.params) }}
             >
               <PushNotificationsBridge />
+              {Platform.OS === 'web' && <WebReturnPathBridge />}
               <RootNavigator />
               {/* 모든 화면 위에 떠야 해서 내비게이터 뒤(위 레이어)에 둔다. 네이티브 Modal 위로는 못 올라간다. */}
               <NetworkStatusBanner />
