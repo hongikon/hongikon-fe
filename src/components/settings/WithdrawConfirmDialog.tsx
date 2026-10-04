@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
 
-// 처리방침 3항(탈퇴 시 삭제)과 같은 내용만 적는다.
+// 처리방침 3항(탈퇴 시 삭제)과 같은 내용만 적는다. 정지·신고 이력이 있으면 1년 분리 보관(아래 note) — 백엔드 WithdrawRetention.
 const DELETED_ITEMS = [
   '회원 정보와 앱 닉네임',
   '올린 제보와 사진, 댓글·답글',
@@ -61,7 +61,9 @@ export default function WithdrawConfirmDialog({ visible, onCancel, onConfirm }: 
               </View>
             ))}
           </View>
-          <Text style={styles.note}>카카오·Apple 계정과의 연결도 함께 해제돼요.</Text>
+          <Text style={styles.note}>
+            카카오·Apple 계정과의 연결도 함께 해제돼요. 이용 정지·신고 이력이 있으면 부정 이용을 막기 위해 일부 기록을 1년 동안 따로 보관해요.
+          </Text>
 
           <View style={styles.actions}>
             <Button label="아니요, 계속 쓸게요" onPress={handleCancel} size="lg" disabled={busy} />
