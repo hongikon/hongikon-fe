@@ -157,7 +157,7 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 HongikOn (홍익온) is a free, unofficial campus companion app for Hongik University (Seoul, Korea), built by a student team. It is not affiliated with or endorsed by the university; this is stated on the welcome screen, at the bottom of Settings, and in the description.
 
 1) Reviewing without an account
-- On first launch, swipe through the intro, pick any department and tap "확인했어요" on the app permissions notice. On the welcome screen tap "둘러보기" (Browse without signing in). Notification permission is not requested at first launch or for guests; it is asked once, after signing in, with an explanation screen first ("알림 받기" / "나중에"). Map (지도), Notices (소식), partner discounts and Settings (설정) work fully as a guest.
+- On first launch, swipe through the intro and tap "확인했어요" on the app permissions notice. On the welcome screen tap "둘러보기" (Browse without signing in). A one-time "어떤 소식을 받아볼까요?" screen then asks which departments to follow (it also appears right after signing in instead); pick any department, or tap "나중에 할게요" to skip. It is skipped automatically if the account already follows departments. Notification permission is not requested at first launch or for guests; it is asked once, after signing in, with an explanation screen first ("알림 받기" / "나중에"). Map (지도), Notices (소식), partner discounts and Settings (설정) work fully as a guest.
 
 2) Signing in
 - Sign in with Apple is available on the welcome screen and in Settings > 로그인하기. You can also use the Kakao demo account in the Sign-In fields above.

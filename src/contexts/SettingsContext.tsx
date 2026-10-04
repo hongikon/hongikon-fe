@@ -67,6 +67,12 @@ interface SettingsContextValue {
   toggleBookmark: (id: string) => void
   isBookmarked: (id: string) => boolean
   resetSettings: () => void
+  /**
+   * 구독 목록을 믿고 볼 수 있는지. 게스트는 늘 true, 로그인 상태면 로그인 뒤 서버 구독과 한 번 합쳐 본 뒤에 true
+   * (실패·서버 API 없음도 끝난 것으로 본다 — 그때는 로컬 값이 전부다). 학과 고르기(`DeptPickScreen`)가
+   * "이 계정에 이미 구독이 있으면 건너뛰기"를 판단할 때 쓴다.
+   */
+  boardSubscriptionsReady: boolean
 }
 
 /** 앱이 그릴 수 있는 게시판(TREE_DATA 리프). 서버에서만 온 모르는 sourceId 를 거르는 데 쓴다. */
@@ -224,6 +230,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   /** 로그인 직후 합치기가 연결 문제로 실패했는지. 그러면 재연결·포그라운드 때 다시 한다. */
   const [boardSyncFailed, setBoardSyncFailed] = useState(false)
   const [boardSyncNonce, setBoardSyncNonce] = useState(0)
+  /** 이번 로그인에서 서버 구독과 합치기를 한 번이라도 끝냈는지(성공·실패 무관). 로그아웃하면 되돌린다. */
+  const [boardMergeSettled, setBoardMergeSettled] = useState(false)
 
   // 로그아웃하면 이전 계정의 미전송 변경을 버린다. 토큰 재발급(accessToken 값만 바뀜)에는 비우지 않는다 —
   // 계정이 바뀌려면 반드시 로그아웃(null)을 거친다.
@@ -231,6 +239,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (isLoggedIn) return
     boardQueue.clear()
     setBoardSyncFailed(false)
+    setBoardMergeSettled(false)
   }, [isLoggedIn, boardQueue])
 
   /** 로그인 상태일 때만 서버로 보낸다. 게스트 변경은 로그인 때 합치기가 한꺼번에 올린다. */
@@ -264,6 +273,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return { ...prev, subscribedDepts: next.subscribed, mutedDepts: next.muted }
       })
       setBoardSyncFailed(false)
+      setBoardMergeSettled(true)
 
       const { toPut, toDelete } = diffBoardSubscriptions(merged, server, KNOWN_BOARD_IDS)
       // 이미 대기 중인 게시판은 그 값이 더 최신이라 건드리지 않는다.
@@ -275,6 +285,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
     })().catch((error) => {
       if (cancelled) return
+      // 못 합쳤어도 기다리는 화면(학과 고르기)을 붙잡지 않는다 — 로컬 값으로 판단한다.
+      setBoardMergeSettled(true)
       if (isSubscriptionApiMissing(error)) {
         boardQueue.markUnsupported()
         return
@@ -539,6 +551,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (loggedIn) pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
   }, [queueBoardChange, pushReportAlerts])
 
+  // 서버 구독 API 가 없다고 이미 판정됐으면 합치기 효과가 돌지 않으므로 기다릴 것도 없다.
+  const boardSubscriptionsReady = !isLoggedIn || boardMergeSettled || boardQueue.isUnsupported()
+
   /**
    * 값을 매 렌더 새 객체로 만들면 설정을 건드리지 않아도 모든 소비자가 다시 그려진다.
    * 소식 목록처럼 항목이 많은 화면에서 특히 크게 걸린다.
@@ -556,6 +571,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleBookmark,
       isBookmarked,
       resetSettings,
+      boardSubscriptionsReady,
     }),
     [
       settings,
@@ -569,6 +585,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleBookmark,
       isBookmarked,
       resetSettings,
+      boardSubscriptionsReady,
     ]
   )
 

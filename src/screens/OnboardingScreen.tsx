@@ -17,14 +17,15 @@ import { useAuth } from '../contexts/AuthContext'
 import { completeOnboarding } from '../lib/onboarding'
 import ContentColumn from '../components/common/ContentColumn'
 import IntroSlides from '../components/onboarding/IntroSlides'
-import DeptPickStep from '../components/onboarding/DeptPickStep'
 import PermissionNoticeStep from '../components/onboarding/PermissionNoticeStep'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 
-type Step = 'intro' | 'depts' | 'permissions'
+type Step = 'intro' | 'permissions'
 
 /**
- * 첫 실행 온보딩: 소개(2~3장) → 내 학과 고르기 → 앱 접근권한 안내(네이티브만) → 웰컴(로그인/둘러보기).
+ * 첫 실행 온보딩: 소개(2~3장) → 앱 접근권한 안내(네이티브만) → 웰컴(로그인/둘러보기).
+ * "내 학과 고르기"는 여기서 하지 않는다 — 웰컴을 지난 뒤(로그인·둘러보기) `DeptPickScreen` 이 한 번 묻는다(10-04 변경).
+ * 로그인한 사용자는 고른 구독이 바로 계정에 저장되고, 이미 구독이 있는 계정이면 건너뛸 수 있어서다.
  * 알림 허용은 첫 실행에서 묻지 않는다 — 알림은 로그인한 계정 기준이라, 로그인한 뒤에 NotificationPrimer 가 한 번 묻는다(10-02 결정).
  * 접근권한 안내는 정보통신망법 제22조의2의 "앱 최초 실행 시" 고지라, 알림 허용 창을 띄울 수 없는 기기
  * (이미 허용·거절)에서도 보여 준다. 웹은 접근권한이 없어 건너뛴다.
@@ -50,7 +51,8 @@ export default function OnboardingScreen() {
     void completeOnboarding()
   }, [status, navigation])
 
-  const goAfterDepts = useCallback(() => {
+  // 웹은 접근권한이 없어 소개가 끝나면 바로 웰컴으로.
+  const goAfterIntro = useCallback(() => {
     if (Platform.OS === 'web') finish()
     else setStep('permissions')
   }, [finish])
@@ -60,12 +62,8 @@ export default function OnboardingScreen() {
   }, [finish])
 
   const goBack = useCallback((): boolean => {
-    if (step === 'depts') {
-      setStep('intro')
-      return true
-    }
     if (step === 'permissions') {
-      setStep('depts')
+      setStep('intro')
       return true
     }
     return false
@@ -101,8 +99,7 @@ export default function OnboardingScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Animated.View style={[styles.flex, { opacity: appear, transform: [{ translateY }] }]}>
-          {step === 'intro' && <IntroSlides onDone={() => setStep('depts')} />}
-          {step === 'depts' && <DeptPickStep onNext={goAfterDepts} />}
+          {step === 'intro' && <IntroSlides onDone={goAfterIntro} />}
           {step === 'permissions' && <PermissionNoticeStep onNext={goAfterPermissions} />}
         </Animated.View>
       </KeyboardAvoidingView>
