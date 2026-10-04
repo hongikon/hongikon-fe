@@ -161,7 +161,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let refreshToken: string | null = null
         try {
           refreshToken = await getItem(REFRESH_TOKEN_KEY)
-          if (!refreshToken || isStale()) return null
+          if (isStale()) return null
+          if (!refreshToken) {
+            // 저장소에 refresh 토큰이 없다 — 웹에서 다른 탭이 로그아웃(같은 저장소를 지운다)했거나, 저장이 반쯤
+            // 끝난 채 앱이 꺼졌다. 예전엔 null 만 돌려줘 이 탭은 'authenticated' 인 채 요청마다 401 → 재발급 실패를
+            // 되풀이했다. 그사이 다른 탭이 새로 로그인해 새 토큰을 저장했으면 그걸 쓰고, 아니면 이 탭도 로그아웃
+            // 상태로 돌린다. 서버 정리(기기 해제·토큰 폐기)는 로그아웃한 쪽이 이미 했거나 쓸 refresh 토큰이 없어 하지 않는다.
+            const latestAccess = await getItem(ACCESS_TOKEN_KEY)
+            if (isStale()) return null
+            if (latestAccess && latestAccess !== expiredAccessToken) {
+              setAccessToken(latestAccess)
+              return latestAccess
+            }
+            await clearAccountLinkedSettings()
+            await clearTokens()
+            if (isStale()) return null
+            setAccessToken(null)
+            setStatus('signedOut')
+            return null
+          }
           const tokens = await reissueTokens(refreshToken)
           if (isStale()) {
             discard(tokens)
@@ -178,9 +196,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return tokens.accessToken
         } catch (error: unknown) {
           // 리프레시 토큰도 만료·무효(4xx)면 다시 로그인해야 한다. 네트워크 문제면 로그인 상태는 유지한다.
+          // 408(요청 시간 초과)·429(요청 과다)는 4xx 지만 토큰 문제가 아니라 잠깐의 상태라 네트워크 문제처럼 넘긴다
+          // (예전엔 이것도 만료로 보고 로그아웃시켰다).
           // 단, 그 사이 다른 탭(웹은 같은 저장소를 쓴다)이 먼저 재발급해 저장소의 토큰이 바뀌었으면 그 토큰을 쓴다 —
           // 여기서 저장소를 지우면 멀쩡한 다른 탭까지 로그아웃된다(서버는 세션별 토큰 + 60초 유예, BE #24).
-          if (!isStale() && error instanceof ApiError && error.status >= 400 && error.status < 500) {
+          if (
+            !isStale() &&
+            error instanceof ApiError &&
+            error.status >= 400 &&
+            error.status < 500 &&
+            error.status !== 408 &&
+            error.status !== 429
+          ) {
             const [latestRefresh, latestAccess] = await Promise.all([getItem(REFRESH_TOKEN_KEY), getItem(ACCESS_TOKEN_KEY)])
             if (latestRefresh && latestRefresh !== refreshToken && latestAccess && latestAccess !== expiredAccessToken) {
               setAccessToken(latestAccess)
