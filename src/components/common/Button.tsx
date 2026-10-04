@@ -12,7 +12,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { CONTROL_HEIGHT, RADIUS, SPACING } from '../../constants/spacing'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'muted'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 interface ButtonProps {
@@ -58,6 +58,8 @@ const PALETTE: Record<ButtonVariant, { bg: string; fg: string; border?: string }
   outline: { bg: COLORS.white, fg: COLORS.primary, border: COLORS.primary },
   ghost: { bg: 'transparent', fg: COLORS.textSecondary },
   destructive: { bg: COLORS.dangerSoft, fg: COLORS.danger },
+  /** 눈에 덜 띄게 할 선택지(예: 탈퇴 확인의 '예'). 회색 면 + 옅은 글자. */
+  muted: { bg: COLORS.fill, fg: COLORS.textTertiary },
 }
 
 /**

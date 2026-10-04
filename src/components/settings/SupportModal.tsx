@@ -10,6 +10,7 @@ import { openSitePage } from '../../utils/openSitePage'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import ListRow from '../common/ListRow'
+import WithdrawConfirmDialog from './WithdrawConfirmDialog'
 import SectionTitle from '../common/SectionTitle'
 
 /** 처리방침·약관·hongikon.com/support/ 에 적힌 것과 같은 주소. */
@@ -49,14 +50,20 @@ interface SupportModalProps {
   onClose: () => void
   /** '앱에서 문의 보내기' — 설정 화면이 이 창을 닫고 문의하기 창을 연다. */
   onOpenFeedback: () => void
+  /** 로그인한 회원인지. 게스트는 지울 계정이 없어 '계정 삭제 안내'가 웹 안내 페이지를 연다. */
+  isMember: boolean
+  /** 탈퇴 확인 창에서 '예'를 눌렀을 때(설정 화면의 탈퇴 처리). */
+  onWithdraw: () => Promise<void>
 }
 
 /**
  * 설정 › 고객 지원. 문의 방법(앱 문의·이메일), 자주 묻는 질문, 웹 안내 페이지를 한곳에 모은다.
  * App Store 지원 URL(hongikon.com/support/)과 같은 내용을 앱 안에서도 볼 수 있게 한다.
  */
-export default function SupportModal({ visible, onClose, onOpenFeedback }: SupportModalProps) {
+export default function SupportModal({ visible, onClose, onOpenFeedback, isMember, onWithdraw }: SupportModalProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  // 이 창 위에 떠야 해서(iOS 는 모달 위에 다른 모달을 띄우려면 그 안에 있어야 한다) 탈퇴 확인 창을 여기 둔다.
+  const [withdrawVisible, setWithdrawVisible] = useState(false)
 
   const openEmail = () => {
     const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[홍익온] 문의')}`
@@ -122,12 +129,21 @@ export default function SupportModal({ visible, onClose, onOpenFeedback }: Suppo
                 <ListRow
                   icon="trash-outline"
                   label="계정 삭제 안내"
+                  danger
                   last
-                  onPress={() => openSitePage('/account-deletion/')}
+                  onPress={() => (isMember ? setWithdrawVisible(true) : openSitePage('/account-deletion/'))}
                 />
               </View>
             </ScrollView>
           </ContentColumn>
+          <WithdrawConfirmDialog
+            visible={withdrawVisible}
+            onCancel={() => setWithdrawVisible(false)}
+            onConfirm={async () => {
+              await onWithdraw()
+              setWithdrawVisible(false)
+            }}
+          />
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

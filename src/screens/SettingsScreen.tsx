@@ -24,6 +24,7 @@ import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
 import LicensesModal from '../components/settings/LicensesModal'
 import SupportModal from '../components/settings/SupportModal'
+import WithdrawConfirmDialog from '../components/settings/WithdrawConfirmDialog'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
@@ -127,21 +128,19 @@ export default function SettingsScreen() {
     logout()
   }
 
-  const handleDeleteAccount = () => {
-    confirmAction({
-      title: '회원 탈퇴',
-      message: '탈퇴하면 계정 정보와 구독·알림 설정이 삭제되고 되돌릴 수 없어요. 계속할까요?',
-      confirmLabel: '탈퇴',
-      destructive: true,
-      onConfirm: async () => {
-        try {
-          await deleteAccount()
-        } catch (error) {
-          const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 생겼어요.'
-          notify('탈퇴 실패', message)
-        }
-      },
-    })
+  // 탈퇴 확인은 WithdrawConfirmDialog(빨간 경고, '아니요'가 메인 컬러). 설정 맨 아래 링크와 고객 지원 › 계정 삭제 안내가 같이 쓴다.
+  const [withdrawVisible, setWithdrawVisible] = useState(false)
+  const handleDeleteAccount = () => setWithdrawVisible(true)
+
+  const withdraw = async () => {
+    try {
+      await deleteAccount()
+      setWithdrawVisible(false)
+      setActiveModal(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 생겼어요.'
+      notify('탈퇴 실패', message)
+    }
   }
 
   // 회원 번호. 서버가 주는 공개 번호(K7Q2M9XA4D)를 보여 주고, 서버 배포 전에는 예전처럼 토큰 sub(= userId)를 #123 으로 보여 준다.
@@ -664,6 +663,13 @@ export default function SettingsScreen() {
         visible={activeModal === 'support'}
         onClose={() => setActiveModal(null)}
         onOpenFeedback={() => setActiveModal('feedback')}
+        isMember={status === 'authenticated'}
+        onWithdraw={withdraw}
+      />
+      <WithdrawConfirmDialog
+        visible={withdrawVisible && activeModal !== 'support'}
+        onCancel={() => setWithdrawVisible(false)}
+        onConfirm={withdraw}
       />
 
       <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
