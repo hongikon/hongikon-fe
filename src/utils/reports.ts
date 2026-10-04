@@ -1,5 +1,4 @@
 import { Alert, Platform } from 'react-native'
-import { reportCategoryMeta } from '../constants/reportCategories'
 import type { ReportCategory, ReportListItem } from '../types'
 import { parseServerTime } from './serverTime'
 import { formatDay, formatServerSchedule, formatStartShort, isSameKstDay, isUpcomingReport } from './reportSchedule'
@@ -42,7 +41,6 @@ export interface ReportMarker {
   category: ReportCategory
   lat: number
   lng: number
-  color: string
   label: string
   /** 아직 시작 전(예정). 지도에서 속이 빈 배지와 시작 시각으로 따로 보인다. */
   upcoming?: boolean
@@ -114,7 +112,6 @@ export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarke
       category: report.category,
       lat: report.lat,
       lng: report.lng,
-      color: reportCategoryMeta(report.category).color,
       // 예정 제보는 이름 앞에 시작 시각을 붙인다(예: '내일 11:00 · 붕어빵 트럭').
       label: upcoming ? `${formatStartShort(parseServerTime(report.startsAt), now)} · ${report.title}` : report.title,
       upcoming,

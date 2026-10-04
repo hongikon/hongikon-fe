@@ -92,7 +92,11 @@ function CommentItem({ comment, reply = false, pending, flagged, onReply, onDele
                       : `좋아요 ${comment.likeCount}개, ${comment.likedByMe ? '내가 눌렀어요. 누르면 취소해요' : '눌러서 좋아요'}`
                   }
                 >
-                  <Text style={styles.likeEmoji}>👍</Text>
+                  <Ionicons
+                    name={comment.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
+                    size={13}
+                    color={comment.likedByMe ? COLORS.fire : COLORS.textSecondary}
+                  />
                   {comment.likeCount > 0 ? (
                     <Text style={[styles.likeCount, comment.likedByMe && styles.likeCountOn]}>{comment.likeCount}</Text>
                   ) : null}
@@ -155,7 +159,6 @@ const styles = StyleSheet.create({
   },
   likeOn: { borderColor: COLORS.fire, backgroundColor: COLORS.primarySoft },
   likePressed: { opacity: 0.7 },
-  likeEmoji: { fontSize: 12 },
   likeCount: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.textSecondary, fontVariant: ['tabular-nums'] },
   likeCountOn: { color: COLORS.fire },
   replyActionLabel: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.textTertiary },

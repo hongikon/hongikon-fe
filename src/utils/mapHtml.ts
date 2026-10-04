@@ -14,6 +14,7 @@ import {
   REPORT_LONG_PRESS_MS,
 } from '../constants/report'
 import { COLORS } from '../constants/colors'
+import { REPORT_PIN_CATEGORY_ICONS, REPORT_PIN_MEGAPHONE } from '../constants/reportPinIcons'
 import type { Building } from '../types'
 import { ENTRANCE_CHECK_DATA } from '../debug/entranceCheckData'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
@@ -576,21 +577,40 @@ export function buildMapHTML(
     // ── 제보 표시 ───────────────────────────────────────────
     // 지금 벌어지는 일이라 다른 마커보다 눈에 먼저 띄어야 한다. zIndex 를 가장
     // 높게 두고, 배지에 옅은 테두리 링을 둘러 '살아있는 정보'로 읽히게 한다.
-    // 예정 제보(item.upcoming)는 속이 흰 배지 + 카테고리색 점선 테두리로, 지금 진행 중인 제보와 한눈에 갈린다.
+    // 모양은 시안 A(ui-shots/report-pin/options.html): 메인 컬러 원 + 흰 확성기, 오른쪽 아래 작은 흰 원에
+    // 카테고리 아이콘. 카테고리는 색이 아니라 아이콘으로만 가른다(앱 색 기조 통일).
+    // 예정 제보(item.upcoming)는 속이 흰 배지 + 메인 컬러 점선 테두리로, 지금 진행 중인 제보와 한눈에 갈린다.
+    var REPORT_PIN_COLOR = '${COLORS.primary}';
+    var REPORT_PIN_MEGAPHONE = ${JSON.stringify(REPORT_PIN_MEGAPHONE)};
+    var REPORT_PIN_CATEGORY_ICONS = ${JSON.stringify(REPORT_PIN_CATEGORY_ICONS)};
+
+    function reportPinSVG(inner, size, fill) {
+      return '<svg viewBox="0 0 512 512" width="' + size + '" height="' + size + '" fill="' + fill
+        + '" style="display:block;">' + inner + '</svg>';
+    }
+
     function reportLabelHTML(item) {
       var badge = 30;
-      var color = safeColor(item.color);
-      var badgeEl = item.upcoming
+      var color = REPORT_PIN_COLOR;
+      // 앱보다 서버가 먼저 새 카테고리를 내려보내도 '기타' 아이콘으로 그린다(reportCategoryMeta 와 같은 처리).
+      var categoryIcon = Object.prototype.hasOwnProperty.call(REPORT_PIN_CATEGORY_ICONS, item.category)
+        ? REPORT_PIN_CATEGORY_ICONS[item.category]
+        : REPORT_PIN_CATEGORY_ICONS.ETC;
+      var circle = item.upcoming
         ? '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;box-sizing:border-box;'
           + 'background:#fff;border:2px dashed ' + color + ';box-shadow:0 2px 6px rgba(0,0,0,0.22);'
-          + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
-          + '<svg viewBox="0 0 24 24" width="15" height="15" fill="' + color + '" style="display:block;">'
-          + '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 5v4.6l3.2 1.9-.8 1.3L11 12.4V7h2z"/></svg></div>'
+          + 'display:flex;align-items:center;justify-content:center;">'
+          + reportPinSVG(REPORT_PIN_MEGAPHONE, 16, color) + '</div>'
         : '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
           + 'background:' + color + ';box-shadow:0 2px 6px rgba(0,0,0,0.3),0 0 0 3px rgba(255,255,255,0.95);'
-          + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
-          + '<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" style="display:block;">'
-          + '<path d="M5 3h11l-1.6 3.4L16 9.8H7v10.9H5V3z"/></svg></div>';
+          + 'display:flex;align-items:center;justify-content:center;">'
+          + reportPinSVG(REPORT_PIN_MEGAPHONE, 16, '#fff') + '</div>';
+      var categoryEl = '<div style="position:absolute;right:-7px;bottom:-5px;width:17px;height:17px;border-radius:50%;'
+        + 'box-sizing:border-box;background:#fff;border:1.5px solid ' + color + ';'
+        + 'display:flex;align-items:center;justify-content:center;">'
+        + reportPinSVG(categoryIcon, 10, color) + '</div>';
+      var badgeEl = '<div style="position:relative;width:' + badge + 'px;height:' + badge + 'px;pointer-events:auto;">'
+        + circle + categoryEl + '</div>';
 
       // HOT(최근 60분 🔥 5개 이상) 제보는 배지 오른쪽 위에 흰 원 + 🔥 불꽃(FINAL.md 지도 마커: 불꽃 #0B1A8C, 안쪽 흰색)을 붙인다.
       if (item.hot) {
@@ -603,7 +623,8 @@ export function buildMapHTML(
           + '</svg></div></div>';
       }
 
-      var nameEl = '<div style="margin-top:3px;white-space:nowrap;max-width:150px;overflow:hidden;'
+      // 오른쪽 아래 카테고리 배지(-5px)가 이름에 닿지 않게 3px 대신 5px 띄운다(renderReports 의 boxH 와 맞춤).
+      var nameEl = '<div style="margin-top:5px;white-space:nowrap;max-width:150px;overflow:hidden;'
         + 'text-overflow:ellipsis;font-family:' + PARTNER_FONT
         + ';font-size:11.5px;font-weight:700;color:' + (item.upcoming ? '#4b5563' : '#1f2937') + ';letter-spacing:-0.2px;'
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
@@ -623,7 +644,7 @@ export function buildMapHTML(
       var boxW = 160;
       var padTop = 3;
       var badge = 30;
-      var boxH = padTop + badge + 3 + 18;
+      var boxH = padTop + badge + 5 + 18;
 
       items.forEach(function(item) {
         var marker = new naver.maps.Marker({

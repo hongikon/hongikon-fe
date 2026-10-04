@@ -966,7 +966,7 @@ export default function MapScreen() {
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>
-                {hotOnly ? "지금은 HOT 제보가 없어요. 제보에 🔥 를 붙여 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
+                {hotOnly ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
               </Text>
             </View>
           )}
@@ -1304,12 +1304,8 @@ export default function MapScreen() {
                     style={styles.buildingItem}
                     onPress={() => handleSelectRouteBuilding(item)}
                   >
-                    <View
-                      style={[
-                        styles.buildingItemDot,
-                        { backgroundColor: item.color },
-                      ]}
-                    />
+                    {/* 건물별 색 대신 앱 메인 컬러로 통일(buildingItemDot). */}
+                    <View style={styles.buildingItemDot} />
                     <View style={styles.buildingItemInfo}>
                       <Text style={styles.buildingItemName}>{item.name}</Text>
                       <Text style={styles.buildingItemType}>{item.type}</Text>
@@ -1710,7 +1706,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     gap: 10,
   },
-  buildingItemDot: { width: 10, height: 10, borderRadius: 5 },
+  buildingItemDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
   buildingItemInfo: { flex: 1 },
   buildingItemName: {
     fontSize: 14,

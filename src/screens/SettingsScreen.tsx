@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { COLORS, CATEGORY_COLORS } from '../constants/colors'
+import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
 import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -22,6 +22,7 @@ import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
+import LicensesModal from '../components/settings/LicensesModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
@@ -35,7 +36,6 @@ import { useHiddenAuthors } from '../lib/hiddenAuthors'
 import { useIsAdmin } from '../admin/AdminAccess'
 import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
-import { openSitePage } from '../utils/openSitePage'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import { LargeTitleHeader } from '../components/common/ScreenHeader'
@@ -71,6 +71,7 @@ type ModalType =
   | 'noticeDetail'
   | 'sources'
   | 'terms'
+  | 'licenses'
   | 'privacy'
   | 'feedback'
   | 'infoSuggest'
@@ -404,7 +405,7 @@ export default function SettingsScreen() {
             <ListRow
               icon="checkmark-done-outline"
               label="내 제보 결과 알림"
-              description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 🔥 가 모이면 알려드려요"
+              description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 공감이 모이면 알려드려요"
               right={
                 <ToggleSwitch
                   value={reportStatusAlert}
@@ -505,15 +506,13 @@ export default function SettingsScreen() {
           <View style={[styles.categoryGrid, detailDimmed && styles.dimmed]}>
             {ALL_CATEGORIES.map((cat) => {
               const isOn = alertCategories.includes(cat)
-              const colors = CATEGORY_COLORS[cat]
+              // 켜진 분야는 분야별 색 대신 앱 기본색(남색)으로 통일한다.
               return (
                 <TouchableOpacity
                   key={cat}
                   style={[
                     styles.categoryChip,
-                    isOn
-                      ? { backgroundColor: colors.bg, borderColor: colors.text }
-                      : styles.categoryChipOff,
+                    isOn ? styles.categoryChipOn : styles.categoryChipOff,
                   ]}
                   onPress={guarded(() => toggleAlertCategory(cat))}
                   activeOpacity={0.7}
@@ -524,9 +523,9 @@ export default function SettingsScreen() {
                   <Ionicons
                     name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
                     size={14}
-                    color={isOn ? colors.text : COLORS.textTertiary}
+                    color={isOn ? COLORS.primary : COLORS.textTertiary}
                   />
-                  <Text style={[styles.categoryChipText, { color: isOn ? colors.text : COLORS.textTertiary }]}>
+                  <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textTertiary }]}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -584,8 +583,7 @@ export default function SettingsScreen() {
           )}
           <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
           <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
-          <ListRow icon="help-buoy-outline" label="고객 지원" value="hongikon.com" onPress={() => openSitePage('/support/')} />
-          <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => openSitePage('/licenses/')} />
+          <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} />
           <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
         </View>
 
@@ -628,6 +626,7 @@ export default function SettingsScreen() {
       />
 
       <TermsModal visible={activeModal === 'terms'} onClose={() => setActiveModal(null)} />
+      <LicensesModal visible={activeModal === 'licenses'} onClose={() => setActiveModal(null)} />
 
       <PrivacyModal visible={activeModal === 'privacy'} onClose={() => setActiveModal(null)} />
 
@@ -712,6 +711,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.pill,
     borderWidth: 1,
+  },
+  categoryChipOn: {
+    backgroundColor: COLORS.primarySoft,
+    borderColor: COLORS.primary,
   },
   categoryChipOff: {
     backgroundColor: COLORS.fill,

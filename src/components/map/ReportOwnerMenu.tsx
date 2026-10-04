@@ -27,8 +27,8 @@ export default function ReportOwnerMenu({ visible, onClose, notifyEnabled, globa
                 globalOff
                   ? '설정 > 알림의 "내 제보 결과 알림"이 꺼져 있어 지금은 알림이 오지 않아요'
                   : notifyEnabled
-                    ? '이 제보의 새 댓글·답글과 🔥 소식을 더 받지 않아요'
-                    : '이 제보에 새 댓글이 달리거나 🔥 가 10·50·100개를 넘으면 알려 드려요'
+                    ? '이 제보의 새 댓글·답글과 공감 소식을 더 받지 않아요'
+                    : '이 제보에 새 댓글이 달리거나 공감이 10·50·100개를 넘으면 알려 드려요'
               }
               onPress={() => {
                 onClose()

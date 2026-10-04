@@ -33,8 +33,8 @@ export function reportPlaceText(report: Pick<ReportListItem, 'lat' | 'lng' | 'fl
 export function reportShareMessage(report: ReportListItem): string {
   return [
     `[홍익온] ${report.title}`,
-    `🕒 ${formatServerSchedule(report.startsAt, report.endsAt)}`,
-    `📍 ${reportPlaceText(report)}`,
+    `일시: ${formatServerSchedule(report.startsAt, report.endsAt)}`,
+    `장소: ${reportPlaceText(report)}`,
     reportShareUrl(report.id),
   ].join('\n')
 }

@@ -45,7 +45,8 @@ export default function BuildingSheet({
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View style={[styles.dot, { backgroundColor: building.color }]} />
+          {/* 건물별 색 대신 앱 메인 컬러 하나로 통일한다(지도 핀과 같음). */}
+          <View style={styles.dot} />
           <Text style={styles.name}>{building.name}</Text>
         </View>
         <IconButton
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
   name: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   type: { fontFamily: FONTS.regular,
     fontSize: 12,

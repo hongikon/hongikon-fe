@@ -180,9 +180,10 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
       <View style={styles.spacer} />
 
       {hasViews ? (
-        <Text style={styles.views} accessibilityLabel={`조회 ${report.viewCount}회`}>
-          👀 {formatCount(report.viewCount ?? 0)}
-        </Text>
+        <View style={styles.viewsRow} accessibilityLabel={`조회 ${report.viewCount}회`}>
+          <Ionicons name="eye-outline" size={14} color={COLORS.textTertiary} />
+          <Text style={styles.views}>{formatCount(report.viewCount ?? 0)}</Text>
+        </View>
       ) : null}
     </View>
   )
@@ -211,5 +212,6 @@ const styles = StyleSheet.create({
   countOn: { fontFamily: FONTS.bold, color: COLORS.fire },
   label: { fontFamily: FONTS.semibold, fontSize: 13.5, color: COLORS.primary },
   spacer: { flex: 1 },
+  viewsRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   views: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textTertiary, fontVariant: ['tabular-nums'] },
 })

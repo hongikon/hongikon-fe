@@ -145,7 +145,7 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
                   <Text style={styles.itemName}>{comment.authorDisplayName}</Text>
                   {'  '}
                   <Text style={styles.itemTime}>{formatCommentTime(comment.createdAt)}</Text>
-                  {(comment.likeCount ?? 0) > 0 ? <Text style={styles.itemTime}>{` · 👍 ${comment.likeCount}`}</Text> : null}
+                  {(comment.likeCount ?? 0) > 0 ? <Text style={styles.itemTime}>{` · 좋아요 ${comment.likeCount}`}</Text> : null}
                 </Text>
                 <Text style={styles.itemBody} numberOfLines={2}>
                   {comment.content}
