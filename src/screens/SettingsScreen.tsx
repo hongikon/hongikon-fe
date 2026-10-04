@@ -238,6 +238,9 @@ export default function SettingsScreen() {
   useEffect(() => setSavedProfile(null), [profileResource.data])
   const profile = savedProfile ?? profileResource.data
   const nicknameApiMissing = !profile && isNicknameApiKnownMissing()
+  // 계정 정보를 받아 왔을 때만(구서버라 닉네임 API 가 없으면 예전처럼) 닉네임·내 제보 내역을 보인다.
+  // 토큰이 만료됐거나 서버에 닿지 않아 못 받아 오면 두 줄을 숨긴다('불러오지 못함' 줄을 남기지 않는다).
+  const accountLoaded = profile != null || nicknameApiMissing
 
   // 공개 회원 번호. 닉네임과 같은 이유로 토큰은 ref 로 읽고, API 가 없으면(배포 전) 다시 부르지 않는다.
   const memberCodeResource = useApiResource<string | null>(
@@ -297,18 +300,12 @@ export default function SettingsScreen() {
                 icon="person-circle-outline"
                 label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
               />
-              {!nicknameApiMissing && (
+              {!nicknameApiMissing && (profile || profileResource.loading) && (
                 <ListRow
                   icon="happy-outline"
                   label="닉네임"
-                  value={profile ? profile.displayName : profileResource.loading ? '불러오는 중' : '불러오지 못함'}
-                  onPress={
-                    profile
-                      ? () => setActiveModal('nickname')
-                      : profileResource.loading
-                        ? undefined
-                        : profileResource.retry
-                  }
+                  value={profile ? profile.displayName : '불러오는 중'}
+                  onPress={profile ? () => setActiveModal('nickname') : undefined}
                 />
               )}
               {memberId !== null && (
@@ -321,7 +318,7 @@ export default function SettingsScreen() {
                   accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
               )}
-              {!myReportsApiMissing && (
+              {accountLoaded && !myReportsApiMissing && (
                 <ListRow
                   icon="megaphone-outline"
                   label="내 제보 내역"
@@ -586,25 +583,17 @@ export default function SettingsScreen() {
           <ListRow icon="help-buoy-outline" label="고객 지원" value="문의·자주 묻는 질문" onPress={() => setActiveModal('support')} />
           <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
           <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} />
-          <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
+          <ListRow icon="refresh-outline" label="설정 초기화" danger last={status !== 'authenticated'} onPress={handleReset} />
+          {/* 회원 탈퇴는 설정 초기화 바로 아래. 누르면 WithdrawConfirmDialog(탈퇴를 말리는 쪽)가 뜬다. */}
+          {status === 'authenticated' && (
+            <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
+          )}
         </View>
 
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
           <LogotypeHorizontal width={112} height={20} />
         </View>
         <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
-
-        {/* 회원 탈퇴는 실수로 누르지 않게 맨 아래 작은 글씨로 둔다. */}
-        {status === 'authenticated' && (
-          <TouchableOpacity
-            style={styles.withdrawLink}
-            onPress={handleDeleteAccount}
-            accessibilityRole="button"
-            accessibilityLabel="회원 탈퇴"
-          >
-            <Text style={styles.withdrawText}>회원 탈퇴</Text>
-          </TouchableOpacity>
-        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -788,11 +777,5 @@ const styles = StyleSheet.create({
   },
   permissionText: { ...TYPE.caption, flex: 1, color: COLORS.warning },
   permissionAction: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.primary },
-  withdrawLink: { alignSelf: 'center', paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
-  withdrawText: {
-    ...TYPE.caption,
-    color: COLORS.textSecondary,
-    textDecorationLine: 'underline',
-  },
   bottomSpacer: { height: SPACING.lg },
 })

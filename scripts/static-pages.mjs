@@ -121,7 +121,7 @@ export function accountDeletionPage() {
   <ol>
     <li>홍익온 앱(또는 <a href="/">hongikon.com</a>)에 로그인해요.</li>
     <li>아래 탭에서 <strong>설정</strong>으로 들어가요.</li>
-    <li>화면 맨 아래 <strong>회원 탈퇴</strong>를 누르고, 확인 창에서 <strong>예, 탈퇴할게요</strong>를 눌러요.</li>
+    <li><strong>설정 초기화</strong> 바로 아래 <strong>회원 탈퇴</strong>를 누르고, 확인 창에서 <strong>예, 탈퇴할게요</strong>를 눌러요.</li>
   </ol>
   <p>탈퇴는 바로 처리되고 되돌릴 수 없어요.</p>
 
