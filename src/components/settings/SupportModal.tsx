@@ -113,7 +113,12 @@ export default function SupportModal({ visible, onClose, onOpenFeedback }: Suppo
 
               <View style={styles.section}>
                 <SectionTitle title="더 보기" />
-                <ListRow icon="globe-outline" label="웹 고객 지원 페이지" value="hongikon.com" onPress={() => openSitePage('/support/')} />
+                <ListRow
+                  icon="globe-outline"
+                  label="웹 고객 지원 페이지"
+                  value="hongikon.com/support"
+                  onPress={() => openSitePage('/support/')}
+                />
                 <ListRow
                   icon="trash-outline"
                   label="계정 삭제 안내"
