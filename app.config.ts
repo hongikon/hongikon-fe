@@ -42,7 +42,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,
     slug: config.slug ?? 'hongik-alimi',
-    ios: { ...config.ios, bundleIdentifier: id },
+    ios: {
+      ...config.ios,
+      bundleIdentifier: id,
+      // 운영 빌드에서는 로컬 네트워크 예외(NSAllowsLocalNetworking — 개발 서버·로컬 API 용)를 뺀다(심사 2.5 권장).
+      infoPlist:
+        VARIANT === 'production'
+          ? {
+              ...config.ios?.infoPlist,
+              NSAppTransportSecurity: { NSAllowsArbitraryLoads: false },
+            }
+          : config.ios?.infoPlist,
+    },
     android: {
       ...config.android,
       package: id,
