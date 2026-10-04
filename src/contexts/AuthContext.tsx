@@ -26,7 +26,7 @@ import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
 import { createPkcePair } from '../lib/pkce'
-import { deactivateStoredPushDevice, forgetStoredPushDevice } from '../lib/pushDevice'
+import { deactivateStoredPushDevice, forgetStoredPushDevice, pushRegistrationMark } from '../lib/pushDevice'
 import { clearAccountLinkedSettings } from '../lib/accountData'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
 
@@ -195,10 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // 이 기기의 푸시 등록도 내려 보지만, 유효한 토큰이 없어 대개 401 로 실패한다(재발급할 refresh 토큰도
             // 무효). 그러면 서버의 기기 행은 활성으로 남고, 이 기기로 다시 로그인할 때 같은 푸시 토큰 재등록이
             // 새 계정으로 넘긴다. 그 사이 이전 계정 알림이 올 수 있다 — 서버 쪽 정리 없이는 막을 수 없다.
-            void deactivateStoredPushDevice(expiredAccessToken, { quick: true })
-              .catch(() => false)
-              .then(() => forgetStoredPushDevice())
-              .catch(() => {})
+            // 저장된 id 지우기는 같은 작업 안에서 한다(forget) — 따로 줄을 세우면 곧바로 다시 로그인한 계정의
+            // 등록이 사이에 끼어 새 id 를 지운다. before: 그 뒤 등록이 쓴 id 면 건드리지 않는다(logout 과 같다).
+            void deactivateStoredPushDevice(expiredAccessToken, {
+              quick: true,
+              before: pushRegistrationMark(),
+              forget: true,
+            }).catch(() => {})
           }
           return null
         } finally {
@@ -336,6 +339,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 세션 번호를 먼저 올려, 지금 돌고 있는 재발급이 끝나도 새 토큰을 저장하지 않게 한다.
     sessionGenRef.current += 1
     lateAccessTokenRef.current = null
+    // 이 시점까지 부른 푸시 등록 번호. 아래 기기 해제는 재발급을 기다린 뒤에야 줄을 서서, 그 사이 곧바로 다시
+    // 로그인한 계정의 등록이 먼저 돌 수 있다 — 그 등록이 쓴 id 는 이전 계정 토큰으로 내리거나 지우지 않는다.
+    const pushMark = pushRegistrationMark()
     const storedAccessToken = await getItem(ACCESS_TOKEN_KEY)
     const storedRefreshToken = await getItem(REFRESH_TOKEN_KEY)
 
@@ -375,9 +381,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return null
         }
       }
-      const done = await deactivateStoredPushDevice(accessToken, { quick: true, reissue }).catch(() => false)
+      // 실패해도 저장된 id 는 지운다(forget). 비활성화와 같은 작업 안에서 지워야 한다 — 예전엔 비활성화가 끝난 뒤
+      // 따로 줄을 세워, 그 사이 곧바로 다시 로그인한 계정의 등록이 끼면 새 계정의 id 를 지웠다(그 계정은 알림
+      // 끄기·로그아웃 때 기기를 못 내려 푸시가 계속 왔다).
+      const done = await deactivateStoredPushDevice(accessToken, {
+        quick: true,
+        reissue,
+        before: pushMark,
+        forget: true,
+      }).catch(() => false)
       if (!done && __DEV__) console.warn('로그아웃 후 기기 비활성화 실패')
-      await forgetStoredPushDevice().catch(() => {})
       if (refreshToken) {
         try {
           await logoutRequest(refreshToken)
