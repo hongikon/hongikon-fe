@@ -33,10 +33,34 @@ const SECTIONS: { section: AdminSection; label: string; icon: ComponentProps<typ
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
+/** 웹 관리 탭에서 마지막으로 본 섹션. 이 탭(sessionStorage)에만 두어 탭을 닫으면 지워진다. 네이티브는 쓰지 않는다. */
+const SECTION_STORAGE_KEY = 'hongikon_manage_section'
+
+function readSavedSection(): AdminSection {
+  if (Platform.OS !== 'web') return 'dashboard'
+  try {
+    const saved = window.sessionStorage.getItem(SECTION_STORAGE_KEY)
+    return SECTIONS.some((item) => item.section === saved) ? (saved as AdminSection) : 'dashboard'
+  } catch {
+    return 'dashboard'
+  }
+}
+
+function saveSection(section: AdminSection): void {
+  if (Platform.OS !== 'web') return
+  try {
+    window.sessionStorage.setItem(SECTION_STORAGE_KEY, section)
+  } catch {
+    // 저장하지 못하면 새로고침 때 대시보드부터 연다.
+  }
+}
+
 export default function AdminTabScreen() {
   const overview = useAdminOverview()
   const { refresh } = overview
-  const [section, setSection] = useState<AdminSection>('dashboard')
+  const [section, setSection] = useState<AdminSection>(readSavedSection)
+  // 웹: 새로고침해도 보던 섹션으로 다시 연다(`/manage` 주소는 섹션까지 담지 않는다).
+  useEffect(() => saveSection(section), [section])
   const scrollRef = useRef<ScrollView>(null)
   /**
    * 관리자 알림을 눌러 들어왔을 때 연 섹션의 필터·강조할 항목. key 가 바뀌면 그 섹션 화면을 새로 그려 필터를 다시 적용한다.
@@ -47,7 +71,7 @@ export default function AdminTabScreen() {
   /** 관리자 알림(`adminIntents`)으로 넘어온 요청이 있으면 그 섹션을 연다. */
   const applyIntent = useCallback(() => {
     const intent = consumeAdminIntent()
-    if (!intent) return
+    if (!intent || intent.section === 'open') return
     setFocus({ intent, key: Date.now() })
     setSection(intent.section)
     scrollRef.current?.scrollTo({ y: 0, animated: false })

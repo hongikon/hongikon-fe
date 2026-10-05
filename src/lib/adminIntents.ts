@@ -1,3 +1,4 @@
+import { TabActions } from '@react-navigation/native'
 import { navigationRef } from '../navigation/navigationRef'
 
 /**
@@ -15,6 +16,8 @@ export type AdminIntent =
   | { section: 'feedback'; feedbackId: number | null }
   /** 정지 이력 회원 재가입(ADMIN_MEMBER_REJOINED) — 회원 화면을 그 회원 id 로 검색해 연다. */
   | { section: 'users'; userId: number | null }
+  /** 웹에서 관리 탭 주소(`/manage`)로 새로고침·진입 — 관리 탭만 연다(섹션은 관리 탭이 이 탭에서 마지막으로 본 곳으로 연다). */
+  | { section: 'open' }
 
 let pending: AdminIntent | null = null
 const intentListeners = new Set<() => void>()
@@ -60,6 +63,10 @@ export function navigateToAdminTab(): boolean {
   const main = navigationRef.getRootState()?.routes.find((route) => route.name === 'Main')
   const routeNames = (main?.state as { routeNames?: string[] } | undefined)?.routeNames
   if (!routeNames?.includes('Admin')) return false
-  navigationRef.navigate('Main', { screen: 'Admin' })
+  const tabKey = (main?.state as { key?: string } | undefined)?.key
+  // 하단 탭에 바로 보낸다. `navigate('Main', { screen: 'Admin' })` 는 Main 의 params 가 이미 같으면(웹에서 `/manage` 로
+  // 새로고침하면 linking 이 그 값을 넣어 둔 채 관리 탭이 없어 지도로 열린다) 바뀐 게 없다고 보고 아무 일도 하지 않는다.
+  if (tabKey) navigationRef.dispatch({ ...TabActions.jumpTo('Admin'), target: tabKey })
+  else navigationRef.navigate('Main', { screen: 'Admin' })
   return true
 }
