@@ -309,6 +309,16 @@ export function suspendUser(userId: number, reason: string): Promise<AdminUser> 
   return adminRequest<AdminUser>(`/admin/users/${userId}/suspend`, { method: 'POST', body: { reason }, retries: 0 })
 }
 
+/** 공식 계정 인증 — 공식 이름(2~30자)을 붙인다. 같은 이름이 이미 있으면 409. */
+export function setOfficialName(userId: number, name: string): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/official`, { method: 'PUT', body: { name }, retries: 0 })
+}
+
+/** 공식 계정 인증 해제. */
+export function clearOfficialName(userId: number): Promise<AdminUser> {
+  return adminRequest<AdminUser>(`/admin/users/${userId}/official`, { method: 'DELETE', retries: 0 })
+}
+
 export function unsuspendUser(userId: number): Promise<AdminUser> {
   return adminRequest<AdminUser>(`/admin/users/${userId}/unsuspend`, { method: 'POST', retries: 0 })
 }

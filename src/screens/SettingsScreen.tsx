@@ -27,6 +27,7 @@ import SupportModal from '../components/settings/SupportModal'
 import WithdrawConfirmDialog from '../components/settings/WithdrawConfirmDialog'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import FeedbackModal from '../components/settings/FeedbackModal'
+import OfficialRequestModal from '../components/settings/OfficialRequestModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
@@ -83,6 +84,7 @@ type ModalType =
   | 'nickname'
   | 'hiddenUsers'
   | 'myReports'
+  | 'official'
   | null
 
 export default function SettingsScreen() {
@@ -332,6 +334,22 @@ export default function SettingsScreen() {
                   accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
               )}
+              {/* 공식 계정(학생회 등): 인증됐으면 공식 이름과 배지, 아니면 신청 창. 이 기능 전 서버는 키가 없어 신청 줄만 보인다. */}
+              {profile && profile.officialName ? (
+                <ListRow
+                  icon="shield-checkmark-outline"
+                  label="공식 계정"
+                  value={profile.officialName}
+                  accessibilityLabel={`공식 계정, ${profile.officialName}`}
+                />
+              ) : profile ? (
+                <ListRow
+                  icon="shield-checkmark-outline"
+                  label="공식 계정 신청"
+                  value="학생회·단체"
+                  onPress={() => setActiveModal('official')}
+                />
+              ) : null}
               {accountLoaded && !myReportsApiMissing && (
                 <ListRow
                   icon="megaphone-outline"
@@ -661,6 +679,12 @@ export default function SettingsScreen() {
       />
 
       <FeedbackModal visible={activeModal === 'feedback'} onClose={() => setActiveModal(null)} />
+      <OfficialRequestModal
+        visible={activeModal === 'official'}
+        onClose={() => setActiveModal(null)}
+        memberNumber={memberNumber}
+        currentName={profile?.displayName ?? null}
+      />
       {/* 고객 지원 › 앱에서 문의 보내기는 이 창을 닫고 문의하기 창을 연다(공지 목록 › 상세와 같은 방식). */}
       <SupportModal
         visible={activeModal === 'support'}

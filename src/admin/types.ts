@@ -154,6 +154,8 @@ export interface AdminUser {
    * 해당 없거나 그 기능 전 서버면 null/없음.
    */
   priorHistory?: AdminUserPriorHistory | null
+  /** 운영진이 붙인 공식 이름(학생회 등). 없으면 null. 이 기능 전 서버는 키가 없다. */
+  officialName?: string | null
 }
 
 /** `GET /admin/users/{id}/login-name` — 로그인(카카오/Apple) 닉네임 원문. 버튼을 눌렀을 때만 부른다. */
