@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useDeptPickPending, useOnboardingDone } from './onboarding'
 import { navigationRef } from '../navigation/navigationRef'
 import { WEB_LINKING } from '../navigation/linking'
+import { peekAdminIntent, requestAdminIntent } from './adminIntents'
 
 /**
  * 웹: 로그인 전에 연 주소(`/news/123`, `/news/dept/...`, `/map`, `/settings` …)로 로그인·둘러보기 뒤에 돌아가기.
@@ -20,8 +21,10 @@ import { WEB_LINKING } from '../navigation/linking'
  * 이미 로그인·둘러보기 상태로 링크를 열었으면 linking 이 바로 그 화면을 열어, 지금 주소와 같으므로 지우기만 한다.
  *
  * 적지 않는 주소: `/`(처음부터 들어온 것 — 예전 값도 지운다), `/welcome`·`/onboarding*`(흐름 중 새로고침이라 예전 값을
- * 그대로 둔다), `/auth/callback`(로그인 복귀 — 그대로 둔다), `/admin*`·`/temp*`(앱 내비게이션을 거치지 않는다), `/manage`(관리 탭 — 관리자 확인 뒤 `adminIntents` 가 연다),
+ * 그대로 둔다), `/auth/callback`(로그인 복귀 — 그대로 둔다), `/admin*`·`/temp*`(앱 내비게이션을 거치지 않는다),
  * `/r/{id}` 공유 제보(지도 요청으로 따로 처리하고 지도가 첫 탭이라 돌아갈 곳이 따로 없다 — 예전 값은 지운다).
+ * `/manage`(관리 탭)는 적어 두되, 돌아갈 때 화면을 바꾸지 않고 관리 탭 열기 요청(`adminIntents`)만 남긴다 — 관리 탭은 관리자
+ * 확인(서버 응답) 뒤에야 하단 탭에 붙는다. 예전엔 적지 않아, 로그아웃 상태로 /manage 를 연 관리자가 카카오 로그인을 마치면 지도만 열렸다.
  * 옮기는 건 앱 안 화면 상태 바꾸기(resetRoot)뿐이라 다른 사이트로 보낼 수 없고, 앱이 모르는 주소면 버린다.
  */
 
@@ -29,6 +32,8 @@ const STORAGE_KEY = 'hongikon_return_path'
 const MAX_AGE_MS = 60 * 60 * 1000
 /** 로그인 전 흐름의 주소(온보딩·웰컴·학과 고르기). 적지 않는다. */
 const FLOW_PATH = /^\/(welcome|onboarding)(\/|$)/
+/** 관리 탭 주소. 화면 상태로 옮기지 않고 관리 탭 열기 요청으로 바꾼다. */
+const MANAGE_PATH = /^\/manage\/?(\?|$)/
 
 interface StoredReturnPath {
   path: string
@@ -62,7 +67,7 @@ export function captureWebReturnPath(): void {
   if (
     FLOW_PATH.test(pathname) ||
     pathname === '/auth/callback' ||
-    /^\/(admin|temp|manage)(\/|$)/.test(pathname)
+    /^\/(admin|temp)(\/|$)/.test(pathname)
   ) {
     return
   }
@@ -112,6 +117,12 @@ export function useWebReturnPath(): void {
       if (!navigationRef.isReady() || !navigationRef.getRootState()?.routeNames.includes('Main')) return
       const path = takeWebReturnPath()
       if (!path || path === window.location.pathname + window.location.search) return
+      if (MANAGE_PATH.test(path)) {
+        // 이미 로그인한 채 /manage 로 들어왔으면 App.tsx 가 같은 요청을 남겨 두었다(아직 확인 중) — 겹쳐 두 번 안내하지 않는다.
+        // 게스트면 AdminAccessProvider 가 조용히 버린다.
+        if (!peekAdminIntent()) requestAdminIntent({ section: 'open' })
+        return
+      }
       // 링크로 바로 들어왔을 때와 같은 상태(메인을 아래에 깐 그 화면)로 바꾼다. 쌓지(push) 않고 바꾸므로(reset) linking 이
       // 지금 방문 기록(학과 고르기·웰컴 주소)을 원래 주소로 갈아 끼운다 — 브라우저 뒤로가기가 앱이 그릴 수 없는
       // `/onboarding/depts` 로 가지 않고, 앱 안 뒤로 버튼은 아래에 깐 메인으로 간다.
