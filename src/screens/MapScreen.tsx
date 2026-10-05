@@ -60,6 +60,7 @@ import {
   partnerFocusBounds,
   partnersOutsideFocus,
 } from "../utils/partners";
+import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import type {
@@ -130,6 +131,10 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] =
     useState<PartnerCategory | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const selectedPartnerRef = useRef(selectedPartner);
+  selectedPartnerRef.current = selectedPartner;
+  /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
+  const farViewPartnerIdRef = useRef<string | null>(null);
   // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
   // 사용자가 앱이 멈춘 것으로 오해한다.
   const [mapAuthFailed, setMapAuthFailed] = useState(false);
@@ -205,6 +210,9 @@ export default function MapScreen() {
    * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
    */
   const handleRecenter = useCallback(() => {
+    // 먼 제휴 지점을 보던 중이어도 이동 범위를 캠퍼스 일대로 되돌린 뒤 옮긴다(범위가 좁으면 캠퍼스로 못 간다).
+    farViewPartnerIdRef.current = null;
+    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
     webViewRef.current?.injectJavaScript(
       `if (window.map && window.naver) { map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
     );
@@ -424,6 +432,16 @@ export default function MapScreen() {
       setSelectedFacilityBuilding(null);
       setSelectedPartner(partner);
 
+      // 캠퍼스에서 먼 지점은 검색으로만 찾아간다 — 옮기기 전에 이동 범위를 그 지점 둘레로 바꾼다(캠퍼스 범위로는 못 간다).
+      // 시트를 닫거나 다른 것을 고르면 아래 effect 가 캠퍼스로 되돌린다.
+      if (isFarFromCampus(partner)) {
+        farViewPartnerIdRef.current = partner.id;
+        webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(partner)));
+      } else if (farViewPartnerIdRef.current !== null) {
+        farViewPartnerIdRef.current = null;
+        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
+      }
+
       postToMap({
         type: "setPartners",
         partners: [toMarker(partner)],
@@ -433,6 +451,12 @@ export default function MapScreen() {
     },
     [postToMap],
   );
+
+  // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
+  useEffect(() => {
+    const farId = farViewPartnerIdRef.current;
+    if (farId !== null && selectedPartner?.id !== farId) handleRecenter();
+  }, [selectedPartner, handleRecenter]);
 
   const handleClosePartner = useCallback(() => {
     setSelectedPartner(null);
@@ -582,6 +606,14 @@ export default function MapScreen() {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
     // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
     handleRecenter();
+    // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
+    const farPartner = selectedPartnerRef.current;
+    if (farPartner && isFarFromCampus(farPartner)) {
+      farViewPartnerIdRef.current = farPartner.id;
+      webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(farPartner)));
+      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
+      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
+    }
     if (hasActiveFilter(activeFilter)) {
       const partners = filterPartners(activeFilter);
       postToMap({
@@ -984,7 +1016,7 @@ export default function MapScreen() {
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>
-                캠퍼스 밖 {offscreenCount}곳은 지도를 줌아웃하면 보여요
+                캠퍼스 밖 {offscreenCount}곳은 제휴 업체 검색에서 볼 수 있어요
               </Text>
             </View>
           )}
