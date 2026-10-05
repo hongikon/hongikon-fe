@@ -148,7 +148,7 @@ export function ReportCommentsPanel({ reportId }: { reportId: number }) {
                 style={[styles.item, comment.parentId ? styles.itemReply : null, comment.status !== 'VISIBLE' && styles.itemMuted]}
               >
                 <View style={styles.itemTop}>
-                  {comment.parentId ? <Badge label={`↳ #${comment.parentId}의 답글`} tone="info" /> : null}
+                  {comment.parentId ? <Badge label={`#${comment.parentId}의 답글`} tone="info" /> : null}
                   <Badge label={comment.status === 'DELETED' && !comment.reviewedAt ? '작성자가 지움' : status.label} tone={status.tone} />
                   {comment.flagCount > 0 ? <Badge label={`신고 ${comment.flagCount}${reasons ? ` · ${reasons}` : ''}`} tone="danger" /> : null}
                   <Text style={styles.meta}>#{comment.id}</Text>

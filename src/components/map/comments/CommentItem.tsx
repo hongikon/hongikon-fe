@@ -5,6 +5,7 @@ import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { formatCommentTime } from '../../../utils/comments'
 import CommentAvatar from './CommentAvatar'
+import ThumbIcon from '../../common/ThumbIcon'
 import type { ReportComment } from '../../../types'
 
 export interface CommentItemHandlers {
@@ -92,11 +93,7 @@ function CommentItem({ comment, reply = false, pending, flagged, onReply, onDele
                       : `좋아요 ${comment.likeCount}개, ${comment.likedByMe ? '내가 눌렀어요. 누르면 취소해요' : '눌러서 좋아요'}`
                   }
                 >
-                  <Ionicons
-                    name={comment.likedByMe ? 'thumbs-up' : 'thumbs-up-outline'}
-                    size={13}
-                    color={comment.likedByMe ? COLORS.fire : COLORS.textSecondary}
-                  />
+                  <ThumbIcon variant={comment.likedByMe ? 'filled' : 'outline'} size={14} />
                   {comment.likeCount > 0 ? (
                     <Text style={[styles.likeCount, comment.likedByMe && styles.likeCountOn]}>{comment.likeCount}</Text>
                   ) : null}
