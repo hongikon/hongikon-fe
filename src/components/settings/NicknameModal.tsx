@@ -95,6 +95,9 @@ export default function NicknameModal({ visible, profile, onClose, onSaved }: Ni
   }
 
   const handleSave = () => {
+    // 저장 버튼은 저장 중에 막히지만, 키보드 완료(웹은 Enter)는 onSubmitEditing 으로 바로 들어온다. 두 번 보내면 뒤 요청이
+    // 앞 요청을 지난 것으로 만들어 저장이 됐는데도 오류(이미 같은 닉네임 등)만 보이고 화면엔 예전 닉네임이 남았다.
+    if (saving) return
     setTouched(true)
     if (!normalized) {
       // 빈 칸으로 저장하면 지우기와 같다.

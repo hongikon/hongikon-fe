@@ -27,7 +27,12 @@ export default function NetworkStatusBanner() {
   useEffect(() => {
     const prev = prevStatusRef.current
     prevStatusRef.current = status
-    if (status !== 'online') return
+    if (status !== 'online') {
+      // 복구 안내가 떠 있는 2초 안에 다시 끊기면 위 타이머는 정리돼 안내가 내려가지 않았다(showRecovered 가 true 로 남음).
+      // 그러면 아래 숨김 조건이 늘 거짓이라 닫기(X)를 눌러도 배너가 사라지지 않았다.
+      setShowRecovered(false)
+      return
+    }
 
     setDismissed(false)
     // 배너를 보고 있던 사용자에게만 복구를 알린다.
