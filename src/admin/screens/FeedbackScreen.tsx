@@ -7,7 +7,7 @@ import { fetchFeedback, updateFeedbackStatus } from '../api'
 import { formatDateTime, formatMemberRef, formatRelative } from '../format'
 import type { AdminFeedback, AdminOverview, FeedbackStatusFilter } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
-import { INFO_SUGGESTION_BADGES, infoSuggestTypeOf } from '../../constants/feedback'
+import { INFO_SUGGESTION_BADGES, OFFICIAL_REQUEST_PREFIX, infoSuggestTypeOf } from '../../constants/feedback'
 
 /** 앱 설정 > 문의하기로 들어온 의견. 처리 완료/다시 열기만 한다(답장은 연락처로 직접). */
 export default function FeedbackScreen({
@@ -132,6 +132,7 @@ function FeedbackCard({
         <View style={styles.badges}>
           <Badge label={resolved ? '처리 완료' : '미처리'} tone={resolved ? 'success' : 'warning'} />
           {suggestType !== null ? <Badge label={INFO_SUGGESTION_BADGES[suggestType]} tone="info" /> : null}
+          {item.content.startsWith(OFFICIAL_REQUEST_PREFIX) ? <Badge label="공식 계정 신청" tone="info" /> : null}
           {movedOut ? <Badge label="방금 처리함" tone="info" /> : null}
         </View>
         <Text style={styles.meta}>#{item.id}</Text>

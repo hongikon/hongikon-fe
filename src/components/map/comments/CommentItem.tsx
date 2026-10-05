@@ -6,6 +6,7 @@ import { FONTS } from '../../../constants/typography'
 import { formatCommentTime } from '../../../utils/comments'
 import CommentAvatar from './CommentAvatar'
 import ThumbIcon from '../../common/ThumbIcon'
+import OfficialBadge from '../../common/OfficialBadge'
 import type { ReportComment } from '../../../types'
 
 export interface CommentItemHandlers {
@@ -49,6 +50,7 @@ function CommentItem({ comment, reply = false, pending, flagged, onReply, onDele
               <Text style={styles.name} numberOfLines={1}>
                 {name}
               </Text>
+              {comment.authorOfficial ? <OfficialBadge /> : null}
               {comment.isMine ? <Text style={styles.mine}>나</Text> : null}
               {time ? <Text style={styles.time}>{time}</Text> : null}
               {flagged ? <Text style={styles.flagged}>· 신고함</Text> : null}
