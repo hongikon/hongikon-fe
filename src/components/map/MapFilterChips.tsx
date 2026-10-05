@@ -22,7 +22,8 @@ const LAYERS: readonly {
 // '행사·전시'는 '이벤트' 하위 칩으로만 보여준다. 편의시설 줄에도 두면 같은
 // 데이터가 두 곳에 뜨는 것처럼 보인다.
 // 엘리베이터는 위치가 건물 단위로만 확인돼 쓸모가 적어 칩에서 숨긴다(데이터는 남겨 둔다, 10-02 요청).
-const HIDDEN_FACILITY_KINDS = new Set(['행사·전시', '엘리베이터'])
+// 흡연구역도 당분간 화면에 내보이지 않는다(데이터·경로 지점은 남겨 둔다, 10-05 요청). 다시 보이려면 여기서만 빼면 된다.
+const HIDDEN_FACILITY_KINDS = new Set(['행사·전시', '엘리베이터', '흡연구역'])
 const VISIBLE_FACILITY_KINDS = FACILITY_KINDS.filter((meta) => !HIDDEN_FACILITY_KINDS.has(meta.key))
 const EXHIBIT_META = facilityKindMeta('행사·전시')
 
