@@ -49,11 +49,11 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
 
   const handleFire = async () => {
     if (report.isMine) {
-      toast.show({ message: '내 제보에는 불을 붙일 수 없어요', tone: 'info' })
+      toast.show({ message: '내 제보에는 공감할 수 없어요', tone: 'info' })
       return
     }
     if (!accessToken) {
-      promptLogin('불을 붙이려면 로그인해 주세요.', logout)
+      promptLogin('공감하려면 로그인해 주세요.', logout)
       return
     }
     const next = !fired
@@ -80,7 +80,7 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
         setMissing(true)
         return
       }
-      toast.show({ message: communityErrorMessage(error, '불을 붙이지 못했어요. 잠시 뒤 다시 해 주세요.'), tone: 'warning' })
+      toast.show({ message: communityErrorMessage(error, '공감하지 못했어요. 잠시 뒤 다시 해 주세요.'), tone: 'warning' })
     } finally {
       if (seq === fireSeq.current) setBusy(null)
     }
@@ -141,8 +141,8 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
           accessibilityState={{ selected: fired }}
           accessibilityLabel={
             report.isMine
-              ? `내 제보, 불 ${fireCount}개`
-              : `불 ${fireCount}개, ${fired ? '내가 불을 붙였어요. 누르면 꺼요' : '눌러서 불 붙이기'}`
+              ? `내 제보, 공감 ${fireCount}개`
+              : `공감 ${fireCount}개, ${fired ? '내가 공감했어요. 누르면 취소해요' : '눌러서 공감하기'}`
           }
           hitSlop={4}
         >

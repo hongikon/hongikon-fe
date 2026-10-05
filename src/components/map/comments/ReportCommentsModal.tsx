@@ -10,8 +10,11 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from 'react-native'
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import type { ReactNode } from 'react'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -21,7 +24,8 @@ import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } f
 import { getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
 import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
 import * as haptics from '../../../lib/haptics'
-import { promptLogin } from '../../../utils/reports'
+import { formatFreshness, promptLogin, reportImageUrls } from '../../../utils/reports'
+import { reportCategoryMeta } from '../../../constants/reportCategories'
 import ModalHeader from '../../settings/ModalHeader'
 import ContentColumn from '../../common/ContentColumn'
 import RetryableError from '../../common/RetryableError'
@@ -373,13 +377,13 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
+        <KeyboardFrame>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
             <ModalHeader title={state.kind === 'ready' ? `댓글 ${count}` : '댓글'} onClose={onClose} />
-            <View style={styles.subHeader}>
-              <Text style={styles.reportTitle} numberOfLines={1}>
-                {report.title}
-              </Text>
+            {/* 어느 제보의 댓글인지 바로 보이게 제보 요약(종류·제목·시간·사진)을 위에 둔다. */}
+            <ReportContextCard report={report} />
+            <View style={[styles.subHeader, !likesSupported && styles.subHeaderEmpty]}>
               {likesSupported ? (
                 <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel="댓글 정렬">
                   {(['popular', 'latest'] as const).map((value) => {
@@ -403,7 +407,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                 </View>
               ) : null}
             </View>
-            <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.body}>
               {state.kind === 'loading' ? (
                 <CommentsSkeleton />
               ) : state.kind === 'error' ? (
@@ -471,9 +475,10 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                 />
                 <Text style={styles.notice}>댓글은 바로 공개돼요. 욕설·광고·개인정보는 신고되면 숨겨져요.</Text>
               </View>
-            </KeyboardAvoidingView>
+            </View>
           </ContentColumn>
         </SafeAreaView>
+        </KeyboardFrame>
         <ModerationMenu
           visible={menuFor !== null}
           onClose={() => setMenuFor(null)}
@@ -510,7 +515,79 @@ function CommentsSkeleton() {
   )
 }
 
+/**
+ * 키보드가 입력줄을 가리지 않게 화면 전체를 감싼다. 예전엔 머리줄 아래 목록 칸만 감싸, iOS 가 자기 위치를 화면 기준이 아니라
+ * 부모 기준으로 재는 탓에 위쪽 안전 영역(노치)만큼 덜 올라가 입력줄이 키보드에 반쯤 가렸다. 화면 전체를 감싸면 키보드 높이만큼
+ * 올리면 되고, 아래 안전 영역(홈 표시줄) 여백은 키보드 뒤로 들어가므로 그만큼 빼 입력줄이 키보드 바로 위에 붙는다.
+ */
+function KeyboardFrame({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets()
+  return (
+    <KeyboardAvoidingView
+      style={styles.keyboardFrame}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+    >
+      {children}
+    </KeyboardAvoidingView>
+  )
+}
+
+/** 댓글 창 위 제보 요약 — 종류 배지, 제목, 등록·예정 시각, 첫 사진. */
+function ReportContextCard({ report }: { report: ReportListItem }) {
+  const meta = reportCategoryMeta(report.category)
+  const photo = reportImageUrls(report)[0]
+  const [photoFailed, setPhotoFailed] = useState(false)
+  return (
+    <View style={styles.context} accessibilityRole="summary" accessibilityLabel={`${report.title} 제보의 댓글`}>
+      <View style={styles.contextText}>
+        <View style={styles.contextBadge}>
+          <Ionicons name={meta.icon} size={12} color={COLORS.white} />
+          <Text style={styles.contextBadgeText}>{report.customCategoryLabel || meta.label}</Text>
+        </View>
+        <Text style={styles.contextTitle} numberOfLines={2}>
+          {report.title}
+        </Text>
+        <Text style={styles.contextMeta} numberOfLines={1}>
+          {formatFreshness(report)}
+        </Text>
+      </View>
+      {photo && !photoFailed ? (
+        <Image source={{ uri: photo }} style={styles.contextPhoto} onError={() => setPhotoFailed(true)} />
+      ) : null}
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  keyboardFrame: { flex: 1 },
+  context: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.fill,
+  },
+  contextText: { flex: 1, gap: 4 },
+  contextBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+  },
+  contextBadgeText: { fontFamily: FONTS.semibold, fontSize: 11, color: COLORS.white },
+  contextTitle: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 20, color: COLORS.textPrimary },
+  contextMeta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  contextPhoto: { width: 56, height: 56, borderRadius: 8, backgroundColor: COLORS.border },
+  subHeaderEmpty: { paddingBottom: 0 },
   container: { flex: 1, backgroundColor: COLORS.white },
   moreButton: {
     alignSelf: 'center',
@@ -526,6 +603,7 @@ const styles = StyleSheet.create({
   subHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 8,

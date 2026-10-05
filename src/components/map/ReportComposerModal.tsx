@@ -212,7 +212,7 @@ export default function ReportComposerModal({
     missing.push({
       field: 'category',
       message: customLabelDraft.trim()
-        ? '✓ 를 눌러 직접 입력한 카테고리를 적용해 주세요.'
+        ? '입력칸 오른쪽 확인 버튼을 눌러 직접 입력한 카테고리를 적용해 주세요.'
         : '카테고리 이름을 입력하거나 닫아 주세요.',
     })
   }
