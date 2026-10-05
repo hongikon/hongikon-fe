@@ -450,6 +450,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       retries: Math.max(0, retries ?? (IDEMPOTENT_METHODS.has(method) ? DEFAULT_RETRIES : 0)),
       signal,
     })
-    return parseJson<T>(response)
+    const result = await parseJson<T>(response)
+    // send() 는 응답 머리(헤더)를 받으면 끊기 신호 연결을 푼다. 그 뒤 본문을 읽는 사이 호출부가 끊어도(필터를 바꿈 등)
+    // 요청은 그대로 성공으로 끝나, 결과를 따로 거르지 않는 화면(관리 탭 목록 등)에 이전 조건의 목록이 덮어써졌다.
+    if (signal?.aborted) throw new RequestCancelledError()
+    return result
   }, skipTokenRefresh)
 }

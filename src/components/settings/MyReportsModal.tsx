@@ -37,7 +37,7 @@ import Button from '../common/Button'
 import EmptyState from '../common/EmptyState'
 import RetryableError from '../common/RetryableError'
 import { SkeletonBlock, SkeletonGroup } from '../common/Skeleton'
-import { useToast } from '../common/Toast'
+import { ToastViewport, useToast } from '../common/Toast'
 
 interface MyReportsModalProps {
   visible: boolean
@@ -89,7 +89,9 @@ export default function MyReportsModal({
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [refreshing, setRefreshing] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  // 지우는 중인 제보 id 들. 하나만 들고 있으면 A 를 지우는 사이 B 를 지울 때 A 의 버튼이 다시 살아나 같은 삭제를 두 번 보낼 수 있었고,
+  // 먼저 끝난 A 가 B 의 스피너까지 내렸다.
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<number>>(() => new Set())
   const pageRef = useRef(0)
   const hasNextRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
@@ -174,7 +176,7 @@ export default function MyReportsModal({
       onConfirm: async () => {
         const token = tokenRef.current
         if (!token) return
-        setDeletingId(report.id)
+        setDeletingIds((prev) => new Set(prev).add(report.id))
         try {
           await deleteReport(report.id, token)
           setItems((prev) => prev.filter((r) => r.id !== report.id))
@@ -189,7 +191,11 @@ export default function MyReportsModal({
             tone: 'warning',
           })
         } finally {
-          setDeletingId(null)
+          setDeletingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(report.id)
+            return next
+          })
         }
       },
     })
@@ -225,7 +231,7 @@ export default function MyReportsModal({
           <MyReportCard
             report={item}
             highlighted={item.id === highlightReportId}
-            deleting={deletingId === item.id}
+            deleting={deletingIds.has(item.id)}
             onShowOnMap={onShowOnMap}
             onDelete={handleDelete}
           />
@@ -267,6 +273,8 @@ export default function MyReportsModal({
           <ContentColumn>
             <ModalHeader title="내 제보 내역" onClose={onClose} />
             <View style={styles.body}>{renderBody()}</View>
+          {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다(BoardAlertsModal 과 같다). */}
+          <ToastViewport />
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>

@@ -9,6 +9,7 @@ import type { NewsStackParamList } from '../navigation/NewsStackNavigator'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
+import { SUBSCRIBABLE_ITEMS } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
 import { useNewsFeed } from '../hooks/useNewsFeed'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -29,6 +30,8 @@ type Props = CompositeScreenProps<
 /** 학과·기관 하나의 소식 목록. 학과 트리(전체 탭·검색)에서 항목을 고르면 들어온다. */
 export default function DeptNewsScreen({ route, navigation }: Props) {
   const { deptId, deptName } = route.params
+  // 웹에서 `?deptName=` 없이 `/news/dept/{id}` 로 들어오면 이름이 없다 — 빈 머리줄 대신 id 로 찾은 이름(없으면 "학과 소식")을 쓴다.
+  const title = deptName || SUBSCRIBABLE_ITEMS.find((item) => item.id === deptId)?.name || '학과 소식'
   const { isBookmarked } = useSettings()
   const { toggleBookmark } = useFeedbackToggles()
   const [query, setQuery] = useState('')
@@ -47,7 +50,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.headerBar}>
         <ScreenHeader
-          title={deptName}
+          title={title}
           onBack={() => navigation.goBack()}
           border={false}
           style={layoutStyles.readable}

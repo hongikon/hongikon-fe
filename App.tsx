@@ -40,6 +40,24 @@ function WebReturnPathBridge() {
 }
 
 /**
+ * 웹: 브라우저 탭 제목을 화면 상태가 바뀔 때마다 다시 맞춘다. NavigationContainer 의 documentTitle 은 화면 옵션('options')
+ * 이벤트에서만 제목을 다시 쓰는데, 로그인·둘러보기로 스택이 통째로 바뀔 때는 그 이벤트가 바뀌기 전 경로(웰컴)로 불려
+ * 지도·설정 등으로 넘어가도 제목이 "홍익온"에 머물렀다(헤드리스 크롬으로 확인). 제목은 경로 이름·params 로만 정하므로
+ * 상태('state')가 바뀔 때 같은 formatter 로 덮어쓴다. 상태 이벤트는 그 커밋의 자식 effect(옵션 이벤트)보다 뒤에 온다.
+ */
+function WebDocumentTitleBridge() {
+  useEffect(
+    () =>
+      navigationRef.addListener('state', () => {
+        const route = navigationRef.getCurrentRoute()
+        document.title = formatDocumentTitle(route?.name, route?.params)
+      }),
+    [],
+  )
+  return null
+}
+
+/**
  * 임시 - 출입구/실내 경로 검증용 웹 전용 경로. 로그인 상태와 무관하게 바로 보여야 해서
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
  * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만,
@@ -165,6 +183,7 @@ export default function App() {
             >
               <PushNotificationsBridge />
               {Platform.OS === 'web' && <WebReturnPathBridge />}
+              {Platform.OS === 'web' && <WebDocumentTitleBridge />}
               <RootNavigator />
               {/* 모든 화면 위에 떠야 해서 내비게이터 뒤(위 레이어)에 둔다. 네이티브 Modal 위로는 못 올라간다. */}
               <NetworkStatusBanner />

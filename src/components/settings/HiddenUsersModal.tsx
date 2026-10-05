@@ -9,7 +9,7 @@ import ContentColumn from '../common/ContentColumn'
 import ListRow from '../common/ListRow'
 import Button from '../common/Button'
 import EmptyState from '../common/EmptyState'
-import { useToast } from '../common/Toast'
+import { ToastViewport, useToast } from '../common/Toast'
 
 interface HiddenUsersModalProps {
   visible: boolean
@@ -68,6 +68,8 @@ export default function HiddenUsersModal({ visible, onClose }: HiddenUsersModalP
             </View>
           )}
         </ScrollView>
+        {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다(BoardAlertsModal 과 같다). */}
+        <ToastViewport />
         </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
