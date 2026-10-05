@@ -186,7 +186,7 @@ export default function MapScreen() {
     async (signal) =>
       hotOnly
         ? visibleReports(await getHotReports({ accessToken, signal }))
-        : // 48시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
+        : // 3일(72시간) 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
           visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
     [accessToken, hotOnly],
     { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
@@ -687,7 +687,7 @@ export default function MapScreen() {
   const retryReports = reportsResource.retry;
   useEffect(() => {
     if (!reportsOn || nextUpcomingStart === null) return;
-    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(48시간 안).
+    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(3일 안).
     const timer = setTimeout(() => retryReports(), Math.max(0, nextUpcomingStart - Date.now()) + 5000);
     return () => clearTimeout(timer);
   }, [reportsOn, nextUpcomingStart, retryReports]);
@@ -847,7 +847,7 @@ export default function MapScreen() {
           (r) => r.id === reportId && !(r.authorKey && hiddenAuthorKeys.has(r.authorKey)),
         );
         if (!found) {
-          // 예정 제보는 48시간 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
+          // 예정 제보는 3일 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
           toast.show({ message: "이 제보는 지금 지도에 없어요. 아직 시작 전이거나 이미 끝났어요.", tone: "info" });
           return;
         }
