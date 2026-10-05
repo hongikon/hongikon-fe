@@ -10,7 +10,8 @@ export type MapIntent =
   | { type: 'pickPartnerLocation' }
   | { type: 'focusReport'; reportId: number }
   | { type: 'startReport' }
-  | { type: 'previewLocation'; lat: number; lng: number; label?: string }
+  /** label: 핀 이름표(제보 제목). detail: 지도 위 안내 줄에 덧붙일 작성자·건물·층. */
+  | { type: 'previewLocation'; lat: number; lng: number; label?: string; detail?: string }
 
 let pending: MapIntent | null = null
 const listeners = new Set<() => void>()
