@@ -42,10 +42,10 @@ const STATUS_TONE: Record<ReportStatus, Tone> = {
 type ActionKind = 'approve' | 'reopen' | 'reject' | 'hide' | 'delete'
 
 /**
- * 탭 값. 서버 상태 필터에 화면 전용 'ENDED' 를 더한다 — 서버는 승인한 제보를 끝나는 시각이 지나도 ACTIVE 로 두고
- * 지도 목록(live)에서만 빼기 때문에, '노출 중'은 아직 끝나지 않은 ACTIVE, '종료'는 끝난 ACTIVE 로 나눠 보여 준다.
+ * 탭 값. 서버 상태 필터에 화면 전용 'UPCOMING'·'ENDED' 를 더한다 — 서버는 승인한 제보를 시작 전에도, 끝난 뒤에도 ACTIVE 로 두고
+ * 지도 목록(live)에서만 빼기 때문에, ACTIVE 를 '노출 중'(지금 지도에 보임)·'예정'(시작 전)·'종료'(끝남)로 나눠 보여 준다.
  */
-type ScreenFilter = ReportStatusFilter | 'ENDED'
+type ScreenFilter = ReportStatusFilter | 'ENDED' | 'UPCOMING'
 
 const PERIOD_TABS = [
   { value: 'all' as const, label: '전체 기간' },
@@ -109,11 +109,19 @@ function isEnded(report: AdminReport, now: number = Date.now()): boolean {
   return !!endsAt && endsAt.getTime() < now
 }
 
+/** 승인했지만 아직 시작 전(예정 제보). 시작 시각이 되면 지도에 뜬다. */
+function isUpcoming(report: AdminReport, now: number = Date.now()): boolean {
+  const startsAt = parseServerDate(report.startsAt)
+  return !!startsAt && startsAt.getTime() > now
+}
+
 /** 이 탭에 이 제보가 들어가는지(처리 직후 '방금 처리함' 표시에도 쓴다). */
 function belongsTo(report: AdminReport, filter: ScreenFilter): boolean {
   if (filter === 'ALL') return true
   if (filter === 'ENDED') return report.status === 'ACTIVE' && isEnded(report)
-  if (filter === 'ACTIVE') return report.status === 'ACTIVE' && !isEnded(report)
+  if (filter === 'UPCOMING') return report.status === 'ACTIVE' && isUpcoming(report)
+  // '노출 중'은 지금 지도에 보이는 것 — 시작했고 아직 끝나지 않은 승인 제보(대시보드 숫자와 같은 기준).
+  if (filter === 'ACTIVE') return report.status === 'ACTIVE' && !isEnded(report) && !isUpcoming(report)
   return report.status === filter
 }
 
@@ -176,15 +184,12 @@ export default function ReportsScreen({
     const controller = new AbortController()
     setLoading(true)
     setError(null)
-    // '종료'는 서버의 ACTIVE 목록에서 끝난 것만, '노출 중'은 아직 끝나지 않은 것만 남긴다.
+    // '노출 중'·'예정'·'종료'는 모두 서버의 ACTIVE 목록을 받아 시작·종료 시각으로 나눈다.
     const range = periodRange(period, day)
-    fetchReports(filter === 'ENDED' ? 'ACTIVE' : filter, controller.signal, range)
+    const splitsActive = filter === 'ACTIVE' || filter === 'ENDED' || filter === 'UPCOMING'
+    fetchReports(splitsActive ? 'ACTIVE' : filter, controller.signal, range)
       .then((list) =>
-        setReports(
-          list.filter(
-            (item) => inRange(item, range) && (filter === 'ACTIVE' || filter === 'ENDED' ? belongsTo(item, filter) : true),
-          ),
-        ),
+        setReports(list.filter((item) => inRange(item, range) && (splitsActive ? belongsTo(item, filter) : true))),
       )
       .catch((err: unknown) => {
         if (isCancelledError(err)) return
@@ -219,6 +224,7 @@ export default function ReportsScreen({
   const tabs = [
     { value: 'PENDING' as const, label: '승인 대기', count: overview?.reports.pending },
     { value: 'ACTIVE' as const, label: '노출 중' },
+    { value: 'UPCOMING' as const, label: '예정' },
     { value: 'ENDED' as const, label: '종료' },
     { value: 'HIDDEN' as const, label: '숨김', count: overview?.reports.hidden },
     { value: 'REJECTED' as const, label: '반려' },
