@@ -94,7 +94,13 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
             <View style={styles.notice}>
               <Text style={styles.noticeTitle}>개인정보 처리 안내</Text>
               <Text style={styles.noticeText}>
-                · {accountInfo}를 회원 식별과 로그인 유지에 써요. 탈퇴하면 바로 지워요.
+                · 회원 식별·로그인 유지: {accountInfo}. 탈퇴하면 바로 지워요.
+              </Text>
+              <Text style={styles.noticeText}>
+                · 직접 올리는 정보: 앱 닉네임, 제보(사진·위치·내용)와 댓글, 문의 내용과 남긴 연락처.
+              </Text>
+              <Text style={styles.noticeText}>
+                · 알림을 켜면: 알림을 보낼 기기 정보(푸시 토큰).
               </Text>
               <Text style={styles.noticeText}>
                 · 알림·앱 업데이트·웹 화면 등 일부 정보는 미국의 서비스(Expo·Apple·Google·Netlify)를 거쳐 처리돼요.
