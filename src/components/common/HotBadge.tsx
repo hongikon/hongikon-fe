@@ -10,7 +10,7 @@ export default function HotBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
     <View
       style={[styles.badge, small && styles.badgeSmall]}
       accessible
-      accessibilityLabel="HOT 제보, 최근 한 시간 동안 불이 많이 붙었어요"
+      accessibilityLabel="HOT 제보, 최근 한 시간 동안 공감이 많이 모였어요"
     >
       <FlameIcon variant="hot" size={small ? 12 : 14} />
       <Text style={[styles.text, small && styles.textSmall]}>HOT</Text>

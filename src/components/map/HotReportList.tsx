@@ -43,7 +43,7 @@ export default function HotReportList({ reports, selectedId, onSelect }: HotRepo
               (pressed || selectedId === report.id) && styles.rowActive,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={`${index + 1}위 ${report.title}, 불 ${report.fireCount ?? 0}개${recent > 0 ? `, 최근 한 시간 ${recent}개` : ''}`}
+            accessibilityLabel={`${index + 1}위 ${report.title}, 공감 ${report.fireCount ?? 0}개${recent > 0 ? `, 최근 한 시간 ${recent}개` : ''}`}
           >
             <Text style={styles.rank}>{index + 1}</Text>
             <View style={styles.main}>
