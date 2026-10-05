@@ -41,7 +41,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>()
  *   온보딩 화면이 직접 웰컴으로 replace 한다.
  * - 로그인·게스트인데 온보딩을 다시 보기로 했으면(`resetOnboarding`) 온보딩만 띄웠다가, 끝내면 메인으로 돌아간다.
  *   이때도 알림 상세(NewsDetail) 화면이 없어 콜드 스타트 알림은 pushNotifications 가 들고 있다가 메인으로 바뀌면 처리한다.
- * - 로그인·게스트이고 온보딩도 끝냈지만 "내 학과 고르기"가 남았으면(처음 켠 기기만, `useDeptPickPending`) 그 화면만 띄운다.
+ * - 로그인했고 온보딩도 끝냈지만 "내 학과 고르기"가 남았으면(처음 켠 기기만, `useDeptPickPending`) 그 화면만 띄운다.
+ *   게스트(둘러보기)는 묻지 않고 바로 메인으로 간다 — 소식·알림은 로그인해야 쓰는 기능으로 두기로 했다(10-05).
+ *   남은 표시는 지우지 않아, 게스트가 나중에 로그인하면 그때 한 번 묻는다(이미 고른 학과가 있으면 화면이 알아서 건너뛴다).
  *   끝내면(`completeDeptPick`) 이름 목록이 메인 스택으로 바뀌어 메인으로 간다. 온보딩과 같은 방식이라 콜드 스타트 알림도 같다.
  *   웰컴 → 로그인/둘러보기로 status 가 바뀌는 순간 signedOut 스택이 통째로 이 스택으로 바뀐다.
  */
@@ -68,7 +70,7 @@ export default function RootNavigator() {
     )
   }
 
-  if (deptPickPending) {
+  if (deptPickPending && status === 'authenticated') {
     return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="DeptPick" component={DeptPickScreen} />

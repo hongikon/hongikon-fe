@@ -109,7 +109,9 @@ export function useWebReturnPath(): void {
   const { status } = useAuth()
   const onboardingDone = useOnboardingDone() !== false
   const deptPickPending = useDeptPickPending()
-  const ready = Platform.OS === 'web' && (status === 'guest' || status === 'authenticated') && onboardingDone && !deptPickPending
+  // 학과 고르기는 로그인한 사람에게만 뜬다(RootNavigator) — 게스트는 남은 표시가 있어도 바로 메인이다.
+  const deptPickShown = deptPickPending && status === 'authenticated'
+  const ready = Platform.OS === 'web' && (status === 'guest' || status === 'authenticated') && onboardingDone && !deptPickShown
 
   useEffect(() => {
     if (!ready) return
