@@ -24,6 +24,7 @@ import AdminEntry from './src/admin/AdminEntry'
 import { AdminAccessProvider } from './src/admin/AdminAccess'
 import { requestMapIntent } from './src/lib/mapIntents'
 import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
+import { requestAdminIntent } from './src/lib/adminIntents'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -91,6 +92,9 @@ export function sharedReportIdFromPath(pathname: string): number | null {
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   // 아래 공유 링크 처리가 주소를 `/` 로 바꾸기 전에, 처음 연 주소부터 적어 둔다.
   captureWebReturnPath()
+  // 관리 탭(`/manage`)은 관리자 확인(서버 응답) 뒤에야 하단 탭에 붙어, 새로고침하면 linking 이 그 탭을 못 찾고 지도로 열었다.
+  // 관리 탭 열기 요청을 남겨 두면 AdminAccessProvider 가 확인이 끝난 뒤 관리 탭으로 옮긴다(관리자 알림 탭과 같은 길).
+  if (/^\/manage\/?$/.test(window.location.pathname)) requestAdminIntent({ section: 'open' })
   const sharedId = sharedReportIdFromPath(window.location.pathname)
   if (sharedId !== null) {
     requestMapIntent({ type: 'focusReport', reportId: sharedId })

@@ -20,7 +20,7 @@ import { WEB_LINKING } from '../navigation/linking'
  * 이미 로그인·둘러보기 상태로 링크를 열었으면 linking 이 바로 그 화면을 열어, 지금 주소와 같으므로 지우기만 한다.
  *
  * 적지 않는 주소: `/`(처음부터 들어온 것 — 예전 값도 지운다), `/welcome`·`/onboarding*`(흐름 중 새로고침이라 예전 값을
- * 그대로 둔다), `/auth/callback`(로그인 복귀 — 그대로 둔다), `/admin*`·`/temp*`(앱 내비게이션을 거치지 않는다),
+ * 그대로 둔다), `/auth/callback`(로그인 복귀 — 그대로 둔다), `/admin*`·`/temp*`(앱 내비게이션을 거치지 않는다), `/manage`(관리 탭 — 관리자 확인 뒤 `adminIntents` 가 연다),
  * `/r/{id}` 공유 제보(지도 요청으로 따로 처리하고 지도가 첫 탭이라 돌아갈 곳이 따로 없다 — 예전 값은 지운다).
  * 옮기는 건 앱 안 화면 상태 바꾸기(resetRoot)뿐이라 다른 사이트로 보낼 수 없고, 앱이 모르는 주소면 버린다.
  */
@@ -62,7 +62,7 @@ export function captureWebReturnPath(): void {
   if (
     FLOW_PATH.test(pathname) ||
     pathname === '/auth/callback' ||
-    /^\/(admin|temp)(\/|$)/.test(pathname)
+    /^\/(admin|temp|manage)(\/|$)/.test(pathname)
   ) {
     return
   }

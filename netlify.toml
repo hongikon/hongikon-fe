@@ -42,6 +42,15 @@
   to = "/licenses/index.html"
   status = 200
 
+# 지도 탭 주소(/map)는 앱(SPA)이어야 한다. public/map.html(네이티브 앱 WebView 가 https://…/map.html 로 부르는 지도 틀)이
+# 있어서 Netlify 가 확장자 없는 /map 에도 그 파일을 돌려줘, 지도 탭에서 새로고침하면 검색창·탭이 없는 빈 지도만 떴다.
+# 파일이 있어도 규칙을 따르게 force 한다. /map.html 은 주소가 달라 그대로 지도 틀을 받는다(이름을 바꾸면 배포된 앱이 깨진다).
+[[redirects]]
+  from = "/map"
+  to = "/index.html"
+  status = 200
+  force = true
+
 # 제보 공유 링크(https://hongikon.com/r/{id}). 앱(SPA)이 열리며 지도에 그 제보를 띄운다(App.tsx sharedReportIdFromPath).
 # 아래 SPA 대체 규칙으로도 되지만, 공유 링크라 명시해 둔다.
 [[redirects]]

@@ -190,7 +190,9 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
     }
 
     // 관리자가 아니게 됐거나(권한 회수) 로그아웃·게스트, 또는 확인 요청이 실패했다.
-    consumeAdminIntent()
+    const intent = consumeAdminIntent()
+    // 웹 `/manage` 새로고침·진입인데 로그인하지 않았으면(게스트·로그아웃) 조용히 버린다 — 지도는 linking 이 이미 열었다.
+    if (intent?.section === 'open' && !authenticated) return
     if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Map' })
     toast.show({ message: '관리자 권한을 확인하지 못해 지도를 열었어요.', tone: 'warning' })
   }, [intentNonce, status, authenticated, probed, isAdmin, toast])
