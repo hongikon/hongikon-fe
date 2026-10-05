@@ -1,6 +1,7 @@
 import { getPathFromState, type LinkingOptions } from '@react-navigation/native'
 import type { RootStackParamList } from './RootNavigator'
 import type { NewsStackParamList } from './NewsStackNavigator'
+import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 
 /**
  * 웹 주소 ↔ 화면 연결. 탭·소식 화면마다 주소(`/map`, `/news`, `/news/{id}` …)가 생겨 링크로 공유할 수 있고,
@@ -41,7 +42,9 @@ export const WEB_LINKING: LinkingOptions<RootStackParamList> = {
       },
       NewsSearch: 'news/search',
       NewsDetail: 'news/:newsId',
-      AppStatus: 'app-status',
+      // 개발자용 화면이라 설정에서도 운영 빌드엔 숨긴다(`SHOW_DEVELOPER_TOOLS`). 주소도 운영 웹(hongikon.com)에선 열지 않는다 —
+      // 예전엔 /app-status 를 치면 누구나 빌드·백엔드 버전 화면을 열 수 있었다. 운영에선 모르는 주소처럼 메인 첫 화면으로 간다.
+      ...(SHOW_DEVELOPER_TOOLS ? { AppStatus: 'app-status' } : {}),
       Welcome: 'welcome',
       Onboarding: 'onboarding',
       DeptPick: 'onboarding/depts',

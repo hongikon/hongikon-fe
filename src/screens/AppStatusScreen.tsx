@@ -97,7 +97,7 @@ export default function AppStatusScreen() {
     { label: '지금 연결된 백엔드 버전', value: backendVersionLabel, loading: backendStillChecking },
     {
       label: '버전 일치 여부',
-      value: backendCheckFailed ? '확인 불가' : backendVersion === null ? '확인 중…' : backendVersionMatches ? '✅ 일치' : '⚠️ 불일치',
+      value: backendCheckFailed ? '확인 불가' : backendVersion === null ? '확인 중…' : backendVersionMatches ? '일치' : '불일치',
       loading: backendStillChecking,
     },
   ]
@@ -105,7 +105,12 @@ export default function AppStatusScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={[styles.header, layoutStyles.readable]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
           <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>앱 상태</Text>
