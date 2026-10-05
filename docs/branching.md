@@ -31,3 +31,6 @@ hotfix/*  ── main 에서 갈라 main 으로 ──────────�
 - OTA production 은 `main` 의 커밋에서만 낸다 — 대시보드의 Commit 값으로 어떤 코드가 나갔는지 추적한다.
 - 네이티브 변경(패키지·`app.config.ts`·권한)은 OTA 로 못 나간다. `dev` 에서 preview 빌드로 확인 후 스토어 빌드.
 - 백엔드(`hongikon-be`)도 같은 이름 규칙을 쓴다. 배포는 SQL·환경변수 순서가 있어 `docs/deploy-runbook-*.md` 를 따른다.
+- `src/utils/mapHtml.ts`(지도 페이지)를 고치면 `npx tsx --env-file=.env scripts/generate-map-html.ts` 로 `public/map.html` 을 다시 만들어
+  함께 커밋한다. 웹은 번들에서 바로 그리지만 앱(WebView)은 배포된 `map.html` 을 불러와, 빠뜨리면 앱 지도에만 변경이 안 들어간다
+  (10-03~10-05 수정이 이렇게 앱에서 빠져 있었다).
