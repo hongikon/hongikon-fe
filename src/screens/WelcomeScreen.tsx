@@ -205,6 +205,21 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Apple 시스템 버튼을 그릴 수 없는 곳(웹 등)에는 예전 '준비 중' 버튼을 다시 보여 준다(10-05 요청).
+            아이폰 앱은 위의 진짜 Apple 버튼이 뜨므로 여기 오지 않는다 — 미완성 버튼이 iOS 심사(2.1)에 보이지 않는다. */}
+        {!appleButton && Platform.OS === 'web' && (
+          <TouchableOpacity
+            style={[styles.button, styles.applePlaceholder]}
+            disabled
+            accessibilityRole="button"
+            accessibilityLabel="Apple로 시작하기, 준비 중"
+            accessibilityState={{ disabled: true }}
+          >
+            <Ionicons name="logo-apple" size={18} color={COLORS.white} />
+            <Text style={styles.applePlaceholderText}>Apple로 시작하기 · 준비 중</Text>
+          </TouchableOpacity>
+        )}
+
         {/* 약관 동의는 로그인 버튼을 누르면 뜨는 동의 시트에서 받는다. 여기서는 언제든 읽을 수 있게 링크만 둔다(처리방침은 굵게). */}
         <Text style={styles.legalLinks}>
           <Text
@@ -271,6 +286,8 @@ const styles = StyleSheet.create({
     borderRadius: LOGIN_BUTTON_RADIUS,
   },
   kakaoButton: { backgroundColor: '#FEE500' },
+  applePlaceholder: { backgroundColor: '#B9B9B9' },
+  applePlaceholderText: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.white },
   kakaoButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: '#3C1E1E' },
   // 시스템 버튼에는 높이·너비만 준다(배경색·모서리는 buttonStyle·cornerRadius 로만 — Apple 규정).
   appleButton: { width: '100%', height: LOGIN_BUTTON_HEIGHT },
