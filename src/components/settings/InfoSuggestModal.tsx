@@ -48,9 +48,12 @@ const INTRO: Record<InfoSuggestType, string> = {
   other: '앱에 실렸으면 하는 정보나 고쳐야 할 내용을 자유롭게 알려 주세요.',
 }
 
-/** 시설 종류 칩. 전시·행사는 위 종류 칩으로 따로 받으므로 빼고, 목록에 없는 시설용 칸을 둔다. */
+/**
+ * 시설 종류 칩. 전시·행사는 위 종류 칩으로 따로 받으므로 빼고, 목록에 없는 시설용 칸을 둔다.
+ * 흡연구역은 지도에서 숨긴 동안(MapFilterChips) 여기서도 보이지 않는다(10-05 요청).
+ */
 const FACILITY_KIND_OPTIONS: readonly string[] = [
-  ...FACILITY_KINDS.filter((meta) => meta.key !== '행사·전시').map((meta) => meta.key),
+  ...FACILITY_KINDS.filter((meta) => meta.key !== '행사·전시' && meta.key !== '흡연구역').map((meta) => meta.key),
   '그 밖의 시설',
 ]
 
