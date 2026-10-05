@@ -61,6 +61,8 @@ function withNewsIdParams(state: LinkState): LinkState {
 
 const TITLES: Record<string, string> = {
   Map: '지도',
+  // 링크·돌아갈 주소로 소식 탭을 처음 열면 탭 안 스택이 아직 안 떠 포커스가 'News' 로 잡힌다 — 그때도 제목을 붙인다.
+  News: '소식',
   NewsHome: '소식',
   DeptNews: '학과 소식',
   NewsDetail: '소식',

@@ -4,7 +4,7 @@ import { getStateFromPath } from '@react-navigation/native'
 import { useAuth } from '../contexts/AuthContext'
 import { useDeptPickPending, useOnboardingDone } from './onboarding'
 import { navigationRef } from '../navigation/navigationRef'
-import { WEB_LINKING } from '../navigation/linking'
+import { WEB_LINKING, formatDocumentTitle } from '../navigation/linking'
 
 /**
  * 웹: 로그인 전에 연 주소(`/news/123`, `/news/dept/...`, `/map`, `/settings` …)로 로그인·둘러보기 뒤에 돌아가기.
@@ -118,6 +118,12 @@ export function useWebReturnPath(): void {
       const state = getStateFromPath(path, WEB_LINKING.config)
       if (!state) return // 앱이 모르는 주소(오래된 링크 등) — 메인 첫 화면에 그대로 둔다.
       navigationRef.resetRoot(state)
+      // 브라우저 탭 제목은 스택이 메인으로 바뀌는 순간('Main') 정해진 뒤 resetRoot 로는 다시 계산되지 않아 "홍익온"으로 남았다.
+      // 탭 안 스택이 뜬 다음 차례에 지금 화면 기준으로 맞춘다.
+      setTimeout(() => {
+        const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined
+        if (route) document.title = formatDocumentTitle(route.name, route.params)
+      }, 0)
     }
     tryRestore()
     return navigationRef.addListener('state', tryRestore)
