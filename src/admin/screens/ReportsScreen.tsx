@@ -25,6 +25,7 @@ import { confirmAction } from '../../utils/dialog'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportImageUrls } from '../../utils/reports'
 import { requestMapIntent } from '../../lib/mapIntents'
+import { formatFloor } from '../../utils/floors'
 import { navigationRef } from '../../navigation/navigationRef'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
@@ -407,7 +408,11 @@ function ReportCard({
     if (report.lat === null || report.lng === null) return
     if (app) {
       // 앱 관리 탭: 우리 지도 탭으로 옮겨 그 좌표에 핀을 찍는다(승인 전 제보도 확인 가능).
-      requestMapIntent({ type: 'previewLocation', lat: report.lat, lng: report.lng, label: report.title })
+      const place = [report.buildingName, report.floor !== null ? formatFloor(report.floor) : null].filter(Boolean).join(' ')
+      const detail = [report.authorDisplayName ? `작성자 ${report.authorDisplayName}` : null, place || null]
+        .filter(Boolean)
+        .join(' · ')
+      requestMapIntent({ type: 'previewLocation', lat: report.lat, lng: report.lng, label: report.title, detail })
       if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Map' })
       return
     }

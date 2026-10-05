@@ -80,6 +80,14 @@ import ContentColumn from "../components/common/ContentColumn";
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
 const EMPTY_REPORTS: ReportListItem[] = [];
 
+/** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
+interface PreviewTarget {
+  lat: number;
+  lng: number;
+  label: string;
+  detail: string;
+}
+
 function buildingLabel(building: Building, floor: number | null): string {
   return floor === null
     ? building.name
@@ -131,6 +139,10 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] =
     useState<PartnerCategory | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const previewTargetRef = useRef(previewTarget);
+  previewTargetRef.current = previewTarget;
   const selectedPartnerRef = useRef(selectedPartner);
   selectedPartnerRef.current = selectedPartner;
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
@@ -282,6 +294,24 @@ export default function MapScreen() {
   const postToMap = useCallback((msg: object) => {
     webViewRef.current?.injectJavaScript(
       `handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
+    );
+  }, []);
+
+  const showPreviewPin = useCallback(
+    (preview: PreviewTarget) => {
+      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
+      postToMap({ type: "focusReport", lat: preview.lat, lng: preview.lng, zoom: FOCUS_ZOOM });
+      postToMap({ type: "previewPin", lat: preview.lat, lng: preview.lng, label: preview.label });
+    },
+    [postToMap],
+  );
+
+  /** 미리보기 핀과 안내 줄을 거둔다. 핀은 배포된 원격 map.html 에도 먹히게 페이지 전역을 직접 지운다. */
+  const clearPreview = useCallback(() => {
+    if (previewTargetRef.current === null) return;
+    setPreviewTarget(null);
+    webViewRef.current?.injectJavaScript(
+      "if (window.__previewPin) { window.__previewPin.setMap(null); window.__previewPin = null; } true;",
     );
   }, []);
 
@@ -628,6 +658,8 @@ export default function MapScreen() {
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
+    // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
+    if (previewTargetRef.current) showPreviewPin(previewTargetRef.current);
     // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
     const opened = selectedReportRef.current;
     if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
@@ -637,7 +669,7 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter]);
+  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin]);
 
   /**
    * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
@@ -856,14 +888,16 @@ export default function MapScreen() {
       setSelectedPartner(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
-      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
-      postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: FOCUS_ZOOM });
-      postToMap({ type: "previewPin", lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치" });
-      toast.show({ message: `제보 위치 · ${intent.label ?? "지도 가운데"}`, tone: "info" });
+      const preview = { lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치", detail: intent.detail ?? "" };
+      setPreviewTarget(preview);
+      // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
+      showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, postToMap, toast]);
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin]);
 
   useFocusEffect(handleMapIntent);
+  // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
+  useFocusEffect(useCallback(() => () => clearPreview(), [clearPreview]));
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
 
   const handleCancelReportPicker = useCallback(() => {
@@ -992,6 +1026,26 @@ export default function MapScreen() {
                 postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
               }}
             />
+          )}
+
+          {previewTarget && (
+            <View style={styles.previewNotice}>
+              <Ionicons name="eye-outline" size={14} color={COLORS.white} />
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewTitle} numberOfLines={1}>검토 중인 제보 · {previewTarget.label}</Text>
+                {previewTarget.detail ? (
+                  <Text style={styles.previewDetail} numberOfLines={1}>{previewTarget.detail}</Text>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                onPress={clearPreview}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="검토 위치 핀 닫기"
+              >
+                <Ionicons name="close" size={18} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
           )}
 
           {reportsEmpty && (
@@ -1646,6 +1700,25 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  previewNotice: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "stretch",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  previewTextWrap: { flex: 1 },
+  previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
+  previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
   routeStrip: {
     position: "absolute",
     top: 8,

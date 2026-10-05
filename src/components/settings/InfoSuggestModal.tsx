@@ -107,11 +107,12 @@ const EMPTY_DRAFT: Draft = {
 }
 
 /** 비어 있으면 안 되는 칸. 보내기를 눌렀을 때 빨간 테두리와 안내가 붙는다. */
-type RequiredField = 'name' | 'location' | 'period' | 'facilityKind' | 'building' | 'detail'
+type RequiredField = 'name' | 'location' | 'place' | 'period' | 'facilityKind' | 'building' | 'detail'
 
 const REQUIRED_HINT: Record<RequiredField, string> = {
   name: '이름을 알려 주세요.',
   location: '주소를 적거나 지도에서 위치를 찍어 주세요.',
+  place: '건물을 고르거나, 장소를 적거나, 지도에서 위치를 찍어 주세요.',
   period: '언제 열리는지 알려 주세요.',
   facilityKind: '어떤 시설인지 골라 주세요.',
   building: '건물을 골라 주세요.',
@@ -144,6 +145,8 @@ function missingFields(draft: Draft, location: InfoSuggestLocation | null): Requ
     case 'exhibition':
     case 'event':
       if (blank(draft.name)) missing.push('name')
+      // 장소가 없으면 운영진이 지도에 올릴 수 없다(장소 없는 행사 제보가 들어왔다, 10-05). 건물·주소·핀 중 하나면 된다.
+      if (!draft.building && blank(draft.address) && !location) missing.push('place')
       if (blank(draft.period)) missing.push('period')
       break
     case 'facility':
@@ -514,16 +517,21 @@ export default function InfoSuggestModal({
         />
         {invalid('name') && <Hint text={REQUIRED_HINT.name} />}
 
-        <FieldLabel>장소 (선택)</FieldLabel>
-        <BuildingPicker value={draft.building} onChange={(name) => update('building', name)} />
+        <FieldLabel>장소 *</FieldLabel>
+        <BuildingPicker
+          value={draft.building}
+          onChange={(name) => update('building', name)}
+          invalid={invalid('place')}
+        />
         {renderPin()}
         <TextField
-          style={styles.field}
+          style={[invalid('place') ? styles.fieldWithHint : styles.field, invalid('place') && styles.fieldInvalid]}
           placeholder="자세한 장소 (예: 1층 로비, 학교 밖이면 주소)"
           value={draft.address}
           onChangeText={(value) => update('address', value)}
           maxLength={100}
         />
+        {invalid('place') && <Hint text={REQUIRED_HINT.place} />}
 
         <FieldLabel>기간 *</FieldLabel>
         <TextField
