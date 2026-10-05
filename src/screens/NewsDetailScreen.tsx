@@ -44,12 +44,14 @@ function useEnhancedNewsItem(params: RootStackParamList['NewsDetail']) {
   // 상세가 열린 채로 다른 소식 알림을 누르면 같은 화면의 params 만 바뀐다. useApiResource 는 실패해도
   // 마지막 값을 남겨 두므로, 지금 id 와 맞는 응답일 때만 쓴다(아니면 이전 소식이 그대로 보인다).
   const fresh = detail.data && String(detail.data.id) === id ? detail.data : null
-  if (!fresh) return { item: summary, loadingMore: detail.loading || detail.refreshing, detail }
-  return { item: backendDetailToNewsItem(fresh), loadingMore: false, detail }
+  // 웹에서 `/news/abc` 처럼 숫자가 아닌 id 로 들어오면 부를 API 가 없어, 예전엔 스켈레톤이 끝없이 돌았다.
+  const notFound = !summary && backendId === null
+  if (!fresh) return { item: summary, loadingMore: detail.loading || detail.refreshing, detail, notFound }
+  return { item: backendDetailToNewsItem(fresh), loadingMore: false, detail, notFound }
 }
 
 export default function NewsDetailScreen({ route, navigation }: Props) {
-  const { item, loadingMore, detail } = useEnhancedNewsItem(route.params)
+  const { item, loadingMore, detail, notFound } = useEnhancedNewsItem(route.params)
 
   // 알림으로 들어와 아직 아무것도 없을 때: 받는 중이면 본문 모양의 스켈레톤, 실패하면 다시 시도 안내.
   if (!item) {
@@ -58,7 +60,9 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
         <View style={styles.headerBar}>
           <ScreenHeader title="소식 상세" onBack={() => navigation.goBack()} border={false} style={layoutStyles.readable} />
         </View>
-        {detail.errorMessage ? (
+        {notFound ? (
+          <RetryableError style={styles.loadError} message="소식을 찾을 수 없어요. 주소를 확인해 주세요." />
+        ) : detail.errorMessage ? (
           <RetryableError
             style={styles.loadError}
             message={detail.errorMessage}
