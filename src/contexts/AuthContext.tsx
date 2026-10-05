@@ -25,6 +25,7 @@ import {
 import { ApiError, isNetworkError, setTokenRefresher } from '../apis/client'
 import { getItem, setItem, deleteItem } from '../lib/tokenStorage'
 import { isAppleSignInCanceled, requestAppleSignIn } from '../lib/appleAuth'
+import { isWebAppleSignInEnabled, startWebAppleSignIn, takeWebAppleCallback } from '../lib/appleWebAuth'
 import { createPkcePair } from '../lib/pkce'
 import { deactivateStoredPushDevice, forgetStoredPushDevice, pushRegistrationMark } from '../lib/pushDevice'
 import { clearAccountLinkedDeviceData, deleteWithdrawnAccountData } from '../lib/accountData'
@@ -285,6 +286,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function restore() {
+      // 웹: Apple 로그인에서 막 돌아온 경우(`/auth/apple/callback#…`) 저장된 상태보다 먼저 처리한다.
+      const appleCallback = takeWebAppleCallback()
+      if (appleCallback !== undefined) {
+        if (appleCallback.kind === 'canceled') {
+          setStatus('signedOut')
+          return
+        }
+        if (appleCallback.kind === 'error') {
+          setLoginError(appleCallback.message)
+          setStatus('signedOut')
+          return
+        }
+        try {
+          await completeLogin(await loginWithAppleRequest(appleCallback.body), 'apple')
+        } catch (error: unknown) {
+          setLoginError(authExchangeErrorMessage(error))
+          setStatus('signedOut')
+        }
+        return
+      }
+
       // 웹: 카카오 로그인에서 막 돌아온 경우 저장된 상태보다 먼저 처리한다.
       const callbackCode = takeWebAuthCallbackCode()
       if (callbackCode !== undefined) {
@@ -371,6 +393,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithApple = useCallback(async () => {
     setLoginError(null)
+
+    // 웹: Apple 인증 페이지로 넘어갔다가 돌아오면 restore() 가 마무리한다(이 함수는 돌아오지 않는다).
+    if (isWebAppleSignInEnabled()) {
+      startWebAppleSignIn()
+      return new Promise<void>(() => {})
+    }
 
     let body
     try {
