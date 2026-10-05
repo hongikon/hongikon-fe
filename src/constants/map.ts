@@ -64,3 +64,19 @@ export const MARKER_CLICK_GUARD_MS = 350
  * 겹친 업체를 순서대로 보여주는 데 쓴다(`selectPartner` 참고).
  */
 export const PARTNER_OVERLAP_CYCLE_PX = 40
+
+/**
+ * 지도를 끌어 옮길 수 있는 범위 — 캠퍼스 중심에서 동서남북 이 거리(m)까지(홍대·합정·상수·신촌 일대).
+ * 그 밖으로 끌면 범위 안으로 돌아온다. 캠퍼스 앱이라 서울 전체를 볼 일이 없고, 엉뚱한 곳으로 가 헤매지 않게 한다(10-05 요청).
+ * 제휴 화면 맞춤 반경(PARTNER_FOCUS_RADIUS_METERS)보다 넉넉해야 근처 제휴 마커가 잘리지 않는다.
+ */
+export const CAMPUS_VIEW_RADIUS_METERS = 2500
+
+/** 이보다 멀리 축소하지 못한다. 기본 17, 14면 캠퍼스 일대 몇 km 가 한 화면에 든다. */
+export const MAP_MIN_ZOOM = 14
+
+/**
+ * 캠퍼스에서 먼 제휴 지점(PARTNER_FOCUS_RADIUS_METERS 밖 — 구로·강남·성수 등)은 제휴 업체 검색으로 골랐을 때만
+ * 그 자리로 옮기고, 그동안은 그 지점 둘레 이 거리(m) 안만 볼 수 있다. 시트를 닫으면 캠퍼스로 돌아온다.
+ */
+export const FAR_PARTNER_VIEW_RADIUS_METERS = 500

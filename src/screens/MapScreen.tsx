@@ -60,6 +60,7 @@ import {
   partnerFocusBounds,
   partnersOutsideFocus,
 } from "../utils/partners";
+import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import type {
@@ -78,6 +79,14 @@ import ContentColumn from "../components/common/ContentColumn";
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
 const EMPTY_REPORTS: ReportListItem[] = [];
+
+/** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
+interface PreviewTarget {
+  lat: number;
+  lng: number;
+  label: string;
+  detail: string;
+}
 
 function buildingLabel(building: Building, floor: number | null): string {
   return floor === null
@@ -130,6 +139,14 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] =
     useState<PartnerCategory | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const previewTargetRef = useRef(previewTarget);
+  previewTargetRef.current = previewTarget;
+  const selectedPartnerRef = useRef(selectedPartner);
+  selectedPartnerRef.current = selectedPartner;
+  /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
+  const farViewPartnerIdRef = useRef<string | null>(null);
   // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
   // 사용자가 앱이 멈춘 것으로 오해한다.
   const [mapAuthFailed, setMapAuthFailed] = useState(false);
@@ -169,7 +186,7 @@ export default function MapScreen() {
     async (signal) =>
       hotOnly
         ? visibleReports(await getHotReports({ accessToken, signal }))
-        : // 24시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
+        : // 48시간 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
           visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
     [accessToken, hotOnly],
     { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
@@ -205,6 +222,9 @@ export default function MapScreen() {
    * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
    */
   const handleRecenter = useCallback(() => {
+    // 먼 제휴 지점을 보던 중이어도 이동 범위를 캠퍼스 일대로 되돌린 뒤 옮긴다(범위가 좁으면 캠퍼스로 못 간다).
+    farViewPartnerIdRef.current = null;
+    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
     webViewRef.current?.injectJavaScript(
       `if (window.map && window.naver) { map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
     );
@@ -274,6 +294,24 @@ export default function MapScreen() {
   const postToMap = useCallback((msg: object) => {
     webViewRef.current?.injectJavaScript(
       `handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
+    );
+  }, []);
+
+  const showPreviewPin = useCallback(
+    (preview: PreviewTarget) => {
+      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
+      postToMap({ type: "focusReport", lat: preview.lat, lng: preview.lng, zoom: FOCUS_ZOOM });
+      postToMap({ type: "previewPin", lat: preview.lat, lng: preview.lng, label: preview.label });
+    },
+    [postToMap],
+  );
+
+  /** 미리보기 핀과 안내 줄을 거둔다. 핀은 배포된 원격 map.html 에도 먹히게 페이지 전역을 직접 지운다. */
+  const clearPreview = useCallback(() => {
+    if (previewTargetRef.current === null) return;
+    setPreviewTarget(null);
+    webViewRef.current?.injectJavaScript(
+      "if (window.__previewPin) { window.__previewPin.setMap(null); window.__previewPin = null; } true;",
     );
   }, []);
 
@@ -424,6 +462,16 @@ export default function MapScreen() {
       setSelectedFacilityBuilding(null);
       setSelectedPartner(partner);
 
+      // 캠퍼스에서 먼 지점은 검색으로만 찾아간다 — 옮기기 전에 이동 범위를 그 지점 둘레로 바꾼다(캠퍼스 범위로는 못 간다).
+      // 시트를 닫거나 다른 것을 고르면 아래 effect 가 캠퍼스로 되돌린다.
+      if (isFarFromCampus(partner)) {
+        farViewPartnerIdRef.current = partner.id;
+        webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(partner)));
+      } else if (farViewPartnerIdRef.current !== null) {
+        farViewPartnerIdRef.current = null;
+        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
+      }
+
       postToMap({
         type: "setPartners",
         partners: [toMarker(partner)],
@@ -433,6 +481,12 @@ export default function MapScreen() {
     },
     [postToMap],
   );
+
+  // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
+  useEffect(() => {
+    const farId = farViewPartnerIdRef.current;
+    if (farId !== null && selectedPartner?.id !== farId) handleRecenter();
+  }, [selectedPartner, handleRecenter]);
 
   const handleClosePartner = useCallback(() => {
     setSelectedPartner(null);
@@ -582,6 +636,14 @@ export default function MapScreen() {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
     // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
     handleRecenter();
+    // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
+    const farPartner = selectedPartnerRef.current;
+    if (farPartner && isFarFromCampus(farPartner)) {
+      farViewPartnerIdRef.current = farPartner.id;
+      webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(farPartner)));
+      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
+      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
+    }
     if (hasActiveFilter(activeFilter)) {
       const partners = filterPartners(activeFilter);
       postToMap({
@@ -596,6 +658,8 @@ export default function MapScreen() {
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
+    // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
+    if (previewTargetRef.current) showPreviewPin(previewTargetRef.current);
     // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
     const opened = selectedReportRef.current;
     if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
@@ -605,7 +669,7 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter]);
+  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin]);
 
   /**
    * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
@@ -623,7 +687,7 @@ export default function MapScreen() {
   const retryReports = reportsResource.retry;
   useEffect(() => {
     if (!reportsOn || nextUpcomingStart === null) return;
-    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(24시간 안).
+    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(48시간 안).
     const timer = setTimeout(() => retryReports(), Math.max(0, nextUpcomingStart - Date.now()) + 5000);
     return () => clearTimeout(timer);
   }, [reportsOn, nextUpcomingStart, retryReports]);
@@ -783,7 +847,7 @@ export default function MapScreen() {
           (r) => r.id === reportId && !(r.authorKey && hiddenAuthorKeys.has(r.authorKey)),
         );
         if (!found) {
-          // 예정 제보는 24시간 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
+          // 예정 제보는 48시간 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
           toast.show({ message: "이 제보는 지금 지도에 없어요. 아직 시작 전이거나 이미 끝났어요.", tone: "info" });
           return;
         }
@@ -824,14 +888,16 @@ export default function MapScreen() {
       setSelectedPartner(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
-      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
-      postToMap({ type: "focusReport", lat: intent.lat, lng: intent.lng, zoom: FOCUS_ZOOM });
-      postToMap({ type: "previewPin", lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치" });
-      toast.show({ message: `제보 위치 · ${intent.label ?? "지도 가운데"}`, tone: "info" });
+      const preview = { lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치", detail: intent.detail ?? "" };
+      setPreviewTarget(preview);
+      // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
+      showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, postToMap, toast]);
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin]);
 
   useFocusEffect(handleMapIntent);
+  // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
+  useFocusEffect(useCallback(() => () => clearPreview(), [clearPreview]));
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
 
   const handleCancelReportPicker = useCallback(() => {
@@ -962,6 +1028,26 @@ export default function MapScreen() {
             />
           )}
 
+          {previewTarget && (
+            <View style={styles.previewNotice}>
+              <Ionicons name="eye-outline" size={14} color={COLORS.white} />
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.previewTitle} numberOfLines={1}>검토 중인 제보 · {previewTarget.label}</Text>
+                {previewTarget.detail ? (
+                  <Text style={styles.previewDetail} numberOfLines={1}>{previewTarget.detail}</Text>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                onPress={clearPreview}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="검토 위치 핀 닫기"
+              >
+                <Ionicons name="close" size={18} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {reportsEmpty && (
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
@@ -984,7 +1070,7 @@ export default function MapScreen() {
             <View style={styles.offscreenNotice}>
               <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>
-                캠퍼스 밖 {offscreenCount}곳은 지도를 줌아웃하면 보여요
+                캠퍼스 밖 {offscreenCount}곳은 제휴 업체 검색에서 볼 수 있어요
               </Text>
             </View>
           )}
@@ -1614,6 +1700,25 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  previewNotice: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "stretch",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  previewTextWrap: { flex: 1 },
+  previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
+  previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
   routeStrip: {
     position: "absolute",
     top: 8,

@@ -89,6 +89,8 @@ interface Draft {
   floor: string
   facilityKind: string | null
   contact: string
+  /** 행사·전시가 온라인으로만 열린다(장소 칸 대신). */
+  online: boolean
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -104,14 +106,16 @@ const EMPTY_DRAFT: Draft = {
   floor: '',
   facilityKind: null,
   contact: '',
+  online: false,
 }
 
 /** 비어 있으면 안 되는 칸. 보내기를 눌렀을 때 빨간 테두리와 안내가 붙는다. */
-type RequiredField = 'name' | 'location' | 'period' | 'facilityKind' | 'building' | 'detail'
+type RequiredField = 'name' | 'location' | 'place' | 'period' | 'facilityKind' | 'building' | 'detail'
 
 const REQUIRED_HINT: Record<RequiredField, string> = {
   name: '이름을 알려 주세요.',
   location: '주소를 적거나 지도에서 위치를 찍어 주세요.',
+  place: '건물을 고르거나, 장소를 적거나, 지도에서 위치를 찍어 주세요. 온라인 행사면 온라인을 골라 주세요.',
   period: '언제 열리는지 알려 주세요.',
   facilityKind: '어떤 시설인지 골라 주세요.',
   building: '건물을 골라 주세요.',
@@ -144,6 +148,9 @@ function missingFields(draft: Draft, location: InfoSuggestLocation | null): Requ
     case 'exhibition':
     case 'event':
       if (blank(draft.name)) missing.push('name')
+      // 장소가 없으면 운영진이 지도에 올릴 수 없다(장소 없는 행사 제보가 들어왔다, 10-05). 건물·주소·핀 중 하나,
+      // 온라인 행사면 '온라인'을 고르면 된다.
+      if (!draft.online && !draft.building && blank(draft.address) && !location) missing.push('place')
       if (blank(draft.period)) missing.push('period')
       break
     case 'facility':
@@ -179,12 +186,14 @@ function buildContent(draft: Draft, location: InfoSuggestLocation | null): strin
       break
     case 'exhibition':
     case 'event': {
-      const place = [draft.building, t(draft.address)].filter(Boolean).join(' · ')
+      const place = draft.online
+        ? ['온라인', t(draft.address)].filter(Boolean).join(' · ')
+        : [draft.building, t(draft.address)].filter(Boolean).join(' · ')
       lines = [
         prefix,
         line('이름', draft.name),
         line('장소', place),
-        location ? `좌표: ${formatCoord(location)}` : null,
+        location && !draft.online ? `좌표: ${formatCoord(location)}` : null,
         line('기간', draft.period),
         line('내용', draft.detail),
       ]
@@ -514,16 +523,29 @@ export default function InfoSuggestModal({
         />
         {invalid('name') && <Hint text={REQUIRED_HINT.name} />}
 
-        <FieldLabel>장소 (선택)</FieldLabel>
-        <BuildingPicker value={draft.building} onChange={(name) => update('building', name)} />
-        {renderPin()}
+        <FieldLabel>장소 *</FieldLabel>
+        <View style={styles.chipWrap} accessibilityRole="radiogroup" accessibilityLabel="열리는 곳">
+          <Chip label="현장" selected={!draft.online} role="radio" onPress={() => update('online', false)} />
+          <Chip label="온라인" selected={draft.online} role="radio" onPress={() => update('online', true)} />
+        </View>
+        {draft.online ? null : (
+          <>
+            <BuildingPicker
+              value={draft.building}
+              onChange={(name) => update('building', name)}
+              invalid={invalid('place')}
+            />
+            {renderPin()}
+          </>
+        )}
         <TextField
-          style={styles.field}
-          placeholder="자세한 장소 (예: 1층 로비, 학교 밖이면 주소)"
+          style={[invalid('place') ? styles.fieldWithHint : styles.field, invalid('place') && styles.fieldInvalid]}
+          placeholder={draft.online ? '참여 방법·링크 (선택, 예: 유튜브 라이브, Zoom)' : '자세한 장소 (예: 1층 로비, 학교 밖이면 주소)'}
           value={draft.address}
           onChangeText={(value) => update('address', value)}
           maxLength={100}
         />
+        {invalid('place') && <Hint text={REQUIRED_HINT.place} />}
 
         <FieldLabel>기간 *</FieldLabel>
         <TextField

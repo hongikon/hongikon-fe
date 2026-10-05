@@ -491,6 +491,42 @@ export function buildMapHTML(
     function removePartnerOverlays() {
       partnerMarkers.forEach(function(marker) { marker.setMap(null); });
       partnerMarkers = [];
+      partnerMarkerById = {};
+    }
+
+    // 업체 id → { marker, partner }. 선택이 바뀔 때 전체(약 120개)를 다시 만들지 않고 바뀐 두 개만 고친다.
+    var partnerMarkerById = {};
+    // 상호명이 길어도 가운데 정렬이 유지되도록 넉넉한 고정 너비를 두고, 좌표에는 배지의 중심이 오도록 앵커를 잡는다.
+    var PARTNER_BOX_W = 140;
+    var PARTNER_PAD_TOP = 3;
+    var PARTNER_GAP = 3;
+
+    function partnerIcon(partner, selected) {
+      var badge = selected ? ${PARTNER_BADGE_SIZE_SELECTED_PX} : ${PARTNER_BADGE_SIZE_PX};
+      var nameLine = (selected ? 12 : 11) + 6;
+      var boxH = PARTNER_PAD_TOP + badge + PARTNER_GAP + nameLine;
+      return {
+        content: '<div style="width:' + PARTNER_BOX_W + 'px;padding-top:' + PARTNER_PAD_TOP + 'px;pointer-events:none;">'
+          + partnerLabelHTML(partner, selected) + '</div>',
+        size: new naver.maps.Size(PARTNER_BOX_W, boxH),
+        anchor: new naver.maps.Point(PARTNER_BOX_W / 2, PARTNER_PAD_TOP + badge / 2),
+      };
+    }
+
+    function setPartnerMarkerSelected(id, selected) {
+      var entry = id === null ? null : partnerMarkerById[id];
+      if (!entry) return;
+      entry.marker.setIcon(partnerIcon(entry.partner, selected));
+      entry.marker.setZIndex(selected ? 200 : 100);
+    }
+
+    // 선택한 업체만 바꾼다. 예전 선택과 새 선택 마커 두 개의 아이콘만 다시 그린다.
+    function changeSelectedPartner(nextId) {
+      var prevId = selectedPartnerId;
+      selectedPartnerId = nextId;
+      if (prevId === nextId) return;
+      setPartnerMarkerSelected(prevId, false);
+      setPartnerMarkerSelected(nextId, true);
     }
 
     // 화면상 partner 배지 중심과 PARTNER_OVERLAP_CYCLE_PX 이내인 업체들을,
@@ -535,42 +571,27 @@ export function buildMapHTML(
         }
       }
 
-      selectedPartnerId = nextId;
-      renderPartners();
+      changeSelectedPartner(nextId);
       post({ type: 'partnerTap', id: nextId });
     }
 
+    // 업체 목록이 바뀔 때만(setPartners) 전부 다시 만든다. 선택만 바뀔 때는 changeSelectedPartner.
     function renderPartners() {
       removePartnerOverlays();
-      // 상호명이 길어도 가운데 정렬이 유지되도록 넉넉한 고정 너비를 두고,
-      // 좌표에는 배지의 중심이 오도록 앵커를 잡는다.
-      var boxW = 140;
-      var padTop = 3;
-      var gap = 3;
-
       currentPartners.forEach(function(partner) {
         var selected = partner.id === selectedPartnerId;
-        var badge = selected ? ${PARTNER_BADGE_SIZE_SELECTED_PX} : ${PARTNER_BADGE_SIZE_PX};
-        var nameLine = (selected ? 12 : 11) + 6;
-        var boxH = padTop + badge + gap + nameLine;
-        var position = new naver.maps.LatLng(partner.lat, partner.lng);
-
         var marker = new naver.maps.Marker({
-          position: position,
+          position: new naver.maps.LatLng(partner.lat, partner.lng),
           map: map,
           zIndex: selected ? 200 : 100,
-          icon: {
-            content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
-              + partnerLabelHTML(partner, selected) + '</div>',
-            size: new naver.maps.Size(boxW, boxH),
-            anchor: new naver.maps.Point(boxW / 2, padTop + badge / 2),
-          },
+          icon: partnerIcon(partner, selected),
         });
         naver.maps.Event.addListener(marker, 'click', function() {
           if (!pickerActive) focusOn(partner.lat, partner.lng);
           selectPartner(partner.id);
         });
         partnerMarkers.push(marker);
+        partnerMarkerById[partner.id] = { marker: marker, partner: partner };
       });
     }
 
@@ -945,9 +966,8 @@ export function buildMapHTML(
       if (new Date().getTime() - lastLongPressAt < ${MARKER_CLICK_GUARD_MS}) return;
 
       if (selectedPartnerId !== null) {
-        selectedPartnerId = null;
         overlapCycle.key = null;
-        renderPartners();
+        changeSelectedPartner(null);
         post({ type: 'partnerDismiss' });
       }
 
@@ -1061,8 +1081,8 @@ export function buildMapHTML(
           selectedPartnerId = null;
           overlapCycle.key = null;
           removePartnerOverlays();
-          map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
-          map.setZoom(${DEFAULT_ZOOM});
+          // 마커만 거둔다. 예전엔 여기서 카메라를 캠퍼스 중심으로 되돌려, 갈래 칩만 눌러도 보던 자리를 잃었다.
+          // 캠퍼스로 돌아가기는 학사모 버튼이 한다.
         }
 
         if (msg.type === 'setReports') {
@@ -1103,17 +1123,15 @@ export function buildMapHTML(
         }
 
         if (msg.type === 'selectPartner') {
-          selectedPartnerId = msg.id === undefined ? null : msg.id;
           overlapCycle.key = null;
-          renderPartners();
+          changeSelectedPartner(msg.id === undefined ? null : msg.id);
         }
 
         // 검색 결과를 고른 경우. 한 업체를 화면 가운데로 가져온다.
         // setPartners 의 bounds 는 캠퍼스를 항상 포함해 한 곳으로 좁혀지지 않는다.
         if (msg.type === 'focusPartner') {
-          selectedPartnerId = msg.id;
           overlapCycle.key = null;
-          renderPartners();
+          changeSelectedPartner(msg.id);
           var focused = currentPartners.filter(function(p) { return p.id === msg.id; })[0];
           if (focused) {
             focusOn(focused.lat, focused.lng);
@@ -1124,11 +1142,27 @@ export function buildMapHTML(
         // 관리자 "지도에서 보기": 승인 전 제보도 볼 수 있게 그 좌표에 임시 핀 하나를 찍는다(다음 미리보기나 다시 불러오면 사라짐).
         if (msg.type === 'previewPin') {
           if (window.__previewPin) window.__previewPin.setMap(null);
+          // 네이버 기본 파란 핀 대신 앱 색(남색) 점 + 위에 말풍선 이름표. 지우기는 앱이 window.__previewPin 을 직접 거둔다.
+          var previewLabel = String(msg.label || '제보 위치').replace(/[&<>"']/g, function(c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+          });
+          var previewW = 200;
           window.__previewPin = new naver.maps.Marker({
             position: new naver.maps.LatLng(msg.lat, msg.lng),
             map: map,
             zIndex: 1000,
-            title: msg.label || '제보 위치',
+            clickable: false,
+            icon: {
+              content: '<div style="width:' + previewW + 'px;display:flex;flex-direction:column;align-items:center;pointer-events:none;">'
+                + '<div style="max-width:' + previewW + 'px;padding:4px 8px;border-radius:8px;background:#05014A;color:#fff;'
+                + 'font:600 12px/16px -apple-system,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+                + 'box-shadow:0 1px 4px rgba(0,0,0,.25);">검토 중 · ' + previewLabel + '</div>'
+                + '<div style="width:2px;height:8px;background:#05014A;"></div>'
+                + '<div style="width:14px;height:14px;border-radius:7px;background:#05014A;border:3px solid #fff;box-shadow:0 0 0 1px #05014A;"></div>'
+                + '</div>',
+              size: new naver.maps.Size(previewW, 50),
+              anchor: new naver.maps.Point(previewW / 2, 43),
+            },
           });
         }
 

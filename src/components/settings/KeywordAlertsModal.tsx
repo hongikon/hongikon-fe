@@ -20,7 +20,7 @@ import {
   type KeywordSubscription,
 } from '../../apis/notifications'
 import { ApiError, getErrorMessage } from '../../apis/client'
-import { useToast } from '../common/Toast'
+import { ToastViewport, useToast } from '../common/Toast'
 import * as haptics from '../../lib/haptics'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
@@ -179,6 +179,8 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
               </View>
             ))}
           </ScrollView>
+          {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다(BoardAlertsModal 과 같다). */}
+          <ToastViewport />
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>

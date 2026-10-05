@@ -1,5 +1,7 @@
 import { getPathFromState, type LinkingOptions } from '@react-navigation/native'
 import type { RootStackParamList } from './RootNavigator'
+import type { NewsStackParamList } from './NewsStackNavigator'
+import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 
 /**
  * 웹 주소 ↔ 화면 연결. 탭·소식 화면마다 주소(`/map`, `/news`, `/news/{id}` …)가 생겨 링크로 공유할 수 있고,
@@ -23,6 +25,11 @@ export const WEB_LINKING: LinkingOptions<RootStackParamList> = {
           Map: 'map',
           News: {
             path: 'news',
+            // `/news/dept/{id}` 로 새로고침·진입해도 소식 탭 스택에 소식 목록을 깔아 둔다. 없으면 학과 소식 하나만 남아
+            // 뒤로 버튼이 소식 스택에서 갈 곳이 없고, 하단 탭의 뒤로가기(첫 탭으로)로 넘어가 지도 탭이 열렸다.
+            // react-navigation 의 PathConfig 타입이 `NavigatorScreenParams<…> | undefined` 인 탭(News)에서 하위 화면 이름을
+            // 못 뽑아 initialRouteName 을 undefined 로만 받는다. 값은 소식 스택의 첫 화면 이름이 맞다(NewsStackParamList).
+            initialRouteName: 'NewsHome' satisfies keyof NewsStackParamList as never,
             screens: {
               NewsHome: '',
               // 학과 이름은 주소에 ?deptName= 로 붙는다(제목 표시용).
@@ -35,7 +42,9 @@ export const WEB_LINKING: LinkingOptions<RootStackParamList> = {
       },
       NewsSearch: 'news/search',
       NewsDetail: 'news/:newsId',
-      AppStatus: 'app-status',
+      // 개발자용 화면이라 설정에서도 운영 빌드엔 숨긴다(`SHOW_DEVELOPER_TOOLS`). 주소도 운영 웹(hongikon.com)에선 열지 않는다 —
+      // 예전엔 /app-status 를 치면 누구나 빌드·백엔드 버전 화면을 열 수 있었다. 운영에선 모르는 주소처럼 메인 첫 화면으로 간다.
+      ...(SHOW_DEVELOPER_TOOLS ? { AppStatus: 'app-status' } : {}),
       Welcome: 'welcome',
       Onboarding: 'onboarding',
       DeptPick: 'onboarding/depts',
@@ -61,6 +70,8 @@ function withNewsIdParams(state: LinkState): LinkState {
 
 const TITLES: Record<string, string> = {
   Map: '지도',
+  // 링크·돌아갈 주소로 소식 탭을 처음 열면 탭 안 스택이 아직 안 떠 포커스가 'News' 로 잡힌다 — 그때도 제목을 붙인다.
+  News: '소식',
   NewsHome: '소식',
   DeptNews: '학과 소식',
   NewsDetail: '소식',
