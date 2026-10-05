@@ -15,6 +15,7 @@ import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
 import { isKakaoLoginCanceled, useAuth } from '../contexts/AuthContext'
 import { getAppleButton, isAppleSignInAvailable, isAppleSignInCanceled } from '../lib/appleAuth'
+import { isWebAppleSignInEnabled } from '../lib/appleWebAuth'
 import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import Button from '../components/common/Button'
@@ -159,6 +160,7 @@ export default function WelcomeScreen() {
 
   const isBusy = pending !== null
   const appleButton = appleAvailable ? getAppleButton() : null
+  const webAppleEnabled = isWebAppleSignInEnabled()
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -205,9 +207,27 @@ export default function WelcomeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Apple 시스템 버튼을 그릴 수 없는 곳(웹 등)에는 예전 '준비 중' 버튼을 다시 보여 준다(10-05 요청).
-            아이폰 앱은 위의 진짜 Apple 버튼이 뜨므로 여기 오지 않는다 — 미완성 버튼이 iOS 심사(2.1)에 보이지 않는다. */}
-        {!appleButton && Platform.OS === 'web' && (
+        {/* 웹 Apple 로그인(`appleWebAuth.ts`). Services ID 가 설정된 운영 주소에서만 켜지고, 아니면 예전 '준비 중' 버튼을
+            보여 준다(10-05 요청). 아이폰 앱은 위의 진짜 시스템 버튼이 떠 여기로 오지 않는다 — 미완성 버튼이 iOS 심사(2.1)에 안 보인다.
+            Apple 브랜드 규정대로 검은 바탕·흰 로고·'Apple로 시작하기'를 쓰고 카카오 버튼과 같은 크기로 둔다. */}
+        {!appleButton && Platform.OS === 'web' && (webAppleEnabled ? (
+          <TouchableOpacity
+            style={[styles.button, styles.appleWebButton]}
+            onPress={() => void requestLogin('apple')}
+            disabled={isBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Apple로 시작하기"
+          >
+            {pending === 'apple' ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Ionicons name="logo-apple" size={18} color={COLORS.white} />
+                <Text style={styles.applePlaceholderText}>Apple로 시작하기</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
           <TouchableOpacity
             style={[styles.button, styles.applePlaceholder]}
             disabled
@@ -218,7 +238,7 @@ export default function WelcomeScreen() {
             <Ionicons name="logo-apple" size={18} color={COLORS.white} />
             <Text style={styles.applePlaceholderText}>Apple로 시작하기 · 준비 중</Text>
           </TouchableOpacity>
-        )}
+        ))}
 
         {/* 약관 동의는 로그인 버튼을 누르면 뜨는 동의 시트에서 받는다. 여기서는 언제든 읽을 수 있게 링크만 둔다(처리방침은 굵게). */}
         <Text style={styles.legalLinks}>
@@ -287,6 +307,7 @@ const styles = StyleSheet.create({
   },
   kakaoButton: { backgroundColor: '#FEE500' },
   applePlaceholder: { backgroundColor: '#B9B9B9' },
+  appleWebButton: { backgroundColor: '#000000' },
   applePlaceholderText: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.white },
   kakaoButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: '#3C1E1E' },
   // 시스템 버튼에는 높이·너비만 준다(배경색·모서리는 buttonStyle·cornerRadius 로만 — Apple 규정).

@@ -67,6 +67,7 @@ export function captureWebReturnPath(): void {
   if (
     FLOW_PATH.test(pathname) ||
     pathname === '/auth/callback' ||
+    pathname === '/auth/apple/callback' ||
     /^\/(admin|temp)(\/|$)/.test(pathname)
   ) {
     return
