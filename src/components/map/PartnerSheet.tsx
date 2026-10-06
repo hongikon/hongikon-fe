@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Animated,
   View,
@@ -97,6 +98,8 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  */
 export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
+  const insets = useSafeAreaInsets();
   const meta = partnerCategoryMeta(partner.category);
   // affiliationBenefits 로 예외가 걸린 소속은 그 예외 줄 안에서 이용 방법을
   // 보여준다. 예외가 없는 소속(기본 benefit 을 그대로 쓰는 소속)의 이용
@@ -118,7 +121,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
-    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View
         style={styles.handle}
         {...panHandlers}

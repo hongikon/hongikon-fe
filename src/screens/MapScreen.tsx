@@ -392,8 +392,9 @@ export default function MapScreen() {
   useEffect(() => {
     navigation.setOptions({ tabBarStyle: sheetOpen ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
   }, [navigation, sheetOpen]);
-  // 탭바를 숨긴 동안 시트는 탭바 자리가 아니라 안전 영역(홈 인디케이터) 위에 붙는다.
-  const sheetBottom = sheetOpen ? insets.bottom : tabBarHeight;
+  // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
+  // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
+  const sheetBottom = sheetOpen ? 0 : tabBarHeight;
 
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
@@ -419,6 +420,15 @@ export default function MapScreen() {
         const msg = JSON.parse(event.nativeEvent.data);
 
         if (msg.type === "buildingTap") {
+          // 제보·제휴·편의시설 시트가 열린 채 지도를 누르면 그 탭은 '시트 닫기'로만 쓴다. 바로 건물 배너까지
+          // 열면 시트가 내려가지 않고 엉뚱한 건물이 눌린 것처럼 보였다. 건물을 보려면 한 번 더 누른다.
+          if (selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current) {
+            setSelectedReport(null);
+            setSelectedPartner(null);
+            setSelectedFacilityBuilding(null);
+            postToMap({ type: "selectBuilding", name: null });
+            return;
+          }
           const building = buildings.find((b) => b.name === msg.name) ?? null;
           setSelectedPartner(null);
           setSelectedFacilityBuilding(null);
@@ -477,8 +487,10 @@ export default function MapScreen() {
 
         // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
         if (msg.type === "buildingDismiss") {
+          // 지도 빈 곳을 누르면 열린 시트를 모두 내린다(제보 시트 포함).
           setSelectedBuilding(null);
           setSelectedFacilityBuilding(null);
+          setSelectedReport(null);
           return;
         }
 
@@ -902,6 +914,8 @@ export default function MapScreen() {
    */
   const selectedReportRef = useRef(selectedReport);
   selectedReportRef.current = selectedReport;
+  const selectedFacilityBuildingRef = useRef(selectedFacilityBuilding);
+  selectedFacilityBuildingRef.current = selectedFacilityBuilding;
   useEffect(() => {
     const current = selectedReportRef.current;
     if (!current || shownReportData === undefined) return;
