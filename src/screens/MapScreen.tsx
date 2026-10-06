@@ -1260,7 +1260,8 @@ export default function MapScreen() {
           )}
         </View>
 
-        {!pickingLocation && (
+        {/* 시트가 열려 있으면 오른쪽 아래 버튼(제보하기·캠퍼스로)이 시트 가장자리로 삐져나와 숨긴다. */}
+        {!pickingLocation && !sheetOpen && (
           <View style={[styles.mapControls, { bottom: 20 + tabBarHeight }]}>
             <TouchableOpacity
               style={styles.controlBtn}
