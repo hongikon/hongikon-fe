@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { buildMapHTML } from '../utils/mapHtml'
-import { BUILDINGS } from '../constants/buildings'
+import { useMapData } from '../lib/mapData'
 
 interface Props {
   /**
@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * 임시 - 출입구/실내 경로 좌표 검증용 화면. 웹에서 `/temp/dots`, `/temp/path` 로 직접
- * 접근한다(App.tsx 참고). buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 파일과
+ * 접근한다(App.tsx 참고). 건물 데이터(서버)·pathNodes.ts 에 실 데이터가 반영되면 이 파일과
  * App.tsx 의 관련 분기, `src/debug/entranceCheckData.ts`, `buildMapHTML` 의
  * `entranceDebugMode` 매개변수를 통째로 지운다.
  *
@@ -25,7 +25,9 @@ interface Props {
 export default function TempEntranceDebugScreen({ mode }: Props) {
   const webViewRef = useRef<NaverMapViewHandle>(null)
   const [authFailed, setAuthFailed] = useState(false)
-  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS, mode), [mode])
+  // 디버그 오버레이는 건물(출입구)을 문서에 구워 넣는다. 지도 데이터를 받은 뒤에 지도를 띄운다.
+  const { buildings, data, status, reload } = useMapData()
+  const mapHTML = useMemo(() => buildMapHTML(buildings, mode), [buildings, mode])
 
   return (
     <View style={styles.container}>
@@ -38,7 +40,13 @@ export default function TempEntranceDebugScreen({ mode }: Props) {
             : '임시 · 출입구 좌표 검증용 (/temp/dots)'}
         </Text>
       </View>
+      {!data ? (
+        <Text style={styles.bannerText} onPress={status === 'error' ? reload : undefined}>
+          {status === 'error' ? '지도 정보를 불러오지 못했어요 · 다시 시도' : '지도 정보를 불러오는 중이에요'}
+        </Text>
+      ) : (
       <NaverMapView
+        key={data.version}
         ref={webViewRef}
         html={mapHTML}
         onMessage={(event) => {
@@ -50,6 +58,7 @@ export default function TempEntranceDebugScreen({ mode }: Props) {
           }
         }}
       />
+      )}
       {authFailed && (
         <View style={styles.authFailBanner}>
           <Text style={styles.authFailText}>네이버 지도 인증 실패 - 도메인 미등록 가능성</Text>

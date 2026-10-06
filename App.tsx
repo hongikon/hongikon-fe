@@ -25,6 +25,7 @@ import { AdminAccessProvider } from './src/admin/AdminAccess'
 import { requestMapIntent } from './src/lib/mapIntents'
 import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 import { requestAdminIntent } from './src/lib/adminIntents'
+import { initMapData } from './src/lib/mapData'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -62,7 +63,7 @@ function WebDocumentTitleBridge() {
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
  * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만,
  * `/temp/path-nodes` = 실외 보행 경로망 전체.
- * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
+ * 건물 데이터(서버)·pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
  *
  * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).
@@ -123,6 +124,10 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     }
   }
 }
+
+// 지도 데이터(건물·편의시설·제휴업체)는 첫 탭인 지도가 바로 쓰므로 폰트·로그인 복원을 기다리지 않고 지금 받기 시작한다.
+// 기기 저장본이 있으면 그것부터 내놓는다(`src/lib/mapData.ts`). 웹 관리자 콘솔은 지도를 그리지 않아 받지 않는다.
+if (!isAdminPath) initMapData()
 
 // 폰트가 준비될 때까지 스플래시를 띄워 둔다. 그렇게 하지 않으면
 // 시스템 폰트로 한 프레임 그려졌다가 Pretendard 로 바뀌며 글자가 튄다.

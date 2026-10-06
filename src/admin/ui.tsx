@@ -311,6 +311,7 @@ export function ConfirmBar({
   onCancel,
   busy,
   danger,
+  confirmDisabled,
   children,
 }: {
   message: string
@@ -319,6 +320,8 @@ export function ConfirmBar({
   onCancel: () => void
   busy?: boolean
   danger?: boolean
+  /** 확인 버튼을 막는다(예: 지울 업체 이름을 정확히 입력하기 전). */
+  confirmDisabled?: boolean
   children?: ReactNode
 }) {
   const app = useAdminHost() === 'app'
@@ -335,6 +338,7 @@ export function ConfirmBar({
           label={confirmLabel}
           onPress={onConfirm}
           loading={busy}
+          disabled={confirmDisabled}
           variant={danger ? 'danger' : 'primary'}
           small
           style={app ? styles.confirmButtonApp : undefined}

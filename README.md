@@ -58,7 +58,7 @@ src/
 ├── constants/
 │   ├── colors.ts            # 색상 토큰 및 카테고리 색상
 │   ├── news.ts              # 학과 트리 & 소식 데이터
-│   └── buildings.ts         # 건물 목록
+│   └── pathNodes.ts         # 실외 보행 경로망 (건물·편의시설·제휴업체는 서버 GET /map/data)
 ├── contexts/
 │   └── SettingsContext.tsx  # 앱 전역 설정 상태
 ├── navigation/

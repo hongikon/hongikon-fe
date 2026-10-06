@@ -22,6 +22,14 @@ export interface BuildingEntrance {
 }
 
 export interface Building {
+  /**
+   * 서버 `buildings.id`. 지도 데이터(`GET /map/data`)로 받은 건물에만 있다. 제보(`POST /reports`)의
+   * `buildingId` 로 그대로 쓴다.
+   */
+  id?: number
+  /** 서버 건물 code(예: `hongik_r`). 관리자 화면에서 편의시설이 속한 건물을 가리킬 때 쓴다. */
+  code?: string
+  /** 화면에 보이는 이름(예: '홍문관 R동'). 서버의 `display_name`(없으면 `name`). */
   name: string
   lat: number
   lng: number
@@ -59,7 +67,7 @@ export interface PathWaypoint {
 /**
  * 실외 간선(양방향). 각 값은 `PathWaypoint.id` 이거나 건물 출입구를 가리키는
  * '건물명' 또는 '건물명#출입구라벨'(라벨은 `BuildingEntrance.label` 과 정확히
- * 일치) 문자열이다. 건물 쪽 좌표는 `buildings.ts` 를 그대로 참조하며 여기 다시
+ * 일치) 문자열이다. 건물 쪽 좌표는 지도 데이터(서버 `GET /map/data`)의 건물을 그대로 참조하며 여기 다시
  * 적지 않는다 — `src/utils/routing.ts` 가 해석한다.
  */
 export type PathEdge = [string, string]
@@ -106,13 +114,13 @@ export type FacilityKind =
  *
  * 좌표를 직접 들고 있지 않고 건물을 가리킨다. 편의시설은 건물 안에 있어
  * 개별 좌표를 따로 확인할 방법이 없는 반면, 건물 좌표는 이미 검증돼 있기
- * 때문이다(`constants/buildings.ts` 참고 — 추정 좌표는 넣지 않는다).
+ * 때문이다(지도 데이터의 건물 — 추정 좌표는 넣지 않는다).
  * 지도 핀은 `buildingName` 으로 찾은 건물의 좌표에 찍힌다.
  */
 export interface Facility {
   id: string
   kind: FacilityKind
-  /** `BUILDINGS` 의 `name` 과 정확히 일치해야 한다. 못 찾으면 지도에서 빠진다. */
+  /** 지도 데이터 건물의 `name`(표시 이름)과 정확히 일치해야 한다. 못 찾으면 지도에서 빠진다. */
   buildingName: string
   /** 확인된 경우에만 채운다. 표기는 `formatFloor` 규칙을 따른다. */
   floor?: number

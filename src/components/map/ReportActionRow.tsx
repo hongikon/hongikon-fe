@@ -11,6 +11,7 @@ import { communityErrorMessage, isCommunityApiMissing, setReportFire, setReportF
 import { promptLogin } from '../../utils/reports'
 import { shareReport } from '../../utils/shareReport'
 import type { ReportListItem } from '../../types'
+import { useMapData } from '../../lib/mapData'
 
 /** 시트가 들고 있는 제보 사본에 덮어쓸 값(🔥·관심·조회 수). */
 export type ReportCommunityPatch = Partial<
@@ -34,6 +35,8 @@ export function formatCount(n: number): string {
  * 내 제보는 🔥 수만 보이고(누를 수 없음) 관심 버튼이 없다.
  */
 export default function ReportActionRow({ report, onPatch }: ReportActionRowProps) {
+  // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
+  const { buildings } = useMapData()
   const { accessToken, logout } = useAuth()
   const toast = useToast()
   const [busy, setBusy] = useState<'fire' | 'follow' | null>(null)
@@ -118,7 +121,7 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
 
   const handleShare = async () => {
     haptics.tapLight()
-    const result = await shareReport(report)
+    const result = await shareReport(report, buildings)
     if (result === 'copied') toast.show({ message: '링크를 복사했어요' })
     else if (result === 'failed') toast.show({ message: '공유하지 못했어요', tone: 'warning' })
   }

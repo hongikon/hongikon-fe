@@ -1,6 +1,12 @@
 import { ApiError, type ApiRequestOptions } from '../apis/client'
 import type { MockMode } from './session'
+import { PARTNER_AFFILIATIONS } from '../constants/partnerAffiliations'
+import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
+import { FACILITY_KINDS } from '../constants/facilityKinds'
 import type {
+  AdminBuildingOption,
+  AdminFacility,
+  AdminPartner,
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
@@ -336,6 +342,187 @@ function overview(): AdminOverview {
   }
 }
 
+// ── 지도 데이터(제휴업체·편의시설) ─────────────────────────────────────
+// 화면 확인용 예시다. 업체 이름·좌표는 실제 가게가 아니다(실데이터는 서버 DB 에만 있다).
+
+const mapBuildings: AdminBuildingOption[] = [
+  { id: 1, code: 'hongik_r', name: '홍문관 R동' },
+  { id: 2, code: 'hongik_k', name: '제1공학관 K동' },
+  { id: 8, code: 'hongik_h', name: '중앙도서관 H동' },
+  { id: 9, code: 'hongik_g', name: '학생회관 G동' },
+  { id: 19, code: 'hongik_t', name: '제4공학관 T동' },
+  { id: 20, code: 'hongik_b', name: '인문사회관 B동' },
+]
+
+const mapPartners: AdminPartner[] = [
+  {
+    id: 'mock-cafe-1',
+    name: '목업 카페',
+    category: '카페',
+    affiliations: ['총학생회', '공과대학'],
+    lat: 37.5512,
+    lng: 126.9241,
+    benefit: '전 메뉴 10% 할인',
+    affiliationBenefits: [{ affiliation: '공과대학', benefit: '아메리카노 1,000원 할인' }],
+    address: '서울 마포구 와우산로 00',
+  },
+  {
+    id: 'mock-food-1',
+    name: '목업 식당',
+    category: '음식',
+    affiliations: ['경영대학'],
+    lat: 37.5531,
+    lng: 126.9226,
+    benefit: '음료 서비스',
+    hours: '11:00~21:00',
+  },
+  {
+    id: 'mock-clinic-1',
+    name: '목업 검진센터',
+    category: '의료/미용',
+    affiliations: ['총학생회'],
+    mapIcon: '병원',
+    lat: 37.5021,
+    lng: 127.0251,
+    benefit: '검진 비용 20% 할인',
+    link: { label: '예약 안내', url: 'https://example.com/booking' },
+  },
+]
+
+const mapFacilities: AdminFacility[] = [
+  { id: 'mock-r-printer', kind: '프린터', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 9, note: 'PC실 앞' },
+  { id: 'mock-h-reading', kind: '열람실', buildingCode: 'hongik_h', buildingName: '중앙도서관 H동', floor: 3 },
+  { id: 'mock-g-cafe', kind: '카페', buildingCode: 'hongik_g', buildingName: '학생회관 G동', floor: 1, note: '1층 입구' },
+  {
+    id: 'mock-b-smoking',
+    kind: '흡연구역',
+    buildingCode: 'hongik_b',
+    buildingName: '인문사회관 B동',
+    floor: 1,
+    note: '건물 뒤 야외',
+    lat: 37.5506,
+    lng: 126.9258,
+  },
+]
+
+const PARTNER_CATEGORY_KEYS: readonly string[] = PARTNER_CATEGORIES.map((meta) => meta.key)
+const FACILITY_KIND_KEYS: readonly string[] = FACILITY_KINDS.map((meta) => meta.key)
+
+function badRequest(message: string): ApiError {
+  return new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, message)
+}
+
+function randomCode(prefix: 'p' | 'f'): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}`
+}
+
+function optionalText(value: unknown, label: string, max: number): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string' || value.length > max) throw badRequest(`${label}은(는) ${max}자까지 쓸 수 있어요.`)
+  return value
+}
+
+/** 서버 검증 규칙(지도 데이터 계약)과 같은 순서·조건. */
+function checkCoords(lat: unknown, lng: unknown): { lat: number; lng: number } {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || lat < 33 || lat > 39 || lng < 124 || lng > 132) {
+    throw badRequest('좌표는 위도 33~39, 경도 124~132 범위여야 해요.')
+  }
+  return { lat, lng }
+}
+
+function partnerFromBody(body: Record<string, unknown>, id: string): AdminPartner {
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  if (name.length < 1 || name.length > 100) throw badRequest('이름은 1~100자로 입력해 주세요.')
+  if (typeof body.category !== 'string' || !PARTNER_CATEGORY_KEYS.includes(body.category)) throw badRequest('업종을 확인해 주세요.')
+  const affiliations = Array.isArray(body.affiliations) ? (body.affiliations as string[]) : []
+  if (affiliations.some((a) => !(PARTNER_AFFILIATIONS as readonly string[]).includes(a)) || new Set(affiliations).size !== affiliations.length) {
+    throw badRequest('제휴 소속을 확인해 주세요.')
+  }
+  if (body.mapIcon !== undefined && body.mapIcon !== null && body.mapIcon !== '병원') throw badRequest('지도 아이콘을 확인해 주세요.')
+  const link = body.link as { label?: unknown; url?: unknown } | undefined
+  if (link && (typeof link.url !== 'string' || !link.url.startsWith('https://'))) throw badRequest('링크는 https:// 로 시작해야 해요.')
+  const exceptions = Array.isArray(body.affiliationBenefits) ? (body.affiliationBenefits as { affiliation: string; benefit: string }[]) : []
+  return {
+    id,
+    name,
+    category: body.category as AdminPartner['category'],
+    affiliations: affiliations as AdminPartner['affiliations'],
+    mapIcon: body.mapIcon === '병원' ? '병원' : undefined,
+    ...checkCoords(body.lat, body.lng),
+    benefit: optionalText(body.benefit, '혜택', 255),
+    affiliationBenefits: exceptions.length ? (exceptions as AdminPartner['affiliationBenefits']) : undefined,
+    address: optionalText(body.address, '주소', 255),
+    hours: optionalText(body.hours, '영업시간', 100),
+    contact: optionalText(body.contact, '연락처', 50),
+    link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
+  }
+}
+
+function facilityFromBody(body: Record<string, unknown>, id: string): AdminFacility {
+  if (typeof body.kind !== 'string' || !FACILITY_KIND_KEYS.includes(body.kind)) throw badRequest('시설 종류를 확인해 주세요.')
+  const building = mapBuildings.find((b) => b.code === body.buildingCode)
+  if (!building) throw badRequest('건물을 확인해 주세요.')
+  if (body.floor !== undefined && body.floor !== null && !Number.isInteger(body.floor)) throw badRequest('층은 정수로 입력해 주세요.')
+  const hasCoords = body.lat !== undefined && body.lat !== null
+  return {
+    id,
+    kind: body.kind as AdminFacility['kind'],
+    buildingCode: building.code,
+    buildingName: building.name,
+    floor: typeof body.floor === 'number' ? body.floor : undefined,
+    note: optionalText(body.note, '위치 설명', 255),
+    ...(hasCoords ? checkCoords(body.lat, body.lng) : {}),
+  }
+}
+
+function handleMapRequest(
+  method: string,
+  pathname: string,
+  body: Record<string, unknown>,
+  params: URLSearchParams,
+): unknown | undefined {
+  // 실제 응답처럼 매번 새 객체로 준다 — 원장 배열을 그대로 넘기면 화면 상태와 목업 원장이 같은 배열을 함께 고친다.
+  const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+  if (method === 'GET' && pathname === '/admin/map/buildings') return { buildings: copy(mapBuildings) }
+  if (method === 'GET' && pathname === '/admin/map/partners') return { partners: copy(mapPartners) }
+  if (method === 'GET' && pathname === '/admin/map/facilities') return { facilities: copy(mapFacilities) }
+
+  const isPartner = pathname.startsWith('/admin/map/partners')
+  const isFacility = pathname.startsWith('/admin/map/facilities')
+  if (!isPartner && !isFacility) return undefined
+  const list: { id: string }[] = isPartner ? mapPartners : mapFacilities
+  const build = (id: string) => (isPartner ? partnerFromBody(body, id) : facilityFromBody(body, id))
+
+  if (method === 'POST' && (pathname === '/admin/map/partners' || pathname === '/admin/map/facilities')) {
+    const requested = typeof body.id === 'string' ? body.id.trim() : ''
+    const id = requested || randomCode(isPartner ? 'p' : 'f')
+    if (list.some((item) => item.id === id)) throw new ApiError(409, '이미 처리된 요청이에요.', undefined, '같은 코드가 이미 있어요.')
+    const created = build(id)
+    list.push(created)
+    return copy(created)
+  }
+
+  const match = pathname.match(/^\/admin\/map\/(partners|facilities)\/([^/]+)$/)
+  if (!match) return undefined
+  const code = decodeURIComponent(match[2])
+  const index = list.findIndex((item) => item.id === code)
+  if (index < 0) throw notFound()
+  if (method === 'PUT') {
+    const updated = build(code)
+    list[index] = updated
+    return copy(updated)
+  }
+  if (method === 'DELETE') {
+    // 서버와 같다: 제휴업체는 이름을 그대로 입력해야 지운다(앞뒤 공백만 무시).
+    if (isPartner && (params.get('confirmName') ?? '').trim() !== (list[index] as AdminPartner).name) {
+      throw badRequest('업체 이름이 일치하지 않아요.')
+    }
+    list.splice(index, 1)
+    return undefined
+  }
+  return undefined
+}
+
 function notFound(): ApiError {
   return new ApiError(404, '요청한 정보를 찾을 수 없습니다.')
 }
@@ -352,6 +539,12 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
 
   if (mode === 'forbidden') {
     throw new ApiError(403, '이 작업을 할 권한이 없습니다.')
+  }
+
+  if (pathname.startsWith('/admin/map/')) {
+    const result = handleMapRequest(method, pathname, body, params)
+    if (result !== undefined || method === 'DELETE') return result
+    throw notFound()
   }
 
   if (method === 'GET' && pathname === '/admin/overview') return overview()

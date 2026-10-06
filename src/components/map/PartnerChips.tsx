@@ -6,6 +6,7 @@ import ChipIcon from "./ChipIcon";
 import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
 import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
 import { partnerCount } from "../../utils/partners";
+import { useMapData } from "../../lib/mapData";
 import type { PartnerAffiliation, PartnerCategory } from "../../types";
 import * as haptics from "../../lib/haptics";
 
@@ -33,25 +34,27 @@ export default function PartnerChips({
   onSelectAffiliation,
   onSelectCategory,
 }: PartnerChipsProps) {
+  // 지도 데이터를 아직 못 받았으면 업체가 0곳이라 칩이 전부 흐리게(눌리지 않게) 보인다.
+  const { partners } = useMapData();
   const affiliationCounts = useMemo(() => {
     const withCounts = PARTNER_AFFILIATIONS.map((key) => ({
       key,
-      count: partnerCount({ affiliation: key, category }),
+      count: partnerCount(partners, { affiliation: key, category }),
     }));
     // 업체가 하나도 없는 소속은 골라도 빈 지도만 보여줄 뿐이라, 목록 오른쪽 끝으로
     // 밀어낸다(각 그룹 안에서는 원래 순서 유지). 있는 것부터 먼저 보이게 하려는 것.
     const withPartners = withCounts.filter((c) => c.count > 0);
     const empty = withCounts.filter((c) => c.count === 0);
     return [...withPartners, ...empty];
-  }, [category]);
+  }, [partners, category]);
 
   const categoryCounts = useMemo(
     () =>
       PARTNER_CATEGORIES.map((meta) => ({
         meta,
-        count: partnerCount({ affiliation, category: meta.key }),
+        count: partnerCount(partners, { affiliation, category: meta.key }),
       })),
-    [affiliation],
+    [partners, affiliation],
   );
 
   return (

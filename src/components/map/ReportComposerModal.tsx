@@ -50,7 +50,7 @@ import {
 } from '../../apis/reports'
 import { getServerBuildingId } from '../../apis/buildings'
 import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
-import { BUILDINGS } from '../../constants/buildings'
+import { useMapData } from '../../lib/mapData'
 import RetryableError from '../common/RetryableError'
 import { REPORT_MAX_IMAGES, promptLogin } from '../../utils/reports'
 import { ToastViewport, useToast } from '../common/Toast'
@@ -186,9 +186,11 @@ export default function ReportComposerModal({
   const [submitted, setSubmitted] = useState(false)
 
   // 서버는 제보를 건물·층 단위로 받는다(둘 다 필수). 핀 근처 건물이 없으면 올릴 수 없다.
+  // 핀 근처 건물 이름은 지도 페이지가 찾아 준다 — 같은 이름의 건물을 지도 데이터에서 찾는다.
+  const { buildings } = useMapData()
   const building = useMemo(
-    () => (target?.buildingName ? BUILDINGS.find((b) => b.name === target.buildingName) ?? null : null),
-    [target?.buildingName],
+    () => (target?.buildingName ? buildings.find((b) => b.name === target.buildingName) ?? null : null),
+    [buildings, target?.buildingName],
   )
   // 층은 다이얼 두 개(지상/지하 · 1~30)로 고른다. 표시는 '3F'·'B1', 서버에는 정수(지하는 음수, B1 = -1)로 보낸다.
   const [basement, setBasement] = useState(false)
@@ -577,8 +579,9 @@ export default function ReportComposerModal({
       }
 
       if (isStale()) return
-      // 앱 건물 이름 → 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400).
-      const buildingId = await getServerBuildingId(building.name)
+      // 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400). 지도 데이터(`GET /map/data`)의 건물에는
+      // id 가 실려 오므로 그대로 쓰고, 혹시 없으면(id 를 싣지 않는 서버) 예전처럼 이름으로 서버 건물 목록에서 찾는다.
+      const buildingId = building.id ?? (await getServerBuildingId(building.name))
       if (buildingId === null) {
         throw new Error('이 건물은 아직 제보를 받을 수 없어요. 가까운 다른 건물로 위치를 옮겨 주세요.')
       }
