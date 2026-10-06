@@ -325,6 +325,18 @@ export default function MapScreen() {
     );
   }, []);
 
+  /**
+   * 건물 배너가 닫히면(제보·제휴·편의시설을 누르거나 HOT 목록·링크로 제보를 열어서) 지도 페이지의 건물 강조도 거둔다.
+   * 앱 쪽 상태만 비우면 페이지에는 전에 누른 건물 핀(예: 인문사회관 A동)이 선택된 채 남아, 다른 제보를 보는 중에도
+   * 그 건물이 눌린 것처럼 보였다. 기존 `selectBuilding` 메시지라 이미 배포된 map.html 에도 먹힌다.
+   */
+  const prevSelectedBuildingRef = useRef<Building | null>(null);
+  useEffect(() => {
+    const prev = prevSelectedBuildingRef.current;
+    prevSelectedBuildingRef.current = selectedBuilding;
+    if (prev !== null && selectedBuilding === null) postToMap({ type: "selectBuilding", name: null });
+  }, [selectedBuilding, postToMap]);
+
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
       // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
