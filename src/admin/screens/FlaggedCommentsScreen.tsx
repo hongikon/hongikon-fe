@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -8,6 +8,30 @@ import { fetchFlaggedComments, isAdminCommentsMissing, updateCommentStatus } fro
 import { FLAG_REASON_LABEL, REPORT_STATUS_LABEL, formatDateTime, formatMemberRef, formatRelative } from '../format'
 import type { AdminComment, AdminCommentStatus, AdminFlaggedComment, AdminOverview, FlagReason } from '../types'
 import { Badge, Button, Card, ConfirmBar, EmptyState, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
+
+/**
+ * 숨김·삭제 사유 버튼. 작성자 알림에 그대로 들어간다. 서버가 사유를 비웠을 때 쓰는 신고 사유 문구(ReportCommentService.FLAG_REASON_LABELS)와 같다.
+ */
+const MODERATION_REASONS = ['욕설·비하 등 부적절한 내용', '스팸·광고', '개인정보 노출', '허위 정보'] as const
+const FLAG_TO_REASON: Record<string, (typeof MODERATION_REASONS)[number]> = {
+  INAPPROPRIATE: '욕설·비하 등 부적절한 내용',
+  SPAM: '스팸·광고',
+  PRIVACY: '개인정보 노출',
+  FALSE_INFO: '허위 정보',
+}
+
+/** 가장 많이 들어온 신고 사유의 문구(기타·없음이면 빈칸). */
+function topReasonLabel(flagReasons: Record<string, number> | null | undefined): string {
+  let best = ''
+  let bestCount = 0
+  for (const [code, count] of Object.entries(flagReasons ?? {})) {
+    if (FLAG_TO_REASON[code] && count > bestCount) {
+      best = FLAG_TO_REASON[code]
+      bestCount = count
+    }
+  }
+  return best
+}
 
 /** 숨김·삭제 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200
@@ -175,6 +199,8 @@ function FlaggedCommentCard({
   const onPress = (action: Action) => {
     if (action === 'hide' || action === 'delete') {
       setError(null)
+      // 사유를 한 번 눌러 고르게, 가장 많이 들어온 신고 사유를 미리 골라 둔다(관리자는 사유를 비워 두기 쉽다).
+      setReason(topReasonLabel(item.flagReasons))
       setConfirming(action)
       return
     }
@@ -252,10 +278,28 @@ function FlaggedCommentCard({
           onCancel={() => setConfirming(null)}
           onConfirm={() => run(confirming, reason)}
         >
+          <View style={styles.reasonChips} accessibilityRole="radiogroup" accessibilityLabel="사유 고르기">
+            {MODERATION_REASONS.map((label) => {
+              const selected = reason === label
+              return (
+                <Pressable
+                  key={label}
+                  onPress={() => setReason(selected ? '' : label)}
+                  disabled={busy}
+                  style={[styles.reasonChip, selected && styles.reasonChipOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  hitSlop={4}
+                >
+                  <Text style={[styles.reasonChipText, selected && styles.reasonChipTextOn]}>{label}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
           <TextInput
             value={reason}
             onChangeText={setReason}
-            placeholder="사유(선택) · 예: 연락처 노출, 광고성 도배"
+            placeholder="직접 적기(선택) · 비우면 가장 많은 신고 사유로 알려요"
             placeholderTextColor={COLORS.textPlaceholder}
             maxLength={REASON_MAX_LENGTH}
             style={[styles.reasonInput, app && styles.reasonInputApp]}
@@ -290,6 +334,18 @@ function FlaggedCommentCard({
 }
 
 const styles = StyleSheet.create({
+  reasonChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  reasonChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  reasonChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  reasonChipText: { fontFamily: FONTS.medium, fontSize: 12.5, color: COLORS.textSecondary },
+  reasonChipTextOn: { color: COLORS.white },
   listError: { marginBottom: 12 },
   list: { gap: 12 },
   card: { gap: 10 },
