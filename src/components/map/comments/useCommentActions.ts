@@ -10,13 +10,19 @@ import { confirmAction } from '../../../utils/dialog'
 import { promptLogin } from '../../../utils/reports'
 import type { ReportComment, ReportFlagReason } from '../../../types'
 
+/** 목록에서 빠진 까닭. 답글이 남은 최상위 댓글은 이 값으로 자리 문구를 고른다("삭제된 댓글" / "운영 정책에 따라 숨겨진 댓글"). */
+export type CommentRemovedReason = 'DELETED' | 'HIDDEN'
+
+/** 댓글 신고 빈도 제한(서버 10분 10번)에 걸렸을 때. 서버 문구가 없을 때(구버전·프록시) 쓴다. */
+const FLAG_RATE_LIMIT_MESSAGE = '신고를 너무 자주 하고 있어요. 잠시 뒤에 다시 시도해 주세요.'
+
 /**
  * 댓글 한 줄에서 하는 일(내 댓글 지우기·남의 댓글 신고·작성자 숨기기). 시트 미리보기와 전체 댓글 창이 같이 쓴다.
- * `onRemoved` 는 목록에서 빼야 할 때(지움·신고로 자동 숨김) 부른다. 작성자 숨기기는 `useHiddenAuthorKeys` 가 걸러 준다.
+ * `onRemoved` 는 목록에서 빼야 할 때(지움 → DELETED, 신고로 자동 숨김 → HIDDEN) 부른다. 작성자 숨기기는 `useHiddenAuthorKeys` 가 걸러 준다.
  */
 export function useCommentActions(
   reportId: number,
-  onRemoved: (commentId: number) => void,
+  onRemoved: (commentId: number, reason?: CommentRemovedReason) => void,
   /** 👍 처럼 목록 안에서 값만 바뀔 때(낙관적 반영·실패 시 되돌리기). */
   onUpdated?: (commentId: number, patch: Partial<ReportComment>) => void,
 ) {
@@ -24,7 +30,10 @@ export function useCommentActions(
   const toast = useToast()
   /** 지우는 중·신고 보내는 중인 댓글. */
   const [pendingId, setPendingId] = useState<number | null>(null)
-  /** 이번에 신고한 댓글(같은 창에서 다시 신고 버튼을 보이지 않게). */
+  /**
+   * 이번에 신고한 댓글(같은 창에서 다시 신고 버튼을 보이지 않게). 예전에 신고한 댓글은 서버가 주는 `flaggedByMe` 로 안다 —
+   * 화면에서는 둘을 합쳐 본다(`isFlagged`).
+   */
   const [flaggedIds, setFlaggedIds] = useState<ReadonlySet<number>>(() => new Set())
 
   const markFlagged = (id: number) => setFlaggedIds((prev) => new Set(prev).add(id))
@@ -76,7 +85,8 @@ export function useCommentActions(
           markFlagged(comment.id)
           haptics.success()
           toast.show({ message: '신고가 접수됐어요. 확인 후 조치할게요' })
-          if (result?.hidden) onRemoved(comment.id)
+          // 이번 신고로 자동 숨김 — 운영 정책에 따른 숨김이라 "삭제된 댓글"이 아니라 숨김 자리로 바꾼다.
+          if (result?.hidden) onRemoved(comment.id, 'HIDDEN')
         })
         .catch((error: unknown) => {
           if (error instanceof ApiError && error.status === 409) {
@@ -88,6 +98,11 @@ export function useCommentActions(
             // 그사이 숨겨졌거나 지워졌다.
             onRemoved(comment.id)
             toast.show({ message: '이미 내려간 댓글이에요', tone: 'info' })
+            return
+          }
+          if (error instanceof ApiError && error.status === 429) {
+            // 신고 남용 방지 제한(10분 10번). 이번 신고는 접수되지 않았다 — 표시는 그대로 두고 다시 하도록 안내만.
+            toast.show({ message: error.serverMessage || FLAG_RATE_LIMIT_MESSAGE, tone: 'warning' })
             return
           }
           const message =
@@ -147,5 +162,11 @@ export function useCommentActions(
     [accessToken, logout, reportId, onUpdated, toast],
   )
 
-  return { pendingId, flaggedIds, remove, flag, canFlag, hide, like }
+  /** 내가 신고한 댓글인지 — 이번 창에서 신고했거나, 서버가 `flaggedByMe` 로 알려 준 것(다시 열어도 "신고함" 유지). */
+  const isFlagged = useCallback(
+    (comment: Pick<ReportComment, 'id' | 'flaggedByMe'>) => flaggedIds.has(comment.id) || comment.flaggedByMe === true,
+    [flaggedIds],
+  )
+
+  return { pendingId, flaggedIds, isFlagged, remove, flag, canFlag, hide, like }
 }

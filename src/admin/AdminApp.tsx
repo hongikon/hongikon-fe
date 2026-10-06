@@ -12,6 +12,7 @@ import LoginScreen from './screens/LoginScreen'
 import ForbiddenScreen from './screens/ForbiddenScreen'
 import DashboardScreen from './screens/DashboardScreen'
 import ReportsScreen from './screens/ReportsScreen'
+import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
@@ -37,6 +38,7 @@ type Phase =
 const SECTION_PATHS: Record<AdminSection, string> = {
   dashboard: '/admin',
   reports: '/admin/reports',
+  comments: '/admin/comments',
   users: '/admin/users',
   feedback: '/admin/feedback',
   tools: '/admin/tools',
@@ -45,6 +47,7 @@ const SECTION_PATHS: Record<AdminSection, string> = {
 const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { section: 'dashboard', label: '대시보드', icon: 'speedometer-outline' },
   { section: 'reports', label: '제보 검토', icon: 'flag-outline' },
+  { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
@@ -228,6 +231,7 @@ export default function AdminApp() {
     if (!overview) return 0
     if (item === 'reports') return overview.reports.pending
     if (item === 'feedback') return overview.feedback.open
+    if (item === 'comments') return overview.comments?.flaggedPending ?? 0
     return 0
   }
 
@@ -283,6 +287,7 @@ export default function AdminApp() {
 
   let content
   if (section === 'reports') content = <ReportsScreen onChanged={refreshOverview} overview={overview} />
+  else if (section === 'comments') content = <FlaggedCommentsScreen onChanged={refreshOverview} overview={overview} />
   else if (section === 'users') content = <UsersScreen />
   else if (section === 'feedback') content = <FeedbackScreen onChanged={refreshOverview} overview={overview} />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />

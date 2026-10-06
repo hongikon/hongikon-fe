@@ -36,6 +36,12 @@ const NEWS_SAMPLE: PushNotificationSample = {
 export const PUSH_NOTIFICATION_SAMPLES: PushNotificationSample[] = [
   NEWS_SAMPLE,
   {
+    label: '내 댓글 숨김 알림',
+    title: '댓글이 운영 정책에 따라 숨겨졌어요',
+    body: `'${SAMPLE_REPORT_TITLE}' 제보에 남긴 댓글\n사유: 연락처 노출\n이의가 있으면 14일 안에 문의하기나 hongikonsupport@gmail.com 으로 알려 주세요`,
+    data: { type: 'COMMENT_MODERATED', reportId: SAMPLE_REPORT_ID, commentId: SAMPLE_REPORT_ID, status: 'HIDDEN' },
+  },
+  {
     label: '내 제보 승인 알림',
     title: '제보가 지도에 올라갔어요',
     body: SAMPLE_REPORT_TITLE,
@@ -80,5 +86,12 @@ export const PUSH_NOTIFICATION_SAMPLES: PushNotificationSample[] = [
     title: '[관리] 신고 누적으로 자동 숨김',
     body: `${SAMPLE_REPORT_TITLE} · 학생회관 1층`,
     data: { type: 'ADMIN_REPORT_FLAGGED', reportId: SAMPLE_REPORT_ID, count: 1 },
+  },
+  {
+    label: '[관리] 신고된 댓글',
+    channelId: 'admin',
+    title: '[관리] 신고된 댓글 검토 필요',
+    body: `'${SAMPLE_REPORT_TITLE}' 제보의 댓글`,
+    data: { type: 'ADMIN_COMMENT_FLAGGED', reportId: SAMPLE_REPORT_ID, commentId: SAMPLE_REPORT_ID, count: 1 },
   },
 ]

@@ -43,7 +43,7 @@ export default function DashboardScreen({
     )
   }
 
-  const { server, reports, feedback, news, crawler } = data
+  const { server, reports, feedback, news, crawler, comments } = data
   const missingRatio = news.total > 0 ? Math.round((news.missingDepartment / news.total) * 1000) / 10 : 0
   const crawlerNeverRan = !crawler.running && !crawler.lastStartedAt
   const duration = formatDuration(crawler.lastStartedAt, crawler.lastFinishedAt)
@@ -70,6 +70,15 @@ export default function DashboardScreen({
             <Stat label="미처리" value={feedback.open} highlight={feedback.open > 0} />
           </View>
         </Tile>
+
+        {/* 신고 댓글 수 — 이 기능 전 서버는 comments 가 없어 타일을 그리지 않는다. */}
+        {comments ? (
+          <Tile title="신고 댓글" onPress={() => onNavigate('comments')} actionLabel="신고 댓글 →">
+            <View style={styles.statRow}>
+              <Stat label="검토 대기" value={comments.flaggedPending} highlight={comments.flaggedPending > 0} />
+            </View>
+          </Tile>
+        ) : null}
 
         <Tile title="크롤러" onPress={() => onNavigate('tools')} actionLabel="운영 도구 →">
           {crawlerNeverRan ? (

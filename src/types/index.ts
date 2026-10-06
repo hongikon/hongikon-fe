@@ -369,6 +369,8 @@ export interface ReportComment {
   likeCount?: number
   /** 내가 👍 를 눌렀는지(게스트는 false). */
   likedByMe?: boolean
+  /** 내가 신고한 댓글인지(게스트·자리 표시는 false). 이 필드 전 서버는 없음 → 이번 창에서 신고한 것만 "신고함"으로 보인다. */
+  flaggedByMe?: boolean
 }
 
 /** `GET /reports/{id}/comments` 응답. 페이지 단위는 최상위 댓글. */
@@ -479,6 +481,16 @@ export type PushNotificationData =
   | { type: 'ADMIN_FEEDBACK'; feedbackId: number; count?: number }
   /** 정지·위반 삭제 이력이 있던 계정으로 다시 가입함(관리자 알림). userId: 새로 가입한 회원 id. */
   | { type: 'ADMIN_MEMBER_REJOINED'; userId: number; count?: number }
+  /**
+   * 댓글 신고(관리자 알림) — 마지막 검토 뒤 첫 신고, 또는 신고 누적 자동 숨김. 묶음이면 id 는 마지막 건.
+   * 탭하면 관리 탭의 "신고 댓글"을 연다.
+   */
+  | { type: 'ADMIN_COMMENT_FLAGGED'; reportId: number; commentId?: number; count?: number }
+  /**
+   * 내 댓글이 운영 정책에 따라 숨겨지거나(HIDDEN) 삭제됨(DELETED) — 사유와 14일 이의 제기 안내는 알림 본문에 있다(이용약관 제10조).
+   * 탭하면 지도에서 그 제보 시트를 연다.
+   */
+  | { type: 'COMMENT_MODERATED'; reportId: number; commentId?: number; status?: 'HIDDEN' | 'DELETED' }
   /** 내 계정 이용 제한·해제(`AccountStatusPushDispatcher`). 사유는 알림 본문에 있다. 탭하면 설정(정지 안내)을 연다. */
   | { type: 'ACCOUNT_SUSPENDED' }
   | { type: 'ACCOUNT_UNSUSPENDED' }
