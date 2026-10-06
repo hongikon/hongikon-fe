@@ -22,6 +22,14 @@ export interface BuildingEntrance {
 }
 
 export interface Building {
+  /**
+   * 서버 `buildings.id`. 지도 데이터(`GET /map/data`)로 받은 건물에만 있다. 제보(`POST /reports`)의
+   * `buildingId` 로 그대로 쓴다.
+   */
+  id?: number
+  /** 서버 건물 code(예: `hongik_r`). 관리자 화면에서 편의시설이 속한 건물을 가리킬 때 쓴다. */
+  code?: string
+  /** 화면에 보이는 이름(예: '홍문관 R동'). 서버의 `display_name`(없으면 `name`). */
   name: string
   lat: number
   lng: number

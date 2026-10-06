@@ -284,6 +284,8 @@ interface SendOptions {
   timeoutMs: number
   retries: number
   signal?: AbortSignal
+  /** 304(Not Modified)도 성공으로 돌려준다. 조건부 요청(If-None-Match)을 보낸 호출부만 켠다. */
+  allowNotModified?: boolean
 }
 
 /**
@@ -292,7 +294,7 @@ interface SendOptions {
  */
 async function send(path: string, options: SendOptions): Promise<Response> {
   const url = buildUrl(path)
-  const { method, headers, body, timeoutMs, retries, signal } = options
+  const { method, headers, body, timeoutMs, retries, signal, allowNotModified } = options
 
   for (let attempt = 0; ; attempt++) {
     if (signal?.aborted) throw new RequestCancelledError()
@@ -324,7 +326,7 @@ async function send(path: string, options: SendOptions): Promise<Response> {
       if (signal?.aborted && !timedOut) throw new RequestCancelledError()
       failure = new NetworkError(timedOut ? 'timeout' : 'offline')
       emitOutcome('unreachable')
-    } else if (response.ok) {
+    } else if (response.ok || (allowNotModified && response.status === 304)) {
       emitOutcome('reachable')
       return response
     } else {
@@ -456,4 +458,32 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (signal?.aborted) throw new RequestCancelledError()
     return result
   }, skipTokenRefresh)
+}
+
+/**
+ * 응답 헤더가 필요한 GET(ETag 등). `apiRequest` 와 같은 제한 시간·재시도·오류 분류를 쓰되,
+ * 본문을 해석하지 않은 Response 를 그대로 돌려준다. 304 는 성공으로 돌려주며 본문이 없다.
+ * 토큰을 붙이지 않는 공개 조회 전용이다.
+ */
+export async function apiGetRaw(
+  path: string,
+  options: Pick<ApiRequestOptions, 'timeoutMs' | 'retries' | 'signal' | 'headers'> = {},
+): Promise<{ status: number; headers: Headers; json: <T>() => Promise<T> }> {
+  const response = await send(path, {
+    method: 'GET',
+    headers: { ...(options.headers ?? {}), Accept: 'application/json' },
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    retries: Math.max(0, options.retries ?? 0),
+    signal: options.signal,
+    allowNotModified: true,
+  })
+  return {
+    status: response.status,
+    headers: response.headers,
+    json: async <T,>() => {
+      const result = await parseJson<T>(response)
+      if (options.signal?.aborted) throw new RequestCancelledError()
+      return result
+    },
+  }
 }
