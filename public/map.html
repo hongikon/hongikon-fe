@@ -790,6 +790,26 @@
           removeFacilityOverlays();
         }
 
+        // 지도 데이터(서버)가 바뀌면 건물 목록을 통째로 바꾼다. HTML 에 구운 초기 건물은 이 메시지를 모르는
+        // 예전 앱이 계속 쓰므로 남겨 둔다. 핀·탭 판정(외곽선)·근처 건물 찾기가 모두 이 목록을 다시 읽는다.
+        if (msg.type === 'setBuildings') {
+          var next = [];
+          (msg.buildings || []).forEach(function(b) {
+            if (!b || typeof b.name !== 'string' || typeof b.lat !== 'number' || typeof b.lng !== 'number') return;
+            next.push({
+              name: b.name,
+              lat: b.lat,
+              lng: b.lng,
+              boundary: Array.isArray(b.boundary) ? b.boundary : null,
+              extraBoundaries: Array.isArray(b.extraBoundaries) ? b.extraBoundaries : null,
+            });
+          });
+          buildings = next;
+          var stillThere = buildings.some(function(b) { return b.name === selectedBuildingName; });
+          if (!stillThere) selectedBuildingName = null;
+          renderBuildings();
+        }
+
         if (msg.type === 'showBuildings') {
           buildingsAllOn = true;
           selectedBuildingName = msg.name === undefined ? null : msg.name;

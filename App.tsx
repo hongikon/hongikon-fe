@@ -63,7 +63,7 @@ function WebDocumentTitleBridge() {
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
  * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만,
  * `/temp/path-nodes` = 실외 보행 경로망 전체.
- * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
+ * 건물 데이터(서버)·pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
  *
  * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).

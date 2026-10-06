@@ -1,6 +1,5 @@
 import { Platform, Share } from 'react-native'
-import { BUILDINGS } from '../constants/buildings'
-import type { ReportListItem } from '../types'
+import type { Building, ReportListItem } from '../types'
 import { formatFloor } from './floors'
 import { haversineMeters } from './geo'
 import { formatServerSchedule } from './reportSchedule'
@@ -12,31 +11,37 @@ export function reportShareUrl(reportId: number): string {
   return `${SHARE_ORIGIN}/r/${reportId}`
 }
 
-/** 제보 좌표에서 가장 가까운 건물 이름(150m 안). 목록 응답엔 건물 이름이 없어 앱 건물 데이터로 찾는다. */
-export function nearestBuildingName(lat: number, lng: number): string | null {
+/**
+ * 제보 좌표에서 가장 가까운 건물 이름(150m 안). 목록 응답엔 건물 이름이 없어 지도 데이터의 건물(`buildings`)로 찾는다.
+ * 지도 데이터를 아직 못 받았으면(빈 배열) null.
+ */
+export function nearestBuildingName(lat: number, lng: number, buildings: readonly Building[]): string | null {
   let best: { name: string; d: number } | null = null
-  for (const b of BUILDINGS) {
+  for (const b of buildings) {
     const d = haversineMeters(lat, lng, b.lat, b.lng)
     if (!best || d < best.d) best = { name: b.name, d }
   }
   return best && best.d <= 150 ? best.name : null
 }
 
-export function reportPlaceText(report: Pick<ReportListItem, 'lat' | 'lng' | 'floor' | 'placeLabel'>): string {
+export function reportPlaceText(
+  report: Pick<ReportListItem, 'lat' | 'lng' | 'floor' | 'placeLabel'>,
+  buildings: readonly Building[],
+): string {
   // 작성자가 적은(또는 앱이 채운) 장소 설명이 있으면 그대로 쓴다.
   if (report.placeLabel && report.placeLabel.trim()) return report.placeLabel.trim()
-  const building = nearestBuildingName(report.lat, report.lng)
+  const building = nearestBuildingName(report.lat, report.lng, buildings)
   const floor = typeof report.floor === 'number' ? formatFloor(report.floor) : null
   if (building) return floor ? `${building} ${floor}` : building
   return '홍익대학교 서울캠퍼스'
 }
 
 /** 공유 문구: 제목, 시간(KST), 장소, 링크. */
-export function reportShareMessage(report: ReportListItem): string {
+export function reportShareMessage(report: ReportListItem, buildings: readonly Building[]): string {
   return [
     `[홍익온] ${report.title}`,
     `일시: ${formatServerSchedule(report.startsAt, report.endsAt)}`,
-    `장소: ${reportPlaceText(report)}`,
+    `장소: ${reportPlaceText(report, buildings)}`,
     reportShareUrl(report.id),
   ].join('\n')
 }
@@ -45,8 +50,11 @@ export function reportShareMessage(report: ReportListItem): string {
  * OS 공유 창을 연다. 웹은 `navigator.share` 가 있으면 그걸(react-native-web Share), 없으면(데스크톱 크롬 등) 클립보드에 복사한다.
  * 결과: 'shared' | 'copied' | 'dismissed' | 'failed'.
  */
-export async function shareReport(report: ReportListItem): Promise<'shared' | 'copied' | 'dismissed' | 'failed'> {
-  const message = reportShareMessage(report)
+export async function shareReport(
+  report: ReportListItem,
+  buildings: readonly Building[],
+): Promise<'shared' | 'copied' | 'dismissed' | 'failed'> {
+  const message = reportShareMessage(report, buildings)
   const url = reportShareUrl(report.id)
   if (Platform.OS === 'web') {
     const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: unknown }) : undefined

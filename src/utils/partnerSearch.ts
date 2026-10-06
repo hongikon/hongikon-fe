@@ -1,4 +1,3 @@
-import { PARTNERS } from '../constants/partners'
 import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { normalize } from './normalize'
 import type { Partner, PartnerCategory } from '../types'
@@ -23,14 +22,14 @@ function matchesName(partner: Partner, normalizedQuery: string): boolean {
 }
 
 /**
- * 제휴 업체 검색. 앱 안 상수만 훑으므로 네트워크를 타지 않는다.
+ * 제휴 업체 검색. 이미 받아 둔 지도 데이터(`partners`)만 훑으므로 네트워크를 타지 않는다.
  * 빈 검색어는 빈 배열을 돌려준다. 전체 목록을 쏟아내지 않기 위해서다.
  */
-export function searchPartners(query: string): Partner[] {
+export function searchPartners(partners: readonly Partner[], query: string): Partner[] {
   const normalizedQuery = normalize(query)
   if (!normalizedQuery) return []
 
-  const matched = PARTNERS.filter((partner) =>
+  const matched = partners.filter((partner) =>
     searchableFields(partner).some((field) =>
       normalize(field).includes(normalizedQuery),
     ),
@@ -49,10 +48,10 @@ export function searchPartners(query: string): Partner[] {
  * `PARTNER_CATEGORIES` 순서로 묶고, 묶음 안은 이름 가나다순. 업체가 없는
  * 카테고리는 빈 구획을 만들지 않도록 건너뛴다.
  */
-export function browsePartnersByCategory(): PartnerSection[] {
+export function browsePartnersByCategory(partners: readonly Partner[]): PartnerSection[] {
   return PARTNER_CATEGORIES.map(({ key }) => ({
     category: key,
-    data: PARTNERS.filter((partner) => partner.category === key).sort((a, b) =>
+    data: partners.filter((partner) => partner.category === key).sort((a, b) =>
       a.name.localeCompare(b.name, 'ko'),
     ),
   })).filter((section) => section.data.length > 0)

@@ -16,7 +16,6 @@ import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import FloorChips from "../components/map/FloorChips";
 import BuildingSheet from "../components/map/BuildingSheet";
 import FacilitySheet from "../components/map/FacilitySheet";
-import { FACILITIES } from "../constants/facilities";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
@@ -43,8 +42,7 @@ import PartnerSearchModal from "../components/map/PartnerSearchModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
-import { BUILDINGS } from "../constants/buildings";
-import { PARTNERS } from "../constants/partners";
+import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import {
   partnerCategoryMeta,
   PARTNER_MAP_ICON_COLOR,
@@ -54,7 +52,7 @@ import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
 import { ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
-import { buildMapHTML } from "../utils/mapHtml";
+import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
 import {
   filterPartners,
   hasActiveFilter,
@@ -231,7 +229,22 @@ export default function MapScreen() {
     );
   }, []);
 
-  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), []);
+  /**
+   * 지도 데이터(건물·편의시설·제휴업체). 앱 시작 때 받기 시작해 기기에 저장해 둔다(`lib/mapData.ts`).
+   * 아직 없으면 빈 배열이고, 지도 위에 "불러오는 중"/"다시 시도" 안내가 뜬다.
+   */
+  const {
+    buildings,
+    facilities,
+    partners: allPartners,
+    data: mapData,
+    status: mapDataStatus,
+    reload: reloadMapData,
+  } = useMapData();
+
+  // 웹은 이 문서를 처음 한 번만 넣는다(NaverMapView.web). 그때 있는 건물로 굽고, 그 뒤 바뀐 건물은 setBuildings 로 보낸다.
+  // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
+  const mapHTML = useMemo(() => buildMapHTML(getMapDataSnapshot()?.buildings ?? []), []);
 
   /**
    * 실측 경로망(routing.ts)에서 대안 경로를 구하고, 아직 그 구간을 못
@@ -240,12 +253,13 @@ export default function MapScreen() {
   const routeAlternatives = useMemo<RouteAlternative[]>(() => {
     if (!fromBuilding || !toBuilding) return [];
     const found = findRoutes(
+      buildings,
       { building: fromBuilding, floor: fromFloor },
       { building: toBuilding, floor: toFloor },
     );
     if (found.length > 0) return found;
     return [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [fromBuilding, toBuilding, fromFloor, toFloor]);
+  }, [buildings, fromBuilding, toBuilding, fromFloor, toFloor]);
 
   const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
@@ -255,8 +269,8 @@ export default function MapScreen() {
   );
 
   const visiblePartners = useMemo(
-    () => (hasActiveFilter(activeFilter) ? filterPartners(activeFilter) : []),
-    [activeFilter],
+    () => (hasActiveFilter(activeFilter) ? filterPartners(allPartners, activeFilter) : []),
+    [allPartners, activeFilter],
   );
 
   /** 화면 맞춤 범위 밖이라 눈에 잘 안 띄는 지점 수. 안내 배지에 쓴다. */
@@ -266,15 +280,15 @@ export default function MapScreen() {
   );
 
   /**
-   * 건물명이 `BUILDINGS` 와 안 맞아 좌표를 못 찾은 편의시설 수.
+   * 건물명이 지도 데이터의 건물과 안 맞아 좌표를 못 찾은 편의시설 수.
    * 조용히 빠지면 데이터를 넣었는데 지도에 안 뜨는 이유를 알 수 없어 알린다.
    */
   const unresolvedCount = useMemo(
     () =>
       facilityKind === null
         ? 0
-        : unresolvedFacilities().filter((f) => f.kind === facilityKind).length,
-    [facilityKind],
+        : unresolvedFacilities(facilities, buildings).filter((f) => f.kind === facilityKind).length,
+    [facilities, buildings, facilityKind],
   );
 
   /** 필터는 걸었는데 걸리는 업체가 없는 상태. 빈 지도만 보여주지 않고 알려준다. */
@@ -289,8 +303,8 @@ export default function MapScreen() {
     reports.length === 0;
 
   const filteredBuildings = searchQuery.trim()
-    ? BUILDINGS.filter((b) => b.name.includes(searchQuery.trim()))
-    : BUILDINGS;
+    ? buildings.filter((b) => b.name.includes(searchQuery.trim()))
+    : buildings;
 
   const postToMap = useCallback((msg: object) => {
     webViewRef.current?.injectJavaScript(
@@ -322,7 +336,7 @@ export default function MapScreen() {
         const msg = JSON.parse(event.nativeEvent.data);
 
         if (msg.type === "buildingTap") {
-          const building = BUILDINGS.find((b) => b.name === msg.name) ?? null;
+          const building = buildings.find((b) => b.name === msg.name) ?? null;
           setSelectedPartner(null);
           setSelectedFacilityBuilding(null);
           // 배너는 모두 같은 자리(아래)에 겹쳐 그려진다. 제보 시트를 닫지 않으면 새 건물 배너가 그 밑에 가려진다.
@@ -332,7 +346,7 @@ export default function MapScreen() {
         }
 
         if (msg.type === "partnerTap") {
-          const partner = PARTNERS.find((p) => p.id === msg.id) ?? null;
+          const partner = allPartners.find((p) => p.id === msg.id) ?? null;
           setSelectedBuilding(null);
           setSelectedFacilityBuilding(null);
           setSelectedReport(null);
@@ -405,7 +419,7 @@ export default function MapScreen() {
         }
       } catch {}
     },
-    [reports, accessToken, logout],
+    [reports, accessToken, logout, buildings, allPartners],
   );
 
   /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
@@ -419,14 +433,14 @@ export default function MapScreen() {
       }
 
       setSelectedBuilding(null);
-      const partners = filterPartners(filter);
+      const partners = filterPartners(allPartners, filter);
       postToMap({
         type: "setPartners",
         partners: partners.map(toMarker),
         bounds: partnerFocusBounds(partners),
       });
     },
-    [postToMap],
+    [allPartners, postToMap],
   );
 
   /** 같은 칩을 다시 누르면 그 단계만 해제한다. */
@@ -594,9 +608,9 @@ export default function MapScreen() {
         postToMap({ type: "clearFacilities" });
         return;
       }
-      postToMap({ type: "setFacilities", markers: facilityMarkers(next) });
+      postToMap({ type: "setFacilities", markers: facilityMarkers(facilities, buildings, next) });
     },
-    [postToMap],
+    [facilities, buildings, postToMap],
   );
 
   /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
@@ -637,6 +651,8 @@ export default function MapScreen() {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
     // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
     handleRecenter();
+    // 지도 데이터가 있으면 새 페이지의 건물(구운 초기값)을 지금 데이터로 바꾼다. 없으면 구운 건물을 그대로 둔다.
+    if (mapData) postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
     // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
     const farPartner = selectedPartnerRef.current;
     if (farPartner && isFarFromCampus(farPartner)) {
@@ -646,7 +662,7 @@ export default function MapScreen() {
       postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
     }
     if (hasActiveFilter(activeFilter)) {
-      const partners = filterPartners(activeFilter);
+      const partners = filterPartners(allPartners, activeFilter);
       postToMap({
         type: "setPartners",
         partners: partners.map(toMarker),
@@ -654,7 +670,7 @@ export default function MapScreen() {
       });
     }
     if (facilityKind !== null) {
-      postToMap({ type: "setFacilities", markers: facilityMarkers(facilityKind) });
+      postToMap({ type: "setFacilities", markers: facilityMarkers(facilities, buildings, facilityKind) });
     }
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
@@ -670,7 +686,33 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin]);
+  }, [mapData, allPartners, facilities, buildings, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin]);
+
+  /**
+   * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
+   * 다시 그린다. 카메라는 옮기지 않는다(bounds 없음) — 보던 자리를 잃지 않게.
+   */
+  const mapDataSyncedRef = useRef<typeof mapData>(null);
+  useEffect(() => {
+    if (!mapData || mapDataSyncedRef.current === mapData) return;
+    mapDataSyncedRef.current = mapData;
+    postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
+    if (hasActiveFilter(activeFilter)) {
+      postToMap({
+        type: "setPartners",
+        partners: filterPartners(mapData.partners, activeFilter).map(toMarker),
+        bounds: null,
+      });
+    }
+    if (facilityKind !== null) {
+      postToMap({ type: "setFacilities", markers: facilityMarkers(mapData.facilities, mapData.buildings, facilityKind) });
+    }
+    // 고른 건물·업체 배너는 새 데이터의 같은 항목으로 바꾼다(없어졌으면 닫는다).
+    setSelectedBuilding((prev) => (prev ? mapData.buildings.find((b) => b.name === prev.name) ?? null : prev));
+    setSelectedPartner((prev) => (prev ? mapData.partners.find((p) => p.id === prev.id) ?? null : prev));
+    // 지도 데이터가 바뀔 때만 돈다. 필터 상태가 바뀌는 경우는 각 핸들러가 이미 다시 그린다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapData, postToMap]);
 
   /**
    * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
@@ -981,6 +1023,31 @@ export default function MapScreen() {
           pointerEvents="box-none"
           style={[styles.bannerStack, overlayInset, { top: headerHeight + 8 }]}
         >
+          {/* 지도 데이터(건물·편의시설·제휴업체)가 아직 하나도 없을 때만. 저장본이 있으면 그걸로 그리고 조용히 새로 받는다. */}
+          {!mapData && (
+            <View style={styles.offscreenNotice} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              {mapDataStatus === "error" ? (
+                <>
+                  <Ionicons name="cloud-offline-outline" size={14} color={COLORS.primary} />
+                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오지 못했어요</Text>
+                  <TouchableOpacity
+                    onPress={reloadMapData}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="지도 정보 다시 불러오기"
+                  >
+                    <Text style={styles.mapDataRetryText}>다시 시도</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오는 중이에요</Text>
+                </>
+              )}
+            </View>
+          )}
+
           {mapAuthFailed && (
             <View style={styles.mapErrorNotice}>
               <Ionicons name="warning" size={15} color={COLORS.warningIcon} />
@@ -1235,7 +1302,7 @@ export default function MapScreen() {
             <FacilitySheet
               kind={facilityKind}
               buildingName={selectedFacilityBuilding}
-              items={FACILITIES.filter(
+              items={facilities.filter(
                 (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
               )}
               onClose={() => setSelectedFacilityBuilding(null)}
@@ -1704,6 +1771,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  mapDataNoticeText: { flex: 1, color: COLORS.primary },
+  mapDataRetryText: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
   previewNotice: {
     backgroundColor: COLORS.primary,
     borderRadius: 12,

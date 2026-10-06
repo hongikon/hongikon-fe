@@ -19,6 +19,8 @@ import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
 import EmptyState from "../common/EmptyState";
 import SearchBar from "../news/SearchBar";
+import Button from "../common/Button";
+import { useMapData } from "../../lib/mapData";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -30,7 +32,7 @@ interface PartnerSearchModalProps {
 
 /**
  * 제휴 업체 검색.
- * 앱 안 상수만 훑기 때문에 네트워크를 타지 않고 한 글자마다 즉시 반응한다.
+ * 이미 받아 둔 지도 데이터만 훑기 때문에 네트워크를 타지 않고 한 글자마다 즉시 반응한다.
  * 상호명 외에 혜택·주소로도 걸리므로 '10%할인', '상수동' 같은 검색도 된다.
  */
 export default function PartnerSearchModal({
@@ -42,10 +44,12 @@ export default function PartnerSearchModal({
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
 
-  const results = useMemo(() => searchPartners(query), [query]);
+  // 지도 데이터를 아직 못 받았으면(빈 배열) 검색·목록 대신 안내를 띄운다.
+  const { partners, data, status, reload } = useMapData();
+  const results = useMemo(() => searchPartners(partners, query), [partners, query]);
   const hasQuery = query.trim().length > 0;
-  // 목록 자체는 검색어와 무관하게 고정이라 한 번만 계산해 둔다.
-  const browseSections = useMemo(() => browsePartnersByCategory(), []);
+  // 목록 자체는 검색어와 무관하게 데이터가 바뀔 때만 다시 계산한다.
+  const browseSections = useMemo(() => browsePartnersByCategory(partners), [partners]);
   // 접힌 카테고리 집합. 기본은 전부 펼친 상태(빈 집합).
   const [collapsedCategories, setCollapsedCategories] = useState<Set<PartnerCategory>>(
     () => new Set(),
@@ -147,11 +151,22 @@ export default function PartnerSearchModal({
           />
         </ScreenHeader>
 
-        {hasQuery && results.length === 0 && (
+        {!data ? (
+          status === "error" ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              message="제휴 업체 정보를 불러오지 못했어요"
+              action={<Button label="다시 시도" size="md" fullWidth={false} onPress={reload} />}
+              style={styles.hintBox}
+            />
+          ) : (
+            <EmptyState icon="time-outline" message="제휴 업체 정보를 불러오는 중이에요" style={styles.hintBox} />
+          )
+        ) : hasQuery && results.length === 0 ? (
           <EmptyState icon="search-outline" message="검색 결과가 없어요" style={styles.hintBox} />
-        )}
+        ) : null}
 
-        {hasQuery ? (
+        {!data ? null : hasQuery ? (
           <FlatList
             data={results}
             keyExtractor={(item) => item.id}

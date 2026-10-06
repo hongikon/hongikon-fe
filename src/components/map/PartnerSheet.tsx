@@ -26,7 +26,7 @@ interface PartnerSheetProps {
 /**
  * " / "로 여러 항목이 이어진 혜택·이용방법 문구를 "- 항목" 줄로 쪼갠다. 구분자가
  * 없으면(하나뿐이면) 그대로 한 줄만 돌려준다 — "단품/세트"처럼 공백 없이 붙은
- * "/"는 복합 단어라 여기 안 걸린다(partners.ts 데이터가 이 표기 규칙을 따른다).
+ * "/"는 복합 단어라 여기 안 걸린다(제휴업체 데이터가 이 표기 규칙을 따른다).
  */
 function splitBulletItems(text: string): string[] {
   const items = text.split(" / ");

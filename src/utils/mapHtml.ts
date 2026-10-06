@@ -35,6 +35,33 @@ const PARTNER_LABEL_MAX_METERS = 80
 const REPORT_BUILDING_MAX_METERS = 200
 
 /**
+ * 지도 페이지가 쓰는 건물 필드만 고른다. HTML 에 굽는 초기 데이터와 `setBuildings` 메시지가 같은 모양을 쓴다.
+ */
+export function mapBuildingPayload(buildings: readonly Building[]) {
+  return buildings.map((building) => ({
+    name: building.name,
+    lat: building.lat,
+    lng: building.lng,
+    // 건물별 색(`building.color`)은 넘기지 않는다. 핀을 메인 컬러 하나로
+    // 통일해서, 알록달록한 제휴·편의시설 마커와 성격이 다르다는 것을 보인다.
+    //
+    // 외곽선. 있으면 탭 판정을 중심 반경이 아니라 이 폴리곤 안쪽인지로 한다.
+    // 건물은 원이 아니라서, 중심 반경만으로는 길쭉한 건물의 끝을 놓친다.
+    boundary: building.boundary ?? null,
+    // 떨어져 있는 나머지 덩어리들. 이것도 같은 건물로 친다.
+    extraBoundaries: building.extraBoundaries ?? null,
+  }))
+}
+
+/**
+ * <script> 안에 그대로 넣을 JSON. 건물 데이터가 이제 서버에서 오므로, 문자열 안의 `</script>` 가
+ * 스크립트를 끊지 못하게 `<` 를 이스케이프한다(JSON 값은 그대로다).
+ */
+function scriptSafeJSON(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
+}
+
+/**
  * WebView 에 넣을 지도 문서를 만든다.
  *
  * 건물에는 마커를 그리지 않는다. 네이버 지도 배경 타일에 이미 건물 라벨이
@@ -47,28 +74,14 @@ const REPORT_BUILDING_MAX_METERS = 200
  * 선만 그려 경로 모양만 따로 눈으로 확인할 수 있게 한다. `'nodes'` 는 실외 보행
  * 경로망(`pathNodes.ts`의 PATH_WAYPOINTS/PATH_EDGES)을 실제 지도 위에 그린다 -
  * 연결된 성분은 파랑, 아직 본망에 못 붙은 성분(56-60)은 주황으로 구분한다.
- * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 매개변수와
+ * 건물 데이터(서버)·pathNodes.ts 에 실 데이터가 반영되면 이 매개변수와
  * `src/debug/entranceCheckData.ts`, 아래 관련 블록을 통째로 지운다.
  */
 export function buildMapHTML(
   buildings: readonly Building[],
   entranceDebugMode: 'off' | 'dots' | 'paths' | 'nodes' = 'off',
 ): string {
-  const buildingJSON = JSON.stringify(
-    buildings.map((building) => ({
-      name: building.name,
-      lat: building.lat,
-      lng: building.lng,
-      // 건물별 색(`building.color`)은 넘기지 않는다. 핀을 메인 컬러 하나로
-      // 통일해서, 알록달록한 제휴·편의시설 마커와 성격이 다르다는 것을 보인다.
-      //
-      // 외곽선. 있으면 탭 판정을 중심 반경이 아니라 이 폴리곤 안쪽인지로 한다.
-      // 건물은 원이 아니라서, 중심 반경만으로는 길쭉한 건물의 끝을 놓친다.
-      boundary: building.boundary ?? null,
-      // 떨어져 있는 나머지 덩어리들. 이것도 같은 건물로 친다.
-      extraBoundaries: building.extraBoundaries ?? null,
-    })),
-  )
+  const buildingJSON = scriptSafeJSON(mapBuildingPayload(buildings))
 
   return `<!DOCTYPE html>
 <html>
@@ -102,7 +115,7 @@ export function buildMapHTML(
     });
 
     // ── 임시: 출입구 좌표 검증용 디버그 오버레이 ─────────────────────
-    // buildings.ts/pathNodes.ts 에 실 데이터로 반영되면 이 블록과
+    // 건물 데이터(서버)·pathNodes.ts 에 실 데이터로 반영되면 이 블록과
     // src/debug/entranceCheckData.ts 를 통째로 지운다.
     ${
       entranceDebugMode === 'dots'
@@ -1100,6 +1113,26 @@ export function buildMapHTML(
 
         if (msg.type === 'clearFacilities') {
           removeFacilityOverlays();
+        }
+
+        // 지도 데이터(서버)가 바뀌면 건물 목록을 통째로 바꾼다. HTML 에 구운 초기 건물은 이 메시지를 모르는
+        // 예전 앱이 계속 쓰므로 남겨 둔다. 핀·탭 판정(외곽선)·근처 건물 찾기가 모두 이 목록을 다시 읽는다.
+        if (msg.type === 'setBuildings') {
+          var next = [];
+          (msg.buildings || []).forEach(function(b) {
+            if (!b || typeof b.name !== 'string' || typeof b.lat !== 'number' || typeof b.lng !== 'number') return;
+            next.push({
+              name: b.name,
+              lat: b.lat,
+              lng: b.lng,
+              boundary: Array.isArray(b.boundary) ? b.boundary : null,
+              extraBoundaries: Array.isArray(b.extraBoundaries) ? b.extraBoundaries : null,
+            });
+          });
+          buildings = next;
+          var stillThere = buildings.some(function(b) { return b.name === selectedBuildingName; });
+          if (!stillThere) selectedBuildingName = null;
+          renderBuildings();
         }
 
         if (msg.type === 'showBuildings') {

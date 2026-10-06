@@ -1,7 +1,7 @@
 import type { PathEdge, PathWaypoint } from '../types'
 
 /**
- * 실외 보행 경로망. 좌표는 buildings.ts/buildingBoundaries.ts 와 같은 기준으로
+ * 실외 보행 경로망. 좌표는 건물 데이터(서버 `GET /map/data`)와 같은 기준으로
  * 사용자가 직접 확인한 값만 넣는다(추정 금지). 아직 이 구역(n1~n122)만 채워져
  * 있어, 나머지 건물 쌍은 직선 거리 추정으로 대체된다(src/utils/routing.ts 의
  * straightLineFallback 참고). 건물 군집 단위로 하나씩 채워 나간다.

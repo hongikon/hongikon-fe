@@ -28,6 +28,7 @@ import OfficialBadge from '../common/OfficialBadge'
 import { useSettings } from '../../contexts/SettingsContext'
 import { communityErrorMessage, isCommunityApiMissing, recordReportView, setReportNotifications } from '../../apis/community'
 import type { ReportFlagReason, ReportListItem } from '../../types'
+import { useMapData } from '../../lib/mapData'
 
 interface ReportSheetProps {
   report: ReportListItem
@@ -42,6 +43,8 @@ interface ReportSheetProps {
  * 단건 조회 엔드포인트가 생긴 뒤에 붙인다.
  */
 export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
+  // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
+  const { buildings } = useMapData()
   const { accessToken, logout } = useAuth()
   const { settings } = useSettings()
   // 🔥·관심·조회 수·알림 설정은 시트에서 바로 바뀐다. 목록(지도)을 다시 받기 전까지 시트 사본에 덮어 둔다.
@@ -213,7 +216,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
         <Text style={styles.placeText} numberOfLines={2}>
-          {reportPlaceText(report)}
+          {reportPlaceText(report, buildings)}
         </Text>
       </View>
 

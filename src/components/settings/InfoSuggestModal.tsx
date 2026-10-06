@@ -16,7 +16,7 @@ import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { PARTNER_AFFILIATIONS } from '../../constants/partnerAffiliations'
 import { FACILITY_KINDS } from '../../constants/facilityKinds'
-import { BUILDINGS } from '../../constants/buildings'
+import { useMapData } from '../../lib/mapData'
 import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
@@ -229,13 +229,15 @@ function BuildingPicker({
   invalid?: boolean
 }) {
   const [query, setQuery] = useState('')
+  // 건물 목록은 지도 데이터에서 온다. 아직 못 받았으면 칩이 비고, 검색창 아래 안내가 뜬다.
+  const { buildings, data } = useMapData()
   const names = useMemo(() => {
     const q = query.replace(/\s/g, '').toLowerCase()
-    const all = BUILDINGS.map((building) => building.name)
+    const all = buildings.map((building) => building.name)
     const filtered = q ? all.filter((name) => name.replace(/\s/g, '').toLowerCase().includes(q)) : all
     // 고른 건물은 걸러져도 맨 앞에 남겨 무엇을 골랐는지 보이게 한다.
     return value ? [value, ...filtered.filter((name) => name !== value)] : filtered
-  }, [query, value])
+  }, [buildings, query, value])
 
   return (
     <View style={styles.pickerBlock}>
@@ -254,7 +256,7 @@ function BuildingPicker({
         contentContainerStyle={styles.buildingRow}
       >
         {names.length === 0 ? (
-          <Text style={styles.emptyText}>맞는 건물이 없어요</Text>
+          <Text style={styles.emptyText}>{data ? '맞는 건물이 없어요' : '건물 목록을 불러오는 중이에요'}</Text>
         ) : (
           names.map((name) => {
             const active = value === name

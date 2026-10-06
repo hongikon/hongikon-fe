@@ -9,6 +9,7 @@ import { sortHot } from '../../apis/community'
 import { formatCount } from './ReportActionRow'
 import { reportPlaceText } from '../../utils/shareReport'
 import type { ReportListItem } from '../../types'
+import { useMapData } from '../../lib/mapData'
 
 interface HotReportListProps {
   reports: readonly ReportListItem[]
@@ -24,6 +25,8 @@ const EXPANDED = 10
  * '🔥 HOT' 칩을 켰을 때 지도 위에 뜨는 짧은 목록. 최근 60분 🔥 순(같으면 전체 🔥 순). 누르면 그 제보 시트를 열고 가운데로 옮긴다.
  */
 export default function HotReportList({ reports, selectedId, onSelect }: HotReportListProps) {
+  // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
+  const { buildings } = useMapData()
   const [expanded, setExpanded] = useState(false)
   // 목록이 지도를 가린다는 의견(10-06) — 머리줄의 접기로 작은 'HOT 목록' 단추만 남기고, 누르면 다시 편다.
   const [folded, setFolded] = useState(false)
@@ -85,7 +88,7 @@ export default function HotReportList({ reports, selectedId, onSelect }: HotRepo
                 {report.hot ? <HotBadge size="sm" /> : null}
               </View>
               <Text style={styles.meta} numberOfLines={1}>
-                {reportPlaceText(report)}
+                {reportPlaceText(report, buildings)}
                 {recent > 0 ? ` · 최근 1시간 +${recent}` : ''}
               </Text>
             </View>

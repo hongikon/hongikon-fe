@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
+import { useMapData } from '../../lib/mapData'
 import { chipStyles } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
@@ -67,12 +68,14 @@ export default function MapFilterChips({
   onToggleHot,
 }: MapFilterChipsProps) {
   // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
+  // 지도 데이터를 아직 못 받았으면 칩 대신 안내 한 줄만 둔다(지도 위 안내와 같은 상태).
+  const { facilities, data } = useMapData()
   const facilityCounts = useMemo(
     () =>
-      VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(meta.key) })).filter(
+      VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(facilities, meta.key) })).filter(
         ({ count }) => count > 0,
       ),
-    [],
+    [facilities],
   )
 
   return (
@@ -114,6 +117,11 @@ export default function MapFilterChips({
           style={chipStyles.scroll}
           contentContainerStyle={chipStyles.row}
         >
+          {!data && (
+            <View style={chipStyles.chip} accessibilityRole="text">
+              <Text style={[chipStyles.label, styles.pendingText]}>편의시설 정보를 불러오는 중이에요</Text>
+            </View>
+          )}
           {facilityCounts.map(({ meta, count }) => {
             const isActive = facilityKind === meta.key
             return (
@@ -223,4 +231,5 @@ const styles = StyleSheet.create({
   // 최상단 줄은 아래 줄들보다 한 단계 위라는 것이 보여야 해, 테두리만 진하게 둔다.
   layerChip: { borderColor: COLORS.primary },
   layerChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  pendingText: { color: COLORS.textSecondary },
 })
