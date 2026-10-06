@@ -278,6 +278,8 @@ export interface Report {
   category: ReportCategory
   /** `category` 가 `ETC` 일 때, '무슨 일인가요?' 칩에서 직접 입력한 라벨(서버 최대 50자). */
   customCategoryLabel?: string
+  /** 장소 설명(작성자가 고칠 수 있는 "제4공학관(T동) 근처" 등, 60자). 없으면(예전 제보·서버) 좌표로 가까운 건물을 보여 준다. */
+  placeLabel?: string | null
   title: string
   content: string | null
   /**
@@ -403,6 +405,8 @@ export interface CreateReportInput {
   category: ReportCategory
   /** `category` 가 `ETC` 일 때, 직접 입력한 라벨. `Report.customCategoryLabel` 참고. */
   customCategoryLabel?: string
+  /** 장소 설명(선택, 60자). 구버전 서버는 무시한다. */
+  placeLabel?: string
   title: string
   content?: string
   /** `uploadReportImage` 가 돌려준 S3 키들(최대 3장, 표시 순서). 사진이 없으면 생략. */
