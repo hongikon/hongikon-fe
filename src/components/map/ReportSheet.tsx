@@ -23,6 +23,7 @@ import ModerationMenu from './ModerationMenu'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import ReportOwnerMenu from './ReportOwnerMenu'
 import HotBadge from '../common/HotBadge'
+import OfficialBadge from '../common/OfficialBadge'
 import { useSettings } from '../../contexts/SettingsContext'
 import { communityErrorMessage, isCommunityApiMissing, recordReportView, setReportNotifications } from '../../apis/community'
 import type { ReportFlagReason, ReportListItem } from '../../types'
@@ -237,7 +238,10 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <ReportActionRow report={report} onPatch={applyPatch} />
 
       <View style={styles.footer}>
-        <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
+        <View style={styles.authorRow}>
+          <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
+          {report.authorOfficial ? <OfficialBadge /> : null}
+        </View>
         <View style={styles.actions}>
           {flagging ? (
             <ActivityIndicator size="small" color={COLORS.textTertiary} />
@@ -354,6 +358,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 12,
   },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   author: { flexShrink: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 },
   moreBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },

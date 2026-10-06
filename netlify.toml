@@ -17,6 +17,9 @@
   # app.config.ts 는 APP_VARIANT 가 없으면 개발(development)로 보고 이름 뒤에 " (개발)"을 붙인다.
   # 웹판은 운영 배포이므로 명시한다(없던 탓에 hongikon.com 탭 제목이 "홍익온 (개발)"이었다).
   APP_VARIANT = "production"
+  # 웹 Apple 로그인 Services ID(Apple Developer > Identifiers > Services IDs, 10-05 생성). Return URL 은
+  # https://hongikon.com/auth/apple/callback. 서버(hongikon-be #35, APPLE_WEB_CLIENT_ID 기본값)와 같은 값이어야 한다.
+  EXPO_PUBLIC_APPLE_WEB_CLIENT_ID = "com.hongikon.web"
 
 [[redirects]]
   from = "/api/*"

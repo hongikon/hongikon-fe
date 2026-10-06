@@ -25,12 +25,43 @@ const EXPANDED = 10
  */
 export default function HotReportList({ reports, selectedId, onSelect }: HotReportListProps) {
   const [expanded, setExpanded] = useState(false)
+  // 목록이 지도를 가린다는 의견(10-06) — 머리줄의 접기로 작은 'HOT 목록' 단추만 남기고, 누르면 다시 편다.
+  const [folded, setFolded] = useState(false)
   const sorted = sortHot(reports)
   const shown = sorted.slice(0, expanded ? EXPANDED : COLLAPSED)
   const more = Math.min(sorted.length, EXPANDED) - shown.length
 
+  if (folded) {
+    return (
+      <Pressable
+        onPress={() => setFolded(false)}
+        style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`HOT 제보 목록 펼치기, ${sorted.length}개`}
+        hitSlop={6}
+      >
+        <FlameIcon variant="full" size={14} />
+        <Text style={styles.pillText}>HOT 목록 {sorted.length}</Text>
+        <Ionicons name="chevron-down" size={13} color={COLORS.textSecondary} />
+      </Pressable>
+    )
+  }
+
   return (
     <View style={styles.card} accessibilityRole="list" accessibilityLabel="HOT 제보 목록">
+      <View style={styles.header}>
+        <Text style={styles.headerText}>지금 공감이 모이는 제보</Text>
+        <Pressable
+          onPress={() => setFolded(true)}
+          hitSlop={10}
+          style={styles.fold}
+          accessibilityRole="button"
+          accessibilityLabel="HOT 제보 목록 접기"
+        >
+          <Text style={styles.foldText}>접기</Text>
+          <Ionicons name="chevron-up" size={13} color={COLORS.textSecondary} />
+        </Pressable>
+      </View>
       {shown.map((report, index) => {
         const recent = report.recentFireCount ?? 0
         return (
@@ -92,6 +123,27 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingTop: 6, paddingBottom: 2 },
+  headerText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.textSecondary },
+  fold: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 28 },
+  foldText: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textSecondary },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  pillPressed: { opacity: 0.7 },
+  pillText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: COLORS.textPrimary },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 8, borderRadius: 10 },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.divider },
   rowActive: { backgroundColor: COLORS.primarySoft },

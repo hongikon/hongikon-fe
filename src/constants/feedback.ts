@@ -17,6 +17,12 @@ export const INFO_SUGGESTION_PREFIXES: Record<InfoSuggestType, string> = {
   other: '[정보 제보:기타]',
 }
 
+/**
+ * 공식 계정(학생회 등) 신청(설정 > 계정 > 공식 계정 신청). 정보 제보와 같이 문의로 보내고 이 머리말로 구분한다.
+ * 운영진이 확인하면 관리 > 회원에서 그 계정에 공식 이름을 붙인다.
+ */
+export const OFFICIAL_REQUEST_PREFIX = '[공식 계정 신청]'
+
 /** 관리자 문의 목록에 붙는 표시 이름 */
 export const INFO_SUGGESTION_BADGES: Record<InfoSuggestType, string> = {
   partner: '제휴 제보',

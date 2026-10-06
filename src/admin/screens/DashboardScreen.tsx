@@ -58,6 +58,8 @@ export default function DashboardScreen({
           <View style={styles.statRow}>
             <Stat label="승인 대기" value={reports.pending} highlight={reports.pending > 0} />
             <Stat label="노출 중" value={reports.active} />
+            {/* 예정 수를 주는 서버(hongikon-be #37)부터 보인다. */}
+            {typeof reports.upcoming === 'number' ? <Stat label="노출 예정" value={reports.upcoming} /> : null}
             <Stat label="숨김" value={reports.hidden} />
             <Stat label="반려" value={reports.rejected} />
           </View>

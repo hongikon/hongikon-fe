@@ -128,9 +128,13 @@ const users: AdminUser[] = [
 ]
 
 /** 새 서버 응답 모양: 로그인 닉네임 원문 없이 표시 이름·앱 닉네임만. nickname 은 표시 이름과 같은 값(구버전 화면 호환 키). */
+/** 목업 공식 이름(PUT/DELETE /admin/users/{id}/official). */
+const officialNames: Record<number, string> = {}
+
 function userResponse(user: AdminUser): AdminUser {
-  const name = displayNameOf(user.id)
-  return { ...user, nickname: name, displayName: name, appNickname: members[user.id]?.appNickname ?? null }
+  const official = officialNames[user.id] ?? null
+  const name = official ?? displayNameOf(user.id)
+  return { ...user, nickname: name, displayName: name, appNickname: members[user.id]?.appNickname ?? null, officialName: official }
 }
 
 const reports: AdminReport[] = [
@@ -281,7 +285,14 @@ function overview(): AdminOverview {
   const count = (status: AdminReport['status']) => reports.filter((report) => report.status === status).length
   return {
     server: { version: '0.0.1-SNAPSHOT', buildTime: new Date(Date.now() - 5 * 3600_000).toISOString() },
-    reports: { pending: count('PENDING'), active: count('ACTIVE'), hidden: count('HIDDEN'), rejected: count('REJECTED') },
+    reports: {
+      pending: count('PENDING'),
+      // 서버(AdminOverviewController)처럼 '노출 중'은 지금 진행 중, '노출 예정'은 승인했고 시작 전인 것만 센다.
+      active: reports.filter((r) => r.status === 'ACTIVE' && Date.parse(r.startsAt + 'Z') <= Date.now() && Date.parse(r.endsAt + 'Z') >= Date.now()).length,
+      hidden: count('HIDDEN'),
+      rejected: count('REJECTED'),
+      upcoming: reports.filter((r) => r.status === 'ACTIVE' && Date.parse(r.startsAt + 'Z') > Date.now()).length,
+    },
     feedback: { open: feedback.filter((item) => item.status === 'OPEN').length },
     news: { total: 11350, missingDepartment: 1200 },
     crawler: { ...crawlerState, running: crawlerRunning },
@@ -387,7 +398,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     return response
   }
 
-  const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend|grant-admin|revoke-admin))?$/)
+  const userMatch = pathname.match(/^\/admin\/users\/(\d+)(\/(suspend|unsuspend|grant-admin|revoke-admin|official))?$/)
   if (userMatch) {
     const user = users.find((item) => item.id === Number(userMatch[1]))
     if (!user) throw notFound()
@@ -411,6 +422,20 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
         throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해 주세요.', undefined, '정지된 회원은 관리자로 지정할 수 없어요. 먼저 정지를 해제해 주세요.')
       }
       user.role = 'ADMIN'
+      return userResponse(user)
+    }
+    // 백엔드 AdminUserService.setOfficialName / clearOfficialName 과 같은 규칙.
+    if (method === 'PUT' && userMatch[3] === 'official') {
+      const name = typeof body.name === 'string' ? body.name.trim() : ''
+      if (name.length < 2 || name.length > 30) throw new ApiError(400, '공식 이름은 2~30자로 입력해 주세요.')
+      if (Object.entries(officialNames).some(([id, value]) => value === name && Number(id) !== user.id)) {
+        throw new ApiError(409, '같은 공식 이름을 쓰는 계정이 이미 있습니다.')
+      }
+      officialNames[user.id] = name
+      return userResponse(user)
+    }
+    if (method === 'DELETE' && userMatch[3] === 'official') {
+      delete officialNames[user.id]
       return userResponse(user)
     }
     if (method === 'POST' && userMatch[3] === 'revoke-admin') {

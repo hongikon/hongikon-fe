@@ -18,6 +18,8 @@ export interface MyProfile {
   suspendedReason?: string | null
   /** 서버 시각(UTC, 존 없음) */
   suspendedAt?: string | null
+  /** 운영진이 붙인 공식 이름(학생회 등). 있으면 displayName 도 이 값이고 공식 배지가 붙는다. 이 기능 전 서버는 없음. */
+  officialName?: string | null
 }
 
 /**

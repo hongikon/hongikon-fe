@@ -21,7 +21,8 @@ export type CrawlerTrigger = 'SCHEDULED' | 'MANUAL'
 
 export interface AdminOverview {
   server: { version: string | null; buildTime: string | null }
-  reports: { pending: number; active: number; hidden: number; rejected: number }
+  /** upcoming: 승인했지만 아직 시작 전(예정). 이 값을 주기 전 서버는 없다. */
+  reports: { pending: number; active: number; hidden: number; rejected: number; upcoming?: number }
   feedback: { open: number }
   news: { total: number; missingDepartment: number }
   /** 서버 메모리에만 있어 재시작 후 첫 실행 전까지 각 필드가 null 이다. */
@@ -154,6 +155,8 @@ export interface AdminUser {
    * 해당 없거나 그 기능 전 서버면 null/없음.
    */
   priorHistory?: AdminUserPriorHistory | null
+  /** 운영진이 붙인 공식 이름(학생회 등). 없으면 null. 이 기능 전 서버는 키가 없다. */
+  officialName?: string | null
 }
 
 /** `GET /admin/users/{id}/login-name` — 로그인(카카오/Apple) 닉네임 원문. 버튼을 눌렀을 때만 부른다. */

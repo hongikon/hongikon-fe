@@ -287,6 +287,8 @@ export interface Report {
   authorNickname: string
   /** 다른 사람에게 보일 작성자 이름(앱 닉네임 또는 가린 로그인 닉네임). 앱 닉네임 기능 전 서버는 없음. */
   authorDisplayName?: string
+  /** 운영진이 인증한 공식 계정(학생회 등)이 올린 제보면 true — 작성자 이름 옆에 공식 배지. 이 기능 전 서버는 없음. */
+  authorOfficial?: boolean
   /**
    * 첨부 사진 보기 URL(S3 presigned GET, 약 1시간 유효). 사진이 없거나, 사진 기능이
    * 배포되기 전 서버면 null/없음. 만료되면 이미지 로드가 실패하니 화면은 실패 시 숨긴다.
@@ -353,6 +355,8 @@ export interface ReportComment {
   content: string | null
   /** 앱 닉네임 또는 가린 로그인 닉네임(서버가 가려서 준다). 자리 표시면 null. */
   authorDisplayName: string | null
+  /** 운영진이 인증한 공식 계정(학생회 등)의 댓글이면 true — 이름 옆에 공식 배지. 이 기능 전 서버는 없음. */
+  authorOfficial?: boolean
   /** "이 사용자 숨기기"용 — 제보의 `authorKey` 와 같은 값. 서버 키가 없거나 자리 표시면 null. */
   authorKey: string | null
   isMine: boolean

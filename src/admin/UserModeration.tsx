@@ -4,7 +4,7 @@ import { ApiError, getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { confirmAction } from '../utils/dialog'
-import { fetchUser, grantAdmin, revealLoginName, revokeAdmin, suspendUser, unsuspendUser } from './api'
+import { clearOfficialName, fetchUser, grantAdmin, revealLoginName, revokeAdmin, setOfficialName, suspendUser, unsuspendUser } from './api'
 import { formatDateTime } from './format'
 import type { AdminLoginName, AdminUser } from './types'
 import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
@@ -56,6 +56,9 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const app = useAdminHost() === 'app'
   const [confirming, setConfirming] = useState(false)
   const [reason, setReason] = useState('')
+  /** 공식 계정 지정 입력 중(학생회 등 — 문의 탭의 '공식 계정 신청'을 확인한 뒤). */
+  const [officialEditing, setOfficialEditing] = useState(false)
+  const [officialDraft, setOfficialDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const suspended = user.status === 'SUSPENDED'
@@ -68,6 +71,8 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       .then((updated) => {
         setConfirming(false)
         setReason('')
+        setOfficialEditing(false)
+        setOfficialDraft('')
         onChanged(updated)
       })
       .catch((err: unknown) => setError(toMessage(err, fallback)))
@@ -91,6 +96,15 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       onConfirm: () => run(() => revokeAdmin(user.id), '관리자 권한을 해제하지 못했습니다. 다시 시도해주세요.', roleError),
     })
 
+  const confirmClearOfficial = () =>
+    confirmAction({
+      title: '공식 계정 해제',
+      message: `'${user.officialName ?? ''}' 공식 이름과 배지를 뗄까요? 이 계정은 원래 이름(앱 닉네임)으로 돌아갑니다.`,
+      confirmLabel: '해제',
+      destructive: true,
+      onConfirm: () => run(() => clearOfficialName(user.id), '공식 계정을 해제하지 못했습니다. 다시 시도해주세요.', officialError),
+    })
+
   const trimmed = reason.trim()
   // appNickname 키가 null 로 왔을 때만 "앱 닉네임 없음" — 키가 아예 없으면(예전 서버) 유무를 알 수 없어 표시하지 않는다.
   const noAppNickname = 'appNickname' in user && !user.appNickname
@@ -112,6 +126,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       <View style={styles.row}>
         <Badge label={suspended ? '이용 정지' : '정상'} tone={suspended ? 'danger' : 'success'} />
         {isAdmin ? <Badge label="관리자" tone="info" /> : null}
+        {user.officialName ? <Badge label={`공식 · ${user.officialName}`} tone="info" /> : null}
         <Text style={styles.meta}>
           {user.memberCode ? `id ${user.id}` : `#${user.id}`} · {user.socialType}
         </Text>
@@ -142,7 +157,34 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
         </View>
       ) : null}
 
-      {confirming ? (
+      {officialEditing ? (
+        <ConfirmBar
+          message="이 계정에 붙일 공식 이름(2~30자)을 적어 주세요. 앱 닉네임 대신 이 이름과 공식 배지가 제보·댓글에 보입니다. 단체를 확인한 뒤에만 지정하세요."
+          confirmLabel="지정"
+          busy={busy}
+          onCancel={() => setOfficialEditing(false)}
+          onConfirm={() => {
+            const name = officialDraft.trim()
+            if (name.length < 2) {
+              setError('공식 이름을 2자 이상 입력해주세요.')
+              return
+            }
+            run(() => setOfficialName(user.id, name), '공식 계정으로 지정하지 못했습니다. 다시 시도해주세요.', officialError)
+          }}
+        >
+          <TextInput
+            value={officialDraft}
+            onChangeText={setOfficialDraft}
+            placeholder="예: 경영대학 학생회"
+            placeholderTextColor={COLORS.textPlaceholder}
+            maxLength={30}
+            style={[styles.input, app && styles.inputApp]}
+            autoFocus
+            accessibilityLabel="공식 이름"
+            editable={!busy}
+          />
+        </ConfirmBar>
+      ) : confirming ? (
         <ConfirmBar
           message="이 회원의 이용을 정지할까요? 로그인과 조회는 되지만 제보·신고·문의·닉네임 변경이 막힙니다. 사유는 회원에게 알림으로 전달되고(약관 제10조), 회원은 14일 안에 이의를 제기할 수 있습니다."
           confirmLabel="이용 정지"
@@ -190,6 +232,22 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
               small
             />
           ) : null}
+          {user.officialName ? (
+            <Button label="공식 해제" icon="shield-outline" variant="ghost" onPress={confirmClearOfficial} disabled={busy} small />
+          ) : !suspended && 'officialName' in user ? (
+            <Button
+              label="공식 계정 지정"
+              icon="ribbon-outline"
+              variant="ghost"
+              onPress={() => {
+                setError(null)
+                setOfficialDraft('')
+                setOfficialEditing(true)
+              }}
+              disabled={busy}
+              small
+            />
+          ) : null}
           {suspended ? (
             <Button
               label="정지 해제"
@@ -206,6 +264,16 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       {error ? <InlineError message={error} /> : null}
     </View>
   )
+}
+
+/** 공식 계정 지정·해제 오류 문구. 409 는 같은 공식 이름이 이미 있음, 404/405 는 이 기능 전 서버. */
+function officialError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 409) return '같은 공식 이름을 쓰는 계정이 이미 있습니다. 다른 이름을 입력해주세요.'
+    if (err.status === 400) return '공식 이름은 2~30자로 입력해주세요.'
+    if (err.status === 404 || err.status === 405) return '서버가 아직 공식 계정 기능을 지원하지 않습니다. 서버 업데이트 후 다시 시도해주세요.'
+  }
+  return fallback
 }
 
 /**
