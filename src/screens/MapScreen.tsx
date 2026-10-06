@@ -1152,7 +1152,7 @@ export default function MapScreen() {
 
         <View
           pointerEvents="box-none"
-          style={[styles.bannerStack, overlayInset, { top: headerHeight + 8 }]}
+          style={[styles.bannerStack, { top: headerHeight + 8 }]}
         >
           {/* 지도 데이터(건물·편의시설·제휴업체)가 아직 하나도 없을 때만. 저장본이 있으면 그걸로 그리고 조용히 새로 받는다. */}
           {!mapData && (
@@ -1933,11 +1933,13 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   bannerStack: {
     position: "absolute",
     top: 8,
-    left: 12,
-    right: 12,
+    left: 16,
+    right: 16,
+    maxWidth: 560,
     gap: 6,
   },
   mapErrorNotice: {
