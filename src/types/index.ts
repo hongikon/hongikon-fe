@@ -324,11 +324,12 @@ export interface Report {
 }
 
 /**
- * `GET /reports` 목록 항목(`ReportSummaryResponse`). `content`뿐 아니라 `status`도
- * 내려오지 않는다 — 목록 조회는 서버가 이미 살아있는(ACTIVE, live) 제보만 쿼리해
- * 돌려주므로 상태를 따로 알려줄 필요가 없다. 상태를 보려면 상세(`Report`)가 필요하다.
+ * `GET /reports` 목록 항목(`ReportSummaryResponse`). `status`는 내려오지 않는다 — 목록 조회는 서버가 이미
+ * 살아있는(ACTIVE, live) 제보만 쿼리해 돌려주므로 상태를 따로 알려줄 필요가 없다.
  */
 export type ReportListItem = Omit<Report, 'content' | 'status'> & {
+  /** 본문(최대 2000자). 2026-10-06 전 서버는 목록에 본문을 싣지 않아 없음 — 시트에서 본문 줄을 숨긴다. */
+  content?: string | null
   /**
    * 공개 댓글 수(`GET /reports` 목록에서만, 서버가 한 번에 세어 준다). 댓글 기능 전 서버는 없음 —
    * 시트는 댓글 목록을 받아 본 뒤 그 수(`totalElements`)를 쓴다.

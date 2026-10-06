@@ -20,6 +20,7 @@ import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
 import ReportCommentsSection from './comments/ReportCommentsSection'
+import ReportContentModal from './ReportContentModal'
 import ModerationMenu from './ModerationMenu'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import ReportOwnerMenu from './ReportOwnerMenu'
@@ -38,10 +39,23 @@ interface ReportSheetProps {
 /**
  * 제보 상세 배너. 지도 마커를 누르면 뜬다.
  *
- * 본문(`content`)은 목록 응답에 없다(`docs/report-api-spec.md` §4.2 는 목록에서
- * content 를 뺀다). 제목·카테고리·시간·사진(서버가 준 presigned URL)까지만 보여주고, 본문이 필요해지면
- * 단건 조회 엔드포인트가 생긴 뒤에 붙인다.
+ * 본문(`content`)은 목록 응답에 실려 온다(2026-10-06 서버부터). 지도를 덜 가리게 시트에는 두 줄만 보여 주고,
+ * 길면 '본문 보기'로 화면 전체 창(ReportContentModal, 아래 탭 막대까지 덮음)을 연다.
  */
+/** 시트에 보여 줄 본문 줄 수. 넘치면 '본문 보기'. */
+const CONTENT_PREVIEW_LINES = 2
+
+/** 미리보기는 줄바꿈·빈 줄을 한 칸으로 접어 두 줄에 글자가 최대한 들어가게 한다(전체 보기는 원문 그대로). */
+function contentPreview(content: string): string {
+  return content.trim().replace(/\s*\n+\s*/g, ' ')
+}
+
+/** onTextLayout 이 없는 웹에서도 '본문 보기'를 띄우도록: 줄바꿈이 있거나 두 줄쯤(60자)을 넘으면. */
+function contentNeedsMore(content: string): boolean {
+  const trimmed = content.trim()
+  return trimmed.includes('\n') || trimmed.length > 60
+}
+
 export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
@@ -54,6 +68,13 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const applyPatch = (next: ReportCommunityPatch & { notifyEnabled?: boolean | null }) =>
     setPatch((prev) => ({ ...prev, ...next }))
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
+  // 본문 전체 보기 창. 두 줄에 다 안 들어가면(줄바꿈·길이) '본문 보기'를 띄운다. 다른 제보로 바뀌면 닫는다.
+  const [contentOpen, setContentOpen] = useState(false)
+  const [contentClamped, setContentClamped] = useState(false)
+  useEffect(() => {
+    setContentOpen(false)
+    setContentClamped(false)
+  }, [reportProp.id])
   // 시트를 열 때 조회 1회(서버가 계정·설치 id 로 하루 한 번만 센다). 조회 수 기능 전 서버면 부르지 않는다.
   const tracksViews = typeof reportProp.viewCount === 'number'
   useEffect(() => {
@@ -220,6 +241,32 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         </Text>
       </View>
 
+      {!!report.content?.trim() && (
+        <View style={styles.contentBox}>
+          <Text
+            style={styles.contentText}
+            numberOfLines={CONTENT_PREVIEW_LINES}
+            onTextLayout={(event) => {
+              if (event.nativeEvent.lines.length > CONTENT_PREVIEW_LINES) setContentClamped(true)
+            }}
+          >
+            {contentPreview(report.content)}
+          </Text>
+          {(contentClamped || contentNeedsMore(report.content)) && (
+            <Pressable
+              onPress={() => setContentOpen(true)}
+              hitSlop={8}
+              style={({ pressed }) => [styles.contentMore, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel="제보 본문 전체 보기"
+            >
+              <Text style={styles.contentMoreText}>본문 보기</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
       {photoUrls.length > 0 && (
         // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 원본(presigned URL)을 브라우저로 연다.
         <View style={styles.photoRow}>
@@ -320,6 +367,12 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       <ReportCommentsSection key={report.id} report={report} />
+
+      <ReportContentModal
+        report={contentOpen ? report : null}
+        placeText={reportPlaceText(report, buildings)}
+        onClose={() => setContentOpen(false)}
+      />
     </View>
   )
 }
@@ -361,6 +414,10 @@ const styles = StyleSheet.create({
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
   placeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
+  contentBox: { marginTop: 10, gap: 6 },
+  contentText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textPrimary },
+  contentMore: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start' },
+  contentMoreText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
   photoTile: { flex: 1, height: 160, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
   photoTileSmall: { height: 110 },
