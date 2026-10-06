@@ -510,7 +510,7 @@ function exhibitionFromBody(body: Record<string, unknown>, id: number): AdminExh
   const venue = mapFacilities.find((f) => f.id === body.facilityId)
   if (!venue || venue.kind !== '행사·전시') throw badRequest('전시장은 행사·전시 시설이어야 해요.')
   const title = typeof body.title === 'string' ? body.title.trim() : ''
-  if (title.length < 1 || title.length > 200) throw badRequest('전시 제목은 1~200자로 입력해 주세요.')
+  if (title.length < 1 || title.length > 150) throw badRequest('전시 제목은 1~150자로 입력해 주세요.')
   const start = typeof body.startsOn === 'string' ? ymdToDayIndex(body.startsOn) : null
   const end = typeof body.endsOn === 'string' ? ymdToDayIndex(body.endsOn) : null
   if (start === null || end === null) throw badRequest('날짜는 YYYY-MM-DD 형식으로 입력해 주세요.')
@@ -524,7 +524,7 @@ function exhibitionFromBody(body: Record<string, unknown>, id: number): AdminExh
     startsOn: body.startsOn as string,
     endsOn: body.endsOn as string,
     hours: optionalText(body.hours, '관람 시간', 100),
-    description: optionalText(body.description, '설명', 2000),
+    description: optionalText(body.description, '설명', 1000),
     link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
   }
 }
