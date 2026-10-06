@@ -720,19 +720,22 @@ export default function MapScreen() {
     setSelectedFacilityBuilding(null);
   }, [reportsOn, hotOnly, postToMap]);
 
-  /** '🔥 HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 제보 레이어를 끈다. */
+  /**
+   * 'HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 전체 제보 보기로 돌아간다('제보' 칩이 켜진 상태).
+   * 예전엔 다시 누르면 제보 레이어까지 꺼져 지도가 텅 비었다(10-06). 마커는 지우지 않고 새 목록이 오면 바꿔 그린다 —
+   * 미리 지우면 같은 데이터가 다시 올 때 그리기 효과가 돌지 않아 지도가 빈 채로 남을 수 있다.
+   */
   const handleToggleHot = useCallback(() => {
     const next = !hotOnly;
     setHotOnly(next);
-    setReportsOn(next);
+    setReportsOn(true);
     setSelectedReport(null);
-    postToMap({ type: "clearReports" });
     if (next) {
       setSelectedPartner(null);
       setSelectedBuilding(null);
       setSelectedFacilityBuilding(null);
     }
-  }, [hotOnly, postToMap]);
+  }, [hotOnly]);
 
   /** '이벤트' 갈래를 열면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
   useEffect(() => {
