@@ -400,8 +400,14 @@ export async function updateAdminPartner(code: string, input: AdminPartnerInput)
   )
 }
 
-export async function deleteAdminPartner(code: string): Promise<void> {
-  await adminRequest<void>(`/admin/map/partners/${encodeURIComponent(code)}`, { method: 'DELETE', retries: 0 })
+/**
+ * 제휴업체 삭제. 실수로 지우지 않게 관리자가 업체 이름을 그대로 입력해야 하고(confirmName), 서버도 이름이 다르면 400 을 준다.
+ */
+export async function deleteAdminPartner(code: string, confirmName: string): Promise<void> {
+  await adminRequest<void>(
+    `/admin/map/partners/${encodeURIComponent(code)}?confirmName=${encodeURIComponent(confirmName)}`,
+    { method: 'DELETE', retries: 0 },
+  )
   afterMapWrite(undefined)
 }
 

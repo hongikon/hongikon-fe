@@ -326,7 +326,7 @@ export default function FacilitiesScreen() {
               </Text>
               {confirmDelete === facility.id ? (
                 <ConfirmBar
-                  message={`${facility.buildingName} ${facility.kind}을(를) 지도에서 지울까요? 되돌릴 수 없습니다.`}
+                  message={`정말 삭제할까요? ${facility.buildingName} ${facility.kind}이(가) 지도에서 바로 사라지고 되돌릴 수 없어요.`}
                   confirmLabel="삭제"
                   danger
                   busy={deleting}

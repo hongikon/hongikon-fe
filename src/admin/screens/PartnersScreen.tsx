@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { isCancelledError } from '../../apis/client'
+import { ApiError, isCancelledError } from '../../apis/client'
 import { PARTNER_AFFILIATIONS } from '../../constants/partnerAffiliations'
 import { PARTNER_CATEGORIES } from '../../constants/partnerCategories'
 import { normalize } from '../../utils/normalize'
@@ -168,6 +168,9 @@ export default function PartnersScreen() {
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  /** 삭제 확인에 입력한 업체 이름. 업체 이름과 정확히 같아야(앞뒤 공백만 무시) 최종 삭제 버튼이 눌린다. */
+  const [confirmName, setConfirmName] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
@@ -231,17 +234,29 @@ export default function PartnersScreen() {
     }
   }
 
+  const askDelete = (partner: AdminPartner | null) => {
+    setConfirmDelete(partner?.id ?? null)
+    setConfirmName('')
+    setDeleteError(null)
+  }
+
   const remove = async (partner: AdminPartner) => {
-    if (deleting) return
+    const typed = confirmName.trim()
+    if (deleting || typed !== partner.name) return
     setDeleting(true)
+    setDeleteError(null)
     try {
-      await deleteAdminPartner(partner.id)
+      await deleteAdminPartner(partner.id, typed)
       setPartners((prev) => (prev ? prev.filter((item) => item.id !== partner.id) : prev))
       setNotice(`'${partner.name}'을(를) 지웠습니다.`)
       setConfirmDelete(null)
       if (draft?.originalCode === partner.id) setDraft(null)
     } catch (err) {
-      setError(mapWriteErrorMessage(err, '삭제하지 못했습니다.'))
+      setDeleteError(
+        err instanceof ApiError && err.status === 400
+          ? '업체 이름이 일치하지 않아요.'
+          : mapWriteErrorMessage(err, '삭제하지 못했습니다.'),
+      )
     } finally {
       setDeleting(false)
     }
@@ -417,17 +432,34 @@ export default function PartnersScreen() {
               </Text>
               {confirmDelete === partner.id ? (
                 <ConfirmBar
-                  message={`'${partner.name}'을(를) 지도에서 지울까요? 되돌릴 수 없습니다.`}
+                  message="정말 삭제할까요? 지도·검색에서 바로 사라지고 되돌릴 수 없어요. 확인을 위해 업체 이름을 그대로 입력해 주세요."
                   confirmLabel="삭제"
                   danger
                   busy={deleting}
+                  confirmDisabled={confirmName.trim() !== partner.name}
                   onConfirm={() => void remove(partner)}
-                  onCancel={() => setConfirmDelete(null)}
-                />
+                  onCancel={() => askDelete(null)}
+                >
+                  <TextRow
+                    value={confirmName}
+                    onChangeText={(text) => {
+                      setConfirmName(text)
+                      setDeleteError(null)
+                    }}
+                    placeholder={partner.name}
+                    maxLength={100}
+                    accessibilityLabel={`지울 업체 이름 입력: ${partner.name}`}
+                  />
+                  {deleteError ? (
+                    <Text style={formStyles.errorText} accessibilityRole="alert">
+                      {deleteError}
+                    </Text>
+                  ) : null}
+                </ConfirmBar>
               ) : (
                 <View style={styles.itemActions}>
                   <Button label="수정" icon="create-outline" onPress={() => openEdit(partner)} small />
-                  <Button label="삭제" icon="trash-outline" variant="ghost" onPress={() => setConfirmDelete(partner.id)} small />
+                  <Button label="삭제" icon="trash-outline" variant="ghost" onPress={() => askDelete(partner)} small />
                 </View>
               )}
             </Card>

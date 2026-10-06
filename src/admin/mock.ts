@@ -475,10 +475,17 @@ function facilityFromBody(body: Record<string, unknown>, id: string): AdminFacil
   }
 }
 
-function handleMapRequest(method: string, pathname: string, body: Record<string, unknown>): unknown | undefined {
-  if (method === 'GET' && pathname === '/admin/map/buildings') return { buildings: mapBuildings }
-  if (method === 'GET' && pathname === '/admin/map/partners') return { partners: mapPartners }
-  if (method === 'GET' && pathname === '/admin/map/facilities') return { facilities: mapFacilities }
+function handleMapRequest(
+  method: string,
+  pathname: string,
+  body: Record<string, unknown>,
+  params: URLSearchParams,
+): unknown | undefined {
+  // 실제 응답처럼 매번 새 객체로 준다 — 원장 배열을 그대로 넘기면 화면 상태와 목업 원장이 같은 배열을 함께 고친다.
+  const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+  if (method === 'GET' && pathname === '/admin/map/buildings') return { buildings: copy(mapBuildings) }
+  if (method === 'GET' && pathname === '/admin/map/partners') return { partners: copy(mapPartners) }
+  if (method === 'GET' && pathname === '/admin/map/facilities') return { facilities: copy(mapFacilities) }
 
   const isPartner = pathname.startsWith('/admin/map/partners')
   const isFacility = pathname.startsWith('/admin/map/facilities')
@@ -492,7 +499,7 @@ function handleMapRequest(method: string, pathname: string, body: Record<string,
     if (list.some((item) => item.id === id)) throw new ApiError(409, '이미 처리된 요청이에요.', undefined, '같은 코드가 이미 있어요.')
     const created = build(id)
     list.push(created)
-    return created
+    return copy(created)
   }
 
   const match = pathname.match(/^\/admin\/map\/(partners|facilities)\/([^/]+)$/)
@@ -503,9 +510,13 @@ function handleMapRequest(method: string, pathname: string, body: Record<string,
   if (method === 'PUT') {
     const updated = build(code)
     list[index] = updated
-    return updated
+    return copy(updated)
   }
   if (method === 'DELETE') {
+    // 서버와 같다: 제휴업체는 이름을 그대로 입력해야 지운다(앞뒤 공백만 무시).
+    if (isPartner && (params.get('confirmName') ?? '').trim() !== (list[index] as AdminPartner).name) {
+      throw badRequest('업체 이름이 일치하지 않아요.')
+    }
     list.splice(index, 1)
     return undefined
   }
@@ -531,7 +542,7 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
   }
 
   if (pathname.startsWith('/admin/map/')) {
-    const result = handleMapRequest(method, pathname, body)
+    const result = handleMapRequest(method, pathname, body, params)
     if (result !== undefined || method === 'DELETE') return result
     throw notFound()
   }
