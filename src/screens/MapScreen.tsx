@@ -145,6 +145,10 @@ export default function MapScreen() {
   previewTargetRef.current = previewTarget;
   const selectedPartnerRef = useRef(selectedPartner);
   selectedPartnerRef.current = selectedPartner;
+  const selectedBuildingRef = useRef(selectedBuilding);
+  selectedBuildingRef.current = selectedBuilding;
+  /** 필터 없이 검색으로만 지도에 올린 업체 id. 그 시트가 닫히면 마커도 거둔다(아래 effect). */
+  const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
   const farViewPartnerIdRef = useRef<string | null>(null);
   // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
@@ -337,6 +341,43 @@ export default function MapScreen() {
     if (prev !== null && selectedBuilding === null) postToMap({ type: "selectBuilding", name: null });
   }, [selectedBuilding, postToMap]);
 
+  /**
+   * 업체 시트가 닫히면(제보·편의시설·건물을 누르거나, 칩·제보 위치 고르기·알림 등 어떤 경로로든) 페이지의 업체 강조도 거둔다.
+   * 필터 없이 검색으로만 올린 마커였으면 시트와 함께 마커도 내린다 — 안 그러면 시트 없이 핀 하나만 지도에 남는다.
+   * 필터가 켜져 있으면 마커는 그대로 둔다. 모두 기존 메시지라 이미 배포된 map.html 에도 먹힌다.
+   */
+  const prevSelectedPartnerRef = useRef<Partner | null>(null);
+  useEffect(() => {
+    const prev = prevSelectedPartnerRef.current;
+    prevSelectedPartnerRef.current = selectedPartner;
+    if (prev === null || selectedPartner !== null) return;
+    if (!hasActiveFilter(activeFilter) && searchedPartnerIdRef.current !== null) {
+      searchedPartnerIdRef.current = null;
+      postToMap({ type: "clearPartners" });
+      return;
+    }
+    postToMap({ type: "selectPartner", id: null });
+  }, [selectedPartner, activeFilter, postToMap]);
+
+  /** 지도 페이지가 마커를 새로 받으면(setPartners) 선택이 풀린다. 고른 업체가 그 목록에 아직 있으면 다시 강조한다. */
+  const reassertPartnerSelection = useCallback(
+    (partnersOnPage: Partner[]) => {
+      const current = selectedPartnerRef.current;
+      if (current && partnersOnPage.some((p) => p.id === current.id)) {
+        postToMap({ type: "selectPartner", id: current.id });
+      }
+    },
+    [postToMap],
+  );
+
+  /** 제보 시트를 연다. 배너는 모두 같은 자리(아래)에 겹쳐 그려지므로 건물·업체·편의시설 배너는 닫는다. */
+  const openReport = useCallback((report: ReportListItem | null) => {
+    setSelectedBuilding(null);
+    setSelectedFacilityBuilding(null);
+    setSelectedPartner(null);
+    setSelectedReport(report);
+  }, []);
+
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
       // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
@@ -367,6 +408,8 @@ export default function MapScreen() {
           // 배너는 모두 같은 자리(아래)에 겹쳐 그려진다. 제보 시트를 닫지 않으면 새 건물 배너가 그 밑에 가려진다.
           setSelectedReport(null);
           setSelectedBuilding(building);
+          // 앱 데이터에 없는 건물이면 배너가 안 뜬다. 페이지에 핀만 남지 않게 강조도 거둔다.
+          if (!building) postToMap({ type: "selectBuilding", name: null });
           return;
         }
 
@@ -376,15 +419,13 @@ export default function MapScreen() {
           setSelectedFacilityBuilding(null);
           setSelectedReport(null);
           setSelectedPartner(partner);
+          // 앱 데이터에 없는 업체면 시트가 안 뜬다. 페이지에 강조만 남지 않게 거둔다.
+          if (!partner) postToMap({ type: "selectPartner", id: null });
           return;
         }
 
         if (msg.type === "reportTap") {
-          const found = reports.find((r) => r.id === msg.id) ?? null;
-          setSelectedBuilding(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedPartner(null);
-          setSelectedReport(found);
+          openReport(reports.find((r) => r.id === msg.id) ?? null);
           return;
         }
 
@@ -444,13 +485,14 @@ export default function MapScreen() {
         }
       } catch {}
     },
-    [reports, accessToken, logout, buildings, allPartners],
+    [reports, accessToken, logout, buildings, allPartners, postToMap, openReport],
   );
 
   /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
   const applyFilter = useCallback(
     (filter: PartnerFilter) => {
       setSelectedPartner(null);
+      searchedPartnerIdRef.current = null;
 
       if (!hasActiveFilter(filter)) {
         postToMap({ type: "clearPartners" });
@@ -501,6 +543,7 @@ export default function MapScreen() {
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
       setSelectedPartner(partner);
+      searchedPartnerIdRef.current = partner.id;
 
       // 캠퍼스에서 먼 지점은 검색으로만 찾아간다 — 옮기기 전에 이동 범위를 그 지점 둘레로 바꾼다(캠퍼스 범위로는 못 간다).
       // 시트를 닫거나 다른 것을 고르면 아래 effect 가 캠퍼스로 되돌린다.
@@ -676,6 +719,8 @@ export default function MapScreen() {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
     // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
     handleRecenter();
+    // 고른 건물은 setBuildings 보다 먼저 알려 준다 — setBuildings 가 그 이름을 지키며 핀을 그린다.
+    if (selectedBuildingRef.current) postToMap({ type: "selectBuilding", name: selectedBuildingRef.current.name });
     // 지도 데이터가 있으면 새 페이지의 건물(구운 초기값)을 지금 데이터로 바꾼다. 없으면 구운 건물을 그대로 둔다.
     if (mapData) postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
     // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
@@ -685,6 +730,10 @@ export default function MapScreen() {
       webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(farPartner)));
       postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
       postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
+    } else if (farPartner && !hasActiveFilter(activeFilter) && searchedPartnerIdRef.current === farPartner.id) {
+      // 캠퍼스 근처 업체를 검색해 보던 중이었으면 그 마커를 다시 올린다(필터가 없어 아래에서 다시 그려지지 않는다).
+      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
+      reassertPartnerSelection([farPartner]);
     }
     if (hasActiveFilter(activeFilter)) {
       const partners = filterPartners(allPartners, activeFilter);
@@ -693,6 +742,7 @@ export default function MapScreen() {
         partners: partners.map(toMarker),
         bounds: partnerFocusBounds(partners),
       });
+      reassertPartnerSelection(partners);
     }
     if (facilityKind !== null) {
       postToMap({ type: "setFacilities", markers: facilityMarkers(facilities, buildings, facilityKind) });
@@ -711,7 +761,7 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [mapData, allPartners, facilities, buildings, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin]);
+  }, [mapData, allPartners, facilities, buildings, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
 
   /**
    * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
@@ -723,11 +773,9 @@ export default function MapScreen() {
     mapDataSyncedRef.current = mapData;
     postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
     if (hasActiveFilter(activeFilter)) {
-      postToMap({
-        type: "setPartners",
-        partners: filterPartners(mapData.partners, activeFilter).map(toMarker),
-        bounds: null,
-      });
+      const partners = filterPartners(mapData.partners, activeFilter);
+      postToMap({ type: "setPartners", partners: partners.map(toMarker), bounds: null });
+      reassertPartnerSelection(partners);
     }
     if (facilityKind !== null) {
       postToMap({ type: "setFacilities", markers: facilityMarkers(mapData.facilities, mapData.buildings, facilityKind) });
@@ -878,6 +926,13 @@ export default function MapScreen() {
     startPicker("report");
   }, [accessToken, logout, startPicker]);
 
+  /** 위치 고르기 모드를 끈다. 취소 버튼과, 고르는 중에 다른 지도 요청(알림 제보·검토 핀)이 들어올 때 쓴다. */
+  const stopPicker = useCallback(() => {
+    setPickingLocation(false);
+    setPickerCenter(null);
+    postToMap({ type: "stopLocationPicker" });
+  }, [postToMap]);
+
   /** 정보 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
   const partnerLocationBeforePickRef = useRef<InfoSuggestLocation | null>(null);
 
@@ -893,10 +948,9 @@ export default function MapScreen() {
   const focusReportFromNotification = useCallback(
     async (reportId: number) => {
       const request = ++focusRequestRef.current;
-      setSelectedBuilding(null);
-      setSelectedPartner(null);
-      setSelectedReport(null);
-      setSelectedFacilityBuilding(null);
+      // 위치를 고르던 중이면 그 모드부터 끈다 — 안 그러면 지도가 탭을 막은 채 제보 시트만 뜬다.
+      stopPicker();
+      openReport(null);
       // 제보는 '이벤트' 갈래의 하위 칩이다. 다른 갈래(편의시설·제휴)를 보고 있었으면 그 마커를 거두고 '이벤트'로 옮긴다 —
       // 안 그러면 편의시설 핀과 제보 마커가 섞이고, 제보를 끌 '제보' 칩도 화면에 없다(갈래는 한 번에 하나).
       if (layer !== "이벤트") {
@@ -922,14 +976,15 @@ export default function MapScreen() {
           toast.show({ message: "이 제보는 지금 지도에 없어요. 아직 시작 전이거나 이미 끝났어요.", tone: "info" });
           return;
         }
-        setSelectedReport(found);
+        // 기다리는 사이 다른 배너를 열었을 수 있어 여기서 다시 닫고 연다.
+        openReport(found);
         postToMap({ type: "focusReport", lat: found.lat, lng: found.lng });
       } catch {
         if (request !== focusRequestRef.current) return;
         toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
       }
     },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, layer, applyFacilityKind],
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, layer, applyFacilityKind, stopPicker, openReport],
   );
 
   /**
@@ -955,6 +1010,7 @@ export default function MapScreen() {
       return;
     }
     if (intent?.type === "previewLocation") {
+      stopPicker();
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
@@ -964,7 +1020,7 @@ export default function MapScreen() {
       // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
       showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin]);
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker]);
 
   useFocusEffect(handleMapIntent);
   // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
@@ -972,14 +1028,12 @@ export default function MapScreen() {
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
 
   const handleCancelReportPicker = useCallback(() => {
-    setPickingLocation(false);
-    setPickerCenter(null);
-    postToMap({ type: "stopLocationPicker" });
+    stopPicker();
     // 정보 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
     if (pickerPurpose === "partner") {
       setPartnerSuggest({ location: partnerLocationBeforePickRef.current });
     }
-  }, [pickerPurpose, postToMap]);
+  }, [pickerPurpose, stopPicker]);
 
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
@@ -1113,18 +1167,19 @@ export default function MapScreen() {
           )}
 
           {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
-          {hotOnly && reportsOn && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
+          {/* 위치를 고르는 동안에는 아래 목록·안내 줄을 모두 숨긴다(고르기 안내 줄과 같은 자리에 겹친다). */}
+          {!pickingLocation && hotOnly && reportsOn && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
             <HotReportList
               reports={reports}
               selectedId={null}
               onSelect={(report) => {
-                setSelectedReport(report);
+                openReport(report);
                 postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
               }}
             />
           )}
 
-          {previewTarget && (
+          {!pickingLocation && previewTarget && (
             <View style={styles.previewNotice}>
               <Ionicons name="eye-outline" size={14} color={COLORS.white} />
               <View style={styles.previewTextWrap}>
@@ -1144,7 +1199,7 @@ export default function MapScreen() {
             </View>
           )}
 
-          {reportsEmpty && (
+          {!pickingLocation && reportsEmpty && (
             <DismissibleNotice
               message={hotOnly ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
               dismissed={dismissedNotices}
@@ -1152,7 +1207,7 @@ export default function MapScreen() {
             />
           )}
 
-          {unresolvedCount > 0 && (
+          {!pickingLocation && unresolvedCount > 0 && (
             <DismissibleNotice
               message={`건물을 찾지 못한 편의시설 ${unresolvedCount}곳은 지도에서 빠졌어요`}
               dismissed={dismissedNotices}
@@ -1160,7 +1215,7 @@ export default function MapScreen() {
             />
           )}
 
-          {offscreenCount > 0 && (
+          {!pickingLocation && offscreenCount > 0 && (
             <DismissibleNotice
               message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
               actionLabel="보기"
