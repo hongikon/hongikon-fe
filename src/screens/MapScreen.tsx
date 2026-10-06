@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -389,7 +389,8 @@ export default function MapScreen() {
     selectedPartner !== null ||
     selectedReport !== null ||
     (selectedFacilityBuilding !== null && facilityKind !== null);
-  useEffect(() => {
+  // 화면을 그리기 전에(useLayoutEffect) 탭바를 바꾼다. useEffect 면 시트와 탭바가 한 프레임 겹쳐 보여 반짝였다.
+  useLayoutEffect(() => {
     navigation.setOptions({ tabBarStyle: sheetOpen ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
   }, [navigation, sheetOpen]);
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
