@@ -22,7 +22,7 @@ import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
 import type { InfoSuggestLocation } from "../components/settings/InfoSuggestModal";
-import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
+import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
@@ -429,6 +429,10 @@ export default function MapScreen() {
    */
   const selectedReportId = selectedReport?.id ?? null;
   const reportOpenedAtRef = useRef(0);
+  // 지금 열린 제보를 알려 둔다 — 게스트가 로그인 안내로 떠났다 돌아오면 이 제보를 다시 띄운다(lib/mapIntents).
+  useEffect(() => {
+    setOpenReport(selectedReportId);
+  }, [selectedReportId]);
   useEffect(() => {
     if (selectedReportId === null) return;
     reportOpenedAtRef.current = Date.now();
