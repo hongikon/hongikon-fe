@@ -3,6 +3,9 @@
 `main` ← `dev` ← 작업 브랜치. **모든 작업 브랜치는 `dev` 에서 갈라 `dev` 로 합치고, `main` 은 `dev` 를 합칠 때만 바뀐다.**
 `main` 에 올리면 곧바로 운영(hongikon.com, Netlify 자동 배포)에 나가므로, 확인 전 작업은 `dev` 에 모은다.
 
+> **2026-10-06 변경:** 평소 작업은 `dev` 에서 바로 커밋한다(작업마다 브랜치를 만들지 않는다). 규모가 크거나 위험한 작업, 팀원 검토가 필요한 작업만 아래 접두사 브랜치를 `dev` 에서 갈라 쓴다. `main` 은 여전히 `dev` 를 릴리스로 합칠 때만 바뀐다.
+
+
 ```
 feat/* · fix/* · ui/* · hotfix/* · chore/* · docs/*  ──merge(--no-ff)──▶  dev  ──릴리스 merge(--no-ff)──▶  main
                                                                            │                                │
@@ -20,9 +23,9 @@ feat/* · fix/* · ui/* · hotfix/* · chore/* · docs/*  ──merge(--no-ff)�
 
 ## 순서
 
-1. `git switch dev && git pull` → `git switch -c feat/이름`
-2. 작업·커밋 → `pnpm exec tsc --noEmit -p .` → `git push -u origin feat/이름`
-3. `dev` 로 합친다: `git switch dev && git merge --no-ff feat/이름 && git push` (팀원 검토가 필요하면 PR → dev)
+1. `git switch dev && git pull` (브랜치를 따로 쓸 때만 `git switch -c feat/이름`)
+2. 작업·커밋 → `pnpm exec tsc --noEmit -p .` → `git push`
+3. 브랜치를 썼다면 `dev` 로 합친다: `git switch dev && git merge --no-ff feat/이름 && git push` (팀원 검토가 필요하면 PR → dev)
 4. `dev` 를 로컬에서 확인한다: `pnpm web` (port 8081). 앱 실기기는 `pnpm update:preview` 또는 preview 빌드.
 5. 릴리스: `git switch main && git pull && git merge --no-ff dev` → 타입 검사·`pnpm build:web` 확인 → `git push`
    → `pnpm update:production`(앱 OTA). 네이티브 변경(아이콘·권한·패키지)이 있으면 스토어 빌드도.
