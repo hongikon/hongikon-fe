@@ -398,6 +398,11 @@ export default function MapScreen() {
     setSelectedFacilityBuilding(null);
     setSelectedPartner(null);
     setSelectedReport(report);
+    // 같은 손동작으로 바로 뒤따르는 건물 탭(buildingTap)이 렌더 전에 와도 '방금 제보를 열었다'를 알 수 있게 바로 적어 둔다.
+    if (report) {
+      selectedReportRef.current = report;
+      reportOpenedAtRef.current = Date.now();
+    }
   }, []);
 
   /**
@@ -416,6 +421,21 @@ export default function MapScreen() {
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
   const sheetBottom = sheetOpen ? 0 : tabBarHeight;
+
+  /**
+   * 제보 시트가 열려 있는 동안엔 건물 핀이 지도에 남지 않게 한다. 제보 마커(또는 그 이름표)를 누른 손동작이 지도 탭으로도
+   * 넘어가 아래 건물(강당 S동 등) 핀이 같이 켜지는 경우가 있었다. 제보가 열리거나 바뀔 때마다 건물 강조를 거둔다.
+   * 다음 프레임에도 한 번 더 보내, 같은 손동작으로 페이지가 뒤늦게 켠 핀까지 지운다(배포된 map.html 도 아는 메시지).
+   */
+  const selectedReportId = selectedReport?.id ?? null;
+  const reportOpenedAtRef = useRef(0);
+  useEffect(() => {
+    if (selectedReportId === null) return;
+    reportOpenedAtRef.current = Date.now();
+    postToMap({ type: "selectBuilding", name: null });
+    const timer = setTimeout(() => postToMap({ type: "selectBuilding", name: null }), 120);
+    return () => clearTimeout(timer);
+  }, [selectedReportId, postToMap]);
 
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
@@ -441,6 +461,11 @@ export default function MapScreen() {
         const msg = JSON.parse(event.nativeEvent.data);
 
         if (msg.type === "buildingTap") {
+          // 제보를 연 바로 그 손동작이 건물 탭으로도 들어온 것 — 제보 시트는 두고 건물 핀만 거둔다.
+          if (selectedReportRef.current && Date.now() - reportOpenedAtRef.current < 400) {
+            postToMap({ type: "selectBuilding", name: null });
+            return;
+          }
           // 제보·제휴·편의시설 시트가 열린 채 지도를 누르면 그 탭은 '시트 닫기'로만 쓴다. 바로 건물 배너까지
           // 열면 시트가 내려가지 않고 엉뚱한 건물이 눌린 것처럼 보였다. 건물을 보려면 한 번 더 누른다.
           if (selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current) {
