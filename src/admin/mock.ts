@@ -285,7 +285,14 @@ function overview(): AdminOverview {
   const count = (status: AdminReport['status']) => reports.filter((report) => report.status === status).length
   return {
     server: { version: '0.0.1-SNAPSHOT', buildTime: new Date(Date.now() - 5 * 3600_000).toISOString() },
-    reports: { pending: count('PENDING'), active: count('ACTIVE'), hidden: count('HIDDEN'), rejected: count('REJECTED') },
+    reports: {
+      pending: count('PENDING'),
+      // 서버(AdminOverviewController)처럼 '노출 중'은 지금 진행 중, '노출 예정'은 승인했고 시작 전인 것만 센다.
+      active: reports.filter((r) => r.status === 'ACTIVE' && Date.parse(r.startsAt + 'Z') <= Date.now() && Date.parse(r.endsAt + 'Z') >= Date.now()).length,
+      hidden: count('HIDDEN'),
+      rejected: count('REJECTED'),
+      upcoming: reports.filter((r) => r.status === 'ACTIVE' && Date.parse(r.startsAt + 'Z') > Date.now()).length,
+    },
     feedback: { open: feedback.filter((item) => item.status === 'OPEN').length },
     news: { total: 11350, missingDepartment: 1200 },
     crawler: { ...crawlerState, running: crawlerRunning },
