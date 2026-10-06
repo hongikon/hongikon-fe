@@ -1,6 +1,8 @@
 # 홍익온
 
 > 홍익대학교 학생을 위한 공지사항 알림 & 캠퍼스 정보 앱
+>
+> 웹사이트: [https://hongikon.com](https://hongikon.com)
 
 <br>
 
