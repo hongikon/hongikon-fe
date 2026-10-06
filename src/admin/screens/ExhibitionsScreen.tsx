@@ -66,9 +66,9 @@ function buildInput(draft: ExhibitionDraft): { input: AdminExhibitionInput } | {
   const title = draft.title.trim()
   if (!title) errors.push('전시 제목을 입력해 주세요.')
   for (const [value, max, label] of [
-    [draft.title, 200, '전시 제목'],
+    [draft.title, 150, '전시 제목'],
     [draft.hours, 100, '관람 시간'],
-    [draft.description, 2000, '설명'],
+    [draft.description, 1000, '설명'],
     [draft.linkLabel, 50, '링크 이름'],
     [draft.linkUrl, 500, '링크 주소'],
   ] as const) {
@@ -280,7 +280,7 @@ export default function ExhibitionsScreen() {
             )}
           </Field>
           <Field label="전시 제목 (필수)">
-            <TextRow value={draft.title} onChangeText={(title) => update({ title })} maxLength={200} placeholder="예: 회화과 졸업작품전" accessibilityLabel="전시 제목" />
+            <TextRow value={draft.title} onChangeText={(title) => update({ title })} maxLength={150} placeholder="예: 회화과 졸업작품전" accessibilityLabel="전시 제목" />
           </Field>
           <View style={formStyles.row}>
             <View style={formStyles.half}>
@@ -298,7 +298,7 @@ export default function ExhibitionsScreen() {
             <TextRow value={draft.hours} onChangeText={(hours) => update({ hours })} maxLength={100} placeholder="예: 10:00~18:00 (일 휴관)" accessibilityLabel="관람 시간" />
           </Field>
           <Field label="설명" hint="앱에서는 두 줄까지 보이고 '자세히 보기'로 펼칩니다.">
-            <TextRow value={draft.description} onChangeText={(description) => update({ description })} maxLength={2000} multiline placeholder="전시 소개" accessibilityLabel="설명" />
+            <TextRow value={draft.description} onChangeText={(description) => update({ description })} maxLength={1000} multiline placeholder="전시 소개" accessibilityLabel="설명" />
           </Field>
           <View style={formStyles.row}>
             <View style={formStyles.half}>
