@@ -8,7 +8,7 @@ import type { AdminIntent } from '../lib/adminIntents'
  * - `news`: 소식 상세(서버 id — 상세 화면이 `GET /news/{id}` 로 받아 그린다).
  * - `map`: 지도 탭. `focusReportId` 가 있으면 그 제보를 찾아 지도 가운데에 띄운다.
  * - `myReports`: 설정 탭의 내 제보 내역(반려 알림 — 반려된 제보는 지도에 없어 사유를 볼 곳이 내역뿐이다). `reportId` 를 맨 위에 강조한다.
- * - `admin`: 관리 탭의 해당 섹션(제보 승인 대기·숨김, 문의). 관리자가 아니면 지도로 돌린다(`AdminAccessProvider`).
+ * - `admin`: 관리 탭의 해당 섹션(제보 승인 대기·숨김, 신고 댓글, 문의). 관리자가 아니면 지도로 돌린다(`AdminAccessProvider`).
  * - `none`: 형식이 이상한 payload — 조용히 무시한다.
  */
 export type NotificationTarget =
@@ -25,6 +25,7 @@ const ADMIN_TYPES: ReadonlySet<string> = new Set([
   'ADMIN_REPORT_FLAGGED',
   'ADMIN_FEEDBACK',
   'ADMIN_MEMBER_REJOINED',
+  'ADMIN_COMMENT_FLAGGED',
 ])
 
 /** 관리자 알림(`AdminAlertDispatcher`, 승인 대기 리마인드 `AdminReportReminder`)인지 — 앱이 켜져 있을 때 표시·배지 갱신에 쓴다. */
@@ -61,6 +62,9 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
     // 내 제보 🔥 기념(10·50·100), 관심 제보의 시작·곧 끝남·새 댓글 — 모두 그 제보 시트를 연다.
     case 'REPORT_FIRE':
     case 'REPORT_FOLLOW':
+    // 내 댓글이 운영 정책으로 숨겨지거나 삭제됨 — 사유는 알림 본문에 있다. 그 제보 시트(댓글 포함)를 연다.
+    // 제보가 지도에 없으면 지도가 "지금 지도에 없는 제보" 안내와 함께 열린다.
+    case 'COMMENT_MODERATED':
       return { kind: 'map', focusReportId: toReportId((data as { reportId?: unknown }).reportId) }
     // 관리자 알림. 묶음 알림("새 제보 3건")이면 id 는 마지막 건이다 — 그 건을 맨 위에 강조하고 나머지는 목록에 있다.
     case 'ADMIN_REPORT_PENDING':
@@ -82,6 +86,12 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
       return {
         kind: 'admin',
         intent: { section: 'reports', reportFilter: 'HIDDEN', reportId: toReportId((data as { reportId?: unknown }).reportId) },
+      }
+    // 댓글 신고 — 관리 탭의 "신고 댓글"을 열고 그 댓글을 맨 위에 강조한다.
+    case 'ADMIN_COMMENT_FLAGGED':
+      return {
+        kind: 'admin',
+        intent: { section: 'comments', commentId: toReportId((data as { commentId?: unknown }).commentId) },
       }
     case 'ADMIN_FEEDBACK':
       return {

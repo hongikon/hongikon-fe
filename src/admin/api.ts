@@ -5,6 +5,7 @@ import type {
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
+  AdminFlaggedCommentList,
   AdminLoginName,
   AdminUser,
   AdminOverview,
@@ -270,9 +271,27 @@ export async function fetchReportComments(reportId: number, signal?: AbortSignal
   return response?.comments ?? []
 }
 
-/** 댓글 숨김(HIDDEN)·삭제(DELETED)·다시 공개(VISIBLE). 응답은 바뀐 댓글. */
-export function updateCommentStatus(commentId: number, status: AdminCommentStatus): Promise<AdminComment> {
-  return adminRequest<AdminComment>(`/admin/comments/${commentId}`, { method: 'PATCH', body: { status }, retries: 0 })
+/**
+ * 댓글 숨김(HIDDEN)·삭제(DELETED)·다시 공개(VISIBLE). 응답은 바뀐 댓글.
+ * 이미 공개 중인 댓글에 VISIBLE 을 보내면 "검토 완료(유지)" — 서버가 검토 시각만 남겨 그 전 신고를 더 세지 않는다.
+ * reason(선택, 200자)은 숨김·삭제 때 작성자에게 가는 알림에 그대로 실린다(이용약관 제10조). 이 기능 전 서버는 무시한다.
+ */
+export function updateCommentStatus(commentId: number, status: AdminCommentStatus, reason?: string): Promise<AdminComment> {
+  const trimmed = reason?.trim()
+  return adminRequest<AdminComment>(`/admin/comments/${commentId}`, {
+    method: 'PATCH',
+    body: trimmed ? { status, reason: trimmed } : { status },
+    retries: 0,
+  })
+}
+
+/**
+ * 검토할 신고된 댓글(최근 신고 순 최대 200건). 서버에 이 API 가 없으면(구버전) 404·405 — `isAdminCommentsMissing` 으로
+ * 가려 "서버 업데이트 필요"를 보여 준다.
+ */
+export async function fetchFlaggedComments(signal?: AbortSignal): Promise<AdminFlaggedCommentList> {
+  const response = await adminRequest<AdminFlaggedCommentList>('/admin/comments?filter=flagged', { signal })
+  return { comments: response?.comments ?? [], total: response?.total ?? response?.comments?.length ?? 0 }
 }
 
 /** 댓글 관리 API 가 서버에 없는지(배포 전 404·405). 서버가 직접 준 "없는 제보" 404 는 문구가 있어 구별된다. */

@@ -24,6 +24,8 @@ export interface AdminOverview {
   reports: { pending: number; active: number; hidden: number; rejected: number }
   feedback: { open: number }
   news: { total: number; missingDepartment: number }
+  /** 검토할 신고된 댓글 수(마지막 검토 뒤 신고가 들어온 공개·자동 숨김 댓글). 이 기능 전 서버는 필드가 없다. */
+  comments?: { flaggedPending: number }
   /** 서버 메모리에만 있어 재시작 후 첫 실행 전까지 각 필드가 null 이다. */
   crawler: {
     running: boolean
@@ -109,6 +111,24 @@ export interface AdminComment {
   reviewedAt: string | null
 }
 
+/**
+ * `GET /admin/comments?filter=flagged` 의 한 줄(`AdminFlaggedCommentResponse`). 관리자 댓글 응답에 제보 제목·상태와
+ * 검토 뒤 신고 수를 더한 것. 신고자는 오지 않는다(사유별 수만).
+ */
+export interface AdminFlaggedComment extends AdminComment {
+  reportTitle: string
+  reportStatus: ReportStatus
+  /** 마지막 관리자 검토 뒤 들어온 신고 수 — 자동 숨김(3건) 기준과 같다. */
+  pendingFlagCount: number
+  lastFlaggedAt: string | null
+}
+
+export interface AdminFlaggedCommentList {
+  comments: AdminFlaggedComment[]
+  /** 검토할 전체 수(목록은 최대 200건). */
+  total: number
+}
+
 export interface AdminFeedback {
   id: number
   content: string
@@ -176,7 +196,7 @@ export interface AdminUserPriorHistory {
   violationReportCount: number
 }
 
-export type AdminSection = 'dashboard' | 'reports' | 'users' | 'feedback' | 'tools'
+export type AdminSection = 'dashboard' | 'reports' | 'comments' | 'users' | 'feedback' | 'tools'
 
 /** 대시보드 수치와 그 요청 상태. 웹 콘솔은 AdminApp, 앱 관리 탭은 AdminAccessProvider 가 들고 있다. */
 export interface OverviewState {
