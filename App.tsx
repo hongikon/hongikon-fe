@@ -69,21 +69,23 @@ function WebDocumentTitleBridge() {
  * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).
  * `hongikon-be`에 발송부가 생겨 실제 원격 푸시로 확인할 수 있게 되면 지운다.
  *
- * 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
- * (`SHOW_DEVELOPER_TOOLS`). 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
+ * `/temp/*` 는 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
+ * (`SHOW_DEVELOPER_TOOLS`). `/dev/path`(경로망 점검)만 운영 웹에서도 연다. 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
 type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit'
 
 const tempDebugMode: TempDebugMode | null =
-  SHOW_DEVELOPER_TOOLS && Platform.OS === 'web' && typeof window !== 'undefined'
+  Platform.OS === 'web' && typeof window !== 'undefined'
     ? (() => {
         const path = window.location.pathname.replace(/\/+$/, '')
+        // `/dev/path` = 경로망 점검(빠진 지점·끊긴 간선·망에 안 닿은 건물을 목록과 지도 점으로).
+        // 경로망 데이터는 앱에서도 공개되는 캠퍼스 좌표라, 팀원이 바로 볼 수 있게 운영 웹(hongikon.com/dev/path)에서도 연다.
+        if (path === '/dev/path') return 'pathAudit'
+        if (!SHOW_DEVELOPER_TOOLS) return null
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
         if (path === '/temp/path-nodes') return 'nodes'
         if (path === '/temp/notifications') return 'notifications'
-        // `/dev/path` = 경로망 점검(빠진 지점·끊긴 간선·망에 안 닿은 건물을 목록과 지도 점으로).
-        if (path === '/dev/path') return 'pathAudit'
         return null
       })()
     : null

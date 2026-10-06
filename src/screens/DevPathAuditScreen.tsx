@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
@@ -22,7 +22,7 @@ type Kind = keyof typeof KIND_COLOR
 /**
  * 개발용 `/dev/path` — 실외 보행 경로망(src/constants/pathNodes.ts)을 지도에 띄우고, 길찾기에서 빠지는 것들을 목록으로 보여 준다.
  * 경로망 선은 `/temp/path-nodes` 와 같은 지도 페이지('nodes' 모드)로 그리고, 문제 지점은 색 점 + 이름표로 덧그린다.
- * 목록을 누르면 그 자리로 지도가 옮겨 간다. 운영 웹에서는 열리지 않는다(SHOW_DEVELOPER_TOOLS, App.tsx).
+ * 목록을 누르면 그 자리로 지도가 옮겨 간다. 팀원이 볼 수 있게 운영 웹(hongikon.com/dev/path)에서도 열리고, 검색엔진에는 안 걸리게 noindex 를 단다.
  */
 export default function DevPathAuditScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null)
@@ -32,6 +32,19 @@ export default function DevPathAuditScreen() {
   const { width } = useWindowDimensions()
   const wide = width >= 900
   const [selected, setSelected] = useState<string | null>(null)
+
+  // 내부 점검 화면이라 검색 결과에 나오지 않게 한다(웹).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    document.title = '경로망 점검 | 홍익온'
+    return () => {
+      meta.remove()
+    }
+  }, [])
 
   const overlayPoints = useMemo(() => {
     const out: { kind: Kind; point: AuditPoint }[] = []
@@ -166,7 +179,8 @@ export default function DevPathAuditScreen() {
           <NaverMapView key={data.version} ref={webViewRef} html={mapHTML} onReady={drawOverlay} onMessage={() => {}} />
         )}
       </View>
-      {panel}
+      {/* 건물(출입구) 데이터 없이 점검하면 모든 간선이 끊긴 것처럼 나온다 — 지도 데이터를 받은 뒤에만 목록을 보여 준다. */}
+      {data ? panel : null}
     </View>
   )
 }
