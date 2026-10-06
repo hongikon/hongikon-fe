@@ -21,7 +21,8 @@ export type CrawlerTrigger = 'SCHEDULED' | 'MANUAL'
 
 export interface AdminOverview {
   server: { version: string | null; buildTime: string | null }
-  reports: { pending: number; active: number; hidden: number; rejected: number }
+  /** upcoming: 승인했지만 아직 시작 전(예정). 이 값을 주기 전 서버는 없다. */
+  reports: { pending: number; active: number; hidden: number; rejected: number; upcoming?: number }
   feedback: { open: number }
   news: { total: number; missingDepartment: number }
   /** 서버 메모리에만 있어 재시작 후 첫 실행 전까지 각 필드가 null 이다. */

@@ -20,6 +20,7 @@ import { FACILITIES } from "../constants/facilities";
 import MapFilterChips from "../components/map/MapFilterChips";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
+import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
 import type { InfoSuggestLocation } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect } from "@react-navigation/native";
@@ -1084,7 +1085,7 @@ export default function MapScreen() {
               accessibilityRole="button"
               accessibilityLabel="제보하기"
             >
-              <Ionicons name="megaphone" size={17} color={COLORS.primary} />
+              <ReportMegaphoneIcon size={20} color={COLORS.primary} />
             </TouchableOpacity>
             {ROUTE_FINDING_ENABLED && (
               <TouchableOpacity
@@ -1114,7 +1115,7 @@ export default function MapScreen() {
               <View style={styles.pickerCrosshairH} />
               <View style={styles.pickerPinAnchor}>
                 <View style={styles.pickerPinBubble}>
-                  <Ionicons name="megaphone" size={15} color={COLORS.white} />
+                  <ReportMegaphoneIcon size={18} color={COLORS.white} />
                 </View>
                 <View style={styles.pickerPinTail} />
               </View>

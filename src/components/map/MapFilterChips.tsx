@@ -5,6 +5,7 @@ import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { chipStyles } from './chipStyles'
 import ChipIcon from './ChipIcon'
+import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
 import type { FacilityKind, MapLayer } from '../../types'
 import * as haptics from '../../lib/haptics'
 import FlameIcon from '../common/FlameIcon'
@@ -189,7 +190,7 @@ export default function MapFilterChips({
               reportsOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
             ]}
           >
-            <ChipIcon name="megaphone" color={COLORS.primary} active={reportsOn} />
+            <ReportMegaphoneIcon size={15} color={reportsOn ? COLORS.white : COLORS.primary} />
             <Text style={[chipStyles.label, reportsOn && chipStyles.labelActive]}>제보</Text>
           </TouchableOpacity>
 
