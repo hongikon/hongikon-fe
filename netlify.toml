@@ -19,7 +19,9 @@
   APP_VARIANT = "production"
   # 웹 Apple 로그인 Services ID(Apple Developer > Identifiers > Services IDs, 10-05 생성). Return URL 은
   # https://hongikon.com/auth/apple/callback. 서버(hongikon-be #35, APPLE_WEB_CLIENT_ID 기본값)와 같은 값이어야 한다.
-  EXPO_PUBLIC_APPLE_WEB_CLIENT_ID = "com.hongikon.web"
+  # 서버(hongikon-be #35)가 배포될 때까지 비워 둔다 — 지금 켜면 Apple 에서 돌아온 뒤 서버가 aud 를 거절해 로그인이 실패한다.
+  # 배포가 끝나면 "com.hongikon.web" 으로 되돌린다.
+  EXPO_PUBLIC_APPLE_WEB_CLIENT_ID = ""
 
 [[redirects]]
   from = "/api/*"
