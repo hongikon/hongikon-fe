@@ -16,6 +16,8 @@ import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
+import PartnersScreen from './screens/PartnersScreen'
+import FacilitiesScreen from './screens/FacilitiesScreen'
 
 /**
  * 웹 관리자 콘솔(`/admin`). App.tsx 가 경로를 보고 앱의 AuthProvider/내비게이션을
@@ -41,6 +43,8 @@ const SECTION_PATHS: Record<AdminSection, string> = {
   comments: '/admin/comments',
   users: '/admin/users',
   feedback: '/admin/feedback',
+  partners: '/admin/partners',
+  facilities: '/admin/facilities',
   tools: '/admin/tools',
 }
 
@@ -50,6 +54,8 @@ const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<ty
   { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
+  { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
+  { section: 'facilities', label: '편의시설', icon: 'business-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
@@ -235,41 +241,46 @@ export default function AdminApp() {
     return 0
   }
 
-  const nav = (
-    <View style={wide ? styles.sideNav : styles.topNav}>
-      {NAV_ITEMS.map((item) => {
-        const selected = item.section === section
-        const badge = badgeFor(item.section)
-        return (
-          <Pressable
-            key={item.section}
-            onPress={() => navigate(item.section)}
-            accessibilityRole="link"
-            accessibilityState={{ selected }}
-            style={[wide ? styles.sideItem : styles.topItem, selected && (wide ? styles.sideItemSelected : styles.topItemSelected)]}
-          >
-            <Ionicons
-              name={item.icon}
-              size={wide ? 18 : 16}
-              color={wide ? (selected ? COLORS.white : ADMIN_COLORS.sidebarText) : selected ? COLORS.primary : COLORS.textSecondary}
-            />
-            <Text
-              style={[
-                wide ? styles.sideItemText : styles.topItemText,
-                selected && (wide ? styles.sideItemTextSelected : styles.topItemTextSelected),
-              ]}
-            >
-              {item.label}
-            </Text>
-            {badge > 0 ? (
-              <View style={styles.navBadge}>
-                <Text style={styles.navBadgeText}>{badge > 99 ? '99+' : badge}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-        )
-      })}
-    </View>
+  const navItems = NAV_ITEMS.map((item) => {
+    const selected = item.section === section
+    const badge = badgeFor(item.section)
+    return (
+      <Pressable
+        key={item.section}
+        onPress={() => navigate(item.section)}
+        accessibilityRole="link"
+        accessibilityState={{ selected }}
+        style={[wide ? styles.sideItem : styles.topItem, selected && (wide ? styles.sideItemSelected : styles.topItemSelected)]}
+      >
+        <Ionicons
+          name={item.icon}
+          size={wide ? 18 : 16}
+          color={wide ? (selected ? COLORS.white : ADMIN_COLORS.sidebarText) : selected ? COLORS.primary : COLORS.textSecondary}
+        />
+        <Text
+          style={[
+            wide ? styles.sideItemText : styles.topItemText,
+            selected && (wide ? styles.sideItemTextSelected : styles.topItemTextSelected),
+          ]}
+        >
+          {item.label}
+        </Text>
+        {badge > 0 ? (
+          <View style={styles.navBadge}>
+            <Text style={styles.navBadgeText}>{badge > 99 ? '99+' : badge}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+    )
+  })
+
+  // 좁은 화면은 메뉴가 8개라 한 줄에 다 들어가지 않아 가로로 넘긴다.
+  const nav = wide ? (
+    <View style={styles.sideNav}>{navItems}</View>
+  ) : (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topNav}>
+      {navItems}
+    </ScrollView>
   )
 
   const mockBadge = mockMode ? (
@@ -290,6 +301,8 @@ export default function AdminApp() {
   else if (section === 'comments') content = <FlaggedCommentsScreen onChanged={refreshOverview} overview={overview} />
   else if (section === 'users') content = <UsersScreen />
   else if (section === 'feedback') content = <FeedbackScreen onChanged={refreshOverview} overview={overview} />
+  else if (section === 'partners') content = <PartnersScreen />
+  else if (section === 'facilities') content = <FacilitiesScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />
   else content = <DashboardScreen overview={overviewState} onNavigate={navigate} />
 
@@ -367,8 +380,8 @@ const styles = StyleSheet.create({
   topLogoutText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textSecondary },
   topNav: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 6 },
   topItem: {
-    flex: 1,
     flexDirection: 'row',
+    paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,

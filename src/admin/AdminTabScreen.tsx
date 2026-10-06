@@ -19,6 +19,8 @@ import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
+import PartnersScreen from './screens/PartnersScreen'
+import FacilitiesScreen from './screens/FacilitiesScreen'
 
 /**
  * 앱 하단 "관리" 탭. 웹 `/admin` 콘솔의 화면들을 그대로 쓰되, 앱 로그인 토큰으로 요청하고(AdminAccessProvider)
@@ -32,6 +34,8 @@ const SECTIONS: { section: AdminSection; label: string; icon: ComponentProps<typ
   { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
+  { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
+  { section: 'facilities', label: '편의시설', icon: 'business-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
@@ -162,6 +166,8 @@ export default function AdminTabScreen() {
         focusFeedbackId={feedbackFocus?.feedbackId ?? null}
       />
     )
+  else if (section === 'partners') content = <PartnersScreen />
+  else if (section === 'facilities') content = <FacilitiesScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refresh} />
   else content = <DashboardScreen overview={overview} onNavigate={navigate} />
 

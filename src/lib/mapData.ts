@@ -159,6 +159,15 @@ export function reloadMapData(): void {
   void refresh()
 }
 
+/**
+ * 관리자 화면에서 제휴업체·편의시설을 고친 뒤 부른다. 이 실행에서 지도 데이터를 쓰고 있을 때만(앱 관리 탭) 서버에 다시 묻는다
+ * — 웹 관리자 콘솔(`/admin`)은 지도를 그리지 않아 받지 않는다.
+ */
+export function refreshMapData(): void {
+  if (!started) return
+  void refresh()
+}
+
 const EMPTY_BUILDINGS: Building[] = []
 const EMPTY_FACILITIES: Facility[] = []
 const EMPTY_PARTNERS: Partner[] = []
