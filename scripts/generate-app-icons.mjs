@@ -20,7 +20,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const BRAND = join(ROOT, 'assets/brand')
 const OUT = join(ROOT, 'assets')
 
-const BRAND_BLUE = '#1833DB'
+// 앱 아이콘 바탕. 메인 컬러(COLORS.primary)와 같은 남색으로 짙게 바꿨다(10-06 요청, 예전 #1833DB).
+const BRAND_BLUE = '#05014A'
 
 const symbolSvg = readFileSync(join(BRAND, 'symbol.svg'), 'utf8')
 const logotypeVerticalSvg = readFileSync(join(BRAND, 'logotype-vertical.svg'), 'utf8')
