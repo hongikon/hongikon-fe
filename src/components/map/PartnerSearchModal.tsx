@@ -65,12 +65,16 @@ export default function PartnerSearchModal({
       ? pinned
       : farPartners.length > 0
         ? {
-            title: `지도에 안 보이는 ${farPartners.length}곳`,
+            title: "지도에 안 보이는 곳",
             hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
             partners: farPartners,
           }
         : null;
   // 접힌 카테고리 집합. 기본은 전부 펼친 상태(빈 집합).
+  // 지도에 안 보이는 곳 묶음 접기. 안내 줄('보기')로 열었으면 그 업체들을 보러 온 것이라 맨 위에 펼쳐 두고,
+  // 검색창으로 열었으면 카테고리 목록 맨 아래에 둔다(카테고리처럼 머리줄을 눌러 접고 편다).
+  const [farCollapsed, setFarCollapsed] = useState(false);
+  const farOnTop = !!pinned && pinned.partners.length > 0;
   const [collapsedCategories, setCollapsedCategories] = useState<Set<PartnerCategory>>(
     () => new Set(),
   );
@@ -150,6 +154,33 @@ export default function PartnerSearchModal({
     );
   };
 
+  const farBlock = pinnedGroup ? (
+    <View style={[styles.pinnedBox, farOnTop ? styles.pinnedBoxTop : styles.pinnedBoxBottom]}>
+      <TouchableOpacity
+        style={styles.sectionHeader}
+        activeOpacity={0.6}
+        onPress={() => setFarCollapsed((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={`${pinnedGroup.title} ${farCollapsed ? "펼치기" : "접기"}`}
+      >
+        <View style={styles.sectionHeaderTitle}>
+          <Ionicons name="navigate-circle-outline" size={20} color={COLORS.primary} />
+          <Text style={[styles.sectionHeaderText, { color: COLORS.primary }]}>{pinnedGroup.title}</Text>
+          <Text style={styles.sectionHeaderCount}>{pinnedGroup.partners.length}곳</Text>
+        </View>
+        <Ionicons name={farCollapsed ? "chevron-forward" : "chevron-down"} size={19} color={COLORS.primary} />
+      </TouchableOpacity>
+      {!farCollapsed && (
+        <>
+          {pinnedGroup.hint && <Text style={styles.pinnedHint}>{pinnedGroup.hint}</Text>}
+          {pinnedGroup.partners.map((partner) => (
+            <View key={partner.id}>{renderPartnerRow(partner)}</View>
+          ))}
+        </>
+      )}
+    </View>
+  ) : null;
+
   return (
     <Modal
       visible={visible}
@@ -203,23 +234,13 @@ export default function PartnerSearchModal({
             stickySectionHeadersEnabled
             ListHeaderComponent={
               <>
-                {pinnedGroup && (
-                  <View style={styles.pinnedBox}>
-                    <View style={styles.sectionHeaderTitle}>
-                      <Ionicons name="navigate-circle-outline" size={20} color={COLORS.primary} />
-                      <Text style={[styles.sectionHeaderText, { color: COLORS.primary }]}>{pinnedGroup.title}</Text>
-                    </View>
-                    {pinnedGroup.hint && <Text style={styles.pinnedHint}>{pinnedGroup.hint}</Text>}
-                    {pinnedGroup.partners.map((partner) => (
-                      <View key={partner.id}>{renderPartnerRow(partner)}</View>
-                    ))}
-                  </View>
-                )}
+                {farOnTop && farBlock}
                 <Text style={styles.browseHint}>
                   상호명은 물론 혜택이나 주소로도 찾을 수 있어요. 예: 어리 · 10%할인 · 상수동
                 </Text>
               </>
             }
+            ListFooterComponent={farOnTop ? null : farBlock}
             renderSectionHeader={({ section }) => {
               const meta = partnerCategoryMeta(section.category);
               // section.data는 접혔을 때 비워 두므로 개수는 원본(browseSections)에서 찾는다.
@@ -263,13 +284,9 @@ const styles = StyleSheet.create({
   header: { paddingRight: 16 },
   searchBar: { flex: 1 },
   hintBox: { minHeight: 200 },
-  pinnedBox: {
-    marginTop: 12,
-    paddingTop: 10,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
+  pinnedBox: { paddingBottom: 4 },
+  pinnedBoxTop: { marginTop: 4, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  pinnedBoxBottom: { marginTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border },
   pinnedHint: {
     fontSize: 12,
     lineHeight: 17,
