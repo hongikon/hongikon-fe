@@ -8,6 +8,7 @@ import {
   FlatList,
   Modal,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -209,6 +210,8 @@ export default function MapScreen() {
   /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
   const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
+  const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -274,10 +277,20 @@ export default function MapScreen() {
   );
 
   /** 화면 맞춤 범위 밖이라 눈에 잘 안 띄는 지점 수. 안내 배지에 쓴다. */
-  const offscreenCount = useMemo(
-    () => partnersOutsideFocus(visiblePartners).length,
+  /**
+   * 지도 위 안내 줄(캠퍼스 밖 N곳 등)을 탭하거나 X 로 닫은 기록. 문구 단위로 기억해, 숫자가 바뀌는 등
+   * 내용이 달라지면 다시 보여 준다. 앱을 다시 켜면 초기화된다.
+   */
+  const [dismissedNotices, setDismissedNotices] = useState<ReadonlySet<string>>(() => new Set());
+  const dismissNotice = useCallback((message: string) => {
+    setDismissedNotices((prev) => new Set(prev).add(message));
+  }, []);
+  /** 지금 필터에 걸렸지만 지도 화면 범위 밖이라 핀이 잘 안 보이는 업체들(구로·강남·성수 등). */
+  const offscreenPartners = useMemo(
+    () => partnersOutsideFocus(visiblePartners),
     [visiblePartners],
   );
+  const offscreenCount = offscreenPartners.length;
 
   /**
    * 건물명이 지도 데이터의 건물과 안 맞아 좌표를 못 찾은 편의시설 수.
@@ -1120,30 +1133,32 @@ export default function MapScreen() {
           )}
 
           {reportsEmpty && (
-            <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>
-                {hotOnly ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
-              </Text>
-            </View>
+            <DismissibleNotice
+              message={hotOnly ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
+              dismissed={dismissedNotices}
+              onDismiss={dismissNotice}
+            />
           )}
 
           {unresolvedCount > 0 && (
-            <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>
-                건물을 찾지 못한 편의시설 {unresolvedCount}곳은 지도에서 빠졌어요
-              </Text>
-            </View>
+            <DismissibleNotice
+              message={`건물을 찾지 못한 편의시설 ${unresolvedCount}곳은 지도에서 빠졌어요`}
+              dismissed={dismissedNotices}
+              onDismiss={dismissNotice}
+            />
           )}
 
           {offscreenCount > 0 && (
-            <View style={styles.offscreenNotice}>
-              <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>
-                캠퍼스 밖 {offscreenCount}곳은 제휴 업체 검색에서 볼 수 있어요
-              </Text>
-            </View>
+            <DismissibleNotice
+              message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
+              actionLabel="보기"
+              onPress={() => {
+                setSearchPinned(offscreenPartners);
+                setShowSearch(true);
+              }}
+              dismissed={dismissedNotices}
+              onDismiss={dismissNotice}
+            />
           )}
         </View>
 
@@ -1344,7 +1359,10 @@ export default function MapScreen() {
               <TouchableOpacity
                 style={styles.searchBar}
                 activeOpacity={0.7}
-                onPress={() => setShowSearch(true)}
+                onPress={() => {
+                  setSearchPinned(null);
+                  setShowSearch(true);
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="제휴 업체 검색"
               >
@@ -1550,6 +1568,15 @@ export default function MapScreen() {
         topInset={insets.top}
         onClose={() => setShowSearch(false)}
         onSelect={handleSearchSelect}
+        pinned={
+          searchPinned && searchPinned.length > 0
+            ? {
+                title: `지도에 안 보이는 ${searchPinned.length}곳`,
+                hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
+                partners: searchPinned,
+              }
+            : undefined
+        }
       />
 
       <ReportComposerModal
@@ -1569,6 +1596,57 @@ export default function MapScreen() {
         }}
       />
     </View>
+  );
+}
+
+/** 업체 이름 두 곳까지 보여 주고 나머지는 "외 N곳" 으로 줄인다. */
+function offscreenSummary(partners: readonly Partner[]): string {
+  const names = partners.slice(0, 2).map((partner) => partner.name);
+  const rest = partners.length - names.length;
+  return rest > 0 ? `${names.join(", ")} 외 ${rest}곳` : names.join(", ");
+}
+
+/**
+ * 지도 위 안내 줄. 끝의 X 를 누르면 닫힌다. `onPress` 가 없으면 줄 어디를 눌러도 닫히고,
+ * 있으면(예: 지도에 안 보이는 업체 보기) 줄을 누를 때 그 동작을 한다. 이미 닫은 문구면 그리지 않는다.
+ */
+function DismissibleNotice({
+  message,
+  actionLabel,
+  onPress,
+  dismissed,
+  onDismiss,
+}: {
+  message: string;
+  /** `onPress` 가 있을 때 문구 끝에 붙는 행동 이름(예: '보기'). */
+  actionLabel?: string;
+  onPress?: () => void;
+  dismissed: ReadonlySet<string>;
+  onDismiss: (message: string) => void;
+}) {
+  if (dismissed.has(message)) return null;
+  const dismiss = () => onDismiss(message);
+  return (
+    <Pressable
+      onPress={onPress ?? dismiss}
+      style={({ pressed }) => [styles.offscreenNotice, pressed && styles.noticePressed]}
+      accessibilityRole="button"
+      accessibilityLabel={onPress ? `${message}. ${actionLabel ?? "열기"}` : `${message}. 탭하면 닫혀요`}
+    >
+      <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
+      <Text style={[styles.offscreenText, styles.noticeText]} numberOfLines={1}>
+        {message}
+      </Text>
+      {onPress && actionLabel && <Text style={styles.noticeAction}>{actionLabel}</Text>}
+      <Pressable
+        onPress={dismiss}
+        hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel="안내 닫기"
+      >
+        <Ionicons name="close" size={14} color={COLORS.textSecondary} />
+      </Pressable>
+    </Pressable>
   );
 }
 
@@ -1771,6 +1849,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
+  noticeText: { flexShrink: 1 },
+  noticeAction: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
+  noticePressed: { opacity: 0.6 },
   mapDataNoticeText: { flex: 1, color: COLORS.primary },
   mapDataRetryText: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
   previewNotice: {

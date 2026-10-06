@@ -14,6 +14,7 @@ import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { browsePartnersByCategory, searchPartners } from "../../utils/partnerSearch";
+import { partnersOutsideFocus } from "../../utils/partners";
 import type { Partner, PartnerCategory } from "../../types";
 import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
@@ -28,6 +29,11 @@ interface PartnerSearchModalProps {
   topInset: number;
   onClose: () => void;
   onSelect: (partner: Partner) => void;
+  /**
+   * 검색어가 없을 때 목록 맨 위에 따로 모아 보여 줄 업체들. 지도 위 "지도에 안 보이는 N곳" 안내에서
+   * 열 때 그 업체들을 바로 고르게 하려고 쓴다.
+   */
+  pinned?: { title: string; hint?: string; partners: readonly Partner[] };
 }
 
 /**
@@ -40,6 +46,7 @@ export default function PartnerSearchModal({
   topInset,
   onClose,
   onSelect,
+  pinned,
 }: PartnerSearchModalProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -50,6 +57,19 @@ export default function PartnerSearchModal({
   const hasQuery = query.trim().length > 0;
   // 목록 자체는 검색어와 무관하게 데이터가 바뀔 때만 다시 계산한다.
   const browseSections = useMemo(() => browsePartnersByCategory(partners), [partners]);
+  // 맨 위 "지도에 안 보이는 곳" 묶음. 지도 안내 줄에서 열면 그때 필터에 걸린 업체들,
+  // 검색창으로 열면 캠퍼스에서 멀어 지도 핀이 안 보이는 업체 전체.
+  const farPartners = useMemo(() => partnersOutsideFocus(partners), [partners]);
+  const pinnedGroup =
+    pinned && pinned.partners.length > 0
+      ? pinned
+      : farPartners.length > 0
+        ? {
+            title: `지도에 안 보이는 ${farPartners.length}곳`,
+            hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
+            partners: farPartners,
+          }
+        : null;
   // 접힌 카테고리 집합. 기본은 전부 펼친 상태(빈 집합).
   const [collapsedCategories, setCollapsedCategories] = useState<Set<PartnerCategory>>(
     () => new Set(),
@@ -182,9 +202,23 @@ export default function PartnerSearchModal({
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled
             ListHeaderComponent={
-              <Text style={styles.browseHint}>
-                상호명은 물론 혜택이나 주소로도 찾을 수 있어요. 예: 어리 · 10%할인 · 상수동
-              </Text>
+              <>
+                {pinnedGroup && (
+                  <View style={styles.pinnedBox}>
+                    <View style={styles.sectionHeaderTitle}>
+                      <Ionicons name="navigate-circle-outline" size={20} color={COLORS.primary} />
+                      <Text style={[styles.sectionHeaderText, { color: COLORS.primary }]}>{pinnedGroup.title}</Text>
+                    </View>
+                    {pinnedGroup.hint && <Text style={styles.pinnedHint}>{pinnedGroup.hint}</Text>}
+                    {pinnedGroup.partners.map((partner) => (
+                      <View key={partner.id}>{renderPartnerRow(partner)}</View>
+                    ))}
+                  </View>
+                )}
+                <Text style={styles.browseHint}>
+                  상호명은 물론 혜택이나 주소로도 찾을 수 있어요. 예: 어리 · 10%할인 · 상수동
+                </Text>
+              </>
             }
             renderSectionHeader={({ section }) => {
               const meta = partnerCategoryMeta(section.category);
@@ -229,6 +263,20 @@ const styles = StyleSheet.create({
   header: { paddingRight: 16 },
   searchBar: { flex: 1 },
   hintBox: { minHeight: 200 },
+  pinnedBox: {
+    marginTop: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  pinnedHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: FONTS.regular,
+    color: COLORS.textTertiary,
+    marginTop: 4,
+  },
   browseHint: {
     fontSize: 12,
     lineHeight: 17,
