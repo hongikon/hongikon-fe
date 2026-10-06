@@ -202,14 +202,13 @@ export default function MapScreen() {
   }, [reportsResource.data, hotOnly]);
   // 숨긴 사용자(기기 저장)의 제보는 지도에서 뺀다. 숨기는 순간 마커도 다시 그린다.
   const hiddenAuthorKeys = useHiddenAuthorKeys();
-  const shownReportData = useMemo(
+  const fetchedReportData = useMemo(
     () =>
       reportsResource.data === undefined
         ? undefined
         : withoutHiddenAuthors(reportsResource.data, hiddenAuthorKeys),
     [reportsResource.data, hiddenAuthorKeys],
   );
-  const reports = shownReportData ?? EMPTY_REPORTS;
   /**
    * 지금 들고 있는 제보 목록이 어느 HOT 상태로 받은 것인지. HOT 을 켜고 끄면 새 목록이 오기 전까지 앞 목록이 남아,
    * HOT 목록에 HOT 이 아닌 제보가 잠깐 끼거나 '제보가 없어요' 안내가 반짝였다. 상태가 맞을 때만 목록·안내를 그린다.
@@ -221,6 +220,15 @@ export default function MapScreen() {
     setReportsDataHotOnly(hotOnlyRef.current);
   }, [reportsResource.data]);
   const reportsMatchHot = reportsDataHotOnly === hotOnly;
+  // HOT 을 켰는데 아직 전체 목록뿐이면, HOT 목록이 오기 전에도 HOT 인 제보만 남긴다(HOT 아닌 마커가 잠깐 남았다 사라지지 않게).
+  const shownReportData = useMemo(
+    () =>
+      fetchedReportData !== undefined && hotOnly && !reportsMatchHot
+        ? fetchedReportData.filter((report) => report.hot === true)
+        : fetchedReportData,
+    [fetchedReportData, hotOnly, reportsMatchHot],
+  );
+  const reports = shownReportData ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
