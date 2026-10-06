@@ -1,4 +1,5 @@
 import { Animated, View, Text, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
@@ -23,6 +24,8 @@ interface FacilitySheetProps {
  */
 export default function FacilitySheet({ kind, buildingName, items, onClose }: FacilitySheetProps) {
   const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
+  const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
   const color = meta?.color ?? COLORS.primary;
   const sorted = [...items].sort((a, b) => (b.floor ?? -99) - (a.floor ?? -99));
@@ -30,7 +33,7 @@ export default function FacilitySheet({ kind, buildingName, items, onClose }: Fa
   const { height: windowHeight } = useWindowDimensions();
 
   return (
-    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View
         style={styles.handle}
         {...panHandlers}

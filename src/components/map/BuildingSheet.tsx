@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Animated,
   View,
@@ -35,8 +36,10 @@ export default function BuildingSheet({
   onSetTo,
 }: BuildingSheetProps) {
   const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
+  const insets = useSafeAreaInsets();
   return (
-    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View
         style={styles.handle}
         {...panHandlers}
