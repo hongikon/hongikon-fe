@@ -22,7 +22,9 @@ export function nearestBuildingName(lat: number, lng: number): string | null {
   return best && best.d <= 150 ? best.name : null
 }
 
-export function reportPlaceText(report: Pick<ReportListItem, 'lat' | 'lng' | 'floor'>): string {
+export function reportPlaceText(report: Pick<ReportListItem, 'lat' | 'lng' | 'floor' | 'placeLabel'>): string {
+  // 작성자가 적은(또는 앱이 채운) 장소 설명이 있으면 그대로 쓴다.
+  if (report.placeLabel && report.placeLabel.trim()) return report.placeLabel.trim()
   const building = nearestBuildingName(report.lat, report.lng)
   const floor = typeof report.floor === 'number' ? formatFloor(report.floor) : null
   if (building) return floor ? `${building} ${floor}` : building

@@ -59,6 +59,9 @@ import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import WheelPicker, { type WheelItem } from '../common/WheelPicker'
 import type { Report, ReportCategory } from '../../types'
 
+/** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
+const REPORT_PLACE_MAX_LENGTH = 60
+
 /** 길게 누른 지점. 좌표는 건물로 스냅하지 않은 원본이다. */
 export interface ReportTarget {
   lat: number
@@ -140,6 +143,12 @@ export default function ReportComposerModal({
   const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [customInputOpen, setCustomInputOpen] = useState(false)
   const [title, setTitle] = useState('')
+  /**
+   * 장소 설명. 처음엔 핀 근처 건물로 "제4공학관(T동) 근처"를 보여 주고, 작성자가 고치면 그 글을 쓴다(10-06 요청).
+   * 고치기 전에는 placeEdited=false 라 핀을 옮겨 다시 열어도 새 건물 이름으로 따라간다.
+   */
+  const [placeLabel, setPlaceLabel] = useState('')
+  const [placeEdited, setPlaceEdited] = useState(false)
   const [content, setContent] = useState('')
   /** 언제: 시작(지금/날짜·시간)과 끝(진행 시간/종료 시각). */
   const [schedule, setSchedule] = useState<ReportSchedule>(() => initialReportSchedule(REPORT_DEFAULT_DURATION_HOURS))
@@ -301,6 +310,8 @@ export default function ReportComposerModal({
     setCustomLabelDraft('')
     setCustomInputOpen(false)
     setTitle('')
+    setPlaceLabel('')
+    setPlaceEdited(false)
     setContent('')
     setSchedule(initialReportSchedule(REPORT_DEFAULT_DURATION_HOURS))
     setNow(Date.now())
@@ -346,6 +357,9 @@ export default function ReportComposerModal({
   }
 
   const isCustomActive = category === 'ETC' && trimmedCustomLabel.length > 0
+  /** 핀 근처 건물로 만든 기본 장소 설명. 건물이 없으면 빈칸(좌표는 자리표시로만 보여 준다). */
+  const defaultPlace = target?.buildingName ? `${target.buildingName} 근처` : ''
+  const shownPlace = placeEdited ? placeLabel : defaultPlace
 
   /**
    * 요청 세대. 창을 닫을 때 올려, 닫은 뒤 늦게 끝난 등록 결과가 상태를 건드리지 못하게 한다
@@ -582,6 +596,8 @@ export default function ReportComposerModal({
           lng: target.lng,
           category,
           customCategoryLabel: isCustomActive ? trimmedCustomLabel : undefined,
+          // 지우고 비워 두면 보내지 않는다 — 앱이 좌표로 가까운 건물을 보여 준다.
+          placeLabel: shownPlace.trim() || undefined,
           title: trimmedTitle,
           content: content.trim() || undefined,
           startsAt: startsAt.toISOString(),
@@ -672,16 +688,24 @@ export default function ReportComposerModal({
                       contentContainerStyle={styles.body}
                       keyboardShouldPersistTaps="handled"
                     >
-                      <View style={styles.locationRow}>
+                      {/* 장소 설명: 핀 근처 건물로 채워 두고, 더 정확하게 고칠 수 있다(제보 시트·HOT 목록·공유 문구에 보인다). */}
+                      <View style={styles.placeLabelRow}>
                         <Ionicons name="location" size={15} color={COLORS.primary} />
-                        <Text style={styles.locationText} numberOfLines={1}>
-                          {target?.buildingName
-                            ? `${target.buildingName} 근처`
-                            : target
-                              ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}`
-                              : ''}
-                        </Text>
+                        <Text style={styles.sectionLabelInline}>장소</Text>
                       </View>
+                      <TextField
+                        value={shownPlace}
+                        onChangeText={(value) => {
+                          setPlaceEdited(true)
+                          setPlaceLabel(value)
+                        }}
+                        placeholder={target ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}` : '장소'}
+                        accessibilityLabel="장소 설명"
+                        maxLength={REPORT_PLACE_MAX_LENGTH}
+                      />
+                      <Text style={styles.placeHint}>
+                        {placeEdited ? '직접 고친 장소로 올라가요.' : '핀 위치로 채웠어요. 더 정확하게 고칠 수 있어요(예: T동 1층 로비 앞).'}
+                      </Text>
 
                       {building === null ? (
                         <Animated.View style={[styles.errorBox, styles.buildingBox, buildingFlash]}>
@@ -1041,6 +1065,9 @@ const styles = StyleSheet.create({
   },
   scrollArea: { flex: 1 },
   body: { padding: 16, paddingBottom: 24 },
+  placeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  sectionLabelInline: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.textPrimary },
+  placeHint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary, marginTop: 6, marginBottom: 16 },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
