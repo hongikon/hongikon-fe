@@ -210,6 +210,17 @@ export default function MapScreen() {
     [reportsResource.data, hiddenAuthorKeys],
   );
   const reports = shownReportData ?? EMPTY_REPORTS;
+  /**
+   * 지금 들고 있는 제보 목록이 어느 HOT 상태로 받은 것인지. HOT 을 켜고 끄면 새 목록이 오기 전까지 앞 목록이 남아,
+   * HOT 목록에 HOT 이 아닌 제보가 잠깐 끼거나 '제보가 없어요' 안내가 반짝였다. 상태가 맞을 때만 목록·안내를 그린다.
+   */
+  const hotOnlyRef = useRef(hotOnly);
+  hotOnlyRef.current = hotOnly;
+  const [reportsDataHotOnly, setReportsDataHotOnly] = useState(hotOnly);
+  useEffect(() => {
+    setReportsDataHotOnly(hotOnlyRef.current);
+  }, [reportsResource.data]);
+  const reportsMatchHot = reportsDataHotOnly === hotOnly;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
@@ -317,6 +328,7 @@ export default function MapScreen() {
   /** 제보 레이어를 켰는데 지금 진행 중인 제보가 하나도 없는 상태. */
   const reportsEmpty =
     reportsOn &&
+    reportsMatchHot &&
     reportsResource.data !== undefined &&
     reportsResource.errorMessage === null &&
     reports.length === 0;
@@ -1200,7 +1212,7 @@ export default function MapScreen() {
 
           {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
           {/* 위치를 고르는 동안에는 아래 목록·안내 줄을 모두 숨긴다(고르기 안내 줄과 같은 자리에 겹친다). */}
-          {!pickingLocation && hotOnly && reportsOn && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
+          {!pickingLocation && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
             <HotReportList
               reports={reports}
               selectedId={null}
