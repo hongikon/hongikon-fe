@@ -463,7 +463,7 @@ export default function SettingsScreen() {
               description={
                 keywordScopeOn
                   ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
-                  : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰려도 알림은 30분에 한 번만 와요.'
+                  : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰리면 30분에 한 번 모아서 보내고, 밤 11시~아침 8시엔 쉬었다가 아침에 모아 보내요.'
               }
               last={!showReportKeywords}
               right={

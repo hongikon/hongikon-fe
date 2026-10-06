@@ -21,7 +21,7 @@ interface ReportKeywordAlertsProps {
 }
 
 const SCOPE_OPTIONS: { value: NewReportsScope; label: string; description: string }[] = [
-  { value: 'CAMPUS', label: '전체 제보', description: '캠퍼스 새 제보를 30분에 한 번 모아서 알려드려요' },
+  { value: 'CAMPUS', label: '전체 제보', description: '여러 건이 몰리면 30분에 한 번 모아서, 밤 11시~아침 8시엔 쉬었다가 알려드려요' },
   {
     value: 'KEYWORDS',
     label: '내 키워드가 들어간 제보만',
