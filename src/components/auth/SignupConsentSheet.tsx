@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -18,7 +18,7 @@ interface SignupConsentSheetProps {
   /** 모든 항목을 체크하고 "동의하고 시작하기"를 눌렀을 때. 기록·로그인은 부르는 쪽이 한다. */
   onAgree: () => void
   onClose: () => void
-  /** iOS: 시트가 완전히 내려간 뒤 불린다(Modal onDismiss). 다음 시스템 화면(Apple·카카오 로그인)을 이때 띄운다. */
+  /** 시트가 닫힌 뒤 불린다. 다음 시스템 화면(Apple·카카오 로그인)을 이때 띄운다. */
   onDismiss?: () => void
 }
 
@@ -44,6 +44,23 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
     if (visible) setChecked({ terms: false, privacy: false, age: false })
   }, [visible])
 
+  // 닫히면(보이다가 안 보이게 되면) 바로 onDismiss — 네이티브 창이 아니라 내려가는 애니메이션을 기다릴 것이 없다.
+  const wasVisibleRef = useRef(visible)
+  useEffect(() => {
+    if (wasVisibleRef.current && !visible) onDismiss?.()
+    wasVisibleRef.current = visible
+  }, [visible, onDismiss])
+
+  // Android 뒤로 가기 = 닫기(예전 Modal 의 onRequestClose).
+  useEffect(() => {
+    if (!visible) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose()
+      return true
+    })
+    return () => sub.remove()
+  }, [visible, onClose])
+
   const allChecked = checked.terms && checked.privacy && checked.age
   const toggle = (key: CheckKey) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }))
   const toggleAll = () => {
@@ -58,8 +75,11 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
         ? '카카오 회원번호와 닉네임'
         : '카카오 회원번호·닉네임(Apple 로그인은 사용자 식별자, 공유한 경우 이름)'
 
+  // 네이티브 Modal 을 쓰지 않고 웰컴 화면 위에 덮는 층으로 그린다(10-06). iOS 에서 Modal 이 내려가는 사이에
+  // Apple 로그인 창(ASAuthorizationController)이 떠, 로그인 뒤 보이지 않는 Modal 창이 남아 화면 전체가 터치를 받지 않았다.
+  if (!visible) return null
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onDismiss={onDismiss}>
+    <View style={StyleSheet.absoluteFill}>
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="닫기" accessibilityRole="button" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, SPACING.lg) }]} accessibilityViewIsModal>
@@ -118,10 +138,10 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
         </View>
       </View>
 
-      {/* 시트(Modal) 안에서 연 약관·처리방침 전문은 시트 위에 겹쳐 뜬다. */}
+      {/* 약관·처리방침 전문은 시트 위에 겹쳐 뜬다(이 둘은 Modal 이지만 로그인 창을 띄우기 전에 닫힌다). */}
       <TermsModal visible={legal === 'terms'} onClose={() => setLegal(null)} />
       <PrivacyModal visible={legal === 'privacy'} onClose={() => setLegal(null)} />
-    </Modal>
+    </View>
   )
 }
 
