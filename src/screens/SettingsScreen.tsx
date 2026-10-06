@@ -31,6 +31,9 @@ import OfficialRequestModal from '../components/settings/OfficialRequestModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
+import ReportKeywordAlerts from '../components/settings/ReportKeywordAlerts'
+import { useReportKeywordAlerts } from '../hooks/useReportKeywordAlerts'
+import { isReportKeywordsMock } from '../apis/reportKeywords'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
 import MyReportsModal from '../components/settings/MyReportsModal'
@@ -224,6 +227,15 @@ export default function SettingsScreen() {
   // 관리자 알림 스위치 — 관리자 계정에만, 서버가 이 설정을 알 때만(모르면 숨김) 보인다.
   const isAdmin = useIsAdmin()
   const adminAlert = useAdminAlertSetting(isAdmin)
+  // 새 제보 알림 범위·제보 키워드. 로그인 + 스위치 켜짐일 때만 불러와 보여 준다.
+  // 개발 웹 `?mock=1` 에선 로그인 없이도 목업으로 보여 준다(운영 빌드는 늘 false).
+  const [reportKeywordMock] = useState(isReportKeywordsMock)
+  const showReportKeywords = newReportAlert || reportKeywordMock
+  const reportKeywords = useReportKeywordAlerts(
+    showReportKeywords,
+    reportKeywordMock && !accessToken ? 'mock' : accessToken,
+  )
+  const keywordScopeOn = showReportKeywords && reportKeywords.status === 'ready' && reportKeywords.scope === 'KEYWORDS'
 
   // 앱 닉네임. 백엔드에 API 가 아직 없으면(배포 전) 줄을 숨긴다.
   // 토큰은 ref 로 읽는다. deps 에 넣으면 401 → 재발급으로 토큰이 바뀔 때마다 다시 불러, 배포 전 서버(없는 경로에 401)에서
@@ -448,8 +460,12 @@ export default function SettingsScreen() {
             <ListRow
               icon="megaphone-outline"
               label="캠퍼스 새 제보 알림"
-              description="운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰려도 알림은 30분에 한 번만 와요."
-              last
+              description={
+                keywordScopeOn
+                  ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
+                  : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰려도 알림은 30분에 한 번만 와요.'
+              }
+              last={!showReportKeywords}
               right={
                 <ToggleSwitch
                   value={newReportAlert}
@@ -459,6 +475,17 @@ export default function SettingsScreen() {
                 />
               }
             />
+            {showReportKeywords && (
+              <ReportKeywordAlerts
+                status={reportKeywords.status}
+                scope={reportKeywords.scope}
+                keywords={reportKeywords.keywords}
+                onRetry={reportKeywords.retry}
+                onChangeScope={reportKeywords.changeScope}
+                onAdd={reportKeywords.addKeyword}
+                onRemove={reportKeywords.removeKeyword}
+              />
+            )}
           </View>
           {isAdmin && adminAlert.state.status !== 'unsupported' && (
             <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
