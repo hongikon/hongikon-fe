@@ -371,6 +371,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <ReportContentModal
         report={contentOpen ? report : null}
         placeText={reportPlaceText(report, buildings)}
+        onPatch={applyPatch}
         onClose={() => setContentOpen(false)}
       />
     </View>

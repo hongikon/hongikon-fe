@@ -8,20 +8,27 @@ import { formatFreshness, reportImageUrls } from '../../utils/reports'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import ModalHeader from '../settings/ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import OfficialBadge from '../common/OfficialBadge'
+import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
+import ReportCommentsSection from './comments/ReportCommentsSection'
+import { reportAuthorName } from '../../utils/nickname'
 import type { ReportListItem } from '../../types'
 
 interface ReportContentModalProps {
   report: ReportListItem | null
   /** 장소 문구(시트와 같은 값 — 작성자가 고친 장소 설명, 없으면 가까운 건물). */
   placeText: string
+  /** 공감·관심·조회 수 변화를 지도 시트 사본에도 반영한다(시트와 같은 applyPatch). */
+  onPatch: (patch: ReportCommunityPatch) => void
   onClose: () => void
 }
 
 /**
  * 제보 본문 전체 보기. 지도 시트에는 본문을 두 줄만 보여 주고, '본문 보기'를 누르면 이 창이
  * 화면 전체(아래 탭 막대까지 덮음)로 올라와 학생회 공지처럼 긴 안내도 편하게 읽게 한다. 본문은 길게 눌러 복사할 수 있다.
+ * 게시글처럼 본문 아래에 공감·관심·공유, 작성자, 댓글(미리보기 → 전체 댓글 창)을 시트와 똑같이 붙인다.
  */
-export default function ReportContentModal({ report, placeText, onClose }: ReportContentModalProps) {
+export default function ReportContentModal({ report, placeText, onPatch, onClose }: ReportContentModalProps) {
   const visible = report !== null
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -29,7 +36,7 @@ export default function ReportContentModal({ report, placeText, onClose }: Repor
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
             <ModalHeader title="제보 본문" onClose={onClose} />
-            {report && <Body report={report} placeText={placeText} />}
+            {report && <Body report={report} placeText={placeText} onPatch={onPatch} />}
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -37,7 +44,15 @@ export default function ReportContentModal({ report, placeText, onClose }: Repor
   )
 }
 
-function Body({ report, placeText }: { report: ReportListItem; placeText: string }) {
+function Body({
+  report,
+  placeText,
+  onPatch,
+}: {
+  report: ReportListItem
+  placeText: string
+  onPatch: (patch: ReportCommunityPatch) => void
+}) {
   const meta = reportCategoryMeta(report.category)
   const photos = reportImageUrls(report)
   return (
@@ -75,6 +90,17 @@ function Body({ report, placeText }: { report: ReportListItem; placeText: string
           ))}
         </View>
       )}
+
+      <View style={styles.authorRow}>
+        <Text style={styles.author} numberOfLines={1}>
+          {reportAuthorName(report)}
+        </Text>
+        {report.authorOfficial ? <OfficialBadge /> : null}
+      </View>
+
+      <ReportActionRow report={report} onPatch={onPatch} />
+
+      <ReportCommentsSection key={report.id} report={report} />
     </ScrollView>
   )
 }
@@ -101,5 +127,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 16 },
   content: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 24, color: COLORS.textPrimary },
   photos: { gap: 10, marginTop: 20 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 20 },
+  author: { flexShrink: 1, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: COLORS.fill },
 })
