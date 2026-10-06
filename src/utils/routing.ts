@@ -53,7 +53,7 @@ function addEdge(graph: Graph, aId: string, aPoint: RoutePoint, bId: string, bPo
  * '건물명' 또는 '건물명#출입구라벨' 문자열이다. 못 찾으면 null — 오타가 있는
  * 간선은 조용히 건너뛴다(전체 그래프를 무너뜨리지 않는다).
  */
-function resolveRef(
+export function resolveRef(
   ref: string,
   waypointById: Map<string, { id: string; lat: number; lng: number }>,
   buildings: readonly Building[],

@@ -17,7 +17,7 @@ import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
-import { TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
+import { DevPathAuditEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
@@ -72,7 +72,7 @@ function WebDocumentTitleBridge() {
  * 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
  * (`SHOW_DEVELOPER_TOOLS`). 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit'
 
 const tempDebugMode: TempDebugMode | null =
   SHOW_DEVELOPER_TOOLS && Platform.OS === 'web' && typeof window !== 'undefined'
@@ -82,6 +82,8 @@ const tempDebugMode: TempDebugMode | null =
         if (path === '/temp/path') return 'paths'
         if (path === '/temp/path-nodes') return 'nodes'
         if (path === '/temp/notifications') return 'notifications'
+        // `/dev/path` = 경로망 점검(빠진 지점·끊긴 간선·망에 안 닿은 건물을 목록과 지도 점으로).
+        if (path === '/dev/path') return 'pathAudit'
         return null
       })()
     : null
@@ -163,7 +165,15 @@ export default function App() {
     )
   }
 
-  if (tempDebugMode && tempDebugMode !== 'notifications' && TempEntranceDebugEntry) {
+  if (tempDebugMode === 'pathAudit' && DevPathAuditEntry) {
+    return (
+      <Suspense fallback={null}>
+        <DevPathAuditEntry />
+      </Suspense>
+    )
+  }
+
+  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && TempEntranceDebugEntry) {
     return (
       <Suspense fallback={null}>
         <TempEntranceDebugEntry mode={tempDebugMode} />
