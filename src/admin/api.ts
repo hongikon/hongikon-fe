@@ -4,6 +4,8 @@ import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import { refreshMapData } from '../lib/mapData'
 import type {
   AdminBuildingOption,
+  AdminExhibition,
+  AdminExhibitionInput,
   AdminFacility,
   AdminFacilityInput,
   AdminPartner,
@@ -376,7 +378,7 @@ export function updateFeedbackStatus(feedbackId: number, status: FeedbackStatus)
   })
 }
 
-// ── 지도 데이터: 제휴업체·편의시설 ─────────────────────────────────────
+// ── 지도 데이터: 제휴업체·편의시설·전시 ─────────────────────────────────────
 // 서버는 쓰기에 성공하면 지도 데이터(`GET /map/data`) 캐시를 바로 비운다. 앱 관리 탭이면 이 기기의 지도 데이터도
 // 곧바로 새로 받아(ETag 로 바뀐 경우만) 지도에 반영한다. 쓰기는 POST/PUT/DELETE 모두 자동 재시도하지 않는다.
 
@@ -428,6 +430,27 @@ export async function updateAdminFacility(code: string, input: AdminFacilityInpu
 
 export async function deleteAdminFacility(code: string): Promise<void> {
   await adminRequest<void>(`/admin/map/facilities/${encodeURIComponent(code)}`, { method: 'DELETE', retries: 0 })
+  afterMapWrite(undefined)
+}
+
+/** 전시 전체(끝난 것 포함). 앱 지도에는 서버가 끝나지 않았고 60일 안에 시작하는 것만 내려 준다. */
+export async function fetchAdminExhibitions(signal?: AbortSignal): Promise<AdminExhibition[]> {
+  const response = await adminRequest<{ exhibitions: AdminExhibition[] }>('/admin/map/exhibitions', { signal })
+  return response?.exhibitions ?? []
+}
+
+export async function createAdminExhibition(input: AdminExhibitionInput): Promise<AdminExhibition> {
+  return afterMapWrite(await adminRequest<AdminExhibition>('/admin/map/exhibitions', { method: 'POST', body: input, retries: 0 }))
+}
+
+export async function updateAdminExhibition(id: number, input: AdminExhibitionInput): Promise<AdminExhibition> {
+  return afterMapWrite(
+    await adminRequest<AdminExhibition>(`/admin/map/exhibitions/${id}`, { method: 'PUT', body: input, retries: 0 }),
+  )
+}
+
+export async function deleteAdminExhibition(id: number): Promise<void> {
+  await adminRequest<void>(`/admin/map/exhibitions/${id}`, { method: 'DELETE', retries: 0 })
   afterMapWrite(undefined)
 }
 

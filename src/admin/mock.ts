@@ -3,8 +3,10 @@ import type { MockMode } from './session'
 import { PARTNER_AFFILIATIONS } from '../constants/partnerAffiliations'
 import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { FACILITY_KINDS } from '../constants/facilityKinds'
+import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
 import type {
   AdminBuildingOption,
+  AdminExhibition,
   AdminFacility,
   AdminPartner,
   AdminComment,
@@ -342,7 +344,7 @@ function overview(): AdminOverview {
   }
 }
 
-// ── 지도 데이터(제휴업체·편의시설) ─────────────────────────────────────
+// ── 지도 데이터(제휴업체·편의시설·전시) ─────────────────────────────────────
 // 화면 확인용 예시다. 업체 이름·좌표는 실제 가게가 아니다(실데이터는 서버 DB 에만 있다).
 
 const mapBuildings: AdminBuildingOption[] = [
@@ -352,6 +354,7 @@ const mapBuildings: AdminBuildingOption[] = [
   { id: 9, code: 'hongik_g', name: '학생회관 G동' },
   { id: 19, code: 'hongik_t', name: '제4공학관 T동' },
   { id: 20, code: 'hongik_b', name: '인문사회관 B동' },
+  { id: 27, code: 'hongik_mh', name: '문헌관 MH동' },
 ]
 
 const mapPartners: AdminPartner[] = [
@@ -403,7 +406,34 @@ const mapFacilities: AdminFacility[] = [
     lat: 37.5506,
     lng: 126.9258,
   },
+  { id: 'hi-mh-4f-exhibition', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 4, note: '현대미술관(HoMA) 1관' },
+  { id: 'hi-r-2f-exhibition', kind: '행사·전시', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 2, note: '현대미술관(HoMA) 2관' },
+  { id: 'hi-mh-3f-museum', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 3, note: '박물관' },
 ]
+
+/** 오늘(한국 날짜)에서 offset 일 뒤 'YYYY-MM-DD'. 목업 전시가 늘 지금·다음·지난 전시로 보이게 오늘 기준으로 만든다. */
+function mockYmd(offset: number): string {
+  return new Date((kstTodayIndex() + offset) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+const mapExhibitions: AdminExhibition[] = [
+  {
+    id: 1,
+    facilityId: 'hi-mh-4f-exhibition',
+    title: '목업 전시: 회화과 졸업작품전',
+    startsOn: mockYmd(-2),
+    endsOn: mockYmd(3),
+    hours: '10:00~18:00 (일 휴관)',
+    description:
+      '회화과 졸업 예정자들의 작품을 한자리에 모은 전시입니다. 유화·수채·혼합 매체 작품 80여 점을 선보이며, 작가와의 대화가 매일 오후 4시에 열립니다.',
+    link: { label: '전시 안내', url: 'https://example.com/exhibition' },
+  },
+  { id: 2, facilityId: 'hi-mh-4f-exhibition', title: '목업 전시: 판화과 정기전', startsOn: mockYmd(5), endsOn: mockYmd(12) },
+  { id: 3, facilityId: 'hi-mh-4f-exhibition', title: '목업 전시: 조소과 기획전', startsOn: mockYmd(20), endsOn: mockYmd(30) },
+  { id: 4, facilityId: 'hi-r-2f-exhibition', title: '목업 전시: 시각디자인 포트폴리오전', startsOn: mockYmd(3), endsOn: mockYmd(9), hours: '10:00~17:00' },
+  { id: 5, facilityId: 'hi-r-2f-exhibition', title: '목업 전시: 지난 학기 동문전', startsOn: mockYmd(-30), endsOn: mockYmd(-20) },
+]
+let nextExhibitionId = 6
 
 const PARTNER_CATEGORY_KEYS: readonly string[] = PARTNER_CATEGORIES.map((meta) => meta.key)
 const FACILITY_KIND_KEYS: readonly string[] = FACILITY_KINDS.map((meta) => meta.key)
@@ -475,6 +505,55 @@ function facilityFromBody(body: Record<string, unknown>, id: string): AdminFacil
   }
 }
 
+/** 서버 검증 규칙(전시 계약)과 같은 조건. */
+function exhibitionFromBody(body: Record<string, unknown>, id: number): AdminExhibition {
+  const venue = mapFacilities.find((f) => f.id === body.facilityId)
+  if (!venue || venue.kind !== '행사·전시') throw badRequest('전시장은 행사·전시 시설이어야 해요.')
+  const title = typeof body.title === 'string' ? body.title.trim() : ''
+  if (title.length < 1 || title.length > 200) throw badRequest('전시 제목은 1~200자로 입력해 주세요.')
+  const start = typeof body.startsOn === 'string' ? ymdToDayIndex(body.startsOn) : null
+  const end = typeof body.endsOn === 'string' ? ymdToDayIndex(body.endsOn) : null
+  if (start === null || end === null) throw badRequest('날짜는 YYYY-MM-DD 형식으로 입력해 주세요.')
+  if (end < start) throw badRequest('종료일은 시작일과 같거나 뒤여야 해요.')
+  const link = body.link as { label?: unknown; url?: unknown } | undefined
+  if (link && (typeof link.url !== 'string' || !link.url.startsWith('https://'))) throw badRequest('링크는 https:// 로 시작해야 해요.')
+  return {
+    id,
+    facilityId: venue.id,
+    title,
+    startsOn: body.startsOn as string,
+    endsOn: body.endsOn as string,
+    hours: optionalText(body.hours, '관람 시간', 100),
+    description: optionalText(body.description, '설명', 2000),
+    link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
+  }
+}
+
+function handleExhibitionRequest(method: string, pathname: string, body: Record<string, unknown>): unknown | undefined {
+  const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+  if (method === 'GET' && pathname === '/admin/map/exhibitions') return { exhibitions: copy(mapExhibitions) }
+  if (method === 'POST' && pathname === '/admin/map/exhibitions') {
+    const created = exhibitionFromBody(body, nextExhibitionId)
+    nextExhibitionId += 1
+    mapExhibitions.push(created)
+    return copy(created)
+  }
+  const match = pathname.match(/^\/admin\/map\/exhibitions\/(\d+)$/)
+  if (!match) return undefined
+  const index = mapExhibitions.findIndex((item) => item.id === Number(match[1]))
+  if (index < 0) throw notFound()
+  if (method === 'PUT') {
+    const updated = exhibitionFromBody(body, mapExhibitions[index].id)
+    mapExhibitions[index] = updated
+    return copy(updated)
+  }
+  if (method === 'DELETE') {
+    mapExhibitions.splice(index, 1)
+    return undefined
+  }
+  return undefined
+}
+
 function handleMapRequest(
   method: string,
   pathname: string,
@@ -486,6 +565,7 @@ function handleMapRequest(
   if (method === 'GET' && pathname === '/admin/map/buildings') return { buildings: copy(mapBuildings) }
   if (method === 'GET' && pathname === '/admin/map/partners') return { partners: copy(mapPartners) }
   if (method === 'GET' && pathname === '/admin/map/facilities') return { facilities: copy(mapFacilities) }
+  if (pathname.startsWith('/admin/map/exhibitions')) return handleExhibitionRequest(method, pathname, body)
 
   const isPartner = pathname.startsWith('/admin/map/partners')
   const isFacility = pathname.startsWith('/admin/map/facilities')

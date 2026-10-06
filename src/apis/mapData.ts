@@ -1,5 +1,5 @@
 import { apiGetRaw } from './client'
-import type { Building, Facility, Partner } from '../types'
+import type { Building, Exhibition, Facility, Partner } from '../types'
 
 /**
  * 지도 데이터(건물·편의시설·제휴업체) 한 벌. `GET /map/data` 응답(비로그인 허용).
@@ -12,6 +12,10 @@ export interface MapData {
   buildings: Building[]
   facilities: Facility[]
   partners: Partner[]
+  /**
+   * 전시('행사·전시' 시설). 2026-10 에 늘어난 필드라 예전 서버·기기 저장본에는 없다 — 그럴 땐 빈 배열.
+   */
+  exhibitions: Exhibition[]
 }
 
 export type FetchMapDataResult =
@@ -23,6 +27,10 @@ const MAP_DATA_TIMEOUT_MS = 8_000
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isYmd(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
 function arrayOf(value: unknown): unknown[] {
@@ -58,11 +66,21 @@ export function normalizeMapData(raw: unknown): MapData {
       isFiniteNumber((p as Partner).lat) &&
       isFiniteNumber((p as Partner).lng),
   )
+  const exhibitions = arrayOf(body.exhibitions).filter(
+    (e): e is Exhibition =>
+      !!e &&
+      isFiniteNumber((e as Exhibition).id) &&
+      typeof (e as Exhibition).facilityId === 'string' &&
+      typeof (e as Exhibition).title === 'string' &&
+      isYmd((e as Exhibition).startsOn) &&
+      isYmd((e as Exhibition).endsOn),
+  )
   return {
     version: typeof body.version === 'string' ? body.version : '',
     buildings,
     facilities,
     partners,
+    exhibitions,
   }
 }
 

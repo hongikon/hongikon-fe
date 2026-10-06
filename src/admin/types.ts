@@ -1,4 +1,4 @@
-import type { Facility, FacilityKind, Partner, ReportCategory } from '../types'
+import type { Exhibition, Facility, FacilityKind, Partner, ReportCategory } from '../types'
 
 /**
  * 관리자 API 응답 타입. 계약은 백엔드 `feat/admin-console` 의 관리자 API 스펙을 따른다.
@@ -205,6 +205,7 @@ export type AdminSection =
   | 'feedback'
   | 'partners'
   | 'facilities'
+  | 'exhibitions'
   | 'tools'
 
 // ── 지도 데이터(제휴업체·편의시설) 관리 — `GET/POST/PUT/DELETE /admin/map/*` ──────────────
@@ -230,6 +231,12 @@ export interface AdminFacilityInput {
   lat?: number
   lng?: number
 }
+
+/** 전시. `GET /map/data` 의 exhibition 과 같은 모양이고, 관리 목록에는 끝난 전시도 온다. */
+export type AdminExhibition = Exhibition
+
+/** 추가·수정 요청 본문. `facilityId` 는 '행사·전시' 시설 코드여야 한다(아니면 서버가 400). */
+export type AdminExhibitionInput = Omit<Exhibition, 'id'>
 
 /** 편의시설이 속한 건물을 고를 때 쓰는 목록(`GET /admin/map/buildings`). name 은 표시 이름. */
 export interface AdminBuildingOption {
