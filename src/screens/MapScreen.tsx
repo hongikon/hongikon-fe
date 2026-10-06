@@ -1948,7 +1948,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
-  noticeText: { flexShrink: 1 },
+  // 문구가 남는 폭을 다 써서 X(와 보기)를 줄 오른쪽 끝에 붙인다.
+  noticeText: { flex: 1 },
   noticeAction: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
   noticePressed: { opacity: 0.6 },
   mapDataNoticeText: { flex: 1, color: COLORS.primary },
