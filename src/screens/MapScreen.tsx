@@ -64,6 +64,7 @@ import {
 import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
+import { withExhibitionHints } from "../utils/exhibitions";
 import type {
   Building,
   FacilityKind,
@@ -265,6 +266,7 @@ export default function MapScreen() {
     buildings,
     facilities,
     partners: allPartners,
+    exhibitions,
     data: mapData,
     status: mapDataStatus,
     reload: reloadMapData,
@@ -755,9 +757,12 @@ export default function MapScreen() {
         postToMap({ type: "clearFacilities" });
         return;
       }
-      postToMap({ type: "setFacilities", markers: facilityMarkers(facilities, buildings, next) });
+      postToMap({
+        type: "setFacilities",
+        markers: withExhibitionHints(facilityMarkers(facilities, buildings, next), facilities, exhibitions),
+      });
     },
-    [facilities, buildings, postToMap],
+    [facilities, buildings, exhibitions, postToMap],
   );
 
   /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
@@ -824,7 +829,10 @@ export default function MapScreen() {
       reassertPartnerSelection(partners);
     }
     if (facilityKind !== null) {
-      postToMap({ type: "setFacilities", markers: facilityMarkers(facilities, buildings, facilityKind) });
+      postToMap({
+        type: "setFacilities",
+        markers: withExhibitionHints(facilityMarkers(facilities, buildings, facilityKind), facilities, exhibitions),
+      });
     }
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
@@ -840,7 +848,7 @@ export default function MapScreen() {
       setPickerCenter(null);
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
-  }, [mapData, allPartners, facilities, buildings, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
+  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
 
   /**
    * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
@@ -857,7 +865,14 @@ export default function MapScreen() {
       reassertPartnerSelection(partners);
     }
     if (facilityKind !== null) {
-      postToMap({ type: "setFacilities", markers: facilityMarkers(mapData.facilities, mapData.buildings, facilityKind) });
+      postToMap({
+        type: "setFacilities",
+        markers: withExhibitionHints(
+          facilityMarkers(mapData.facilities, mapData.buildings, facilityKind),
+          mapData.facilities,
+          mapData.exhibitions,
+        ),
+      });
     }
     // 고른 건물·업체 배너는 새 데이터의 같은 항목으로 바꾼다(없어졌으면 닫는다).
     setSelectedBuilding((prev) => (prev ? mapData.buildings.find((b) => b.name === prev.name) ?? null : prev));
@@ -1469,6 +1484,7 @@ export default function MapScreen() {
               items={facilities.filter(
                 (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
               )}
+              exhibitions={exhibitions}
               onClose={() => setSelectedFacilityBuilding(null)}
             />
           )}

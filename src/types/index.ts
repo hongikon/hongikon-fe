@@ -135,6 +135,23 @@ export interface Facility {
 }
 
 /**
+ * '행사·전시' 시설(현대미술관 1관·2관, 박물관 …)에서 열리는 전시 하나. `GET /map/data` 의 `exhibitions`.
+ * 서버가 이미 끝나지 않았고 60일 안에 시작하는 것만 골라 준다. 날짜는 한국 날짜 'YYYY-MM-DD' 이고 양끝을 포함한다.
+ */
+export interface Exhibition {
+  id: number
+  /** 전시가 열리는 시설의 `Facility.id`(예: 'hi-mh-4f-exhibition'). */
+  facilityId: string
+  title: string
+  startsOn: string
+  endsOn: string
+  /** '10:00~18:00 (일 휴관)' 처럼 자유 문구. */
+  hours?: string
+  description?: string
+  link?: ExternalLink
+}
+
+/**
  * 제휴를 맺은 주체. 필터 1단(위쪽 칩 줄)에 해당한다.
  * 유니온에 적은 순서가 곧 칩 순서다.
  */

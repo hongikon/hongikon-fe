@@ -18,6 +18,7 @@ import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
+import ExhibitionsScreen from './screens/ExhibitionsScreen'
 
 /**
  * 웹 관리자 콘솔(`/admin`). App.tsx 가 경로를 보고 앱의 AuthProvider/내비게이션을
@@ -45,6 +46,7 @@ const SECTION_PATHS: Record<AdminSection, string> = {
   feedback: '/admin/feedback',
   partners: '/admin/partners',
   facilities: '/admin/facilities',
+  exhibitions: '/admin/exhibitions',
   tools: '/admin/tools',
 }
 
@@ -56,6 +58,7 @@ const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<ty
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
   { section: 'facilities', label: '편의시설', icon: 'business-outline' },
+  { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
@@ -303,6 +306,7 @@ export default function AdminApp() {
   else if (section === 'feedback') content = <FeedbackScreen onChanged={refreshOverview} overview={overview} />
   else if (section === 'partners') content = <PartnersScreen />
   else if (section === 'facilities') content = <FacilitiesScreen />
+  else if (section === 'exhibitions') content = <ExhibitionsScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />
   else content = <DashboardScreen overview={overviewState} onNavigate={navigate} />
 

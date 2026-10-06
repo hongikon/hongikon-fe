@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { fetchMapData, normalizeMapData, type MapData } from '../apis/mapData'
 import { isCancelledError } from '../apis/client'
 import { onReconnect } from './connectivity'
-import type { Building, Facility, Partner } from '../types'
+import type { Building, Exhibition, Facility, Partner } from '../types'
 
 /**
  * 지도 데이터(건물·편의시설·제휴업체) 앱 전역 저장소. 앱 시작 때 한 번 불러온다(`initMapData`, App.tsx).
@@ -160,7 +160,7 @@ export function reloadMapData(): void {
 }
 
 /**
- * 관리자 화면에서 제휴업체·편의시설을 고친 뒤 부른다. 이 실행에서 지도 데이터를 쓰고 있을 때만(앱 관리 탭) 서버에 다시 묻는다
+ * 관리자 화면에서 제휴업체·편의시설·전시를 고친 뒤 부른다. 이 실행에서 지도 데이터를 쓰고 있을 때만(앱 관리 탭) 서버에 다시 묻는다
  * — 웹 관리자 콘솔(`/admin`)은 지도를 그리지 않아 받지 않는다.
  */
 export function refreshMapData(): void {
@@ -171,6 +171,7 @@ export function refreshMapData(): void {
 const EMPTY_BUILDINGS: Building[] = []
 const EMPTY_FACILITIES: Facility[] = []
 const EMPTY_PARTNERS: Partner[] = []
+const EMPTY_EXHIBITIONS: Exhibition[] = []
 
 export interface UseMapDataResult {
   status: MapDataStatus
@@ -179,6 +180,8 @@ export interface UseMapDataResult {
   buildings: Building[]
   facilities: Facility[]
   partners: Partner[]
+  /** 전시. 예전 서버·저장본에는 없어 빈 배열. */
+  exhibitions: Exhibition[]
   reload: () => void
 }
 
@@ -190,6 +193,7 @@ export function useMapData(): UseMapDataResult {
     buildings: current.data?.buildings ?? EMPTY_BUILDINGS,
     facilities: current.data?.facilities ?? EMPTY_FACILITIES,
     partners: current.data?.partners ?? EMPTY_PARTNERS,
+    exhibitions: current.data?.exhibitions ?? EMPTY_EXHIBITIONS,
     reload: reloadMapData,
   }
 }
