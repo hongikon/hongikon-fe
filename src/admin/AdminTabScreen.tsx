@@ -15,6 +15,7 @@ import type { AdminSection } from './types'
 import { ADMIN_COLORS, AdminHostProvider, AdminScrollProvider, type AdminScrollHandle } from './ui'
 import DashboardScreen from './screens/DashboardScreen'
 import ReportsScreen from './screens/ReportsScreen'
+import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
@@ -28,6 +29,7 @@ import ToolsScreen from './screens/ToolsScreen'
 const SECTIONS: { section: AdminSection; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { section: 'dashboard', label: '대시보드', icon: 'speedometer-outline' },
   { section: 'reports', label: '제보 검토', icon: 'flag-outline' },
+  { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
@@ -115,12 +117,14 @@ export default function AdminTabScreen() {
     if (!data) return 0
     if (item === 'reports') return data.reports.pending
     if (item === 'feedback') return data.feedback.open
+    if (item === 'comments') return data.comments?.flaggedPending ?? 0
     return 0
   }
 
   const reportFocus = focus?.intent.section === 'reports' ? focus.intent : null
   const feedbackFocus = focus?.intent.section === 'feedback' ? focus.intent : null
   const usersFocus = focus?.intent.section === 'users' ? focus.intent : null
+  const commentsFocus = focus?.intent.section === 'comments' ? focus.intent : null
 
   let content
   if (section === 'reports')
@@ -131,6 +135,15 @@ export default function AdminTabScreen() {
         overview={data}
         initialFilter={reportFocus?.reportFilter}
         focusReportId={reportFocus?.reportId ?? null}
+      />
+    )
+  else if (section === 'comments')
+    content = (
+      <FlaggedCommentsScreen
+        key={commentsFocus ? focus?.key : 'comments'}
+        onChanged={refresh}
+        overview={data}
+        focusCommentId={commentsFocus?.commentId ?? null}
       />
     )
   else if (section === 'users')

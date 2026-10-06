@@ -5,6 +5,7 @@ import { navigationRef } from '../navigation/navigationRef'
  * 관리자 알림(ADMIN_*, 승인 대기 리마인드 ADMIN_REPORT_REMINDER 포함)을 탭했을 때 관리 탭에 넘기는 한 번짜리 요청 — `mapIntents` 와 같은 방식.
  * - reports: 제보 검토 섹션을 그 필터(승인 대기 / 숨김)로 열고, reportId 가 있으면 그 제보를 맨 위에 강조한다.
  * - feedback: 문의 섹션을 열고, feedbackId 가 있으면 그 문의를 맨 위에 강조한다.
+ * - comments: 신고 댓글 섹션을 열고, commentId 가 있으면 그 댓글을 맨 위에 강조한다(ADMIN_COMMENT_FLAGGED).
  *
  * 관리 탭(`AdminTabScreen`)이 포커스될 때(또는 이미 떠 있으면 바로) 꺼내(consume) 처리한다.
  * 관리자인지 아직 모를 때(콜드 스타트 — 관리 탭은 서버 확인 뒤에 붙는다)는 `AdminAccessProvider` 가
@@ -14,6 +15,7 @@ import { navigationRef } from '../navigation/navigationRef'
 export type AdminIntent =
   | { section: 'reports'; reportFilter: 'PENDING' | 'HIDDEN'; reportId: number | null }
   | { section: 'feedback'; feedbackId: number | null }
+  | { section: 'comments'; commentId: number | null }
   /** 정지 이력 회원 재가입(ADMIN_MEMBER_REJOINED) — 회원 화면을 그 회원 id 로 검색해 연다. */
   | { section: 'users'; userId: number | null }
   /** 웹에서 관리 탭 주소(`/manage`)로 새로고침·진입 — 관리 탭만 연다(섹션은 관리 탭이 이 탭에서 마지막으로 본 곳으로 연다). */

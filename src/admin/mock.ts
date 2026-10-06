@@ -4,6 +4,7 @@ import type {
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
+  AdminFlaggedComment,
   AdminLoginName,
   AdminUser,
   AdminOverview,
@@ -220,7 +221,42 @@ const comments: AdminComment[] = [
     authorDisplayName: '와우산고양이', createdAt: at(-10),
   }),
   baseComment({ id: 105, reportId: 27, content: '신청곡 받나요?', createdAt: at(-5) }),
+  baseComment({
+    id: 106, reportId: 27, content: '이 버스킹 팀 별로던데 다들 왜 봄?', authorId: 31,
+    authorDisplayName: '붕어빵헌터', flagCount: 1, flagReasons: { INAPPROPRIATE: 1 }, createdAt: at(-4),
+  }),
+  baseComment({
+    id: 107, reportId: 25, parentId: 102, content: '자리 남았어요! 오픈채팅 들어오세요', authorId: 12,
+    authorDisplayName: '광고봇', flagCount: 2, flagReasons: { SPAM: 2 }, createdAt: at(-3),
+  }),
 ]
+
+/**
+ * 마지막 관리자 검토 뒤 들어온 신고(댓글 id → 수·마지막 신고 시각). 서버의 "신고된 댓글" 조건과 같게 쓴다 —
+ * 하나라도 있으면 목록에 오르고, PATCH(어떤 상태든)로 검토하면 비운다.
+ */
+const pendingCommentFlags: Record<number, { count: number; lastAt: string }> = {
+  103: { count: 3, lastAt: at(-12) },
+  106: { count: 1, lastAt: at(-2) },
+  107: { count: 2, lastAt: at(-1) },
+}
+
+function flaggedCommentList(): { comments: AdminFlaggedComment[]; total: number } {
+  const list = comments
+    .filter((comment) => comment.status !== 'DELETED' && (pendingCommentFlags[comment.id]?.count ?? 0) > 0)
+    .sort((a, b) => pendingCommentFlags[b.id].lastAt.localeCompare(pendingCommentFlags[a.id].lastAt))
+    .map((comment) => {
+      const report = reports.find((item) => item.id === comment.reportId)
+      return {
+        ...commentResponse(comment),
+        reportTitle: report?.title ?? `제보 #${comment.reportId}`,
+        reportStatus: report?.status ?? 'ACTIVE',
+        pendingFlagCount: pendingCommentFlags[comment.id].count,
+        lastFlaggedAt: pendingCommentFlags[comment.id].lastAt,
+      }
+    })
+  return { comments: list.slice(0, 200), total: list.length }
+}
 
 /** 신고. 응답 때 flagResponse 로 신고자 표시 이름·회원 번호를 채운다. reporterId null 은 서버에 없는 경우(방어 코드 확인용). */
 const flags: Record<number, AdminReportFlag[]> = {
@@ -294,6 +330,7 @@ function overview(): AdminOverview {
       upcoming: reports.filter((r) => r.status === 'ACTIVE' && Date.parse(r.startsAt + 'Z') > Date.now()).length,
     },
     feedback: { open: feedback.filter((item) => item.status === 'OPEN').length },
+    comments: { flaggedPending: flaggedCommentList().total },
     news: { total: 11350, missingDepartment: 1200 },
     crawler: { ...crawlerState, running: crawlerRunning },
   }
@@ -338,6 +375,11 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     return { comments: comments.filter((comment) => comment.reportId === reportId).map(commentResponse) }
   }
 
+  if (method === 'GET' && pathname === '/admin/comments') {
+    if ((params.get('filter') ?? 'flagged') !== 'flagged') throw new ApiError(400, 'filter 는 flagged 만 쓸 수 있어요.')
+    return flaggedCommentList()
+  }
+
   const commentMatch = pathname.match(/^\/admin\/comments\/(\d+)$/)
   if (method === 'PATCH' && commentMatch) {
     const comment = comments.find((item) => item.id === Number(commentMatch[1]))
@@ -346,8 +388,13 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     if (!['VISIBLE', 'HIDDEN', 'DELETED'].includes(status)) {
       throw new ApiError(400, '요청 내용을 확인한 뒤 다시 시도해주세요.')
     }
+    if (typeof body.reason === 'string' && body.reason.length > 200) {
+      throw new ApiError(400, '사유는 200자까지 쓸 수 있어요.')
+    }
     comment.status = status
     comment.reviewedAt = at(0)
+    // 서버처럼 검토하면 그 전 신고는 더 세지 않는다(검토 완료·숨김·삭제·다시 공개 모두).
+    delete pendingCommentFlags[comment.id]
     return commentResponse(comment)
   }
 

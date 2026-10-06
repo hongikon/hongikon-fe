@@ -33,7 +33,7 @@ import { SkeletonBlock, SkeletonGroup } from '../../common/Skeleton'
 import CommentItem from './CommentItem'
 import CommentComposer, { type ReplyTarget } from './CommentComposer'
 import ModerationMenu from '../ModerationMenu'
-import { useCommentActions } from './useCommentActions'
+import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 import type { ReportComment, ReportListItem } from '../../../types'
 
 interface ReportCommentsModalProps {
@@ -217,8 +217,11 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     if (focusInput) setFocusKey((key) => key + 1)
   }, [visible, load, focusInput])
 
-  /** 지웠거나 신고로 숨겨진 댓글을 목록에서 정리한다. 답글이 남은 최상위 댓글은 "삭제된 댓글" 자리로 바꾼다. */
-  const handleRemoved = useCallback((commentId: number) => {
+  /**
+   * 지웠거나 신고로 숨겨진 댓글을 목록에서 정리한다. 답글이 남은 최상위 댓글은 자리로 바꾼다 — 지움이면 "삭제된 댓글",
+   * 신고 누적 자동 숨김이면 "운영 정책에 따라 숨겨진 댓글"(서버가 다시 줄 때의 placeholder 와 같게).
+   */
+  const handleRemoved = useCallback((commentId: number, reason: CommentRemovedReason = 'DELETED') => {
     // 최상위 댓글이 빠지면 다음 페이지 경계가 당겨진다(removedTopRef). 자리까지 없어지면 '나머지 N개' 계산의 전체 수도 줄인다.
     // 답글이 다 빠져 "삭제된 댓글" 자리만 남은 최상위 댓글도 아래에서 함께 없어지니 같이 센다.
     const removedTop = itemsRef.current.find((top) => top.id === commentId)
@@ -235,7 +238,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     setItems((prev) =>
       prev.flatMap((top) => {
         if (top.id === commentId) {
-          return (top.replyCount ?? 0) > 0 ? [{ ...top, placeholder: 'DELETED' as const, content: null, authorDisplayName: null, authorKey: null, isMine: false }] : []
+          return (top.replyCount ?? 0) > 0 ? [{ ...top, placeholder: reason, content: null, authorDisplayName: null, authorKey: null, isMine: false }] : []
         }
         if (!top.replies?.some((r) => r.id === commentId)) return [top]
         const replies = top.replies.filter((r) => r.id !== commentId)
@@ -337,7 +340,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
           <CommentItem
             comment={item}
             pending={actions.pendingId === item.id}
-            flagged={actions.flaggedIds.has(item.id)}
+            flagged={actions.isFlagged(item)}
             {...handlers}
           />
           {replies.length > 0 || more > 0 ? (
@@ -348,7 +351,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                   comment={reply}
                   reply
                   pending={actions.pendingId === reply.id}
-                  flagged={actions.flaggedIds.has(reply.id)}
+                  flagged={actions.isFlagged(reply)}
                   {...handlers}
                 />
               ))}
@@ -371,7 +374,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         </View>
       )
     },
-    [actions.pendingId, actions.flaggedIds, actions.remove, actions.like, handleReply, loadMoreReplies, loadingReplies],
+    [actions.pendingId, actions.isFlagged, actions.remove, actions.like, handleReply, loadMoreReplies, loadingReplies],
   )
 
   return (
@@ -485,7 +488,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
           target="댓글"
           canHide={!!menuFor?.authorKey}
           onHide={() => menuFor && actions.hide(menuFor)}
-          flagged={menuFor ? actions.flaggedIds.has(menuFor.id) : false}
+          flagged={menuFor ? actions.isFlagged(menuFor) : false}
           beforeFlag={actions.canFlag}
           onFlag={(reason) => menuFor && actions.flag(menuFor, reason)}
         />
