@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -60,8 +59,6 @@ function contentNeedsMore(content: string): boolean {
 export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
-  // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
-  const insets = useSafeAreaInsets()
   const { accessToken, logout } = useAuth()
   const { settings } = useSettings()
   // 🔥·관심·조회 수·알림 설정은 시트에서 바로 바뀐다. 목록(지도)을 다시 받기 전까지 시트 사본에 덮어 둔다.
@@ -208,7 +205,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   }
 
   return (
-    <View style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]}>
+    <View style={styles.sheet}>
       <View style={styles.header}>
         <View style={styles.badges}>
           <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -382,7 +379,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
 }
 
 const styles = StyleSheet.create({
-  // 건물·제휴 시트처럼 화면 아래에 붙는다(지도 아래 NAVER 로고 줄까지 덮어 열고 닫을 때 어수선하지 않게).
+  // 건물·제휴 시트처럼 아래에 붙는 모양. 지도 아래 NAVER 로고 줄 바로 위에 뜬다(MapScreen sheetBottom).
   sheet: {
     position: 'absolute',
     left: 0,
@@ -393,6 +390,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,

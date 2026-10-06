@@ -112,6 +112,9 @@ function toMarker(partner: Partner) {
   };
 }
 
+/** 지도 맨 아래 NAVER 로고·"© NAVER Corp."·축척이 놓이는 줄 높이. 시트가 이 줄을 덮지 않게 띄운다. */
+const MAP_ATTRIBUTION_STRIP_HEIGHT = 30;
+
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
   const { accessToken, logout } = useAuth();
@@ -392,9 +395,10 @@ export default function MapScreen() {
   useEffect(() => {
     navigation.setOptions({ tabBarStyle: sheetOpen ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
   }, [navigation, sheetOpen]);
-  // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
-  // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
-  const sheetBottom = sheetOpen ? 0 : tabBarHeight;
+  // 탭바를 숨긴 동안 지도는 화면 맨 아래까지 깔리고, 시트는 지도 아래의 NAVER 로고·저작권 줄 바로 위에 뜬다.
+  // 네이버 지도 이용약관상 로고·저작권 표시를 가리면 안 되므로 시트가 그 줄을 덮지 않게 한다.
+  const sheetBottom = sheetOpen ? insets.bottom + MAP_ATTRIBUTION_STRIP_HEIGHT : tabBarHeight;
+  const mapBottomInset = sheetOpen ? 0 : tabBarHeight;
 
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
@@ -1120,7 +1124,7 @@ export default function MapScreen() {
           지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
           탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
         */}
-        <View style={[styles.mapCanvas, { marginBottom: tabBarHeight }]}>
+        <View style={[styles.mapCanvas, { marginBottom: mapBottomInset }]}>
           <NaverMapView
             ref={webViewRef}
             html={mapHTML}
@@ -1260,7 +1264,8 @@ export default function MapScreen() {
           )}
         </View>
 
-        {!pickingLocation && (
+        {/* 시트가 열려 있으면 오른쪽 아래 버튼(제보하기·캠퍼스로)이 시트 가장자리로 삐져나와 숨긴다. */}
+        {!pickingLocation && !sheetOpen && (
           <View style={[styles.mapControls, { bottom: 20 + tabBarHeight }]}>
             <TouchableOpacity
               style={styles.controlBtn}
