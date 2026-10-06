@@ -13,6 +13,7 @@ import { flagReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
+import { reportPlaceText } from '../../utils/shareReport'
 import { isUpcomingReport } from '../../utils/reportSchedule'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportAuthorName } from '../../utils/nickname'
@@ -208,6 +209,13 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
 
       <Text style={styles.title}>{report.title}</Text>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
+      {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
+      <View style={styles.placeRow}>
+        <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
+        <Text style={styles.placeText} numberOfLines={2}>
+          {reportPlaceText(report)}
+        </Text>
+      </View>
 
       {photoUrls.length > 0 && (
         // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 원본(presigned URL)을 브라우저로 연다.
@@ -348,6 +356,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
+  placeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
+  placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
   photoTile: { flex: 1, height: 160, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
   photoTileSmall: { height: 110 },
