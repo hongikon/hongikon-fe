@@ -23,7 +23,8 @@ import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
 import type { InfoSuggestLocation } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
@@ -121,6 +122,7 @@ export default function MapScreen() {
   // 지도 탭만 탭바를 지도 위에 띄운다(TabNavigator.tsx) — 그만큼 화면 맨
   // 아래에 깔린 버튼·배너가 탭바에 가리지 않게 이 높이만큼 띄워 올린다.
   const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation();
   // 검색바·필터 칩이 지도 위에 뜨는 오버레이로 바뀌면서(§아래 JSX), 실제
   // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
   // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
@@ -377,6 +379,21 @@ export default function MapScreen() {
     setSelectedPartner(null);
     setSelectedReport(report);
   }, []);
+
+  /**
+   * 건물·제휴·편의시설·제보 시트를 여는 동안에는 아래 탭 막대를 잠시 숨겨 시트를 화면 맨 아래까지 내린다.
+   * 시트를 읽는 중엔 탭을 옮길 일이 거의 없고, 탭바가 시트 아래를 받쳐 지도를 더 가렸다. 닫으면 다시 보인다.
+   */
+  const sheetOpen =
+    selectedBuilding !== null ||
+    selectedPartner !== null ||
+    selectedReport !== null ||
+    (selectedFacilityBuilding !== null && facilityKind !== null);
+  useEffect(() => {
+    navigation.setOptions({ tabBarStyle: sheetOpen ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
+  }, [navigation, sheetOpen]);
+  // 탭바를 숨긴 동안 시트는 탭바 자리가 아니라 안전 영역(홈 인디케이터) 위에 붙는다.
+  const sheetBottom = sheetOpen ? insets.bottom : tabBarHeight;
 
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
@@ -1363,7 +1380,7 @@ export default function MapScreen() {
           pointerEvents="box-none"
           style={[
             styles.bottomSheetLayer,
-            { bottom: tabBarHeight, left: sideGutter, right: sideGutter },
+            { bottom: sheetBottom, left: sideGutter, right: sideGutter },
           ]}
         >
           {selectedBuilding && (

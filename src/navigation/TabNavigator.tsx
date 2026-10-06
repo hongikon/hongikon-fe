@@ -9,6 +9,7 @@ import MapScreen from '../screens/MapScreen'
 import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigator'
 import SettingsScreen from '../screens/SettingsScreen'
 import { useAdminOverview, useIsAdmin } from '../admin/AdminAccess'
+import { MAP_TAB_BAR_STYLE, TAB_BAR_BASE_STYLE } from './tabBarStyles'
 
 /** 관리 탭 화면은 관리자만 쓰니 처음 열 때 불러온다(웹 번들에서 나머지 사용자에게 싣지 않는다). */
 const AdminTabScreen = lazy(() => import('../admin/AdminTabScreen'))
@@ -38,13 +39,6 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
-const TAB_BAR_BASE_STYLE = {
-  height: 82,
-  paddingTop: 8,
-  backgroundColor: COLORS.white,
-  borderTopWidth: 0.5,
-  borderTopColor: COLORS.border,
-}
 
 export default function TabNavigator() {
   const isAdmin = useIsAdmin()
@@ -73,7 +67,7 @@ export default function TabNavigator() {
           // 지도 화면만 탭바를 지도 위에 띄운다(position:absolute) — 그래야 지도가
           // 화면 맨 아래까지 깔려서, 드래그 중 탭바가 사라져도 빈 회색이 아니라
           // 지도가 그대로 보인다. 소식·설정은 원래 방식(탭바가 자기 자리를 차지)을 쓴다.
-          tabBarStyle: { ...TAB_BAR_BASE_STYLE, position: 'absolute', left: 0, right: 0, bottom: 0 },
+          tabBarStyle: MAP_TAB_BAR_STYLE,
         }}
       />
       <Tab.Screen
