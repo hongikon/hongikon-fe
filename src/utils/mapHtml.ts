@@ -373,25 +373,38 @@ export function buildMapHTML(
 
     // 하나를 눌러 볼 때(건물·제휴·편의시설·제보·검색) 항상 같은 배율로 그 자리를 가운데에 둔다.
     // 누른 지점으로 카메라를 부드럽게 옮긴다(예전엔 setCenter·setZoom 으로 한 번에 순간이동해 화면이 확 바뀌었다).
-    // 네이버 지도 웹 API 는 확대 단계 변경(setZoom·morph)은 애니메이션 없이 바뀌고 이동(panTo)만 부드럽게 움직인다.
-    // 그래서 지도에서 마커·건물을 누를 땐 지금 확대 단계를 그대로 두고 위치만 미끄러지듯 옮긴다(네이버 지도 앱처럼).
-    // 검색·알림처럼 확대 단계(zoom)를 넘겨받은 이동만 먼저 단계를 맞춘 뒤 옮긴다.
-    // 아래에서 올라오는 시트에 가리지 않게, 지점이 화면 가운데보다 조금 위(지도 높이의 13%)에 오도록 한다.
-    function focusOn(lat, lng, zoom) {
-      if (typeof zoom === 'number' && Math.abs(map.getZoom() - zoom) > 0.01) map.setZoom(zoom);
-      var point = new naver.maps.LatLng(lat, lng);
-      var center = point;
+    // 네이버 지도 웹 API 는 확대 단계 변경을 애니메이션하지 않고 이동(panTo)만 부드럽게 움직인다. 그래서
+    // 1) 지금 확대 단계 그대로 지점까지 미끄러지듯 이동하고 2) 도착한 다음 정해 둔 확대 단계(FOCUS_ZOOM, 검색·알림은 넘겨받은 값)까지
+    // 한 단계씩 잠깐 간격을 두고 들어간다. 지점은 아래에서 올라오는 시트에 가리지 않게 화면 가운데보다 조금 위(13%)에 둔다.
+    var focusToken = 0;
+    function centerFor(point, zoom) {
       try {
         var proj = map.getProjection();
         var world = proj.fromCoordToPoint(point);
-        var size = map.getSize();
-        var dy = (size.height * 0.13) / Math.pow(2, map.getZoom());
-        center = proj.fromPointToCoord(new naver.maps.Point(world.x, world.y + dy));
+        var dy = (map.getSize().height * 0.13) / Math.pow(2, zoom);
+        return proj.fromPointToCoord(new naver.maps.Point(world.x, world.y + dy));
       } catch (e) {
-        center = point;
+        return point;
       }
-      map.panTo(center, { duration: 420, easing: 'easeOutCubic' });
     }
+    function focusOn(lat, lng, zoom) {
+      var token = ++focusToken;
+      var target = typeof zoom === 'number' ? zoom : ${FOCUS_ZOOM};
+      var point = new naver.maps.LatLng(lat, lng);
+      var center = centerFor(point, target);
+      var stepIn = function() {
+        if (token !== focusToken) return;
+        var z = map.getZoom();
+        if (Math.round(z) === target) return;
+        map.setZoom(z < target ? z + 1 : z - 1);
+        map.setCenter(center);
+        setTimeout(stepIn, 110);
+      };
+      naver.maps.Event.once(map, 'idle', function() { setTimeout(stepIn, 60); });
+      map.panTo(centerFor(point, map.getZoom()), { duration: 420, easing: 'easeOutCubic' });
+    }
+    // 사용자가 지도를 끌기 시작하면 남은 '들어가기'를 멈춘다.
+    naver.maps.Event.addListener(map, 'dragstart', function() { focusToken++; });
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
     // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
     // order: 그 조합의 고정 순서(currentPartners 순서). index: 지금 몇 번째인지.
