@@ -1595,6 +1595,7 @@ export default function MapScreen() {
         >
           {selectedBuilding && (
             <BuildingSheet
+              key={selectedBuilding.name}
               building={selectedBuilding}
               onClose={handleCloseBuilding}
               routeFindingEnabled={ROUTE_FINDING_ENABLED}
@@ -1604,11 +1605,12 @@ export default function MapScreen() {
           )}
 
           {selectedPartner && (
-            <PartnerSheet partner={selectedPartner} onClose={handleClosePartner} />
+            <PartnerSheet key={selectedPartner.id} partner={selectedPartner} onClose={handleClosePartner} />
           )}
 
           {selectedFacilityBuilding && facilityKind && (
             <FacilitySheet
+              key={`${facilityKind}:${selectedFacilityBuilding}`}
               kind={facilityKind}
               buildingName={selectedFacilityBuilding}
               items={facilities.filter(

@@ -51,11 +51,38 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 화면 크기가 바뀌면(회전·창 크기) 보통 크기로 되돌린다.
+  // 크기 점이 바뀔 때(내용 높이 측정·변화, 회전·창 크기) 지금 크기를 맞춘다.
+  // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다(처음 내용 높이를 잴 때).
+  // - 맨 위에 있었으면 새 맨 위로 — 창이 줄었을 때 손잡이·X 가 화면 밖으로 밀려나지 않게.
+  // - 사용자가 고른 크기는 그대로 두고 범위 안으로만 자른다 — 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
+  //   바뀔 때마다 고른 크기를 버리고 작게로 툭 되돌아갔다.
+  const hi = points.length ? Math.max(...points) : initial
+  const prevSizes = useRef({ initial, hi })
   useEffect(() => {
-    current.current = initial
-    bodyHeight.setValue(initial)
-  }, [initial, bodyHeight])
+    const prev = prevSizes.current
+    prevSizes.current = { initial, hi }
+    if (prev.initial === initial && prev.hi === hi) return
+    const lo = snaps.current[0] ?? 0
+    let next: number
+    if (Math.abs(current.current - prev.initial) <= 1) next = initial
+    else if (current.current >= prev.hi - 1) next = hi
+    else next = Math.min(hi, Math.max(lo, current.current))
+    if (next !== current.current) {
+      current.current = next
+      bodyHeight.setValue(next)
+    }
+  }, [initial, hi, bodyHeight])
+
+  // 닫히는 중에 시트가 사라지면(다른 핀으로 바뀌어 새 시트가 뜨는 등) 남은 애니메이션을 멈춘다 — 끝난 뒤 onClose 가 새 선택을 닫지 않게.
+  const dragCleanup = useRef<(() => void) | null>(null)
+  useEffect(
+    () => () => {
+      dragCleanup.current?.()
+      translateY.stopAnimation()
+      bodyHeight.stopAnimation()
+    },
+    [translateY, bodyHeight],
+  )
 
   // 끄는 동안 높이를 바꾸고, 놓으면 가까운 크기로 붙거나 닫는다. 터치(PanResponder)·마우스(웹 포인터) 둘 다 이 함수들을 쓴다.
   const dragApi = useMemo(() => {
@@ -87,7 +114,9 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
       const [lo] = snaps.current
       const next = startHeight.current - dy
       if (next < lo - DISMISS_OVERSHOOT_PX || (next <= lo + 10 && vy > DISMISS_VELOCITY)) {
-        Animated.timing(translateY, { toValue: 800, duration: 180, useNativeDriver: false }).start(() => {
+        Animated.timing(translateY, { toValue: 800, duration: 180, useNativeDriver: false }).start(({ finished }) => {
+          // 중간에 멈췄으면(시트가 사라짐) 닫기를 부르지 않는다.
+          if (!finished) return
           translateY.setValue(0)
           current.current = initial
           bodyHeight.setValue(initial)
@@ -143,21 +172,34 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     Platform.OS === 'web'
       ? {
           onPointerDown: (raw: unknown) => {
-            const e = raw as {
-              clientY?: number
-              pointerType?: string
-              preventDefault?: () => void
-              nativeEvent?: { clientY?: number; pointerType?: string }
-            }
-            const pointerType = e.nativeEvent?.pointerType ?? e.pointerType
-            if (pointerType === 'touch') return // 터치는 PanResponder 가 맡는다
+            type Ptr = { clientY?: number; pointerType?: string; button?: number; ctrlKey?: boolean; isPrimary?: boolean }
+            const e = raw as Ptr & { preventDefault?: () => void; nativeEvent?: Ptr }
+            const ne = e.nativeEvent ?? e
+            if ((ne.pointerType ?? e.pointerType) === 'touch') return // 터치는 PanResponder 가 맡는다
+            // 왼쪽 버튼만 — 오른쪽·ctrl 클릭은 메뉴가 떼기(pointerup)를 삼켜, 버튼을 놓은 뒤에도 시트가 마우스를 따라다녔다.
+            if ((ne.button ?? 0) !== 0 || ne.ctrlKey || ne.isPrimary === false) return
             e.preventDefault?.()
+            dragCleanup.current?.()
             const startY = e.nativeEvent?.clientY ?? e.clientY ?? 0
             let lastY = startY
             let lastT = Date.now()
             let vy = 0
             dragApi.begin()
+            const cleanup = () => {
+              window.removeEventListener('pointermove', onMove)
+              window.removeEventListener('pointerup', onUp)
+              window.removeEventListener('pointercancel', onCancel)
+              window.removeEventListener('contextmenu', onCancel)
+              window.removeEventListener('blur', onCancel)
+              if (dragCleanup.current === cleanup) dragCleanup.current = null
+            }
+            // 떼기를 못 받은 채 끝난 끌기(메뉴·창 전환·취소)는 놓은 자리에 둔다.
+            const onCancel = () => {
+              cleanup()
+              dragApi.cancel()
+            }
             const onMove = (ev: PointerEvent) => {
+              if (ev.buttons === 0) return onCancel() // 버튼을 이미 놓았다(떼기를 놓침)
               const now = Date.now()
               vy = (ev.clientY - lastY) / Math.max(1, now - lastT)
               lastY = ev.clientY
@@ -165,14 +207,17 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
               dragApi.move(ev.clientY - startY)
             }
             const onUp = (ev: PointerEvent) => {
-              window.removeEventListener('pointermove', onMove)
-              window.removeEventListener('pointerup', onUp)
+              cleanup()
               const dy = ev.clientY - startY
               if (Math.abs(dy) < 6) dragApi.tap()
               else dragApi.end(dy, vy)
             }
             window.addEventListener('pointermove', onMove)
             window.addEventListener('pointerup', onUp)
+            window.addEventListener('pointercancel', onCancel)
+            window.addEventListener('contextmenu', onCancel)
+            window.addEventListener('blur', onCancel)
+            dragCleanup.current = cleanup
           },
         }
       : {}
@@ -198,7 +243,7 @@ interface SheetSizingOptions {
 
 /**
  * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지를 오가고, 머리줄만 남긴 채 더
- * 내리면 닫힌다. 처음엔 작게 연다. 작게·보통은 내용 높이로 잘라 빈칸이 생기지 않게 한다.
+ * 내리면 닫힌다. 처음엔 작게 연다. 모든 크기는 내용 높이로 잘라 빈칸이 생기지 않게 한다.
  * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
  * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
  */
@@ -216,28 +261,38 @@ export function useSheetSizing(
   const cap = (h: number) => Math.min(contentHeight === null ? h : Math.min(h, contentHeight), fullHeight)
   const small = Math.round(cap(windowHeight * smallRatio))
   const mid = Math.round(cap(windowHeight * midRatio))
-  const points = Array.from(new Set([0, small, mid, Math.round(fullHeight)]))
+  // 맨 위도 내용 높이로 자른다 — 내용이 짧으면 손잡이를 한 번 눌러도 텅 빈 전체 화면 시트가 되지 않게.
+  const top = Math.round(cap(fullHeight))
+  const points = Array.from(new Set([0, small, mid, top]))
   const { translateY, bodyHeight, panHandlers } = useResizableSheet(onClose, { initial: small, points })
 
   // 본문이 이 높이를 넘으면 시트 윗변이 검색바·칩 오버레이 밑으로 들어간다 → 오버레이를 숨기게 알린다.
   const coverAt = windowHeight - Math.max(insets.top, header.headerHeight) - insets.bottom - chromeHeight - 48
   const onCoverRef = useRef(header.onCoverHeader)
   onCoverRef.current = header.onCoverHeader
+  const coveredRef = useRef(false)
   useEffect(() => {
-    if (!onCoverRef.current || header.headerHeight <= 0) return
-    let covered = false
-    const id = bodyHeight.addListener(({ value }) => {
-      const next = value > coverAt + 4
-      if (next !== covered) {
-        covered = next
+    if (!onCoverRef.current) return
+    const apply = (value: number) => {
+      const next = header.headerHeight > 0 && value > coverAt + 4
+      if (next !== coveredRef.current) {
+        coveredRef.current = next
         onCoverRef.current?.(next)
       }
-    })
-    return () => {
-      bodyHeight.removeListener(id)
-      if (covered) onCoverRef.current?.(false)
     }
+    // addListener 는 앞으로의 변화만 알린다 → 지금 크기로 바로 한 번 따진다. 예전엔 열 때·창 크기·머리줄/칩 높이가
+    // 바뀔 때 이미 덮고 있어도 몰라서 검색바·칩이 시트 제목·손잡이 위에 겹쳐 그려졌다.
+    apply((bodyHeight as unknown as { __getValue: () => number }).__getValue())
+    const id = bodyHeight.addListener(({ value }) => apply(value))
+    return () => bodyHeight.removeListener(id)
   }, [bodyHeight, coverAt, header.headerHeight])
+  // 오버레이는 시트가 실제로 사라질 때만 되살린다(다시 구독할 때마다 되살리면 덮인 시트 위에 다시 그려졌다).
+  useEffect(
+    () => () => {
+      if (coveredRef.current) onCoverRef.current?.(false)
+    },
+    [],
+  )
   return {
     translateY,
     bodyHeight,
