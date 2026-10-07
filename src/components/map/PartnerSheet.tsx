@@ -1,6 +1,7 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Animated,
+  useWindowDimensions,
   View,
   Text,
   StyleSheet,
@@ -15,7 +16,7 @@ import type { Partner } from "../../types";
 import { FONTS, TYPE } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { useResizableSheet } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { openNaverMapPlace } from "../../utils/openNaverMap";
 
@@ -97,7 +98,13 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  * benefit / address / hours / contact / link 는 값이 있을 때만 렌더한다.
  */
 export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
-  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 손잡이(회색 줄)를 위로 끌면 본문이 커지고, 아래로 끌면 작아지다가 끝까지 내리면 닫힌다.
+  const { height: windowHeight } = useWindowDimensions();
+  // 처음엔 조금만(화면 22%) 보여 주고, 손잡이로 보통(45%)·크게(78%) 키운다.
+  const { translateY, bodyMaxHeight, panHandlers } = useResizableSheet(onClose, {
+    initial: windowHeight * 0.22,
+    points: [windowHeight * 0.22, windowHeight * 0.45, windowHeight * 0.78],
+  });
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = partnerCategoryMeta(partner.category);
@@ -144,8 +151,8 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
 
       <Text style={styles.name}>{partner.name}</Text>
 
-      <ScrollView
-        style={styles.body}
+      <Animated.ScrollView
+        style={[styles.body, { maxHeight: bodyMaxHeight }]}
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
@@ -262,7 +269,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             <Text style={styles.linkText}>{partner.link.label}</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </Animated.View>
   );
 }
@@ -273,7 +280,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: "62%",
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

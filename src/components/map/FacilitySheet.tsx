@@ -9,7 +9,7 @@ import { FACILITY_KINDS } from "../../constants/facilityKinds";
 import type { Exhibition, Facility, FacilityKind } from "../../types";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { useResizableSheet } from "../../hooks/useResizableSheet";
 import { formatFloor } from "../../utils/floors";
 import {
   daysUntilStart,
@@ -40,7 +40,6 @@ interface FacilitySheetProps {
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
 export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose }: FacilitySheetProps) {
-  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -55,6 +54,12 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     isRestaurant &&
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
+  // 손잡이(회색 줄)를 위로 끌면 목록이 커지고, 아래로 끌면 작아지다가 끝까지 내리면 닫힌다.
+  // 처음엔 조금만(화면 22%) 보여 주고, 손잡이로 보통(50%)·크게(80%) 키운다.
+  const { translateY, bodyMaxHeight, panHandlers } = useResizableSheet(onClose, {
+    initial: windowHeight * 0.22,
+    points: [windowHeight * 0.22, windowHeight * 0.5, windowHeight * 0.8],
+  });
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
@@ -84,10 +89,10 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
         />
       </View>
 
-      <ScrollView
-        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져, 지도를 조금 더 가리더라도 보이는 칸을 넓히고 그 안에서 스크롤한다.
-        // 아래로 밀어 닫기는 손잡이에만 걸려 있어 이 스크롤과 겹치지 않는다.
-        style={{ maxHeight: windowHeight * (hasMenu ? 0.62 : 0.5) }}
+      <Animated.ScrollView
+        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져 처음부터 칸을 넓게 연다. 크기 조절·닫기는 손잡이에만 걸려 있어
+        // 이 스크롤과 겹치지 않는다.
+        style={{ maxHeight: bodyMaxHeight }}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={hasMenu || sorted.length > 6}
         bounces={false}
@@ -121,7 +126,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
             </View>
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
     </Animated.View>
   );
 }
