@@ -11,6 +11,12 @@ import { useReconnect } from '../lib/connectivity'
 
 /** 포그라운드 복귀 때마다 부르면 앱 전환이 잦은 사용자에게 요청이 몰려, 이 간격 안에서는 건너뛴다. */
 const FOREGROUND_REFETCH_MIN_INTERVAL_MS = 30_000
+/**
+ * 재연결 알림으로 다시 부르기 전, 직전 실패 뒤 기다리는 시간. 실패가 이어질수록 늘어난다.
+ * 연결 상태는 앱 전역이라 이 요청만 5xx·시간 초과로 실패하고 다른 요청은 멀쩡하면 "다시 연결됨" 이 계속 와서
+ * 쉬지 않고 다시 부르게 된다. "다시 시도"(`retry`)는 이 간격과 상관없이 바로 부른다.
+ */
+const RECONNECT_COOLDOWNS_MS = [0, 30_000, 60_000, 120_000, 300_000]
 
 interface UseApiResourceOptions {
   /** false 면 부르지 않고 이전 상태도 비운다(예: 레이어가 꺼져 있을 때). 기본 true. */
@@ -76,6 +82,11 @@ export function useApiResource<T>(
   const controllerRef = useRef<AbortController | null>(null)
   const lastFetchedAtRef = useRef(0)
   const hasErrorRef = useRef(false)
+  /** 이어서 실패한 횟수와 마지막 실패 시각. 재연결 때 다시 부를지 고르는 데만 쓴다. */
+  const failCountRef = useRef(0)
+  const lastFailedAtRef = useRef(0)
+  /** 마지막 실패(안내를 닫아도 남는다). */
+  const errorRef = useRef<unknown>(null)
 
   const run = useCallback(() => {
     controllerRef.current?.abort()
@@ -90,6 +101,7 @@ export function useApiResource<T>(
       .then((result) => {
         if (controller.signal.aborted) return
         hasErrorRef.current = false
+        failCountRef.current = 0
         setData(result)
         setError(null)
       })
@@ -97,6 +109,9 @@ export function useApiResource<T>(
         // 끊은 요청(화면 이탈, 새 요청으로 교체)은 결과를 버린다.
         if (controller.signal.aborted || isCancelledError(caught)) return
         hasErrorRef.current = true
+        failCountRef.current += 1
+        lastFailedAtRef.current = Date.now()
+        errorRef.current = caught
         setError(caught)
         if (__DEV__ && !isNetworkError(caught)) console.warn('[useApiResource] 불러오기 실패:', caught)
       })
@@ -126,8 +141,13 @@ export function useApiResource<T>(
   }, [enabled, run, ...deps])
 
   // 재연결 알림은 실패했던 경우에만 받는다. 멀쩡한 화면까지 한꺼번에 다시 부르면 막 돌아온 서버에 몰린다.
+  // 다시 보내도 같은 4xx 는 부르지 않고, 실패가 이어지면 간격을 늘린다.
   useReconnect(() => {
-    if (hasErrorRef.current) run()
+    if (!hasErrorRef.current) return
+    if (!isRetryableError(errorRef.current)) return
+    const cooldown = RECONNECT_COOLDOWNS_MS[Math.min(failCountRef.current, RECONNECT_COOLDOWNS_MS.length) - 1] ?? 0
+    if (Date.now() - lastFailedAtRef.current < cooldown) return
+    run()
   }, enabled && refetchOnReconnect)
 
   useEffect(() => {
