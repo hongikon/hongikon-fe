@@ -21,8 +21,7 @@ import NewsList from '../components/news/NewsList'
 import DeptTreeList from '../components/news/DeptTreeList'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import RetryableError from '../components/common/RetryableError'
-import { LargeTitleHeader } from '../components/common/ScreenHeader'
-import IconButton from '../components/common/IconButton'
+import TabHeaderCard, { HeaderCircleButton, SegmentedTabs } from '../components/common/TabHeaderCard'
 import EmptyState from '../components/common/EmptyState'
 import Button from '../components/common/Button'
 
@@ -83,37 +82,24 @@ export default function NewsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LargeTitleHeader
+      {/* 둥근 흰 카드 안에 제목·검색, 그 아래 세그먼트 탭(10-07 A안). */}
+      <TabHeaderCard
         title="소식"
-        style={layoutStyles.readable}
-        right={<IconButton icon="search" onPress={() => navigation.navigate('NewsSearch')} accessibilityLabel="검색" />}
-      />
-
-      <View style={styles.tabBar}>
-        {/* 밑줄은 화면 끝까지, 탭 세 개는 목록과 같은 가운데 폭 안에 둔다. */}
-        <View style={[styles.tabRow, layoutStyles.readable]}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={styles.tab}
-              onPress={() => {
-                if (tab !== activeTab) haptics.selection()
-                setActiveTab(tab)
-              }}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              // react-native-web 0.21 은 accessibilityState 를 DOM 에 옮기지 않아 웹은 aria-* 로 따로 준다.
-              aria-selected={isActive}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
-              <View style={[styles.tabIndicator, isActive && styles.tabIndicatorActive]} />
-            </TouchableOpacity>
-          )
-        })}
-        </View>
-      </View>
+        right={
+          <HeaderCircleButton onPress={() => navigation.navigate('NewsSearch')} accessibilityLabel="검색">
+            <Ionicons name="search" size={20} color={COLORS.textPrimary} />
+          </HeaderCircleButton>
+        }
+      >
+        <SegmentedTabs
+          tabs={TABS}
+          value={activeTab}
+          onChange={(tab) => {
+            if (tab !== activeTab) haptics.selection()
+            setActiveTab(tab)
+          }}
+        />
+      </TabHeaderCard>
 
       {activeTab === '전체' ? (
         <DeptTreeList
@@ -237,20 +223,8 @@ export default function NewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  // SafeAreaView 상단 인셋(노치 아래 여백)은 바로 밑 header 와 같은 흰색이어야 한다.
-  // 콘텐츠의 회색 배경은 DeptTreeList/NewsList 가 각자 칠한다.
-  container: { flex: 1, backgroundColor: COLORS.white },
-  tabBar: {
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.border,
-  },
-  tabRow: { flexDirection: 'row' },
-  tab: { flex: 1, alignItems: 'center', paddingTop: 10 },
-  tabText: { fontSize: 15, color: COLORS.textTertiary, fontFamily: FONTS.medium, paddingBottom: 10 },
-  tabTextActive: { color: COLORS.textPrimary, fontFamily: FONTS.bold },
-  tabIndicator: { width: '60%', height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
-  tabIndicatorActive: { backgroundColor: COLORS.primary },
+  // 회색 바탕 위에 머리 카드·목록 카드가 뜬다. 상단 인셋(노치 아래)도 같은 회색.
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   // 카드 스타일은 components/news/NewsCard.tsx 로, 학과 트리는 components/news/DeptTreeList.tsx 로 옮겼다.
 

@@ -44,7 +44,7 @@ import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
-import { LargeTitleHeader } from '../components/common/ScreenHeader'
+import TabHeaderCard from '../components/common/TabHeaderCard'
 import {
   getMyMemberCode,
   getMyProfile,
@@ -305,7 +305,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LargeTitleHeader title="설정" style={layoutStyles.readable} />
+      <TabHeaderCard title="설정" />
       <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
 
         {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
@@ -753,9 +753,16 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   // SafeAreaView 상단 인셋·큰 제목 줄은 흰색, 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
-  section: { backgroundColor: COLORS.white, marginBottom: SPACING.sm },
+  // 묶음마다 둥근 카드(10-07 A안 — 머리 카드·하단 탭 캡슐과 같은 곡률 계열).
+  section: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.floating,
+    overflow: 'hidden',
+  },
   sectionTitleWithDesc: { paddingBottom: SPACING.md },
   categoryGrid: {
     flexDirection: 'row',
