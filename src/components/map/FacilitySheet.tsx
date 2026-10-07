@@ -19,6 +19,9 @@ import {
   kstTodayIndex,
 } from "../../utils/exhibitions";
 import { isSafeExternalUrl, openExternalUrl } from "../../utils/openExternalUrl";
+import { CAFETERIA_FACILITY_IDS } from "../../apis/cafeteria";
+import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
+import CafeteriaMenu from "./CafeteriaMenu";
 
 interface FacilitySheetProps {
   kind: FacilityKind;
@@ -34,6 +37,7 @@ interface FacilitySheetProps {
  * 편의시설 핀을 눌렀을 때의 배너. 건물 소개가 아니라 "그 시설이 몇 층 어디에 있는지"를 보여 준다.
  * 같은 건물에 여러 층이 있으면 층마다 한 줄. 층이 확인되지 않은 항목은 "층 확인 중"으로 둔다.
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
+ * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
 export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose }: FacilitySheetProps) {
   const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
@@ -44,6 +48,13 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   const sorted = [...items].sort((a, b) => (b.floor ?? -99) - (a.floor ?? -99));
   // 학과사무실처럼 한 건물에 줄이 많은 경우(C동 13곳) 시트가 화면을 덮지 않게 목록만 스크롤한다.
   const { height: windowHeight } = useWindowDimensions();
+  // 식당 시트를 열 때만 학식 메뉴를 부른다(주간 메뉴를 한 번 받아 앱을 켜 둔 동안 메모리에 둔다).
+  const isRestaurant = kind === "식당";
+  const cafeteriaWeek = useCafeteriaWeek(isRestaurant);
+  const hasMenu =
+    isRestaurant &&
+    (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
+      !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
@@ -74,9 +85,11 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       </View>
 
       <ScrollView
-        style={{ maxHeight: windowHeight * 0.5 }}
+        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져, 지도를 조금 더 가리더라도 보이는 칸을 넓히고 그 안에서 스크롤한다.
+        // 아래로 밀어 닫기는 손잡이에만 걸려 있어 이 스크롤과 겹치지 않는다.
+        style={{ maxHeight: windowHeight * (hasMenu ? 0.62 : 0.5) }}
         contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={sorted.length > 6}
+        showsVerticalScrollIndicator={hasMenu || sorted.length > 6}
         bounces={false}
       >
         {sorted.map((item) => {
@@ -92,6 +105,14 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
               <Text style={styles.note}>{item.note ?? kind}</Text>
             </View>
           );
+          if (isRestaurant) {
+            return (
+              <View key={item.id} style={styles.venue}>
+                {row}
+                <CafeteriaMenu facilityId={item.id} week={cafeteriaWeek} />
+              </View>
+            );
+          }
           if (kind !== "행사·전시") return <View key={item.id}>{row}</View>;
           return (
             <View key={item.id} style={styles.venue}>
