@@ -9,7 +9,7 @@
 //   android-icon-foreground.png   432 — 말풍선만. 적응형 아이콘 마스크(안전영역 66dp)에 안 잘리게 축소
 //   android-icon-monochrome.png   432 — 말풍선 실루엣(Android 13 테마 아이콘·알림 아이콘)
 //   splash-icon.png               1024 투명 — 세로형 로고타입
-//   favicon.png                   196 — 둥근 모서리 심볼
+//   favicon.png                   196 — 앱 아이콘(icon.png)과 같은 그림
 
 import { Resvg } from '@resvg/resvg-js'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -60,7 +60,8 @@ function render(svgText, width, outName, background) {
 const background = `<rect width="400" height="400" fill="${BRAND_BLUE}"/>${band}${road}`
 
 // iOS/기본 아이콘: 둥근 모서리 없이 꽉 채운 원본 구성
-render(svg(`${background}${shadowGroup}${bubbleFace}${bubbleSide}`), 1024, 'icon.png', BRAND_BLUE)
+const appIconSvg = svg(`${background}${shadowGroup}${bubbleFace}${bubbleSide}`)
+render(appIconSvg, 1024, 'icon.png', BRAND_BLUE)
 
 // Android 적응형 아이콘
 render(svg(background), 432, 'android-icon-background.png', BRAND_BLUE)
@@ -71,8 +72,8 @@ render(
   'android-icon-monochrome.png',
 )
 
-// 파비콘: 디자인 원본 그대로(둥근 모서리 포함)
-render(symbolSvg, 196, 'favicon.png')
+// 파비콘: 앱 아이콘과 같은 그림(10-07 요청)
+render(appIconSvg, 196, 'favicon.png', BRAND_BLUE)
 
 // 스플래시: 세로형 로고타입을 정사각 캔버스 가운데에 여백을 두고 배치
 const [, vbW, vbH] = logotypeVerticalSvg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).map(Number)
