@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, KeyboardAvoidingView, Platform, ScrollVi
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
+import { RADIUS } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
@@ -10,7 +11,7 @@ import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import { OFFICIAL_REQUEST_PREFIX } from '../../constants/feedback'
 import RetryableError from '../common/RetryableError'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
 import OfficialBadge from '../common/OfficialBadge'
@@ -103,6 +104,7 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn>
             <ModalHeader title="공식 계정 신청" onClose={onClose} />
+            <ModalPanel>
             {submitted ? (
               <View style={styles.successBox}>
                 <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
@@ -175,6 +177,7 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
                 </ScrollView>
               </KeyboardAvoidingView>
             )}
+            </ModalPanel>
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -183,10 +186,11 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
+  container: { flex: 1, backgroundColor: COLORS.background },
   flex: { flex: 1 },
   body: { padding: 20 },
-  intro: { gap: 10, marginBottom: 22, padding: 14, borderRadius: 12, backgroundColor: COLORS.fill },
+  intro: { gap: 10, marginBottom: 22, padding: 14, borderRadius: RADIUS.md, backgroundColor: COLORS.fill },
   preview: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   previewName: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },
   introText: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: COLORS.textSecondary },

@@ -3,6 +3,7 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
+import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import { REPORT_FLAG_REASONS } from '../../constants/report'
 import { notify } from '../../utils/dialog'
@@ -152,11 +153,25 @@ export default function SupportModal({ visible, onClose, onOpenFeedback, isMembe
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  body: { paddingBottom: 40 },
-  hero: { backgroundColor: COLORS.primarySoft, margin: 16, borderRadius: 14, padding: 16, gap: 6 },
+  // 좌우 여백·곡률은 설정 탭 묶음 카드와 같다(10-07).
+  body: { paddingTop: SPACING.sm, paddingBottom: 40 },
+  hero: {
+    backgroundColor: COLORS.primarySoft,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: RADIUS.floating,
+    padding: 16,
+    gap: 6,
+  },
   heroTitle: { ...TYPE.headline, color: COLORS.primary },
   heroText: { ...TYPE.callout, color: COLORS.textSecondary },
-  section: { backgroundColor: COLORS.cardBg, marginHorizontal: 16, marginBottom: 16, borderRadius: 14, overflow: 'hidden' },
+  section: {
+    backgroundColor: COLORS.cardBg,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: RADIUS.floating,
+    overflow: 'hidden',
+  },
   faq: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.divider, paddingHorizontal: 16 },
   faqLast: { borderBottomWidth: 0 },
   faqHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 },

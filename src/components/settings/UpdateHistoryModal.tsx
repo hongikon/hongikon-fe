@@ -200,11 +200,13 @@ export function UpdateHistoryRow({ last }: { last?: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { paddingBottom: SPACING.xxxl },
+  // 현재 버전·버전별 묶음은 설정 탭 묶음 카드와 같은 둥근 흰 카드(10-07).
+  scrollContent: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
   current: {
     backgroundColor: COLORS.white,
+    borderRadius: RADIUS.floating,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.lg,
     marginBottom: SPACING.sm,
@@ -213,7 +215,13 @@ const styles = StyleSheet.create({
   currentTitle: { ...TYPE.subhead, color: COLORS.textPrimary },
   currentMeta: { ...TYPE.caption, color: COLORS.textTertiary },
   checkButton: { alignSelf: 'flex-start', marginTop: SPACING.sm },
-  section: { backgroundColor: COLORS.white, marginBottom: SPACING.sm, paddingBottom: SPACING.md },
+  section: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.floating,
+    overflow: 'hidden',
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.md,
+  },
   badgeRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   badge: {
     ...TYPE.label,

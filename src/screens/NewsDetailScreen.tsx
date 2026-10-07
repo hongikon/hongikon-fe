@@ -14,6 +14,7 @@ import { backendDetailToNewsItem } from '../utils/newsMapping'
 import { FONTS } from '../constants/typography'
 import RetryableError from '../components/common/RetryableError'
 import ScreenHeader from '../components/common/ScreenHeader'
+import { ModalPanel } from '../components/settings/ModalHeader'
 import IconButton from '../components/common/IconButton'
 import Button from '../components/common/Button'
 import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Skeleton'
@@ -59,22 +60,24 @@ export default function NewsDetailScreen({ route, navigation }: Props) {
   if (!item) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.headerBar}>
-          <ScreenHeader title="소식 상세" onBack={() => navigation.goBack()} border={false} style={layoutStyles.readable} />
+        <ScreenHeader title="소식 상세" onBack={() => navigation.goBack()} card style={layoutStyles.readable} />
+        <View style={[styles.column, layoutStyles.readable]}>
+          <ModalPanel>
+            {notFound ? (
+              <RetryableError style={styles.loadError} message="소식을 찾을 수 없어요. 주소를 확인해 주세요." />
+            ) : detail.errorMessage ? (
+              <RetryableError
+                style={styles.loadError}
+                message={detail.errorMessage}
+                isNetworkError={detail.isNetworkError}
+                onRetry={detail.canRetry ? detail.retry : undefined}
+                retrying={detail.refreshing || detail.loading}
+              />
+            ) : (
+              <NewsDetailSkeleton />
+            )}
+          </ModalPanel>
         </View>
-        {notFound ? (
-          <RetryableError style={styles.loadError} message="소식을 찾을 수 없어요. 주소를 확인해 주세요." />
-        ) : detail.errorMessage ? (
-          <RetryableError
-            style={styles.loadError}
-            message={detail.errorMessage}
-            isNetworkError={detail.isNetworkError}
-            onRetry={detail.canRetry ? detail.retry : undefined}
-            retrying={detail.refreshing || detail.loading}
-          />
-        ) : (
-          <NewsDetailSkeleton />
-        )}
       </SafeAreaView>
     )
   }
@@ -102,81 +105,84 @@ function NewsDetailBody({
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.headerBar}>
-        <ScreenHeader
-          title="소식 상세"
-          onBack={onBack}
-          border={false}
-          style={layoutStyles.readable}
-          right={
-            <IconButton
-              icon={bookmarked ? 'bookmark' : 'bookmark-outline'}
-              color={bookmarked ? COLORS.primary : COLORS.textSecondary}
-              onPress={() => toggleBookmark(item.id)}
-              accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
-            />
-          }
-        />
+      <ScreenHeader
+        title="소식 상세"
+        onBack={onBack}
+        card
+        style={layoutStyles.readable}
+        right={
+          <IconButton
+            icon={bookmarked ? 'bookmark' : 'bookmark-outline'}
+            color={bookmarked ? COLORS.primary : COLORS.textSecondary}
+            onPress={() => toggleBookmark(item.id)}
+            accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
+          />
+        }
+      />
+
+      {/* 회색 바탕 위 둥근 흰 판에 본문을 담는다(10-07 — 설정 창들과 같은 모양). */}
+      <View style={[styles.column, layoutStyles.readable]}>
+        <ModalPanel>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+            <View style={styles.metaRow}>
+              <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
+                <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
+              </View>
+              <Text style={styles.date}>
+                {item.date}
+                {typeof item.views === 'number' ? ` · 조회 ${item.views}` : ''}
+              </Text>
+            </View>
+
+            {/* 출처 게시판을 제목보다 먼저 보여 준다 — 학교 홈페이지 글을 옮겨 보여 준다는 걸 분명히 한다(스토어 5.2.2). */}
+            <View style={styles.sourceRow}>
+              <Ionicons name="business-outline" size={14} color={COLORS.textTertiary} />
+              <Text style={styles.sourceName} numberOfLines={1}>
+                <Text style={styles.sourceLabel}>출처{'  '}</Text>
+                {item.source}
+              </Text>
+            </View>
+
+            <Text style={styles.title}>{item.title}</Text>
+
+            <View style={styles.divider} />
+
+            {/* 목록에서 온 짧은 미리보기 대신 본문 자리 모양을 보여주고, 다 받으면 본문으로 바꾼다. */}
+            {loadingMore ? (
+              <DetailBodySkeleton />
+            ) : (
+              item.preview.length > 0 && <NewsBody text={item.preview} />
+            )}
+
+            {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
+            {!loadingMore && item.preview.length === 0 && (
+              <Text style={styles.bodyPlaceholder}>
+                {item.images?.length
+                  ? '본문이 이미지로만 되어 있어요. 원문에서 확인해 주세요.'
+                  : '본문 미리보기가 없어요. 원문에서 확인해 주세요.'}
+              </Text>
+            )}
+
+            {item.attachments && item.attachments.length > 0 && (
+              <View style={styles.attachBox}>
+                <Text style={styles.attachLabel}>첨부파일 {item.attachments.length}</Text>
+                {item.attachments.map((file) => (
+                  <TouchableOpacity
+                    key={file.url}
+                    style={styles.attachRow}
+                    onPress={() => openExternalUrl(file.url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${file.name} 내려받기`}
+                  >
+                    <Ionicons name="document-attach-outline" size={15} color={COLORS.primary} />
+                    <Text style={styles.attachName} numberOfLines={1}>{file.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </ModalPanel>
       </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, layoutStyles.readable]}>
-        <View style={styles.metaRow}>
-          <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
-            <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
-          </View>
-          <Text style={styles.date}>
-            {item.date}
-            {typeof item.views === 'number' ? ` · 조회 ${item.views}` : ''}
-          </Text>
-        </View>
-
-        {/* 출처 게시판을 제목보다 먼저 보여 준다 — 학교 홈페이지 글을 옮겨 보여 준다는 걸 분명히 한다(스토어 5.2.2). */}
-        <View style={styles.sourceRow}>
-          <Ionicons name="business-outline" size={14} color={COLORS.textTertiary} />
-          <Text style={styles.sourceName} numberOfLines={1}>
-            <Text style={styles.sourceLabel}>출처{'  '}</Text>
-            {item.source}
-          </Text>
-        </View>
-
-        <Text style={styles.title}>{item.title}</Text>
-
-        <View style={styles.divider} />
-
-        {/* 목록에서 온 짧은 미리보기 대신 본문 자리 모양을 보여주고, 다 받으면 본문으로 바꾼다. */}
-        {loadingMore ? (
-          <DetailBodySkeleton />
-        ) : (
-          item.preview.length > 0 && <NewsBody text={item.preview} />
-        )}
-
-        {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
-        {!loadingMore && item.preview.length === 0 && (
-          <Text style={styles.bodyPlaceholder}>
-            {item.images?.length
-              ? '본문이 이미지로만 되어 있어요. 원문에서 확인해 주세요.'
-              : '본문 미리보기가 없어요. 원문에서 확인해 주세요.'}
-          </Text>
-        )}
-
-        {item.attachments && item.attachments.length > 0 && (
-          <View style={styles.attachBox}>
-            <Text style={styles.attachLabel}>첨부파일 {item.attachments.length}</Text>
-            {item.attachments.map((file) => (
-              <TouchableOpacity
-                key={file.url}
-                style={styles.attachRow}
-                onPress={() => openExternalUrl(file.url)}
-                accessibilityRole="link"
-                accessibilityLabel={`${file.name} 내려받기`}
-              >
-                <Ionicons name="document-attach-outline" size={15} color={COLORS.primary} />
-                <Text style={styles.attachName} numberOfLines={1}>{file.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
 
       {/* 원문 보기는 화면 아래에 하나만 고정해 둔다 — 본문을 어디까지 읽었든 바로 누를 수 있다(예전엔 위·아래 두 개였다). */}
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
@@ -195,8 +201,8 @@ function NewsDetailBody({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  headerBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  column: { flex: 1 },
   loadError: { margin: 16 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },

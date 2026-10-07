@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'rea
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
+import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS } from '../../constants/typography'
 import { PARTNER_SOURCES } from '../../constants/partnerSources'
 import { PARTNER_NOTICE_TEXT } from '../map/PartnerNoticeModal'
@@ -23,7 +24,7 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
         {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
         <ModalHeader title="제휴 출처" onClose={onClose} />
-        <ScrollView style={styles.body}>
+        <ScrollView contentContainerStyle={styles.body}>
           <Text style={styles.intro}>{PARTNER_NOTICE_TEXT}</Text>
           {PARTNER_SOURCES.map((source) => (
             <View key={source.affiliation} style={styles.card}>
@@ -54,19 +55,21 @@ export default function PartnerSourcesModal({ visible, onClose }: PartnerSources
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  body: { padding: 20 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // 회색 바탕 위 둥근 흰 카드(설정 탭 묶음 카드와 같은 여백·곡률, 10-07).
+  body: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: 40 },
   intro: {
     fontFamily: FONTS.regular,
     fontSize: 12,
     lineHeight: 18,
     color: COLORS.textSecondary,
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   card: {
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.floating,
+    padding: 16,
     marginBottom: 10,
   },
   affiliation: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },

@@ -307,39 +307,40 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <TabHeaderCard title="설정">
-        {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
-        <Pressable
-          style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}
-          onPress={
-            status !== 'authenticated'
-              ? handleGoToLogin
-              : profile && !nicknameApiMissing
-                ? () => setActiveModal('nickname')
-                : undefined
-          }
-          accessibilityRole="button"
-          accessibilityLabel={
-            status === 'authenticated'
-              ? `프로필 ${profile?.displayName ?? ''}, 닉네임 변경`
-              : '로그인하기'
-          }
-        >
-          <View style={styles.avatar}>
-            <ReportMegaphoneIcon size={24} color={COLORS.white} />
-          </View>
-          <View style={styles.profileBody}>
-            <Text style={styles.profileName} numberOfLines={1}>
-              {status === 'authenticated' ? (profile?.displayName ?? '불러오는 중') : '게스트'}
-            </Text>
-            <Text style={styles.profileSub} numberOfLines={1}>
-              {status === 'authenticated' ? '홍익대학교 · 닉네임 변경' : '로그인하고 닉네임을 정해 보세요'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
-        </Pressable>
-      </TabHeaderCard>
       <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
+        {/* 설정은 목록이 길어 머리 카드를 위에 고정하지 않고 같이 스크롤한다(10-07 요청). */}
+        <TabHeaderCard title="설정">
+          {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
+          <Pressable
+            style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}
+            onPress={
+              status !== 'authenticated'
+                ? handleGoToLogin
+                : profile && !nicknameApiMissing
+                  ? () => setActiveModal('nickname')
+                  : undefined
+            }
+            accessibilityRole="button"
+            accessibilityLabel={
+              status === 'authenticated'
+                ? `프로필 ${profile?.displayName ?? ''}, 닉네임 변경`
+                : '로그인하기'
+            }
+          >
+            <View style={styles.avatar}>
+              <ReportMegaphoneIcon size={24} color={COLORS.white} />
+            </View>
+            <View style={styles.profileBody}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {status === 'authenticated' ? (profile?.displayName ?? '불러오는 중') : '게스트'}
+              </Text>
+              <Text style={styles.profileSub} numberOfLines={1}>
+                {status === 'authenticated' ? '홍익대학교 · 닉네임 변경' : '로그인하고 닉네임을 정해 보세요'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+          </Pressable>
+        </TabHeaderCard>
 
         {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
         {status === 'authenticated' && profile?.status === 'SUSPENDED' && (

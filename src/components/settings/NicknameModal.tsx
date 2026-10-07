@@ -9,6 +9,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
+import { RADIUS } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
@@ -21,7 +22,7 @@ import {
   validateAppNickname,
 } from '../../utils/nickname'
 import RetryableError from '../common/RetryableError'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import OfficialBadge from '../common/OfficialBadge'
 import Button from '../common/Button'
@@ -121,6 +122,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
         <SafeAreaView style={styles.container} edges={['top']}>
           <ContentColumn>
             <ModalHeader title="닉네임" onClose={onClose} />
+            <ModalPanel>
             <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
               <FieldLabel>앱 닉네임 (선택)</FieldLabel>
               <TextField
@@ -206,6 +208,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
                 )}
               </View>
             </KeyboardAvoidingView>
+            </ModalPanel>
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -214,7 +217,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   body: { flex: 1, padding: 20 },
   input: { marginBottom: 8 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 16 },
@@ -225,7 +228,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: COLORS.textSecondary,
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     padding: 12,
     marginBottom: 20,
   },

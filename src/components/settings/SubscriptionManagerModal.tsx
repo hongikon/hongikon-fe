@@ -19,7 +19,7 @@ import { ToastViewport } from '../common/Toast'
 import ContentColumn from '../common/ContentColumn'
 import EmptyState from '../common/EmptyState'
 import SearchBar from '../news/SearchBar'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
@@ -77,6 +77,7 @@ export default function SubscriptionManagerModal({
           }
         />
 
+        <ModalPanel>
         <SearchBar
           value={query}
           onChangeText={setQuery}
@@ -173,6 +174,7 @@ export default function SubscriptionManagerModal({
           )}
           <View style={styles.bottomSpacer} />
         </ScrollView>
+        </ModalPanel>
         {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다. */}
         <ToastViewport />
         </ContentColumn>
@@ -183,7 +185,7 @@ export default function SubscriptionManagerModal({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   doneBtn: { minWidth: 40, height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   done: {
     fontSize: 15,
