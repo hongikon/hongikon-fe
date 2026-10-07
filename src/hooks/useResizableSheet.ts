@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, PanResponder, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { Animated, Easing, PanResponder, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 /** 가장 작은 크기에서 이만큼 더 끌어내리면 닫는다. */
@@ -35,6 +35,19 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
   onCloseRef.current = onClose
   const snaps = useRef<number[]>([])
   snaps.current = [...points].sort((a, b) => a - b)
+
+  // 처음 뜰 때 아래에서 부드럽게 올라온다(예전엔 시트가 한 번에 툭 나타났다).
+  useEffect(() => {
+    translateY.setValue(260)
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start()
+    // 처음 한 번만.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 화면 크기가 바뀌면(회전·창 크기) 보통 크기로 되돌린다.
   useEffect(() => {

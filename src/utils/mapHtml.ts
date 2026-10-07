@@ -372,9 +372,25 @@ export function buildMapHTML(
     var lastMarkerClickAt = 0;
 
     // 하나를 눌러 볼 때(건물·제휴·편의시설·제보·검색) 항상 같은 배율로 그 자리를 가운데에 둔다.
-    function focusOn(lat, lng) {
-      map.setCenter(new naver.maps.LatLng(lat, lng));
-      map.setZoom(${FOCUS_ZOOM});
+    // 누른 지점으로 카메라를 부드럽게 옮긴다(예전엔 setCenter·setZoom 으로 한 번에 순간이동해 화면이 확 바뀌었다).
+    // 네이버 지도 웹 API 는 확대 단계 변경(setZoom·morph)은 애니메이션 없이 바뀌고 이동(panTo)만 부드럽게 움직인다.
+    // 그래서 지도에서 마커·건물을 누를 땐 지금 확대 단계를 그대로 두고 위치만 미끄러지듯 옮긴다(네이버 지도 앱처럼).
+    // 검색·알림처럼 확대 단계(zoom)를 넘겨받은 이동만 먼저 단계를 맞춘 뒤 옮긴다.
+    // 아래에서 올라오는 시트에 가리지 않게, 지점이 화면 가운데보다 조금 위(지도 높이의 13%)에 오도록 한다.
+    function focusOn(lat, lng, zoom) {
+      if (typeof zoom === 'number' && Math.abs(map.getZoom() - zoom) > 0.01) map.setZoom(zoom);
+      var point = new naver.maps.LatLng(lat, lng);
+      var center = point;
+      try {
+        var proj = map.getProjection();
+        var world = proj.fromCoordToPoint(point);
+        var size = map.getSize();
+        var dy = (size.height * 0.13) / Math.pow(2, map.getZoom());
+        center = proj.fromPointToCoord(new naver.maps.Point(world.x, world.y + dy));
+      } catch (e) {
+        center = point;
+      }
+      map.panTo(center, { duration: 420, easing: 'easeOutCubic' });
     }
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
     // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
@@ -1167,7 +1183,7 @@ export function buildMapHTML(
           changeSelectedPartner(msg.id);
           var focused = currentPartners.filter(function(p) { return p.id === msg.id; })[0];
           if (focused) {
-            focusOn(focused.lat, focused.lng);
+            focusOn(focused.lat, focused.lng, msg.zoom);
           }
         }
 
@@ -1200,7 +1216,7 @@ export function buildMapHTML(
         }
 
         if (msg.type === 'focusReport') {
-          focusOn(msg.lat, msg.lng);
+          focusOn(msg.lat, msg.lng, msg.zoom);
         }
 
         if (msg.type === 'showRoute') {
@@ -1263,8 +1279,8 @@ export function buildMapHTML(
 
         if (msg.type === 'clearRoute') {
           clearRouteOverlays();
-          map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}));
           map.setZoom(${DEFAULT_ZOOM});
+          map.panTo(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng}), { duration: 420, easing: 'easeOutCubic' });
         }
 
         if (msg.type === 'startLocationPicker') {
