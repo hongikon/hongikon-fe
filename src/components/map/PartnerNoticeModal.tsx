@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useIsFocused } from '@react-navigation/native'
 import { View, Text, StyleSheet, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
@@ -19,6 +20,9 @@ export const PARTNER_NOTICE_TEXT =
  */
 export default function PartnerNoticeModal() {
   const [visible, setVisible] = useState(false)
+  // 지도 탭이 화면에 보일 때만 띄운다. 소식 상세 링크로 바로 들어오면 지도 탭이 뒤에서 먼저 그려지는데,
+  // 그때 이 창이 소식 화면 위를 덮었다.
+  const focused = useIsFocused()
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -33,7 +37,7 @@ export default function PartnerNoticeModal() {
     AsyncStorage.setItem(STORAGE_KEY, '1').catch(() => {})
   }
 
-  if (!visible) return null
+  if (!visible || !focused) return null
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={handleConfirm}>

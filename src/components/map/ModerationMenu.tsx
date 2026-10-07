@@ -6,6 +6,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { REPORT_FLAG_REASONS } from '../../constants/report'
 import type { ReportFlagReason } from '../../types'
+import { RADIUS } from '../../constants/spacing'
 
 interface ModerationMenuProps {
   visible: boolean
@@ -146,8 +147,8 @@ export const menuStyles = StyleSheet.create({
     maxWidth: 520,
     alignSelf: 'center',
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingTop: 12,
     paddingHorizontal: 16,
   },

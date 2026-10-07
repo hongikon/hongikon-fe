@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Pressable,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -31,6 +32,9 @@ import OfficialRequestModal from '../components/settings/OfficialRequestModal'
 import InfoSuggestModal from '../components/settings/InfoSuggestModal'
 import AppPermissionsModal from '../components/settings/AppPermissionsModal'
 import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
+import ReportKeywordAlerts from '../components/settings/ReportKeywordAlerts'
+import { useReportKeywordAlerts } from '../hooks/useReportKeywordAlerts'
+import { isReportKeywordsMock } from '../apis/reportKeywords'
 import NicknameModal from '../components/settings/NicknameModal'
 import HiddenUsersModal from '../components/settings/HiddenUsersModal'
 import MyReportsModal from '../components/settings/MyReportsModal'
@@ -41,7 +45,8 @@ import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
-import { LargeTitleHeader } from '../components/common/ScreenHeader'
+import TabHeaderCard from '../components/common/TabHeaderCard'
+import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
 import {
   getMyMemberCode,
   getMyProfile,
@@ -66,6 +71,7 @@ import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
+import { useTabBarInset } from '../hooks/useTabBarInset'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
@@ -88,6 +94,7 @@ type ModalType =
   | null
 
 export default function SettingsScreen() {
+  const tabInset = useTabBarInset()
   const {
     settings,
     toggleSubscriptionAlert,
@@ -224,6 +231,15 @@ export default function SettingsScreen() {
   // 관리자 알림 스위치 — 관리자 계정에만, 서버가 이 설정을 알 때만(모르면 숨김) 보인다.
   const isAdmin = useIsAdmin()
   const adminAlert = useAdminAlertSetting(isAdmin)
+  // 새 제보 알림 범위·제보 키워드. 로그인 + 스위치 켜짐일 때만 불러와 보여 준다.
+  // 개발 웹 `?mock=1` 에선 로그인 없이도 목업으로 보여 준다(운영 빌드는 늘 false).
+  const [reportKeywordMock] = useState(isReportKeywordsMock)
+  const showReportKeywords = newReportAlert || reportKeywordMock
+  const reportKeywords = useReportKeywordAlerts(
+    showReportKeywords,
+    reportKeywordMock && !accessToken ? 'mock' : accessToken,
+  )
+  const keywordScopeOn = showReportKeywords && reportKeywords.status === 'ready' && reportKeywords.scope === 'KEYWORDS'
 
   // 앱 닉네임. 백엔드에 API 가 아직 없으면(배포 전) 줄을 숨긴다.
   // 토큰은 ref 로 읽는다. deps 에 넣으면 401 → 재발급으로 토큰이 바뀔 때마다 다시 불러, 배포 전 서버(없는 경로에 401)에서
@@ -291,8 +307,39 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LargeTitleHeader title="설정" style={layoutStyles.readable} />
-      <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
+      <TabHeaderCard title="설정">
+        {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
+        <Pressable
+          style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}
+          onPress={
+            status !== 'authenticated'
+              ? handleGoToLogin
+              : profile && !nicknameApiMissing
+                ? () => setActiveModal('nickname')
+                : undefined
+          }
+          accessibilityRole="button"
+          accessibilityLabel={
+            status === 'authenticated'
+              ? `프로필 ${profile?.displayName ?? ''}, 닉네임 변경`
+              : '로그인하기'
+          }
+        >
+          <View style={styles.avatar}>
+            <ReportMegaphoneIcon size={24} color={COLORS.white} />
+          </View>
+          <View style={styles.profileBody}>
+            <Text style={styles.profileName} numberOfLines={1}>
+              {status === 'authenticated' ? (profile?.displayName ?? '불러오는 중') : '게스트'}
+            </Text>
+            <Text style={styles.profileSub} numberOfLines={1}>
+              {status === 'authenticated' ? '홍익대학교 · 닉네임 변경' : '로그인하고 닉네임을 정해 보세요'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+        </Pressable>
+      </TabHeaderCard>
+      <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
 
         {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
         {status === 'authenticated' && profile?.status === 'SUSPENDED' && (
@@ -308,22 +355,16 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
+        {status === 'authenticated' && (
         <View style={styles.section}>
           <SectionTitle title="계정" />
-          {status === 'authenticated' ? (
             <>
               <ListRow
                 icon="person-circle-outline"
                 label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
               />
-              {!nicknameApiMissing && (profile || profileResource.loading) && (
-                <ListRow
-                  icon="happy-outline"
-                  label="닉네임"
-                  value={profile ? profile.displayName : '불러오는 중'}
-                  onPress={profile ? () => setActiveModal('nickname') : undefined}
-                />
-              )}
+              {/* 닉네임은 맨 위 프로필 줄에서 바꾼다. */}
               {memberId !== null && (
                 <ListRow
                   icon="id-card-outline"
@@ -334,22 +375,7 @@ export default function SettingsScreen() {
                   accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
               )}
-              {/* 공식 계정(학생회 등): 인증됐으면 공식 이름과 배지, 아니면 신청 창. 이 기능 전 서버는 키가 없어 신청 줄만 보인다. */}
-              {profile && profile.officialName ? (
-                <ListRow
-                  icon="shield-checkmark-outline"
-                  label="공식 계정"
-                  value={profile.officialName}
-                  accessibilityLabel={`공식 계정, ${profile.officialName}`}
-                />
-              ) : profile ? (
-                <ListRow
-                  icon="shield-checkmark-outline"
-                  label="공식 계정 신청"
-                  value="학생회·단체"
-                  onPress={() => setActiveModal('official')}
-                />
-              ) : null}
+              {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
               {accountLoaded && !myReportsApiMissing && (
                 <ListRow
                   icon="megaphone-outline"
@@ -364,16 +390,8 @@ export default function SettingsScreen() {
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
             </>
-          ) : (
-            <ListRow
-              icon="log-in-outline"
-              label="로그인하기"
-              value="게스트로 이용 중"
-              last
-              onPress={handleGoToLogin}
-            />
-          )}
         </View>
+        )}
 
         <View style={styles.section}>
           <SectionTitle title="알림" />
@@ -448,8 +466,12 @@ export default function SettingsScreen() {
             <ListRow
               icon="megaphone-outline"
               label="캠퍼스 새 제보 알림"
-              description="운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰려도 알림은 30분에 한 번만 와요."
-              last
+              description={
+                keywordScopeOn
+                  ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
+                  : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰리면 30분에 한 번 모아서 보내고, 밤 11시~아침 8시엔 쉬었다가 아침에 모아 보내요.'
+              }
+              last={!showReportKeywords}
               right={
                 <ToggleSwitch
                   value={newReportAlert}
@@ -459,6 +481,17 @@ export default function SettingsScreen() {
                 />
               }
             />
+            {showReportKeywords && (
+              <ReportKeywordAlerts
+                status={reportKeywords.status}
+                scope={reportKeywords.scope}
+                keywords={reportKeywords.keywords}
+                onRetry={reportKeywords.retry}
+                onChangeScope={reportKeywords.changeScope}
+                onAdd={reportKeywords.addKeyword}
+                onRemove={reportKeywords.removeKeyword}
+              />
+            )}
           </View>
           {isAdmin && adminAlert.state.status !== 'unsupported' && (
             <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
@@ -709,6 +742,11 @@ export default function SettingsScreen() {
           profile={profile}
           onClose={() => setActiveModal(null)}
           onSaved={setSavedProfile}
+          onRequestOfficial={() => {
+            // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
+            setActiveModal(null)
+            setTimeout(() => setActiveModal('official'), 400)
+          }}
         />
       )}
 
@@ -734,9 +772,37 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   // SafeAreaView 상단 인셋·큰 제목 줄은 흰색, 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
-  section: { backgroundColor: COLORS.white, marginBottom: SPACING.sm },
+  profile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.floating,
+    backgroundColor: COLORS.background,
+  },
+  profilePressed: { opacity: 0.7 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileBody: { flex: 1, gap: 2 },
+  profileName: { ...TYPE.subhead, color: COLORS.textPrimary },
+  profileSub: { ...TYPE.caption, color: COLORS.textSecondary },
+  // 묶음마다 둥근 카드(10-07 A안 — 머리 카드·하단 탭 캡슐과 같은 곡률 계열).
+  section: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.floating,
+    overflow: 'hidden',
+  },
   sectionTitleWithDesc: { paddingBottom: SPACING.md },
   categoryGrid: {
     flexDirection: 'row',

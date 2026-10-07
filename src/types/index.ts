@@ -22,6 +22,14 @@ export interface BuildingEntrance {
 }
 
 export interface Building {
+  /**
+   * 서버 `buildings.id`. 지도 데이터(`GET /map/data`)로 받은 건물에만 있다. 제보(`POST /reports`)의
+   * `buildingId` 로 그대로 쓴다.
+   */
+  id?: number
+  /** 서버 건물 code(예: `hongik_r`). 관리자 화면에서 편의시설이 속한 건물을 가리킬 때 쓴다. */
+  code?: string
+  /** 화면에 보이는 이름(예: '홍문관 R동'). 서버의 `display_name`(없으면 `name`). */
   name: string
   lat: number
   lng: number
@@ -59,7 +67,7 @@ export interface PathWaypoint {
 /**
  * 실외 간선(양방향). 각 값은 `PathWaypoint.id` 이거나 건물 출입구를 가리키는
  * '건물명' 또는 '건물명#출입구라벨'(라벨은 `BuildingEntrance.label` 과 정확히
- * 일치) 문자열이다. 건물 쪽 좌표는 `buildings.ts` 를 그대로 참조하며 여기 다시
+ * 일치) 문자열이다. 건물 쪽 좌표는 지도 데이터(서버 `GET /map/data`)의 건물을 그대로 참조하며 여기 다시
  * 적지 않는다 — `src/utils/routing.ts` 가 해석한다.
  */
 export type PathEdge = [string, string]
@@ -106,13 +114,13 @@ export type FacilityKind =
  *
  * 좌표를 직접 들고 있지 않고 건물을 가리킨다. 편의시설은 건물 안에 있어
  * 개별 좌표를 따로 확인할 방법이 없는 반면, 건물 좌표는 이미 검증돼 있기
- * 때문이다(`constants/buildings.ts` 참고 — 추정 좌표는 넣지 않는다).
+ * 때문이다(지도 데이터의 건물 — 추정 좌표는 넣지 않는다).
  * 지도 핀은 `buildingName` 으로 찾은 건물의 좌표에 찍힌다.
  */
 export interface Facility {
   id: string
   kind: FacilityKind
-  /** `BUILDINGS` 의 `name` 과 정확히 일치해야 한다. 못 찾으면 지도에서 빠진다. */
+  /** 지도 데이터 건물의 `name`(표시 이름)과 정확히 일치해야 한다. 못 찾으면 지도에서 빠진다. */
   buildingName: string
   /** 확인된 경우에만 채운다. 표기는 `formatFloor` 규칙을 따른다. */
   floor?: number
@@ -124,6 +132,23 @@ export interface Facility {
    */
   lat?: number
   lng?: number
+}
+
+/**
+ * '행사·전시' 시설(현대미술관 1관·2관, 박물관 …)에서 열리는 전시 하나. `GET /map/data` 의 `exhibitions`.
+ * 서버가 이미 끝나지 않았고 60일 안에 시작하는 것만 골라 준다. 날짜는 한국 날짜 'YYYY-MM-DD' 이고 양끝을 포함한다.
+ */
+export interface Exhibition {
+  id: number
+  /** 전시가 열리는 시설의 `Facility.id`(예: 'hi-mh-4f-exhibition'). */
+  facilityId: string
+  title: string
+  startsOn: string
+  endsOn: string
+  /** '10:00~18:00 (일 휴관)' 처럼 자유 문구. */
+  hours?: string
+  description?: string
+  link?: ExternalLink
 }
 
 /**
@@ -316,11 +341,12 @@ export interface Report {
 }
 
 /**
- * `GET /reports` 목록 항목(`ReportSummaryResponse`). `content`뿐 아니라 `status`도
- * 내려오지 않는다 — 목록 조회는 서버가 이미 살아있는(ACTIVE, live) 제보만 쿼리해
- * 돌려주므로 상태를 따로 알려줄 필요가 없다. 상태를 보려면 상세(`Report`)가 필요하다.
+ * `GET /reports` 목록 항목(`ReportSummaryResponse`). `status`는 내려오지 않는다 — 목록 조회는 서버가 이미
+ * 살아있는(ACTIVE, live) 제보만 쿼리해 돌려주므로 상태를 따로 알려줄 필요가 없다.
  */
 export type ReportListItem = Omit<Report, 'content' | 'status'> & {
+  /** 본문(최대 2000자). 2026-10-06 전 서버는 목록에 본문을 싣지 않아 없음 — 시트에서 본문 줄을 숨긴다. */
+  content?: string | null
   /**
    * 공개 댓글 수(`GET /reports` 목록에서만, 서버가 한 번에 세어 준다). 댓글 기능 전 서버는 없음 —
    * 시트는 댓글 목록을 받아 본 뒤 그 수(`totalElements`)를 쓴다.

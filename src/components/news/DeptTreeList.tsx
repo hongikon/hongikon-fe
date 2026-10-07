@@ -6,6 +6,8 @@ import { layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
 import type { TreeChild, TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
+import { useTabBarInset } from '../../hooks/useTabBarInset'
+import { RADIUS } from '../../constants/spacing'
 
 interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
@@ -140,6 +142,7 @@ export default function DeptTreeList({
   subscribedDepts,
   onToggleSubscribe,
 }: DeptTreeListProps) {
+  const tabInset = useTabBarInset()
   // 펼침 상태는 이름으로 기억한다. 검색으로 목록이 걸러지면 순서가 밀려서
   // 인덱스로 기억하면 엉뚱한 단과대가 펼쳐진다.
   // 처음에는 전부 접어 둔다. 단과대가 많아 하나가 펼쳐져 있으면 나머지가 아래로 밀린다.
@@ -165,7 +168,7 @@ export default function DeptTreeList({
   return (
     <ScrollView
       style={styles.treeScroll}
-      contentContainerStyle={[styles.treeContent, layoutStyles.readable]}
+      contentContainerStyle={[styles.treeContent, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
       keyboardShouldPersistTaps="handled"
     >
       {results.map((node) => {
@@ -233,7 +236,7 @@ export default function DeptTreeList({
 const styles = StyleSheet.create({
   treeScroll: { flex: 1, backgroundColor: COLORS.background },
   treeContent: { padding: 12, gap: 8 },
-  treeCard: { backgroundColor: COLORS.white, borderRadius: 16, overflow: 'hidden' },
+  treeCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, overflow: 'hidden' },
   treeParent: {
     flexDirection: 'row',
     alignItems: 'center',

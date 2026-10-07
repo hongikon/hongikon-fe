@@ -3,11 +3,13 @@ import type { Ionicons } from '@expo/vector-icons'
 import type { FacilityKind } from '../types'
 
 type IoniconName = ComponentProps<typeof Ionicons>['name']
+/** 시설 아이콘 이름. 'sofa'(라운지)만 Ionicons 에 없어 MaterialCommunityIcons 로 그린다(`ChipIcon.tsx` KindIcon). */
+export type FacilityIconName = IoniconName | 'sofa'
 
 export interface FacilityKindMeta {
   key: FacilityKind
-  /** 칩에 쓰는 Ionicons 이름 */
-  icon: IoniconName
+  /** 칩·시트에 쓰는 아이콘 이름 */
+  icon: FacilityIconName
   /**
    * 지도 핀과 칩 선택 상태에 함께 쓰는 색.
    *
@@ -19,6 +21,11 @@ export interface FacilityKindMeta {
    * mapHtml.ts 의 FACILITY_ICONS 에 인라인 SVG 로 따로 그린다.
    */
   color: string
+  /**
+   * 화면에 보일 이름. 없으면 key 를 그대로 쓴다. key 는 서버 데이터·배포된 지도 페이지(map.html 아이콘)가 쓰는 값이라
+   * 바꾸지 않고, 보이는 이름만 바꿀 때 쓴다(예: '학생처' → '행정·지원').
+   */
+  label?: string
 }
 
 /**
@@ -38,9 +45,10 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
-  { key: '라운지', icon: 'happy', color: '#65A30D' },
+  { key: '라운지', icon: 'sofa', color: '#65A30D' },
   { key: '수면실', icon: 'bed', color: '#0891B2' },
-  { key: '학생처', icon: 'people', color: '#EA580C' },
+  // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
+  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
   { key: '학과사무실', icon: 'business-outline', color: '#1E3A8A' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
   { key: '흡연구역', icon: 'logo-no-smoking', color: '#57534E' },
@@ -55,4 +63,9 @@ export function facilityKindMeta(key: FacilityKind): FacilityKindMeta {
     throw new Error(`알 수 없는 편의시설 종류: ${key}`)
   }
   return meta
+}
+
+/** 편의시설 종류의 화면 이름(label 이 있으면 label). */
+export function facilityKindLabel(key: FacilityKind): string {
+  return META_BY_KEY.get(key)?.label ?? key
 }

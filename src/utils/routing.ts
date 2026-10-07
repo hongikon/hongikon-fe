@@ -1,4 +1,3 @@
-import { BUILDINGS } from '../constants/buildings'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 import { WALKING_METERS_PER_MINUTE } from '../constants/route'
 import type { Building } from '../types'
@@ -54,35 +53,36 @@ function addEdge(graph: Graph, aId: string, aPoint: RoutePoint, bId: string, bPo
  * '건물명' 또는 '건물명#출입구라벨' 문자열이다. 못 찾으면 null — 오타가 있는
  * 간선은 조용히 건너뛴다(전체 그래프를 무너뜨리지 않는다).
  */
-function resolveRef(
+export function resolveRef(
   ref: string,
   waypointById: Map<string, { id: string; lat: number; lng: number }>,
+  buildings: readonly Building[],
 ): { id: string; point: RoutePoint } | null {
   const waypoint = waypointById.get(ref)
   if (waypoint) return { id: waypoint.id, point: { lat: waypoint.lat, lng: waypoint.lng } }
 
   const hashIndex = ref.indexOf('#')
   if (hashIndex === -1) {
-    const building = BUILDINGS.find((b) => b.name === ref)
+    const building = buildings.find((b) => b.name === ref)
     if (!building) return null
     return { id: building.name, point: { lat: building.lat, lng: building.lng } }
   }
 
   const buildingName = ref.slice(0, hashIndex)
   const label = ref.slice(hashIndex + 1)
-  const building = BUILDINGS.find((b) => b.name === buildingName)
+  const building = buildings.find((b) => b.name === buildingName)
   const entrance = building?.entrances?.find((e) => e.label === label)
   if (!building || !entrance) return null
   return { id: ref, point: { lat: entrance.lat, lng: entrance.lng } }
 }
 
-function buildBaseGraph(): Graph {
+function buildBaseGraph(buildings: readonly Building[]): Graph {
   const waypointById = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
   const graph: Graph = { nodes: new Map(), floorNodeIds: new Set(), adj: new Map() }
 
   for (const [aRef, bRef] of PATH_EDGES) {
-    const a = resolveRef(aRef, waypointById)
-    const b = resolveRef(bRef, waypointById)
+    const a = resolveRef(aRef, waypointById, buildings)
+    const b = resolveRef(bRef, waypointById, buildings)
     if (!a || !b) continue
     addEdge(graph, a.id, a.point, b.id, b.point)
   }
@@ -90,11 +90,16 @@ function buildBaseGraph(): Graph {
   return graph
 }
 
-let baseGraphCache: Graph | null = null
+/** 건물 목록(지도 데이터)이 바뀌면 경로망을 다시 만든다. 같은 배열이면 한 번 만든 걸 쓴다. */
+const baseGraphCache = new WeakMap<readonly Building[], Graph>()
 
-function getBaseGraph(): Graph {
-  if (!baseGraphCache) baseGraphCache = buildBaseGraph()
-  return baseGraphCache
+function getBaseGraph(buildings: readonly Building[]): Graph {
+  let graph = baseGraphCache.get(buildings)
+  if (!graph) {
+    graph = buildBaseGraph(buildings)
+    baseGraphCache.set(buildings, graph)
+  }
+  return graph
 }
 
 function cloneGraph(graph: Graph): Graph {
@@ -312,11 +317,12 @@ function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
  * straightLineFallback 으로 대신해야 한다.
  */
 export function findRoutes(
+  buildings: readonly Building[],
   from: { building: Building; floor: number | null },
   to: { building: Building; floor: number | null },
   maxAlternatives = 3,
 ): RouteAlternative[] {
-  const graph = cloneGraph(getBaseGraph())
+  const graph = cloneGraph(getBaseGraph(buildings))
   const sourceId = attachFloorNode(graph, from.building, from.floor)
   const targetId = attachFloorNode(graph, to.building, to.floor)
   if (!graph.nodes.has(sourceId) || !graph.nodes.has(targetId)) return []

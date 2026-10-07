@@ -1,3 +1,5 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import SheetHandle from "./SheetHandle";
 import {
   Animated,
   View,
@@ -11,8 +13,9 @@ import type { Building } from "../../types";
 import { FONTS } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
+import { RADIUS } from "../../constants/spacing";
 
 interface BuildingSheetProps {
   building: Building;
@@ -34,14 +37,17 @@ export default function BuildingSheet({
   onSetFrom,
   onSetTo,
 }: BuildingSheetProps) {
-  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing). 내용이 짧아 보통은 내용 높이에서 멈춘다.
+  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+    smallRatio: 0.22,
+    midRatio: 0.5,
+  });
+  // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
+  const insets = useSafeAreaInsets();
   return (
-    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-      <View
-        style={styles.handle}
-        {...panHandlers}
-        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
-      />
+    <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
+      <View onLayout={onChromeLayout}>
+      <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
@@ -58,7 +64,9 @@ export default function BuildingSheet({
           style={sheetCloseStyle}
         />
       </View>
+      </View>
 
+      <Animated.ScrollView style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
       <Text style={styles.type}>
         {building.floors === undefined
           ? building.type
@@ -116,6 +124,7 @@ export default function BuildingSheet({
           </TouchableOpacity>
         </View>
       )}
+      </Animated.ScrollView>
     </Animated.View>
   );
 }
@@ -127,8 +136,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 20,
     paddingBottom: 30,
     paddingTop: 10,
@@ -137,14 +146,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 10,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 14,
   },
   header: {
     flexDirection: "row",

@@ -48,14 +48,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.headerBar}>
-        <ScreenHeader
-          title={title}
-          onBack={() => navigation.goBack()}
-          border={false}
-          style={layoutStyles.readable}
-        />
-      </View>
+      <ScreenHeader title={title} onBack={() => navigation.goBack()} card style={layoutStyles.readable} />
       {/* 검색창이 목록 헤더라, 검색어를 바꿔 다시 받는 동안에도 목록은 그대로 두고(입력 포커스 유지)
           로딩·오류는 빈 목록 자리에 보여준다. */}
       <NewsList
@@ -108,8 +101,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  // 아래 구분선은 화면 끝까지, 머리줄 안 내용은 가운데 읽기 폭으로.
-  headerBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  // 회색 바탕 위에 머리 카드·검색창·소식 카드가 뜬다(10-07).
+  container: { flex: 1, backgroundColor: COLORS.background },
   feedError: { marginTop: 12 },
 })

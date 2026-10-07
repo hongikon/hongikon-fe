@@ -1,4 +1,4 @@
-import type { ReportCategory } from '../types'
+import type { Exhibition, Facility, FacilityKind, Partner, ReportCategory } from '../types'
 
 /**
  * 관리자 API 응답 타입. 계약은 백엔드 `feat/admin-console` 의 관리자 API 스펙을 따른다.
@@ -197,7 +197,53 @@ export interface AdminUserPriorHistory {
   violationReportCount: number
 }
 
-export type AdminSection = 'dashboard' | 'reports' | 'comments' | 'users' | 'feedback' | 'tools'
+export type AdminSection =
+  | 'dashboard'
+  | 'reports'
+  | 'comments'
+  | 'users'
+  | 'feedback'
+  | 'partners'
+  | 'facilities'
+  | 'exhibitions'
+  | 'tools'
+
+// ── 지도 데이터(제휴업체·편의시설) 관리 — `GET/POST/PUT/DELETE /admin/map/*` ──────────────
+
+/** 제휴업체. `GET /map/data` 의 partner 와 같은 모양이고 `id` 는 code(예: 'cafe-sunny-house'). */
+export type AdminPartner = Partner
+
+/** 추가·수정 요청 본문. 추가할 때 `id` 를 비우면 서버가 `p-<랜덤8>` 을 만든다. */
+export type AdminPartnerInput = Omit<Partner, 'id'> & { id?: string }
+
+/** 편의시설. map/data 의 facility(`buildingName` = 건물 표시 이름) + 건물 code. */
+export interface AdminFacility extends Facility {
+  buildingCode: string
+}
+
+/** 추가·수정 요청 본문. 건물은 표시 이름 대신 code 로 가리킨다. 추가할 때 `id` 를 비우면 서버가 `f-<랜덤8>`. */
+export interface AdminFacilityInput {
+  id?: string
+  kind: FacilityKind
+  buildingCode: string
+  floor?: number
+  note?: string
+  lat?: number
+  lng?: number
+}
+
+/** 전시. `GET /map/data` 의 exhibition 과 같은 모양이고, 관리 목록에는 끝난 전시도 온다. */
+export type AdminExhibition = Exhibition
+
+/** 추가·수정 요청 본문. `facilityId` 는 '행사·전시' 시설 코드여야 한다(아니면 서버가 400). */
+export type AdminExhibitionInput = Omit<Exhibition, 'id'>
+
+/** 편의시설이 속한 건물을 고를 때 쓰는 목록(`GET /admin/map/buildings`). name 은 표시 이름. */
+export interface AdminBuildingOption {
+  id: number
+  code: string
+  name: string
+}
 
 /** 대시보드 수치와 그 요청 상태. 웹 콘솔은 AdminApp, 앱 관리 탭은 AdminAccessProvider 가 들고 있다. */
 export interface OverviewState {

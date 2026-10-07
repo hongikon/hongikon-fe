@@ -122,7 +122,8 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
         ) : null}
       </Pressable>
 
-      {state.kind === 'loading' ? (
+      {/* 목록에서 이미 댓글이 0개로 왔으면 불러오는 중 줄을 그리지 않는다 — 그렸다가 지우면 시트가 한 번 튀었다. */}
+      {state.kind === 'loading' && count === 0 ? null : state.kind === 'loading' ? (
         <View style={styles.skeletonRow}>
           <View style={styles.skeletonDot} />
           <View style={styles.skeletonLine} />

@@ -16,7 +16,7 @@ export const REPORT_LONG_PRESS_MOVE_TOLERANCE_PX = 10
 
 /** `docs/report-api-spec.md` §4.1 기준 상한. 서버 검증과 같은 값을 쓴다. */
 export const REPORT_TITLE_MAX_LENGTH = 100
-export const REPORT_CONTENT_MAX_LENGTH = 500
+export const REPORT_CONTENT_MAX_LENGTH = 2000
 
 /** '무슨 일인가요?' 에서 직접 입력하는 카테고리 라벨의 최대 길이. 칩 한 줄에 들어가야 해 짧게 잡는다. */
 export const REPORT_CUSTOM_CATEGORY_MAX_LENGTH = 12

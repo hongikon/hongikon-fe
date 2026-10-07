@@ -3,7 +3,6 @@ import {
   PARTNER_BOUNDS_PADDING_DEGREES,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
-import { PARTNERS } from '../constants/partners'
 import { haversineMeters } from './geo'
 import type { Partner, PartnerAffiliation, PartnerCategory } from '../types'
 
@@ -29,11 +28,12 @@ function matchesAffiliation(
   return (partner.affiliations ?? []).includes(affiliation)
 }
 
-export function filterPartners({
-  affiliation,
-  category,
-}: PartnerFilter): Partner[] {
-  return PARTNERS.filter(
+/** `partners` 는 지도 데이터(`useMapData().partners`)를 넘긴다. */
+export function filterPartners(
+  partners: readonly Partner[],
+  { affiliation, category }: PartnerFilter,
+): Partner[] {
+  return partners.filter(
     (partner) =>
       matchesAffiliation(partner, affiliation) &&
       (category === null || partner.category === category),
@@ -44,8 +44,8 @@ export function filterPartners({
  * 칩에 붙는 개수 배지용.
  * 한쪽 단계를 고정한 채 세므로, 소속을 고르면 업종 칩의 숫자도 함께 좁혀진다.
  */
-export function partnerCount(filter: PartnerFilter): number {
-  return filterPartners(filter).length
+export function partnerCount(partners: readonly Partner[], filter: PartnerFilter): number {
+  return filterPartners(partners, filter).length
 }
 
 /** 두 단계 모두 고르지 않았으면 지도에 아무것도 그리지 않는다. */

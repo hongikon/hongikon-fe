@@ -1,5 +1,6 @@
+import { useMemo } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
@@ -19,6 +20,7 @@ import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Ske
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import type { NewsItem } from '../types'
 import { openExternalUrl } from '../utils/openExternalUrl'
+import { formatNewsBody, splitLinks } from '../utils/newsBody'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
 
@@ -96,6 +98,7 @@ function NewsDetailBody({
   const originalLabel = item.link ? '원문 보기' : '원문 보기 (홍익대 홈페이지)'
   const originalA11yLabel = item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'
   const openOriginal = () => openExternalUrl(item.link, 'https://www.hongik.ac.kr')
+  const insets = useSafeAreaInsets()
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -138,23 +141,13 @@ function NewsDetailBody({
 
         <Text style={styles.title}>{item.title}</Text>
 
-        {/* 원문 보기가 이 화면의 주된 행동이다. 본문은 참고용 요약이라 원문 확인을 먼저 권한다. */}
-        <Button
-          icon="open-outline"
-          label={originalLabel}
-          onPress={openOriginal}
-          accessibilityRole="link"
-          accessibilityLabel={originalA11yLabel}
-          style={styles.originalButton}
-        />
-
         <View style={styles.divider} />
 
         {/* 목록에서 온 짧은 미리보기 대신 본문 자리 모양을 보여주고, 다 받으면 본문으로 바꾼다. */}
         {loadingMore ? (
           <DetailBodySkeleton />
         ) : (
-          item.preview.length > 0 && <Text style={styles.body}>{item.preview}</Text>
+          item.preview.length > 0 && <NewsBody text={item.preview} />
         )}
 
         {/* 크롤러가 목록만 긁었거나 본문이 이미지뿐이면 미리보기가 비어 있다. */}
@@ -183,17 +176,20 @@ function NewsDetailBody({
             ))}
           </View>
         )}
-
-        {/* 긴 본문을 다 읽은 뒤에도 다시 올라가지 않고 원문을 열 수 있게 아래에도 둔다(보조 모양). */}
-        <Button
-          variant="secondary"
-          icon="open-outline"
-          label={originalLabel}
-          onPress={openOriginal}
-          accessibilityRole="link"
-          accessibilityLabel={originalA11yLabel}
-        />
       </ScrollView>
+
+      {/* 원문 보기는 화면 아래에 하나만 고정해 둔다 — 본문을 어디까지 읽었든 바로 누를 수 있다(예전엔 위·아래 두 개였다). */}
+      <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
+        <View style={layoutStyles.readable}>
+          <Button
+            icon="open-outline"
+            label={originalLabel}
+            onPress={openOriginal}
+            accessibilityRole="link"
+            accessibilityLabel={originalA11yLabel}
+          />
+        </View>
+      </View>
     </SafeAreaView>
   )
 }
@@ -228,7 +224,13 @@ const styles = StyleSheet.create({
   },
   sourceName: { flex: 1, fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   sourceLabel: { fontFamily: FONTS.semibold, color: COLORS.textTertiary },
-  originalButton: { marginTop: 4, marginBottom: 20 },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginBottom: 20 },
   body: { fontFamily: FONTS.regular,
     fontSize: 15,
@@ -252,4 +254,87 @@ const styles = StyleSheet.create({
   attachLabel: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
   attachRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   attachName: { flex: 1, fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
+})
+
+/**
+ * 크롤러가 가져온 본문을 정리해 보여 준다(utils/newsBody). 소제목·항목(굵은 라벨)·주의 문구·문단으로 나누고,
+ * 본문 속 링크·메일은 눌러 열 수 있게 한다. 글자는 원문 그대로다.
+ */
+function NewsBody({ text }: { text: string }) {
+  const blocks = useMemo(() => formatNewsBody(text), [text])
+  return (
+    <View style={bodyStyles.wrap}>
+      {blocks.map((block, index) => {
+        if (block.type === 'heading') {
+          return (
+            <Text key={index} style={bodyStyles.heading}>
+              <Text style={bodyStyles.headingMarker}>{block.marker} </Text>
+              <Inline text={block.text} />
+            </Text>
+          )
+        }
+        if (block.type === 'note') {
+          return (
+            <View key={index} style={bodyStyles.note}>
+              <Text style={bodyStyles.noteText}>
+                <Inline text={block.text} />
+              </Text>
+            </View>
+          )
+        }
+        if (block.type === 'bullet') {
+          return (
+            <View key={index} style={[bodyStyles.bulletRow, block.depth === 1 && bodyStyles.bulletIndent]}>
+              <Text style={bodyStyles.bulletMark}>{block.marker ?? '•'}</Text>
+              <Text style={bodyStyles.bulletText}>
+                {block.label ? <Text style={bodyStyles.label}>{`${block.label}  `}</Text> : null}
+                <Inline text={block.text} />
+              </Text>
+            </View>
+          )
+        }
+        return (
+          <Text key={index} style={bodyStyles.paragraph}>
+            <Inline text={block.text} />
+          </Text>
+        )
+      })}
+    </View>
+  )
+}
+
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {splitLinks(text).map((part, i) =>
+        part.kind === 'link' ? (
+          <Text
+            key={i}
+            style={bodyStyles.link}
+            onPress={() => openExternalUrl(part.url)}
+            accessibilityRole="link"
+          >
+            {part.text}
+          </Text>
+        ) : (
+          <Text key={i}>{part.text}</Text>
+        ),
+      )}
+    </>
+  )
+}
+
+const bodyStyles = StyleSheet.create({
+  wrap: { gap: 10, marginBottom: 16 },
+  paragraph: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 24, color: COLORS.textPrimary },
+  heading: { fontFamily: FONTS.bold, fontSize: 15.5, lineHeight: 23, color: COLORS.textPrimary, marginTop: 8 },
+  headingMarker: { color: COLORS.primary },
+  bulletRow: { flexDirection: 'row', gap: 8 },
+  bulletIndent: { paddingLeft: 14 },
+  bulletMark: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 23, color: COLORS.primary, minWidth: 10 },
+  bulletText: { flex: 1, fontFamily: FONTS.regular, fontSize: 15, lineHeight: 23, color: COLORS.textPrimary },
+  label: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  note: { backgroundColor: COLORS.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  noteText: { fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 20, color: COLORS.textSecondary },
+  link: { color: COLORS.primary, textDecorationLine: 'underline' },
 })

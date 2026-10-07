@@ -1,7 +1,15 @@
 import { apiRequest, ApiError, NetworkError, RequestCancelledError, type ApiRequestOptions } from '../apis/client'
 import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenResponse } from '../apis/auth'
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
+import { refreshMapData } from '../lib/mapData'
 import type {
+  AdminBuildingOption,
+  AdminExhibition,
+  AdminExhibitionInput,
+  AdminFacility,
+  AdminFacilityInput,
+  AdminPartner,
+  AdminPartnerInput,
   AdminComment,
   AdminCommentStatus,
   AdminFeedback,
@@ -368,6 +376,93 @@ export function updateFeedbackStatus(feedbackId: number, status: FeedbackStatus)
     body: { status },
     retries: 0,
   })
+}
+
+// ── 지도 데이터: 제휴업체·편의시설·전시 ─────────────────────────────────────
+// 서버는 쓰기에 성공하면 지도 데이터(`GET /map/data`) 캐시를 바로 비운다. 앱 관리 탭이면 이 기기의 지도 데이터도
+// 곧바로 새로 받아(ETag 로 바뀐 경우만) 지도에 반영한다. 쓰기는 POST/PUT/DELETE 모두 자동 재시도하지 않는다.
+
+function afterMapWrite<T>(result: T): T {
+  refreshMapData()
+  return result
+}
+
+export async function fetchAdminPartners(signal?: AbortSignal): Promise<AdminPartner[]> {
+  const response = await adminRequest<{ partners: AdminPartner[] }>('/admin/map/partners', { signal })
+  return response?.partners ?? []
+}
+
+export async function createAdminPartner(input: AdminPartnerInput): Promise<AdminPartner> {
+  return afterMapWrite(await adminRequest<AdminPartner>('/admin/map/partners', { method: 'POST', body: input, retries: 0 }))
+}
+
+export async function updateAdminPartner(code: string, input: AdminPartnerInput): Promise<AdminPartner> {
+  return afterMapWrite(
+    await adminRequest<AdminPartner>(`/admin/map/partners/${encodeURIComponent(code)}`, { method: 'PUT', body: input, retries: 0 }),
+  )
+}
+
+/**
+ * 제휴업체 삭제. 실수로 지우지 않게 관리자가 업체 이름을 그대로 입력해야 하고(confirmName), 서버도 이름이 다르면 400 을 준다.
+ */
+export async function deleteAdminPartner(code: string, confirmName: string): Promise<void> {
+  await adminRequest<void>(
+    `/admin/map/partners/${encodeURIComponent(code)}?confirmName=${encodeURIComponent(confirmName)}`,
+    { method: 'DELETE', retries: 0 },
+  )
+  afterMapWrite(undefined)
+}
+
+export async function fetchAdminFacilities(signal?: AbortSignal): Promise<AdminFacility[]> {
+  const response = await adminRequest<{ facilities: AdminFacility[] }>('/admin/map/facilities', { signal })
+  return response?.facilities ?? []
+}
+
+export async function createAdminFacility(input: AdminFacilityInput): Promise<AdminFacility> {
+  return afterMapWrite(await adminRequest<AdminFacility>('/admin/map/facilities', { method: 'POST', body: input, retries: 0 }))
+}
+
+export async function updateAdminFacility(code: string, input: AdminFacilityInput): Promise<AdminFacility> {
+  return afterMapWrite(
+    await adminRequest<AdminFacility>(`/admin/map/facilities/${encodeURIComponent(code)}`, { method: 'PUT', body: input, retries: 0 }),
+  )
+}
+
+export async function deleteAdminFacility(code: string): Promise<void> {
+  await adminRequest<void>(`/admin/map/facilities/${encodeURIComponent(code)}`, { method: 'DELETE', retries: 0 })
+  afterMapWrite(undefined)
+}
+
+/** 전시 전체(끝난 것 포함). 앱 지도에는 서버가 끝나지 않았고 60일 안에 시작하는 것만 내려 준다. */
+export async function fetchAdminExhibitions(signal?: AbortSignal): Promise<AdminExhibition[]> {
+  const response = await adminRequest<{ exhibitions: AdminExhibition[] }>('/admin/map/exhibitions', { signal })
+  return response?.exhibitions ?? []
+}
+
+export async function createAdminExhibition(input: AdminExhibitionInput): Promise<AdminExhibition> {
+  return afterMapWrite(await adminRequest<AdminExhibition>('/admin/map/exhibitions', { method: 'POST', body: input, retries: 0 }))
+}
+
+export async function updateAdminExhibition(id: number, input: AdminExhibitionInput): Promise<AdminExhibition> {
+  return afterMapWrite(
+    await adminRequest<AdminExhibition>(`/admin/map/exhibitions/${id}`, { method: 'PUT', body: input, retries: 0 }),
+  )
+}
+
+export async function deleteAdminExhibition(id: number): Promise<void> {
+  await adminRequest<void>(`/admin/map/exhibitions/${id}`, { method: 'DELETE', retries: 0 })
+  afterMapWrite(undefined)
+}
+
+/** 편의시설 편집에서 건물을 고르는 목록. */
+export async function fetchAdminBuildings(signal?: AbortSignal): Promise<AdminBuildingOption[]> {
+  const response = await adminRequest<{ buildings: AdminBuildingOption[] }>('/admin/map/buildings', { signal })
+  return response?.buildings ?? []
+}
+
+/** 지도 관리 API 가 서버에 없는지(배포 전 404·405). */
+export function isAdminMapMissing(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 405 || (error.status === 404 && !error.serverMessage))
 }
 
 // ── 운영 도구 ─────────────────────────────────────────────────────────

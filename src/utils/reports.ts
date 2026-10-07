@@ -2,6 +2,7 @@ import { Alert, Platform } from 'react-native'
 import type { ReportCategory, ReportListItem } from '../types'
 import { parseServerTime } from './serverTime'
 import { formatDay, formatServerSchedule, formatStartShort, isSameKstDay, isUpcomingReport } from './reportSchedule'
+import { returnToOpenReportAfterAuth } from '../lib/mapIntents'
 
 /**
  * 로그인이 필요한 동작(제보 작성·신고)을 막았을 때 띄운다.
@@ -10,16 +11,21 @@ import { formatDay, formatServerSchedule, formatStartShort, isSameKstDay, isUpco
  * 아무 반응이 없다(react-native-web/src/exports/Alert). `window.confirm` 으로 대신한다.
  */
 export function promptLogin(message: string, logout: () => void): void {
+  // 지도에서 보던 제보가 있으면 로그인하거나 둘러보기로 돌아왔을 때 그 제보를 다시 띄운다.
+  const goLogin = () => {
+    returnToOpenReportAfterAuth()
+    logout()
+  }
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.confirm(`로그인이 필요해요\n\n${message}`)) {
-      logout()
+      goLogin()
     }
     return
   }
 
   Alert.alert('로그인이 필요해요', message, [
     { text: '취소', style: 'cancel' },
-    { text: '로그인하러 가기', onPress: () => logout() },
+    { text: '로그인하러 가기', onPress: goLogin },
   ])
 }
 

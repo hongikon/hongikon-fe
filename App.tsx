@@ -17,7 +17,7 @@ import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
-import { TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
+import { DevPathAuditEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
@@ -25,6 +25,7 @@ import { AdminAccessProvider } from './src/admin/AdminAccess'
 import { requestMapIntent } from './src/lib/mapIntents'
 import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 import { requestAdminIntent } from './src/lib/adminIntents'
+import { initMapData } from './src/lib/mapData'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -62,21 +63,25 @@ function WebDocumentTitleBridge() {
  * RootNavigator/NavigationContainer 를 아예 거치지 않고 여기서 분기한다.
  * `/temp/dots` = 지점+연결선+경로 전부, `/temp/path` = 경로 선만,
  * `/temp/path-nodes` = 실외 보행 경로망 전체.
- * buildings.ts/pathNodes.ts 에 실 데이터가 반영되면 이 블록과
+ * 건물 데이터(서버)·pathNodes.ts 에 실 데이터가 반영되면 이 블록과
  * `src/screens/TempEntranceDebugScreen.tsx` 를 통째로 지운다.
  *
  * `/temp/notifications` = 알림 카드 미리보기(`TempNotificationPreviewScreen`).
  * `hongikon-be`에 발송부가 생겨 실제 원격 푸시로 확인할 수 있게 되면 지운다.
  *
- * 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
- * (`SHOW_DEVELOPER_TOOLS`). 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
+ * `/temp/*` 는 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
+ * (`SHOW_DEVELOPER_TOOLS`). `/dev/path`(경로망 점검)만 운영 웹에서도 연다. 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit'
 
 const tempDebugMode: TempDebugMode | null =
-  SHOW_DEVELOPER_TOOLS && Platform.OS === 'web' && typeof window !== 'undefined'
+  Platform.OS === 'web' && typeof window !== 'undefined'
     ? (() => {
         const path = window.location.pathname.replace(/\/+$/, '')
+        // `/dev/path` = 경로망 점검(빠진 지점·끊긴 간선·망에 안 닿은 건물을 목록과 지도 점으로).
+        // 경로망 데이터는 앱에서도 공개되는 캠퍼스 좌표라, 팀원이 바로 볼 수 있게 운영 웹(hongikon.com/dev/path)에서도 연다.
+        if (path === '/dev/path') return 'pathAudit'
+        if (!SHOW_DEVELOPER_TOOLS) return null
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
         if (path === '/temp/path-nodes') return 'nodes'
@@ -107,6 +112,23 @@ export function sharedReportIdFromPath(pathname: string): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
+/**
+ * 웹 파비콘. 페이지가 아이콘 링크를 따로 걸지 않으면 브라우저는 `/favicon.ico` 를 쓰고, 그 결과를 아주 오래 붙잡는다 —
+ * 아이콘을 남색(#05014A)으로 바꾼 뒤에도 탭에 예전 파란 아이콘이 남았다(10-07). 주소에 버전을 붙여 새 파일로 받게 한다.
+ * 아이콘을 다시 바꾸면 FAVICON_VERSION 을 올린다.
+ */
+const FAVICON_VERSION = '20261006'
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = `/favicon.ico?v=${FAVICON_VERSION}`
+}
+
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   // 아래 공유 링크 처리가 주소를 `/` 로 바꾸기 전에, 처음 연 주소부터 적어 둔다.
   captureWebReturnPath()
@@ -123,6 +145,10 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     }
   }
 }
+
+// 지도 데이터(건물·편의시설·제휴업체)는 첫 탭인 지도가 바로 쓰므로 폰트·로그인 복원을 기다리지 않고 지금 받기 시작한다.
+// 기기 저장본이 있으면 그것부터 내놓는다(`src/lib/mapData.ts`). 웹 관리자 콘솔은 지도를 그리지 않아 받지 않는다.
+if (!isAdminPath) initMapData()
 
 // 폰트가 준비될 때까지 스플래시를 띄워 둔다. 그렇게 하지 않으면
 // 시스템 폰트로 한 프레임 그려졌다가 Pretendard 로 바뀌며 글자가 튄다.
@@ -158,7 +184,15 @@ export default function App() {
     )
   }
 
-  if (tempDebugMode && tempDebugMode !== 'notifications' && TempEntranceDebugEntry) {
+  if (tempDebugMode === 'pathAudit' && DevPathAuditEntry) {
+    return (
+      <Suspense fallback={null}>
+        <DevPathAuditEntry />
+      </Suspense>
+    )
+  }
+
+  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && TempEntranceDebugEntry) {
     return (
       <Suspense fallback={null}>
         <TempEntranceDebugEntry mode={tempDebugMode} />

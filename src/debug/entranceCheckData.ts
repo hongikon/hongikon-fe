@@ -1,7 +1,7 @@
 /**
  * 임시 디버그 데이터 - 출입구/연결 좌표 검증용.
  * `src/utils/mapHtml.ts` 의 SHOW_ENTRANCE_DEBUG 블록에서만 쓰인다.
- * 좌표가 buildings.ts/pathNodes.ts 에 반영되고 나면 이 파일과 그 블록을 통째로 지운다.
+ * 좌표가 건물 데이터(서버)·pathNodes.ts 에 반영되고 나면 이 파일과 그 블록을 통째로 지운다.
  */
 export const ENTRANCE_CHECK_DATA = {
   "points": [

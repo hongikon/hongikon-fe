@@ -1,5 +1,8 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import SheetHandle from "./SheetHandle";
 import {
   Animated,
+  useWindowDimensions,
   View,
   Text,
   StyleSheet,
@@ -14,9 +17,10 @@ import type { Partner } from "../../types";
 import { FONTS, TYPE } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useSwipeDownToDismiss } from "../../hooks/useSwipeDownToDismiss";
+import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { openNaverMapPlace } from "../../utils/openNaverMap";
+import { RADIUS } from "../../constants/spacing";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -26,7 +30,7 @@ interface PartnerSheetProps {
 /**
  * " / "로 여러 항목이 이어진 혜택·이용방법 문구를 "- 항목" 줄로 쪼갠다. 구분자가
  * 없으면(하나뿐이면) 그대로 한 줄만 돌려준다 — "단품/세트"처럼 공백 없이 붙은
- * "/"는 복합 단어라 여기 안 걸린다(partners.ts 데이터가 이 표기 규칙을 따른다).
+ * "/"는 복합 단어라 여기 안 걸린다(제휴업체 데이터가 이 표기 규칙을 따른다).
  */
 function splitBulletItems(text: string): string[] {
   const items = text.split(" / ");
@@ -96,7 +100,13 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  * benefit / address / hours / contact / link 는 값이 있을 때만 렌더한다.
  */
 export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
-  const { translateY, panHandlers } = useSwipeDownToDismiss(onClose);
+  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
+  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+    smallRatio: 0.22,
+    midRatio: 0.45,
+  });
+  // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
+  const insets = useSafeAreaInsets();
   const meta = partnerCategoryMeta(partner.category);
   // affiliationBenefits 로 예외가 걸린 소속은 그 예외 줄 안에서 이용 방법을
   // 보여준다. 예외가 없는 소속(기본 benefit 을 그대로 쓰는 소속)의 이용
@@ -118,12 +128,9 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
-    <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-      <View
-        style={styles.handle}
-        {...panHandlers}
-        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
-      />
+    <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
+      <View onLayout={onChromeLayout}>
+      <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -141,8 +148,11 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
 
       <Text style={styles.name}>{partner.name}</Text>
 
-      <ScrollView
-        style={styles.body}
+      </View>
+
+      <Animated.ScrollView
+        onContentSizeChange={onContentSizeChange}
+        style={[styles.body, { height: bodyHeight }]}
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
@@ -259,7 +269,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             <Text style={styles.linkText}>{partner.link.label}</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </Animated.View>
   );
 }
@@ -270,10 +280,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: "62%",
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 20,
     paddingBottom: 30,
     paddingTop: 10,
@@ -282,14 +291,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 10,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 14,
   },
   header: {
     flexDirection: "row",

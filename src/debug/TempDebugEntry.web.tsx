@@ -7,6 +7,8 @@ import { lazy, type ComponentType } from 'react'
 export const TempEntranceDebugEntry: ComponentType<{ mode: 'dots' | 'paths' | 'nodes' }> | null = lazy(
   () => import('../screens/TempEntranceDebugScreen'),
 )
+/** 개발용 `/dev/path` — 경로망 점검(빠진 지점·끊긴 간선). */
+export const DevPathAuditEntry: ComponentType | null = lazy(() => import('../screens/DevPathAuditScreen'))
 export const TempNotificationPreviewEntry: ComponentType | null = lazy(
   () => import('../screens/TempNotificationPreviewScreen'),
 )

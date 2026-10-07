@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type Vie
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 interface SearchBarProps {
   value: string
@@ -62,9 +63,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     height: 44,
-    borderRadius: 12,
+    // 지도 검색바·하단 탭 캡슐과 같은 알약 모양(10-07).
+    borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
