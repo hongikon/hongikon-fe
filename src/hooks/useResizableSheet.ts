@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { Animated, PanResponder } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, PanResponder, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 /** 가장 작은 크기에서 이만큼 더 끌어내리면 닫는다. */
 const DISMISS_OVERSHOOT_PX = 70
@@ -21,12 +22,13 @@ interface Options {
  * 바텀시트 손잡이(회색 줄)로 시트 크기를 조절하고, 끝까지 내리면 닫는 제스처.
  * - 처음엔 조금만 보여 주고, 손잡이를 위로 끌면 커지고 아래로 끌면 작아진다. 손을 떼면 points 중 가까운 크기로 붙는다.
  * - 가장 작은 크기에서 더 끌어내리면(또는 빠르게 튕기면) 시트가 내려가며 닫힌다.
- * 본문 높이는 maxHeight 로 바꾸므로 내용이 짧으면 늘려도 내용 높이까지만 커진다.
+ * 본문 높이(bodyHeight)를 직접 바꾼다. 0 이면 머리줄만 남고, 가장 큰 값이면 화면 위 끝까지 올라온다.
+ * 작은·보통 크기는 시트 쪽에서 내용 높이로 잘라 넘겨, 내용이 짧을 때 빈칸이 생기지 않게 한다.
  * `panHandlers` 는 손잡이에만 건다 — 본문 스크롤과 부딪히지 않게.
  */
 export function useResizableSheet(onClose: () => void, { initial, points }: Options) {
   const translateY = useRef(new Animated.Value(0)).current
-  const bodyMaxHeight = useRef(new Animated.Value(initial)).current
+  const bodyHeight = useRef(new Animated.Value(initial)).current
   const current = useRef(initial)
   const startHeight = useRef(initial)
   const onCloseRef = useRef(onClose)
@@ -37,8 +39,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
   // 화면 크기가 바뀌면(회전·창 크기) 보통 크기로 되돌린다.
   useEffect(() => {
     current.current = initial
-    bodyMaxHeight.setValue(initial)
-  }, [initial, bodyMaxHeight])
+    bodyHeight.setValue(initial)
+  }, [initial, bodyHeight])
 
   const panResponder = useMemo(
     () =>
@@ -54,10 +56,10 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
           const next = startHeight.current - g.dy
           if (next >= lo) {
             translateY.setValue(0)
-            bodyMaxHeight.setValue(Math.min(hi, next))
+            bodyHeight.setValue(Math.min(hi, next))
           } else {
             // 가장 작은 크기 아래로는 시트 자체를 내린다(닫기 직전 모양).
-            bodyMaxHeight.setValue(lo)
+            bodyHeight.setValue(lo)
             translateY.setValue(lo - next)
           }
         },
@@ -68,7 +70,7 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
             Animated.timing(translateY, { toValue: 800, duration: 180, useNativeDriver: false }).start(() => {
               translateY.setValue(0)
               current.current = initial
-              bodyMaxHeight.setValue(initial)
+              bodyHeight.setValue(initial)
               onCloseRef.current()
             })
             return
@@ -99,19 +101,56 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
           current.current = target
           // 감속하며 부드럽게 붙는다(튕김 없이).
           Animated.parallel([
-            Animated.spring(bodyMaxHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
+            Animated.spring(bodyHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
             Animated.spring(translateY, { toValue: 0, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
           ]).start()
         },
         onPanResponderTerminate: () => {
           Animated.parallel([
-            Animated.spring(bodyMaxHeight, { toValue: current.current, useNativeDriver: false }),
+            Animated.spring(bodyHeight, { toValue: current.current, useNativeDriver: false }),
             Animated.spring(translateY, { toValue: 0, useNativeDriver: false }),
           ]).start()
         },
       }),
-    [translateY, bodyMaxHeight, initial],
+    [translateY, bodyHeight, initial],
   )
 
-  return { translateY, bodyMaxHeight, panHandlers: panResponder.panHandlers }
+  return { translateY, bodyHeight, panHandlers: panResponder.panHandlers }
+}
+
+interface SheetSizingOptions {
+  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이. */
+  smallRatio?: number
+  /** 보통 크기 = 화면 높이 × 이 값(내용 높이로 자른다). */
+  midRatio?: number
+}
+
+/**
+ * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지를 오가고, 머리줄만 남긴 채 더
+ * 내리면 닫힌다. 처음엔 작게 연다. 작게·보통은 내용 높이로 잘라 빈칸이 생기지 않게 한다.
+ * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
+ * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
+ */
+export function useSheetSizing(
+  onClose: () => void,
+  { smallRatio = 0.22, midRatio = 0.5 }: SheetSizingOptions = {},
+) {
+  const { height: windowHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
+  const [chromeHeight, setChromeHeight] = useState(110)
+  // 시트 위아래 여백(위 10 + 아래 30)과 상태 표시줄·홈 인디케이터를 빼고 남는 만큼이 '화면 끝까지' 높이다.
+  const fullHeight = Math.max(160, windowHeight - insets.top - insets.bottom - chromeHeight - 48)
+  const cap = (h: number) => Math.min(contentHeight === null ? h : Math.min(h, contentHeight), fullHeight)
+  const small = Math.round(cap(windowHeight * smallRatio))
+  const mid = Math.round(cap(windowHeight * midRatio))
+  const points = Array.from(new Set([0, small, mid, Math.round(fullHeight)]))
+  const { translateY, bodyHeight, panHandlers } = useResizableSheet(onClose, { initial: small, points })
+  return {
+    translateY,
+    bodyHeight,
+    panHandlers,
+    onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
+    onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
+  }
 }

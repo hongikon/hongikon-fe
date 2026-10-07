@@ -9,7 +9,7 @@ import { FACILITY_KINDS } from "../../constants/facilityKinds";
 import type { Exhibition, Facility, FacilityKind } from "../../types";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useResizableSheet } from "../../hooks/useResizableSheet";
+import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { formatFloor } from "../../utils/floors";
 import {
   daysUntilStart,
@@ -54,15 +54,15 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     isRestaurant &&
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
-  // 손잡이(회색 줄)를 위로 끌면 목록이 커지고, 아래로 끌면 작아지다가 끝까지 내리면 닫힌다.
-  // 처음엔 조금만(화면 22%) 보여 주고, 손잡이로 보통(50%)·크게(80%) 키운다.
-  const { translateY, bodyMaxHeight, panHandlers } = useResizableSheet(onClose, {
-    initial: windowHeight * 0.22,
-    points: [windowHeight * 0.22, windowHeight * 0.5, windowHeight * 0.8],
+  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
+  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+    smallRatio: 0.22,
+    midRatio: 0.5,
   });
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
+      <View onLayout={onChromeLayout}>
       <View
         style={styles.handle}
         {...panHandlers}
@@ -89,10 +89,13 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
         />
       </View>
 
+      </View>
+
       <Animated.ScrollView
+        onContentSizeChange={onContentSizeChange}
         // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져 처음부터 칸을 넓게 연다. 크기 조절·닫기는 손잡이에만 걸려 있어
         // 이 스크롤과 겹치지 않는다.
-        style={{ maxHeight: bodyMaxHeight }}
+        style={{ height: bodyHeight }}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={hasMenu || sorted.length > 6}
         bounces={false}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { Animated, View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { useSheetSizing } from '../../hooks/useResizableSheet'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -62,6 +63,11 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const { buildings } = useMapData()
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets()
+  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절. 처음엔 작게(본문 일부) 연다.
+  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+    smallRatio: 0.22,
+    midRatio: 0.5,
+  })
   const { accessToken, logout } = useAuth()
   const { settings } = useSettings()
   // 🔥·관심·조회 수·알림 설정은 시트에서 바로 바뀐다. 목록(지도)을 다시 받기 전까지 시트 사본에 덮어 둔다.
@@ -208,7 +214,10 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   }
 
   return (
-    <View style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]}>
+    <Animated.View style={[styles.sheet, { paddingBottom: 16 + insets.bottom, transform: [{ translateY }] }]}>
+      {/* 손잡이 + 머리줄(종류·제목·시간)은 늘 보이고, 그 아래 본문만 크기 조절된다(useSheetSizing). */}
+      <View onLayout={onChromeLayout}>
+      <View style={styles.handle} {...panHandlers} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }} />
       <View style={styles.header}>
         <View style={styles.badges}>
           <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -236,6 +245,9 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
 
       <Text style={styles.title}>{report.title}</Text>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
+      </View>
+
+      <Animated.ScrollView style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
       {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
@@ -370,6 +382,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       <ReportCommentsSection key={report.id} report={report} />
+      </Animated.ScrollView>
 
       <ReportContentModal
         report={contentOpen ? report : null}
@@ -377,12 +390,21 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         onPatch={applyPatch}
         onClose={() => setContentOpen(false)}
       />
-    </View>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
   // 건물·제휴 시트처럼 화면 아래에 붙는다(지도 아래 NAVER 로고 줄까지 덮어 열고 닫을 때 어수선하지 않게).
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: -6,
+    marginBottom: 12,
+  },
   sheet: {
     position: 'absolute',
     left: 0,
