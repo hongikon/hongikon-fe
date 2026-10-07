@@ -49,6 +49,11 @@ files.zip
 # generated native folders
 /ios
 /android
+# eas build --local 산출물(.ipa·.aab·.apk)
+/build
+*.ipa
+*.aab
+*.apk
 
 # 에이전트/에디터 로컬 설정 — 시크릿이 찍힌 dev 로그가 들어온다
 .claude
