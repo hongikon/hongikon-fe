@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Pressable,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -45,6 +46,7 @@ import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import TabHeaderCard from '../components/common/TabHeaderCard'
+import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
 import {
   getMyMemberCode,
   getMyProfile,
@@ -305,7 +307,38 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <TabHeaderCard title="설정" />
+      <TabHeaderCard title="설정">
+        {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
+        <Pressable
+          style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}
+          onPress={
+            status !== 'authenticated'
+              ? handleGoToLogin
+              : profile && !nicknameApiMissing
+                ? () => setActiveModal('nickname')
+                : undefined
+          }
+          accessibilityRole="button"
+          accessibilityLabel={
+            status === 'authenticated'
+              ? `프로필 ${profile?.displayName ?? ''}, 닉네임 변경`
+              : '로그인하기'
+          }
+        >
+          <View style={styles.avatar}>
+            <ReportMegaphoneIcon size={24} color={COLORS.white} />
+          </View>
+          <View style={styles.profileBody}>
+            <Text style={styles.profileName} numberOfLines={1}>
+              {status === 'authenticated' ? (profile?.displayName ?? '불러오는 중') : '게스트'}
+            </Text>
+            <Text style={styles.profileSub} numberOfLines={1}>
+              {status === 'authenticated' ? '홍익대학교 · 닉네임 변경' : '로그인하고 닉네임을 정해 보세요'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+        </Pressable>
+      </TabHeaderCard>
       <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
 
         {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
@@ -322,22 +355,16 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
+        {status === 'authenticated' && (
         <View style={styles.section}>
           <SectionTitle title="계정" />
-          {status === 'authenticated' ? (
             <>
               <ListRow
                 icon="person-circle-outline"
                 label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
               />
-              {!nicknameApiMissing && (profile || profileResource.loading) && (
-                <ListRow
-                  icon="happy-outline"
-                  label="닉네임"
-                  value={profile ? profile.displayName : '불러오는 중'}
-                  onPress={profile ? () => setActiveModal('nickname') : undefined}
-                />
-              )}
+              {/* 닉네임은 맨 위 프로필 줄에서 바꾼다. */}
               {memberId !== null && (
                 <ListRow
                   icon="id-card-outline"
@@ -363,16 +390,8 @@ export default function SettingsScreen() {
               )}
               <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
             </>
-          ) : (
-            <ListRow
-              icon="log-in-outline"
-              label="로그인하기"
-              value="게스트로 이용 중"
-              last
-              onPress={handleGoToLogin}
-            />
-          )}
         </View>
+        )}
 
         <View style={styles.section}>
           <SectionTitle title="알림" />
@@ -755,6 +774,27 @@ const styles = StyleSheet.create({
   // SafeAreaView 상단 인셋·큰 제목 줄은 흰색, 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
+  profile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.floating,
+    backgroundColor: COLORS.background,
+  },
+  profilePressed: { opacity: 0.7 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileBody: { flex: 1, gap: 2 },
+  profileName: { ...TYPE.subhead, color: COLORS.textPrimary },
+  profileSub: { ...TYPE.caption, color: COLORS.textSecondary },
   // 묶음마다 둥근 카드(10-07 A안 — 머리 카드·하단 탭 캡슐과 같은 곡률 계열).
   section: {
     backgroundColor: COLORS.white,
