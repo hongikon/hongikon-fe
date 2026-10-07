@@ -1564,6 +1564,8 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* 칩도 검색바와 같은 왼쪽 끝에서 시작한다(10-07 요청). 칩 줄 안쪽 여백 16 을 빼고 띄운다. */}
+            <View style={sideGutter > 16 ? { paddingHorizontal: sideGutter - 16 } : null} pointerEvents="box-none">
             <MapFilterChips
               layer={layer}
               facilityKind={facilityKind}
@@ -1584,6 +1586,7 @@ export default function MapScreen() {
                 onSelectCategory={handleSelectCategory}
               />
             )}
+            </View>
           </>
         )}
       </Animated.View>
