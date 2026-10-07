@@ -43,6 +43,8 @@
     var partnerMarkers = [];
     var currentPartners = [];
     var selectedPartnerId = null;
+    // 앱에서 제휴·편의시설·제보 시트가 열려 있는지(앱이 'sheetOpen' 으로 알려 준다). 건물 탭을 '시트 닫기'로만 쓸지 정한다.
+    var otherSheetOpen = false;
     // 마커 클릭이 지도 클릭으로도 전달되는 경우가 있어, 직후의 배경 클릭을 무시한다.
     var lastMarkerClickAt = 0;
 
@@ -62,9 +64,24 @@
         return point;
       }
     }
-    function focusOn(lat, lng, zoom) {
-      var token = ++focusToken;
+    // 이동이 끝나길 기다리는 'idle' 리스너. 다음 focusOn·취소 때 떼어 낸다.
+    // 이미 그 자리에 있으면 panTo 가 움직이지 않아 idle 이 안 나고, 남은 리스너가 나중의 엉뚱한 idle(칩 맞춤·휠 축소)에
+    // 불려 옛 지점으로 19배 확대해 버렸다(10-07 점검).
+    var focusIdleListener = null;
+    function clearFocusIdle() {
+      if (focusIdleListener) { naver.maps.Event.removeListener(focusIdleListener); focusIdleListener = null; }
+    }
+    // 진행 중인 '눌러 보기' 이동·확대를 멈춘다. 지도를 끌거나 휠·두 손가락으로 확대할 때, 그리고 앱이 카메라를 직접 옮길 때
+    // (칩 맞춤 fitToBounds, 경로 닫기, 학사모 돌아가기) 부른다. 안 부르면 늦게 끝난 확대가 새 카메라를 덮어 옛 핀으로 되돌아갔다.
+    // 학사모 버튼은 페이지 전역을 직접 만지는 스크립트라 window.cancelFocus 로 부른다(옛 map.html 에는 없어 확인하고 부른다).
+    function cancelFocus() {
+      focusToken++;
+      clearFocusIdle();
       stopZoomAnim();
+    }
+    function focusOn(lat, lng, zoom) {
+      cancelFocus();
+      var token = focusToken;
       var target = typeof zoom === 'number' ? zoom : 19;
       var point = new naver.maps.LatLng(lat, lng);
       var center = centerFor(point, target);
@@ -76,11 +93,27 @@
         map.setCenter(center);
         setTimeout(stepIn, 110);
       };
-      naver.maps.Event.once(map, 'idle', function() {
-        if (token !== focusToken) return;
+      var arrived = false;
+      var arrive = function() {
+        if (arrived || token !== focusToken) return;
+        arrived = true;
+        clearFocusIdle();
         if (!smoothZoom(target, center, point, token)) setTimeout(stepIn, 60);
-      });
-      map.panTo(centerFor(point, map.getZoom()), { duration: 420, easing: 'easeOutCubic' });
+      };
+      var panTarget = centerFor(point, map.getZoom());
+      var samePlace = false;
+      try {
+        var proj = map.getProjection();
+        var a = proj.fromCoordToOffset(panTarget);
+        var c = proj.fromCoordToOffset(map.getCenter());
+        samePlace = Math.abs(a.x - c.x) < 1 && Math.abs(a.y - c.y) < 1;
+      } catch (e) {}
+      // 이미 그 자리면 옮길 것이 없으니 바로 확대 단계로 넘어간다.
+      if (samePlace) { setTimeout(arrive, 0); return; }
+      focusIdleListener = naver.maps.Event.addListener(map, 'idle', arrive);
+      // 경계(maxBounds)에 막혀 거의 안 움직이는 등 idle 이 안 오는 경우에도 확대는 이어 간다.
+      setTimeout(arrive, 900);
+      map.panTo(panTarget, { duration: 420, easing: 'easeOutCubic' });
     }
     // 확대를 부드럽게 보이게 하는 흉내: 지도 타일 층만 CSS 로 목표 배율까지 0.34초 동안 키운 뒤, 끝에 실제 확대 단계로 바꾼다.
     // 그동안 마커·이름표 층은 잠깐 흐려졌다 돌아온다(타일만 커지는 동안 마커가 제자리에 남아 어긋나 보이지 않게).
@@ -181,7 +214,11 @@
         if (!stale) try {
           var cr2 = host.getBoundingClientRect();
           ghost = document.createElement('div');
-          ghost.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;z-index:5;';
+          // 복사본은 지도 층들 '아래'(z-index -1)에 깐다. 새 타일이 그려지는 자리부터 그 위를 덮고, 핀·마커도 복사본에 가리지 않는다.
+          // 예전엔 맨 위에 덮고 0.9초 뒤 무조건 걷어 내, 타일이 늦거나 실패하면 회색 빈 지도만 남았다(10-07 사용자 화면).
+          host.style.isolation = 'isolate';
+          ghost.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;z-index:-1;';
+          ghost.setAttribute('data-zoom-ghost', '1');
           var copy = layer.cloneNode(true);
           copy.style.position = 'absolute';
           copy.style.transition = 'none';
@@ -199,28 +236,144 @@
           map.setZoom(target);
           map.setCenter(center);
         }
-        var done = false;
-        var reveal = function() {
-          if (done) return;
-          done = true;
-          if (ghost) {
-            ghost.style.transition = 'opacity 200ms ease-out';
-            ghost.style.opacity = '0';
-            setTimeout(function() { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 220);
-          }
+        var shown = false;
+        var showOverlays = function() {
+          if (shown) return;
+          shown = true;
           if (animId === zoomAnimSeq) {
             overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
           }
         };
-        if (stale) { reveal(); return; }
-        naver.maps.Event.once(map, 'tilesloaded', function() { setTimeout(reveal, 30); });
-        setTimeout(reveal, 900);
+        var removeGhost = function(fade) {
+          if (!ghost) return;
+          var g = ghost;
+          ghost = null;
+          if (!fade) { if (g.parentNode) g.parentNode.removeChild(g); return; }
+          g.style.transition = 'opacity 200ms ease-out';
+          g.style.opacity = '0';
+          setTimeout(function() { if (g.parentNode) g.parentNode.removeChild(g); }, 220);
+        };
+        if (stale) { showOverlays(); return; }
+        // 마커 층은 전처럼 타일이 다 오거나 늦어도 0.9초면 돌려놓는다.
+        naver.maps.Event.once(map, 'tilesloaded', function() { setTimeout(showOverlays, 30); });
+        setTimeout(showOverlays, 900);
+        // 복사본은 새 타일이 화면 표본 지점을 모두 덮은 뒤에야 걷는다(늦어도 30초). 그사이 새 타일은 복사본 위로 그려지고,
+        // 실패한 칸은 scheduleTileCheck 가 다시 받게 한다. 그 전에 카메라가 어떤 길로든 움직이면 복사본은 옛 화면이니 바로 걷는다.
+        var startedAt = new Date().getTime();
+        var moveListeners = [];
+        var finish = function(fade) {
+          moveListeners.forEach(function(l) { naver.maps.Event.removeListener(l); });
+          moveListeners = [];
+          removeGhost(fade);
+          if (stopZoomAnimFn === cancelGhost) stopZoomAnimFn = null;
+        };
+        var check = function() {
+          if (!ghost) return true;
+          var full = tileCoverage() >= 1;
+          if (!full && new Date().getTime() - startedAt < 30000) return false;
+          finish(true);
+          return true;
+        };
+        var loop = function() { if (!check()) setTimeout(loop, 150); };
+        // 도중에 지도를 끌거나 다른 곳을 누르면 복사본(옛 자리 화면)은 바로 걷는다.
+        var cancelGhost = function() { finish(false); showOverlays(); };
+        if (ghost) {
+          stopZoomAnimFn = cancelGhost;
+          naver.maps.Event.once(map, 'tilesloaded', function() { setTimeout(check, 30); });
+          setTimeout(function() {
+            if (!ghost) return;
+            moveListeners = [
+              naver.maps.Event.addListener(map, 'zoom_changed', cancelGhost),
+              naver.maps.Event.addListener(map, 'center_changed', cancelGhost),
+              naver.maps.Event.addListener(map, 'size_changed', cancelGhost),
+            ];
+          }, 60);
+          setTimeout(loop, 300);
+        }
       }, DURATION + 20);
       return true;
     }
 
-    // 사용자가 지도를 끌기 시작하면 남은 '들어가기'를 멈춘다.
-    naver.maps.Event.addListener(map, 'dragstart', function() { focusToken++; stopZoomAnim(); });
+    // 화면이 실제로 그려진 타일로 덮였는지(0~1). 지도 위 4×4 표본 지점마다 그 아래에 다 받은 타일 그림이 있는지 본다.
+    // 네이버는 타일을 못 받으면 그 자리에 투명한 1px 그림(dot.gif)을 넣으니 크기(naturalWidth)로 거른다.
+    function tileCoverage() {
+      var el = map.getElement();
+      var r = el.getBoundingClientRect();
+      var left = Math.max(r.left, 0), top = Math.max(r.top, 0);
+      var right = Math.min(r.right, window.innerWidth), bottom = Math.min(r.bottom, window.innerHeight);
+      if (right - left < 10 || bottom - top < 10 || typeof document.elementsFromPoint !== 'function') return 1;
+      var hit = 0, n = 0;
+      for (var i = 1; i <= 4; i++) {
+        for (var j = 1; j <= 4; j++) {
+          n++;
+          var els = document.elementsFromPoint(left + (right - left) * i / 5, top + (bottom - top) * j / 5);
+          for (var k = 0; k < els.length; k++) {
+            var e = els[k];
+            if (e.tagName === 'IMG' && e.complete && e.naturalWidth >= 64 && el.contains(e)) { hit++; break; }
+          }
+        }
+      }
+      return hit / n;
+    }
+    // 지도 안 타일 그림 상태. failed: 받기에 실패해 투명 1px 그림으로 바뀐 칸, pending: 아직 받는 중인 칸.
+    function tileState() {
+      var imgs = map.getElement().querySelectorAll('img');
+      var failed = 0, pending = 0;
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        if (img.width < 128 || img.height < 128) continue;
+        if (img.closest && img.closest('[data-zoom-ghost]')) continue;
+        if (!img.complete) pending++;
+        else if (img.naturalWidth < 64) failed++;
+      }
+      return { failed: failed, pending: pending };
+    }
+    // 네이버는 한 번 실패한 타일을 다시 받지 않아, 망이 잠깐 끊기면 회색 빈 칸이 계속 남았다(10-07 사용자 화면).
+    // 타일 받기가 끝났는데(tilesloaded·idle 뒤) 실패한 칸이 있으면 map.refresh() 로 다시 받게 한다. 간격을 2.5초씩 늘려
+    // 15초까지 벌리고, 실패한 칸이 남아 있는 동안 계속 해 본다(망이 돌아오면 저절로 채워지게).
+    // 아직 받는 중인 칸만 있으면(느린 망) 다시 받게 하지 않는다 — 처음부터 다시 받느라 더 늦어진다.
+    var tileRetryTimer = null;
+    var tileRetryCount = 0;
+    var tileRetryLastAt = 0;
+    function scheduleTileCheck(delay) {
+      if (tileRetryTimer) clearTimeout(tileRetryTimer);
+      // 다시 받은 뒤 곧바로 오는 tilesloaded·idle 이 간격을 줄여 연달아 다시 받지 않게, 정해 둔 간격은 지킨다.
+      if (tileRetryCount > 0) {
+        var wait = Math.min(2500 * tileRetryCount, 15000) - (new Date().getTime() - tileRetryLastAt);
+        if (wait > delay) delay = wait;
+      }
+      tileRetryTimer = setTimeout(function() {
+        tileRetryTimer = null;
+        var stt = tileState();
+        if (stt.failed === 0) { if (stt.pending === 0) tileRetryCount = 0; return; }
+        if (typeof map.refresh !== 'function') return;
+        if (document.hidden) { scheduleTileCheck(5000); return; }
+        tileRetryCount++;
+        tileRetryLastAt = new Date().getTime();
+        map.refresh();
+        scheduleTileCheck(0);
+      }, delay);
+    }
+    naver.maps.Event.addListener(map, 'tilesloaded', function() { scheduleTileCheck(500); });
+    // 카메라가 다른 자리에서 멈추면 다시 4번까지 해 볼 수 있다(오래 끊겼다 돌아온 뒤에도 다시 받게).
+    var tileRetryAt = '';
+    naver.maps.Event.addListener(map, 'idle', function() {
+      var c = map.getCenter();
+      var at = map.getZoom() + ':' + c.lat().toFixed(6) + ':' + c.lng().toFixed(6);
+      if (at !== tileRetryAt) { tileRetryAt = at; tileRetryCount = 0; }
+      scheduleTileCheck(3000);
+    });
+    window.addEventListener('online', function() { tileRetryCount = 0; scheduleTileCheck(300); });
+
+    // 사용자가 지도를 끌기 시작하거나 휠·두 손가락으로 확대·축소하면 남은 '들어가기'를 멈춘다.
+    // 휠·핀치는 dragstart 가 안 나서, 예전엔 늦게 끝난 확대가 사용자가 고른 배율을 19로 되돌렸다.
+    naver.maps.Event.addListener(map, 'dragstart', cancelFocus);
+    (function(el) {
+      var opts = { capture: true, passive: true };
+      el.addEventListener('wheel', cancelFocus, opts);
+      el.addEventListener('touchstart', function(e) { if (e.touches && e.touches.length > 1) cancelFocus(); }, opts);
+      el.addEventListener('gesturestart', cancelFocus, opts); // iOS 웹킷 핀치
+    })(map.getElement());
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
     // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
     // order: 그 조합의 고정 순서(currentPartners 순서). index: 지금 몇 번째인지.
@@ -717,6 +870,8 @@
 
     function fitToBounds(bounds) {
       if (!bounds) return;
+      // 진행 중인 '눌러 보기' 확대가 늦게 끝나며 이 맞춤을 옛 핀 19배로 덮지 않게 먼저 멈춘다.
+      cancelFocus();
       map.fitBounds(new naver.maps.LatLngBounds(
         new naver.maps.LatLng(bounds.swLat, bounds.swLng),
         new naver.maps.LatLng(bounds.neLat, bounds.neLng)
@@ -823,6 +978,9 @@
       // 막지 않으면 작성창 뒤에서 건물 배너까지 함께 열린다.
       if (new Date().getTime() - lastLongPressAt < 350) return;
 
+      // 제휴·편의시설·제보 시트가 열린 채 누른 탭은 앱에서 '시트 닫기'로만 쓴다. 그런데 페이지가 먼저 건물로 날아가
+      // 19배 확대하고 핀을 띄워, 시트만 닫히고 보던 화면을 잃었다(10-07 점검). 이때는 건물 선택·이동을 하지 않는다.
+      var dismissOnly = otherSheetOpen || selectedPartnerId !== null;
       if (selectedPartnerId !== null) {
         overlapCycle.key = null;
         changeSelectedPartner(null);
@@ -832,6 +990,12 @@
       var lat = e.coord.lat();
       var lng = e.coord.lng();
       var hit = buildingAt(lat, lng);
+
+      if (dismissOnly && hit) {
+        otherSheetOpen = false;
+        post({ type: 'sheetDismiss' });
+        return;
+      }
 
       // 건물 외곽선 안쪽을 탭했을 때만 핀이 뜬다. 빈 곳을 탭했으면 거둔다.
       var nextName = hit ? hit.name : null;
@@ -1106,7 +1270,12 @@
           });
         }
 
+        if (msg.type === 'sheetOpen') {
+          otherSheetOpen = !!msg.open;
+        }
+
         if (msg.type === 'clearRoute') {
+          cancelFocus();
           clearRouteOverlays();
           map.setZoom(17);
           map.panTo(new naver.maps.LatLng(37.5501449860568, 126.92477617414234), { duration: 420, easing: 'easeOutCubic' });

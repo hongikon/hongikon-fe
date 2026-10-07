@@ -278,7 +278,8 @@ export default function MapScreen() {
     farViewPartnerIdRef.current = null;
     webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
     webViewRef.current?.injectJavaScript(
-      `if (window.map && window.naver) { map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
+      // 진행 중인 '눌러 보기' 확대가 늦게 끝나며 돌아온 화면을 옛 핀 19배로 덮지 않게 먼저 멈춘다(옛 map.html 엔 없어 확인하고 부른다).
+      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
     );
   }, []);
 
@@ -406,6 +407,15 @@ export default function MapScreen() {
     }
     postToMap({ type: "selectPartner", id: null });
   }, [selectedPartner, activeFilter, postToMap]);
+
+  /**
+   * 제휴·편의시설·제보 시트가 열려 있는지 페이지에 알린다. 열린 채 건물을 누르면 페이지가 건물로 날아가 확대하지 않고
+   * 시트 닫기로만 쓰게 한다(sheetDismiss). 옛 map.html 은 이 메시지를 모르니 무시한다.
+   */
+  const otherSheetOpen = selectedReport !== null || selectedPartner !== null || selectedFacilityBuilding !== null;
+  useEffect(() => {
+    postToMap({ type: "sheetOpen", open: otherSheetOpen });
+  }, [otherSheetOpen, postToMap]);
 
   /** 지도 페이지가 마커를 새로 받으면(setPartners) 선택이 풀린다. 고른 업체가 그 목록에 아직 있으면 다시 강조한다. */
   const reassertPartnerSelection = useCallback(
@@ -558,6 +568,14 @@ export default function MapScreen() {
           setSelectedBuilding(null);
           setSelectedReport(null);
           setSelectedFacilityBuilding(msg.buildingName ?? null);
+          return;
+        }
+
+        // 제휴·편의시설·제보 시트가 열린 채 건물을 눌렀다. 그 탭은 시트 닫기로만 쓴다(페이지는 건물 선택·이동을 하지 않았다).
+        if (msg.type === "sheetDismiss") {
+          setSelectedReport(null);
+          setSelectedPartner(null);
+          setSelectedFacilityBuilding(null);
           return;
         }
 
@@ -827,6 +845,11 @@ export default function MapScreen() {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
     // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
     handleRecenter();
+    // 새 페이지는 시트가 닫힌 줄 안다. 열려 있으면 다시 알린다(건물 탭을 시트 닫기로만 쓰게).
+    postToMap({
+      type: "sheetOpen",
+      open: !!(selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current),
+    });
     // 고른 건물은 setBuildings 보다 먼저 알려 준다 — setBuildings 가 그 이름을 지키며 핀을 그린다.
     if (selectedBuildingRef.current) postToMap({ type: "selectBuilding", name: selectedBuildingRef.current.name });
     // 지도 데이터가 있으면 새 페이지의 건물(구운 초기값)을 지금 데이터로 바꾼다. 없으면 구운 건물을 그대로 둔다.
