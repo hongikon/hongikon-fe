@@ -17,6 +17,14 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+# 인증서·서명 파일(애플 중간 인증서 .cer 포함)은 저장소에 두지 않는다
+*.cer
+*.crt
+*.der
+*.pfx
+*.provisionprofile
+*.keystore
+*.certSigningRequest
 
 # EAS local credentials — credentials.json holds the .p12 password in plaintext
 credentials.json
