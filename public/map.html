@@ -64,7 +64,7 @@
     }
     function focusOn(lat, lng, zoom) {
       var token = ++focusToken;
-      var target = typeof zoom === 'number' ? zoom : 18;
+      var target = typeof zoom === 'number' ? zoom : 19;
       var point = new naver.maps.LatLng(lat, lng);
       var center = centerFor(point, target);
       var stepIn = function() {
@@ -75,9 +75,61 @@
         map.setCenter(center);
         setTimeout(stepIn, 110);
       };
-      naver.maps.Event.once(map, 'idle', function() { setTimeout(stepIn, 60); });
+      naver.maps.Event.once(map, 'idle', function() {
+        if (token !== focusToken) return;
+        if (!smoothZoom(target, center, point, token)) setTimeout(stepIn, 60);
+      });
       map.panTo(centerFor(point, map.getZoom()), { duration: 420, easing: 'easeOutCubic' });
     }
+    // 확대를 부드럽게 보이게 하는 흉내: 지도 타일 층만 CSS 로 목표 배율까지 0.34초 동안 키운 뒤, 끝에 실제 확대 단계로 바꾼다.
+    // 그동안 마커·이름표 층은 잠깐 흐려졌다 돌아온다(타일만 커지는 동안 마커가 제자리에 남아 어긋나 보이지 않게).
+    // 타일 층을 못 찾으면 false 를 돌려 한 단계씩 들어가는 방식으로 대신한다.
+    function tileLayer() {
+      var el = map.getElement();
+      var imgs = Array.prototype.filter.call(el.querySelectorAll('img'), function(img) {
+        return img.width >= 128 && img.height >= 128;
+      });
+      if (imgs.length === 0) return null;
+      var node = imgs[0].parentElement;
+      while (node && node !== el) {
+        var all = true;
+        for (var i = 0; i < imgs.length; i++) { if (!node.contains(imgs[i])) { all = false; break; } }
+        if (all) return node;
+        node = node.parentElement;
+      }
+      return null;
+    }
+    function smoothZoom(target, center, point, token) {
+      var z = map.getZoom();
+      if (Math.round(z) === target) return true;
+      var layer = tileLayer();
+      if (!layer || !layer.style || typeof layer.getBoundingClientRect !== 'function') return false;
+      var panes = map.getPanes ? map.getPanes() : {};
+      var overlays = [panes.overlayLayer, panes.overlayImage, panes.floatPane].filter(Boolean);
+      var off = map.getProjection().fromCoordToOffset(point);
+      var lr = layer.getBoundingClientRect();
+      var cr = map.getElement().getBoundingClientRect();
+      var ox = off.x - (lr.left - cr.left);
+      var oy = off.y - (lr.top - cr.top);
+      var scale = Math.pow(2, target - z);
+      var DURATION = 340;
+      layer.style.transformOrigin = ox + 'px ' + oy + 'px';
+      layer.style.transition = 'transform ' + DURATION + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+      overlays.forEach(function(o) { o.style.transition = 'opacity 120ms ease-out'; o.style.opacity = '0'; });
+      // 다음 프레임에 배율을 바꿔야 transition 이 걸린다.
+      requestAnimationFrame(function() { layer.style.transform = 'scale(' + scale + ')'; });
+      setTimeout(function() {
+        layer.style.transition = 'none';
+        if (token === focusToken) {
+          map.setZoom(target);
+          map.setCenter(center);
+        }
+        layer.style.transform = '';
+        overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
+      }, DURATION + 20);
+      return true;
+    }
+
     // 사용자가 지도를 끌기 시작하면 남은 '들어가기'를 멈춘다.
     naver.maps.Event.addListener(map, 'dragstart', function() { focusToken++; });
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.

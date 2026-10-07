@@ -1,4 +1,6 @@
 import { useState } from "react";
+import SheetHandle from "./SheetHandle";
+import { KindIcon } from "./ChipIcon";
 import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -63,16 +65,12 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View onLayout={onChromeLayout}>
-      <View
-        style={styles.handle}
-        {...panHandlers}
-        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
-      />
+      <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={[styles.icon, { backgroundColor: color }]}>
-            <Ionicons name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
+            <KindIcon name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
           </View>
           <View>
             <Text style={styles.name}>{facilityKindLabel(kind)}</Text>
@@ -110,7 +108,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
               <Text style={[styles.floor, item.floor === undefined && styles.floorUnknown]}>
                 {item.floor !== undefined ? formatFloor(item.floor) : "층 확인 중"}
               </Text>
-              <Text style={styles.note}>{item.note ?? kind}</Text>
+              <NoteText note={item.note ?? kind} />
             </View>
           );
           if (isRestaurant) {
@@ -236,6 +234,34 @@ function CurrentExhibition({ exhibition }: { exhibition: Exhibition }) {
   );
 }
 
+/**
+ * 시설 설명은 "이름 · 운영시간 · 안내 · …" 한 줄로 온다. 한 문단으로 그리면 읽기 어려워(이름·시간·안내가 섞인다)
+ * 첫 조각은 이름으로 굵게, 나머지는 한 줄씩 나눠 쓴다. "학기 중 …(…), 방학 중 …" 처럼 쉼표로 이어진 기간도 줄을 나눈다.
+ */
+export function splitFacilityNote(note: string): { title: string; lines: string[] } {
+  const parts = note
+    .split(/\s+·\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const [title = note, ...rest] = parts;
+  const lines = rest.flatMap((p) => p.split(/(?<=\)),\s+/).map((l) => l.trim()));
+  return { title, lines };
+}
+
+function NoteText({ note }: { note: string }) {
+  const { title, lines } = splitFacilityNote(note);
+  return (
+    <View style={styles.noteBox}>
+      <Text style={styles.note}>{title}</Text>
+      {lines.map((line, i) => (
+        <Text key={i} style={styles.noteLine}>
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   sheet: {
     position: "absolute",
@@ -254,14 +280,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 14,
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -275,7 +293,7 @@ const styles = StyleSheet.create({
   list: { gap: 8 },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -285,12 +303,15 @@ const styles = StyleSheet.create({
   floor: {
     minWidth: 40,
     fontSize: 15,
+    lineHeight: 21,
     fontFamily: FONTS.semibold,
     color: COLORS.textPrimary,
     fontVariant: ["tabular-nums"],
   },
   floorUnknown: { fontSize: 12, color: COLORS.textTertiary },
-  note: { flex: 1, fontSize: 14, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  noteBox: { flex: 1, gap: 3 },
+  note: { fontSize: 15, lineHeight: 21, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  noteLine: { fontSize: 13.5, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   venue: { borderRadius: 12, backgroundColor: COLORS.background, overflow: "hidden" },
   exhibitions: { paddingHorizontal: 12, paddingBottom: 12, gap: 10 },
   emptyText: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textTertiary },

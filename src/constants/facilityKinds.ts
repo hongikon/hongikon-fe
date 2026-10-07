@@ -3,11 +3,13 @@ import type { Ionicons } from '@expo/vector-icons'
 import type { FacilityKind } from '../types'
 
 type IoniconName = ComponentProps<typeof Ionicons>['name']
+/** 시설 아이콘 이름. 'sofa'(라운지)만 Ionicons 에 없어 MaterialCommunityIcons 로 그린다(`ChipIcon.tsx` KindIcon). */
+export type FacilityIconName = IoniconName | 'sofa'
 
 export interface FacilityKindMeta {
   key: FacilityKind
-  /** 칩에 쓰는 Ionicons 이름 */
-  icon: IoniconName
+  /** 칩·시트에 쓰는 아이콘 이름 */
+  icon: FacilityIconName
   /**
    * 지도 핀과 칩 선택 상태에 함께 쓰는 색.
    *
@@ -43,7 +45,7 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
-  { key: '라운지', icon: 'happy', color: '#65A30D' },
+  { key: '라운지', icon: 'sofa', color: '#65A30D' },
   { key: '수면실', icon: 'bed', color: '#0891B2' },
   // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
   { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },

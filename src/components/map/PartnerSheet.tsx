@@ -1,4 +1,5 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import SheetHandle from "./SheetHandle";
 import {
   Animated,
   useWindowDimensions,
@@ -128,11 +129,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View onLayout={onChromeLayout}>
-      <View
-        style={styles.handle}
-        {...panHandlers}
-        hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
-      />
+      <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -293,14 +290,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 10,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 14,
   },
   header: {
     flexDirection: "row",

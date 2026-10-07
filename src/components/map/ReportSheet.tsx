@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SheetHandle from './SheetHandle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Animated, View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { useSheetSizing } from '../../hooks/useResizableSheet'
@@ -217,7 +218,9 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
     <Animated.View style={[styles.sheet, { paddingBottom: 16 + insets.bottom, transform: [{ translateY }] }]}>
       {/* 손잡이 + 머리줄(종류·제목·시간)은 늘 보이고, 그 아래 본문만 크기 조절된다(useSheetSizing). */}
       <View onLayout={onChromeLayout}>
-      <View style={styles.handle} {...panHandlers} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }} />
+      <View style={{ marginTop: -6 }}>
+        <SheetHandle panHandlers={panHandlers} gap={12} />
+      </View>
       <View style={styles.header}>
         <View style={styles.badges}>
           <View style={[styles.badge, { backgroundColor: meta.color }]}>
@@ -396,15 +399,6 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
 
 const styles = StyleSheet.create({
   // 건물·제휴 시트처럼 화면 아래에 붙는다(지도 아래 NAVER 로고 줄까지 덮어 열고 닫을 때 어수선하지 않게).
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: -6,
-    marginBottom: 12,
-  },
   sheet: {
     position: 'absolute',
     left: 0,

@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   Pressable,
+  Animated,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -76,6 +77,7 @@ import type {
 } from "../types";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
+import { SheetHeaderContext } from "../hooks/useResizableSheet";
 import ContentColumn from "../components/common/ContentColumn";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -128,6 +130,13 @@ export default function MapScreen() {
   // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
   // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
   const [headerHeight, setHeaderHeight] = useState(0);
+  // 시트를 화면 맨 위까지 올리면 검색바·칩을 잠깐 숨긴다(시트 위에 겹쳐 그려지지 않게). useSheetSizing 이 알려 준다.
+  const [headerCovered, setHeaderCovered] = useState(false);
+  const headerFade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.timing(headerFade, { toValue: headerCovered ? 0 : 1, duration: 160, useNativeDriver: false }).start();
+  }, [headerCovered, headerFade]);
+  const sheetHeaderCtx = useMemo(() => ({ headerHeight, onCoverHeader: setHeaderCovered }), [headerHeight]);
   // 넓은 창(폴드 펼침·가로·웹)에서 지도는 끝까지 깔되, 검색바·칩·배너·하단 시트는
   // 가운데 한 폭(SHEET_MAX_WIDTH)에 모은다. 좁은 화면에선 0 이라 기존 배치 그대로다.
   // 폴드를 접고 펴면 앱이 다시 시작되지 않고 창 크기만 바뀌므로 매 렌더 다시 계산한다.
@@ -1472,6 +1481,7 @@ export default function MapScreen() {
           position:absolute; bottom:0 을 쓰므로, 이 레이어는 화면 전체를 덮어
           (position:absolute, 사방 0) 그 기준선을 그대로 유지해 준다.
         */}
+        <SheetHeaderContext.Provider value={sheetHeaderCtx}>
         <View
           pointerEvents="box-none"
           style={[
@@ -1515,6 +1525,7 @@ export default function MapScreen() {
             />
           )}
         </View>
+        </SheetHeaderContext.Provider>
       </View>
 
       {/*
@@ -1524,19 +1535,20 @@ export default function MapScreen() {
         버튼·칩만 눌린다. onLayout 으로 잰 실제 높이를 배너·상단바 위치
         계산에 쓴다(headerHeight, 위 선언부 주석 참고).
       */}
-      <View
+      <Animated.View
         style={[
           styles.headerOverlay,
           // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
           // 검색바·칩은 지도처럼 창 너비를 다 쓴다 — 폴드를 펴거나 웹 창을 늘려도 지도와 같이 늘어난다.
-          { paddingTop: insets.top + 8 },
+          { paddingTop: insets.top + 8, opacity: headerFade },
         ]}
-        pointerEvents="box-none"
+        pointerEvents={headerCovered ? "none" : "box-none"}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
         {!pickingLocation && (
           <>
-            <View style={styles.searchBarWrap}>
+            {/* 넓은 창(웹·태블릿)에선 아래 시트와 같은 너비로 맞춘다(10-07 요청). 좁으면 시트가 화면을 꽉 채우니 16 만 띄운다. */}
+            <View style={[styles.searchBarWrap, sideGutter > 0 && { paddingHorizontal: sideGutter }]}>
               <TouchableOpacity
                 style={styles.searchBar}
                 activeOpacity={0.7}
@@ -1574,7 +1586,7 @@ export default function MapScreen() {
             )}
           </>
         )}
-      </View>
+      </Animated.View>
 
       <Modal visible={showRoute} animationType="slide" onRequestClose={handleCloseRoute}>
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
