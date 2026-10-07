@@ -346,22 +346,7 @@ export default function SettingsScreen() {
                   accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
               )}
-              {/* 공식 계정(학생회 등): 인증됐으면 공식 이름과 배지, 아니면 신청 창. 이 기능 전 서버는 키가 없어 신청 줄만 보인다. */}
-              {profile && profile.officialName ? (
-                <ListRow
-                  icon="shield-checkmark-outline"
-                  label="공식 계정"
-                  value={profile.officialName}
-                  accessibilityLabel={`공식 계정, ${profile.officialName}`}
-                />
-              ) : profile ? (
-                <ListRow
-                  icon="shield-checkmark-outline"
-                  label="공식 계정 신청"
-                  value="학생회·단체"
-                  onPress={() => setActiveModal('official')}
-                />
-              ) : null}
+              {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
               {accountLoaded && !myReportsApiMissing && (
                 <ListRow
                   icon="megaphone-outline"
@@ -736,6 +721,11 @@ export default function SettingsScreen() {
           profile={profile}
           onClose={() => setActiveModal(null)}
           onSaved={setSavedProfile}
+          onRequestOfficial={() => {
+            // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
+            setActiveModal(null)
+            setTimeout(() => setActiveModal('official'), 400)
+          }}
         />
       )}
 

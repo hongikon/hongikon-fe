@@ -23,6 +23,7 @@ import {
 import RetryableError from '../common/RetryableError'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import OfficialBadge from '../common/OfficialBadge'
 import Button from '../common/Button'
 import TextField, { FieldLabel } from '../common/TextField'
 
@@ -31,13 +32,15 @@ interface NicknameModalProps {
   profile: MyProfile
   onClose: () => void
   onSaved: (profile: MyProfile) => void
+  /** 공식 계정 신청 창 열기(설정 화면이 이 창을 닫고 연다). 없으면 신청 버튼을 숨긴다. */
+  onRequestOfficial?: () => void
 }
 
 /**
  * 앱 닉네임 설정. 선택 사항이라 지우면 로그인 닉네임 첫 글자만 보이게 가린 이름으로 돌아간다.
  * 입력 규칙은 서버와 같은 `validateAppNickname` 으로 바로 보여 주고, 중복·하루 한도는 서버 응답으로 안내한다.
  */
-export default function NicknameModal({ visible, profile, onClose, onSaved }: NicknameModalProps) {
+export default function NicknameModal({ visible, profile, onClose, onSaved, onRequestOfficial }: NicknameModalProps) {
   const { accessToken } = useAuth()
   const toast = useToast()
   const [value, setValue] = useState('')
@@ -178,6 +181,30 @@ export default function NicknameModal({ visible, profile, onClose, onSaved }: Ni
                   style={styles.clearButton}
                 />
               ) : null}
+
+              {/* 공식 계정(학생회·단체): 닉네임과 같은 '이름' 설정이라 이 화면에 함께 둔다. 이 기능 전 서버는 키가 없어 신청 안내만 보인다. */}
+              <View style={styles.officialBox}>
+                <View style={styles.officialHead}>
+                  <Text style={styles.officialTitle}>공식 계정</Text>
+                  {profile.officialName ? <OfficialBadge size="medium" /> : null}
+                </View>
+                {profile.officialName ? (
+                  <Text style={styles.officialText}>
+                    <Text style={styles.previewName}>{profile.officialName}</Text>(으)로 인증된 공식 계정이에요. 공식 이름은
+                    운영진이 정해요. 바꾸려면 문의해 주세요.
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.officialText}>
+                      학생회·학과·동아리 등 단체 계정이라면 공식 계정을 신청할 수 있어요. 확인되면 운영진이 정한 공식 이름과
+                      공식 배지가 붙어요.
+                    </Text>
+                    {onRequestOfficial ? (
+                      <Button variant="secondary" size="md" label="공식 계정 신청" onPress={onRequestOfficial} />
+                    ) : null}
+                  </>
+                )}
+              </View>
             </KeyboardAvoidingView>
           </ContentColumn>
         </SafeAreaView>
@@ -204,4 +231,14 @@ const styles = StyleSheet.create({
   },
   errorBox: { marginBottom: 12 },
   clearButton: { marginTop: 8 },
+  officialBox: {
+    marginTop: 28,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    gap: 10,
+  },
+  officialHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  officialTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.textPrimary },
+  officialText: { ...TYPE.caption, lineHeight: 19, color: COLORS.textSecondary },
 })
