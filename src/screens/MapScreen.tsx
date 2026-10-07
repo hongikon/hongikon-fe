@@ -1199,7 +1199,9 @@ export default function MapScreen() {
           지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
           탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
         */}
-        <View style={[styles.mapCanvas, { marginBottom: tabBarHeight }]}>
+        {/* 탭 바가 지도 위에 떠 있는 캡슐이라(FloatingTabBar) 지도는 화면 맨 아래까지 깐다. 캡슐은 가운데에 떠 있어
+            지도 아래 양 끝의 NAVER 로고·저작권 표시는 가리지 않는다. */}
+        <View style={styles.mapCanvas}>
           <NaverMapView
             ref={webViewRef}
             html={mapHTML}

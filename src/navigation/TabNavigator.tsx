@@ -10,6 +10,7 @@ import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigato
 import SettingsScreen from '../screens/SettingsScreen'
 import { useAdminOverview, useIsAdmin } from '../admin/AdminAccess'
 import { MAP_TAB_BAR_STYLE, TAB_BAR_BASE_STYLE } from './tabBarStyles'
+import FloatingTabBar from './FloatingTabBar'
 
 /** 관리 탭 화면은 관리자만 쓰니 처음 열 때 불러온다(웹 번들에서 나머지 사용자에게 싣지 않는다). */
 const AdminTabScreen = lazy(() => import('../admin/AdminTabScreen'))
@@ -45,6 +46,8 @@ export default function TabNavigator() {
   const pending = useAdminOverview().data?.reports.pending ?? 0
   return (
     <Tab.Navigator
+      // 네이버 지도처럼 화면 아래에 떠 있는 둥근 캡슐(아이콘만) 탭 바. 지도 탭에선 지도 위에 뜬다.
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -61,8 +64,8 @@ export default function TabNavigator() {
         component={MapScreen}
         options={{
           tabBarLabel: '지도',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} />
           ),
           // 지도 화면만 탭바를 지도 위에 띄운다(position:absolute) — 그래야 지도가
           // 화면 맨 아래까지 깔려서, 드래그 중 탭바가 사라져도 빈 회색이 아니라
@@ -75,8 +78,8 @@ export default function TabNavigator() {
         component={NewsStackNavigator}
         options={{
           tabBarLabel: '소식',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="newspaper-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'newspaper' : 'newspaper-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -85,8 +88,8 @@ export default function TabNavigator() {
         component={SettingsScreen}
         options={{
           tabBarLabel: '설정',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -97,8 +100,8 @@ export default function TabNavigator() {
           options={{
             tabBarLabel: '관리',
             tabBarAccessibilityLabel: pending > 0 ? `관리, 승인 대기 제보 ${pending}건` : '관리',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'} size={size} color={color} />
             ),
             tabBarBadge: pending > 0 ? (pending > 99 ? '99+' : pending) : undefined,
             tabBarBadgeStyle: { fontFamily: FONTS.semibold, fontSize: 10 },
