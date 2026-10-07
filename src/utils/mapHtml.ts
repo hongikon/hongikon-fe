@@ -705,6 +705,19 @@ export function buildMapHTML(
     // selectPartner() 참고.
     var overlapCycle = { key: null, order: [], index: 0 };
 
+    // 마커 아이콘 상자(이름표까지 담은 150px 안팎)는 pointer-events:none 인데, 네이버가 그 바깥에 씌우는 감싸개 div 는
+    // 상자 크기 그대로 탭을 받았다. 핀이 가까이 모이면 보이는 배지를 눌러도 옆 마커의 빈 감싸개가 탭을 가로채 아무 일도
+    // 안 일어났다(제휴 경영대학 15단계에서 17개 중 13개가 안 눌림, 10-07). 감싸개도 탭을 통과시키고 배지(pointer-events:auto)만
+    // 받게 한다 — 배지에서 시작한 클릭은 감싸개로 그대로 올라가(버블링) 네이버의 click 은 계속 온다.
+    function tapOnlyBadge(marker) {
+      var apply = function() {
+        var el = marker.getElement && marker.getElement();
+        if (el && el.style) el.style.pointerEvents = 'none';
+        return !!el;
+      };
+      if (!apply()) requestAnimationFrame(apply);
+    }
+
     var buildingMarkers = [];
     var selectedBuildingName = null;
     // 건물 버튼으로 27개를 모두 켰는지. 꺼져 있어도 건물을 탭하면 그 건물
@@ -926,6 +939,7 @@ export function buildMapHTML(
           if (!pickerActive) focusOn(partner.lat, partner.lng);
           selectPartner(partner.id);
         });
+        tapOnlyBadge(marker);
         partnerMarkers.push(marker);
         partnerMarkerById[partner.id] = { marker: marker, partner: partner };
       });
@@ -1023,6 +1037,7 @@ export function buildMapHTML(
           focusOn(item.lat, item.lng);
           post({ type: 'reportTap', id: item.id });
         });
+        tapOnlyBadge(marker);
         reportMarkers.push(marker);
       });
     }
@@ -1110,6 +1125,7 @@ export function buildMapHTML(
           focusOn(item.lat, item.lng);
           post({ type: 'facilityTap', buildingName: item.buildingName });
         });
+        tapOnlyBadge(marker);
         facilityMarkers.push(marker);
       });
     }
@@ -1189,6 +1205,7 @@ export function buildMapHTML(
           focusOn(building.lat, building.lng);
           post({ type: 'buildingTap', name: building.name });
         });
+        tapOnlyBadge(marker);
         buildingMarkers.push(marker);
       });
     }
