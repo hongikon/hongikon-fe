@@ -13,8 +13,8 @@ const ITEM_WIDTH = 64
 const PILL_HEIGHT = 60
 
 /**
- * 화면 아래에 떠 있는 둥근 캡슐 모양 탭 바(아이콘만). 지도 탭에서는 지도 위에 떠 있고(뒤가 비침),
- * 소식·설정 탭에서는 흰 바탕 위에 같은 캡슐을 둔다(내용이 바 뒤로 숨지 않게 자리를 차지한다).
+ * 화면 아래에 떠 있는 둥근 캡슐 모양 탭 바(아이콘만). 모든 탭에서 내용 위에 겹쳐 뜬다(뒤가 반투명하게 비침, 10-07 요청).
+ * 소식·설정 목록은 `useTabBarInset` 만큼 아래 여백을 둬 마지막 항목이 바에 가리지 않는다.
  * 탭 이름은 화면에 쓰지 않고 접근성 이름으로만 읽힌다. 화면이 `tabBarStyle: { display: 'none' }` 이면 숨는다
  * (지도에서 시트를 여는 동안).
  */
@@ -24,8 +24,6 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
   const focusedRoute = state.routes[state.index]
   const focusedOptions = descriptors[focusedRoute.key].options
   const hidden = (StyleSheet.flatten(focusedOptions.tabBarStyle) as ViewStyle | undefined)?.display === 'none'
-  // 지도 탭은 지도 위에 띄운다(뒤 지도가 보이게). 다른 탭은 자리를 차지한다.
-  const floating = focusedRoute.name === 'Map'
 
   if (hidden) return null
 
@@ -35,7 +33,6 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
       style={[
         styles.wrap,
-        floating ? styles.wrapFloating : styles.wrapSolid,
         { paddingBottom: Math.max(insets.bottom, 12) + 4 },
       ]}
     >
@@ -82,16 +79,15 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingTop: 8 },
-  wrapFloating: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' },
-  wrapSolid: { backgroundColor: COLORS.white },
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingTop: 8, backgroundColor: 'transparent' },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     height: PILL_HEIGHT,
     paddingHorizontal: 10,
     borderRadius: PILL_HEIGHT / 2,
-    backgroundColor: 'rgba(255,255,255,0.97)',
+    // 뒤 내용이 살짝 비치는 반투명 흰색(웹은 흐림까지). 네이티브는 흐림이 없어 조금 더 불투명하게.
+    backgroundColor: Platform.OS === 'web' ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.92)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
     shadowColor: '#000',
@@ -99,7 +95,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 14,
     elevation: 8,
-    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(12px)' } : null),
+    ...(Platform.OS === 'web' ? { backdropFilter: 'blur(16px) saturate(180%)' } : null),
   },
   item: { width: ITEM_WIDTH, height: PILL_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   itemPressed: { opacity: 0.6 },

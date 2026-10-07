@@ -69,6 +69,7 @@ import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
+import { useTabBarInset } from '../hooks/useTabBarInset'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
@@ -91,6 +92,7 @@ type ModalType =
   | null
 
 export default function SettingsScreen() {
+  const tabInset = useTabBarInset()
   const {
     settings,
     toggleSubscriptionAlert,
@@ -304,7 +306,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <LargeTitleHeader title="설정" style={layoutStyles.readable} />
-      <ScrollView style={styles.scroll} contentContainerStyle={layoutStyles.readable}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
 
         {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
         {status === 'authenticated' && profile?.status === 'SUSPENDED' && (

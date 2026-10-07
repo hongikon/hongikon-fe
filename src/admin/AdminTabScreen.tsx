@@ -22,6 +22,7 @@ import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
+import { useTabBarInset } from '../hooks/useTabBarInset'
 
 /**
  * 앱 하단 "관리" 탭. 웹 `/admin` 콘솔의 화면들을 그대로 쓰되, 앱 로그인 토큰으로 요청하고(AdminAccessProvider)
@@ -64,6 +65,7 @@ function saveSection(section: AdminSection): void {
 }
 
 export default function AdminTabScreen() {
+  const tabInset = useTabBarInset()
   const overview = useAdminOverview()
   const { refresh } = overview
   const [section, setSection] = useState<AdminSection>(readSavedSection)
@@ -226,7 +228,7 @@ export default function AdminTabScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={[styles.content, layoutStyles.readable]}
+          contentContainerStyle={[styles.content, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           // iOS: 키보드가 올라오면 그만큼 아래 여백을 넣는다. 이것만으로는 입력칸 윗부분만 보이고 확인 버튼이 가려져서,

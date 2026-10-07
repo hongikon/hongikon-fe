@@ -112,6 +112,23 @@ export function sharedReportIdFromPath(pathname: string): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
+/**
+ * 웹 파비콘. 페이지가 아이콘 링크를 따로 걸지 않으면 브라우저는 `/favicon.ico` 를 쓰고, 그 결과를 아주 오래 붙잡는다 —
+ * 아이콘을 남색(#05014A)으로 바꾼 뒤에도 탭에 예전 파란 아이콘이 남았다(10-07). 주소에 버전을 붙여 새 파일로 받게 한다.
+ * 아이콘을 다시 바꾸면 FAVICON_VERSION 을 올린다.
+ */
+const FAVICON_VERSION = '20261006'
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = `/favicon.ico?v=${FAVICON_VERSION}`
+}
+
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   // 아래 공유 링크 처리가 주소를 `/` 로 바꾸기 전에, 처음 연 주소부터 적어 둔다.
   captureWebReturnPath()

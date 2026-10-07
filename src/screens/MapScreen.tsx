@@ -77,6 +77,7 @@ import type {
 } from "../types";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
+import { RADIUS } from "../constants/spacing";
 import { SheetHeaderContext } from "../hooks/useResizableSheet";
 import ContentColumn from "../components/common/ContentColumn";
 
@@ -1221,7 +1222,12 @@ export default function MapScreen() {
 
         <View
           pointerEvents="box-none"
-          style={[styles.bannerStack, { top: headerHeight + 8 }]}
+          style={[
+            styles.bannerStack,
+            { top: headerHeight + 8 },
+            // 넓은 창에선 검색바·시트와 같은 칸에 둔다(10-07 요청). 좁으면 양옆 16.
+            sideGutter > 0 && { left: sideGutter, right: sideGutter, maxWidth: undefined },
+          ]}
         >
           {/* 지도 데이터(건물·편의시설·제휴업체)가 아직 하나도 없을 때만. 저장본이 있으면 그걸로 그리고 조용히 새로 받는다. */}
           {!mapData && (
@@ -1866,7 +1872,7 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     height: 44,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
     flexDirection: "row",
     alignItems: "center",
@@ -1950,7 +1956,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: "row",
@@ -1975,7 +1981,7 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 20,
     backgroundColor: COLORS.white,
-    borderRadius: 14,
+    borderRadius: RADIUS.floating,
     padding: 12,
     gap: 10,
     shadowColor: "#000",
@@ -2020,7 +2026,7 @@ const styles = StyleSheet.create({
   },
   mapErrorNotice: {
     backgroundColor: COLORS.warningSoft,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     paddingHorizontal: 11,
     paddingVertical: 8,
     flexDirection: "row",
@@ -2034,7 +2040,7 @@ const styles = StyleSheet.create({
   },
   offscreenNotice: {
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     paddingHorizontal: 11,
     paddingVertical: 7,
     flexDirection: "row",
@@ -2055,7 +2061,7 @@ const styles = StyleSheet.create({
   mapDataRetryText: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
   previewNotice: {
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     paddingLeft: 12,
     paddingRight: 10,
     paddingVertical: 8,
@@ -2078,7 +2084,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: "row",

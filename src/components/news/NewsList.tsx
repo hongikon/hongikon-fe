@@ -5,6 +5,7 @@ import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
 import { layoutStyles } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
+import { useTabBarInset } from '../../hooks/useTabBarInset'
 
 interface NewsListProps {
   items: NewsItem[]
@@ -47,6 +48,7 @@ export default function NewsList({
   refreshing,
   onRefresh,
 }: NewsListProps) {
+  const tabInset = useTabBarInset()
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<NewsItem>) => (
@@ -72,7 +74,7 @@ export default function NewsList({
     <FlatList
       style={styles.list}
       // 넓은 화면(폴드 펼침·웹)에선 카드가 화면 끝까지 늘어나지 않게 가운데 읽기 폭으로 모은다.
-      contentContainerStyle={[styles.content, layoutStyles.readable]}
+      contentContainerStyle={[styles.content, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
       data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}

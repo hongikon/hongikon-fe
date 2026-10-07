@@ -58,6 +58,7 @@ import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import WheelPicker, { type WheelItem } from '../common/WheelPicker'
 import type { Report, ReportCategory } from '../../types'
+import { RADIUS } from '../../constants/spacing'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 const REPORT_PLACE_MAX_LENGTH = 60
@@ -1053,8 +1054,8 @@ const styles = StyleSheet.create({
     maxWidth: SHEET_MAX_WIDTH,
     alignSelf: 'center',
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     overflow: 'hidden',
   },
   handle: {

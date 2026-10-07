@@ -33,6 +33,7 @@ import { useSettings } from '../../contexts/SettingsContext'
 import { communityErrorMessage, isCommunityApiMissing, recordReportView, setReportNotifications } from '../../apis/community'
 import type { ReportFlagReason, ReportListItem } from '../../types'
 import { useMapData } from '../../lib/mapData'
+import { RADIUS } from '../../constants/spacing'
 
 interface ReportSheetProps {
   report: ReportListItem
@@ -405,8 +406,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 20,
     paddingTop: 16,
     shadowColor: '#000',

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import SheetHandle from "./SheetHandle";
 import { KindIcon } from "./ChipIcon";
-import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from "react-native";
+import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, Linking, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { facilityKindLabel } from '../../constants/facilityKinds'
@@ -24,6 +24,7 @@ import { isSafeExternalUrl, openExternalUrl } from "../../utils/openExternalUrl"
 import { CAFETERIA_FACILITY_IDS } from "../../apis/cafeteria";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./CafeteriaMenu";
+import { RADIUS } from "../../constants/spacing";
 
 interface FacilitySheetProps {
   kind: FacilityKind;
@@ -248,6 +249,42 @@ export function splitFacilityNote(note: string): { title: string; lines: string[
   return { title, lines };
 }
 
+/**
+ * 스터디룸·세미나실 예약은 신한은행 '헤이영 캠퍼스' 앱에서만 된다(웹 예약 주소 없음, 앱 안 공간예약 화면으로 바로 가는 공개 링크도 없다).
+ * 그래서 문구의 '헤이영캠퍼스 공간예약' 을 눌러 앱 스토어의 헤이영 캠퍼스 페이지를 연다 — 설치돼 있으면 스토어에서 바로 '열기'.
+ */
+const HEYYOUNG_IOS = "https://apps.apple.com/kr/app/id1605688685";
+const HEYYOUNG_ANDROID = "https://play.google.com/store/apps/details?id=com.shinhan.heyoung";
+const HEYYOUNG_RE = /(헤이영 ?캠퍼스(?: 공간예약)?)/;
+
+function heyYoungUrl(): string {
+  if (Platform.OS === "android") return HEYYOUNG_ANDROID;
+  if (Platform.OS === "web" && typeof navigator !== "undefined" && /android/i.test(navigator.userAgent)) {
+    return HEYYOUNG_ANDROID;
+  }
+  return HEYYOUNG_IOS;
+}
+
+function linkHeyYoung(line: string): ReactNode {
+  const parts = line.split(HEYYOUNG_RE);
+  if (parts.length === 1) return line;
+  return parts.map((part, i) =>
+    HEYYOUNG_RE.test(part) ? (
+      <Text
+        key={i}
+        style={styles.noteLink}
+        accessibilityRole="link"
+        accessibilityHint="헤이영 캠퍼스 앱 스토어 페이지를 엽니다"
+        onPress={() => void Linking.openURL(heyYoungUrl())}
+      >
+        {part}
+      </Text>
+    ) : (
+      part
+    ),
+  );
+}
+
 function NoteText({ note }: { note: string }) {
   const { title, lines } = splitFacilityNote(note);
   return (
@@ -255,7 +292,7 @@ function NoteText({ note }: { note: string }) {
       <Text style={styles.note}>{title}</Text>
       {lines.map((line, i) => (
         <Text key={i} style={styles.noteLine}>
-          {line}
+          {linkHeyYoung(line)}
         </Text>
       ))}
     </View>
@@ -269,8 +306,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 20,
     paddingBottom: 30,
     paddingTop: 10,
@@ -311,6 +348,7 @@ const styles = StyleSheet.create({
   floorUnknown: { fontSize: 12, color: COLORS.textTertiary },
   noteBox: { flex: 1, gap: 3 },
   note: { fontSize: 15, lineHeight: 21, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  noteLink: { color: COLORS.primary, fontFamily: FONTS.semibold, textDecorationLine: "underline" },
   noteLine: { fontSize: 13.5, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   venue: { borderRadius: 12, backgroundColor: COLORS.background, overflow: "hidden" },
   exhibitions: { paddingHorizontal: 12, paddingBottom: 12, gap: 10 },

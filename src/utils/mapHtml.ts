@@ -431,11 +431,20 @@ export function buildMapHTML(
       if (!layer || !layer.style || typeof layer.getBoundingClientRect !== 'function') return false;
       var panes = map.getPanes ? map.getPanes() : {};
       var overlays = [panes.overlayLayer, panes.overlayImage, panes.floatPane].filter(Boolean);
-      var off = map.getProjection().fromCoordToOffset(point);
+      // 확대 기준점 = 화면에서 핀이 있는 자리. fromCoordToOffset 의 원점은 지도를 끌 때마다 바뀌는 층 기준이라
+      // 그 값을 그대로 쓰면 기준점이 핀에서 어긋나 핀이 가운데에 머물지 않고 옆으로 밀려나며 커졌다(10-07).
+      // 지도 가운데와의 차이만 쓰면 원점과 상관없이 화면 위치가 나온다.
+      var proj = map.getProjection();
+      var pOff = proj.fromCoordToOffset(point);
+      var cOff = proj.fromCoordToOffset(map.getCenter());
+      var size = map.getSize();
+      var sx = size.width / 2 + (pOff.x - cOff.x);
+      var sy = size.height / 2 + (pOff.y - cOff.y);
       var lr = layer.getBoundingClientRect();
+      var lrBefore = lr;
       var cr = map.getElement().getBoundingClientRect();
-      var ox = off.x - (lr.left - cr.left);
-      var oy = off.y - (lr.top - cr.top);
+      var ox = sx - (lr.left - cr.left);
+      var oy = sy - (lr.top - cr.top);
       var scale = Math.pow(2, target - z);
       var DURATION = 340;
       layer.style.transformOrigin = ox + 'px ' + oy + 'px';
@@ -444,13 +453,42 @@ export function buildMapHTML(
       // 다음 프레임에 배율을 바꿔야 transition 이 걸린다.
       requestAnimationFrame(function() { layer.style.transform = 'scale(' + scale + ')'; });
       setTimeout(function() {
+        // 실제 확대 단계로 바꾸면 새 타일을 받는 동안 지도가 잠깐 하얗게 비었다(10-07). 키워 둔 화면을 복사해 위에 덮어 두고,
+        // 새 타일이 다 그려지면(tilesloaded, 늦어도 0.9초) 복사본을 흐리게 걷어 낸다.
+        var host = map.getElement();
+        var ghost = null;
+        try {
+          var cr2 = host.getBoundingClientRect();
+          ghost = document.createElement('div');
+          ghost.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;z-index:5;';
+          var copy = layer.cloneNode(true);
+          copy.style.position = 'absolute';
+          copy.style.transition = 'none';
+          // 복사본은 같은 transform(배율·기준점)을 그대로 가져가므로, 키우기 전 상자 자리에 두면 지금 보이는 화면과 겹친다.
+          copy.style.left = (lrBefore.left - cr2.left) + 'px';
+          copy.style.top = (lrBefore.top - cr2.top) + 'px';
+          ghost.appendChild(copy);
+          host.appendChild(ghost);
+        } catch (e) { ghost = null; }
         layer.style.transition = 'none';
         if (token === focusToken) {
           map.setZoom(target);
           map.setCenter(center);
         }
         layer.style.transform = '';
-        overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
+        var done = false;
+        var reveal = function() {
+          if (done) return;
+          done = true;
+          if (ghost) {
+            ghost.style.transition = 'opacity 200ms ease-out';
+            ghost.style.opacity = '0';
+            setTimeout(function() { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 220);
+          }
+          overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
+        };
+        naver.maps.Event.once(map, 'tilesloaded', function() { setTimeout(reveal, 30); });
+        setTimeout(reveal, 900);
       }, DURATION + 20);
       return true;
     }

@@ -7,6 +7,7 @@ import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
 import WheelPicker, { type WheelItem } from '../common/WheelPicker'
 import { REPORT_TIME_STEP_MINUTES, formatClock, formatDay } from '../../utils/reportSchedule'
+import { RADIUS } from '../../constants/spacing'
 
 const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     maxWidth: SHEET_MAX_WIDTH,
     alignSelf: 'center',
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },

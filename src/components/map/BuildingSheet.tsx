@@ -15,6 +15,7 @@ import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
 import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
+import { RADIUS } from "../../constants/spacing";
 
 interface BuildingSheetProps {
   building: Building;
@@ -135,8 +136,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 20,
     paddingBottom: 30,
     paddingTop: 10,
