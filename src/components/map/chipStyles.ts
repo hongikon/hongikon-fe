@@ -11,7 +11,9 @@ import { FONTS } from '../../constants/typography'
  */
 export const chipStyles = StyleSheet.create({
   // flexGrow 0 이 없으면 가로 스크롤이 남은 세로 공간을 먹어 지도를 밀어낸다.
-  scroll: { flexGrow: 0, marginBottom: 8 },
+  // 칩 줄은 칩 너비만큼만 차지한다(alignSelf flex-start) — 칩 오른쪽 빈 자리를 눌러도 지도가 눌리고 끌린다.
+  // 칩이 화면보다 길면 maxWidth 로 화면 너비에서 멈추고 가로로 스크롤된다.
+  scroll: { flexGrow: 0, marginBottom: 8, alignSelf: 'flex-start', maxWidth: '100%' },
   row: { paddingHorizontal: 16, gap: 7 },
   chip: {
     height: 32,

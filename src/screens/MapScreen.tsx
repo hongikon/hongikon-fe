@@ -221,6 +221,20 @@ export default function MapScreen() {
     setReportsDataHotOnly(hotOnlyRef.current);
   }, [reportsResource.data]);
   const reportsMatchHot = reportsDataHotOnly === hotOnly;
+  /**
+   * '제보를 불러오는 중…' 줄은 0.4초 넘게 걸릴 때만 띄운다. 금방 오는 경우엔 이 줄이 한 번 반짝이고
+   * 바로 'HOT 제보가 없어요' 같은 결과 안내로 바뀌어, 문구가 두 번 뜨는 것처럼 보였다.
+   */
+  const reportsLoading = reportsResource.loading;
+  const [showReportsLoading, setShowReportsLoading] = useState(false);
+  useEffect(() => {
+    if (!reportsLoading) {
+      setShowReportsLoading(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowReportsLoading(true), 400);
+    return () => clearTimeout(timer);
+  }, [reportsLoading]);
   // HOT 을 켰는데 아직 전체 목록뿐이면, HOT 목록이 오기 전에도 HOT 인 제보만 남긴다(HOT 아닌 마커가 잠깐 남았다 사라지지 않게).
   const shownReportData = useMemo(
     () =>
@@ -1240,7 +1254,7 @@ export default function MapScreen() {
             </View>
           )}
 
-          {reportsOn && reportsResource.loading && reportsResource.errorMessage === null && (
+          {reportsOn && showReportsLoading && reportsResource.errorMessage === null && (
             <View style={styles.offscreenNotice}>
               <ActivityIndicator size="small" color={COLORS.textSecondary} />
               <Text style={styles.offscreenText}>제보를 불러오는 중…</Text>
