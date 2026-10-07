@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  BackHandler,
+  Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -372,9 +374,10 @@ export default function MapScreen() {
     ? buildings.filter((b) => b.name.includes(searchQuery.trim()))
     : buildings;
 
+  // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
   const postToMap = useCallback((msg: object) => {
     webViewRef.current?.injectJavaScript(
-      `handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
+      `if (typeof window.handleNativeMessage === "function") window.handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
     );
   }, []);
 
@@ -623,6 +626,12 @@ export default function MapScreen() {
       }
 
       setSelectedBuilding(null);
+      // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에선 아래 맞춤(fitBounds)이 잘리고,
+      // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮겨 칩 결과 맞춤을 덮는다.
+      if (farViewPartnerIdRef.current !== null) {
+        farViewPartnerIdRef.current = null;
+        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
+      }
       const partners = filterPartners(allPartners, filter);
       postToMap({
         type: "setPartners",
@@ -865,6 +874,8 @@ export default function MapScreen() {
       // 캠퍼스 근처 업체를 검색해 보던 중이었으면 그 마커를 다시 올린다(필터가 없어 아래에서 다시 그려지지 않는다).
       postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
       reassertPartnerSelection([farPartner]);
+      // 위 handleRecenter 가 캠퍼스로 옮겼으니 먼 지점처럼 그 업체로 다시 가져온다(마커를 올린 뒤라야 찾는다).
+      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
     }
     if (hasActiveFilter(activeFilter)) {
       const partners = filterPartners(allPartners, activeFilter);
@@ -1178,6 +1189,70 @@ export default function MapScreen() {
     }
   }, [pickerPurpose, stopPicker]);
 
+  /**
+   * 안드로이드 뒤로가기(웹은 Esc)는 위치 고르기·열린 시트부터 닫는다. 시트·고르기는 화면 안 상태라 내비게이션이
+   * 모르고, 지도가 첫 탭이라 그냥 두면 앱이 꺼진다. 닫기(X)와 똑같은 처리를 쓴다. 닫을 게 없으면 기본 동작에 맡긴다.
+   */
+  const closeTopMapLayer = useCallback((): boolean => {
+    // 검색·작성·길찾기 창이 떠 있으면 그 창이 먼저 닫혀야 한다(웹 Esc 가 아래 시트까지 닫지 않게).
+    if (showSearch || showRoute || reportTarget !== null || partnerSuggest !== null) return false;
+    if (pickingLocation) {
+      handleCancelReportPicker();
+      return true;
+    }
+    if (selectedReport) {
+      setSelectedReport(null);
+      return true;
+    }
+    if (selectedPartner) {
+      handleClosePartner();
+      return true;
+    }
+    if (selectedFacilityBuilding !== null && facilityKind !== null) {
+      setSelectedFacilityBuilding(null);
+      return true;
+    }
+    if (selectedBuilding) {
+      handleCloseBuilding();
+      return true;
+    }
+    return false;
+  }, [
+    showSearch,
+    showRoute,
+    reportTarget,
+    partnerSuggest,
+    pickingLocation,
+    selectedReport,
+    selectedPartner,
+    selectedFacilityBuilding,
+    facilityKind,
+    selectedBuilding,
+    handleCancelReportPicker,
+    handleClosePartner,
+    handleCloseBuilding,
+  ]);
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === "android") {
+        const sub = BackHandler.addEventListener("hardwareBackPress", closeTopMapLayer);
+        return () => sub.remove();
+      }
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        const onKey = (e: KeyboardEvent) => {
+          // 입력 중인 칸의 Esc 나 모달(검색·작성창)이 떠 있을 때는 건드리지 않는다.
+          if (e.key !== "Escape" || e.defaultPrevented) return;
+          const target = e.target as HTMLElement | null;
+          if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+          if (closeTopMapLayer()) e.preventDefault();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }
+      return undefined;
+    }, [closeTopMapLayer]),
+  );
+
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
     if (!pickerCenter) return;
@@ -1413,7 +1488,7 @@ export default function MapScreen() {
 
         {pickingLocation && (
           <>
-            <View pointerEvents="none" style={[styles.pickerMarkerWrap, { bottom: tabBarHeight }]}>
+            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
               <View style={styles.pickerCrosshairV} />
               <View style={styles.pickerCrosshairH} />
               <View style={styles.pickerPinAnchor}>
@@ -1909,7 +1984,8 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  // 실제 지도가 그려지는 칸. 탭바 높이만큼 아래를 비운다(JSX 주석 참고). 위치 고르기 중앙 핀도 같은 칸 기준이다.
+  // 실제 지도가 그려지는 칸. 탭바가 떠 있는 캡슐이라 화면 전체를 덮는다(JSX 주석 참고).
+  // 위치 고르기 중앙 핀(pickerMarkerWrap)도 같은 칸 전체 기준이어야 map.getCenter() 와 겹친다.
   mapCanvas: { flex: 1 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
