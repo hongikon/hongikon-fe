@@ -5,6 +5,7 @@ import { COLORS, CATEGORY_COLORS } from '../../constants/colors'
 import type { CategoryKey } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import type { NewsItem } from '../../types'
+import { RADIUS } from '../../constants/spacing'
 
 interface NewsCardProps {
   item: NewsItem
@@ -65,7 +66,7 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
 export default memo(NewsCardComponent)
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16 },
+  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16 },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',

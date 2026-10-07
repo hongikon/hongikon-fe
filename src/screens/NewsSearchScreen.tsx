@@ -64,7 +64,7 @@ export default function NewsSearchScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader onBack={() => navigation.goBack()} border={false} style={[styles.header, layoutStyles.readable]}>
+      <ScreenHeader onBack={() => navigation.goBack()} card style={layoutStyles.readable}>
         <SearchBar
           value={active.query}
           onChangeText={active.setQuery}
@@ -146,16 +146,16 @@ export default function NewsSearchScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  header: { paddingRight: 16 },
-  searchBar: { flex: 1 },
+  // 회색 바탕 위에 머리 카드(검색창 포함)·결과 카드가 뜬다(10-07).
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // 카드 안 검색창은 회색 알약(카드와 같은 흰색이면 경계가 안 보인다).
+  searchBar: { flex: 1, marginRight: 4, backgroundColor: COLORS.background, borderWidth: 0 },
   modeRow: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   feedError: { marginTop: 12 },
 })

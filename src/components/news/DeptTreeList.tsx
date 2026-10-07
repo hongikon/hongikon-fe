@@ -7,6 +7,7 @@ import { FONTS } from '../../constants/typography'
 import type { TreeChild, TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
 import { useTabBarInset } from '../../hooks/useTabBarInset'
+import { RADIUS } from '../../constants/spacing'
 
 interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
@@ -235,7 +236,7 @@ export default function DeptTreeList({
 const styles = StyleSheet.create({
   treeScroll: { flex: 1, backgroundColor: COLORS.background },
   treeContent: { padding: 12, gap: 8 },
-  treeCard: { backgroundColor: COLORS.white, borderRadius: 16, overflow: 'hidden' },
+  treeCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, overflow: 'hidden' },
   treeParent: {
     flexDirection: 'row',
     alignItems: 'center',
