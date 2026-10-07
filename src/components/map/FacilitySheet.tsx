@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { facilityKindLabel } from '../../constants/facilityKinds'
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { FACILITY_KINDS } from "../../constants/facilityKinds";
@@ -58,7 +59,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
             <Ionicons name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
           </View>
           <View>
-            <Text style={styles.name}>{kind}</Text>
+            <Text style={styles.name}>{facilityKindLabel(kind)}</Text>
             <Text style={styles.building}>{buildingName}</Text>
           </View>
         </View>

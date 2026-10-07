@@ -134,7 +134,7 @@ export default function MapFilterChips({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`${meta.key} ${count}곳`}
+                accessibilityLabel={`${meta.label ?? meta.key} ${count}곳`}
                 style={[
                   chipStyles.chip,
                   isActive && { backgroundColor: meta.color, borderColor: meta.color },
@@ -142,7 +142,7 @@ export default function MapFilterChips({
               >
                 <ChipIcon name={meta.icon} color={meta.color} active={isActive} />
                 <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                  {meta.key}
+                  {meta.label ?? meta.key}
                 </Text>
               </TouchableOpacity>
             )

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { isCancelledError } from '../../apis/client'
-import { FACILITY_KINDS } from '../../constants/facilityKinds'
+import { FACILITY_KINDS, facilityKindLabel } from '../../constants/facilityKinds'
 import { formatFloor } from '../../utils/floors'
 import { normalize } from '../../utils/normalize'
 import type { FacilityKind } from '../../types'
@@ -313,7 +313,7 @@ export default function FacilitiesScreen() {
           {shown.map((facility) => (
             <Card key={facility.id}>
               <View style={styles.itemHeader}>
-                <Badge label={facility.kind} tone="info" />
+                <Badge label={facilityKindLabel(facility.kind)} tone="info" />
                 <Text style={[adminText.strong, styles.itemTitle]}>
                   {facility.buildingName}
                   {typeof facility.floor === 'number' ? ` ${formatFloor(facility.floor)}` : ''}
