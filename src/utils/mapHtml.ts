@@ -447,11 +447,18 @@ export function buildMapHTML(
       var oy = sy - (lr.top - cr.top);
       var scale = Math.pow(2, target - z);
       var DURATION = 340;
+      // 휠·손가락으로 확대 단계를 바꾼 뒤에는 옛 단계 타일 층이 남아 있어 위 tileLayer() 가 그 둘을 함께 품은 상위 층을 고른다.
+      // Safari(웹킷)에서 네이버 지도는 이 층을 transform: matrix(...) 로 옮겨 지도 위치를 잡는데, 그 값을 scale 로 덮었다가
+      // 끝에 '' 로 지워 버려 핀이 화면 위로 밀려나고 아래쪽 타일이 비었다(10-07 영상). 네이버가 써 둔 값 뒤에 배율만 덧붙이고,
+      // 실제 확대 단계로 바꾸기 전에 원래 값으로 되돌려 네이버가 새로 쓰는 위치가 남게 한다.
+      var base = { transform: layer.style.transform, origin: layer.style.transformOrigin, transition: layer.style.transition };
       layer.style.transformOrigin = ox + 'px ' + oy + 'px';
       layer.style.transition = 'transform ' + DURATION + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
       overlays.forEach(function(o) { o.style.transition = 'opacity 120ms ease-out'; o.style.opacity = '0'; });
       // 다음 프레임에 배율을 바꿔야 transition 이 걸린다.
-      requestAnimationFrame(function() { layer.style.transform = 'scale(' + scale + ')'; });
+      requestAnimationFrame(function() {
+        layer.style.transform = (base.transform ? base.transform + ' ' : '') + 'scale(' + scale + ')';
+      });
       setTimeout(function() {
         // 실제 확대 단계로 바꾸면 새 타일을 받는 동안 지도가 잠깐 하얗게 비었다(10-07). 키워 둔 화면을 복사해 위에 덮어 두고,
         // 새 타일이 다 그려지면(tilesloaded, 늦어도 0.9초) 복사본을 흐리게 걷어 낸다.
@@ -464,18 +471,24 @@ export function buildMapHTML(
           var copy = layer.cloneNode(true);
           copy.style.position = 'absolute';
           copy.style.transition = 'none';
+          // 네이버가 옮겨 둔 만큼(base.transform)은 아래 left·top(lrBefore)에 이미 들어 있으니 복사본엔 배율만 남긴다.
+          copy.style.transform = 'scale(' + scale + ')';
           // 복사본은 같은 transform(배율·기준점)을 그대로 가져가므로, 키우기 전 상자 자리에 두면 지금 보이는 화면과 겹친다.
           copy.style.left = (lrBefore.left - cr2.left) + 'px';
           copy.style.top = (lrBefore.top - cr2.top) + 'px';
           ghost.appendChild(copy);
           host.appendChild(ghost);
         } catch (e) { ghost = null; }
+        // 확대 단계를 바꾸기 전에 되돌린다. 바꾼 뒤에 지우면 그사이 네이버가 새로 써 둔 위치까지 지워진다.
         layer.style.transition = 'none';
+        layer.style.transform = base.transform;
+        layer.style.transformOrigin = base.origin;
+        void layer.offsetWidth; // 되돌린 배율이 애니메이션 없이 바로 먹게 한 번 계산시킨 뒤 transition 을 돌려놓는다.
+        layer.style.transition = base.transition;
         if (token === focusToken) {
           map.setZoom(target);
           map.setCenter(center);
         }
-        layer.style.transform = '';
         var done = false;
         var reveal = function() {
           if (done) return;
