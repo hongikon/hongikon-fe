@@ -389,6 +389,7 @@ export function buildMapHTML(
     }
     function focusOn(lat, lng, zoom) {
       var token = ++focusToken;
+      stopZoomAnim();
       var target = typeof zoom === 'number' ? zoom : ${FOCUS_ZOOM};
       var point = new naver.maps.LatLng(lat, lng);
       var center = centerFor(point, target);
@@ -424,6 +425,16 @@ export function buildMapHTML(
       }
       return null;
     }
+    // 가장 최근에 시작한 확대 흉내 번호. 앞선 것이 늦게 끝나며 마커 층을 다시 켜서 새 확대 도중에 마커가 어긋나 보이지 않게 한다.
+    var zoomAnimSeq = 0;
+    // 지금 키우고 있는 타일 층을 바로 원래대로 돌리는 함수(없으면 null). 도중에 다른 곳을 누르거나 지도를 끌면 부른다.
+    // 키운 층에 transition 이 걸린 채 네이버가 새 위치를 쓰면, 웹킷에선 8배 화면이 엉뚱한 곳으로 미끄러지며 0.2초쯤 보였다(10-07 시뮬레이터 점검).
+    var stopZoomAnimFn = null;
+    function stopZoomAnim() {
+      var fn = stopZoomAnimFn;
+      stopZoomAnimFn = null;
+      if (fn) fn();
+    }
     function smoothZoom(target, center, point, token) {
       var z = map.getZoom();
       if (Math.round(z) === target) return true;
@@ -447,6 +458,7 @@ export function buildMapHTML(
       var oy = sy - (lr.top - cr.top);
       var scale = Math.pow(2, target - z);
       var DURATION = 340;
+      var animId = ++zoomAnimSeq;
       // 휠·손가락으로 확대 단계를 바꾼 뒤에는 옛 단계 타일 층이 남아 있어 위 tileLayer() 가 그 둘을 함께 품은 상위 층을 고른다.
       // Safari(웹킷)에서 네이버 지도는 이 층을 transform: matrix(...) 로 옮겨 지도 위치를 잡는데, 그 값을 scale 로 덮었다가
       // 끝에 '' 로 지워 버려 핀이 화면 위로 밀려나고 아래쪽 타일이 비었다(10-07 영상). 네이버가 써 둔 값 뒤에 배율만 덧붙이고,
@@ -454,17 +466,44 @@ export function buildMapHTML(
       var base = { transform: layer.style.transform, origin: layer.style.transformOrigin, transition: layer.style.transition };
       layer.style.transformOrigin = ox + 'px ' + oy + 'px';
       layer.style.transition = 'transform ' + DURATION + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
-      overlays.forEach(function(o) { o.style.transition = 'opacity 120ms ease-out'; o.style.opacity = '0'; });
+      // 손가락으로 확대한 뒤에는 마커 층까지 위 타일 층 안에 들어 있어 함께 커진다. 그때 흐리게 사라지게 두면 핀이 몇 배로
+      // 부풀었다 사라져 보여(10-07 앱 웹킷 점검) 그 경우엔 바로 감춘다.
+      overlays.forEach(function(o) {
+        o.style.transition = layer.contains(o) ? 'none' : 'opacity 120ms ease-out';
+        o.style.opacity = '0';
+      });
       // 다음 프레임에 배율을 바꿔야 transition 이 걸린다.
+      // 넣은 값을 읽어 둔다. 끝날 때 값이 그대로면 원래 값으로 돌리고, 그사이 끌기 등으로 네이버가 새 위치를 써 뒀으면 그 값을 남긴다.
+      var applied = null;
+      var restored = false;
+      var restore = function() {
+        if (restored) return;
+        restored = true;
+        layer.style.transition = 'none';
+        if (layer.style.transform === applied) layer.style.transform = base.transform;
+        layer.style.transformOrigin = base.origin;
+        void layer.offsetWidth; // 되돌린 배율이 애니메이션 없이 바로 먹게 한 번 계산시킨 뒤 transition 을 돌려놓는다.
+        layer.style.transition = base.transition;
+      };
+      stopZoomAnimFn = function() {
+        restore();
+        if (animId === zoomAnimSeq) overlays.forEach(function(o) { o.style.transition = 'none'; o.style.opacity = '1'; });
+      };
       requestAnimationFrame(function() {
+        if (restored) return;
         layer.style.transform = (base.transform ? base.transform + ' ' : '') + 'scale(' + scale + ')';
+        applied = layer.style.transform;
       });
       setTimeout(function() {
+        // 도중에 지도를 끌었거나 다른 곳을 눌렀으면(focusToken 이 바뀜) 확대는 하지 않으니 복사본도 덮지 않는다.
+        // 예전엔 이때도 키워 둔 화면 복사본을 덮어, 끈 지도 위에 옛 확대 화면이 1초쯤 멈춰 보였다(10-07 앱 웹킷 점검).
+        var stale = token !== focusToken || restored;
+        if (!stale) stopZoomAnimFn = null;
         // 실제 확대 단계로 바꾸면 새 타일을 받는 동안 지도가 잠깐 하얗게 비었다(10-07). 키워 둔 화면을 복사해 위에 덮어 두고,
         // 새 타일이 다 그려지면(tilesloaded, 늦어도 0.9초) 복사본을 흐리게 걷어 낸다.
         var host = map.getElement();
         var ghost = null;
-        try {
+        if (!stale) try {
           var cr2 = host.getBoundingClientRect();
           ghost = document.createElement('div');
           ghost.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;z-index:5;';
@@ -480,12 +519,8 @@ export function buildMapHTML(
           host.appendChild(ghost);
         } catch (e) { ghost = null; }
         // 확대 단계를 바꾸기 전에 되돌린다. 바꾼 뒤에 지우면 그사이 네이버가 새로 써 둔 위치까지 지워진다.
-        layer.style.transition = 'none';
-        layer.style.transform = base.transform;
-        layer.style.transformOrigin = base.origin;
-        void layer.offsetWidth; // 되돌린 배율이 애니메이션 없이 바로 먹게 한 번 계산시킨 뒤 transition 을 돌려놓는다.
-        layer.style.transition = base.transition;
-        if (token === focusToken) {
+        restore();
+        if (!stale) {
           map.setZoom(target);
           map.setCenter(center);
         }
@@ -498,8 +533,11 @@ export function buildMapHTML(
             ghost.style.opacity = '0';
             setTimeout(function() { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 220);
           }
-          overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
+          if (animId === zoomAnimSeq) {
+            overlays.forEach(function(o) { o.style.transition = 'opacity 180ms ease-in'; o.style.opacity = '1'; });
+          }
         };
+        if (stale) { reveal(); return; }
         naver.maps.Event.once(map, 'tilesloaded', function() { setTimeout(reveal, 30); });
         setTimeout(reveal, 900);
       }, DURATION + 20);
@@ -507,7 +545,7 @@ export function buildMapHTML(
     }
 
     // 사용자가 지도를 끌기 시작하면 남은 '들어가기'를 멈춘다.
-    naver.maps.Event.addListener(map, 'dragstart', function() { focusToken++; });
+    naver.maps.Event.addListener(map, 'dragstart', function() { focusToken++; stopZoomAnim(); });
     // 화면에서 겹친 마커를 같은 자리 반복 탭으로 순회하기 위한 상태.
     // key: 겹친 업체 id들을 정렬해 이어붙인 값(겹친 조합이 바뀌었는지 판별용).
     // order: 그 조합의 고정 순서(currentPartners 순서). index: 지금 몇 번째인지.
