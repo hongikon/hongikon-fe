@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, Pressable, StyleSheet } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import * as haptics from '../../lib/haptics'
+import { useReduceMotion } from '../../hooks/useReduceMotion'
 
 interface ToggleSwitchProps {
   value: boolean
@@ -16,10 +17,14 @@ interface ToggleSwitchProps {
 /** 앱 전체에서 스위치는 이 한 가지 크기만 쓴다(화면마다 크기가 달라 보이지 않게). */
 const SIZE = { width: 44, height: 26, thumb: 22 } as const
 const PADDING = 2
+/** 누르고 있는 동안 손잡이가 늘어나는 길이. */
+const STRETCH = 8
 
 /**
  * 설정 화면 공용 스위치. 썸이 순간이동하지 않고 미끄러지게 움직인다(docs/settings-ui-upgrade.md 7번).
  * RN 기본 Switch 는 플랫폼마다 모양이 달라 웹·iOS·Android 를 같은 모양으로 맞추려고 직접 그린다.
+ * 유리 기조(10-07 — 탭 바 렌즈·세그먼트와 같은 결): 손잡이에 흰 테두리 윤을 두고, 누르고 있는 동안
+ * 손잡이가 옆으로 늘어나며 반투명 유리 렌즈가 됐다가 떼면 돌아온다. 동작 줄이기면 늘어나지 않는다.
  */
 export default function ToggleSwitch({
   value,
@@ -30,6 +35,13 @@ export default function ToggleSwitch({
 }: ToggleSwitchProps) {
   const { width, height, thumb } = SIZE
   const progress = useRef(new Animated.Value(value ? 1 : 0)).current
+  const press = useRef(new Animated.Value(0)).current
+  const reduceMotion = useReduceMotion()
+
+  const setPressed = (down: boolean) => {
+    if (reduceMotion) return
+    Animated.spring(press, { toValue: down ? 1 : 0, useNativeDriver: false, speed: 28, bounciness: down ? 0 : 6 }).start()
+  }
 
   useEffect(() => {
     Animated.spring(progress, {
@@ -41,7 +53,16 @@ export default function ToggleSwitch({
   }, [value, progress])
 
   const travel = width - thumb - PADDING * 2
-  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, travel] })
+  // 늘어날 때 켜짐 쪽(오른쪽)에선 왼쪽으로 늘어나야 트랙 밖으로 나가지 않는다.
+  const translateX = Animated.subtract(
+    progress.interpolate({ inputRange: [0, 1], outputRange: [0, travel] }),
+    Animated.multiply(progress, press.interpolate({ inputRange: [0, 1], outputRange: [0, STRETCH] })),
+  )
+  const thumbWidth = press.interpolate({ inputRange: [0, 1], outputRange: [thumb, thumb + STRETCH] })
+  const thumbColor = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)'],
+  })
   const backgroundColor = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [COLORS.toggleOff, COLORS.primary],
@@ -54,6 +75,8 @@ export default function ToggleSwitch({
         if (!value && !locked) haptics.switchOn()
         onToggle()
       }}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       hitSlop={8}
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
@@ -66,7 +89,13 @@ export default function ToggleSwitch({
         <Animated.View
           style={[
             styles.thumb,
-            { width: thumb, height: thumb, borderRadius: thumb / 2, transform: [{ translateX }] },
+            {
+              width: thumbWidth,
+              height: thumb,
+              borderRadius: thumb / 2,
+              backgroundColor: thumbColor,
+              transform: [{ translateX }],
+            },
           ]}
         />
       </Animated.View>
@@ -77,7 +106,9 @@ export default function ToggleSwitch({
 const styles = StyleSheet.create({
   track: { justifyContent: 'center', paddingHorizontal: PADDING },
   thumb: {
-    backgroundColor: '#fff',
+    // 유리 윤: 흰 테두리(렌즈가 되면 가장자리로 보인다).
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
