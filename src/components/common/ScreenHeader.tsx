@@ -98,11 +98,8 @@ const styles = StyleSheet.create({
     height: HEADER_HEIGHT + 4,
     paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.sheet,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 2,
+    // 그림자 없음(10-08) — 넓게 퍼진 남색 그림자가 카드 주변 회색 바탕을 물들여 아래 목록 바탕보다 진해 보였다.
+    // 아래 목록 카드처럼 회색 바탕 위 흰 카드만으로 띄운다.
   },
   circle: { backgroundColor: COLORS.background },
   slot: { width: ICON_BUTTON_SIZE, height: ICON_BUTTON_SIZE },

@@ -128,11 +128,8 @@ const styles = StyleSheet.create({
     // 좌우 16 — 아래 목록·설정 카드의 안쪽 여백(16)과 같아 제목·버튼이 아래 글자와 세로로 줄이 맞는다(10-08, 예전 왼쪽 20).
     paddingHorizontal: SPACING.lg,
     gap: SPACING.md + 2,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 2,
+    // 그림자 없음(10-08) — 넓게 퍼진 남색 그림자가 카드 주변 회색 바탕을 물들여 아래 목록 바탕보다 진해 보였다.
+    // 아래 목록 카드처럼 회색 바탕 위 흰 카드만으로 띄운다.
   },
   titleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...TYPE.screenTitle, fontSize: 24, color: COLORS.textPrimary },
