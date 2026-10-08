@@ -27,7 +27,7 @@ export async function mockCreateReportKeyword(raw: string): Promise<ReportKeywor
   const keyword = raw.trim()
   if (!keyword) throw new ApiError(400, '키워드를 입력해 주세요.')
   // 일부러 실패를 보고 싶을 때: '실패' 를 넣으면 서버 오류처럼 굴어 되돌리기와 토스트를 확인할 수 있다.
-  if (keyword === '실패') throw new ApiError(500, '잠시 후 다시 시도해 주세요.')
+  if (keyword === '실패') throw new ApiError(500, '잠시 뒤 다시 시도해 주세요.')
   if (keywords.some((k) => k.keyword.toLowerCase() === keyword.toLowerCase())) {
     throw new ApiError(409, '이미 등록한 키워드예요.')
   }

@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from "r
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
+import { RADIUS } from "../../constants/spacing";
+import { SELECTED_PILL_BG } from "../common/Chip";
 import {
   CAFETERIA_FACILITY_IDS,
   isCafeteriaApiMissing,
@@ -62,7 +64,7 @@ export default function CafeteriaMenu({ facilityId, week }: CafeteriaMenuProps) 
     if (loading) {
       return (
         <View style={styles.block}>
-          <Text style={styles.muted}>메뉴를 불러오는 중…</Text>
+          <Text style={styles.muted}>메뉴를 불러오는 중이에요</Text>
         </View>
       );
     }
@@ -220,15 +222,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: "center",
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  // 고른 요일: 회색 알약 + 남색 글자(10-08, 앱 전체 선택 표시와 같게).
+  chipActive: { backgroundColor: SELECTED_PILL_BG, borderColor: "transparent" },
   chipDay: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   chipDate: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary, fontVariant: ["tabular-nums"] },
-  chipTextActive: { color: COLORS.white },
+  chipTextActive: { color: COLORS.primary },
   meal: { backgroundColor: COLORS.white, borderRadius: 10, padding: 12, gap: 6, minWidth: 0 },
   mealHeader: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
   mealName: { fontSize: 14, fontFamily: FONTS.bold, color: COLORS.primary },

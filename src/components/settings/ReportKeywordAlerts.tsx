@@ -8,6 +8,8 @@ import type { NewReportsScope } from '../../apis/notificationSettings'
 import { MAX_REPORT_KEYWORD_LENGTH, MAX_REPORT_KEYWORDS, type ReportKeyword } from '../../apis/reportKeywords'
 import { isPendingKeyword, type ReportKeywordAlertsStatus } from '../../hooks/useReportKeywordAlerts'
 import Button from '../common/Button'
+import RetryableError from '../common/RetryableError'
+import { SELECTED_PILL_BG } from '../common/Chip'
 import TextField from '../common/TextField'
 
 interface ReportKeywordAlertsProps {
@@ -65,9 +67,9 @@ export default function ReportKeywordAlerts({
 
   if (status === 'error') {
     return (
-      <View style={[styles.panel, styles.center]}>
-        <Text style={styles.errorText}>제보 키워드 설정을 불러오지 못했어요</Text>
-        <Button label="다시 시도" variant="secondary" size="sm" fullWidth={false} onPress={onRetry} />
+      <View style={styles.panel}>
+        {/* 다른 목록·창과 같은 오류 상자(10-08). */}
+        <RetryableError message="제보 키워드 설정을 불러오지 못했어요" onRetry={onRetry} />
       </View>
     )
   }
@@ -202,7 +204,6 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', paddingTop: SPACING.sm },
   notReady: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingTop: SPACING.xs },
   notReadyText: { ...TYPE.caption, color: COLORS.textTertiary },
-  errorText: { ...TYPE.callout, color: COLORS.textSecondary },
   label: { ...TYPE.label, color: COLORS.textSecondary },
   scopeList: { gap: SPACING.sm, marginBottom: SPACING.sm },
   scopeOption: {
@@ -215,7 +216,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
-  scopeOptionOn: { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft },
+  // 고른 범위: 회색 알약 + 남색 글자(10-08, 앱 전체 선택 표시와 같게). 라디오 점은 그대로 둔다.
+  scopeOptionOn: { borderColor: 'transparent', backgroundColor: SELECTED_PILL_BG },
   pressed: { opacity: 0.75 },
   scopeBody: { flex: 1, gap: SPACING.xxs },
   scopeLabel: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },

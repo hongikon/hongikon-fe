@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   // 회색 바탕 위 둥근 흰 목록 카드(설정 탭 묶음 카드와 같은 여백·곡률, 10-07).
   body: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
-  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.xs },
+  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
   empty: { marginTop: SPACING.xl },
   list: { backgroundColor: COLORS.white, borderRadius: RADIUS.floating, overflow: 'hidden' },
 })

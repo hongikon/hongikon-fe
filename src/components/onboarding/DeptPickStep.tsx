@@ -11,7 +11,8 @@ import {
 import { useSettings } from '../../contexts/SettingsContext'
 import { normalize } from '../../utils/normalize'
 import SearchBar from '../news/SearchBar'
-import { ONBOARDING_TINT } from './OnboardingIllustration'
+import { SELECTED_PILL_BG } from '../common/Chip'
+import { RADIUS } from '../../constants/spacing'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 
 /** '대학' 묶음(학사·장학 등 학교 전체 게시판 6개). "학교 공지 함께 받기"가 한 번에 켠다. */
@@ -82,7 +83,7 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
           <Ionicons
             name={universityAllOn ? 'checkmark-circle' : 'add-circle-outline'}
             size={17}
-            color={universityAllOn ? COLORS.white : COLORS.primary}
+            color={universityAllOn ? COLORS.primary : COLORS.textSecondary}
           />
           <Text style={[styles.chipText, universityAllOn && styles.chipTextOn]} numberOfLines={1}>
             학교 공지(학사·장학 등) 함께 받기
@@ -169,12 +170,15 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: ONBOARDING_TINT,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
-  chipOn: { backgroundColor: COLORS.primary },
-  chipText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
-  chipTextOn: { color: COLORS.white },
+  // 켜짐: 회색 알약 + 남색 글자·체크(10-08, 앱 전체 선택 표시와 같게). 꺼짐은 흰 바탕 + 회색 글자.
+  chipOn: { backgroundColor: SELECTED_PILL_BG, borderColor: 'transparent' },
+  chipText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
+  chipTextOn: { color: COLORS.primary },
   pressed: { opacity: 0.75 },
   list: { flex: 1, marginTop: 12 },
   listContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },

@@ -320,13 +320,14 @@ function PermissionRow({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, gap: 12, paddingBottom: 40 },
+  content: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, gap: SPACING.sm, paddingBottom: 40 },
   lead: {
     fontFamily: FONTS.regular,
     fontSize: 13,
     lineHeight: 19,
     color: COLORS.textSecondary,
-    paddingHorizontal: 4,
+    // 카드 안 글자(28)와 같은 들여쓰기(10-08).
+    paddingHorizontal: SPACING.lg,
     paddingTop: 4,
     paddingBottom: 4,
   },

@@ -5,6 +5,7 @@ import { useNavigation, useScrollToTop, type CompositeNavigationProp } from '@re
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
+import { RADIUS, SPACING } from '../constants/spacing'
 import { layoutStyles } from '../constants/layout'
 import { TREE_DATA, SUBSCRIBABLE_ITEMS } from '../constants/news'
 import type { NewsItem } from '../types'
@@ -239,12 +240,13 @@ const styles = StyleSheet.create({
   feedError: { marginHorizontal: 12, marginTop: 12 },
 
   listHeaderGroup: { gap: 10 },
-  hub: { backgroundColor: COLORS.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12 },
+  // 목록 카드와 같은 곡률·안쪽 여백(10-08) — 글자가 아래 카드 글자와 세로로 줄이 맞는다.
+  hub: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: SPACING.lg },
   hubHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hubLabel: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
   hubManage: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2, paddingLeft: 8 },
   hubManageText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.primary },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginTop: 12 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,7 +255,7 @@ const styles = StyleSheet.create({
     paddingLeft: 11,
     paddingRight: 7,
     paddingVertical: 6,
-    borderRadius: 15,
+    borderRadius: RADIUS.pill,
   },
   chipText: { color: COLORS.white, fontSize: 12, fontFamily: FONTS.semibold },
   chipX: {
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 15,
+    borderRadius: RADIUS.pill,
     borderWidth: 1.2,
     borderColor: COLORS.chipBorder,
     borderStyle: 'dashed',

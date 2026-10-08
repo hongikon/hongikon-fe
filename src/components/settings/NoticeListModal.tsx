@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   body: { paddingTop: SPACING.xs, paddingBottom: SPACING.xl },
   card: {
     marginHorizontal: SPACING.md,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
     overflow: 'hidden',

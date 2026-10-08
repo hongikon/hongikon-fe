@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, KeyboardAvoidingView, Platform, ScrollVi
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
-import { RADIUS } from '../../constants/spacing'
+import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
@@ -89,7 +89,7 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
     } catch (error) {
       if (isStale()) return
       setSubmitError({
-        message: getErrorMessage(error, '신청을 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
+        message: getErrorMessage(error, '신청을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
@@ -189,7 +189,8 @@ const styles = StyleSheet.create({
   // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
   container: { flex: 1, backgroundColor: COLORS.background },
   flex: { flex: 1 },
-  body: { padding: 20 },
+  // 글자 왼쪽 끝을 아래 카드들과 같은 28(판 바깥 12 + 안쪽 16)에 맞춘다(10-08).
+  body: { paddingHorizontal: SPACING.lg, paddingVertical: 20 },
   intro: { gap: 10, marginBottom: 22, padding: 14, borderRadius: RADIUS.md, backgroundColor: COLORS.fill },
   preview: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   previewName: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },

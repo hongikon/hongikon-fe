@@ -104,7 +104,7 @@ export async function fetchMapData({
   // 받은 것으로 치면 멀쩡한 저장본을 빈 데이터로 덮어 핀이 모두 사라지고 오류 안내도 뜨지 않는다.
   // (`scripts/generate-map-html.ts` 도 같은 이유로 빈 건물 목록을 거부한다.)
   if (data.buildings.length === 0) {
-    throw new ApiError(502, '지도 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', 'GET /map/data: 건물 목록이 비어 있음')
+    throw new ApiError(502, '지도 정보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.', 'GET /map/data: 건물 목록이 비어 있음')
   }
   // CORS 가 ETag 를 노출하지 않으면 헤더를 못 읽는다. 서버 ETag 는 "<version>" 이라 본문 version 으로 대신 만든다.
   const etagHeader = response.headers.get('ETag')

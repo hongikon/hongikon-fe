@@ -145,7 +145,7 @@ function authExchangeErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
     return '로그인 정보가 만료됐거나 올바르지 않아요. 다시 로그인해 주세요.'
   }
-  return '로그인 처리 중 서버에 문제가 생겼어요. 잠시 후 다시 로그인해 주세요.'
+  return '로그인 처리 중 서버에 문제가 생겼어요. 잠시 뒤 다시 로그인해 주세요.'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -370,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 창을 닫은 것(cancel·dismiss)은 조용히 넘기게 따로 표시한다. 예전엔 '카카오 로그인 실패' 알림이 떴다.
       // locked(다른 인증 창이 이미 열려 있음) 등은 그대로 실패로 알린다.
       if (result.type === 'cancel' || result.type === 'dismiss') throw new KakaoLoginCanceledError()
-      throw new Error('로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.')
+      throw new Error('로그인을 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     }
 
     const code = extractAuthCode(result.url)
@@ -406,7 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: unknown) {
       if (isAppleSignInCanceled(error)) throw error
       if (__DEV__) console.warn('Apple 로그인 실패:', error)
-      throw new Error('Apple 로그인을 마치지 못했어요. 잠시 후 다시 시도해 주세요.')
+      throw new Error('Apple 로그인을 마치지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     }
 
     // authorizationCode 는 1회용이라 다시 보내지 않는다(카카오 코드 교환과 같은 이유). 실패하면 버튼부터 다시.

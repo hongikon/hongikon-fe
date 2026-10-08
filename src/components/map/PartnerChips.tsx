@@ -87,7 +87,7 @@ export default function PartnerChips({
               accessibilityRole="button"
               accessibilityState={{ selected: isActive, disabled }}
               accessibilityLabel={
-                count === 0 ? `${key}: 제휴 업체 없음` : `${key} 제휴 업체 ${count}곳`
+                count === 0 ? `${key}: 제휴 업체가 없어요` : `${key} 제휴 업체 ${count}곳`
               }
               style={[
                 styles.chip,

@@ -35,6 +35,7 @@ import CommentComposer, { type ReplyTarget } from './CommentComposer'
 import ModerationMenu from '../ModerationMenu'
 import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 import type { ReportComment, ReportListItem } from '../../../types'
+import EmptyState from '../../common/EmptyState'
 
 interface ReportCommentsModalProps {
   visible: boolean
@@ -435,18 +436,22 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                   keyboardDismissMode="interactive"
                   refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(0, 'refresh')} />}
                   ListEmptyComponent={
-                    <View style={styles.empty}>
-                      <Text style={styles.emptyTitle}>
-                        {count > 0 ? (hasNext ? '불러온 댓글은 모두 숨긴 사용자의 댓글이에요' : '숨긴 사용자의 댓글만 있어요') : '첫 댓글을 남겨 보세요'}
-                      </Text>
-                      {count > 0 ? null : (
-                        <Text style={styles.emptyBody}>줄이 긴지, 아직 남았는지 지금 상황을 알려 주면 다른 학생들에게 도움이 돼요.</Text>
-                      )}
-                    </View>
+                    // 다른 빈 화면과 같은 EmptyState(10-08).
+                    <EmptyState
+                      icon={count > 0 ? 'eye-off-outline' : 'chatbubbles-outline'}
+                      message={
+                        count > 0
+                          ? hasNext
+                            ? '불러온 댓글은 모두 숨긴 사용자의 댓글이에요'
+                            : '숨긴 사용자의 댓글만 있어요'
+                          : '첫 댓글을 남겨 보세요'
+                      }
+                      description={count > 0 ? undefined : '줄이 긴지, 아직 남았는지 지금 상황을 알려 주면 다른 학생들에게 도움이 돼요.'}
+                    />
                   }
                   ListFooterComponent={
                     loadingMore ? (
-                      <ActivityIndicator style={styles.footer} color={COLORS.textTertiary} />
+                      <ActivityIndicator style={styles.footer} color={COLORS.primary} />
                     ) : hasNext ? (
                       // 첫 페이지가 모두 숨긴 사용자의 댓글이라 보이는 게 없어도 버튼은 둔다(빈 안내 아래에 같이 뜬다) —
                       // 예전엔 보이는 댓글이 없으면 버튼을 숨겨 나머지 댓글을 볼 길이 없었다.
@@ -626,9 +631,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   listContent: { paddingHorizontal: 16, paddingBottom: 16 },
   emptyContainer: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 32 },
-  empty: { alignItems: 'center', gap: 6 },
-  emptyTitle: { fontFamily: FONTS.semibold, fontSize: 16, color: COLORS.textPrimary },
-  emptyBody: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: COLORS.textSecondary, textAlign: 'center' },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.divider, marginLeft: 42 },
   replies: {
     marginLeft: 15,

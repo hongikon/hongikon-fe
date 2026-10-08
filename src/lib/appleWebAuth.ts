@@ -80,7 +80,7 @@ export function takeWebAppleCallback(): WebAppleCallback | undefined {
 
   const error = params.get('error')
   if (error === 'user_cancelled_authorize') return { kind: 'canceled' }
-  if (error) return { kind: 'error', message: 'Apple 로그인을 마치지 못했어요. 잠시 후 다시 시도해 주세요.' }
+  if (error) return { kind: 'error', message: 'Apple 로그인을 마치지 못했어요. 잠시 뒤 다시 시도해 주세요.' }
 
   const identityToken = params.get('id_token')
   const authorizationCode = params.get('code')
