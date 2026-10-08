@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useFocusEffect, useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
@@ -95,6 +95,9 @@ type ModalType =
 
 export default function SettingsScreen() {
   const tabInset = useTabBarInset()
+  // 이미 설정 탭에 있을 때 하단 '설정' 탭을 다시 누르면 맨 위로 올린다(10-08 요청).
+  const scrollRef = useRef<ScrollView>(null)
+  useScrollToTop(scrollRef)
   const {
     settings,
     toggleSubscriptionAlert,
@@ -307,7 +310,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
         {/* 설정은 목록이 길어 머리 카드를 위에 고정하지 않고 같이 스크롤한다(10-07 요청). */}
         <TabHeaderCard title="설정">
           {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}

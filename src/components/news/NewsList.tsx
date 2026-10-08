@@ -1,13 +1,15 @@
-import { useCallback, type ReactElement } from 'react'
+import { useCallback, type ReactElement, type Ref } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
-import { layoutStyles } from '../../constants/layout'
+import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
 import { useTabBarInset } from '../../hooks/useTabBarInset'
 
 interface NewsListProps {
+  /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 목록 ref. */
+  listRef?: Ref<FlatList<NewsItem>>
   items: NewsItem[]
   isBookmarked: (id: string) => boolean
   onPressItem: (item: NewsItem) => void
@@ -47,6 +49,7 @@ export default function NewsList({
   footer,
   refreshing,
   onRefresh,
+  listRef,
 }: NewsListProps) {
   const tabInset = useTabBarInset()
 
@@ -72,12 +75,16 @@ export default function NewsList({
 
   return (
     <FlatList
+      ref={listRef}
       style={styles.list}
       // 넓은 화면(폴드 펼침·웹)에선 카드가 화면 끝까지 늘어나지 않게 가운데 읽기 폭으로 모은다.
       contentContainerStyle={[styles.content, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
       data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
+      // 검색창(목록 머리·화면 머리)을 눌러 올라온 키보드는 목록을 아래로 끌면 내려간다. 결과 카드는 키보드가 떠 있어도 한 번에 눌린다.
+      keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      keyboardShouldPersistTaps="handled"
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
       // 끝에서 한 화면쯤 남았을 때 미리 채워 스크롤이 멈칫하지 않게 한다.

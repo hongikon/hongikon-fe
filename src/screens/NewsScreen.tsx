@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { useState, useCallback, useRef } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, type FlatList, type ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native'
+import { useNavigation, useScrollToTop, type CompositeNavigationProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
@@ -48,6 +48,11 @@ export default function NewsScreen() {
     settings.subscribedDepts.length > 0 ? '구독' : '전체',
   )
   const [subManagerOpen, setSubManagerOpen] = useState(false)
+  // 이미 소식 탭에 있을 때 하단 '소식' 탭을 다시 누르면 지금 보이는 목록을 맨 위로 올린다(10-08 요청).
+  const listRef = useRef<FlatList<NewsItem>>(null)
+  const treeRef = useRef<ScrollView>(null)
+  useScrollToTop(listRef)
+  useScrollToTop(treeRef)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
 
   // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없으면 부르지 않고 빈 화면 안내를
@@ -103,6 +108,7 @@ export default function NewsScreen() {
 
       {activeTab === '전체' ? (
         <DeptTreeList
+          scrollRef={treeRef}
           query=""
           results={TREE_DATA}
           isSearching={false}
@@ -122,6 +128,7 @@ export default function NewsScreen() {
         />
       ) : (
         <NewsList
+          listRef={listRef}
           items={displayedNews}
           isBookmarked={isBookmarked}
           onPressItem={handlePressItem}
