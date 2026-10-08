@@ -3,6 +3,7 @@ import {
   CAMPUS_VIEW_RADIUS_METERS,
   FAR_PARTNER_VIEW_RADIUS_METERS,
   MAP_MIN_ZOOM,
+  PARTNER_BOUNDS_PADDING_DEGREES,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
 import { haversineMeters } from './geo'
@@ -55,4 +56,22 @@ export function viewBoundsScript(box: ViewBox): string {
     values[3] +
     ')) }); } true;'
   )
+}
+
+/**
+ * 홍익대 중심이 화면 가운데에 오도록, 중심에서 위아래·좌우로 같은 만큼 넓힌 범위(10-08 요청 — 편의시설 칩).
+ * 주어진 지점이 모두 들어오는 가장 작은 대칭 범위에 여백을 더한다. 지점이 없으면 null.
+ */
+export function campusCenteredBounds(
+  points: readonly { lat: number; lng: number }[],
+): { swLat: number; swLng: number; neLat: number; neLng: number } | null {
+  if (points.length === 0) return null
+  const dLat = Math.max(...points.map((p) => Math.abs(p.lat - CAMPUS_CENTER.lat))) + PARTNER_BOUNDS_PADDING_DEGREES
+  const dLng = Math.max(...points.map((p) => Math.abs(p.lng - CAMPUS_CENTER.lng))) + PARTNER_BOUNDS_PADDING_DEGREES
+  return {
+    swLat: CAMPUS_CENTER.lat - dLat,
+    swLng: CAMPUS_CENTER.lng - dLng,
+    neLat: CAMPUS_CENTER.lat + dLat,
+    neLng: CAMPUS_CENTER.lng + dLng,
+  }
 }
