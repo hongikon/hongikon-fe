@@ -1210,7 +1210,11 @@ export function buildMapHTML(
       });
     }
 
-    function fitToBounds(bounds) {
+    // 지도 칸이 이만큼 넓으면(데스크톱 웹) 칩 결과를 맞춘 뒤 한 단계 더 확대한다 — 넓은 화면은 같은 범위가 멀리서 보여
+    // 축척이 300m 로 잡혔다(10-08 요청: 데스크톱은 100m 근처, 모바일은 지금 그대로).
+    var WIDE_MAP_WIDTH = 700;
+
+    function fitToBounds(bounds, zoomInWhenWide) {
       if (!bounds) return;
       // 진행 중인 '눌러 보기' 확대가 늦게 끝나며 이 맞춤을 옛 핀 19배로 덮지 않게 먼저 멈춘다.
       cancelFocus();
@@ -1218,6 +1222,9 @@ export function buildMapHTML(
         new naver.maps.LatLng(bounds.swLat, bounds.swLng),
         new naver.maps.LatLng(bounds.neLat, bounds.neLng)
       ));
+      if (zoomInWhenWide && container.clientWidth >= WIDE_MAP_WIDTH) {
+        map.setZoom(map.getZoom() + 1);
+      }
     }
 
     // 대안 경로 전부가 화면에 들어오도록, 모든 경로의 모든 점을 합쳐 범위를 잡는다.
@@ -1437,7 +1444,7 @@ export function buildMapHTML(
           selectedPartnerId = null;
           overlapCycle.key = null;
           renderPartners();
-          fitToBounds(msg.bounds);
+          fitToBounds(msg.bounds, true);
         }
 
         if (msg.type === 'clearPartners') {
@@ -1459,7 +1466,7 @@ export function buildMapHTML(
 
         if (msg.type === 'setFacilities') {
           renderFacilities(msg.markers || []);
-          fitToBounds(msg.bounds);
+          fitToBounds(msg.bounds, true);
         }
 
         if (msg.type === 'clearFacilities') {
