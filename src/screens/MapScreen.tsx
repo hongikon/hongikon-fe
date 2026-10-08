@@ -64,7 +64,7 @@ import {
   partnerFocusBounds,
   partnersOutsideFocus,
 } from "../utils/partners";
-import { CAMPUS_VIEW_BOX, campusCenteredBounds, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
+import { CAMPUS_VIEW_BOX, farPointViewBox, pointsBounds, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { withExhibitionHints } from "../utils/exhibitions";
@@ -819,8 +819,8 @@ export default function MapScreen() {
         return;
       }
       const markers = withExhibitionHints(facilityMarkers(facilities, buildings, next), facilities, exhibitions);
-      // 제휴 업체 칩처럼 지도를 옮긴다 — 홍익대 중심을 가운데 두고 이 종류 시설이 모두 들어오게(10-08 요청).
-      postToMap({ type: "setFacilities", markers, bounds: campusCenteredBounds(markers) });
+      // 제휴 업체 칩처럼 지도를 옮긴다 — 이 종류 시설이 모두 들어오게, 시설들의 중심을 가운데로(10-08 요청).
+      postToMap({ type: "setFacilities", markers, bounds: pointsBounds(markers) });
     },
     [facilities, buildings, exhibitions, postToMap],
   );
