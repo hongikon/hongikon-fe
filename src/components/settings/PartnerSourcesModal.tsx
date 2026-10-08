@@ -64,13 +64,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: COLORS.textSecondary,
     marginBottom: 16,
-    paddingHorizontal: 4,
+    // 카드 안 글자(28)와 같은 들여쓰기(10-08).
+    paddingHorizontal: SPACING.lg,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.floating,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: SPACING.sm,
   },
   affiliation: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   period: {

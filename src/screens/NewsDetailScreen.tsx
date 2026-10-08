@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
+import { SPACING } from '../constants/spacing'
 import { layoutStyles } from '../constants/layout'
 import type { CategoryKey } from '../constants/colors'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -203,7 +204,8 @@ const styles = StyleSheet.create({
   column: { flex: 1 },
   loadError: { margin: 16 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20 },
+  // 글자 왼쪽 끝을 28(판 바깥 12 + 안쪽 16)에 맞춘다(10-08).
+  scrollContent: { paddingHorizontal: SPACING.lg, paddingVertical: 20 },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -228,12 +230,10 @@ const styles = StyleSheet.create({
   },
   sourceName: { flex: 1, fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.medium },
   sourceLabel: { fontFamily: FONTS.semibold, color: COLORS.textTertiary },
+  // 원문 보기: 회색 바탕 위에 떠 있는 버튼만. 좌우 12 로 위 본문 판 가장자리와 맞춘다(10-08, 예전 흰 바 + 윗선 + 20).
   footer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.md,
     paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.white,
   },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginBottom: 20 },
   body: { fontFamily: FONTS.regular,

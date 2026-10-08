@@ -112,11 +112,11 @@ function reportSubmitErrorMessage(error: unknown): string {
     if (error.status === 400) return '제보 내용이 올바르지 않아요. 위치(건물·층)와 제목을 다시 확인해 주세요.'
     if (error.status === 401) return '로그인이 만료됐어요. 다시 로그인한 뒤 제보해 주세요.'
     if (error.status === 403) return '이 계정으로는 제보를 올릴 수 없어요.'
-    if (error.status === 429) return '제보를 너무 자주 올렸어요. 잠시 후 다시 시도해 주세요.'
-    if (error.status >= 500) return '서버에 일시적인 문제가 있어 제보를 올리지 못했어요. 잠시 후 다시 시도해 주세요.'
+    if (error.status === 429) return '제보를 너무 자주 올렸어요. 잠시 뒤 다시 시도해 주세요.'
+    if (error.status >= 500) return '서버에 일시적인 문제가 있어 제보를 올리지 못했어요. 잠시 뒤 다시 시도해 주세요.'
   }
   if (error instanceof Error && error.message) return error.message
-  return '제보를 올리지 못했어요. 잠시 후 다시 시도해 주세요.'
+  return '제보를 올리지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 }
 
 function formatCoord(value: number): string {

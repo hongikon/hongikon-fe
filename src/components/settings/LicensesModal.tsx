@@ -3,6 +3,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
+import { SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import { openExternalUrl } from '../../utils/openExternalUrl'
 import ModalHeader, { ModalPanel } from './ModalHeader'
@@ -127,7 +128,7 @@ export default function LicensesModal({ visible, onClose }: LicensesModalProps) 
 const styles = StyleSheet.create({
   // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
   container: { flex: 1, backgroundColor: COLORS.background },
-  list: { paddingHorizontal: 20, paddingBottom: 40 },
+  list: { paddingHorizontal: SPACING.lg, paddingBottom: 40 },
   intro: { ...TYPE.callout, color: COLORS.textSecondary, paddingVertical: 16 },
   header: { ...TYPE.section, color: COLORS.textPrimary, marginTop: 16, marginBottom: 4 },
   item: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },

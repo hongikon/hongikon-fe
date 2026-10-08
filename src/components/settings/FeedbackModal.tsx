@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
+import { SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
@@ -80,7 +81,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     } catch (error) {
       if (isStale()) return
       setSubmitError({
-        message: getErrorMessage(error, '문의를 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
+        message: getErrorMessage(error, '문의를 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
@@ -163,7 +164,8 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
 const styles = StyleSheet.create({
   // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
   container: { flex: 1, backgroundColor: COLORS.background },
-  body: { flex: 1, padding: 20 },
+  // 글자 왼쪽 끝을 아래 카드들과 같은 28(판 바깥 12 + 안쪽 16)에 맞춘다(10-08).
+  body: { flex: 1, paddingHorizontal: SPACING.lg, paddingVertical: 20 },
   field: { marginBottom: 20 },
   fieldLast: { marginBottom: 24 },
   errorBox: { marginBottom: 12 },

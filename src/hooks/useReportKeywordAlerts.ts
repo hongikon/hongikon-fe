@@ -102,7 +102,7 @@ export function useReportKeywordAlerts(active: boolean, accessToken: string | nu
           toast.show({
             message: notReady
               ? '키워드 제보 알림은 아직 준비 중이에요'
-              : getErrorMessage(error, '알림 범위를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'),
+              : getErrorMessage(error, '알림 범위를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
             tone: 'warning',
           })
         })

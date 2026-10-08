@@ -259,7 +259,7 @@ export default function MyReportsModal({
           />
         }
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator style={styles.footerSpinner} color={COLORS.textTertiary} /> : null
+          loadingMore ? <ActivityIndicator style={styles.footerSpinner} color={COLORS.primary} /> : null
         }
       />
     )
@@ -446,10 +446,11 @@ const styles = StyleSheet.create({
   // 좌우 여백은 머리 카드·설정 탭 묶음 카드와 같은 md.
   list: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
   listEmpty: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg },
-  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md },
+  // 카드 안 글자(28)와 같은 들여쓰기(10-08).
+  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
   empty: { marginTop: SPACING.xl },
   error: { margin: SPACING.lg },
-  separator: { height: SPACING.md },
+  separator: { height: SPACING.sm },
   footerSpinner: { marginVertical: SPACING.lg },
   skeletonGap: { marginTop: SPACING.md },
   skeletonLine: { marginTop: SPACING.sm },
@@ -458,8 +459,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.cardBg,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    // 다른 떠 있는 카드처럼 테두리는 보이지 않게(10-08). 강조될 때 두께가 바뀌어 글자가 밀리지 않게 자리만 둔다.
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
   cardHighlighted: { borderColor: COLORS.primary, borderWidth: 1.5 },
   pressed: { opacity: 0.7 },

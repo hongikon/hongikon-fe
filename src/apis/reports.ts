@@ -116,7 +116,7 @@ export async function uploadReportImage(
       throw new ReportImageUploadError('unavailable', '사진 첨부는 아직 준비 중이에요.')
     }
     if (caught instanceof ApiError && caught.status === 429) {
-      throw new ReportImageUploadError('failed', '사진을 너무 자주 올렸어요. 잠시 후 다시 시도해 주세요.')
+      throw new ReportImageUploadError('failed', '사진을 너무 자주 올렸어요. 잠시 뒤 다시 시도해 주세요.')
     }
     if (caught instanceof ApiError && caught.status === 401) throw caught
     throw new ReportImageUploadError('failed', '사진을 올리지 못했어요. 다시 시도하거나 사진 없이 올려 주세요.')

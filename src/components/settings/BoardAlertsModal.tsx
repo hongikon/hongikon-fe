@@ -142,14 +142,14 @@ export default function BoardAlertsModal({ visible, onClose, onOpenSubscriptions
               <View style={styles.hint}>
                 <Ionicons name="notifications-off-outline" size={13} color={COLORS.textSecondary} />
                 <Text style={styles.hintText}>
-                  구독 소식 알림이 꺼져 있어요. 켜면 여기서 켜 둔 게시판만 알려드려요.
+                  알림 설정이 꺼져 있어요. 켜면 여기서 켜 둔 게시판만 알려드려요.
                 </Text>
               </View>
             )}
 
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled">
               {groups.length === 0 ? (
-                <EmptyState icon="search-outline" message="검색 결과가 없어요" />
+                <EmptyState icon="search-outline" message={query.trim() ? `'${query.trim()}' 검색 결과가 없어요` : '검색 결과가 없어요'} />
               ) : (
                 groups.map((group) => {
                   const ids = group.items.map((item) => item.id)

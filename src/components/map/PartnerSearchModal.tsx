@@ -217,7 +217,7 @@ export default function PartnerSearchModal({
             <EmptyState icon="time-outline" message="제휴 업체 정보를 불러오는 중이에요" style={styles.hintBox} />
           )
         ) : hasQuery && results.length === 0 ? (
-          <EmptyState icon="search-outline" message="검색 결과가 없어요" style={styles.hintBox} />
+          <EmptyState icon="search-outline" message={query.trim() ? `'${query.trim()}' 검색 결과가 없어요` : "검색 결과가 없어요"} style={styles.hintBox} />
         ) : null}
 
         {!data ? null : hasQuery ? (

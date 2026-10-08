@@ -22,7 +22,8 @@ import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import Button from '../common/Button'
-import Chip from '../common/Chip'
+import Chip, { SELECTED_PILL_BG } from '../common/Chip'
+import { RADIUS } from '../../constants/spacing'
 import TextField, { FieldLabel } from '../common/TextField'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import { INFO_SUGGESTION_PREFIXES, type InfoSuggestType } from '../../constants/feedback'
@@ -373,7 +374,7 @@ export default function InfoSuggestModal({
     } catch (error) {
       if (isStale()) return
       setSubmitError({
-        message: getErrorMessage(error, '제보를 보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
+        message: getErrorMessage(error, '제보를 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
@@ -761,15 +762,16 @@ const styles = StyleSheet.create({
   kindButton: {
     flex: 1,
     height: 44,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kindButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  // 고른 종류: 회색 알약 + 남색 글자(10-08, 앱 전체 선택 표시와 같게).
+  kindButtonActive: { backgroundColor: SELECTED_PILL_BG, borderColor: 'transparent' },
   kindText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textSecondary },
-  kindTextActive: { color: COLORS.white },
+  kindTextActive: { color: COLORS.primary },
   field: { marginBottom: 20 },
   fieldWithHint: { marginBottom: 6 },
   fieldInvalid: { borderColor: COLORS.danger },

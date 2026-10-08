@@ -18,7 +18,7 @@ interface SearchBarProps {
 
 /**
  * 앱 공용 검색바.
- * 소식 검색·학과 검색·구독 관리·제휴 업체 검색·온보딩 학과 고르기가 같은 모양(높이 44·모서리 12·흰 바탕 테두리)을 쓴다.
+ * 소식 검색·학과 검색·구독 관리·제휴 업체 검색·온보딩 학과 고르기가 같은 모양(높이 44·알약 모서리 RADIUS.floating·흰 바탕 테두리)을 쓴다.
  */
 export default function SearchBar({
   value,

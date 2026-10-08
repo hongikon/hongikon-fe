@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
-import { RADIUS } from '../../constants/spacing'
+import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
 import { useAuth } from '../../contexts/AuthContext'
@@ -89,7 +89,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
     } catch (error) {
       if (isStale()) return
       setSubmitError({
-        message: nicknameErrorMessage(error) ?? getErrorMessage(error, '닉네임을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.'),
+        message: nicknameErrorMessage(error) ?? getErrorMessage(error, '닉네임을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
         network: isNetworkError(error),
         retryable: isRetryableError(error),
       })
@@ -218,7 +218,8 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  body: { flex: 1, padding: 20 },
+  // 글자 왼쪽 끝을 아래 카드들과 같은 28(판 바깥 12 + 안쪽 16)에 맞춘다(10-08).
+  body: { flex: 1, paddingHorizontal: SPACING.lg, paddingVertical: 20 },
   input: { marginBottom: 8 },
   validation: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger, marginBottom: 16 },
   preview: { ...TYPE.callout, color: COLORS.textSecondary, marginBottom: 16 },

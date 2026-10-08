@@ -88,7 +88,7 @@ export function useAdminAlertSetting(active: boolean): {
           return
         }
         setState({ status: 'ready', enabled: previous, saving: false })
-        toast.show({ message: '관리자 알림 설정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.', tone: 'warning' })
+        toast.show({ message: '관리자 알림 설정을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.', tone: 'warning' })
       })
   }, [state, toast])
 

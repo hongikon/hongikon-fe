@@ -1,6 +1,7 @@
 import { Text, StyleSheet, ScrollView, Modal } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
+import { SPACING } from '../../constants/spacing'
 import { FONTS } from '../../constants/typography'
 import { PRIVACY_TEXT } from '../../constants/legalText'
 import ModalHeader, { ModalPanel } from './ModalHeader'
@@ -36,7 +37,8 @@ export default function PrivacyModal({ visible, onClose }: PrivacyModalProps) {
 const styles = StyleSheet.create({
   // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
   container: { flex: 1, backgroundColor: COLORS.background },
-  body: { flex: 1, padding: 20 },
+  // 글자 왼쪽 끝을 아래 카드들과 같은 28(판 바깥 12 + 안쪽 16)에 맞춘다(10-08).
+  body: { flex: 1, paddingHorizontal: SPACING.lg, paddingVertical: 20 },
   title: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
   text: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 22 },
 })

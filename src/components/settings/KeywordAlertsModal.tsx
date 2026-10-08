@@ -27,6 +27,7 @@ import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
 import EmptyState from '../common/EmptyState'
 import TextField from '../common/TextField'
+import RetryableError from '../common/RetryableError'
 
 interface KeywordAlertsModalProps {
   visible: boolean
@@ -154,12 +155,7 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
             {keywords === null && loadError === null && (
               <ActivityIndicator style={styles.loading} color={COLORS.primary} />
             )}
-            {loadError !== null && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{loadError}</Text>
-                <Button label="다시 시도" variant="secondary" size="sm" fullWidth={false} onPress={load} />
-              </View>
-            )}
+            {loadError !== null && <RetryableError message={loadError} onRetry={load} style={styles.errorBox} />}
             {keywords !== null && keywords.length === 0 && (
               <EmptyState icon="pricetag-outline" message="등록한 키워드가 없어요" style={styles.empty} />
             )}
@@ -207,8 +203,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   loading: { marginTop: 24 },
-  errorBox: { alignItems: 'center', gap: 8, marginTop: 24 },
-  errorText: { ...TYPE.callout, color: COLORS.textSecondary },
+  errorBox: { marginTop: 24 },
   empty: { minHeight: 200 },
   keywordRow: {
     flexDirection: 'row',
