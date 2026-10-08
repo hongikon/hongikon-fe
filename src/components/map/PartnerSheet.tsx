@@ -21,6 +21,7 @@ import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { openNaverMapPlace } from "../../utils/openNaverMap";
 import { RADIUS } from "../../constants/spacing";
+import SheetScrollBody from "./SheetScrollBody";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -150,11 +151,10 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
 
       </View>
 
-      <Animated.ScrollView
+      <SheetScrollBody
         onContentSizeChange={onContentSizeChange}
         style={[styles.body, { height: bodyHeight }]}
         contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator={false}
       >
         {partner.benefit && (
           <View
@@ -269,7 +269,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             <Text style={styles.linkText}>{partner.link.label}</Text>
           </TouchableOpacity>
         )}
-      </Animated.ScrollView>
+      </SheetScrollBody>
     </Animated.View>
   );
 }

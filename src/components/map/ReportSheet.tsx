@@ -34,6 +34,7 @@ import { communityErrorMessage, isCommunityApiMissing, recordReportView, setRepo
 import type { ReportFlagReason, ReportListItem } from '../../types'
 import { useMapData } from '../../lib/mapData'
 import { RADIUS } from '../../constants/spacing'
+import SheetScrollBody from './SheetScrollBody'
 
 interface ReportSheetProps {
   report: ReportListItem
@@ -251,7 +252,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
       </View>
 
-      <Animated.ScrollView style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
+      <SheetScrollBody style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
       {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
@@ -386,7 +387,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       <ReportCommentsSection key={report.id} report={report} />
-      </Animated.ScrollView>
+      </SheetScrollBody>
 
       <ReportContentModal
         report={contentOpen ? report : null}
