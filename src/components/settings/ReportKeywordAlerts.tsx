@@ -197,7 +197,8 @@ export default function ReportKeywordAlerts({
 }
 
 const styles = StyleSheet.create({
-  panel: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, gap: SPACING.sm },
+  // 위 구분선에 '받을 제보'가 붙어 보이지 않게 위쪽도 띄운다(10-08).
+  panel: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md + 2, paddingBottom: SPACING.lg, gap: SPACING.sm },
   center: { alignItems: 'center', paddingTop: SPACING.sm },
   notReady: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingTop: SPACING.xs },
   notReadyText: { ...TYPE.caption, color: COLORS.textTertiary },
@@ -223,8 +224,9 @@ const styles = StyleSheet.create({
   keywordHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   count: { ...TYPE.label, color: COLORS.textTertiary },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  input: { flex: 1 },
-  addBtn: { minWidth: 64, height: 46 },
+  // 웹 <input> 은 기본 최소 너비(약 20글자)가 있어 좁은 화면에서 줄지 않고 '추가' 버튼을 밖으로 밀어냈다(10-08) — 줄어들 수 있게 한다.
+  input: { flex: 1, minWidth: 0 },
+  addBtn: { minWidth: 64, height: 46, flexShrink: 0 },
   hint: { ...TYPE.caption, color: COLORS.textSecondary },
   hintWarn: { color: COLORS.danger },
   empty: { ...TYPE.caption, color: COLORS.textTertiary, paddingVertical: SPACING.xs },

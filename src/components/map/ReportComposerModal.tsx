@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  customInput: { flex: 1, height: 40, fontSize: 14 },
+  customInput: { flex: 1, minWidth: 0, height: 40, fontSize: 14 },
   counter: {
     alignSelf: 'flex-end',
     fontFamily: FONTS.regular,

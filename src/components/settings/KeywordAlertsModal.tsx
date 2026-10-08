@@ -193,8 +193,9 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 },
-  input: { flex: 1 },
-  addBtn: { minWidth: 64, height: 46 },
+  // 웹 <input> 은 기본 최소 너비(약 20글자)가 있어 좁은 화면에서 줄지 않고 '추가' 버튼을 밖으로 밀어냈다(10-08) — 줄어들 수 있게 한다.
+  input: { flex: 1, minWidth: 0 },
+  addBtn: { minWidth: 64, height: 46, flexShrink: 0 },
   hint: {
     ...TYPE.caption,
     color: COLORS.textSecondary,

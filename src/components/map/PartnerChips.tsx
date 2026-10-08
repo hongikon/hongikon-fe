@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
-import { chipStyles } from "./chipStyles";
+import { chipStyles, useChipRowScrollStyle } from "./chipStyles";
 import ChipIcon from "./ChipIcon";
 import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
 import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
@@ -34,6 +34,7 @@ export default function PartnerChips({
   onSelectAffiliation,
   onSelectCategory,
 }: PartnerChipsProps) {
+  const rowScroll = useChipRowScrollStyle();
   // 지도 데이터를 아직 못 받았으면 업체가 0곳이라 칩이 전부 흐리게(눌리지 않게) 보인다.
   const { partners } = useMapData();
   // 칩 순서는 업종을 골라도 바뀌지 않게 고정한다(예전엔 고른 업종에 업체가 없는 소속을 매번 뒤로 밀어 칩이 출렁였다).
@@ -66,7 +67,7 @@ export default function PartnerChips({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.scroll}
+        style={rowScroll}
         contentContainerStyle={styles.row}
       >
         {affiliationCounts.map(({ key, count }) => {
@@ -111,7 +112,7 @@ export default function PartnerChips({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.scroll}
+        style={rowScroll}
         contentContainerStyle={styles.row}
       >
         {categoryCounts.map(({ meta, count }) => {

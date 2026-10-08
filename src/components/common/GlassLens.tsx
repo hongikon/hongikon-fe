@@ -29,14 +29,17 @@ export function useGlassLens(offset: number, ready = true) {
       lift.setValue(0)
       return
     }
-    Animated.parallel([
-      Animated.spring(translateX, { toValue: offset, useNativeDriver, damping: 20, stiffness: 200, mass: 0.9 }),
-      Animated.sequence([
-        Animated.timing(lift, { toValue: 1, duration: 120, useNativeDriver }),
-        Animated.delay(120),
-        Animated.spring(lift, { toValue: 0, useNativeDriver, damping: 14, stiffness: 180 }),
-      ]),
-    ]).start()
+    // 이동과 부풀기는 따로 돌린다. parallel 로 묶으면 빠르게 다시 누를 때 부풀기(lift)가 끊기면서 이동까지 같이 멈춰
+    // 알약이 탭 사이 어중간한 곳에 남았다(10-08). 이동은 끝까지 간다.
+    Animated.spring(translateX, { toValue: offset, useNativeDriver, damping: 20, stiffness: 200, mass: 0.9 }).start()
+    Animated.sequence([
+      Animated.timing(lift, { toValue: 1, duration: 120, useNativeDriver }),
+      Animated.delay(120),
+      Animated.spring(lift, { toValue: 0, useNativeDriver, damping: 14, stiffness: 180 }),
+    ]).start(({ finished }) => {
+      // 중간에 누름이 끼어들어 끊겼고 지금은 누르고 있지 않으면 가라앉힌다(방울이 떠 있는 채로 남지 않게).
+      if (!finished && !pressing.current) Animated.spring(lift, { toValue: 0, useNativeDriver, damping: 14, stiffness: 180 }).start()
+    })
   }, [offset, ready, reduceMotion, translateX, lift, useNativeDriver])
 
   /** 칸을 누르는 동안 유리 방울로 떠오르고, 떼면(옮기지 않았으면) 가라앉는다. */

@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sheet,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.md + 2,
-    paddingLeft: SPACING.xl,
-    paddingRight: SPACING.lg,
+    // 좌우 16 — 아래 목록·설정 카드의 안쪽 여백(16)과 같아 제목·버튼이 아래 글자와 세로로 줄이 맞는다(10-08, 예전 왼쪽 20).
+    paddingHorizontal: SPACING.lg,
     gap: SPACING.md + 2,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },

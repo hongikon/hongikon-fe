@@ -26,7 +26,7 @@ import { formatNewsBody, splitLinks } from '../utils/newsBody'
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
 
 /**
- * 목록 카드에서 온 `item`엔 짧은 preview만 있고 본문 전체·이미지·첨부파일·조회수는 없다
+ * 목록 카드에서 온 `item`엔 짧은 preview만 있고 본문 전체·이미지·첨부파일은 없다
  * (`NewsSummaryResponse`엔 그 필드들이 없음). 백엔드 소식(id가 숫자 문자열)이면 상세 API로
  * 나머지를 채워 넣는다. 로컬 목데이터(`constants/news.ts`의 "n1" 같은 id)는 숫자가 아니라
  * 자동으로 건너뛴다.
@@ -128,10 +128,8 @@ function NewsDetailBody({
               <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
                 <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
               </View>
-              <Text style={styles.date}>
-                {item.date}
-                {typeof item.views === 'number' ? ` · 조회 ${item.views}` : ''}
-              </Text>
+              {/* 학교 홈페이지 조회수는 보여 주지 않는다(10-08 요청). */}
+              <Text style={styles.date}>{item.date}</Text>
             </View>
 
             {/* 출처 게시판을 제목보다 먼저 보여 준다 — 학교 홈페이지 글을 옮겨 보여 준다는 걸 분명히 한다(스토어 5.2.2). */}

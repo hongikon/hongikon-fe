@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   input: {
-    flex: 1,
+    flex: 1, minWidth: 0,
     fontFamily: FONTS.regular,
     fontSize: 15,
     color: COLORS.textPrimary,
