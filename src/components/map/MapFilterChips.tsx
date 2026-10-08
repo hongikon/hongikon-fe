@@ -4,7 +4,7 @@ import { COLORS } from '../../constants/colors'
 import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { useMapData } from '../../lib/mapData'
-import { chipStyles } from './chipStyles'
+import { chipStyles, useChipRowScrollStyle } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
 import type { FacilityKind, MapLayer } from '../../types'
@@ -67,6 +67,7 @@ export default function MapFilterChips({
   hotAvailable = false,
   onToggleHot,
 }: MapFilterChipsProps) {
+  const rowScroll = useChipRowScrollStyle()
   // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
   // 지도 데이터를 아직 못 받았으면 칩 대신 안내 한 줄만 둔다(지도 위 안내와 같은 상태).
   const { facilities, data } = useMapData()
@@ -83,7 +84,7 @@ export default function MapFilterChips({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[chipStyles.scroll, styles.layerRow]}
+        style={[rowScroll, styles.layerRow]}
         contentContainerStyle={chipStyles.row}
       >
         {LAYERS.map(({ key, label, icon }) => {
@@ -114,7 +115,7 @@ export default function MapFilterChips({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={chipStyles.scroll}
+          style={rowScroll}
           contentContainerStyle={chipStyles.row}
         >
           {!data && (
@@ -154,7 +155,7 @@ export default function MapFilterChips({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={chipStyles.scroll}
+          style={rowScroll}
           contentContainerStyle={chipStyles.row}
         >
           <TouchableOpacity

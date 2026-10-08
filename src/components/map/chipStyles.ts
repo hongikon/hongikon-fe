@@ -1,6 +1,7 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, useWindowDimensions } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { useCenteredGutter } from '../../hooks/useCenteredGutter'
 
 /**
  * 지도 위 필터 칩 줄이 공유하는 모양.
@@ -37,3 +38,14 @@ export const chipStyles = StyleSheet.create({
  * 바깥 여백을 음수로 당긴다.
  */
 export const sheetCloseStyle = { marginVertical: -10, marginRight: -10 } as const
+
+/**
+ * 칩 줄 스크롤의 최대 폭(px). `maxWidth: '100%'` 만으로는 칩 너비만큼만 차지하는(alignSelf flex-start) 가로 스크롤이
+ * 앱에서 화면 폭에서 멈추지 않아, 넘치는 칩(편의점 뒤·캠자전 뒤)을 넘겨 볼 수 없었다(10-08). 화면 폭에서 지도 화면이
+ * 넓은 창에서 양옆에 더 띄우는 만큼(MapScreen 의 sideGutter - 16)을 빼 숫자로 준다.
+ */
+export function useChipRowScrollStyle() {
+  const { width } = useWindowDimensions()
+  const gutter = useCenteredGutter()
+  return [chipStyles.scroll, { maxWidth: width - 2 * Math.max(0, gutter - 16) }]
+}
