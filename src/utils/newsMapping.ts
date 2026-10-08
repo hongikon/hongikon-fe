@@ -36,7 +36,6 @@ export function backendDetailToNewsItem(n: BackendNewsDetail): NewsItem {
     ...backendSummaryToNewsItem(n),
     preview: n.content ?? n.preview ?? '',
     link: n.sourceUrl,
-    views: n.views ?? undefined,
     images: n.images,
     attachments: n.attachments,
   }

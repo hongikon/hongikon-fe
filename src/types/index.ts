@@ -264,9 +264,10 @@ export interface NewsItem {
   date: string
   /** 원문 게시글 URL. 스크래퍼가 채운다. 없으면 상세 화면이 홈페이지로 폴백한다. */
   link?: string
-  /** 아래 3개는 스크래퍼를 --detail 로 돌렸을 때만 채워진다. */
-  views?: number
-  /** 본문이 이미지 한 장뿐인 공지가 흔해서 이미지 URL 을 따로 들고 있는다. */
+  /**
+   * 아래 2개는 스크래퍼를 --detail 로 돌렸을 때만 채워진다(학교 홈페이지 조회수는 받지 않는다, 10-08).
+   * 본문이 이미지 한 장뿐인 공지가 흔해서 이미지 URL 을 따로 들고 있는다.
+   */
   images?: string[]
   attachments?: NewsAttachment[]
 }
