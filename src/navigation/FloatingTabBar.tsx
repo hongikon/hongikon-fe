@@ -1,12 +1,12 @@
-import { useContext, useEffect, useRef } from 'react'
-import { Animated, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { useContext } from 'react'
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import * as haptics from '../lib/haptics'
-import { useReduceMotion } from '../hooks/useReduceMotion'
+import { GlassLensBase, GlassLensBubble, useGlassLens } from '../components/common/GlassLens'
 
 /** 아이콘 크기·칸 너비. 네이버 지도 하단 바처럼 아이콘만 둔 둥근 캡슐. */
 const ICON_SIZE = 26
@@ -17,8 +17,6 @@ const PILL_PAD = 0
 const LENS_INSET = 6
 /** 캡슐 테두리 두께. 렌즈(absolute)는 테두리 안쪽 기준으로 놓이므로 이만큼 빼야 바깥 테두리와 간격이 네 방향 같다. */
 const PILL_BORDER = 1
-const DIVIDER_WIDTH = 1
-const DIVIDER_HEIGHT = 22
 
 /**
  * 화면 아래에 떠 있는 둥근 캡슐 모양 탭 바(아이콘만). 모든 탭에서 내용 위에 겹쳐 뜬다(뒤가 반투명하게 비침, 10-07 요청).
@@ -33,25 +31,8 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
   const focusedOptions = descriptors[focusedRoute.key].options
   const hidden = (StyleSheet.flatten(focusedOptions.tabBarStyle) as ViewStyle | undefined)?.display === 'none'
 
-  // 고른 탭 뒤 렌즈가 탭을 바꿀 때 미끄러져 간다(소식 탭 세그먼트와 같은 움직임). 동작 줄이기면 바로 옮긴다.
-  const reduceMotion = useReduceMotion()
-  const lensX = state.index * ITEM_WIDTH
-  const translateX = useRef(new Animated.Value(lensX)).current
-  const stretch = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    if (reduceMotion) {
-      translateX.setValue(lensX)
-      return
-    }
-    const useNativeDriver = Platform.OS !== 'web'
-    Animated.parallel([
-      Animated.spring(translateX, { toValue: lensX, useNativeDriver, damping: 18, stiffness: 220, mass: 0.9 }),
-      Animated.sequence([
-        Animated.timing(stretch, { toValue: 1.12, duration: 110, useNativeDriver }),
-        Animated.spring(stretch, { toValue: 1, useNativeDriver, damping: 12, stiffness: 260 }),
-      ]),
-    ]).start()
-  }, [lensX, reduceMotion, translateX, stretch])
+  // 고른 탭 뒤 회색 알약. 탭을 누르거나 옮기는 동안 투명한 유리 방울로 부풀어 미끄러져 간다(GlassLens, 소식 세그먼트와 같다).
+  const lens = useGlassLens(state.index * ITEM_WIDTH)
 
   if (hidden) return null
 
@@ -65,19 +46,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
       ]}
     >
       <View style={styles.pill} accessibilityRole="tablist">
-        <Animated.View pointerEvents="none" style={[styles.lens, { transform: [{ translateX }, { scaleX: stretch }] }]} />
-        {/* 아이콘 사이 가는 세로 구분선(소식 탭 세그먼트와 같은 모양). 고른 탭 바로 옆 선은 렌즈와 겹쳐 보여 숨긴다. */}
-        {state.routes.slice(1).map((route, i) => (
-          <View
-            key={`divider-${route.key}`}
-            pointerEvents="none"
-            style={[
-              styles.divider,
-              { left: PILL_PAD + (i + 1) * ITEM_WIDTH - DIVIDER_WIDTH / 2 - PILL_BORDER },
-              (i === state.index || i + 1 === state.index) && styles.dividerHidden,
-            ]}
-          />
-        ))}
+        <GlassLensBase lens={lens} style={styles.lens} />
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]
           const focused = state.index === index
@@ -99,6 +68,8 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
               key={route.key}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onPressIn={() => lens.setPressed(true)}
+              onPressOut={() => lens.setPressed(false)}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
@@ -114,6 +85,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
             </Pressable>
           )
         })}
+        <GlassLensBubble lens={lens} style={styles.lens} />
       </View>
     </View>
   )
@@ -152,36 +124,8 @@ const styles = StyleSheet.create({
     width: ITEM_WIDTH - LENS_INSET * 2 + PILL_BORDER * 2,
     height: PILL_HEIGHT - LENS_INSET * 2,
     borderRadius: (PILL_HEIGHT - LENS_INSET * 2) / 2,
-    // 소식 탭 세그먼트 알약과 같은 반투명 남색 유리(10-08). 웹은 위·아래 가장자리 빛 테와 아주 옅은 그림자를 boxShadow 로 한 번에 그린다.
-    backgroundColor: 'rgba(5,1,74,0.17)',
-    ...(Platform.OS !== 'web'
-      ? {
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: 'rgba(255,255,255,0.9)',
-          // 그림자를 아래로 밀면 렌즈가 처져 보여 위·아래 간격이 달라 보인다 — 가운데로 고르게, 아주 옅게.
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.08,
-          shadowRadius: 3,
-        }
-      : null),
-    ...(Platform.OS === 'web'
-      ? ({
-          backdropFilter: 'blur(6px) saturate(180%)',
-          boxShadow:
-            'inset 0 1px 0.5px rgba(255,255,255,0.9), inset 0 -1px 0.5px rgba(255,255,255,0.5), inset 0 0 0 0.5px rgba(5,1,74,0.10), 0 0 4px rgba(5,1,74,0.10)',
-        } as ViewStyle)
-      : null),
+    // 색·유리 결은 GlassLens 가 입힌다(가라앉은 회색 알약 / 떠오른 유리 방울).
   },
-  divider: {
-    position: 'absolute',
-    top: (PILL_HEIGHT - DIVIDER_HEIGHT) / 2 - PILL_BORDER,
-    width: DIVIDER_WIDTH,
-    height: DIVIDER_HEIGHT,
-    borderRadius: DIVIDER_WIDTH / 2,
-    backgroundColor: 'rgba(60,60,67,0.18)',
-  },
-  dividerHidden: { opacity: 0 },
   item: { width: ITEM_WIDTH, height: PILL_HEIGHT - PILL_BORDER * 2, alignItems: 'center', justifyContent: 'center' },
   itemPressed: { opacity: 0.6 },
   badge: {

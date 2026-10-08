@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Animated, Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { useState, type ReactNode } from 'react'
+import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { layoutStyles } from '../../constants/layout'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { TYPE } from '../../constants/typography'
-import { useReduceMotion } from '../../hooks/useReduceMotion'
+import { GlassLensBase, GlassLensBubble, useGlassLens } from './GlassLens'
 
 /**
  * 탭 화면(소식·설정) 맨 위의 둥근 흰 카드(10-07 A안). 회색 바탕 위에 떠 있고, 제목 줄 아래에 세그먼트 탭 같은 것을 담는다.
@@ -59,7 +59,7 @@ export function HeaderCircleButton({
 }
 
 /**
- * 카드 안의 세그먼트 탭: 살짝 들어간 회색 유리 칸 안에 칸이 나란히 있고, 고른 칸 위로 남색 유리 알약(손잡이) 하나가
+ * 카드 안의 세그먼트 탭: 살짝 들어간 회색 유리 칸 안에 칸이 나란히 있고, 고른 칸 위로 회색 유리 알약(손잡이) 하나가
  * 미끄러져 간다(10-07). 움직이는 동안 손잡이가 살짝 늘어났다 돌아온다.
  * 동작 줄이기가 켜져 있으면 미끄러지지 않고 바로 옮긴다.
  * react-native-web 0.21 은 accessibilityState 를 DOM 에 옮기지 않아 웹은 aria-selected 를 따로 준다.
@@ -73,34 +73,13 @@ export function SegmentedTabs<T extends string>({
   value: T
   onChange: (tab: T) => void
 }) {
-  const reduceMotion = useReduceMotion()
   const [trackWidth, setTrackWidth] = useState(0)
   const index = Math.max(0, tabs.indexOf(value))
   const segmentWidth = trackWidth > 0 ? (trackWidth - SEGMENT_PAD * 2 - SEGMENT_GAP * (tabs.length - 1)) / tabs.length : 0
   const offset = index * (segmentWidth + SEGMENT_GAP)
 
-  const translateX = useRef(new Animated.Value(offset)).current
-  const stretch = useRef(new Animated.Value(1)).current
-  const placed = useRef(false)
-
-  useEffect(() => {
-    if (segmentWidth <= 0) return
-    // 처음 자리 잡을 때(폭을 처음 잴 때)와 동작 줄이기에선 애니메이션 없이 놓는다.
-    if (!placed.current || reduceMotion) {
-      placed.current = true
-      translateX.setValue(offset)
-      stretch.setValue(1)
-      return
-    }
-    const useNativeDriver = Platform.OS !== 'web'
-    Animated.parallel([
-      Animated.spring(translateX, { toValue: offset, useNativeDriver, damping: 18, stiffness: 220, mass: 0.9 }),
-      Animated.sequence([
-        Animated.timing(stretch, { toValue: 1.08, duration: 110, useNativeDriver }),
-        Animated.spring(stretch, { toValue: 1, useNativeDriver, damping: 12, stiffness: 260 }),
-      ]),
-    ]).start()
-  }, [offset, segmentWidth, reduceMotion, translateX, stretch])
+  // 고른 칸 뒤 회색 알약. 누르거나 옮기는 동안 투명한 유리 방울로 부풀어 미끄러져 간다(GlassLens, 하단 탭 바와 같다).
+  const lens = useGlassLens(offset, segmentWidth > 0)
 
   return (
     <View
@@ -108,31 +87,15 @@ export function SegmentedTabs<T extends string>({
       accessibilityRole="tablist"
       onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
     >
-      {segmentWidth > 0 && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.thumb, { width: segmentWidth, transform: [{ translateX }, { scaleX: stretch }] }]}
-        />
-      )}
-      {/* 칸 사이 가는 세로 구분선(북마크 | 구독 | 전체). 고른 칸 바로 옆 선은 알약과 겹쳐 보여 숨긴다. */}
-      {segmentWidth > 0 &&
-        tabs.slice(1).map((tab, i) => (
-          <View
-            key={`divider-${tab}`}
-            pointerEvents="none"
-            style={[
-              styles.divider,
-              { left: SEGMENT_PAD + (i + 1) * segmentWidth + i * SEGMENT_GAP + SEGMENT_GAP / 2 - DIVIDER_WIDTH / 2 },
-              (i === index || i + 1 === index) && styles.dividerHidden,
-            ]}
-          />
-        ))}
+      {segmentWidth > 0 && <GlassLensBase lens={lens} style={[styles.thumb, { width: segmentWidth }]} />}
       {tabs.map((tab) => {
         const active = tab === value
         return (
           <Pressable
             key={tab}
             onPress={() => onChange(tab)}
+            onPressIn={() => lens.setPressed(true)}
+            onPressOut={() => lens.setPressed(false)}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             aria-selected={active}
@@ -143,14 +106,13 @@ export function SegmentedTabs<T extends string>({
           </Pressable>
         )
       })}
+      {segmentWidth > 0 && <GlassLensBubble lens={lens} style={[styles.thumb, { width: segmentWidth }]} />}
     </View>
   )
 }
 
 const SEGMENT_PAD = SPACING.xs
 const SEGMENT_GAP = SPACING.xs
-const DIVIDER_WIDTH = 1
-const DIVIDER_HEIGHT = 18
 
 const styles = StyleSheet.create({
   outer: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xs },
@@ -185,51 +147,22 @@ const styles = StyleSheet.create({
     padding: SEGMENT_PAD,
     borderRadius: RADIUS.floating,
     // 살짝 들어간 유리 칸(10-07): 옅은 회색 + 웹은 가는 테두리 고리·안쪽 위 그림자. 테두리는 그림자로 그려 칸 크기를 바꾸지 않는다.
-    backgroundColor: 'rgba(118,118,128,0.10)',
+    backgroundColor: 'rgba(118,118,128,0.06)',
     ...(Platform.OS === 'web'
       ? ({ boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.08), inset 0 1px 2px rgba(0,0,0,0.06)' } as ViewStyle)
       : null),
   },
   segment: { flex: 1, height: 40, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  // 고른 칸: 반투명 남색 유리 알약(10-07 — 홍익온 남색이 칸 사이를 지나다닌다). 웹은 위·아래 가장자리 빛 테로 유리 결을 낸다.
-  // 네이티브는 흐림이 없어 반투명 남색 + 위 흰 테.
-  segmentActive: { backgroundColor: 'rgba(5,1,74,0.17)' },
+  // 고른 칸: 옅은 회색 알약(10-08 — 하단 탭 바 렌즈와 같다). 고른 칸은 글자를 남색으로 바꿔 알리고 바탕은 회색빛만 둔다.
+  // 폭을 재기 전 첫 프레임에만 칸을 직접 칠한다(그 뒤로는 GlassLens 가 그린다).
+  segmentActive: { backgroundColor: 'rgba(118,118,128,0.14)' },
   thumb: {
     position: 'absolute',
     top: SEGMENT_PAD,
     left: SEGMENT_PAD,
     height: 40,
     borderRadius: 18,
-    backgroundColor: 'rgba(5,1,74,0.17)',
-    // 웹은 아래 boxShadow 로 빛 테·그림자를 한 번에 그린다(shadow* 와 겹치면 그림자가 두 겹이 된다).
-    ...(Platform.OS !== 'web'
-      ? {
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: 'rgba(255,255,255,0.9)',
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.08,
-          shadowRadius: 3,
-          elevation: 2,
-        }
-      : null),
-    ...(Platform.OS === 'web'
-      ? ({
-          backdropFilter: 'blur(6px) saturate(180%)',
-          boxShadow:
-            'inset 0 1px 0.5px rgba(255,255,255,0.9), inset 0 -1px 0.5px rgba(255,255,255,0.5), inset 0 0 0 0.5px rgba(5,1,74,0.10), 0 1px 4px rgba(5,1,74,0.10)',
-        } as ViewStyle)
-      : null),
   },
-  divider: {
-    position: 'absolute',
-    top: SEGMENT_PAD + (40 - DIVIDER_HEIGHT) / 2,
-    width: DIVIDER_WIDTH,
-    height: DIVIDER_HEIGHT,
-    borderRadius: DIVIDER_WIDTH / 2,
-    backgroundColor: 'rgba(60,60,67,0.18)',
-  },
-  dividerHidden: { opacity: 0 },
   segmentText: { ...TYPE.body, fontSize: 14, color: COLORS.textSecondary },
   segmentTextActive: { fontFamily: TYPE.screenTitle.fontFamily, color: COLORS.primary },
 })
