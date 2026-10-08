@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { TYPE } from '../../constants/typography'
-import { SPACING } from '../../constants/spacing'
+import { RADIUS, SPACING } from '../../constants/spacing'
 import { unhideAuthor, useHiddenAuthors } from '../../lib/hiddenAuthors'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
@@ -78,9 +78,10 @@ export default function HiddenUsersModal({ visible, onClose }: HiddenUsersModalP
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  body: { padding: SPACING.lg },
-  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // 회색 바탕 위 둥근 흰 목록 카드(설정 탭 묶음 카드와 같은 여백·곡률, 10-07).
+  body: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
+  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.xs },
   empty: { marginTop: SPACING.xl },
-  list: { borderRadius: 12, overflow: 'hidden' },
+  list: { backgroundColor: COLORS.white, borderRadius: RADIUS.floating, overflow: 'hidden' },
 })

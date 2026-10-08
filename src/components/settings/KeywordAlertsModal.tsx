@@ -22,7 +22,7 @@ import {
 import { ApiError, getErrorMessage } from '../../apis/client'
 import { ToastViewport, useToast } from '../common/Toast'
 import * as haptics from '../../lib/haptics'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
 import EmptyState from '../common/EmptyState'
@@ -125,6 +125,7 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
           {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
           <ContentColumn>
           <ModalHeader title="키워드 알림" onClose={onClose} />
+          <ModalPanel>
           <View style={styles.inputRow}>
             <TextField
               style={styles.input}
@@ -179,6 +180,7 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
               </View>
             ))}
           </ScrollView>
+          </ModalPanel>
           {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다(BoardAlertsModal 과 같다). */}
           <ToastViewport />
           </ContentColumn>
@@ -189,7 +191,7 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16 },
   input: { flex: 1 },
   addBtn: { minWidth: 64, height: 46 },

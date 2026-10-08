@@ -441,9 +441,10 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
 })
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   body: { flex: 1, backgroundColor: COLORS.background },
-  list: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
+  // 좌우 여백은 머리 카드·설정 탭 묶음 카드와 같은 md.
+  list: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
   listEmpty: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg },
   intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md },
   empty: { marginTop: SPACING.xl },

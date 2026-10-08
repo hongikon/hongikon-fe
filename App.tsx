@@ -117,7 +117,7 @@ export function sharedReportIdFromPath(pathname: string): number | null {
  * 아이콘을 남색(#05014A)으로 바꾼 뒤에도 탭에 예전 파란 아이콘이 남았다(10-07). 주소에 버전을 붙여 새 파일로 받게 한다.
  * 아이콘을 다시 바꾸면 FAVICON_VERSION 을 올린다.
  */
-const FAVICON_VERSION = '20261006'
+const FAVICON_VERSION = '20261007'
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')

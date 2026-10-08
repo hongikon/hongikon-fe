@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type Ref } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { layoutStyles } from '../../constants/layout'
+import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
 import type { TreeChild, TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
@@ -19,6 +19,8 @@ interface DeptTreeListProps {
   onSelectDept: (id: string, name: string) => void
   subscribedDepts: string[]
   onToggleSubscribe: (id: string) => void
+  /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 스크롤 ref. */
+  scrollRef?: Ref<ScrollView>
 }
 
 /** 학과 옆 구독 벨. 행 탭(소식 보기)과 분리해 벨만 구독을 토글한다. */
@@ -141,6 +143,7 @@ export default function DeptTreeList({
   onSelectDept,
   subscribedDepts,
   onToggleSubscribe,
+  scrollRef,
 }: DeptTreeListProps) {
   const tabInset = useTabBarInset()
   // 펼침 상태는 이름으로 기억한다. 검색으로 목록이 걸러지면 순서가 밀려서
@@ -167,9 +170,12 @@ export default function DeptTreeList({
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.treeScroll}
       contentContainerStyle={[styles.treeContent, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
       keyboardShouldPersistTaps="handled"
+      // 학과 검색 키보드도 목록을 아래로 끌면 내려간다(소식 목록과 같게).
+      keyboardDismissMode={KEYBOARD_DISMISS_MODE}
     >
       {results.map((node) => {
         const isLeaf = node.children.length === 0

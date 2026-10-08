@@ -285,6 +285,16 @@ export default function MapScreen() {
     );
   }, []);
 
+  // 이미 지도 탭에 있을 때 하단 '지도' 탭을 다시 누르면 학사모 버튼처럼 캠퍼스로 돌아간다(10-08 요청).
+  // tabPress 는 다른 탭에서 넘어올 때도 오지만 그땐 아직 이 화면이 포커스가 아니라 건너뛴다.
+  useEffect(() => {
+    // 지도는 하단 탭의 화면이라 탭 바가 보내는 tabPress 가 이 화면의 navigation 으로 바로 온다.
+    const tabNavigation = navigation as unknown as { addListener: (type: "tabPress", cb: () => void) => () => void };
+    return tabNavigation.addListener("tabPress", () => {
+      if (navigation.isFocused()) handleRecenter();
+    });
+  }, [navigation, handleRecenter]);
+
   /**
    * 지도 데이터(건물·편의시설·제휴업체). 앱 시작 때 받기 시작해 기기에 저장해 둔다(`lib/mapData.ts`).
    * 아직 없으면 빈 배열이고, 지도 위에 "불러오는 중"/"다시 시도" 안내가 뜬다.
@@ -2103,18 +2113,28 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: COLORS.textPrimary,
   },
+  // 오른쪽 아래 둥근 버튼(제보하기·캠퍼스로): 하단 탭 바 캡슐과 같은 맑은 유리(10-08). 웹은 흐림 + 위 가장자리 흰 반사광,
+  // 네이티브는 흐림이 없어 조금 덜 투명하게.
   controlBtn: {
     width: 40,
     height: 40,
-    backgroundColor: COLORS.white,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: Platform.OS === "web" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 4,
+    ...(Platform.OS === "web"
+      ? {
+          backdropFilter: "blur(2px) saturate(160%)",
+          boxShadow: "inset 0 0.5px 0 rgba(255,255,255,0.7), 0 2px 8px rgba(0,0,0,0.06)",
+        }
+      : null),
   },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   bannerStack: {

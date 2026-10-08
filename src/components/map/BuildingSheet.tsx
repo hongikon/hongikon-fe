@@ -16,6 +16,7 @@ import { sheetCloseStyle } from "./chipStyles";
 import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { RADIUS } from "../../constants/spacing";
+import SheetScrollBody from "./SheetScrollBody";
 
 interface BuildingSheetProps {
   building: Building;
@@ -66,7 +67,7 @@ export default function BuildingSheet({
       </View>
       </View>
 
-      <Animated.ScrollView style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
+      <SheetScrollBody style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
       <Text style={styles.type}>
         {building.floors === undefined
           ? building.type
@@ -124,7 +125,7 @@ export default function BuildingSheet({
           </TouchableOpacity>
         </View>
       )}
-      </Animated.ScrollView>
+      </SheetScrollBody>
     </Animated.View>
   );
 }

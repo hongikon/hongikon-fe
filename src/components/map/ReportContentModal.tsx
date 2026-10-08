@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { formatFreshness, reportImageUrls } from '../../utils/reports'
 import { openExternalUrl } from '../../utils/openExternalUrl'
-import ModalHeader from '../settings/ModalHeader'
+import ModalHeader, { ModalPanel } from '../settings/ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import OfficialBadge from '../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
@@ -36,7 +36,7 @@ export default function ReportContentModal({ report, placeText, onPatch, onClose
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
             <ModalHeader title="제보 본문" onClose={onClose} />
-            {report && <Body report={report} placeText={placeText} onPatch={onPatch} />}
+            <ModalPanel>{report && <Body report={report} placeText={placeText} onPatch={onPatch} />}</ModalPanel>
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -106,9 +106,9 @@ function Body({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   column: { flex: 1 },
-  body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
+  body: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',

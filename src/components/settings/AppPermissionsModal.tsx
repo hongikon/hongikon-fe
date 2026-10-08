@@ -25,6 +25,7 @@ import * as haptics from '../../lib/haptics'
 import ModalHeader from './ModalHeader'
 import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
+import { RADIUS, SPACING } from '../../constants/spacing'
 
 interface AppPermissionsModalProps {
   visible: boolean
@@ -149,11 +150,9 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>
-          {/* 폴드를 펼친 화면·넓은 웹 창에선 머리줄·카드를 가운데 읽기 폭으로 모은다.
+          {/* 폴드를 펼친 화면·넓은 웹 창에선 머리 카드·카드를 가운데 읽기 폭으로 모은다.
               회색 바탕(scroll)은 화면 끝까지 깔아야 해서 본문은 contentContainerStyle 로만 좁힌다. */}
-          <View style={layoutStyles.readable}>
-            <ModalHeader title="앱 권한" onClose={onClose} />
-          </View>
+          <ModalHeader title="앱 권한" onClose={onClose} />
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, layoutStyles.readable]}>
             <Text style={styles.lead}>
               홍익온이 휴대폰에 요청하는 권한은 아래 세 가지뿐이에요. 모두 선택 권한이라 허용하지 않아도 홍익온을 쓸 수 있고, 그 기능만 쓸 수 없어요. 필요한 순간에만 묻고, 언제든 바꿀 수 있어요.
@@ -319,9 +318,9 @@ function PermissionRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  scroll: { flex: 1, backgroundColor: COLORS.sectionBg },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1, backgroundColor: COLORS.background },
+  content: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, gap: 12, paddingBottom: 40 },
   lead: {
     fontFamily: FONTS.regular,
     fontSize: 13,
@@ -331,7 +330,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 4,
   },
-  card: { backgroundColor: COLORS.white, borderRadius: 16, paddingHorizontal: 16 },
+  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.floating, paddingHorizontal: 16 },
   separator: { height: 0.5, backgroundColor: COLORS.border },
   row: { paddingVertical: 16, gap: 12 },
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -355,7 +354,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
   },
   webNoteText: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: COLORS.textPrimary },
@@ -364,7 +363,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
   },
   infoIcon: {

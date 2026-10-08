@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
 
 /**
  * 넓은 창(갤럭시 폴드 펼친 화면 · 태블릿 · 데스크톱 웹)에서 글·목록·폼이 화면 끝까지 늘어나지 않게
@@ -20,3 +20,9 @@ export const layoutStyles = StyleSheet.create({
    */
   readable: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
 })
+
+/**
+ * 목록을 아래로 끌면 키보드를 내린다(10-08 요청 — 검색창을 누르면 키보드가 아래에서 올라오니 내릴 때도 아래로 쓸어내린다).
+ * iOS 는 손가락을 따라 키보드가 같이 내려가고(interactive), Android 는 끄는 순간 내려간다(on-drag 만 지원).
+ */
+export const KEYBOARD_DISMISS_MODE = Platform.OS === 'ios' ? ('interactive' as const) : ('on-drag' as const)

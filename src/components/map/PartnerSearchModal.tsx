@@ -18,6 +18,7 @@ import { partnersOutsideFocus } from "../../utils/partners";
 import type { Partner, PartnerCategory } from "../../types";
 import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
+import { ModalPanel } from "../settings/ModalHeader";
 import EmptyState from "../common/EmptyState";
 import SearchBar from "../news/SearchBar";
 import Button from "../common/Button";
@@ -191,7 +192,7 @@ export default function PartnerSearchModal({
       <View style={[styles.container, { paddingTop: topInset }]}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 검색창·목록을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
-        <ScreenHeader onBack={handleClose} style={styles.header}>
+        <ScreenHeader onBack={handleClose} card>
           <SearchBar
             inputRef={inputRef}
             value={query}
@@ -202,6 +203,8 @@ export default function PartnerSearchModal({
           />
         </ScreenHeader>
 
+        {/* 회색 바탕 위 둥근 흰 판에 결과를 담는다(10-07 — 소식 검색·설정 창들과 같은 모양). */}
+        <ModalPanel>
         {!data ? (
           status === "error" ? (
             <EmptyState
@@ -273,6 +276,7 @@ export default function PartnerSearchModal({
             renderItem={({ item }) => renderPartnerRow(item, false)}
           />
         )}
+        </ModalPanel>
         </ContentColumn>
       </View>
     </Modal>
@@ -280,9 +284,9 @@ export default function PartnerSearchModal({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
-  header: { paddingRight: 16 },
-  searchBar: { flex: 1 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  // 카드 안 검색창은 회색 알약(카드와 같은 흰색이면 경계가 안 보인다).
+  searchBar: { flex: 1, marginRight: 4, backgroundColor: COLORS.background, borderWidth: 0 },
   hintBox: { minHeight: 200 },
   pinnedBox: { paddingBottom: 4 },
   pinnedBoxTop: { marginTop: 4, borderBottomWidth: 1, borderBottomColor: COLORS.border },

@@ -25,6 +25,7 @@ import { CAFETERIA_FACILITY_IDS } from "../../apis/cafeteria";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
+import SheetScrollBody from "./SheetScrollBody";
 
 interface FacilitySheetProps {
   kind: FacilityKind;
@@ -90,13 +91,12 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
 
       </View>
 
-      <Animated.ScrollView
+      <SheetScrollBody
         onContentSizeChange={onContentSizeChange}
         // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져 처음부터 칸을 넓게 연다. 크기 조절·닫기는 손잡이에만 걸려 있어
         // 이 스크롤과 겹치지 않는다.
         style={{ height: bodyHeight }}
         contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={hasMenu || sorted.length > 6}
         bounces={false}
       >
         {sorted.map((item) => {
@@ -128,7 +128,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
             </View>
           );
         })}
-      </Animated.ScrollView>
+      </SheetScrollBody>
     </Animated.View>
   );
 }

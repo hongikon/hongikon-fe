@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { submitFeedback } from '../../apis/feedback'
 import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
 import TextField, { FieldLabel } from '../common/TextField'
@@ -97,6 +97,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
         {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
         <ModalHeader title="문의하기" onClose={onClose} />
+        <ModalPanel>
         {submitted ? (
           <View style={styles.successBox}>
             <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
@@ -151,6 +152,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
           <Button label="보내기" onPress={handleSubmit} loading={submitting} accessibilityLabel="문의 보내기" />
         </KeyboardAvoidingView>
         )}
+        </ModalPanel>
         </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
@@ -159,7 +161,8 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  // 회색 바탕 위에 머리 카드와 둥근 흰 본문 판이 뜬다(10-07 설정 탭과 같은 모양).
+  container: { flex: 1, backgroundColor: COLORS.background },
   body: { flex: 1, padding: 20 },
   field: { marginBottom: 20 },
   fieldLast: { marginBottom: 24 },

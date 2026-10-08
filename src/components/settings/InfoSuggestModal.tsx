@@ -24,7 +24,7 @@ import RetryableError from '../common/RetryableError'
 import Button from '../common/Button'
 import Chip from '../common/Chip'
 import TextField, { FieldLabel } from '../common/TextField'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import { INFO_SUGGESTION_PREFIXES, type InfoSuggestType } from '../../constants/feedback'
 import type { PartnerAffiliation } from '../../types'
 import ContentColumn from '../common/ContentColumn'
@@ -653,6 +653,7 @@ export default function InfoSuggestModal({
           <ContentColumn>
           <ModalHeader title="정보 제보하기" onClose={onClose} />
 
+          <ModalPanel>
           {submitted ? (
             <View style={styles.successBox}>
               <Ionicons name="checkmark-circle" size={44} color={COLORS.primary} />
@@ -731,6 +732,7 @@ export default function InfoSuggestModal({
               </ScrollView>
             </KeyboardAvoidingView>
           )}
+          </ModalPanel>
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -739,7 +741,7 @@ export default function InfoSuggestModal({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   flex: { flex: 1 },
   body: { padding: 20, paddingBottom: 32 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 12 },

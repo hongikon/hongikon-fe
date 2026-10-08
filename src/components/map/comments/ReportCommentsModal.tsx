@@ -26,7 +26,7 @@ import { mergeComments, patchComment, supportsCommentLikes } from '../../../util
 import * as haptics from '../../../lib/haptics'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../../utils/reports'
 import { reportCategoryMeta } from '../../../constants/reportCategories'
-import ModalHeader from '../../settings/ModalHeader'
+import ModalHeader, { ModalPanel } from '../../settings/ModalHeader'
 import ContentColumn from '../../common/ContentColumn'
 import RetryableError from '../../common/RetryableError'
 import { SkeletonBlock, SkeletonGroup } from '../../common/Skeleton'
@@ -384,6 +384,8 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
             <ModalHeader title={state.kind === 'ready' ? `댓글 ${count}` : '댓글'} onClose={onClose} />
+            {/* 머리 카드 아래 흰 판 — 입력줄도 판 안 맨 아래에 붙어 키보드 위로 같이 올라간다. */}
+            <ModalPanel>
             {/* 어느 제보의 댓글인지 바로 보이게 제보 요약(종류·제목·시간·사진)을 위에 둔다. */}
             <ReportContextCard report={report} />
             <View style={[styles.subHeader, !likesSupported && styles.subHeaderEmpty]}>
@@ -479,6 +481,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                 <Text style={styles.notice}>댓글은 바로 공개돼요. 욕설·광고·개인정보는 신고되면 숨겨져요.</Text>
               </View>
             </View>
+            </ModalPanel>
           </ContentColumn>
         </SafeAreaView>
         </KeyboardFrame>
@@ -569,7 +572,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginHorizontal: 16,
-    marginTop: 4,
+    marginTop: 12,
     marginBottom: 8,
     padding: 12,
     borderRadius: 12,
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   contextMeta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   contextPhoto: { width: 56, height: 56, borderRadius: 8, backgroundColor: COLORS.border },
   subHeaderEmpty: { paddingBottom: 0 },
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   moreButton: {
     alignSelf: 'center',
     marginVertical: 14,

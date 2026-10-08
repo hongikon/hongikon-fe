@@ -9,7 +9,7 @@ import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news
 import { useSettings } from '../../contexts/SettingsContext'
 import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
 import * as haptics from '../../lib/haptics'
-import ModalHeader from './ModalHeader'
+import ModalHeader, { ModalPanel } from './ModalHeader'
 import ToggleSwitch from './ToggleSwitch'
 import ContentColumn from '../common/ContentColumn'
 import SectionTitle from '../common/SectionTitle'
@@ -85,6 +85,7 @@ export default function BoardAlertsModal({ visible, onClose, onOpenSubscriptions
         <ContentColumn>
         <ModalHeader title="게시판별 알림" onClose={onClose} />
 
+        <ModalPanel>
         {subscribedItems.length === 0 ? (
           <EmptyState
             icon="notifications-off-outline"
@@ -203,6 +204,7 @@ export default function BoardAlertsModal({ visible, onClose, onOpenSubscriptions
             </ScrollView>
           </>
         )}
+        </ModalPanel>
         {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다. */}
         <ToastViewport />
         </ContentColumn>
@@ -213,7 +215,7 @@ export default function BoardAlertsModal({ visible, onClose, onOpenSubscriptions
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+  container: { flex: 1, backgroundColor: COLORS.background },
   searchBar: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
   summary: {
     flexDirection: 'row',
