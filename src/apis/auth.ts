@@ -74,6 +74,18 @@ export function loginWithAppleRequest(body: AppleLoginRequestBody): Promise<Toke
 }
 
 /**
+ * 앱 심사용 데모 계정 로그인(10-09 — 애플 베타 심사가 아이디·비밀번호 계정을 요구). 카카오 교환과 같은 응답.
+ * 서버가 기능을 꺼 두면 404, 아이디·비밀번호가 틀리면 401, 너무 자주 시도하면 429. 재시도하지 않는다.
+ */
+export function loginWithDemoRequest(username: string, password: string): Promise<TokenResponse> {
+  return apiRequest<TokenResponse>('/auth/demo', {
+    method: 'POST',
+    body: { username, password },
+    retries: 0,
+  })
+}
+
+/**
  * 리프레시 토큰으로 새 액세스·리프레시 토큰을 받는다. 서버가 리프레시 토큰을 회전시키므로
  * (쓰면 옛 값은 무효) 응답의 refreshToken 으로 반드시 바꿔 저장해야 한다. 재시도하지 않는다.
  */

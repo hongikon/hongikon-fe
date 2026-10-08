@@ -395,7 +395,13 @@ export default function SettingsScreen() {
             <>
               <ListRow
                 icon="person-circle-outline"
-                label={loginProvider === 'apple' ? 'Apple 계정으로 로그인됨' : '카카오 계정으로 로그인됨'}
+                label={
+                  loginProvider === 'apple'
+                    ? 'Apple 계정으로 로그인됨'
+                    : loginProvider === 'demo'
+                      ? '심사용 데모 계정으로 로그인됨'
+                      : '카카오 계정으로 로그인됨'
+                }
               />
               {/* 닉네임은 맨 위 프로필 줄에서 바꾼다. */}
               {memberId !== null && (

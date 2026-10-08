@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Pressable,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,6 +21,7 @@ import LogotypeVertical from '../../assets/brand/logotype-vertical.svg'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import Button from '../components/common/Button'
 import TermsModal from '../components/settings/TermsModal'
+import DemoLoginModal from '../components/auth/DemoLoginModal'
 import PrivacyModal from '../components/settings/PrivacyModal'
 import SignupConsentSheet from '../components/auth/SignupConsentSheet'
 import { hasCurrentTermsConsent, saveTermsConsent } from '../lib/termsConsent'
@@ -43,12 +45,23 @@ const LOGIN_BUTTON_RADIUS = 12
  * (SignupConsentSheet)를 띄우고, 동의하면 그 로그인을 이어서 연다. 설정의 "로그인하기"도 이 화면으로 와서 같은 길을 탄다.
  */
 export default function WelcomeScreen() {
-  const { loginWithKakao, loginWithApple, continueAsGuest, loginError } = useAuth()
+  const { loginWithKakao, loginWithApple, loginWithDemo, continueAsGuest, loginError } = useAuth()
   const [pending, setPending] = useState<PendingAction>(null)
   const [appleAvailable, setAppleAvailable] = useState(false)
   // 웹에선 Alert.alert 가 아무것도 띄우지 않아(react-native-web) 버튼 위에 문구로 보여준다.
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null)
+  // 앱 심사용 데모 로그인: 로고를 2초 안에 5번 누르면 연다(심사 메모에 적는다, 10-09).
+  const [demoOpen, setDemoOpen] = useState(false)
+  const logoTapsRef = useRef<number[]>([])
+  const handleLogoTap = () => {
+    const now = Date.now()
+    logoTapsRef.current = [...logoTapsRef.current.filter((t) => now - t < 2000), now]
+    if (logoTapsRef.current.length >= 5) {
+      logoTapsRef.current = []
+      setDemoOpen(true)
+    }
+  }
   const errorText = inlineError ?? loginError
   /** 동의 시트를 띄우게 한 로그인. 시트에서 동의하면 이 로그인을 이어서 연다. */
   const [consentFor, setConsentFor] = useState<LoginAction | null>(null)
@@ -165,9 +178,9 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
-        <View style={styles.logo} accessibilityRole="image" accessibilityLabel="HONGIK ON">
+        <Pressable style={styles.logo} onPress={handleLogoTap} accessibilityRole="image" accessibilityLabel="HONGIK ON">
           <LogotypeVertical width={180} height={109} />
-        </View>
+        </Pressable>
         <Text style={styles.subtitle}>캠퍼스 지도와 학과 소식을 한 곳에서</Text>
       </View>
 
@@ -272,6 +285,14 @@ export default function WelcomeScreen() {
         <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
       </View>
 
+      <DemoLoginModal
+        visible={demoOpen}
+        onClose={() => setDemoOpen(false)}
+        onSubmit={async (username, password) => {
+          await loginWithDemo(username, password)
+          setDemoOpen(false)
+        }}
+      />
       <TermsModal visible={legalModal === 'terms'} onClose={() => setLegalModal(null)} />
       <PrivacyModal visible={legalModal === 'privacy'} onClose={() => setLegalModal(null)} />
       <SignupConsentSheet

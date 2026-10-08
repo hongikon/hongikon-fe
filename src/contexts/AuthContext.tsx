@@ -18,6 +18,7 @@ import {
   deleteAccount as deleteAccountRequest,
   exchangeAuthCode,
   loginWithAppleRequest,
+  loginWithDemoRequest,
   logoutRequest,
   reissueTokens,
   type TokenResponse,
@@ -66,11 +67,11 @@ function takeWebAuthCallbackCode(): string | null | undefined {
  */
 type AuthStatus = 'loading' | 'signedOut' | 'guest' | 'authenticated'
 
-export type LoginProvider = 'kakao' | 'apple'
+export type LoginProvider = 'kakao' | 'apple' | 'demo'
 
 /** 저장 값이 없으면(Apple 로그인 추가 전에 로그인한 사용자) 카카오 — 그때는 카카오 로그인뿐이었다. */
 function toLoginProvider(value: string | null): LoginProvider {
-  return value === 'apple' ? 'apple' : 'kakao'
+  return value === 'apple' || value === 'demo' ? value : 'kakao'
 }
 
 interface AuthContextValue {
@@ -87,6 +88,8 @@ interface AuthContextValue {
    * (`isAppleSignInCanceled` 로 걸러 조용히 넘긴다). 그 밖의 실패는 보여줄 문구를 담은 Error.
    */
   loginWithApple: () => Promise<void>
+  /** 앱 심사용 데모 계정(아이디·비밀번호). 실패하면 보여줄 문구를 담은 Error 를 던진다. */
+  loginWithDemo: (username: string, password: string) => Promise<void>
   continueAsGuest: () => Promise<void>
   logout: () => Promise<void>
   deleteAccount: () => Promise<void>
@@ -420,6 +423,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await completeLogin(tokens, 'apple')
   }, [completeLogin])
 
+  const loginWithDemo = useCallback(
+    async (username: string, password: string) => {
+      let tokens: TokenResponse
+      try {
+        tokens = await loginWithDemoRequest(username.trim(), password)
+      } catch (error) {
+        const status = error instanceof ApiError ? error.status : null
+        throw new Error(
+          status === 401
+            ? '아이디 또는 비밀번호가 맞지 않아요.'
+            : status === 404
+              ? '심사용 로그인이 지금은 꺼져 있어요.'
+              : status === 429
+                ? '시도가 너무 많아요. 잠시 뒤 다시 시도해 주세요.'
+                : '로그인하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+        )
+      }
+      await completeLogin(tokens, 'demo')
+    },
+    [completeLogin],
+  )
+
   const logout = useCallback(async () => {
     // 화면은 바로 로그아웃 상태로 돌리고, 서버 정리(기기 해제·refresh 토큰 폐기)는 뒤에서 한다.
     // 예전엔 두 요청을 기다린 뒤에 화면을 바꿔, 망이 느리면 로그아웃 버튼이 안 먹는 것처럼 보였다.
@@ -514,6 +539,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginProvider,
       loginWithKakao,
       loginWithApple,
+      loginWithDemo,
       continueAsGuest,
       logout,
       deleteAccount,
@@ -526,6 +552,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginProvider,
       loginWithKakao,
       loginWithApple,
+      loginWithDemo,
       continueAsGuest,
       logout,
       deleteAccount,
