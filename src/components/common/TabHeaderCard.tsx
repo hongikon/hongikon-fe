@@ -79,7 +79,8 @@ export function SegmentedTabs<T extends string>({
   const offset = index * (segmentWidth + SEGMENT_GAP)
 
   // 고른 칸 뒤 회색 알약. 누르거나 옮기는 동안 투명한 유리 방울로 부풀어 미끄러져 간다(GlassLens, 하단 탭 바와 같다).
-  const lens = useGlassLens(offset, segmentWidth > 0)
+  // 탭 바보다 짧고 작게 움직인다(10-08 — 전환이 과하고 느리다는 피드백).
+  const lens = useGlassLens(offset, segmentWidth > 0, 'subtle')
 
   return (
     <View
@@ -102,7 +103,10 @@ export function SegmentedTabs<T extends string>({
             // 폭을 재기 전(첫 프레임)엔 손잡이가 없으니 고른 칸을 직접 칠해 둔다.
             style={[styles.segment, active && segmentWidth <= 0 && styles.segmentActive]}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{tab}</Text>
+            {/* 웹에서 빠르게 두 번 누르면 글자가 파랗게 선택되던 문제(10-08) — 버튼 글자는 선택되지 않게 한다. */}
+            <Text selectable={false} style={[styles.segmentText, active && styles.segmentTextActive]}>
+              {tab}
+            </Text>
           </Pressable>
         )
       })}
