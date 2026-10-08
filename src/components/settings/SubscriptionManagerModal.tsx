@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -11,7 +12,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news'
-import { FONTS, TYPE } from '../../constants/typography'
+import { TYPE } from '../../constants/typography'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
@@ -20,6 +21,8 @@ import ContentColumn from '../common/ContentColumn'
 import EmptyState from '../common/EmptyState'
 import SearchBar from '../news/SearchBar'
 import ModalHeader, { ModalPanel } from './ModalHeader'
+import { useDragToClose } from '../../hooks/useDragToClose'
+import SubscribeBell from '../common/SubscribeBell'
 
 interface SubscriptionManagerModalProps {
   visible: boolean
@@ -35,12 +38,11 @@ export default function SubscriptionManagerModal({
   onToggleDept,
 }: SubscriptionManagerModalProps) {
   const [query, setQuery] = useState('')
-  // 게시판별 알림은 구독과 늘 함께 다뤄 호출부마다 넘기지 않고 설정에서 바로 읽는다.
-  const { settings, isDeptAlertOn } = useSettings()
-  // 종(게시판 알림)은 진동·토스트가 붙은 버전을 쓴다. 구독 토글(onToggleDept)은 호출부가 넘긴다.
-  const { toggleDeptAlert } = useFeedbackToggles()
+  const drag = useDragToClose(onClose)
+  // 알림 설정(전체 스위치)이 꺼져 있으면 안내 문구를 바꾼다.
+  const { settings } = useSettings()
   const masterOff = !settings.subscriptionAlert
-  // 게스트도 소식 탭에 보여 줄 게시판은 고를 수 있다. 알림은 로그인해야 받아서 종(게시판 알림)은 숨긴다.
+  // 게스트도 소식 탭에 보여 줄 게시판은 고를 수 있다. 알림은 로그인해야 받아 게스트에겐 로그인 안내를 보여 준다.
   const isGuest = useAuth().status !== 'authenticated'
 
   const groups = useMemo(() => {
@@ -61,21 +63,13 @@ export default function SubscriptionManagerModal({
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
+        {/* 아래에서 올라온 창이라 머리 카드를 끌어내리면(iOS 는 목록 맨 위에서 더 끌어도) 닫힌다(10-08). */}
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: drag.dragY }] }]}>
         <ContentColumn>
-        <ModalHeader
-          title="구독 관리"
-          onClose={onClose}
-          right={
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.doneBtn}
-              hitSlop={8}
-              accessibilityRole="button"
-            >
-              <Text style={styles.done}>완료</Text>
-            </TouchableOpacity>
-          }
-        />
+        {/* 구독은 누르는 즉시 저장된다. 다른 설정 창처럼 ← 하나로 닫는다(예전 '완료'도 닫기만 했다, 10-08). */}
+        <View {...drag.headerPanHandlers}>
+          <ModalHeader title="구독 관리" onClose={onClose} />
+        </View>
 
         <ModalPanel>
         <SearchBar
@@ -102,22 +96,21 @@ export default function SubscriptionManagerModal({
             />
             <Text style={styles.hintText}>
               {masterOff
-                ? '구독 소식 알림이 꺼져 있어요. 켜면 종이 켜진 게시판만 알려드려요.'
-                : '종 모양을 눌러 게시판마다 알림을 켜고 끌 수 있어요.'}
+                ? '알림 설정이 꺼져 있어 구독한 게시판 알림이 오지 않아요.'
+                : '종을 누르면 구독해요. 게시판마다 알림은 설정 › 게시판별 알림에서 켜고 꺼요.'}
             </Text>
           </View>
         )}
 
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} onScrollEndDrag={drag.onScrollEndDrag}>
           {groups.length === 0 ? (
-            <EmptyState icon="search-outline" message="검색 결과가 없어요" />
+            <EmptyState icon="search-outline" message={query.trim() ? `'${query.trim()}' 검색 결과가 없어요` : '검색 결과가 없어요'} />
           ) : (
             groups.map((group) => (
               <View key={group.name} style={styles.group}>
                 <Text style={styles.groupTitle}>{group.name}</Text>
                 {group.items.map((item) => {
                   const isOn = subscribedDepts.includes(item.id)
-                  const alertOn = isOn && isDeptAlertOn(item.id)
                   return (
                     <View key={item.id} style={styles.row}>
                       <TouchableOpacity
@@ -129,43 +122,8 @@ export default function SubscriptionManagerModal({
                       >
                         <Text style={styles.rowName}>{item.name}</Text>
                       </TouchableOpacity>
-                      {isOn && !isGuest && (
-                        <TouchableOpacity
-                          style={[
-                            styles.bellBtn,
-                            alertOn ? styles.bellBtnOn : styles.bellBtnOff,
-                            masterOff && styles.dimmed,
-                          ]}
-                          onPress={() => toggleDeptAlert(item.id)}
-                          activeOpacity={0.6}
-                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                          accessibilityRole="switch"
-                          accessibilityLabel={`${item.name} 알림 ${alertOn ? '켜짐' : '꺼짐'}`}
-                          accessibilityState={{ checked: alertOn }}
-                        >
-                          <Ionicons
-                            name={alertOn ? 'notifications' : 'notifications-off-outline'}
-                            size={15}
-                            color={alertOn ? COLORS.primary : COLORS.textTertiary}
-                          />
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={[styles.subBtn, isOn && styles.subBtnOn]}
-                        onPress={() => onToggleDept(item.id)}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${item.name} ${isOn ? '구독 해제' : '구독'}`}
-                      >
-                        <Ionicons
-                          name={isOn ? 'checkmark' : 'add'}
-                          size={14}
-                          color={isOn ? COLORS.white : COLORS.primary}
-                        />
-                        <Text style={[styles.subBtnText, isOn && styles.subBtnTextOn]}>
-                          {isOn ? '구독중' : '구독'}
-                        </Text>
-                      </TouchableOpacity>
+                      {/* 구독은 앱 전체에서 종 버튼 하나로(10-08). 게시판마다 알림 켜기는 설정 › 게시판별 알림에서 한다. */}
+                      <SubscribeBell name={item.name} subscribed={isOn} onToggle={() => onToggleDept(item.id)} />
                     </View>
                   )
                 })}
@@ -178,6 +136,7 @@ export default function SubscriptionManagerModal({
         {/* 루트 토스트는 네이티브 Modal 아래에 가려져 이 창 안에 따로 둔다. */}
         <ToastViewport />
         </ContentColumn>
+        </Animated.View>
       </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
@@ -186,12 +145,7 @@ export default function SubscriptionManagerModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  doneBtn: { minWidth: 40, height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  done: {
-    fontSize: 15,
-    fontFamily: FONTS.semibold,
-    color: COLORS.primary,
-  },
+  sheet: { flex: 1 },
   searchBar: { marginHorizontal: 16, marginVertical: 12 },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 16 },
@@ -211,17 +165,6 @@ const styles = StyleSheet.create({
   },
   rowNameArea: { flex: 1, marginRight: 12, paddingVertical: 2 },
   rowName: { ...TYPE.body, color: COLORS.textPrimary },
-  bellBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  bellBtnOn: { backgroundColor: COLORS.primarySoft },
-  bellBtnOff: { backgroundColor: COLORS.fill },
-  dimmed: { opacity: 0.45 },
   hint: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -231,19 +174,5 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   hintText: { ...TYPE.caption, flex: 1, color: COLORS.textSecondary },
-  subBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.white,
-  },
-  subBtnOn: { backgroundColor: COLORS.primary },
-  subBtnText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.primary },
-  subBtnTextOn: { color: COLORS.white },
   bottomSpacer: { height: 24 },
 })

@@ -1,5 +1,5 @@
 import { useCallback, useState, type Ref } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
@@ -8,6 +8,7 @@ import type { TreeChild, TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
 import { useTabBarInset } from '../../hooks/useTabBarInset'
 import { RADIUS } from '../../constants/spacing'
+import SubscribeBell from '../common/SubscribeBell'
 
 interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
@@ -21,34 +22,8 @@ interface DeptTreeListProps {
   onToggleSubscribe: (id: string) => void
   /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 스크롤 ref. */
   scrollRef?: Ref<ScrollView>
-}
-
-/** 학과 옆 구독 벨. 행 탭(소식 보기)과 분리해 벨만 구독을 토글한다. */
-function SubscribeBell({
-  name,
-  subscribed,
-  onToggle,
-}: {
-  /** 스크린리더가 "○○ 구독"처럼 무엇을 구독하는지 읽게 한다. */
-  name: string
-  subscribed: boolean
-  onToggle: () => void
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.bell, subscribed && styles.bellOn]}
-      onPress={onToggle}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      accessibilityRole="button"
-      accessibilityLabel={subscribed ? `${name} 구독 해제` : `${name} 구독`}
-    >
-      <Ionicons
-        name={subscribed ? 'notifications' : 'notifications-outline'}
-        size={15}
-        color={subscribed ? COLORS.white : COLORS.iconInactive}
-      />
-    </TouchableOpacity>
-  )
+  /** 손을 뗄 때(검색 화면이 맨 위에서 끌어내려 닫기에 쓴다). */
+  onScrollEndDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
 }
 
 /** 구독 단위 한 줄. 이름을 누르면 소식 목록, 벨을 누르면 구독 토글. */
@@ -144,6 +119,7 @@ export default function DeptTreeList({
   subscribedDepts,
   onToggleSubscribe,
   scrollRef,
+  onScrollEndDrag,
 }: DeptTreeListProps) {
   const tabInset = useTabBarInset()
   // 펼침 상태는 이름으로 기억한다. 검색으로 목록이 걸러지면 순서가 밀려서
@@ -171,6 +147,7 @@ export default function DeptTreeList({
   return (
     <ScrollView
       ref={scrollRef}
+      onScrollEndDrag={onScrollEndDrag}
       style={styles.treeScroll}
       contentContainerStyle={[styles.treeContent, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
       keyboardShouldPersistTaps="handled"
@@ -269,14 +246,4 @@ const styles = StyleSheet.create({
   treeChildTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
   treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.iconMuted, width: 14 },
   treeChildName: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary, flex: 1 },
-  bell: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
 })

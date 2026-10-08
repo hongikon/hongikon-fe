@@ -1,5 +1,5 @@
 import { useCallback, type ReactElement, type Ref } from 'react'
-import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
+import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
@@ -10,6 +10,8 @@ import { useTabBarInset } from '../../hooks/useTabBarInset'
 interface NewsListProps {
   /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 목록 ref. */
   listRef?: Ref<FlatList<NewsItem>>
+  /** 손을 뗄 때(검색 화면이 맨 위에서 끌어내려 닫기에 쓴다). */
+  onScrollEndDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   items: NewsItem[]
   isBookmarked: (id: string) => boolean
   onPressItem: (item: NewsItem) => void
@@ -50,6 +52,7 @@ export default function NewsList({
   refreshing,
   onRefresh,
   listRef,
+  onScrollEndDrag,
 }: NewsListProps) {
   const tabInset = useTabBarInset()
 
@@ -76,6 +79,7 @@ export default function NewsList({
   return (
     <FlatList
       ref={listRef}
+      onScrollEndDrag={onScrollEndDrag}
       style={styles.list}
       // 넓은 화면(폴드 펼침·웹)에선 카드가 화면 끝까지 늘어나지 않게 가운데 읽기 폭으로 모은다.
       contentContainerStyle={[styles.content, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
