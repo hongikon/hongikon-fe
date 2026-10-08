@@ -40,12 +40,14 @@ import HiddenUsersModal from '../components/settings/HiddenUsersModal'
 import MyReportsModal from '../components/settings/MyReportsModal'
 import { UpdateHistoryRow } from '../components/settings/UpdateHistoryModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
+import * as haptics from '../lib/haptics'
 import { useIsAdmin } from '../admin/AdminAccess'
 import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import TabHeaderCard from '../components/common/TabHeaderCard'
+import { SELECTED_PILL_BG } from '../components/common/Chip'
 import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
 import {
   getMyMemberCode,
@@ -102,6 +104,7 @@ export default function SettingsScreen() {
     settings,
     toggleSubscriptionAlert,
     isDeptAlertOn,
+    toggleDeptAlert,
     resetSettings,
   } = useSettings()
   // 구독·게시판 알림·분야·제보 알림 토글은 진동과 토스트("○○ 알림을 껐어요")를 함께 준다.
@@ -190,8 +193,8 @@ export default function SettingsScreen() {
     toggleSubscriptionAlert() // 진동은 ToggleSwitch 가 켤 때만 낸다(두 번 울리지 않게).
     toast.show(
       turningOn
-        ? { message: '구독 소식 알림을 켰어요' }
-        : { message: '구독 소식 알림을 껐어요', tone: 'info' },
+        ? { message: '알림을 켰어요' }
+        : { message: '알림을 껐어요', tone: 'info' },
     )
     if (turningOn && permission.status === 'undetermined' && permission.canAskAgain && status === 'authenticated') {
       void requestNotificationPermission()
@@ -249,30 +252,42 @@ export default function SettingsScreen() {
   // 재발급이 꼬리를 문다. 재발급 뒤 재요청은 client 가 알아서 한다.
   const accessTokenRef = useRef(accessToken)
   accessTokenRef.current = accessToken
+  // 다시 부르는 기준은 토큰 안의 회원 번호 — 로그인한 채로 계정이 바뀌면(토큰 교체) 바로 다시 부른다(10-08).
+  // 토큰 재발급(같은 회원)으로는 바뀌지 않아 재발급마다 다시 부르지 않는다.
   const profileResource = useApiResource<MyProfile>(
     (signal) => getMyProfile(accessTokenRef.current as string, signal),
-    [isGuest],
+    [isGuest, memberId],
     { enabled: !isGuest && !!accessToken && !isNicknameApiKnownMissing(), refetchOnForeground: false },
   )
   // 저장 직후 응답을 바로 보여 주고, 다음 조회 결과가 오면 그걸 따른다.
   const [savedProfile, setSavedProfile] = useState<MyProfile | null>(null)
   useEffect(() => setSavedProfile(null), [profileResource.data])
-  const profile = savedProfile ?? profileResource.data
+  // 지금 토큰의 회원과 다른 회원의 프로필(이전 계정 값)은 절대 보여 주지 않는다 — 새 응답이 올 때까지 '불러오는 중'.
+  // 예전엔 계정이 바뀐 뒤 새 응답 전까지 이전 계정 닉네임이 잠깐 보였다(10-08 제보).
+  const rawProfile = savedProfile ?? profileResource.data
+  const profile = rawProfile && (memberId == null || rawProfile.id === memberId) ? rawProfile : undefined
   const nicknameApiMissing = !profile && isNicknameApiKnownMissing()
   // 계정 정보를 받아 왔을 때만(구서버라 닉네임 API 가 없으면 예전처럼) 닉네임·내 제보 내역을 보인다.
   // 토큰이 만료됐거나 서버에 닿지 않아 못 받아 오면 두 줄을 숨긴다('불러오지 못함' 줄을 남기지 않는다).
   const accountLoaded = profile != null || nicknameApiMissing
 
   // 공개 회원 번호. 닉네임과 같은 이유로 토큰은 ref 로 읽고, API 가 없으면(배포 전) 다시 부르지 않는다.
-  const memberCodeResource = useApiResource<string | null>(
-    (signal) => getMyMemberCode(accessTokenRef.current as string, signal),
-    [isGuest],
+  // 받은 번호가 어느 회원 것인지 함께 둔다 — 계정이 바뀐 직후 이전 회원 번호가 보이지 않게(10-08).
+  const memberCodeResource = useApiResource<{ ownerId: number | null; code: string | null }>(
+    (signal) => {
+      const ownerId = memberId
+      return getMyMemberCode(accessTokenRef.current as string, signal).then((code) => ({ ownerId, code }))
+    },
+    [isGuest, memberId],
     { enabled: !isGuest && !!accessToken && !isMemberCodeApiKnownMissing(), refetchOnForeground: false },
   )
-  const memberCode = memberCodeResource.data ?? profile?.memberCode ?? null
+  const ownMemberCode =
+    memberCodeResource.data && memberCodeResource.data.ownerId === memberId ? memberCodeResource.data.code : null
+  const memberCode = ownMemberCode ?? profile?.memberCode ?? null
   // 서버에 회원 번호가 없을 때(배포 전·빈 값)만 예전 #id 표시로 돌아간다. 불러오는 중·일시 오류에는 id 를 내보이지 않는다.
   const memberCodeFallback =
-    !memberCode && (isMemberCodeApiKnownMissing() || memberCodeResource.data === null)
+    !memberCode &&
+    (isMemberCodeApiKnownMissing() || (memberCodeResource.data?.ownerId === memberId && memberCodeResource.data.code === null))
   const memberNumber = memberCode ?? (memberCodeFallback && memberId !== null ? `#${memberId}` : null)
 
   // 내 제보 내역. 개수(승인 대기 배지)를 먼저 받아, 서버에 API 가 없으면(배포 전 404/405/재발급 뒤 401) 줄을 숨긴다.
@@ -307,6 +322,20 @@ export default function SettingsScreen() {
   const detailDimmed = !subscriptionAlert
 
   const alertOnCount = loggedIn ? subscribedDepts.filter(isDeptAlertOn).length : 0
+  // '구독 알림'(알림 설정 아래 첫 줄): 구독한 게시판 알림을 한 번에 켜고 끈다 — 게시판별 알림 창의 "모두 켜기/끄기"와 같다.
+  // 하나라도 켜져 있으면 켜짐으로 본다. 구독한 게시판이 없으면 구독 관리를 연다.
+  const subscriptionNewsOn = alertOnCount > 0
+  const handleToggleSubscriptionNews = () => {
+    if (subscribedDepts.length === 0) {
+      setSubManagerVisible(true)
+      return
+    }
+    const next = !subscriptionNewsOn
+    const targets = subscribedDepts.filter((id) => isDeptAlertOn(id) !== next)
+    for (const id of targets) toggleDeptAlert(id)
+    haptics.tapLight()
+    toast.show(next ? { message: '구독 알림을 켰어요' } : { message: '구독 알림을 껐어요', tone: 'info' })
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -413,12 +442,12 @@ export default function SettingsScreen() {
           )}
           <ListRow
             icon="notifications-outline"
-            label="구독 소식 알림"
+            label="알림 설정"
             description={
               isGuest
                 ? '로그인하면 켤 수 있어요'
                 : subscriptionAlert
-                  ? '켜 둔 게시판의 새 소식과 제보 알림을 보내드려요'
+                  ? '아래에서 켜 둔 알림을 이 기기로 보내드려요'
                   : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
             }
             last
@@ -428,7 +457,7 @@ export default function SettingsScreen() {
                 dimmed={isGuest}
                 onToggle={handleToggleSubscriptionAlert}
                 locked={isGuest}
-                accessibilityLabel="구독 소식 알림"
+                accessibilityLabel="알림 설정"
               />
             }
           />
@@ -451,9 +480,28 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           )}
-          {/* 제보 알림. 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
+          {/* 알림 설정 아래 하위 항목(10-08 — '제보 알림' 묶음 제목을 없애고 한 목록으로). 전체 스위치가 꺼져 있으면 흐리게.
+              제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
           <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
-            <Text style={styles.subGroupTitle}>제보 알림</Text>
+            <ListRow
+              icon="newspaper-outline"
+              label="구독 알림"
+              description={
+                isGuest
+                  ? '로그인하면 켤 수 있어요'
+                  : subscribedDepts.length === 0
+                    ? '구독한 게시판이 없어요. 눌러서 게시판을 구독해 보세요'
+                    : `구독한 게시판의 새 소식을 알려드려요 · ${alertOnCount}/${subscribedDepts.length}개 켜짐`
+              }
+              right={
+                <ToggleSwitch
+                  value={!isGuest && subscriptionNewsOn}
+                  onToggle={guarded(handleToggleSubscriptionNews)}
+                  locked={isGuest}
+                  accessibilityLabel={`구독 알림 ${subscriptionNewsOn ? '켜짐' : '꺼짐'}`}
+                />
+              }
+            />
             <ListRow
               icon="checkmark-done-outline"
               label="내 제보 결과 알림"
@@ -590,9 +638,9 @@ export default function SettingsScreen() {
                   <Ionicons
                     name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
                     size={14}
-                    color={isOn ? COLORS.primary : COLORS.textTertiary}
+                    color={isOn ? COLORS.primary : COLORS.textSecondary}
                   />
-                  <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textTertiary }]}>
+                  <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textSecondary }]}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -824,12 +872,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
     borderWidth: 1,
   },
+  // 켜짐: 회색 알약 + 남색 글자·체크(10-08, 앱 전체 선택 표시와 같게). 꺼짐: 흰 바탕 + 테두리 + 회색 글자.
   categoryChipOn: {
-    backgroundColor: COLORS.primarySoft,
-    borderColor: COLORS.primary,
+    backgroundColor: SELECTED_PILL_BG,
+    borderColor: 'transparent',
   },
   categoryChipOff: {
-    backgroundColor: COLORS.fill,
+    backgroundColor: COLORS.white,
     borderColor: COLORS.border,
   },
   categoryChipText: { ...TYPE.label, fontSize: 13 },
@@ -856,15 +905,16 @@ const styles = StyleSheet.create({
   guestNoticeBody: { flex: 1, gap: SPACING.xxs },
   guestNoticeTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   guestNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
+  // 다른 묶음 카드와 같은 바깥 여백·곡률·안쪽 여백(10-08).
   suspendedBox: {
     flexDirection: 'row',
-    gap: 10,
+    gap: SPACING.sm,
     alignItems: 'flex-start',
     backgroundColor: COLORS.dangerSoft,
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
   },
   suspendedBody: { flex: 1, gap: 4 },
   suspendedTitle: { ...TYPE.subhead, color: COLORS.danger },
