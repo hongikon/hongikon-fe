@@ -91,7 +91,7 @@ export default function UsersScreen({ initialQuery = '' }: { initialQuery?: stri
 const styles = StyleSheet.create({
   search: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 12 },
   input: {
-    flex: 1,
+    flex: 1, minWidth: 0,
     fontFamily: FONTS.regular,
     fontSize: 14,
     color: COLORS.textPrimary,

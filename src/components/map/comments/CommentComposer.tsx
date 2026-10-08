@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   barInvalid: { borderColor: COLORS.danger },
   input: {
-    flex: 1,
+    flex: 1, minWidth: 0,
     minHeight: 32,
     maxHeight: 96,
     paddingTop: 7,

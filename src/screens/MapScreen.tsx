@@ -2284,7 +2284,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  routeSearchInput: { fontFamily: FONTS.regular, flex: 1, fontSize: 14, color: COLORS.textPrimary },
+  routeSearchInput: { fontFamily: FONTS.regular, flex: 1, minWidth: 0, fontSize: 14, color: COLORS.textPrimary },
   buildingList: { paddingHorizontal: 16 },
   buildingItem: {
     flexDirection: "row",
