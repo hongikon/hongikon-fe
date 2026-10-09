@@ -440,6 +440,9 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
   )
 })
 
+/** 본문 글씨는 빈 화면 문구(EmptyState message, 14px)와 같은 크기로 맞춘다. 상태·분류 알약은 12px 그대로. */
+const BODY_14 = { fontSize: 14, lineHeight: 20 } as const
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   body: { flex: 1, backgroundColor: COLORS.background },
@@ -447,7 +450,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxxl },
   listEmpty: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg },
   // 카드 안 글자(28)와 같은 들여쓰기(10-08).
-  intro: { ...TYPE.caption, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
+  intro: { ...TYPE.caption, ...BODY_14, color: COLORS.textSecondary, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
   empty: { marginTop: SPACING.xl },
   error: { margin: SPACING.lg },
   separator: { height: SPACING.sm },
@@ -475,7 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
   },
   statusText: { ...TYPE.label },
-  createdAt: { ...TYPE.caption, color: COLORS.textTertiary },
+  createdAt: { ...TYPE.caption, ...BODY_14, color: COLORS.textTertiary },
   title: { ...TYPE.subhead, color: COLORS.textPrimary, marginTop: SPACING.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.sm, marginTop: SPACING.sm },
   categoryChip: {
@@ -490,19 +493,19 @@ const styles = StyleSheet.create({
   },
   categoryText: { ...TYPE.label },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, marginTop: SPACING.xs, flexShrink: 1 },
-  metaText: { ...TYPE.caption, color: COLORS.textSecondary, flexShrink: 1 },
+  metaText: { ...TYPE.caption, ...BODY_14, color: COLORS.textSecondary, flexShrink: 1 },
   photoRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md },
   photo: { width: 64, height: 64, borderRadius: RADIUS.sm, backgroundColor: COLORS.fill },
   noteBox: { marginTop: SPACING.md, borderRadius: RADIUS.md, padding: SPACING.md },
   noteRejected: { backgroundColor: COLORS.dangerSoft },
   noteHidden: { backgroundColor: COLORS.fill },
-  noteTitle: { ...TYPE.label, color: COLORS.textSecondary },
+  noteTitle: { ...TYPE.label, ...BODY_14, color: COLORS.textSecondary },
   noteTitleRejected: { color: COLORS.danger },
-  noteBody: { ...TYPE.callout, color: COLORS.textPrimary, marginTop: SPACING.xs },
-  hint: { ...TYPE.caption, color: COLORS.textTertiary, marginTop: SPACING.md },
+  noteBody: { ...TYPE.callout, ...BODY_14, color: COLORS.textPrimary, marginTop: SPACING.xs },
+  hint: { ...TYPE.caption, ...BODY_14, color: COLORS.textTertiary, marginTop: SPACING.md },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.md },
   mapLink: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xxs },
-  mapLinkText: { ...TYPE.label, color: COLORS.primary },
+  mapLinkText: { ...TYPE.label, ...BODY_14, color: COLORS.primary },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, minHeight: 24, minWidth: 44, justifyContent: 'flex-end' },
-  deleteText: { ...TYPE.caption, color: COLORS.textTertiary },
+  deleteText: { ...TYPE.caption, ...BODY_14, color: COLORS.textTertiary },
 })
