@@ -709,6 +709,13 @@ export function buildMapHTML(
     // 상자 크기 그대로 탭을 받았다. 핀이 가까이 모이면 보이는 배지를 눌러도 옆 마커의 빈 감싸개가 탭을 가로채 아무 일도
     // 안 일어났다(제휴 경영대학 15단계에서 17개 중 13개가 안 눌림, 10-07). 감싸개도 탭을 통과시키고 배지(pointer-events:auto)만
     // 받게 한다 — 배지에서 시작한 클릭은 감싸개로 그대로 올라가(버블링) 네이버의 click 은 계속 온다.
+    // 배지 둘레의 보이지 않는 터치 영역. 배지(26~30px)만 눌리면 조금만 빗나가도 아래 지도 탭 → 근처 건물이 골라졌다(10-09 요청).
+    // 배지 바깥으로 pad 만큼 넓혀 손가락 크기(약 46px)를 맞춘다. 배지 요소가 position:relative 여야 한다.
+    function hitHalo(pad) {
+      return '<div style="position:absolute;left:-' + pad + 'px;top:-' + pad + 'px;right:-' + pad + 'px;bottom:-' + pad + 'px;'
+        + 'border-radius:50%;pointer-events:auto;"></div>';
+    }
+
     function tapOnlyBadge(marker) {
       var apply = function() {
         var el = marker.getElement && marker.getElement();
@@ -981,7 +988,7 @@ export function buildMapHTML(
         + 'display:flex;align-items:center;justify-content:center;">'
         + reportPinSVG(categoryIcon, 10, color) + '</div>';
       var badgeEl = '<div style="position:relative;width:' + badge + 'px;height:' + badge + 'px;pointer-events:auto;">'
-        + circle + categoryEl + '</div>';
+        + hitHalo(8) + circle + categoryEl + '</div>';
 
       // HOT(최근 60분 🔥 5개 이상) 제보는 배지 오른쪽 위에 흰 원 + 🔥 불꽃(FINAL.md 지도 마커: 불꽃 #0B1A8C, 안쪽 흰색)을 붙인다.
       if (item.hot) {
@@ -995,7 +1002,8 @@ export function buildMapHTML(
       }
 
       // 오른쪽 아래 카테고리 배지(-5px)가 이름에 닿지 않게 3px 대신 5px 띄운다(renderReports 의 boxH 와 맞춤).
-      var nameEl = '<div style="margin-top:5px;white-space:nowrap;max-width:150px;overflow:hidden;'
+      // 이름도 누르면 그 제보가 열린다(배지만 맞히기 어려웠다).
+      var nameEl = '<div style="margin-top:5px;white-space:nowrap;max-width:150px;overflow:hidden;pointer-events:auto;'
         + 'text-overflow:ellipsis;font-family:' + PARTNER_FONT
         + ';font-size:11.5px;font-weight:700;color:' + (item.upcoming ? '#4b5563' : '#1f2937') + ';letter-spacing:-0.2px;'
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
@@ -1081,12 +1089,14 @@ export function buildMapHTML(
       var glyph = Math.round(badge * 0.58);
       var iconSVG = FACILITY_ICONS[marker.kind] || PARTNER_ICONS['기타'];
 
-      var badgeEl = '<div style="width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
+      var badgeEl = '<div style="position:relative;width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
         + 'background:' + safeColor(marker.color, 'transparent') + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;'
         + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
+        + hitHalo(10)
         + '<span style="width:' + glyph + 'px;height:' + glyph + 'px;display:block;">' + iconSVG + '</span></div>';
 
-      var nameEl = '<div style="margin-top:3px;white-space:nowrap;font-family:' + PARTNER_FONT
+      // 이름도 누르면 그 시설이 열린다(배지만 맞히기 어려웠다).
+      var nameEl = '<div style="margin-top:3px;white-space:nowrap;pointer-events:auto;font-family:' + PARTNER_FONT
         + ';font-size:11px;font-weight:600;color:#33363d;letter-spacing:-0.2px;'
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
         + escapeHTML(marker.label) + '</div>';
