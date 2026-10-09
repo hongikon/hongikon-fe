@@ -151,7 +151,7 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
           </View>
           <Text style={[styles.hint, (duplicate || full) && styles.hintWarn]}>{hint}</Text>
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled">
             {keywords === null && loadError === null && (
               <ActivityIndicator style={styles.loading} color={COLORS.primary} />
             )}

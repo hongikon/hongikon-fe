@@ -22,6 +22,9 @@ export default function SheetScrollBody({ onContentSizeChange, onLayout, onScrol
     <View>
       <Animated.ScrollView
         bounces={false}
+        // 댓글 창(Modal)은 화면으론 따로 뜨지만 React 트리상 이 스크롤 안에 있어 터치가 여기로 거슬러 온다.
+        // 기본값('never')이면 키보드가 떠 있을 때 첫 탭을 키보드 닫기로 먹어 댓글 보내기가 눌리지 않았다(10-09).
+        keyboardShouldPersistTaps="handled"
         {...rest}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={32}
