@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import SheetHandle from './SheetHandle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Animated, View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
@@ -23,7 +23,7 @@ import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
 import ReportCommentsSection from './comments/ReportCommentsSection'
-import ReportContentModal from './ReportContentModal'
+import ReportCommentsModal from './comments/ReportCommentsModal'
 import ModerationMenu from './ModerationMenu'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import ReportOwnerMenu from './ReportOwnerMenu'
@@ -45,7 +45,7 @@ interface ReportSheetProps {
  * 제보 상세 배너. 지도 마커를 누르면 뜬다.
  *
  * 본문(`content`)은 목록 응답에 실려 온다(2026-10-06 서버부터). 지도를 덜 가리게 시트에는 두 줄만 보여 주고,
- * 길면 '본문 보기'로 화면 전체 창(ReportContentModal, 아래 탭 막대까지 덮음)을 연다.
+ * 길면 '본문 보기'로 제보 본문 창(ReportCommentsModal — 본문 + 댓글 + 입력줄, 아래 탭 막대까지 덮음)을 연다.
  */
 /** 시트에 보여 줄 본문 줄 수. 넘치면 '본문 보기'. */
 const CONTENT_PREVIEW_LINES = 2
@@ -80,13 +80,16 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const applyPatch = (next: ReportCommunityPatch & { notifyEnabled?: boolean | null }) =>
     setPatch((prev) => ({ ...prev, ...next }))
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
-  // 본문 전체 보기 창. 두 줄에 다 안 들어가면(줄바꿈·길이) '본문 보기'를 띄운다. 다른 제보로 바뀌면 닫는다.
-  const [contentOpen, setContentOpen] = useState(false)
+  // 제보 본문 창(본문 + 댓글 전체 + 입력줄). '본문 보기'·댓글 미리보기·"댓글 달기"가 모두 이 창을 연다.
+  // 두 줄에 다 안 들어가면(줄바꿈·길이) '본문 보기'를 띄운다. 다른 제보로 바뀌면 닫는다.
+  const [post, setPost] = useState<{ focusInput: boolean } | null>(null)
+  const [commentsRefreshKey, setCommentsRefreshKey] = useState(0)
   const [contentClamped, setContentClamped] = useState(false)
   useEffect(() => {
-    setContentOpen(false)
+    setPost(null)
     setContentClamped(false)
   }, [reportProp.id])
+  const openPost = useCallback((focusInput: boolean) => setPost({ focusInput }), [])
   // 시트를 열 때 조회 1회(서버가 계정·설치 id 로 하루 한 번만 센다). 조회 수 기능 전 서버면 부르지 않는다.
   const tracksViews = typeof reportProp.viewCount === 'number'
   useEffect(() => {
@@ -274,7 +277,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           </Text>
           {(contentClamped || contentNeedsMore(report.content)) && (
             <Pressable
-              onPress={() => setContentOpen(true)}
+              onPress={() => openPost(false)}
               hitSlop={8}
               style={({ pressed }) => [styles.contentMore, pressed && { opacity: 0.6 }]}
               accessibilityRole="button"
@@ -386,14 +389,20 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         />
       )}
 
-      <ReportCommentsSection key={report.id} report={report} />
+      <ReportCommentsSection key={report.id} report={report} onOpen={openPost} refreshKey={commentsRefreshKey} />
       </SheetScrollBody>
 
-      <ReportContentModal
-        report={contentOpen ? report : null}
+      <ReportCommentsModal
+        visible={post !== null}
+        focusInput={post?.focusInput ?? false}
+        report={report}
         placeText={reportPlaceText(report, buildings)}
         onPatch={applyPatch}
-        onClose={() => setContentOpen(false)}
+        onClose={() => {
+          setPost(null)
+          // 창에서 쓰거나 지운 것을 시트 미리보기에 반영한다.
+          setCommentsRefreshKey((key) => key + 1)
+        }}
       />
     </Animated.View>
   )

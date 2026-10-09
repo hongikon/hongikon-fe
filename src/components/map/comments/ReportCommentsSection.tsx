@@ -16,7 +16,6 @@ import { formatCommentTime, withoutHiddenCommentAuthors } from '../../../utils/c
 import { promptLogin } from '../../../utils/reports'
 import RetryableError from '../../common/RetryableError'
 import CommentAvatar from './CommentAvatar'
-import ReportCommentsModal from './ReportCommentsModal'
 import type { ReportComment, ReportListItem } from '../../../types'
 
 /** 숨긴 사용자·지운 댓글 자리를 빼고도 미리보기를 채우도록 조금 더 받는다. */
@@ -29,11 +28,19 @@ type LoadState =
   /** 서버에 댓글 기능이 없거나(배포 전) 이 제보가 더는 공개 상태가 아니다 → 댓글 칸을 감춘다. */
   | { kind: 'unavailable' }
 
+interface ReportCommentsSectionProps {
+  report: ReportListItem
+  /** 제보 본문 창(본문 + 댓글 전체)을 연다. "댓글 달기"면 입력칸에 바로 초점을 준다. */
+  onOpen: (focusInput: boolean) => void
+  /** 바뀌면 미리보기를 다시 받는다(본문 창에서 쓰거나 지운 것을 반영). */
+  refreshKey?: number
+}
+
 /**
  * 제보 시트의 댓글 미리보기: "댓글 N", 최근 댓글 2개(한 줄 요약), "댓글 N개 모두 보기", 아래 "댓글 달기" 줄.
- * 쓰기·답글·신고는 전체 댓글 창에서 한다(시트는 지도를 가리지 않게 짧게 둔다). 서버에 댓글 API 가 없으면 아무것도 그리지 않는다.
+ * 쓰기·답글·신고는 제보 본문 창에서 한다(시트는 지도를 가리지 않게 짧게 둔다). 서버에 댓글 API 가 없으면 아무것도 그리지 않는다.
  */
-export default function ReportCommentsSection({ report }: { report: ReportListItem }) {
+export default function ReportCommentsSection({ report, onOpen, refreshKey = 0 }: ReportCommentsSectionProps) {
   const { accessToken, logout } = useAuth()
   const hiddenKeys = useHiddenAuthorKeys()
   const [state, setState] = useState<LoadState>(() =>
@@ -42,7 +49,6 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
   /** 최근 최상위 댓글(오래된 → 최신 순). */
   const [recent, setRecent] = useState<ReportComment[]>([])
   const [count, setCount] = useState<number | null>(report.commentCount ?? null)
-  const [modal, setModal] = useState<{ focusInput: boolean } | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const tokenRef = useRef(accessToken)
   tokenRef.current = accessToken
@@ -77,7 +83,7 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
       })
     return () => controller.abort()
     // 로그인·로그아웃하면 다시 받는다.
-  }, [report.id, reloadKey, !!accessToken])
+  }, [report.id, reloadKey, refreshKey, !!accessToken])
 
   const preview = useMemo(
     () =>
@@ -93,8 +99,8 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
       promptLogin('댓글을 달려면 로그인해 주세요.', logout)
       return
     }
-    setModal({ focusInput: true })
-  }, [accessToken, logout])
+    onOpen(true)
+  }, [accessToken, logout, onOpen])
 
   if (state.kind === 'unavailable') return null
 
@@ -104,7 +110,7 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
     <View style={styles.section}>
       <Pressable
         style={styles.header}
-        onPress={() => setModal({ focusInput: false })}
+        onPress={() => onOpen(false)}
         disabled={state.kind !== 'ready'}
         accessibilityRole="button"
         accessibilityLabel={total > 0 ? `댓글 ${total}개 모두 보기` : '댓글 보기'}
@@ -137,7 +143,7 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
           style={styles.error}
         />
       ) : preview.length > 0 ? (
-        <Pressable onPress={() => setModal({ focusInput: false })} accessibilityRole="button" accessibilityLabel="댓글 모두 보기">
+        <Pressable onPress={() => onOpen(false)} accessibilityRole="button" accessibilityLabel="댓글 모두 보기">
           {preview.map((comment) => (
             <View key={comment.id} style={styles.item}>
               <CommentAvatar name={comment.authorDisplayName} seed={comment.authorKey} size={24} />
@@ -171,16 +177,6 @@ export default function ReportCommentsSection({ report }: { report: ReportListIt
         </Pressable>
       ) : null}
 
-      <ReportCommentsModal
-        visible={modal !== null}
-        focusInput={modal?.focusInput ?? false}
-        report={report}
-        onClose={() => {
-          setModal(null)
-          // 창에서 쓰거나 지운 것을 미리보기에 반영한다.
-          setReloadKey((key) => key + 1)
-        }}
-      />
     </View>
   )
 }

@@ -10,10 +10,8 @@ import {
   StyleSheet,
   Text,
   View,
-  Image,
 } from 'react-native'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import type { ReactNode } from 'react'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
@@ -23,9 +21,7 @@ import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
 import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
 import { getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
 import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
-import * as haptics from '../../../lib/haptics'
-import { formatFreshness, promptLogin, reportImageUrls } from '../../../utils/reports'
-import { reportCategoryMeta } from '../../../constants/reportCategories'
+import { promptLogin } from '../../../utils/reports'
 import ModalHeader, { ModalPanel } from '../../settings/ModalHeader'
 import ContentColumn from '../../common/ContentColumn'
 import RetryableError from '../../common/RetryableError'
@@ -33,6 +29,8 @@ import { SkeletonBlock, SkeletonGroup } from '../../common/Skeleton'
 import CommentItem from './CommentItem'
 import CommentComposer, { type ReplyTarget } from './CommentComposer'
 import ModerationMenu from '../ModerationMenu'
+import ReportPostBody from '../ReportPostBody'
+import type { ReportCommunityPatch } from '../ReportActionRow'
 import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 import type { ReportComment, ReportListItem } from '../../../types'
 import EmptyState from '../../common/EmptyState'
@@ -40,6 +38,10 @@ import EmptyState from '../../common/EmptyState'
 interface ReportCommentsModalProps {
   visible: boolean
   report: ReportListItem
+  /** 장소 문구(시트와 같은 값 — 작성자가 고친 장소 설명, 없으면 가까운 건물). */
+  placeText: string
+  /** 공감·관심·조회 수 변화를 지도 시트 사본에도 반영한다(시트와 같은 applyPatch). */
+  onPatch: (patch: ReportCommunityPatch) => void
   onClose: () => void
   /** 시트의 "댓글 달기"로 열면 바로 입력하게 한다. */
   focusInput?: boolean
@@ -50,6 +52,8 @@ interface ReportCommentsModalProps {
  * 누르면 나머지를 한 번에 모두 펼친다 — 처음 열 땐 최근 대화만 짧게, 원하면 전부 본다.
  */
 const COMMENTS_MODAL_PAGE_SIZE = 10
+/** 댓글은 작성된 순서(오래된 순)로 고정한다(10-09 요청 — 최신순·인기순 고르기를 없앴다). */
+const COMMENT_ORDER: CommentOrder = 'oldest'
 /** '나머지 보기'로 한 번에 받는 최대 페이지 수(10개 × 30 = 300개). 이보다 많으면 버튼이 다시 남는다. */
 const LOAD_REST_MAX_PAGES = 30
 
@@ -68,11 +72,20 @@ function visibleThreads(items: readonly ReportComment[], hidden: ReadonlySet<str
 }
 
 /**
- * 제보 댓글 전체. 최상위 댓글 아래 답글을 들여 써서 보여 준다(한 단계).
+ * 제보 본문 창 — 게시글처럼 본문 전체(ReportPostBody) 아래로 댓글이 바로 이어지고, 맨 아래 입력줄에서 바로 쓴다
+ * (10-09 요청 — 댓글을 달러 가는 게 곧 본문을 보러 가는 것이라 두 창을 하나로 합쳤다). 댓글은 작성된 순서(오래된 순) 고정.
+ * 최상위 댓글 아래 답글을 들여 써서 보여 준다(한 단계).
  * 처음엔 10개만 보이고, 더 있으면 목록 끝 '이전 댓글 보기' 버튼으로 10개씩 더 받는다. 당겨서 새로고침, 아래 고정 입력줄(키보드가 가리지 않게 KeyboardAvoidingView).
  * 쓰고 나면 맨 아래로 내린다. 답글은 "답글 달기" → 입력줄 위 "○○님에게 답글" 칩.
  */
-export default function ReportCommentsModal({ visible, report, onClose, focusInput = false }: ReportCommentsModalProps) {
+export default function ReportCommentsModal({
+  visible,
+  report,
+  placeText,
+  onPatch,
+  onClose,
+  focusInput = false,
+}: ReportCommentsModalProps) {
   const { accessToken, logout } = useAuth()
   const toast = useToast()
   const hiddenKeys = useHiddenAuthorKeys()
@@ -85,14 +98,8 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null)
   const [focusKey, setFocusKey] = useState(0)
   const [menuFor, setMenuFor] = useState<ReportComment | null>(null)
-  /**
-   * 정렬. 서버가 👍 를 알면(likeCount 가 옴) 최신순·인기순을 고르게 하고 기본은 최신순(새 댓글이 위).
-   * 모르는 서버(좋아요 기능 전)는 예전처럼 오래된 순(새 댓글이 아래)만.
-   */
-  const [order, setOrder] = useState<CommentOrder>('oldest')
+  /** 서버가 👍 를 아는지(likeCount 가 옴). 새로 쓴 댓글의 좋아요 0 표시에 쓴다. */
   const [likesSupported, setLikesSupported] = useState(false)
-  const orderRef = useRef(order)
-  orderRef.current = order
   const pageRef = useRef(0)
   const hasNextRef = useRef(false)
   /** 더 받을 댓글이 있는지 — '이전 댓글 보기' 버튼을 그릴지(ref 는 화면을 다시 그리지 않아 따로 둔다). */
@@ -125,25 +132,18 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
       // 이 요청을 보낼 때까지 빠진 수. 응답을 받는 사이 또 빠진 것은 다음 요청 몫으로 남긴다.
       const removedAtRequest = removedTopRef.current
       try {
-        const requested = orderRef.current
         const result = await getReportComments(report.id, {
           page,
           size: COMMENTS_MODAL_PAGE_SIZE,
-          order: requested,
+          order: COMMENT_ORDER,
           accessToken: tokenRef.current,
           signal: controller.signal,
         })
         if (controller.signal.aborted) return false
-        // 첫 페이지에서 👍 를 아는 서버로 확인되면 최신순으로 바꿔 다시 받는다(한 번만).
-        if (page === 0 && mode !== 'more' && requested === 'oldest' && supportsCommentLikes(result.content)) {
-          setLikesSupported(true)
-          setOrder('latest')
-          orderRef.current = 'latest'
-          void load(0, mode)
-          return false
-        }
+        // 👍 를 아는 서버면 좋아요 수를 보인다. 정렬은 작성된 순서(오래된 순)로 고정한다(10-09 요청).
+        if (page === 0 && supportsCommentLikes(result.content)) setLikesSupported(true)
         // 처음·새로고침은 갈아 끼우고, 더 받기는 합친다(빠진 댓글 때문에 0쪽을 다시 받을 때도 합친다).
-        setItems((prev) => (mode !== 'more' ? result.content : mergeComments(prev, result.content, requested)))
+        setItems((prev) => (mode !== 'more' ? result.content : mergeComments(prev, result.content, COMMENT_ORDER)))
         setCount(result.commentCount ?? result.totalElements)
         setTopTotal(result.totalElements)
         removedTopRef.current = mode === 'more' ? Math.max(0, removedTopRef.current - removedAtRequest) : 0
@@ -207,8 +207,6 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     }
     setItems([])
     setReplyTo(null)
-    setOrder('oldest')
-    orderRef.current = 'oldest'
     setLikesSupported(false)
     pageRef.current = 0
     removedTopRef.current = 0
@@ -255,17 +253,6 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
   }, [])
   const actions = useCommentActions(report.id, handleRemoved, handleUpdated)
 
-  const changeOrder = useCallback(
-    (next: CommentOrder) => {
-      if (next === orderRef.current) return
-      haptics.selection()
-      setOrder(next)
-      orderRef.current = next
-      void load(0, 'initial')
-    },
-    [load],
-  )
-
   const likesSupportedRef = useRef(likesSupported)
   likesSupportedRef.current = likesSupported
   const handlePosted = useCallback((comment: ReportComment) => {
@@ -283,16 +270,9 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
     }
     // 새 최상위 댓글은 목록에도 전체 수에도 하나씩 더해 '나머지 N개'가 그대로 맞게 한다.
     setTopTotal((prev) => prev + 1)
-    const current = orderRef.current
     const fresh = { ...comment, replies: [], replyCount: 0, likeCount: comment.likeCount ?? (likesSupportedRef.current ? 0 : undefined) }
-    if (current === 'latest') {
-      // 최신순이면 맨 위에 붙이고 위로 올린다.
-      setItems((prev) => mergeComments(prev, [fresh], 'latest'))
-      setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 80)
-      return
-    }
-    setItems((prev) => mergeComments(prev, [fresh], current))
-    // 오래된 순·인기순(새 댓글은 👍 0개)이면 맨 아래라 끝으로 내린다.
+    setItems((prev) => mergeComments(prev, [fresh], COMMENT_ORDER))
+    // 작성된 순서라 새 댓글은 맨 아래 — 끝으로 내린다.
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)
   }, [])
 
@@ -384,60 +364,44 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
         <KeyboardFrame>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn style={styles.column}>
-            <ModalHeader title={state.kind === 'ready' ? `댓글 ${count}` : '댓글'} onClose={onClose} />
+            <ModalHeader title="제보 본문" onClose={onClose} />
             {/* 머리 카드 아래 흰 판 — 입력줄도 판 안 맨 아래에 붙어 키보드 위로 같이 올라간다. */}
             <ModalPanel>
-            {/* 어느 제보의 댓글인지 바로 보이게 제보 요약(종류·제목·시간·사진)을 위에 둔다. */}
-            <ReportContextCard report={report} />
-            <View style={[styles.subHeader, !likesSupported && styles.subHeaderEmpty]}>
-              {likesSupported ? (
-                <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel="댓글 정렬">
-                  {(['popular', 'latest'] as const).map((value) => {
-                    const active = order === value
-                    return (
-                      <Pressable
-                        key={value}
-                        onPress={() => changeOrder(value)}
-                        hitSlop={6}
-                        style={styles.sortItem}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: active }}
-                      >
-                        {active ? <View style={styles.sortDot} /> : null}
-                        <Text style={[styles.sortText, active && styles.sortTextActive]}>
-                          {value === 'popular' ? '인기순' : '최신순'}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              ) : null}
-            </View>
             <View style={styles.body}>
-              {state.kind === 'loading' ? (
-                <CommentsSkeleton />
-              ) : state.kind === 'error' ? (
-                <View style={styles.center}>
-                  <RetryableError
-                    message={state.message}
-                    isNetworkError={state.network}
-                    onRetry={() => void load(0, 'initial')}
-                  />
-                </View>
-              ) : (
                 <FlatList
                   ref={listRef}
                   data={shown}
                   keyExtractor={(item) => String(item.id)}
                   renderItem={renderItem}
                   ItemSeparatorComponent={Separator}
-                  contentContainerStyle={shown.length === 0 ? styles.emptyContainer : styles.listContent}
+                  contentContainerStyle={styles.listContent}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="interactive"
                   refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(0, 'refresh')} />}
+                  ListHeaderComponent={
+                    <>
+                      <ReportPostBody report={report} placeText={placeText} onPatch={onPatch} />
+                      <View style={styles.commentsHeading}>
+                        <Text style={styles.commentsHeadingText}>
+                          댓글{state.kind === 'ready' ? <Text style={styles.commentsHeadingCount}> {count}</Text> : null}
+                        </Text>
+                      </View>
+                    </>
+                  }
                   ListEmptyComponent={
+                    state.kind === 'loading' ? (
+                      <CommentsSkeleton />
+                    ) : state.kind === 'error' ? (
+                      <RetryableError
+                        message={state.message}
+                        isNetworkError={state.network}
+                        onRetry={() => void load(0, 'initial')}
+                        style={styles.error}
+                      />
+                    ) : (
                     // 다른 빈 화면과 같은 EmptyState(10-08).
                     <EmptyState
+                      style={styles.empty}
                       icon={count > 0 ? 'eye-off-outline' : 'chatbubbles-outline'}
                       message={
                         count > 0
@@ -448,6 +412,7 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                       }
                       description={count > 0 ? undefined : '줄이 긴지, 아직 남았는지 지금 상황을 알려 주면 다른 학생들에게 도움이 돼요.'}
                     />
+                    )
                   }
                   ListFooterComponent={
                     loadingMore ? (
@@ -455,8 +420,6 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                     ) : hasNext ? (
                       // 첫 페이지가 모두 숨긴 사용자의 댓글이라 보이는 게 없어도 버튼은 둔다(빈 안내 아래에 같이 뜬다) —
                       // 예전엔 보이는 댓글이 없으면 버튼을 숨겨 나머지 댓글을 볼 길이 없었다.
-                      // 최신순(새 댓글이 위)이면 아래로 더 받는 게 지난 댓글이라 '이전 댓글 보기'.
-                      // 인기순·오래된 순(구서버)은 순위·시간이 이어지니 '댓글 더 보기'.
                       <Pressable
                         onPress={() => void loadRest()}
                         style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]}
@@ -467,14 +430,13 @@ export default function ReportCommentsModal({ visible, report, onClose, focusInp
                           {(() => {
                             const rest = Math.max(0, topTotal - items.length)
                             const n = rest > 0 ? ` ${rest}개` : ''
-                            return order === 'latest' ? `이전 댓글${n} 보기` : `댓글${n} 더 보기`
+                            return `댓글${n} 더 보기`
                           })()}
                         </Text>
                       </Pressable>
                     ) : null
                   }
                 />
-              )}
               <View style={styles.composer}>
                 <CommentComposer
                   reportId={report.id}
@@ -544,61 +506,8 @@ function KeyboardFrame({ children }: { children: ReactNode }) {
   )
 }
 
-/** 댓글 창 위 제보 요약 — 종류 배지, 제목, 등록·예정 시각, 첫 사진. */
-function ReportContextCard({ report }: { report: ReportListItem }) {
-  const meta = reportCategoryMeta(report.category)
-  const photo = reportImageUrls(report)[0]
-  const [photoFailed, setPhotoFailed] = useState(false)
-  return (
-    <View style={styles.context} accessibilityRole="summary" accessibilityLabel={`${report.title} 제보의 댓글`}>
-      <View style={styles.contextText}>
-        <View style={styles.contextBadge}>
-          <Ionicons name={meta.icon} size={12} color={COLORS.white} />
-          <Text style={styles.contextBadgeText}>{report.customCategoryLabel || meta.label}</Text>
-        </View>
-        <Text style={styles.contextTitle} numberOfLines={2}>
-          {report.title}
-        </Text>
-        <Text style={styles.contextMeta} numberOfLines={1}>
-          {formatFreshness(report)}
-        </Text>
-      </View>
-      {photo && !photoFailed ? (
-        <Image source={{ uri: photo }} style={styles.contextPhoto} onError={() => setPhotoFailed(true)} />
-      ) : null}
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   keyboardFrame: { flex: 1 },
-  context: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: COLORS.fill,
-  },
-  contextText: { flex: 1, gap: 4 },
-  contextBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: COLORS.primary,
-  },
-  contextBadgeText: { fontFamily: FONTS.semibold, fontSize: 11, color: COLORS.white },
-  contextTitle: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 20, color: COLORS.textPrimary },
-  contextMeta: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
-  contextPhoto: { width: 56, height: 56, borderRadius: 8, backgroundColor: COLORS.border },
-  subHeaderEmpty: { paddingBottom: 0 },
   container: { flex: 1, backgroundColor: COLORS.background },
   moreButton: {
     alignSelf: 'center',
@@ -611,26 +520,20 @@ const styles = StyleSheet.create({
   moreButtonPressed: { opacity: 0.7 },
   moreText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   column: { flex: 1 },
-  subHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.divider,
-  },
-  reportTitle: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
-  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sortItem: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 },
-  sortDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: COLORS.primary },
-  sortText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textTertiary },
-  sortTextActive: { fontFamily: FONTS.semibold, color: COLORS.primary },
   body: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 16 },
-  emptyContainer: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 32 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 16 },
+  // 본문과 댓글 사이 — 굵은 구분선 대신 위 여백 + 얇은 선, "댓글 N" 을 본문 제목처럼 또렷하게.
+  commentsHeading: {
+    marginTop: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  commentsHeadingText: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.textPrimary },
+  commentsHeadingCount: { color: COLORS.primary },
+  empty: { paddingVertical: 32 },
+  error: { marginTop: 12 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.divider, marginLeft: 42 },
   replies: {
     marginLeft: 15,
@@ -652,7 +555,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   notice: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textTertiary, marginTop: 6, marginLeft: 6 },
-  skeleton: { paddingHorizontal: 16, paddingTop: 12, gap: 20 },
+  skeleton: { paddingTop: 12, gap: 20 },
   skeletonRow: { flexDirection: 'row', gap: 10 },
   skeletonText: { flex: 1, gap: 8 },
 })
