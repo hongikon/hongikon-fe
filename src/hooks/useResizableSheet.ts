@@ -179,6 +179,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
             // 왼쪽 버튼만 — 오른쪽·ctrl 클릭은 메뉴가 떼기(pointerup)를 삼켜, 버튼을 놓은 뒤에도 시트가 마우스를 따라다녔다.
             if ((ne.button ?? 0) !== 0 || ne.ctrlKey || ne.isPrimary === false) return
             e.preventDefault?.()
+            // 손잡이는 머리줄 영역(areaHandlers) 안에 있다 — 둘이 같이 끌기를 시작하지 않게 여기서 멈춘다.
+            ;(e as { stopPropagation?: () => void }).stopPropagation?.()
             dragCleanup.current?.()
             const startY = e.nativeEvent?.clientY ?? e.clientY ?? 0
             let lastY = startY
@@ -222,7 +224,89 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
         }
       : {}
 
-  return { translateY, bodyHeight, panHandlers: { ...panResponder.panHandlers, ...webHandlers } }
+  /**
+   * 머리줄(종류·제목·닫기 줄) 전체로도 끌게 하는 핸들러(10-09 요청 — 4px 손잡이만 잡혀 시트를 올리기 어려웠다).
+   * 손잡이와 달리 누르기만 해서는 크기를 바꾸지 않고, 실제로 위아래로 끌 때만 잡는다 — 닫기·메뉴 버튼과 글자 누르기는 그대로.
+   */
+  const areaResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderGrant: () => dragApi.begin(),
+        onPanResponderMove: (_, g) => dragApi.move(g.dy),
+        onPanResponderRelease: (_, g) => dragApi.end(g.dy, g.vy),
+        onPanResponderTerminate: () => dragApi.cancel(),
+      }),
+    [dragApi],
+  )
+
+  // 웹 마우스: 누른 뒤 6px 넘게 움직여야 끌기로 본다. 버튼·링크 위에서 누른 건 건드리지 않는다(클릭이 그대로 먹게).
+  const areaWebHandlers =
+    Platform.OS === 'web'
+      ? {
+          onPointerDown: (raw: unknown) => {
+            type Ptr = { clientY?: number; pointerType?: string; button?: number; ctrlKey?: boolean; isPrimary?: boolean; target?: unknown }
+            const e = raw as Ptr & { nativeEvent?: Ptr }
+            const ne = e.nativeEvent ?? e
+            if ((ne.pointerType ?? e.pointerType) === 'touch') return // 터치는 PanResponder 가 맡는다
+            if ((ne.button ?? 0) !== 0 || ne.ctrlKey || ne.isPrimary === false) return
+            const target = (ne.target ?? e.target) as { closest?: (sel: string) => unknown } | undefined
+            if (target?.closest?.('button, a, input, textarea, [role="button"], [role="link"], [role="switch"]')) return
+            dragCleanup.current?.()
+            const startY = ne.clientY ?? 0
+            let lastY = startY
+            let lastT = Date.now()
+            let vy = 0
+            let dragging = false
+            const cleanup = () => {
+              window.removeEventListener('pointermove', onMove)
+              window.removeEventListener('pointerup', onUp)
+              window.removeEventListener('pointercancel', onCancel)
+              window.removeEventListener('contextmenu', onCancel)
+              window.removeEventListener('blur', onCancel)
+              if (dragCleanup.current === cleanup) dragCleanup.current = null
+            }
+            const onCancel = () => {
+              cleanup()
+              if (dragging) dragApi.cancel()
+            }
+            const onMove = (ev: PointerEvent) => {
+              if (ev.buttons === 0) return onCancel()
+              const dy = ev.clientY - startY
+              if (!dragging) {
+                if (Math.abs(dy) <= 6) return
+                dragging = true
+                dragApi.begin()
+                // 끄는 동안 글자가 선택되지 않게.
+                window.getSelection?.()?.removeAllRanges()
+              }
+              ev.preventDefault()
+              const now = Date.now()
+              vy = (ev.clientY - lastY) / Math.max(1, now - lastT)
+              lastY = ev.clientY
+              lastT = now
+              dragApi.move(dy)
+            }
+            const onUp = (ev: PointerEvent) => {
+              cleanup()
+              if (dragging) dragApi.end(ev.clientY - startY, vy)
+            }
+            window.addEventListener('pointermove', onMove)
+            window.addEventListener('pointerup', onUp)
+            window.addEventListener('pointercancel', onCancel)
+            window.addEventListener('contextmenu', onCancel)
+            window.addEventListener('blur', onCancel)
+            dragCleanup.current = cleanup
+          },
+        }
+      : {}
+
+  return {
+    translateY,
+    bodyHeight,
+    panHandlers: { ...panResponder.panHandlers, ...webHandlers },
+    areaHandlers: { ...areaResponder.panHandlers, ...areaWebHandlers },
+  }
 }
 
 /**
@@ -264,7 +348,7 @@ export function useSheetSizing(
   // 맨 위도 내용 높이로 자른다 — 내용이 짧으면 손잡이를 한 번 눌러도 텅 빈 전체 화면 시트가 되지 않게.
   const top = Math.round(cap(fullHeight))
   const points = Array.from(new Set([0, small, mid, top]))
-  const { translateY, bodyHeight, panHandlers } = useResizableSheet(onClose, { initial: small, points })
+  const { translateY, bodyHeight, panHandlers, areaHandlers } = useResizableSheet(onClose, { initial: small, points })
 
   // 본문이 이 높이를 넘으면 시트 윗변이 검색바·칩 오버레이 밑으로 들어간다 → 오버레이를 숨기게 알린다.
   const coverAt = windowHeight - Math.max(insets.top, header.headerHeight) - insets.bottom - chromeHeight - 48
@@ -297,6 +381,8 @@ export function useSheetSizing(
     translateY,
     bodyHeight,
     panHandlers,
+    /** 머리줄(손잡이 + 종류·제목 줄)을 감싼 View 에 건다 — 그 영역 어디를 끌어도 시트 크기가 바뀐다. */
+    chromeHandlers: areaHandlers,
     onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
     onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
   }

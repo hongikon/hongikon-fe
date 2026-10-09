@@ -67,7 +67,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets()
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절. 처음엔 작게(본문 일부) 연다.
-  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
     smallRatio: 0.22,
     midRatio: 0.5,
   })
@@ -222,7 +222,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 16 + insets.bottom, transform: [{ translateY }] }]}>
       {/* 손잡이 + 머리줄(종류·제목·시간)은 늘 보이고, 그 아래 본문만 크기 조절된다(useSheetSizing). */}
-      <View onLayout={onChromeLayout}>
+      <View onLayout={onChromeLayout} {...chromeHandlers}>
       <View style={{ marginTop: -6 }}>
         <SheetHandle panHandlers={panHandlers} gap={12} />
       </View>

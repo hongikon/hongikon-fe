@@ -59,14 +59,14 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
-  const { translateY, bodyHeight, panHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
     smallRatio: 0.22,
     midRatio: 0.5,
   });
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
-      <View onLayout={onChromeLayout}>
+      <View onLayout={onChromeLayout} {...chromeHandlers}>
       <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
