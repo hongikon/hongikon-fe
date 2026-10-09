@@ -61,10 +61,9 @@ import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
 import {
   filterPartners,
   hasActiveFilter,
-  partnerFocusBounds,
   partnersOutsideFocus,
 } from "../utils/partners";
-import { CAMPUS_VIEW_BOX, farPointViewBox, pointsBounds, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
+import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { withExhibitionHints } from "../utils/exhibitions";
@@ -636,8 +635,8 @@ export default function MapScreen() {
       }
 
       setSelectedBuilding(null);
-      // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에선 아래 맞춤(fitBounds)이 잘리고,
-      // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮겨 칩 결과 맞춤을 덮는다.
+      // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에 갇혀 칩 결과를 둘러볼 수 없고,
+      // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮긴다. 칩만으로는 카메라를 옮기지 않는다(10-09 요청).
       if (farViewPartnerIdRef.current !== null) {
         farViewPartnerIdRef.current = null;
         webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
@@ -646,7 +645,7 @@ export default function MapScreen() {
       postToMap({
         type: "setPartners",
         partners: partners.map(toMarker),
-        bounds: partnerFocusBounds(partners),
+        bounds: null,
       });
     },
     [allPartners, postToMap],
@@ -819,8 +818,8 @@ export default function MapScreen() {
         return;
       }
       const markers = withExhibitionHints(facilityMarkers(facilities, buildings, next), facilities, exhibitions);
-      // 제휴 업체 칩처럼 지도를 옮긴다 — 이 종류 시설이 모두 들어오게, 시설들의 중심을 가운데로(10-08 요청).
-      postToMap({ type: "setFacilities", markers, bounds: pointsBounds(markers) });
+      // 칩을 눌러도 카메라는 옮기지 않는다(10-09 요청 — 네이버·카카오 지도처럼 보던 자리를 지킨다).
+      postToMap({ type: "setFacilities", markers, bounds: null });
     },
     [facilities, buildings, exhibitions, postToMap],
   );
@@ -861,7 +860,7 @@ export default function MapScreen() {
    */
   const resyncMap = useCallback(() => {
     // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
-    // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다. 제휴 필터가 켜져 있으면 아래 bounds 가 덮어쓴다.
+    // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다.
     handleRecenter();
     // 새 페이지는 시트가 닫힌 줄 안다. 열려 있으면 다시 알린다(건물 탭을 시트 닫기로만 쓰게).
     postToMap({
@@ -891,7 +890,7 @@ export default function MapScreen() {
       postToMap({
         type: "setPartners",
         partners: partners.map(toMarker),
-        bounds: partnerFocusBounds(partners),
+        bounds: null,
       });
       reassertPartnerSelection(partners);
     }

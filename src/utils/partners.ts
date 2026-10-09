@@ -1,17 +1,9 @@
 import {
   CAMPUS_CENTER,
-  PARTNER_BOUNDS_PADDING_DEGREES,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
 import { haversineMeters } from './geo'
 import type { Partner, PartnerAffiliation, PartnerCategory } from '../types'
-
-export interface PartnerBounds {
-  swLat: number
-  swLng: number
-  neLat: number
-  neLng: number
-}
 
 /** 두 단계 필터. 고르지 않은 단계는 null 이고, 그 단계로는 걸러내지 않는다. */
 export interface PartnerFilter {
@@ -64,33 +56,6 @@ function isNearCampus(partner: Partner): boolean {
     partner.lng,
   )
   return distance <= PARTNER_FOCUS_RADIUS_METERS
-}
-
-/**
- * 마커를 화면에 맞출 범위. 캠퍼스에서 먼 지점(구로·강남·성수·방화·은평)은
- * 계산에서 빼고, 그런 지점만 있는 경우에만 전체를 쓴다. 빼지 않으면 칩 하나에
- * 지도가 서울 전체로 줌아웃된다.
- *
- * 캠퍼스 중심을 항상 포함시켜, 업체와 학교 사이 거리감을 잡을 수 있게 한다.
- */
-export function partnerFocusBounds(
-  partners: readonly Partner[],
-): PartnerBounds | null {
-  if (partners.length === 0) return null
-
-  const nearby = partners.filter(isNearCampus)
-  const focused = nearby.length > 0 ? nearby : partners
-
-  const lats = [CAMPUS_CENTER.lat, ...focused.map((partner) => partner.lat)]
-  const lngs = [CAMPUS_CENTER.lng, ...focused.map((partner) => partner.lng)]
-  const pad = PARTNER_BOUNDS_PADDING_DEGREES
-
-  return {
-    swLat: Math.min(...lats) - pad,
-    swLng: Math.min(...lngs) - pad,
-    neLat: Math.max(...lats) + pad,
-    neLng: Math.max(...lngs) + pad,
-  }
 }
 
 /** 화면 맞춤 범위 밖으로 밀려나 눈에 잘 띄지 않는 지점들. 안내 문구에 쓴다. */

@@ -3,7 +3,6 @@ import {
   CAMPUS_VIEW_RADIUS_METERS,
   FAR_PARTNER_VIEW_RADIUS_METERS,
   MAP_MIN_ZOOM,
-  PARTNER_BOUNDS_PADDING_DEGREES,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
 import { haversineMeters } from './geo'
@@ -58,21 +57,3 @@ export function viewBoundsScript(box: ViewBox): string {
   )
 }
 
-/**
- * 주어진 지점들이 모두 들어오는 범위(여백 포함). 화면 가운데가 지점들의 중심이 된다(10-08 요청 — 편의시설 칩은
- * 학교 중심이 아니라 시설들의 중심에 맞춘다. 한쪽에 몰린 시설은 더 크게 확대돼 보인다). 지점이 없으면 null.
- */
-export function pointsBounds(
-  points: readonly { lat: number; lng: number }[],
-): { swLat: number; swLng: number; neLat: number; neLng: number } | null {
-  if (points.length === 0) return null
-  const lats = points.map((p) => p.lat)
-  const lngs = points.map((p) => p.lng)
-  const pad = PARTNER_BOUNDS_PADDING_DEGREES
-  return {
-    swLat: Math.min(...lats) - pad,
-    swLng: Math.min(...lngs) - pad,
-    neLat: Math.max(...lats) + pad,
-    neLng: Math.max(...lngs) + pad,
-  }
-}
