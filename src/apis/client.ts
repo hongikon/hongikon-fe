@@ -252,10 +252,9 @@ const SERVER_MESSAGE_STATUSES = new Set([400, 403, 404, 409, 422, 429])
 const SERVER_MESSAGE_MAX_LENGTH = 200
 
 /** 실패 응답 본문에서 개발용 원문과(개발 빌드만) 사용자용 서버 문구(`{ message }`, 일부 상태 코드만)를 꺼낸다. */
-async function readFailureBody(response: Response): Promise<{ devDetail?: string; serverMessage?: string }> {
-  const wantsMessage = SERVER_MESSAGE_STATUSES.has(response.status)
+function readFailureBody(status: number, text: string): { devDetail?: string; serverMessage?: string } {
+  const wantsMessage = SERVER_MESSAGE_STATUSES.has(status)
   if (!__DEV__ && !wantsMessage) return {}
-  const text = await response.text().catch(() => '')
   let serverMessage: string | undefined
   if (wantsMessage && text) {
     try {
@@ -288,11 +287,43 @@ interface SendOptions {
   allowNotModified?: boolean
 }
 
+/** 본문까지 다 받은 응답. 본문 읽기도 제한 시간 안에서 끝나야 해서 send() 가 미리 읽어 둔다. */
+interface SentResponse {
+  status: number
+  headers: Headers
+  text: string
+}
+
+/**
+ * 본문을 읽는다. 끊기 신호가 오면 바로 실패한다 — 런타임이 본문 읽기를 스스로 끊어 주지 않아도
+ * (Expo 의 fetch 는 머리를 받자마자 돌려주고 본문은 뒤이어 받는다) 여기서 멈춰 있지 않게.
+ */
+function readBody(response: Response, signal: AbortSignal): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new Error('aborted'))
+      return
+    }
+    const onAbort = () => reject(new Error('aborted'))
+    signal.addEventListener('abort', onAbort)
+    response.text().then(
+      (text) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(text)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 /**
  * 제한 시간·재시도·오류 분류를 한 곳에서 처리한다.
- * 성공한 Response 만 돌려주고, 실패는 전부 ApiError / NetworkError / RequestCancelledError 로 바꾼다.
+ * 성공한 응답만 본문까지 읽어 돌려주고, 실패는 전부 ApiError / NetworkError / RequestCancelledError 로 바꾼다.
  */
-async function send(path: string, options: SendOptions): Promise<Response> {
+async function send(path: string, options: SendOptions): Promise<SentResponse> {
   const url = buildUrl(path)
   const { method, headers, body, timeoutMs, retries, signal, allowNotModified } = options
 
@@ -309,12 +340,15 @@ async function send(path: string, options: SendOptions): Promise<Response> {
     const forwardAbort = () => controller.abort()
     signal?.addEventListener('abort', forwardAbort)
 
-    let response: Response | null = null
+    let response: SentResponse | null = null
     let failure: ApiError | NetworkError
     let retryAfterMs: number | null = null
 
+    // 제한 시간은 본문을 다 받을 때까지 건다. 예전엔 머리(헤더)를 받는 순간 타이머를 풀어, 와이파이·LTE 가 바뀌는
+    // 사이 본문 받기가 멈추면 요청이 끝나지도 실패하지도 않아 화면이 로딩에서 멈춰 있었다(10-11).
     try {
-      response = await fetch(url, { method, headers, body, signal: controller.signal })
+      const raw = await fetch(url, { method, headers, body, signal: controller.signal })
+      response = { status: raw.status, headers: raw.headers, text: await readBody(raw, controller.signal) }
     } catch {
       response = null
     } finally {
@@ -326,14 +360,14 @@ async function send(path: string, options: SendOptions): Promise<Response> {
       if (signal?.aborted && !timedOut) throw new RequestCancelledError()
       failure = new NetworkError(timedOut ? 'timeout' : 'offline')
       emitOutcome('unreachable')
-    } else if (response.ok || (allowNotModified && response.status === 304)) {
+    } else if ((response.status >= 200 && response.status < 300) || (allowNotModified && response.status === 304)) {
       emitOutcome('reachable')
       return response
     } else {
       const { status } = response
       emitOutcome(status === 502 || status === 503 || status === 504 ? 'unreachable' : 'reachable')
       retryAfterMs = status === 429 || status === 503 ? parseRetryAfter(response.headers.get('Retry-After')) : null
-      const { devDetail, serverMessage } = await readFailureBody(response)
+      const { devDetail, serverMessage } = readFailureBody(status, response.text)
       failure = new ApiError(status, friendlyMessageForStatus(status), devDetail, serverMessage)
     }
 
@@ -352,12 +386,9 @@ async function send(path: string, options: SendOptions): Promise<Response> {
   }
 }
 
-async function parseJson<T>(response: Response): Promise<T> {
-  if (response.status === 204) return undefined as T
-  const text = await response.text().catch(() => {
-    throw new NetworkError('offline')
-  })
-  if (!text) return undefined as T
+function parseJson<T>(response: SentResponse): T {
+  const { text } = response
+  if (response.status === 204 || !text) return undefined as T
   try {
     return JSON.parse(text) as T
   } catch {
@@ -452,9 +483,9 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       retries: Math.max(0, retries ?? (IDEMPOTENT_METHODS.has(method) ? DEFAULT_RETRIES : 0)),
       signal,
     })
-    const result = await parseJson<T>(response)
-    // send() 는 응답 머리(헤더)를 받으면 끊기 신호 연결을 푼다. 그 뒤 본문을 읽는 사이 호출부가 끊어도(필터를 바꿈 등)
-    // 요청은 그대로 성공으로 끝나, 결과를 따로 거르지 않는 화면(관리 탭 목록 등)에 이전 조건의 목록이 덮어써졌다.
+    const result = parseJson<T>(response)
+    // 끊기 신호가 응답을 다 받은 바로 그 뒤에 와도 결과를 버린다. 결과를 따로 거르지 않는 화면(관리 탭 목록 등)에
+    // 이전 조건의 목록이 덮어써지지 않게.
     if (signal?.aborted) throw new RequestCancelledError()
     return result
   }, skipTokenRefresh)
@@ -462,7 +493,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
 /**
  * 응답 헤더가 필요한 GET(ETag 등). `apiRequest` 와 같은 제한 시간·재시도·오류 분류를 쓰되,
- * 본문을 해석하지 않은 Response 를 그대로 돌려준다. 304 는 성공으로 돌려주며 본문이 없다.
+ * 본문 해석(json)은 호출부가 필요할 때 한다. 304 는 성공으로 돌려주며 본문이 없다.
  * 토큰을 붙이지 않는 공개 조회 전용이다.
  */
 export async function apiGetRaw(
@@ -481,7 +512,7 @@ export async function apiGetRaw(
     status: response.status,
     headers: response.headers,
     json: async <T,>() => {
-      const result = await parseJson<T>(response)
+      const result = parseJson<T>(response)
       if (options.signal?.aborted) throw new RequestCancelledError()
       return result
     },
