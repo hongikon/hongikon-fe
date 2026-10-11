@@ -691,6 +691,12 @@ export default function ReportComposerModal({
                       scrollEventThrottle={32}
                       contentContainerStyle={styles.body}
                       keyboardShouldPersistTaps="handled"
+                      // iOS: 키보드가 시트 아래쪽(설명·사진·시간 칸)을 덮어도 스크롤 범위가 그대로라 그 칸들을 키보드 위로
+                      // 올릴 수 없었다. 키보드에 가린 만큼 아래 여백을 넣고 포커스된 입력칸이 보이게 스크롤한다.
+                      // 시트가 화면 90% 높이라 KeyboardAvoidingView 로 시트를 밀어 올리면 위가 잘려 스크롤뷰에서 맞춘다.
+                      automaticallyAdjustKeyboardInsets
+                      // 키보드를 띄운 채로도 아래로 끌어 내리면 키보드가 따라 내려간다(가려진 '제보 올리기'로 갈 수 있게).
+                      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
                     >
                       {/* 장소 설명: 핀 근처 건물로 채워 두고, 더 정확하게 고칠 수 있다(제보 시트·HOT 목록·공유 문구에 보인다). */}
                       <View style={styles.placeLabelRow}>
