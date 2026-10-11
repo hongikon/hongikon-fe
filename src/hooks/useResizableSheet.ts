@@ -35,6 +35,10 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
   const startHeight = useRef(initial)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  const initialRef = useRef(initial)
+  initialRef.current = initial
+  /** 손가락으로 끄는 중인지. 그동안은 내용 높이가 바뀌어도 크기를 덮어쓰지 않는다. */
+  const dragging = useRef(false)
   const snaps = useRef<number[]>([])
   snaps.current = [...points].sort((a, b) => a - b)
 
@@ -62,6 +66,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     const prev = prevSizes.current
     prevSizes.current = { initial, hi }
     if (prev.initial === initial && prev.hi === hi) return
+    // 끄는 중이면 손가락 자리를 그대로 둔다 — 여기서 높이를 바꾸면 시트가 한 프레임에 툭 튀었다가 다음 움직임에 되돌아왔다.
+    if (dragging.current) return
     const lo = snaps.current[0] ?? 0
     let next: number
     if (Math.abs(current.current - prev.initial) <= 1) next = initial
@@ -87,7 +93,19 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
   // 끄는 동안 높이를 바꾸고, 놓으면 가까운 크기로 붙거나 닫는다. 터치(PanResponder)·마우스(웹 포인터) 둘 다 이 함수들을 쓴다.
   const dragApi = useMemo(() => {
     const begin = () => {
-      startHeight.current = current.current
+      dragging.current = true
+      // 화면에 보이는 지금 높이에서 시작한다. 예전엔 직전 애니메이션(열기·붙기)의 목표 크기에서 시작해, 시트가 움직이는 중에
+      // 바로 잡으면(업체를 누르자마자 끌기 등) 첫 움직임에 목표 크기로 툭 튀었다. 아래로 내려 둔 만큼(translateY)은 빼 준다(move 와 같은 셈).
+      let height = current.current
+      let offset = 0
+      bodyHeight.stopAnimation((value) => {
+        height = value
+      })
+      translateY.stopAnimation((value) => {
+        offset = value
+      })
+      startHeight.current = height - Math.max(0, offset)
+      current.current = Math.max(snaps.current[0] ?? 0, startHeight.current)
     }
     const move = (dy: number) => {
       const lo = snaps.current[0]
@@ -103,6 +121,7 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
       }
     }
     const settle = (target: number) => {
+      dragging.current = false
       current.current = target
       // 감속하며 부드럽게 붙는다(튕김 없이).
       Animated.parallel([
@@ -113,13 +132,15 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     const end = (dy: number, vy: number) => {
       const [lo] = snaps.current
       const next = startHeight.current - dy
-      if (next < lo - DISMISS_OVERSHOOT_PX || (next <= lo + 10 && vy > DISMISS_VELOCITY)) {
+      // 실제로 아래로 끌었을 때만 닫는다 — 열리며 올라오는 중에 잡았다 놓은 것(시작부터 아래에 있던 것)까지 닫지 않게.
+      if (dy > 0 && (next < lo - DISMISS_OVERSHOOT_PX || (next <= lo + 10 && vy > DISMISS_VELOCITY))) {
+        dragging.current = false
         Animated.timing(translateY, { toValue: 800, duration: 180, useNativeDriver: false }).start(({ finished }) => {
           // 중간에 멈췄으면(시트가 사라짐) 닫기를 부르지 않는다.
           if (!finished) return
           translateY.setValue(0)
-          current.current = initial
-          bodyHeight.setValue(initial)
+          current.current = initialRef.current
+          bodyHeight.setValue(initialRef.current)
           onCloseRef.current()
         })
         return
@@ -144,11 +165,12 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     const tap = () => {
       const points = snaps.current
       const bigger = points.find((p) => p > current.current + 1)
-      settle(bigger ?? initial)
+      settle(bigger ?? initialRef.current)
     }
     const cancel = () => settle(current.current)
     return { begin, move, end, tap, cancel }
-  }, [translateY, bodyHeight, initial])
+    // initial 은 ref 로 읽는다 — 내용 높이를 잴 때마다 바뀌는데, 그때 PanResponder 가 끄는 도중 새로 만들어지면 손가락 위치를 잃는다.
+  }, [translateY, bodyHeight])
 
   const panResponder = useMemo(
     () =>
@@ -162,6 +184,9 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
           if (Math.abs(g.dy) < 6 && Math.abs(g.dx) < 6) dragApi.tap()
           else dragApi.end(g.dy, g.vy)
         },
+        // 손잡이는 머리줄 영역(areaHandlers) 안에 있다. 끄는 도중 머리줄이 제스처를 가져가면 '제자리로 되돌리기'와 새 끌기가
+        // 겹쳐 시트가 덜컥거렸다 — 손잡이에서 시작한 제스처는 끝까지 손잡이가 맡는다.
+        onPanResponderTerminationRequest: () => false,
         onPanResponderTerminate: () => dragApi.cancel(),
       }),
     [dragApi],
