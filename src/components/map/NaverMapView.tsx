@@ -104,9 +104,16 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
       setFailed(false)
       setReloading(true)
       webViewRef.current?.reload()
+      // 제한 시간은 보통 onLoadStart 에서 다시 건다. 그런데 iOS 가 다시 불러오기를 미루거나 onLoadStart 를 보내지 않으면
+      // (백그라운드에서 WebView 프로세스가 죽은 뒤 등) 타이머 없이 스피너만 남았다 — 여기서도 건다. 로딩이 시작되면 그쪽이 새로 건다.
+      timerRef.current = setTimeout(() => {
+        if (!readyRef.current) reloadRef.current(false)
+      }, READY_TIMEOUT_MS)
     },
     [clearTimer],
   )
+  const reloadRef = useRef(reload)
+  reloadRef.current = reload
 
   /** 렌더러가 죽었다. 짧은 시간에 여러 번 죽으면 다시 불러오지 않고 "다시 시도" 버튼을 띄운다. */
   const handleCrash = useCallback(() => {

@@ -35,15 +35,18 @@ if (!shapes || shapes.length !== 5) {
 const [band, road, tailShadow, bubbleFace, bubbleSide] = shapes
 const shadowGroup = `<g opacity="0.5" style="mix-blend-mode:multiply">${tailShadow}</g>`
 
-// 말풍선 꼬리 끝. 축소해도 꼬리가 길 위에 그대로 닿도록 이 점을 기준으로 줄인다.
-const TAIL_TIP = { x: 121.77, y: 302.21 }
 const BUBBLE_SCALE = 0.7
 
 const svg = (body, size = 400) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">${body}</svg>`
 
-const scaledAroundTail = (body) =>
-  `<g transform="translate(${TAIL_TIP.x} ${TAIL_TIP.y}) scale(${BUBBLE_SCALE}) translate(${-TAIL_TIP.x} ${-TAIL_TIP.y})">${body}</g>`
+// 적응형 아이콘은 런처가 원·둥근 사각형으로 가운데를 잘라 보여 주므로 말풍선(꼬리 포함)을 캔버스 정중앙에 둔다.
+// 예전에는 꼬리 끝이 길에 닿게 꼬리 끝 기준으로 줄였더니 말풍선이 왼쪽 아래로 치우쳐 보였다(10-10 안드로이드 실기기).
+const bubbleBox = new Resvg(svg(`${bubbleFace}${bubbleSide}`)).getBBox()
+const BUBBLE_CENTER = { x: bubbleBox.x + bubbleBox.width / 2, y: bubbleBox.y + bubbleBox.height / 2 }
+
+const scaledToCenter = (body) =>
+  `<g transform="translate(200 200) scale(${BUBBLE_SCALE}) translate(${-BUBBLE_CENTER.x} ${-BUBBLE_CENTER.y})">${body}</g>`
 
 function render(svgText, width, outName, background) {
   const png = new Resvg(svgText, {
@@ -65,9 +68,9 @@ render(appIconSvg, 1024, 'icon.png', BRAND_BLUE)
 
 // Android 적응형 아이콘
 render(svg(background), 432, 'android-icon-background.png', BRAND_BLUE)
-render(svg(scaledAroundTail(`${shadowGroup}${bubbleFace}${bubbleSide}`)), 432, 'android-icon-foreground.png')
+render(svg(scaledToCenter(`${shadowGroup}${bubbleFace}${bubbleSide}`)), 432, 'android-icon-foreground.png')
 render(
-  svg(scaledAroundTail(`${bubbleFace}${bubbleSide}`.replace(/fill="[^"]*"/g, 'fill="white"').replace(/opacity="[^"]*"/g, ''))),
+  svg(scaledToCenter(`${bubbleFace}${bubbleSide}`.replace(/fill="[^"]*"/g, 'fill="white"').replace(/opacity="[^"]*"/g, ''))),
   432,
   'android-icon-monochrome.png',
 )

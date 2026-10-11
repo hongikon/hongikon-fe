@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Updates from 'expo-updates'
 import { FONTS } from '../../constants/typography'
 import { COLORS } from '../../constants/colors'
+import { notify } from '../../utils/dialog'
 
 /**
  * EAS Update(OTA) 새 버전을 내려받아 알려주는 배너. `App.tsx` 에서 한 번만 올린다.
@@ -51,7 +52,11 @@ export default function UpdateBanner() {
           disabled={reloading}
           onPress={() => {
             setReloading(true)
-            void Updates.reloadAsync()
+            // 다시 시작에 실패하면 버튼을 되살린다 — 예전엔 스피너가 계속 돌고 버튼이 눌리지 않았다.
+            Updates.reloadAsync().catch(() => {
+              setReloading(false)
+              notify('다시 시작하지 못했어요', '앱을 껐다가 다시 켜 주세요.')
+            })
           }}
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           accessibilityRole="button"
