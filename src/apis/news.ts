@@ -30,6 +30,11 @@ export interface BackendNewsSummary {
   sourceId: string | null
   buildingId: number | null
   publishedAt: string
+  /**
+   * 원 게시판에서 "상단 고정"된 글인지(국제교류실 게시판 등). 이 필드가 생기기 전 서버는 보내지 않으므로
+   * 없으면 고정 아님으로 본다.
+   */
+  pinned?: boolean
 }
 
 export interface BackendNewsDetail extends BackendNewsSummary {
@@ -65,6 +70,11 @@ export interface GetNewsOptions {
   sourceIds?: readonly string[]
   /** 제목 부분 일치. */
   keyword?: string
+  /**
+   * true 면 상단 고정 글만, false 면 고정 글을 뺀 목록. 생략하면 전부(예전 동작).
+   * 이 파라미터를 모르는 예전 서버는 무시하므로 고정 글이 일반 목록에도 섞여 온다 — 그 정도는 감수한다.
+   */
+  pinned?: boolean
   signal?: AbortSignal
 }
 
@@ -82,6 +92,7 @@ export function getNews(options: GetNewsOptions = {}): Promise<NewsPage> {
   options.sourceIds?.forEach((id) => params.append('sourceId', id))
   const keyword = options.keyword?.trim()
   if (keyword) params.set('keyword', keyword)
+  if (options.pinned !== undefined) params.set('pinned', String(options.pinned))
   const query = params.toString()
 
   return apiRequest<NewsPage>(`/news${query ? `?${query}` : ''}`, { signal: options.signal })
