@@ -6,12 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 const DISMISS_OVERSHOOT_PX = 70
 /** 이 속도(px/ms)보다 빠르게 아래로 튕기면, 가장 작은 크기일 때 닫는다. */
 const DISMISS_VELOCITY = 1.2
-/** 손을 뗄 때 이 속도(px/ms)보다 빠르면 끈 방향의 다음 크기로 넘긴다. 느리면 놓은 자리에 멈춘다. */
+/** 손을 뗄 때 이 속도(px/ms)보다 빠르면 끈 방향의 다음 크기로 넘긴다. 느리면 가장 가까운 크기로 붙는다. */
 const FLICK_VELOCITY = 0.6
-/** 크기 점(작게·보통) 이만큼 가까이 놓으면 그 점에 붙는다. */
-const MAGNET_PX = 24
-/** 맨 위(화면 끝)까지 이만큼 남기고 놓으면 끝까지 올린다. */
-const TOP_MAGNET_PX = 80
 
 interface Options {
   /** 처음 열릴 때 본문(스크롤 영역) 최대 높이(px). 보통 가장 작은 크기로 조금만 보여 준다. */
@@ -57,7 +53,7 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
   // 크기 점이 바뀔 때(머리줄 높이 측정, 회전·창 크기) 지금 크기를 맞춘다.
   // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다.
   // - 맨 위에 있었으면 새 맨 위로 — 창이 줄었을 때 손잡이·X 가 화면 밖으로 밀려나지 않게.
-  // - 사용자가 고른 크기는 그대로 두고 범위 안으로만 자른다 — 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
+  // - 그 밖에는 새 크기 점 중 가장 가까운 곳으로 — 중간 높이에 남지 않게(10-12). 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
   //   바뀔 때마다 고른 크기를 버리고 작게로 툭 되돌아갔다.
   const hi = points.length ? Math.max(...points) : initial
   const prevSizes = useRef({ initial, hi })
@@ -67,11 +63,13 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     if (prev.initial === initial && prev.hi === hi) return
     // 끄는 중이면 손가락 자리를 그대로 둔다 — 여기서 높이를 바꾸면 시트가 한 프레임에 툭 튀었다가 다음 움직임에 되돌아왔다.
     if (dragging.current) return
-    const lo = snaps.current[0] ?? 0
     let next: number
     if (Math.abs(current.current - prev.initial) <= 1) next = initial
     else if (current.current >= prev.hi - 1) next = hi
-    else next = Math.min(hi, Math.max(lo, current.current))
+    else {
+      const at = current.current
+      next = snaps.current.reduce((best, p) => (Math.abs(p - at) < Math.abs(best - at) ? p : best), initial)
+    }
     if (next !== current.current) {
       current.current = next
       bodyHeight.setValue(next)
@@ -121,6 +119,16 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
         translateY.setValue(lo - next)
       }
     }
+    /** 놓은 높이·속도로 붙을 크기 점을 고른다. */
+    const snapTarget = (height: number, vy: number) => {
+      const points = snaps.current
+      const lo = points[0]
+      const hi = points[points.length - 1]
+      const clamped = Math.min(hi, Math.max(lo, height))
+      if (vy < -FLICK_VELOCITY) return points.find((p) => p > clamped + 1) ?? hi
+      if (vy > FLICK_VELOCITY) return [...points].reverse().find((p) => p < clamped - 1) ?? lo
+      return points.reduce((best, p) => (Math.abs(p - clamped) < Math.abs(best - clamped) ? p : best), lo)
+    }
     const settle = (target: number) => {
       dragging.current = false
       current.current = target
@@ -156,21 +164,9 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
         })
         return
       }
-      // 손을 놓은 자리에 그대로 멈춘다(10-07 요청: 중간에 자유롭게). 다만
-      // - 빠르게 튕기면 그 방향 다음 크기로,
-      // - 맨 위(화면 끝)·크기 점 가까이 놓으면 그 점에 착 붙는다(맨 위 근처면 끝까지 올라간다).
-      const points = snaps.current
-      const hi = points[points.length - 1]
-      const clamped = Math.min(hi, Math.max(lo, next))
-      let target = clamped
-      if (vy < -FLICK_VELOCITY) target = points.find((p) => p > clamped + 1) ?? hi
-      else if (vy > FLICK_VELOCITY) target = [...points].reverse().find((p) => p < clamped - 1) ?? lo
-      else if (hi - clamped < TOP_MAGNET_PX) target = hi
-      else {
-        const near = points.find((p) => Math.abs(p - clamped) < MAGNET_PX)
-        if (near !== undefined) target = near
-      }
-      settle(target)
+      // 항상 크기 점(작게·보통·맨 위) 중 하나에 붙는다(10-12 요청: 중간에 애매하게 멈춘 시트를 없앤다 — 예전 10-07 엔
+      // 놓은 자리에 멈췄다). 빠르게 튕기면 그 방향 다음 크기로, 아니면 가장 가까운 크기로.
+      settle(snapTarget(next, vy))
     }
     /** 손잡이를 끌지 않고 눌렀을 때: 한 단계 크게(가장 크면 처음 크기로). */
     const tap = () => {
@@ -178,7 +174,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
       const bigger = points.find((p) => p > current.current + 1)
       settle(bigger ?? initialRef.current)
     }
-    const cancel = () => settle(current.current)
+    // 끌다가 끊겨도(다른 제스처가 가져감 등) 중간에 두지 않고 가까운 크기로 붙인다.
+    const cancel = () => settle(snapTarget(current.current, 0))
     return { begin, move, end, tap, cancel }
     // initial 은 ref 로 읽는다 — 내용 높이를 잴 때마다 바뀌는데, 그때 PanResponder 가 끄는 도중 새로 만들어지면 손가락 위치를 잃는다.
   }, [translateY, bodyHeight])
