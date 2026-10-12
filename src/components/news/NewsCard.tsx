@@ -30,8 +30,17 @@ function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: News
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress}>
       <View style={styles.cardTop}>
-        <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
-          <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
+        <View style={styles.cardTopLeft}>
+          <View style={[styles.badge, { backgroundColor: catColor?.bg }]}>
+            <Text style={[styles.badgeText, { color: catColor?.text }]}>{item.category}</Text>
+          </View>
+          {/* 구독 탭처럼 고정 글을 따로 빼지 않는 목록에선 오래된 날짜의 글이 섞여 보이니 까닭을 작게 알려 준다. */}
+          {item.pinned && (
+            <View style={styles.pinned}>
+              <Ionicons name="pin" size={11} color={COLORS.textTertiary} />
+              <Text style={styles.pinnedText}>고정</Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardTopRight}>
           <Text style={styles.cardDate}>{item.date}</Text>
@@ -73,7 +82,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
+  cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  pinned: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  pinnedText: { fontSize: 11, fontFamily: FONTS.medium, color: COLORS.textTertiary },
   badgeText: { fontSize: 11, fontFamily: FONTS.semibold },
   cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardDate: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
