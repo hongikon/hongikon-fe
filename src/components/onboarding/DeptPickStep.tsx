@@ -15,10 +15,13 @@ import { SELECTED_PILL_BG } from '../common/Chip'
 import { RADIUS } from '../../constants/spacing'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 
+/** 같은 '대학' 묶음이지만 일부 학생만 보는 국제협력본부 게시판은 한 번에 켜지 않는다. */
+const BULK_EXCLUDED_BOARD_IDS: readonly string[] = ['국제교류실', '글로벌역량지원사업']
+
 /** '대학' 묶음(학사·장학 등 학교 전체 게시판 6개). "학교 공지 함께 받기"가 한 번에 켠다. */
-const UNIVERSITY_BOARD_IDS: readonly string[] = SUBSCRIBABLE_ITEMS.filter((item) => item.group === '대학').map(
-  (item) => item.id,
-)
+const UNIVERSITY_BOARD_IDS: readonly string[] = SUBSCRIBABLE_ITEMS.filter(
+  (item) => item.group === '대학' && !BULK_EXCLUDED_BOARD_IDS.includes(item.id),
+).map((item) => item.id)
 
 interface DeptPickStepProps {
   /** 고른 게 있든 없든 다음 단계로. 구독은 고르는 즉시 이미 저장돼 있다. */

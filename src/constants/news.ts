@@ -3,17 +3,14 @@ import type { TreeNode, TreeChild } from '../types'
 export const TREE_DATA: TreeNode[] = [
   { name: '대학', children: [
     { id: '교수학습지원', name: '교수학습지원' },
+    // 국제협력본부 사이트(inno.hongik.ac.kr/oia)의 게시판 둘. 학교 전체 공지라 '대학' 안에 둔다.
+    { id: '국제교류실', name: '국제교류실 공지' },
+    { id: '글로벌역량지원사업', name: '글로벌역량 지원사업' },
     { id: '대학혁신지원사업', name: '대학혁신지원사업' },
     { id: '장학', name: '장학' },
     { id: '학사', name: '학사' },
     { id: '학생상담', name: '학생상담' },
     { id: '학생활동', name: '학생활동' },
-  ]},
-  // 국제협력본부 사이트(inno.hongik.ac.kr/oia)의 게시판 둘. 대학공지와 따로 올라오는 학교 전체 공지라
-  // '대학' 바로 뒤에 둔다. 온보딩 "학교 공지 함께 받기"(group === '대학')에는 일부러 넣지 않았다.
-  { name: '국제협력본부', children: [
-    { id: '국제교류실', name: '국제교류실 공지' },
-    { id: '글로벌역량지원사업', name: '글로벌역량 지원사업' },
   ]},
   { name: '건축도시대학', children: [
     { id: '건축학부', name: '건축학부' },
