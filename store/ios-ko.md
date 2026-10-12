@@ -150,32 +150,46 @@ App Store Connect에 그대로 붙여 넣는 값이다. 근거와 판단 이유�
 ## 앱 심사 정보
 
 - 연락처: 이름, 이메일 `hongikonsupport@gmail.com`, 전화 `+82 10-XXXX-XXXX` (사람이 입력)
-- 로그인 필요: 켬. 카카오 데모 계정(2단계 인증 끔, 해외 로그인 차단 끔)
+- 로그인 필요: 켬. 사용자 이름 `hongikon.review`, 비밀번호는 운영 서버 `.env` 의 `DEMO_LOGIN_PASSWORD`(저장소에 적지 않는다).
+  앱에서는 시작 화면 로고를 5번 눌러 여는 심사용 로그인(`POST /auth/demo`, 서버 `DEMO_LOGIN_ENABLED=true` 일 때만). 심사가 끝나면 끄고 비밀번호를 바꾼다.
+- 화면 녹화(실기기, 10-11): Google Drive 링크를 메모 맨 위에 둔다. 영상만으로는 데모 계정을 대신할 수 없다(베타 심사 반려 사유).
 - 메모(영어, ≤4000바이트):
 
 ```
-HongikOn (홍익온) is a free, unofficial campus companion app for Hongik University (Seoul, Korea), built by a student team. It is not affiliated with or endorsed by the university; this is stated on the welcome screen, at the bottom of Settings, and in the description.
+HongikOn (홍익온) is a free, unofficial campus companion app for Hongik University (Seoul, Korea), built by a student team. It is not affiliated with or endorsed by the university; this is stated on the welcome screen, at the bottom of Settings, and in the description. No paid content, subscriptions or in-app purchases.
 
-1) Reviewing without an account
-- On first launch, swipe through the intro and tap "확인했어요" on the app permissions notice. On the welcome screen tap "둘러보기" (Browse without signing in). A one-time "어떤 소식을 받아볼까요?" screen then asks which departments to follow (it also appears right after signing in instead); pick any department, or tap "나중에 할게요" to skip. It is skipped automatically if the account already follows departments. Notification permission is not requested at first launch or for guests; it is asked once, after signing in, with an explanation screen first ("알림 받기" / "나중에"). Map (지도), Notices (소식), partner discounts and Settings (설정) work fully as a guest.
+Screen recording (physical iPhone, from launch: onboarding, browse mode, sign-in and consent, map, notices, posting a report, report/block, comments, account deletion):
+https://drive.google.com/file/d/1KJpv7AklMJPMwFaNdKuX1KaY-gX0Q6U6/view?usp=share_link
 
-2) Signing in
-- Sign in with Apple is available on the welcome screen and in Settings > 로그인하기. You can also use the Kakao demo account in the Sign-In fields above.
-- Before the first sign-in on a device, a short sheet asks you to accept the Terms of Use, confirm you have read the Privacy Policy, and confirm you are 14 or older. Check "모두 확인하고 동의해요" and tap "동의하고 시작하기".
-- Account deletion: Settings > 일반 > 회원 탈퇴 (the row right below 설정 초기화) > "예, 탈퇴할게요" in the confirmation dialog. The account and its reports, photos, comments, subscriptions and push tokens are deleted immediately. The server revokes the Sign in with Apple token via Apple's REST API and unlinks Kakao. Only for members who were suspended or had a report deleted for a policy violation, a minimal record (a keyed hash of the login ID, the suspension reason and a summary of the deleted reports) is kept separately for one year to prevent ban evasion, as disclosed in the Privacy Policy.
+During TestFlight beta review we were asked for a demo account. This build includes a dedicated review sign-in that does not depend on a third-party (Kakao) account. Credentials are in the Sign-In Information fields above.
 
-3) User-generated content (campus reports) and moderation
-- Map tab > "제보하기" button > pick a location on the map > fill in title/content > optionally attach up to 3 photos > "제보 올리기". Camera and photo library access are requested only when you tap the camera or album button.
-- Every report is PRE-MODERATED: it is shown to other users only after an admin approves it. Approved sample reports are already on the map near the campus center, so you can try the actions below without waiting. During the review period an admin is on call around the clock and approves test reports within about 30 minutes.
-- Each report has "신고" (report/flag, with reasons) and "이 사용자 숨기기" (block: hides all reports from this author; manage in Settings > 숨긴 사용자) actions. Reports flagged by 3+ users are hidden automatically until an admin reviews them. Admins can remove content and suspend users.
-- Comments on reports: open an approved report on the map; signed-in users can comment and reply one level deep (max 200 characters, rate-limited). Comments appear immediately (post-moderation). Every comment/reply by another user has a "⋮" menu with "신고하기" (flag with the same reasons) and "이 사용자 숨기기" (block the author; blocked authors' reports and comments are both hidden); reports use the same "⋮" menu. A comment flagged by 3 users is hidden automatically; admins can hide, delete or restore comments from the admin console, and suspended users cannot comment. Guests can read comments but must sign in to write or flag. Terms of use (zero tolerance for objectionable content) are linked in Settings > 이용약관.
+1) Signing in with the review account
+- On the welcome screen, tap the "HONGIK ON" logo 5 times quickly. A "심사용 로그인" (Review sign-in) dialog opens.
+- Enter the User Name and Password above and tap "로그인".
+- On the first sign-in, check "모두 확인하고 동의해요" and tap "동의하고 시작하기" (Terms, Privacy Policy, age 14+).
+- The review account has sample content: department subscriptions, bookmarked notices and approved campus reports.
+- Sign in with Apple is also available on the welcome screen and in Settings > 로그인하기.
+
+2) Without an account
+- Tap "둘러보기" (Browse). The map, facilities, partner discounts and notices work fully as a guest.
+
+3) Main features
+- Map tab: search finds partner stores and campus facilities (e.g. "프린터", "행정실", "총학생회"); selecting a facility moves to its building and highlights the floor. The bottom sheet snaps to three sizes.
+- News tab: subscribe to boards (bell icon) and bookmark notices. Under 대학 > 국제협력본부 there are two new boards (국제교류실 공지, 글로벌역량 지원사업); pinned notices from the original board appear in a collapsible group above the list.
+- Settings tab: notifications, keyword alerts, nickname, my reports, update history, account deletion.
+
+4) User-generated content (campus reports) and moderation
+- Map tab > megaphone button > pick a location > title/content > up to 3 photos > "제보 올리기". Camera/photo access is requested only when you tap the camera or album button.
+- Reports are PRE-MODERATED and shown only after an admin approves them. Approved sample reports are already on the map near the campus center. During review an admin approves test reports within about 30 minutes.
+- Every report and comment has "신고" (flag with reasons) and "이 사용자 숨기기" (block the author) in the "⋮" menu. Content flagged by 3+ users is hidden automatically until an admin reviews it. Admins can remove content and suspend users.
+
+5) Account deletion
+- Settings > 일반 > 회원 탈퇴 > "예, 탈퇴할게요". The account and its reports, photos, comments, subscriptions and push tokens are deleted immediately.
+
+6) Other notes
+- The app does not use device location; report locations are picked manually on the map.
+- Notices are collected from public Hongik University boards; each shows its source and links to the original ("원문 보기").
 - Contact: hongikonsupport@gmail.com, https://hongikon.com/support/
-
-4) Other notes
-- The app does not use device location. Report locations are picked manually on the map.
-- Notices are collected from public Hongik University notice boards. Each item shows its source board at the top and links to the original page ("원문 보기").
-- Push notifications: subscribe to boards in Settings (설정) > 구독 관리 (login required). New notices are checked hourly, so a test push may take up to an hour.
-- Some UI copy is Korean only, because the app targets Korean university students.
 ```
 
 제출 전 확인: 메모의 기능(신고 사유, 숨기기, 자동 숨김 3회, 관리자 정지, Apple 토큰 폐기, 제보 댓글과 댓글 신고·자동 숨김)이 운영 서버에 배포돼 있어야 한다. 없는 기능이 있으면 해당 문장을 지운다.
