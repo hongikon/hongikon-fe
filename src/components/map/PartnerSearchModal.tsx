@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  FlatList,
   SectionList,
   Modal,
   TouchableOpacity,
@@ -14,8 +13,11 @@ import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { partnerCategoryMeta } from "../../constants/partnerCategories";
 import { browsePartnersByCategory, searchPartners } from "../../utils/partnerSearch";
+import { searchFacilities, type FacilitySearchResult } from "../../utils/facilitySearch";
+import { facilityKindMeta } from "../../constants/facilityKinds";
+import { KindIcon } from "./ChipIcon";
 import { partnersOutsideFocus } from "../../utils/partners";
-import type { Partner, PartnerCategory } from "../../types";
+import type { Facility, Partner, PartnerCategory } from "../../types";
 import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
 import { ModalPanel } from "../settings/ModalHeader";
@@ -30,6 +32,8 @@ interface PartnerSearchModalProps {
   topInset: number;
   onClose: () => void;
   onSelect: (partner: Partner) => void;
+  /** 편의시설 결과를 골랐다(지도에서 그 시설 종류·건물 시트를 연다). */
+  onSelectFacility: (facility: Facility) => void;
   /**
    * 검색어가 없을 때 목록 맨 위에 따로 모아 보여 줄 업체들. 지도 위 "지도에 안 보이는 N곳" 안내에서
    * 열 때 그 업체들을 바로 고르게 하려고 쓴다.
@@ -37,24 +41,50 @@ interface PartnerSearchModalProps {
   pinned?: { title: string; hint?: string; partners: readonly Partner[] };
 }
 
+type SearchRow =
+  | { type: "facility"; key: string; item: FacilitySearchResult }
+  | { type: "partner"; key: string; item: Partner };
+
 /**
- * 제휴 업체 검색.
+ * 지도 검색(제휴 업체 + 편의시설).
  * 이미 받아 둔 지도 데이터만 훑기 때문에 네트워크를 타지 않고 한 글자마다 즉시 반응한다.
- * 상호명 외에 혜택·주소로도 걸리므로 '10%할인', '상수동' 같은 검색도 된다.
+ * 제휴는 상호명 외에 혜택·주소·소속으로도 걸리므로 '10%할인', '상수동', '총학생회' 같은 검색도 된다.
+ * 편의시설은 부서 이름('교무처')·종류('프린터', 별칭 '인쇄')·건물로 찾는다 — 칩만으로 찾기 어려운 행정 부서 등(10-12 요청).
  */
 export default function PartnerSearchModal({
   visible,
   topInset,
   onClose,
   onSelect,
+  onSelectFacility,
   pinned,
 }: PartnerSearchModalProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
 
   // 지도 데이터를 아직 못 받았으면(빈 배열) 검색·목록 대신 안내를 띄운다.
-  const { partners, data, status, reload } = useMapData();
+  const { partners, facilities, data, status, reload } = useMapData();
   const results = useMemo(() => searchPartners(partners, query), [partners, query]);
+  const facilityResults = useMemo(() => searchFacilities(facilities, query), [facilities, query]);
+  // 편의시설 결과는 '제휴 업체' 위에 따로 묶는다(둘 다 있을 때만 구획 머리줄을 단다).
+  const resultSections = useMemo(() => {
+    const sections: { title: string | null; data: SearchRow[] }[] = [];
+    const both = facilityResults.length > 0 && results.length > 0;
+    if (facilityResults.length > 0) {
+      sections.push({
+        title: both ? "편의시설" : null,
+        data: facilityResults.map((item) => ({ type: "facility" as const, key: `f:${item.facility.id}`, item })),
+      });
+    }
+    if (results.length > 0) {
+      sections.push({
+        title: both ? "제휴 업체" : null,
+        data: results.map((item) => ({ type: "partner" as const, key: `p:${item.id}`, item })),
+      });
+    }
+    return sections;
+  }, [facilityResults, results]);
+  const resultCount = results.length + facilityResults.length;
   const hasQuery = query.trim().length > 0;
   // 목록 자체는 검색어와 무관하게 데이터가 바뀔 때만 다시 계산한다.
   const browseSections = useMemo(() => browsePartnersByCategory(partners), [partners]);
@@ -105,6 +135,37 @@ export default function PartnerSearchModal({
   const handleSelect = (partner: Partner) => {
     setQuery("");
     onSelect(partner);
+  };
+
+  const handleSelectFacility = (facility: Facility) => {
+    setQuery("");
+    onSelectFacility(facility);
+  };
+
+  const renderFacilityRow = ({ facility, title, subtitle }: FacilitySearchResult) => {
+    const meta = facilityKindMeta(facility.kind);
+    return (
+      <TouchableOpacity
+        style={styles.row}
+        activeOpacity={0.7}
+        onPress={() => handleSelectFacility(facility)}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}, ${subtitle}`}
+      >
+        <View style={styles.facilityIcon}>
+          <KindIcon name={meta.icon} size={15} color={meta.color} />
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.address} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
+      </TouchableOpacity>
+    );
   };
 
   // 카테고리별로 묶인 목록(browseSections)에서는 구획 제목이 이미 카테고리를
@@ -197,8 +258,8 @@ export default function PartnerSearchModal({
             inputRef={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder="제휴 업체 검색"
-            accessibilityLabel="제휴 업체 검색"
+            placeholder="제휴 업체·편의시설 검색"
+            accessibilityLabel="제휴 업체·편의시설 검색"
             style={styles.searchBar}
           />
         </ScreenHeader>
@@ -216,17 +277,23 @@ export default function PartnerSearchModal({
           ) : (
             <EmptyState icon="time-outline" message="제휴 업체 정보를 불러오는 중이에요" style={styles.hintBox} />
           )
-        ) : hasQuery && results.length === 0 ? (
+        ) : hasQuery && resultCount === 0 ? (
           <EmptyState icon="search-outline" message={query.trim() ? `'${query.trim()}' 검색 결과가 없어요` : "검색 결과가 없어요"} style={styles.hintBox} />
         ) : null}
 
         {!data ? null : hasQuery ? (
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.id}
+          <SectionList
+            sections={resultSections}
+            keyExtractor={(row) => row.key}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => renderPartnerRow(item)}
+            stickySectionHeadersEnabled={false}
+            renderSectionHeader={({ section }) =>
+              section.title ? <Text style={styles.resultHeader}>{section.title}</Text> : null
+            }
+            renderItem={({ item: row }) =>
+              row.type === "facility" ? renderFacilityRow(row.item) : renderPartnerRow(row.item)
+            }
           />
         ) : (
           <SectionList
@@ -239,7 +306,7 @@ export default function PartnerSearchModal({
               <>
                 {farOnTop && farBlock}
                 <Text style={styles.browseHint}>
-                  상호명은 물론 혜택이나 주소로도 찾을 수 있어요. 예: 어리 · 10%할인 · 상수동
+                  제휴 업체는 상호명·혜택·주소·소속으로, 편의시설은 부서·종류·건물로 찾을 수 있어요. 예: 총학생회 · 10%할인 · 교무처 · 프린터
                 </Text>
               </>
             }
@@ -315,6 +382,15 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   sectionHeaderTitle: { flexDirection: "row", alignItems: "center", gap: 7 },
+  resultHeader: {
+    fontSize: 13,
+    fontFamily: FONTS.semibold,
+    color: COLORS.textSecondary,
+    backgroundColor: COLORS.white,
+    paddingTop: 16,
+    paddingBottom: 4,
+  },
+  facilityIcon: { width: 20, alignItems: "center", marginTop: 1 },
   sectionHeaderText: { fontSize: 20, fontFamily: FONTS.bold },
   sectionHeaderCount: {
     fontSize: 12,

@@ -7,13 +7,18 @@ export interface PartnerSection {
   data: Partner[]
 }
 
-/** 상호명뿐 아니라 혜택·주소로도 찾게 한다. '10%할인', '상수동' 같은 검색을 위해서다. */
+/**
+ * 상호명뿐 아니라 혜택·주소·제휴 소속으로도 찾게 한다. '10%할인', '상수동', '총학생회'(그 소속과 맺은 제휴 전부)
+ * 같은 검색을 위해서다.
+ */
 function searchableFields(partner: Partner): string[] {
   return [
     partner.name,
     partner.category,
     partner.benefit ?? '',
     partner.address ?? '',
+    ...(partner.affiliations ?? []),
+    ...(partner.affiliationBenefits ?? []).map((item) => item.benefit),
   ]
 }
 

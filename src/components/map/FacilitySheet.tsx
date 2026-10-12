@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import SheetHandle from "./SheetHandle";
 import { KindIcon } from "./ChipIcon";
 import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, Linking, Platform } from "react-native";
@@ -35,6 +35,8 @@ interface FacilitySheetProps {
   /** 지도 데이터의 전시 전체. '행사·전시' 시트에서만 쓴다(시설 id 로 골라 각 줄 아래에 보여 준다). */
   exhibitions?: readonly Exhibition[];
   onClose: () => void;
+  /** 검색으로 찾아온 시설 id. 그 줄을 메인 색 테두리로 표시하고 보이게 스크롤한다(10-12 요청). */
+  highlightId?: string | null;
 }
 
 /**
@@ -43,7 +45,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose }: FacilitySheetProps) {
+export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, highlightId = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -58,11 +60,23 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     isRestaurant &&
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
-  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
-    midRatio: 0.5,
   });
+  // 찾아온 줄이 목록 아래쪽(홍문관 행정 부서 20여 곳 등)이면 처음 한 번 그 줄이 맨 위에 오게 스크롤한다.
+  // 줄마다 위치를 기억해 두어, 시트가 열린 채 같은 건물의 다른 시설을 다시 검색해 와도 바로 스크롤한다.
+  const scrollRef = useRef<ScrollView | null>(null);
+  const rowY = useRef(new Map<string, number>());
+  const [layoutTick, setLayoutTick] = useState(0);
+  const scrolledFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!highlightId || scrolledFor.current === highlightId) return;
+    const y = rowY.current.get(highlightId);
+    if (y === undefined) return;
+    scrolledFor.current = highlightId;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 4), animated: false });
+  }, [highlightId, layoutTick]);
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
@@ -92,17 +106,23 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       </View>
 
       <SheetScrollBody
-        onContentSizeChange={onContentSizeChange}
-        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져 처음부터 칸을 넓게 연다. 크기 조절·닫기는 손잡이에만 걸려 있어
-        // 이 스크롤과 겹치지 않는다.
+        sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange}
+        scrollRef={scrollRef}
+       
+        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어진다. 스크롤이 맨 위·맨 아래에 닿은 채 더 끌면 시트 크기가 바뀐다(sheetGesture).
         style={{ height: bodyHeight }}
         contentContainerStyle={styles.list}
         bounces={false}
       >
         {sorted.map((item) => {
+          const highlighted = item.id === highlightId;
+          const onLayout = (e: { nativeEvent: { layout: { y: number } } }) => {
+            rowY.current.set(item.id, e.nativeEvent.layout.y);
+            if (highlighted) setLayoutTick((n) => n + 1);
+          };
           const row = (
             <View
-              style={styles.row}
+              style={[styles.row, highlighted && styles.rowHighlighted]}
               accessible
               accessibilityLabel={`${item.floor !== undefined ? formatFloor(item.floor) : "층 확인 중"} ${item.note ?? kind}`}
             >
@@ -114,15 +134,15 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
           );
           if (isRestaurant) {
             return (
-              <View key={item.id} style={styles.venue}>
+              <View key={item.id} style={styles.venue} onLayout={onLayout}>
                 {row}
                 <CafeteriaMenu facilityId={item.id} week={cafeteriaWeek} />
               </View>
             );
           }
-          if (kind !== "행사·전시") return <View key={item.id}>{row}</View>;
+          if (kind !== "행사·전시") return <View key={item.id} onLayout={onLayout}>{row}</View>;
           return (
-            <View key={item.id} style={styles.venue}>
+            <View key={item.id} style={styles.venue} onLayout={onLayout}>
               {row}
               <VenueExhibitions facilityId={item.id} exhibitions={exhibitions ?? []} />
             </View>
@@ -336,7 +356,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: COLORS.background,
+    // 찾아온 줄 테두리가 생겨도 줄 높이가 바뀌지 않게 평소에도 투명 테두리를 둔다.
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
+  rowHighlighted: { borderColor: COLORS.primary, backgroundColor: COLORS.white },
   floor: {
     minWidth: 40,
     fontSize: 15,

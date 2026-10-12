@@ -38,10 +38,9 @@ export default function BuildingSheet({
   onSetFrom,
   onSetTo,
 }: BuildingSheetProps) {
-  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing). 내용이 짧아 보통은 내용 높이에서 멈춘다.
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
-    midRatio: 0.5,
   });
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
@@ -67,7 +66,7 @@ export default function BuildingSheet({
       </View>
       </View>
 
-      <SheetScrollBody style={{ height: bodyHeight }} onContentSizeChange={onContentSizeChange} bounces={false}>
+      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} style={{ height: bodyHeight }} bounces={false}>
       <Text style={styles.type}>
         {building.floors === undefined
           ? building.type
