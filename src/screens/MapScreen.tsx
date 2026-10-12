@@ -261,6 +261,8 @@ export default function MapScreen() {
   );
   /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
   const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
+  /** 검색으로 찾아간 편의시설. 그 시설 시트에서 해당 줄을 강조한다. 핀을 직접 누르거나 칩을 바꾸면 지운다. */
+  const [searchedFacility, setSearchedFacility] = useState<Facility | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
   const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
@@ -577,6 +579,7 @@ export default function MapScreen() {
 
         // 편의시설 핀: 건물 소개가 아니라 그 시설이 몇 층 어디에 있는지 보여 준다(FacilitySheet).
         if (msg.type === "facilityTap") {
+          setSearchedFacility(null);
           setSelectedPartner(null);
           setSelectedBuilding(null);
           setSelectedReport(null);
@@ -738,6 +741,7 @@ export default function MapScreen() {
           : null;
       postToMap({ type: "setFacilities", markers, bounds });
       setSelectedFacilityBuilding(facility.buildingName);
+      setSearchedFacility(facility);
     },
     [facilities, buildings, exhibitions, postToMap],
   );
@@ -849,6 +853,7 @@ export default function MapScreen() {
     (next: FacilityKind | null) => {
       setFacilityKind(next);
       setSelectedFacilityBuilding(null);
+      setSearchedFacility(null);
       if (next === null) {
         postToMap({ type: "clearFacilities" });
         return;
@@ -1661,6 +1666,13 @@ export default function MapScreen() {
                 (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
               )}
               exhibitions={exhibitions}
+              highlightId={
+                searchedFacility &&
+                searchedFacility.kind === facilityKind &&
+                searchedFacility.buildingName === selectedFacilityBuilding
+                  ? searchedFacility.id
+                  : null
+              }
               onClose={() => setSelectedFacilityBuilding(null)}
             />
           )}

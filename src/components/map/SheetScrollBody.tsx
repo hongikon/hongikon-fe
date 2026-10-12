@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState, type ComponentProps } from 'react'
+import { useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react'
 import {
   Animated,
   PanResponder,
+  type ScrollView,
   StyleSheet,
   View,
   type LayoutChangeEvent,
@@ -22,6 +23,8 @@ type Props = ComponentProps<typeof Animated.ScrollView> & {
   sheetGesture?: SheetBodyGesture
   /** 본문 안에서 메뉴(Modal)를 띄운 동안 true — Modal 터치도 React 트리를 따라 여기로 올라오므로 시트를 끌지 않게. */
   sheetGestureDisabled?: boolean
+  /** 본문을 코드로 스크롤할 때(검색으로 찾아간 줄 보이기 등). */
+  scrollRef?: RefObject<ScrollView | null>
 }
 
 /**
@@ -35,6 +38,7 @@ export default function SheetScrollBody({
   onScroll,
   sheetGesture,
   sheetGestureDisabled = false,
+  scrollRef,
   children,
   ...rest
 }: Props) {
@@ -86,6 +90,7 @@ export default function SheetScrollBody({
   return (
     <View {...(sheetGesture ? handoff.panHandlers : null)}>
       <Animated.ScrollView
+        ref={scrollRef}
         bounces={false}
         // 댓글 창(Modal)은 화면으론 따로 뜨지만 React 트리상 이 스크롤 안에 있어 터치가 여기로 거슬러 온다.
         // 기본값('never')이면 키보드가 떠 있을 때 첫 탭을 키보드 닫기로 먹어 댓글 보내기가 눌리지 않았다(10-09).
