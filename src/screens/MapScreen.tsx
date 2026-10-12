@@ -69,6 +69,7 @@ import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { withExhibitionHints } from "../utils/exhibitions";
 import type {
   Building,
+  Facility,
   FacilityKind,
   MapLayer,
   Partner,
@@ -704,6 +705,41 @@ export default function MapScreen() {
       postToMap({ type: "focusPartner", id: partner.id, zoom: FOCUS_ZOOM });
     },
     [postToMap],
+  );
+
+  /**
+   * 검색에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면 그 지점)로
+   * 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
+   */
+  const handleSearchSelectFacility = useCallback(
+    (facility: Facility) => {
+      setShowSearch(false);
+      // 갈래 전환(handleSelectLayer)과 같은 정리: 제휴·제보 선택과 마커를 지운다.
+      setLayer("편의시설");
+      setSelectedPartner(null);
+      setSelectedBuilding(null);
+      setSelectedAffiliation(null);
+      setSelectedCategory(null);
+      postToMap({ type: "clearPartners" });
+      setReportsOn(false);
+      setHotOnly(false);
+      setSelectedReport(null);
+      postToMap({ type: "clearReports" });
+
+      setFacilityKind(facility.kind);
+      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, facility.kind), facilities, exhibitions);
+      const building = buildings.find((b) => b.name === facility.buildingName);
+      const lat = facility.lat ?? building?.lat;
+      const lng = facility.lng ?? building?.lng;
+      // 건물 하나가 화면 가운데 오도록 좁은 범위(약 ±70m)를 준다.
+      const bounds =
+        lat !== undefined && lng !== undefined
+          ? { swLat: lat - 0.0006, swLng: lng - 0.0008, neLat: lat + 0.0006, neLng: lng + 0.0008 }
+          : null;
+      postToMap({ type: "setFacilities", markers, bounds });
+      setSelectedFacilityBuilding(facility.buildingName);
+    },
+    [facilities, buildings, exhibitions, postToMap],
   );
 
   // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
@@ -1878,6 +1914,7 @@ export default function MapScreen() {
         topInset={insets.top}
         onClose={() => setShowSearch(false)}
         onSelect={handleSearchSelect}
+        onSelectFacility={handleSearchSelectFacility}
         pinned={
           searchPinned && searchPinned.length > 0
             ? {
