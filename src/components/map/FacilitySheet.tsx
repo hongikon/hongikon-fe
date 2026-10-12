@@ -61,7 +61,6 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
     smallRatio: 0.22,
-    midRatio: 0.5,
   });
 
   return (

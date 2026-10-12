@@ -346,19 +346,19 @@ export const SheetHeaderContext = createContext<{ headerHeight: number; onCoverH
 interface SheetSizingOptions {
   /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이. */
   smallRatio?: number
-  /** 보통 크기 = 화면 높이 × 이 값(내용 높이로 자른다). */
+  /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기(내용 높이로 자른다). */
   midRatio?: number
 }
 
 /**
- * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지를 오가고, 머리줄만 남긴 채 더
- * 내리면 닫힌다. 처음엔 작게 연다. 모든 크기는 내용 높이로 잘라 빈칸이 생기지 않게 한다.
+ * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 작게 → 보통(화면의 약 63%) → 화면 위 끝까지 세 단계를 오가고, 작게에서 더
+ * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다. 모든 크기는 내용 높이로 잘라 빈칸이 생기지 않게 한다.
  * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
  * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
  */
 export function useSheetSizing(
   onClose: () => void,
-  { smallRatio = 0.22, midRatio = 0.5 }: SheetSizingOptions = {},
+  { smallRatio = 0.22, midRatio = 0.63 }: SheetSizingOptions = {},
 ) {
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -369,10 +369,11 @@ export function useSheetSizing(
   const fullHeight = Math.max(160, windowHeight - insets.top - insets.bottom - chromeHeight - 48)
   const cap = (h: number) => Math.min(contentHeight === null ? h : Math.min(h, contentHeight), fullHeight)
   const small = Math.round(cap(windowHeight * smallRatio))
-  const mid = Math.round(cap(windowHeight * midRatio))
+  // 머리줄·아래 여백까지 합쳐 시트가 화면의 midRatio 만큼 차지하게 본문 높이를 정한다.
+  const mid = Math.round(cap(Math.max(small, windowHeight * midRatio - chromeHeight - insets.bottom - 40)))
   // 맨 위도 내용 높이로 자른다 — 내용이 짧으면 손잡이를 한 번 눌러도 텅 빈 전체 화면 시트가 되지 않게.
   const top = Math.round(cap(fullHeight))
-  const points = Array.from(new Set([0, small, mid, top]))
+  const points = Array.from(new Set([small, mid, top]))
   const { translateY, bodyHeight, panHandlers, areaHandlers } = useResizableSheet(onClose, { initial: small, points })
 
   // 본문이 이 높이를 넘으면 시트 윗변이 검색바·칩 오버레이 밑으로 들어간다 → 오버레이를 숨기게 알린다.

@@ -69,7 +69,6 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절. 처음엔 작게(본문 일부) 연다.
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
     smallRatio: 0.22,
-    midRatio: 0.5,
   })
   const { accessToken, logout } = useAuth()
   const { settings } = useSettings()
