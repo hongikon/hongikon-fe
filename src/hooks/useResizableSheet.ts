@@ -25,7 +25,6 @@ interface Options {
  * - 처음엔 조금만 보여 주고, 손잡이를 위로 끌면 커지고 아래로 끌면 작아진다. 손을 떼면 points 중 가까운 크기로 붙는다.
  * - 가장 작은 크기에서 더 끌어내리면(또는 빠르게 튕기면) 시트가 내려가며 닫힌다.
  * 본문 높이(bodyHeight)를 직접 바꾼다. 0 이면 머리줄만 남고, 가장 큰 값이면 화면 위 끝까지 올라온다.
- * 작은·보통 크기는 시트 쪽에서 내용 높이로 잘라 넘겨, 내용이 짧을 때 빈칸이 생기지 않게 한다.
  * `panHandlers` 는 손잡이에만 건다 — 본문 스크롤과 부딪히지 않게. 본문은 스크롤이 끝에 닿았을 때만 `bodyGesture` 로 넘긴다.
  */
 export function useResizableSheet(onClose: () => void, { initial, points }: Options) {
@@ -55,8 +54,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 크기 점이 바뀔 때(내용 높이 측정·변화, 회전·창 크기) 지금 크기를 맞춘다.
-  // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다(처음 내용 높이를 잴 때).
+  // 크기 점이 바뀔 때(머리줄 높이 측정, 회전·창 크기) 지금 크기를 맞춘다.
+  // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다.
   // - 맨 위에 있었으면 새 맨 위로 — 창이 줄었을 때 손잡이·X 가 화면 밖으로 밀려나지 않게.
   // - 사용자가 고른 크기는 그대로 두고 범위 안으로만 자른다 — 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
   //   바뀔 때마다 고른 크기를 버리고 작게로 툭 되돌아갔다.
@@ -379,16 +378,18 @@ export const SheetHeaderContext = createContext<{ headerHeight: number; onCoverH
 })
 
 interface SheetSizingOptions {
-  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이. */
+  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. */
   smallRatio?: number
-  /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기(내용 높이로 자른다). */
+  /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기. */
   midRatio?: number
 }
 
 /**
  * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 작게 → 보통(화면의 약 63%) → 화면 위 끝까지 세 단계를 오가고, 작게에서 더
- * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다. 모든 크기는 내용 높이로 잘라 빈칸이 생기지 않게 한다.
- * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
+ * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다.
+ * 세 크기는 내용 길이와 상관없이 모든 시트가 같다(10-12 요청 — 항목이 하나뿐이어도 끝까지 올릴 수 있게 UX 통일).
+ * 예전엔 내용 높이로 잘라 짧은 시트는 올라가지 않았다.
+ * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에
  * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
  */
 export function useSheetSizing(
@@ -398,15 +399,13 @@ export function useSheetSizing(
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const header = useContext(SheetHeaderContext)
-  const [contentHeight, setContentHeight] = useState<number | null>(null)
   const [chromeHeight, setChromeHeight] = useState(110)
   // 시트 위아래 여백(위 10 + 아래 30)과 상태 표시줄·홈 인디케이터를 빼고 남는 만큼이 '화면 끝까지' 높이다.
   const fullHeight = Math.max(160, windowHeight - insets.top - insets.bottom - chromeHeight - 48)
-  const cap = (h: number) => Math.min(contentHeight === null ? h : Math.min(h, contentHeight), fullHeight)
+  const cap = (h: number) => Math.min(h, fullHeight)
   const small = Math.round(cap(windowHeight * smallRatio))
   // 머리줄·아래 여백까지 합쳐 시트가 화면의 midRatio 만큼 차지하게 본문 높이를 정한다.
   const mid = Math.round(cap(Math.max(small, windowHeight * midRatio - chromeHeight - insets.bottom - 40)))
-  // 맨 위도 내용 높이로 자른다 — 내용이 짧으면 손잡이를 한 번 눌러도 텅 빈 전체 화면 시트가 되지 않게.
   const top = Math.round(cap(fullHeight))
   const points = Array.from(new Set([small, mid, top]))
   const { translateY, bodyHeight, panHandlers, areaHandlers, bodyGesture } = useResizableSheet(onClose, { initial: small, points })
@@ -445,7 +444,6 @@ export function useSheetSizing(
     /** 머리줄(손잡이 + 종류·제목 줄)을 감싼 View 에 건다 — 그 영역 어디를 끌어도 시트 크기가 바뀐다. */
     chromeHandlers: areaHandlers,
     onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
-    onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
     /** 본문 `SheetScrollBody` 의 `sheetGesture` 로 넘긴다 — 스크롤 끝에서 더 끌면 시트가 커지거나 작아진다. */
     bodyGesture,
   }

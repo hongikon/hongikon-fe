@@ -60,8 +60,8 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     isRestaurant &&
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
-  // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
+  // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
   });
   // 찾아온 줄이 목록 아래쪽(홍문관 행정 부서 20여 곳 등)이면 처음 한 번 그 줄이 맨 위에 오게 스크롤한다.
@@ -108,7 +108,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       <SheetScrollBody
         sheetGesture={bodyGesture}
         scrollRef={scrollRef}
-        onContentSizeChange={onContentSizeChange}
+       
         // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어진다. 스크롤이 맨 위·맨 아래에 닿은 채 더 끌면 시트 크기가 바뀐다(sheetGesture).
         style={{ height: bodyHeight }}
         contentContainerStyle={styles.list}
