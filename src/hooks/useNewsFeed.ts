@@ -22,6 +22,40 @@ export const NEWS_PAGE_SIZE = 20
  */
 const MAX_AUTO_FILL_PAGES = 5
 
+/** 시작 화면에서 미리 받아 둔 첫 페이지를 이 시간 안에만 쓴다. 그보다 오래됐으면 새로 받는다. */
+const PREFETCH_TTL_MS = 60_000
+
+type NewsPage = Awaited<ReturnType<typeof getNews>>
+
+/** 조건별 미리 받은 첫 페이지(`prefetchNewsFirstPage`). 한 번 쓰면 지운다 — 당겨서 새로고침은 항상 새로 받는다. */
+const prefetched = new Map<string, { at: number; promise: Promise<NewsPage> }>()
+
+function prefetchKey(sourceIds: readonly string[] | undefined, category?: string, keyword?: string, pinned?: boolean): string {
+  return [sourceIds?.join('\u0000') ?? '', category ?? '', keyword ?? '', pinned === undefined ? '' : String(pinned)].join('|')
+}
+
+/**
+ * 시작 화면(`LaunchOverlay`)이 떠 있는 동안 소식 첫 페이지를 미리 받는다. 같은 조건으로 `useNewsFeed` 가 곧 첫 페이지를
+ * 부르면 이 요청을 그대로 이어 받아 다시 부르지 않는다. 실패해도 조용히 끝나고(Promise 는 resolve), 그때 화면은 평소처럼 새로 받는다.
+ */
+export function prefetchNewsFirstPage(sourceIds: readonly string[]): Promise<void> {
+  const key = prefetchKey(sourceIds)
+  const promise = getNews({ page: 0, size: NEWS_PAGE_SIZE, sourceIds: [...sourceIds] })
+  prefetched.set(key, { at: Date.now(), promise })
+  promise.catch(() => prefetched.delete(key))
+  return promise.then(
+    () => undefined,
+    () => undefined,
+  )
+}
+
+function takePrefetched(key: string): Promise<NewsPage> | null {
+  const hit = prefetched.get(key)
+  if (!hit) return null
+  prefetched.delete(key)
+  return Date.now() - hit.at <= PREFETCH_TTL_MS ? hit.promise : null
+}
+
 export interface NewsFeedQuery {
   /** 수집 게시판 id(TREE_DATA 리프 id). 여러 개면 OR. 비우면 전체. */
   sourceIds?: readonly string[]
@@ -135,15 +169,19 @@ export function useNewsFeed(query: NewsFeedQuery, options: UseNewsFeedOptions = 
     setPending(mode)
 
     const { sourceIds, category, keyword: kw, pinned: pin } = requestRef.current
-    getNews({
-      page: targetPage,
-      size: NEWS_PAGE_SIZE,
-      sourceIds,
-      category,
-      keyword: kw,
-      pinned: pin,
-      signal: controller.signal,
-    })
+    const warm = targetPage === 0 && mode === 'initial' ? takePrefetched(prefetchKey(sourceIds, category, kw, pin)) : null
+    ;(
+      warm ??
+      getNews({
+        page: targetPage,
+        size: NEWS_PAGE_SIZE,
+        sourceIds,
+        category,
+        keyword: kw,
+        pinned: pin,
+        signal: controller.signal,
+      })
+    )
       .then((res) => {
         if (controller.signal.aborted) return
         const next = res.content.map(backendSummaryToNewsItem)
