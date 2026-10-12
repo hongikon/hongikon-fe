@@ -69,6 +69,7 @@ import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { withExhibitionHints } from "../utils/exhibitions";
 import type {
   Building,
+  Facility,
   FacilityKind,
   MapLayer,
   Partner,
@@ -260,6 +261,8 @@ export default function MapScreen() {
   );
   /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
   const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
+  /** 검색으로 찾아간 편의시설. 그 시설 시트에서 해당 줄을 강조한다. 핀을 직접 누르거나 칩을 바꾸면 지운다. */
+  const [searchedFacility, setSearchedFacility] = useState<Facility | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
   const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
@@ -576,6 +579,7 @@ export default function MapScreen() {
 
         // 편의시설 핀: 건물 소개가 아니라 그 시설이 몇 층 어디에 있는지 보여 준다(FacilitySheet).
         if (msg.type === "facilityTap") {
+          setSearchedFacility(null);
           setSelectedPartner(null);
           setSelectedBuilding(null);
           setSelectedReport(null);
@@ -706,6 +710,42 @@ export default function MapScreen() {
     [postToMap],
   );
 
+  /**
+   * 검색에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면 그 지점)로
+   * 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
+   */
+  const handleSearchSelectFacility = useCallback(
+    (facility: Facility) => {
+      setShowSearch(false);
+      // 갈래 전환(handleSelectLayer)과 같은 정리: 제휴·제보 선택과 마커를 지운다.
+      setLayer("편의시설");
+      setSelectedPartner(null);
+      setSelectedBuilding(null);
+      setSelectedAffiliation(null);
+      setSelectedCategory(null);
+      postToMap({ type: "clearPartners" });
+      setReportsOn(false);
+      setHotOnly(false);
+      setSelectedReport(null);
+      postToMap({ type: "clearReports" });
+
+      setFacilityKind(facility.kind);
+      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, facility.kind), facilities, exhibitions);
+      const building = buildings.find((b) => b.name === facility.buildingName);
+      const lat = facility.lat ?? building?.lat;
+      const lng = facility.lng ?? building?.lng;
+      // 건물 하나가 화면 가운데 오도록 좁은 범위(약 ±70m)를 준다.
+      const bounds =
+        lat !== undefined && lng !== undefined
+          ? { swLat: lat - 0.0006, swLng: lng - 0.0008, neLat: lat + 0.0006, neLng: lng + 0.0008 }
+          : null;
+      postToMap({ type: "setFacilities", markers, bounds });
+      setSelectedFacilityBuilding(facility.buildingName);
+      setSearchedFacility(facility);
+    },
+    [facilities, buildings, exhibitions, postToMap],
+  );
+
   // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
   useEffect(() => {
     const farId = farViewPartnerIdRef.current;
@@ -813,6 +853,7 @@ export default function MapScreen() {
     (next: FacilityKind | null) => {
       setFacilityKind(next);
       setSelectedFacilityBuilding(null);
+      setSearchedFacility(null);
       if (next === null) {
         postToMap({ type: "clearFacilities" });
         return;
@@ -1625,6 +1666,13 @@ export default function MapScreen() {
                 (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
               )}
               exhibitions={exhibitions}
+              highlightId={
+                searchedFacility &&
+                searchedFacility.kind === facilityKind &&
+                searchedFacility.buildingName === selectedFacilityBuilding
+                  ? searchedFacility.id
+                  : null
+              }
               onClose={() => setSelectedFacilityBuilding(null)}
             />
           )}
@@ -1671,10 +1719,10 @@ export default function MapScreen() {
                   setShowSearch(true);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="제휴 업체 검색"
+                accessibilityLabel="제휴 업체·편의시설 검색"
               >
                 <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
+                <Text style={styles.searchPlaceholder}>제휴 업체·편의시설 검색</Text>
               </TouchableOpacity>
             </View>
 
@@ -1878,6 +1926,7 @@ export default function MapScreen() {
         topInset={insets.top}
         onClose={() => setShowSearch(false)}
         onSelect={handleSearchSelect}
+        onSelectFacility={handleSearchSelectFacility}
         pinned={
           searchPinned && searchPinned.length > 0
             ? {

@@ -1,17 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, Easing, PanResponder, Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { Animated, Dimensions, Easing, PanResponder, Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 /** 가장 작은 크기에서 이만큼 더 끌어내리면 닫는다. */
 const DISMISS_OVERSHOOT_PX = 70
 /** 이 속도(px/ms)보다 빠르게 아래로 튕기면, 가장 작은 크기일 때 닫는다. */
 const DISMISS_VELOCITY = 1.2
-/** 손을 뗄 때 이 속도(px/ms)보다 빠르면 끈 방향의 다음 크기로 넘긴다. 느리면 놓은 자리에 멈춘다. */
+/** 손을 뗄 때 이 속도(px/ms)보다 빠르면 끈 방향의 다음 크기로 넘긴다. 느리면 가장 가까운 크기로 붙는다. */
 const FLICK_VELOCITY = 0.6
-/** 크기 점(작게·보통) 이만큼 가까이 놓으면 그 점에 붙는다. */
-const MAGNET_PX = 24
-/** 맨 위(화면 끝)까지 이만큼 남기고 놓으면 끝까지 올린다. */
-const TOP_MAGNET_PX = 80
 
 interface Options {
   /** 처음 열릴 때 본문(스크롤 영역) 최대 높이(px). 보통 가장 작은 크기로 조금만 보여 준다. */
@@ -25,8 +21,7 @@ interface Options {
  * - 처음엔 조금만 보여 주고, 손잡이를 위로 끌면 커지고 아래로 끌면 작아진다. 손을 떼면 points 중 가까운 크기로 붙는다.
  * - 가장 작은 크기에서 더 끌어내리면(또는 빠르게 튕기면) 시트가 내려가며 닫힌다.
  * 본문 높이(bodyHeight)를 직접 바꾼다. 0 이면 머리줄만 남고, 가장 큰 값이면 화면 위 끝까지 올라온다.
- * 작은·보통 크기는 시트 쪽에서 내용 높이로 잘라 넘겨, 내용이 짧을 때 빈칸이 생기지 않게 한다.
- * `panHandlers` 는 손잡이에만 건다 — 본문 스크롤과 부딪히지 않게.
+ * `panHandlers` 는 손잡이에만 건다 — 본문 스크롤과 부딪히지 않게. 본문은 스크롤이 끝에 닿았을 때만 `bodyGesture` 로 넘긴다.
  */
 export function useResizableSheet(onClose: () => void, { initial, points }: Options) {
   const translateY = useRef(new Animated.Value(0)).current
@@ -55,10 +50,10 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 크기 점이 바뀔 때(내용 높이 측정·변화, 회전·창 크기) 지금 크기를 맞춘다.
-  // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다(처음 내용 높이를 잴 때).
+  // 크기 점이 바뀔 때(머리줄 높이 측정, 회전·창 크기) 지금 크기를 맞춘다.
+  // - 아직 처음 크기 그대로면 새 처음 크기를 따라간다.
   // - 맨 위에 있었으면 새 맨 위로 — 창이 줄었을 때 손잡이·X 가 화면 밖으로 밀려나지 않게.
-  // - 사용자가 고른 크기는 그대로 두고 범위 안으로만 자른다 — 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
+  // - 그 밖에는 새 크기 점 중 가장 가까운 곳으로 — 중간 높이에 남지 않게(10-12). 예전엔 댓글·메뉴가 늦게 뜨는 등 내용 높이가
   //   바뀔 때마다 고른 크기를 버리고 작게로 툭 되돌아갔다.
   const hi = points.length ? Math.max(...points) : initial
   const prevSizes = useRef({ initial, hi })
@@ -68,11 +63,13 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     if (prev.initial === initial && prev.hi === hi) return
     // 끄는 중이면 손가락 자리를 그대로 둔다 — 여기서 높이를 바꾸면 시트가 한 프레임에 툭 튀었다가 다음 움직임에 되돌아왔다.
     if (dragging.current) return
-    const lo = snaps.current[0] ?? 0
     let next: number
     if (Math.abs(current.current - prev.initial) <= 1) next = initial
     else if (current.current >= prev.hi - 1) next = hi
-    else next = Math.min(hi, Math.max(lo, current.current))
+    else {
+      const at = current.current
+      next = snaps.current.reduce((best, p) => (Math.abs(p - at) < Math.abs(best - at) ? p : best), initial)
+    }
     if (next !== current.current) {
       current.current = next
       bodyHeight.setValue(next)
@@ -81,8 +78,10 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
 
   // 닫히는 중에 시트가 사라지면(다른 핀으로 바뀌어 새 시트가 뜨는 등) 남은 애니메이션을 멈춘다 — 끝난 뒤 onClose 가 새 선택을 닫지 않게.
   const dragCleanup = useRef<(() => void) | null>(null)
+  const mounted = useRef(true)
   useEffect(
     () => () => {
+      mounted.current = false
       dragCleanup.current?.()
       translateY.stopAnimation()
       bodyHeight.stopAnimation()
@@ -120,13 +119,25 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
         translateY.setValue(lo - next)
       }
     }
+    /** 놓은 높이·속도로 붙을 크기 점을 고른다. */
+    const snapTarget = (height: number, vy: number) => {
+      const points = snaps.current
+      const lo = points[0]
+      const hi = points[points.length - 1]
+      const clamped = Math.min(hi, Math.max(lo, height))
+      if (vy < -FLICK_VELOCITY) return points.find((p) => p > clamped + 1) ?? hi
+      if (vy > FLICK_VELOCITY) return [...points].reverse().find((p) => p < clamped - 1) ?? lo
+      return points.reduce((best, p) => (Math.abs(p - clamped) < Math.abs(best - clamped) ? p : best), lo)
+    }
     const settle = (target: number) => {
       dragging.current = false
       current.current = target
-      // 감속하며 부드럽게 붙는다(튕김 없이).
+      // 감속하며 부드럽게 붙는다(튕김 없이). damping 22 는 임계 감쇠(≈28)보다 작아 목표를 몇 px 넘었다 돌아왔다 —
+      // 작게(내용 높이)로 내릴 때 본문이 내용보다 잠깐 작아져 아래 '더 있음' 흰 그라데이션이 회색 줄을 덮었다 사라졌다(10-12).
+      // overshootClamping 으로 목표를 넘지 않게 한다.
       Animated.parallel([
-        Animated.spring(bodyHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
+        Animated.spring(bodyHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9, overshootClamping: true }),
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9, overshootClamping: true }),
       ]).start()
     }
     const end = (dy: number, vy: number) => {
@@ -135,31 +146,29 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
       // 실제로 아래로 끌었을 때만 닫는다 — 열리며 올라오는 중에 잡았다 놓은 것(시작부터 아래에 있던 것)까지 닫지 않게.
       if (dy > 0 && (next < lo - DISMISS_OVERSHOOT_PX || (next <= lo + 10 && vy > DISMISS_VELOCITY))) {
         dragging.current = false
-        Animated.timing(translateY, { toValue: 800, duration: 180, useNativeDriver: false }).start(({ finished }) => {
+        Animated.timing(translateY, {
+          toValue: Math.max(800, Dimensions.get('window').height),
+          duration: 200,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: false,
+        }).start(({ finished }) => {
           // 중간에 멈췄으면(시트가 사라짐) 닫기를 부르지 않는다.
           if (!finished) return
-          translateY.setValue(0)
-          current.current = initialRef.current
-          bodyHeight.setValue(initialRef.current)
+          // 먼저 닫는다. 예전엔 위치·높이를 처음 값으로 되돌린 뒤 닫아, 화면에서 빠지기 전 한두 프레임 동안 시트가
+          // 제자리에 다시 나타났다 사라지며 깜빡였다(10-12). 부모가 시트를 내리지 않고 남겨 두는 경우에만 나중에 되돌린다.
           onCloseRef.current()
+          setTimeout(() => {
+            if (!mounted.current) return
+            translateY.setValue(0)
+            current.current = initialRef.current
+            bodyHeight.setValue(initialRef.current)
+          }, 300)
         })
         return
       }
-      // 손을 놓은 자리에 그대로 멈춘다(10-07 요청: 중간에 자유롭게). 다만
-      // - 빠르게 튕기면 그 방향 다음 크기로,
-      // - 맨 위(화면 끝)·크기 점 가까이 놓으면 그 점에 착 붙는다(맨 위 근처면 끝까지 올라간다).
-      const points = snaps.current
-      const hi = points[points.length - 1]
-      const clamped = Math.min(hi, Math.max(lo, next))
-      let target = clamped
-      if (vy < -FLICK_VELOCITY) target = points.find((p) => p > clamped + 1) ?? hi
-      else if (vy > FLICK_VELOCITY) target = [...points].reverse().find((p) => p < clamped - 1) ?? lo
-      else if (hi - clamped < TOP_MAGNET_PX) target = hi
-      else {
-        const near = points.find((p) => Math.abs(p - clamped) < MAGNET_PX)
-        if (near !== undefined) target = near
-      }
-      settle(target)
+      // 항상 크기 점(작게·보통·맨 위) 중 하나에 붙는다(10-12 요청: 중간에 애매하게 멈춘 시트를 없앤다 — 예전 10-07 엔
+      // 놓은 자리에 멈췄다). 빠르게 튕기면 그 방향 다음 크기로, 아니면 가장 가까운 크기로.
+      settle(snapTarget(next, vy))
     }
     /** 손잡이를 끌지 않고 눌렀을 때: 한 단계 크게(가장 크면 처음 크기로). */
     const tap = () => {
@@ -167,7 +176,8 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
       const bigger = points.find((p) => p > current.current + 1)
       settle(bigger ?? initialRef.current)
     }
-    const cancel = () => settle(current.current)
+    // 끌다가 끊겨도(다른 제스처가 가져감 등) 중간에 두지 않고 가까운 크기로 붙인다.
+    const cancel = () => settle(snapTarget(current.current, 0))
     return { begin, move, end, tap, cancel }
     // initial 은 ref 로 읽는다 — 내용 높이를 잴 때마다 바뀌는데, 그때 PanResponder 가 끄는 도중 새로 만들어지면 손가락 위치를 잃는다.
   }, [translateY, bodyHeight])
@@ -326,12 +336,35 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
         }
       : {}
 
+  // 본문 스크롤이 위·아래 끝에 닿은 채 더 끌 때 시트를 대신 움직이는 데 쓴다(SheetScrollBody).
+  const bodyGesture = useMemo<SheetBodyGesture>(
+    () => ({
+      begin: dragApi.begin,
+      move: dragApi.move,
+      end: dragApi.end,
+      cancel: dragApi.cancel,
+      canGrow: () => current.current < (snaps.current[snaps.current.length - 1] ?? 0) - 1,
+    }),
+    [dragApi],
+  )
+
   return {
     translateY,
     bodyHeight,
     panHandlers: { ...panResponder.panHandlers, ...webHandlers },
     areaHandlers: { ...areaResponder.panHandlers, ...areaWebHandlers },
+    bodyGesture,
   }
+}
+
+/** 시트 본문 스크롤이 끝에 닿았을 때 시트 크기 조절로 넘기는 손잡이. */
+export interface SheetBodyGesture {
+  begin: () => void
+  move: (dy: number) => void
+  end: (dy: number, vy: number) => void
+  cancel: () => void
+  /** 지금 크기보다 더 커질 수 있는지(맨 위가 아닌지). */
+  canGrow: () => boolean
 }
 
 /**
@@ -344,15 +377,17 @@ export const SheetHeaderContext = createContext<{ headerHeight: number; onCoverH
 })
 
 interface SheetSizingOptions {
-  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이. */
+  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이(빈칸 없이). */
   smallRatio?: number
-  /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기(내용 높이로 자른다). */
+  /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기. */
   midRatio?: number
 }
 
 /**
  * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 작게 → 보통(화면의 약 63%) → 화면 위 끝까지 세 단계를 오가고, 작게에서 더
- * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다. 모든 크기는 내용 높이로 잘라 빈칸이 생기지 않게 한다.
+ * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다.
+ * 보통·맨 위는 내용 길이와 상관없이 모든 시트가 같다(10-12 요청 — 항목이 하나뿐이어도 끝까지 올릴 수 있게 UX 통일).
+ * 작게(처음 열 때)만 내용 높이로 잘라, 짧은 시트가 아래에 빈칸을 단 채 열리지 않게 한다(10-12 요청).
  * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
  * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
  */
@@ -363,18 +398,17 @@ export function useSheetSizing(
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const header = useContext(SheetHeaderContext)
-  const [contentHeight, setContentHeight] = useState<number | null>(null)
   const [chromeHeight, setChromeHeight] = useState(110)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
   // 시트 위아래 여백(위 10 + 아래 30)과 상태 표시줄·홈 인디케이터를 빼고 남는 만큼이 '화면 끝까지' 높이다.
   const fullHeight = Math.max(160, windowHeight - insets.top - insets.bottom - chromeHeight - 48)
-  const cap = (h: number) => Math.min(contentHeight === null ? h : Math.min(h, contentHeight), fullHeight)
-  const small = Math.round(cap(windowHeight * smallRatio))
+  const cap = (h: number) => Math.min(h, fullHeight)
+  const small = Math.round(cap(Math.min(windowHeight * smallRatio, contentHeight ?? Infinity)))
   // 머리줄·아래 여백까지 합쳐 시트가 화면의 midRatio 만큼 차지하게 본문 높이를 정한다.
   const mid = Math.round(cap(Math.max(small, windowHeight * midRatio - chromeHeight - insets.bottom - 40)))
-  // 맨 위도 내용 높이로 자른다 — 내용이 짧으면 손잡이를 한 번 눌러도 텅 빈 전체 화면 시트가 되지 않게.
   const top = Math.round(cap(fullHeight))
   const points = Array.from(new Set([small, mid, top]))
-  const { translateY, bodyHeight, panHandlers, areaHandlers } = useResizableSheet(onClose, { initial: small, points })
+  const { translateY, bodyHeight, panHandlers, areaHandlers, bodyGesture } = useResizableSheet(onClose, { initial: small, points })
 
   // 본문이 이 높이를 넘으면 시트 윗변이 검색바·칩 오버레이 밑으로 들어간다 → 오버레이를 숨기게 알린다.
   const coverAt = windowHeight - Math.max(insets.top, header.headerHeight) - insets.bottom - chromeHeight - 48
@@ -384,7 +418,9 @@ export function useSheetSizing(
   useEffect(() => {
     if (!onCoverRef.current) return
     const apply = (value: number) => {
-      const next = header.headerHeight > 0 && value > coverAt + 4
+      // 경계 위아래로 8px 여유(히스테리시스)를 둔다 — 그 근처에서 끌면 숨김·보임이 번갈아 깜빡였다.
+      const next =
+        header.headerHeight > 0 && (coveredRef.current ? value > coverAt - 8 : value > coverAt + 8)
       if (next !== coveredRef.current) {
         coveredRef.current = next
         onCoverRef.current?.(next)
@@ -411,5 +447,7 @@ export function useSheetSizing(
     chromeHandlers: areaHandlers,
     onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
     onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
+    /** 본문 `SheetScrollBody` 의 `sheetGesture` 로 넘긴다 — 스크롤 끝에서 더 끌면 시트가 커지거나 작아진다. */
+    bodyGesture,
   }
 }

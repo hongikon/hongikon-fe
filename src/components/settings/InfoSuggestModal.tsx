@@ -83,6 +83,8 @@ interface Draft {
   name: string
   address: string
   affiliation: PartnerAffiliation | null
+  /** '직접 입력' 칩을 고르면 문자열(동아리·학과 학생회 등 목록에 없는 소속), 아니면 null. */
+  affiliationCustom: string | null
   detail: string
   source: string
   period: string
@@ -100,6 +102,7 @@ const EMPTY_DRAFT: Draft = {
   name: '',
   address: '',
   affiliation: null,
+  affiliationCustom: null,
   detail: '',
   source: '',
   period: '',
@@ -180,7 +183,7 @@ function buildContent(draft: Draft, location: InfoSuggestLocation | null): strin
         `가게: ${t(draft.name)}`,
         line('위치', draft.address),
         location ? `좌표: ${formatCoord(location)}` : null,
-        line('소속', draft.affiliation),
+        line('소속', draft.affiliationCustom != null ? draft.affiliationCustom : draft.affiliation),
         line(draft.kind === 'new' ? '혜택' : '달라진 점', draft.detail),
         line('출처', draft.source),
       ]
@@ -348,7 +351,7 @@ export default function InfoSuggestModal({
   const changeType = (type: InfoSuggestType) => {
     if (type === draft.type) return
     // 이름·내용·연락처는 옮겨 가도 뜻이 통해 남기고, 종류마다 다른 칸만 비운다.
-    setDraft((prev) => ({ ...prev, type, kind: 'new', affiliation: null, source: '', period: '', facilityKind: null }))
+    setDraft((prev) => ({ ...prev, type, kind: 'new', affiliation: null, affiliationCustom: null, source: '', period: '', facilityKind: null }))
     setAttempted(false)
   }
 
@@ -472,20 +475,43 @@ export default function InfoSuggestModal({
       />
       {invalid('location') && <Hint text={REQUIRED_HINT.location} />}
 
-      <FieldLabel>제휴 소속 (알면 선택)</FieldLabel>
+      <FieldLabel>제휴 소속 (선택)</FieldLabel>
       <View style={styles.chipWrap}>
         {PARTNER_AFFILIATIONS.map((item) => {
-          const active = draft.affiliation === item
+          const active = draft.affiliationCustom == null && draft.affiliation === item
           return (
             <Chip
               key={item}
               label={item}
               selected={active}
-              onPress={() => update('affiliation', active ? null : item)}
+              onPress={() =>
+                setDraft((prev) => ({ ...prev, affiliation: active ? null : item, affiliationCustom: null }))
+              }
             />
           )
         })}
+        {/* 동아리·학과 학생회처럼 목록에 없는 소속과 맺은 제휴도 있다(10-12 요청). */}
+        <Chip
+          label="직접 입력"
+          selected={draft.affiliationCustom != null}
+          onPress={() =>
+            setDraft((prev) => ({
+              ...prev,
+              affiliation: null,
+              affiliationCustom: prev.affiliationCustom != null ? null : '',
+            }))
+          }
+        />
       </View>
+      {draft.affiliationCustom != null && (
+        <TextField
+          style={styles.field}
+          placeholder="예: 중앙동아리 OO, OO학과 학생회"
+          value={draft.affiliationCustom}
+          onChangeText={(value) => update('affiliationCustom', value)}
+          maxLength={50}
+        />
+      )}
 
       <FieldLabel>{kind === 'new' ? '혜택' : '무엇이 다른가요?'}</FieldLabel>
       <TextField
