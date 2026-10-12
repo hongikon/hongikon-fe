@@ -132,10 +132,12 @@ export function useResizableSheet(onClose: () => void, { initial, points }: Opti
     const settle = (target: number) => {
       dragging.current = false
       current.current = target
-      // 감속하며 부드럽게 붙는다(튕김 없이).
+      // 감속하며 부드럽게 붙는다(튕김 없이). damping 22 는 임계 감쇠(≈28)보다 작아 목표를 몇 px 넘었다 돌아왔다 —
+      // 작게(내용 높이)로 내릴 때 본문이 내용보다 잠깐 작아져 아래 '더 있음' 흰 그라데이션이 회색 줄을 덮었다 사라졌다(10-12).
+      // overshootClamping 으로 목표를 넘지 않게 한다.
       Animated.parallel([
-        Animated.spring(bodyHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }),
+        Animated.spring(bodyHeight, { toValue: target, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9, overshootClamping: true }),
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9, overshootClamping: true }),
       ]).start()
     }
     const end = (dy: number, vy: number) => {
@@ -416,7 +418,9 @@ export function useSheetSizing(
   useEffect(() => {
     if (!onCoverRef.current) return
     const apply = (value: number) => {
-      const next = header.headerHeight > 0 && value > coverAt + 4
+      // 경계 위아래로 8px 여유(히스테리시스)를 둔다 — 그 근처에서 끌면 숨김·보임이 번갈아 깜빡였다.
+      const next =
+        header.headerHeight > 0 && (coveredRef.current ? value > coverAt - 8 : value > coverAt + 8)
       if (next !== coveredRef.current) {
         coveredRef.current = next
         onCoverRef.current?.(next)
