@@ -3,6 +3,12 @@ import type { TreeNode, TreeChild } from '../types'
 export const TREE_DATA: TreeNode[] = [
   { name: '대학', children: [
     { id: '교수학습지원', name: '교수학습지원' },
+    // 국제협력본부 사이트(inno.hongik.ac.kr/oia)의 게시판 둘. 학교 전체 공지라 '대학' 안에 두고,
+    // 게시판마다 따로 구독하도록 한 단계 더 나눴다(신소재화공시스템공학부와 같은 모양).
+    { id: '국제협력본부', name: '국제협력본부', children: [
+      { id: '국제교류실', name: '국제교류실 공지' },
+      { id: '글로벌역량지원사업', name: '글로벌역량 지원사업' },
+    ]},
     { id: '대학혁신지원사업', name: '대학혁신지원사업' },
     { id: '장학', name: '장학' },
     { id: '학사', name: '학사' },

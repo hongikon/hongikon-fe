@@ -11,12 +11,16 @@ import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
 import { SUBSCRIBABLE_ITEMS } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
-import { useNewsFeed } from '../hooks/useNewsFeed'
+import { NEWS_PAGE_SIZE, useNewsFeed } from '../hooks/useNewsFeed'
+import { useApiResource } from '../hooks/useApiResource'
+import { getNews } from '../apis/news'
+import { backendSummaryToNewsItem } from '../utils/newsMapping'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import { NewsListSkeleton } from '../components/common/Skeleton'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
+import PinnedNoticeSection from '../components/news/PinnedNoticeSection'
 import RetryableError from '../components/common/RetryableError'
 import ScreenHeader from '../components/common/ScreenHeader'
 import EmptyState from '../components/common/EmptyState'
@@ -38,8 +42,29 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
   const keyword = useDebouncedValue(query.trim())
   // 학과·기관 = 수집 게시판 하나(sourceId). 검색어는 서버가 제목에서 찾는다.
   const sourceIds = useMemo(() => [deptId], [deptId])
-  const newsFeed = useNewsFeed({ sourceIds, keyword })
+  // 상단 고정 글은 위 "고정 공지" 묶음에서 따로 보여주므로 최신순 목록에선 뺀다.
+  const newsFeed = useNewsFeed({ sourceIds, keyword, pinned: false })
   const isSearching = keyword.length > 0
+
+  // 고정 글 묶음은 곁다리라 로딩·오류 안내 없이 받으면 보여주고 못 받으면 조용히 숨긴다(아래 목록을 막지 않게).
+  const pinnedResource = useApiResource(
+    (signal) => getNews({ sourceIds: [deptId], pinned: true, size: NEWS_PAGE_SIZE, signal }),
+    [deptId],
+  )
+  const pinnedItems = useMemo(
+    () =>
+      (pinnedResource.data?.content ?? [])
+        .map(backendSummaryToNewsItem)
+        // `pinned` 를 모르는 예전 서버는 파라미터를 무시하고 일반 글을 돌려주므로, 고정 표시가 있는 글만 남긴다.
+        .filter((item) => item.pinned),
+    [pinnedResource.data],
+  )
+  const { retry: refetchPinned } = pinnedResource
+  const { refresh: refreshFeed } = newsFeed
+  const handleRefresh = useCallback(() => {
+    refreshFeed()
+    refetchPinned()
+  }, [refreshFeed, refetchPinned])
 
   const handlePressItem = useCallback(
     (item: NewsItem) => navigation.navigate('NewsDetail', { item }),
@@ -59,7 +84,7 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
         onEndReached={newsFeed.loadMore}
         loadingMore={newsFeed.loadingMore}
         refreshing={newsFeed.refreshing}
-        onRefresh={newsFeed.refresh}
+        onRefresh={handleRefresh}
         footer={
           newsFeed.errorMessage && newsFeed.items.length > 0 ? (
             <RetryableError
@@ -71,12 +96,16 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
           ) : null
         }
         header={
-          <SearchBar
-            value={query}
-            onChangeText={setQuery}
-            placeholder="소식 제목 검색"
-            accessibilityLabel="소식 검색"
-          />
+          <View style={styles.listHeaderGroup}>
+            <SearchBar
+              value={query}
+              onChangeText={setQuery}
+              placeholder="소식 제목 검색"
+              accessibilityLabel="소식 검색"
+            />
+            {/* 검색 결과엔 고정 글이 빠져 있어(pinned: false) 묶음까지 남기면 결과와 헷갈린다. */}
+            {!isSearching && <PinnedNoticeSection items={pinnedItems} onPressItem={handlePressItem} />}
+          </View>
         }
         empty={
           newsFeed.loading ? (
@@ -104,4 +133,5 @@ const styles = StyleSheet.create({
   // 회색 바탕 위에 머리 카드·검색창·소식 카드가 뜬다(10-07).
   container: { flex: 1, backgroundColor: COLORS.background },
   feedError: { marginTop: 12 },
+  listHeaderGroup: { gap: 10 },
 })
