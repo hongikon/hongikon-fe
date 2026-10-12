@@ -378,7 +378,7 @@ export const SheetHeaderContext = createContext<{ headerHeight: number; onCoverH
 })
 
 interface SheetSizingOptions {
-  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. */
+  /** 처음 열 때(작게) 본문 높이 = 화면 높이 × 이 값. 내용이 더 짧으면 내용 높이(빈칸 없이). */
   smallRatio?: number
   /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기. */
   midRatio?: number
@@ -387,9 +387,9 @@ interface SheetSizingOptions {
 /**
  * 지도 바텀시트 공통 크기 조절. 손잡이(회색 줄)로 작게 → 보통(화면의 약 63%) → 화면 위 끝까지 세 단계를 오가고, 작게에서 더
  * 내리면 닫힌다(10-12 요청: 머리줄만 남는 단계와 절반 단계를 빼고 단계를 줄임). 처음엔 작게 연다.
- * 세 크기는 내용 길이와 상관없이 모든 시트가 같다(10-12 요청 — 항목이 하나뿐이어도 끝까지 올릴 수 있게 UX 통일).
- * 예전엔 내용 높이로 잘라 짧은 시트는 올라가지 않았다.
- * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에
+ * 보통·맨 위는 내용 길이와 상관없이 모든 시트가 같다(10-12 요청 — 항목이 하나뿐이어도 끝까지 올릴 수 있게 UX 통일).
+ * 작게(처음 열 때)만 내용 높이로 잘라, 짧은 시트가 아래에 빈칸을 단 채 열리지 않게 한다(10-12 요청).
+ * 쓰는 법: 손잡이+머리줄을 감싼 View 에 `onChromeLayout`, 본문 ScrollView(Animated)에 `onContentSizeChange` 와
  * `style={{ height: bodyHeight }}`, 손잡이에 `panHandlers`, 시트에 `transform: [{ translateY }]`.
  */
 export function useSheetSizing(
@@ -400,10 +400,11 @@ export function useSheetSizing(
   const insets = useSafeAreaInsets()
   const header = useContext(SheetHeaderContext)
   const [chromeHeight, setChromeHeight] = useState(110)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
   // 시트 위아래 여백(위 10 + 아래 30)과 상태 표시줄·홈 인디케이터를 빼고 남는 만큼이 '화면 끝까지' 높이다.
   const fullHeight = Math.max(160, windowHeight - insets.top - insets.bottom - chromeHeight - 48)
   const cap = (h: number) => Math.min(h, fullHeight)
-  const small = Math.round(cap(windowHeight * smallRatio))
+  const small = Math.round(cap(Math.min(windowHeight * smallRatio, contentHeight ?? Infinity)))
   // 머리줄·아래 여백까지 합쳐 시트가 화면의 midRatio 만큼 차지하게 본문 높이를 정한다.
   const mid = Math.round(cap(Math.max(small, windowHeight * midRatio - chromeHeight - insets.bottom - 40)))
   const top = Math.round(cap(fullHeight))
@@ -444,6 +445,7 @@ export function useSheetSizing(
     /** 머리줄(손잡이 + 종류·제목 줄)을 감싼 View 에 건다 — 그 영역 어디를 끌어도 시트 크기가 바뀐다. */
     chromeHandlers: areaHandlers,
     onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
+    onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
     /** 본문 `SheetScrollBody` 의 `sheetGesture` 로 넘긴다 — 스크롤 끝에서 더 끌면 시트가 커지거나 작아진다. */
     bodyGesture,
   }

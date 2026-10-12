@@ -67,7 +67,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets()
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절. 처음엔 작게(본문 일부) 연다.
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, bodyGesture } = useSheetSizing(onClose, {
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
   })
   const { accessToken, logout } = useAuth()
@@ -254,7 +254,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
       </View>
 
-      <SheetScrollBody sheetGesture={bodyGesture} sheetGestureDisabled={menuOpen || ownerMenuOpen} style={{ height: bodyHeight }} bounces={false}>
+      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen} style={{ height: bodyHeight }} bounces={false}>
       {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
