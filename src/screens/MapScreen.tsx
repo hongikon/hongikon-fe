@@ -1719,10 +1719,10 @@ export default function MapScreen() {
                   setShowSearch(true);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="제휴 업체 검색"
+                accessibilityLabel="제휴 업체·편의시설 검색"
               >
                 <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <Text style={styles.searchPlaceholder}>제휴 업체 검색</Text>
+                <Text style={styles.searchPlaceholder}>제휴 업체·편의시설 검색</Text>
               </TouchableOpacity>
             </View>
 
