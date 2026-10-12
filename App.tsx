@@ -26,6 +26,7 @@ import { requestMapIntent } from './src/lib/mapIntents'
 import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 import { requestAdminIntent } from './src/lib/adminIntents'
 import { initMapData } from './src/lib/mapData'
+import LaunchOverlay from './src/components/common/LaunchOverlay'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -229,7 +230,10 @@ export default function App() {
           </OnboardingGate>
           </AdminAccessProvider>
         </AuthProvider>
-      </ToastProvider></SafeAreaProvider>
+      </ToastProvider>
+      {/* 앱을 켤 때 스플래시와 같은 로고 + 지도 데이터 진행 막대. 밑의 앱은 그대로 시작되고, 준비되면 사라진다. */}
+      <LaunchOverlay />
+      </SafeAreaProvider>
     </ErrorBoundary>
   )
 }
