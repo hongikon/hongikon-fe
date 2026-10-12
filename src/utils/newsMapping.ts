@@ -23,6 +23,7 @@ export function backendSummaryToNewsItem(n: BackendNewsSummary): NewsItem {
     source: n.departmentName ?? n.sourceId ?? '홍익대학교',
     sourceId: n.sourceId ?? n.departmentName ?? '기타',
     date: formatDate(n.publishedAt),
+    pinned: n.pinned ?? false,
   }
 }
 

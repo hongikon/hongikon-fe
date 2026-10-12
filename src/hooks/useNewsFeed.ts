@@ -34,6 +34,8 @@ export interface NewsFeedQuery {
   categories?: readonly CategoryKey[]
   /** 제목 부분 일치. */
   keyword?: string
+  /** 상단 고정 글만(true)/고정 글 빼고(false). 생략하면 구분 없이 전부. `GetNewsOptions.pinned` 참고. */
+  pinned?: boolean
 }
 
 interface UseNewsFeedOptions {
@@ -96,6 +98,7 @@ export function useNewsFeed(query: NewsFeedQuery, options: UseNewsFeedOptions = 
   const sourceKey = query.sourceIds?.join('\u0000') ?? ''
   const categoryKey = query.categories?.join(',') ?? ''
   const keyword = query.keyword?.trim() ?? ''
+  const { pinned } = query
 
   // 매 렌더 새 배열이 와도 다시 부르지 않도록 문자열 키로만 조건을 비교한다.
   const request = useMemo(() => {
@@ -106,9 +109,10 @@ export function useNewsFeed(query: NewsFeedQuery, options: UseNewsFeedOptions = 
       sourceIds: sourceKey ? sourceKey.split('\u0000') : undefined,
       category: server,
       keyword: keyword || undefined,
+      pinned,
       clientCategories: client,
     }
-  }, [sourceKey, categoryKey, keyword])
+  }, [sourceKey, categoryKey, keyword, pinned])
 
   const [items, setItems] = useState<NewsItem[]>([])
   const [page, setPage] = useState(-1)
@@ -130,8 +134,16 @@ export function useNewsFeed(query: NewsFeedQuery, options: UseNewsFeedOptions = 
     controllerRef.current = controller
     setPending(mode)
 
-    const { sourceIds, category, keyword: kw } = requestRef.current
-    getNews({ page: targetPage, size: NEWS_PAGE_SIZE, sourceIds, category, keyword: kw, signal: controller.signal })
+    const { sourceIds, category, keyword: kw, pinned: pin } = requestRef.current
+    getNews({
+      page: targetPage,
+      size: NEWS_PAGE_SIZE,
+      sourceIds,
+      category,
+      keyword: kw,
+      pinned: pin,
+      signal: controller.signal,
+    })
       .then((res) => {
         if (controller.signal.aborted) return
         const next = res.content.map(backendSummaryToNewsItem)

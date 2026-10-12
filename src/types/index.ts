@@ -270,6 +270,8 @@ export interface NewsItem {
    */
   images?: string[]
   attachments?: NewsAttachment[]
+  /** 원 게시판에서 상단 고정된 글. 예전 서버 응답엔 없어 false 로 채운다. */
+  pinned?: boolean
 }
 
 /**
