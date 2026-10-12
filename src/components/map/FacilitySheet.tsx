@@ -59,7 +59,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
       !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
   });
 
@@ -91,9 +91,9 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       </View>
 
       <SheetScrollBody
+        sheetGesture={bodyGesture}
         onContentSizeChange={onContentSizeChange}
-        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어져 처음부터 칸을 넓게 연다. 크기 조절·닫기는 손잡이에만 걸려 있어
-        // 이 스크롤과 겹치지 않는다.
+        // 메뉴가 붙으면 끼니 4개·반찬 여러 줄로 길어진다. 스크롤이 맨 위·맨 아래에 닿은 채 더 끌면 시트 크기가 바뀐다(sheetGesture).
         style={{ height: bodyHeight }}
         contentContainerStyle={styles.list}
         bounces={false}

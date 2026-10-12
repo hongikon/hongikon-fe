@@ -102,7 +102,7 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  */
 export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
-  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange } = useSheetSizing(onClose, {
+  const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
   });
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
@@ -151,6 +151,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
       </View>
 
       <SheetScrollBody
+        sheetGesture={bodyGesture}
         onContentSizeChange={onContentSizeChange}
         style={[styles.body, { height: bodyHeight }]}
         contentContainerStyle={styles.bodyContent}
