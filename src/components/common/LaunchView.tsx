@@ -20,10 +20,12 @@ interface Props {
   /** 0~1 진행값. 넘기지 않으면 끝을 모르는 진행 막대(짧은 조각이 오가는 모양)를 보여 준다. */
   progress?: Animated.Value
   caption?: string
+  /** 아래 안내·막대의 투명도. 시작 화면은 저장본으로 곧바로 준비되면 막대를 아예 보이지 않으려고 늦게 띄운다. */
+  bottomOpacity?: Animated.Value
 }
 
 /** 앱을 켤 때·로그인 상태를 읽는 동안 보이는 화면. 가운데 로고, 아래에 안내 한 줄과 진행 막대. */
-export default function LaunchView({ progress, caption = '캠퍼스 정보를 불러오는 중' }: Props) {
+export default function LaunchView({ progress, caption = '캠퍼스 정보를 불러오는 중', bottomOpacity }: Props) {
   const insets = useSafeAreaInsets()
   const reduceMotion = useReduceMotion()
   const sweep = useRef(new Animated.Value(0)).current
@@ -40,7 +42,7 @@ export default function LaunchView({ progress, caption = '캠퍼스 정보를 �
   return (
     <View style={styles.container} accessibilityRole="progressbar" accessibilityLabel={caption}>
       <LogotypeVertical width={LOGO_WIDTH} height={LOGO_HEIGHT} />
-      <View style={[styles.bottom, { bottom: insets.bottom + 56 }]}>
+      <Animated.View style={[styles.bottom, { bottom: insets.bottom + 56 }, bottomOpacity ? { opacity: bottomOpacity } : null]}>
         <Text style={styles.caption}>{caption}</Text>
         <View style={styles.track}>
           {progress ? (
@@ -60,7 +62,7 @@ export default function LaunchView({ progress, caption = '캠퍼스 정보를 �
             />
           )}
         </View>
-      </View>
+      </Animated.View>
     </View>
   )
 }
