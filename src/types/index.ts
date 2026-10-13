@@ -247,6 +247,11 @@ export interface Partner {
    * 지나면 서버가 그 소속만 빼고 내려준다.
    */
   affiliationEnds?: PartnerAffiliationEnd[]
+  /**
+   * 이 업체만의 이용 방법. 있으면 소속별 기본 안내(학생증 제시 등) 대신 이것을 보여 준다 —
+   * 예: 에버랜드는 학생증이 아니라 "게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매". " / " 로 단계를 나눈다.
+   */
+  usageNote?: string
 }
 
 export interface TreeNode {

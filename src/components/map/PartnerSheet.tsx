@@ -144,9 +144,14 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   );
   const baseAffiliationEnds = baseAffiliations.filter((affiliation) => affiliationEnds.has(affiliation));
   const dormUsageNote = PARTNER_AFFILIATION_USAGE_NOTES.기숙사;
-  const baseUsageNotes = Array.from(
-    new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
-  ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
+  // 업체가 자기만의 이용 방법(usageNote)을 주면 소속별 기본 안내 대신 그것만 보여 준다 —
+  // 학생증을 보여 주는 곳이 아닌데(예: 에버랜드는 QR코드·인증코드로 예매) "학생증 제시"가 붙으면 틀린 안내가 된다.
+  const ownUsageNote = partner.usageNote?.trim() || null;
+  const baseUsageNotes = ownUsageNote
+    ? [ownUsageNote]
+    : Array.from(
+        new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
+      ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
@@ -226,7 +231,7 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             )}
 
             {partner.affiliationBenefits?.map((item) => {
-              const note = PARTNER_AFFILIATION_USAGE_NOTES[item.affiliation];
+              const note = ownUsageNote ?? PARTNER_AFFILIATION_USAGE_NOTES[item.affiliation];
               return (
                 <View key={item.affiliation} style={styles.exceptionRow}>
                   {/* 소속 칩은 기본 혜택 줄과 같은 모양(테두리 칩) 하나로 통일한다(10-13 요청). */}

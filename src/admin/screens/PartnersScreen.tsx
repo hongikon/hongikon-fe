@@ -51,6 +51,8 @@ interface PartnerDraft {
   linkUrl: string
   /** 제휴 종료일(YYYY-MM-DD). 비우면 기한 없음. */
   endsOn: string
+  /** 이 업체만의 이용 방법. 비우면 소속별 기본 안내(학생증 제시 등). */
+  usageNote: string
 }
 
 function emptyDraft(): PartnerDraft {
@@ -71,6 +73,7 @@ function emptyDraft(): PartnerDraft {
     linkLabel: '',
     linkUrl: '',
     endsOn: '',
+    usageNote: '',
   }
 }
 
@@ -96,6 +99,7 @@ function draftFrom(partner: AdminPartner): PartnerDraft {
     linkUrl: partner.link?.url ?? '',
     // 불러온 종료일을 그대로 다시 보낸다 — 빼고 저장하면 서버가 기한을 지운다.
     endsOn: partner.endsOn ?? '',
+    usageNote: partner.usageNote ?? '',
   }
 }
 
@@ -116,6 +120,7 @@ function buildInput(draft: PartnerDraft): { input: AdminPartnerInput } | { error
     [draft.benefit, 255, '혜택'],
     [draft.address, 255, '주소'],
     [draft.hours, 100, '영업시간'],
+    [draft.usageNote, 255, '이용 방법'],
     [draft.contact, 50, '연락처'],
     [draft.linkLabel, 50, '링크 이름'],
     [draft.linkUrl, 500, '링크 주소'],
@@ -157,6 +162,7 @@ function buildInput(draft: PartnerDraft): { input: AdminPartnerInput } | { error
       contact: optional(draft.contact),
       link: linkUrl ? { label: linkLabel, url: linkUrl } : undefined,
       endsOn: endsOn || undefined,
+      usageNote: optional(draft.usageNote),
     },
   }
 }
@@ -393,6 +399,9 @@ export default function PartnersScreen() {
               </Field>
             </View>
           </View>
+          <Field label="이용 방법(학생증 제시가 아닐 때만)" hint="비우면 소속별 기본 안내(학생증 제시 등)가 나와요. 단계는 ' / ' 로 나눠 적어요.">
+            <TextRow value={draft.usageNote} onChangeText={(usageNote) => update({ usageNote })} maxLength={255} placeholder="예: 게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매" accessibilityLabel="이용 방법" />
+          </Field>
           <Field label="제휴 종료일(기간 한정일 때만)" hint="이 날까지 지도에 보이고 다음 날부터 자동으로 빠져요. 비우면 기한 없이 보여요.">
             <TextRow value={draft.endsOn} onChangeText={(endsOn) => update({ endsOn })} maxLength={10} placeholder="2026-12-31" keyboardType="numbers-and-punctuation" accessibilityLabel="제휴 종료일" />
           </Field>

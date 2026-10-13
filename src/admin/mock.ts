@@ -486,6 +486,7 @@ function partnerFromBody(body: Record<string, unknown>, id: string): AdminPartne
     contact: optionalText(body.contact, '연락처', 50),
     link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
     endsOn: partnerEndsOn(body.endsOn),
+    usageNote: optionalText(body.usageNote, '이용 방법', 255),
   }
 }
 
