@@ -21,6 +21,7 @@ import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { openNaverMapPlace } from "../../utils/openNaverMap";
 import { RADIUS } from "../../constants/spacing";
+import { formatUntilYmd } from "../../utils/exhibitions";
 import SheetScrollBody from "./SheetScrollBody";
 
 interface PartnerSheetProps {
@@ -63,6 +64,21 @@ function BenefitText({ text }: { text: string }) {
           {item}
         </Text>
       ))}
+    </View>
+  );
+}
+
+/** "12월 31일까지 제휴" 한 줄. 소속 이름을 주면 "미술대학 제휴는 12월 31일까지". 날짜가 아니면 그리지 않는다. */
+function EndsOnNote({ endsOn, affiliation, color }: { endsOn: string; affiliation?: string; color: string }) {
+  const until = formatUntilYmd(endsOn);
+  if (!until) return null;
+  return (
+    <View style={styles.usageNoteInline}>
+      <Ionicons name="calendar-outline" size={11} color={color} style={styles.usageNoteIcon} />
+      <Text style={styles.usageNoteInlineText}>
+        <Text style={[styles.usageNoteInlineLabel, { color }]}>제휴 기간{"  "}</Text>
+        {affiliation ? `${affiliation} 제휴는 ${until}` : until}
+      </Text>
     </View>
   );
 }
@@ -122,6 +138,11 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   );
   // 기숙사 안내는 항상 학생증 안내 다음(맨 아래)에 오도록 정렬한다 — 소속
   // 배열에서의 순서와 무관하게 "일반 방법 먼저, 기숙사 방법 나중"을 보장한다.
+  // 제휴 종료일: 업체 전체 기한(endsOn)은 카드 맨 아래 한 줄로, 소속별 기한은 그 소속 혜택 줄 밑에 붙인다.
+  const affiliationEnds = new Map(
+    (partner.affiliationEnds ?? []).map((item) => [item.affiliation, item.endsOn]),
+  );
+  const baseAffiliationEnds = baseAffiliations.filter((affiliation) => affiliationEnds.has(affiliation));
   const dormUsageNote = PARTNER_AFFILIATION_USAGE_NOTES.기숙사;
   const baseUsageNotes = Array.from(
     new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
@@ -192,6 +213,15 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                 {baseUsageNotes.map((note) => (
                   <UsageNote key={note} note={note} color={meta.color} />
                 ))}
+                {baseAffiliationEnds.map((affiliation) => (
+                  <EndsOnNote
+                    key={affiliation}
+                    endsOn={affiliationEnds.get(affiliation) ?? ""}
+                    // 소속이 하나뿐이면 누구 기한인지 분명하니 이름을 되풀이하지 않는다.
+                    affiliation={baseAffiliations.length > 1 ? affiliation : undefined}
+                    color={meta.color}
+                  />
+                ))}
               </>
             )}
 
@@ -208,9 +238,13 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                   </View>
                   <BenefitText text={item.benefit} />
                   <UsageNote note={note} color={meta.color} />
+                  {affiliationEnds.has(item.affiliation) && (
+                    <EndsOnNote endsOn={affiliationEnds.get(item.affiliation) ?? ""} color={meta.color} />
+                  )}
                 </View>
               );
             })}
+            {partner.endsOn && <EndsOnNote endsOn={partner.endsOn} color={meta.color} />}
           </View>
         )}
 

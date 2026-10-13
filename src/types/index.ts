@@ -197,6 +197,12 @@ export interface PartnerAffiliationBenefit {
   benefit: string
 }
 
+/** 소속 하나의 제휴 종료일(YYYY-MM-DD, 이 날까지). 기한이 있는 소속만 서버가 내려준다. */
+export interface PartnerAffiliationEnd {
+  affiliation: PartnerAffiliation
+  endsOn: string
+}
+
 /**
  * 제휴 업체 한 지점. 지점이 여러 곳인 브랜드(옵틱라이프·로얄짐 등)는
  * 지점마다 별도 항목으로 둔다. 지도에 찍히는 단위가 지점이기 때문이다.
@@ -236,6 +242,11 @@ export interface Partner {
    * 이 날이 지나면 서버가 지도 데이터에서 빼므로 앱은 따로 거르지 않는다.
    */
   endsOn?: string
+  /**
+   * 소속별 제휴 종료일. 같은 업체라도 한 소속 제휴만 기간 한정일 수 있다(예: 미술대학 제휴만 12/31 까지).
+   * 지나면 서버가 그 소속만 빼고 내려준다.
+   */
+  affiliationEnds?: PartnerAffiliationEnd[]
 }
 
 export interface TreeNode {
