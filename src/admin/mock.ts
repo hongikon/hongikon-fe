@@ -485,7 +485,16 @@ function partnerFromBody(body: Record<string, unknown>, id: string): AdminPartne
     hours: optionalText(body.hours, '영업시간', 100),
     contact: optionalText(body.contact, '연락처', 50),
     link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
+    endsOn: partnerEndsOn(body.endsOn),
+    usageNote: optionalText(body.usageNote, '이용 방법', 255),
   }
+}
+
+/** 서버와 같다: 비우면 기한 없음, 날짜가 아니면 400. */
+function partnerEndsOn(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string' || ymdToDayIndex(value) === null) throw badRequest('종료일이 올바른 날짜가 아니에요.')
+  return value
 }
 
 function facilityFromBody(body: Record<string, unknown>, id: string): AdminFacility {

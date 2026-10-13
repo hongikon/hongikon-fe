@@ -16,8 +16,8 @@ const LAYERS: readonly {
   label: string
   icon: 'business' | 'pricetags' | 'calendar'
 }[] = [
-  { key: '편의시설', label: '편의 시설', icon: 'business' },
   { key: '제휴업체', label: '제휴 업체', icon: 'pricetags' },
+  { key: '편의시설', label: '편의 시설', icon: 'business' },
   { key: '이벤트', label: '이벤트', icon: 'calendar' },
 ]
 

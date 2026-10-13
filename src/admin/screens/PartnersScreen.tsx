@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { ApiError, isCancelledError } from '../../apis/client'
 import { PARTNER_AFFILIATIONS } from '../../constants/partnerAffiliations'
 import { PARTNER_CATEGORIES } from '../../constants/partnerCategories'
+import { ymdToDayIndex } from '../../utils/exhibitions'
 import { normalize } from '../../utils/normalize'
 import type { PartnerAffiliation, PartnerCategory } from '../../types'
 import { createAdminPartner, deleteAdminPartner, fetchAdminPartners, updateAdminPartner } from '../api'
@@ -48,6 +49,10 @@ interface PartnerDraft {
   contact: string
   linkLabel: string
   linkUrl: string
+  /** 제휴 종료일(YYYY-MM-DD). 비우면 기한 없음. */
+  endsOn: string
+  /** 이 업체만의 이용 방법. 비우면 소속별 기본 안내(학생증 제시 등). */
+  usageNote: string
 }
 
 function emptyDraft(): PartnerDraft {
@@ -67,6 +72,8 @@ function emptyDraft(): PartnerDraft {
     contact: '',
     linkLabel: '',
     linkUrl: '',
+    endsOn: '',
+    usageNote: '',
   }
 }
 
@@ -90,6 +97,9 @@ function draftFrom(partner: AdminPartner): PartnerDraft {
     contact: partner.contact ?? '',
     linkLabel: partner.link?.label ?? '',
     linkUrl: partner.link?.url ?? '',
+    // 불러온 종료일을 그대로 다시 보낸다 — 빼고 저장하면 서버가 기한을 지운다.
+    endsOn: partner.endsOn ?? '',
+    usageNote: partner.usageNote ?? '',
   }
 }
 
@@ -110,6 +120,7 @@ function buildInput(draft: PartnerDraft): { input: AdminPartnerInput } | { error
     [draft.benefit, 255, '혜택'],
     [draft.address, 255, '주소'],
     [draft.hours, 100, '영업시간'],
+    [draft.usageNote, 255, '이용 방법'],
     [draft.contact, 50, '연락처'],
     [draft.linkLabel, 50, '링크 이름'],
     [draft.linkUrl, 500, '링크 주소'],
@@ -122,6 +133,10 @@ function buildInput(draft: PartnerDraft): { input: AdminPartnerInput } | { error
   if (linkUrl && !linkUrl.startsWith('https://')) errors.push('링크 주소는 https:// 로 시작해야 해요.')
   if (linkUrl && !linkLabel) errors.push('링크 이름을 입력해 주세요(버튼에 보이는 글자).')
   if (!linkUrl && linkLabel) errors.push('링크 주소를 입력해 주세요.')
+  const endsOn = draft.endsOn.trim()
+  if (endsOn && ymdToDayIndex(endsOn) === null) {
+    errors.push('종료일을 YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요(예: 2026-12-31).')
+  }
   const exceptions = draft.affiliations
     .map((affiliation) => ({ affiliation, benefit: (draft.exceptions[affiliation] ?? '').trim() }))
     .filter((item) => item.benefit)
@@ -146,6 +161,8 @@ function buildInput(draft: PartnerDraft): { input: AdminPartnerInput } | { error
       hours: optional(draft.hours),
       contact: optional(draft.contact),
       link: linkUrl ? { label: linkLabel, url: linkUrl } : undefined,
+      endsOn: endsOn || undefined,
+      usageNote: optional(draft.usageNote),
     },
   }
 }
@@ -382,6 +399,12 @@ export default function PartnersScreen() {
               </Field>
             </View>
           </View>
+          <Field label="이용 방법(학생증 제시가 아닐 때만)" hint="비우면 소속별 기본 안내(학생증 제시 등)가 나와요. 단계는 ' / ' 로 나눠 적어요.">
+            <TextRow value={draft.usageNote} onChangeText={(usageNote) => update({ usageNote })} maxLength={255} placeholder="예: 게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매" accessibilityLabel="이용 방법" />
+          </Field>
+          <Field label="제휴 종료일(기간 한정일 때만)" hint="이 날까지 지도에 보이고 다음 날부터 자동으로 빠져요. 비우면 기한 없이 보여요.">
+            <TextRow value={draft.endsOn} onChangeText={(endsOn) => update({ endsOn })} maxLength={10} placeholder="2026-12-31" keyboardType="numbers-and-punctuation" accessibilityLabel="제휴 종료일" />
+          </Field>
           {formErrors.length ? (
             <View style={formStyles.errors} accessibilityRole="alert">
               {formErrors.map((message) => (
@@ -427,6 +450,7 @@ export default function PartnersScreen() {
                 </Text>
               ))}
               {partner.address ? <Text style={adminText.muted}>{partner.address}</Text> : null}
+              {partner.endsOn ? <Text style={adminText.muted}>{partner.endsOn} 까지</Text> : null}
               <Text style={[adminText.muted, styles.meta]}>
                 {partner.id} · {partner.lat}, {partner.lng}
               </Text>

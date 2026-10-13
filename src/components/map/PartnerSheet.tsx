@@ -21,6 +21,7 @@ import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { openNaverMapPlace } from "../../utils/openNaverMap";
 import { RADIUS } from "../../constants/spacing";
+import { formatUntilYmd } from "../../utils/exhibitions";
 import SheetScrollBody from "./SheetScrollBody";
 
 interface PartnerSheetProps {
@@ -63,6 +64,21 @@ function BenefitText({ text }: { text: string }) {
           {item}
         </Text>
       ))}
+    </View>
+  );
+}
+
+/** "12월 31일까지 제휴" 한 줄. 소속 이름을 주면 "미술대학 제휴는 12월 31일까지". 날짜가 아니면 그리지 않는다. */
+function EndsOnNote({ endsOn, affiliation, color }: { endsOn: string; affiliation?: string; color: string }) {
+  const until = formatUntilYmd(endsOn);
+  if (!until) return null;
+  return (
+    <View style={styles.usageNoteInline}>
+      <Ionicons name="calendar-outline" size={11} color={color} style={styles.usageNoteIcon} />
+      <Text style={styles.usageNoteInlineText}>
+        <Text style={[styles.usageNoteInlineLabel, { color }]}>제휴 기간{"  "}</Text>
+        {affiliation ? `${affiliation} 제휴는 ${until}` : until}
+      </Text>
     </View>
   );
 }
@@ -122,10 +138,20 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
   );
   // 기숙사 안내는 항상 학생증 안내 다음(맨 아래)에 오도록 정렬한다 — 소속
   // 배열에서의 순서와 무관하게 "일반 방법 먼저, 기숙사 방법 나중"을 보장한다.
+  // 제휴 종료일: 업체 전체 기한(endsOn)은 카드 맨 아래 한 줄로, 소속별 기한은 그 소속 혜택 줄 밑에 붙인다.
+  const affiliationEnds = new Map(
+    (partner.affiliationEnds ?? []).map((item) => [item.affiliation, item.endsOn]),
+  );
+  const baseAffiliationEnds = baseAffiliations.filter((affiliation) => affiliationEnds.has(affiliation));
   const dormUsageNote = PARTNER_AFFILIATION_USAGE_NOTES.기숙사;
-  const baseUsageNotes = Array.from(
-    new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
-  ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
+  // 업체가 자기만의 이용 방법(usageNote)을 주면 소속별 기본 안내 대신 그것만 보여 준다 —
+  // 학생증을 보여 주는 곳이 아닌데(예: 에버랜드는 QR코드·인증코드로 예매) "학생증 제시"가 붙으면 틀린 안내가 된다.
+  const ownUsageNote = partner.usageNote?.trim() || null;
+  const baseUsageNotes = ownUsageNote
+    ? [ownUsageNote]
+    : Array.from(
+        new Set(baseAffiliations.map((affiliation) => PARTNER_AFFILIATION_USAGE_NOTES[affiliation])),
+      ).sort((a, b) => (a === dormUsageNote ? 1 : b === dormUsageNote ? -1 : 0));
 
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
@@ -192,25 +218,37 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
                 {baseUsageNotes.map((note) => (
                   <UsageNote key={note} note={note} color={meta.color} />
                 ))}
+                {baseAffiliationEnds.map((affiliation) => (
+                  <EndsOnNote
+                    key={affiliation}
+                    endsOn={affiliationEnds.get(affiliation) ?? ""}
+                    // 소속이 하나뿐이면 누구 기한인지 분명하니 이름을 되풀이하지 않는다.
+                    affiliation={baseAffiliations.length > 1 ? affiliation : undefined}
+                    color={meta.color}
+                  />
+                ))}
               </>
             )}
 
             {partner.affiliationBenefits?.map((item) => {
-              const note = PARTNER_AFFILIATION_USAGE_NOTES[item.affiliation];
+              const note = ownUsageNote ?? PARTNER_AFFILIATION_USAGE_NOTES[item.affiliation];
               return (
                 <View key={item.affiliation} style={styles.exceptionRow}>
-                  <View
-                    style={[styles.exceptionChip, { backgroundColor: meta.color }]}
-                  >
-                    <Text style={styles.exceptionChipText}>
+                  {/* 소속 칩은 기본 혜택 줄과 같은 모양(테두리 칩) 하나로 통일한다(10-13 요청). */}
+                  <View style={[styles.sharedChip, { borderColor: meta.color }]}>
+                    <Text style={[styles.sharedChipText, { color: meta.color }]}>
                       {item.affiliation}
                     </Text>
                   </View>
                   <BenefitText text={item.benefit} />
                   <UsageNote note={note} color={meta.color} />
+                  {affiliationEnds.has(item.affiliation) && (
+                    <EndsOnNote endsOn={affiliationEnds.get(item.affiliation) ?? ""} color={meta.color} />
+                  )}
                 </View>
               );
             })}
+            {partner.endsOn && <EndsOnNote endsOn={partner.endsOn} color={meta.color} />}
           </View>
         )}
 
@@ -335,9 +373,8 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   /**
-   * 기본 혜택을 공유하는 소속 칩. 예외 칩(꽉 찬 색)과 달리 테두리만 둔다 —
-   * "이 소속들엔 다 같은 혜택"이라 예외처럼 눈길을 끌 필요가 없고,
-   * 소속이 여럿(소코아 4개) 겹칠 때 꽉 찬 칩만큼 무거워 보이지 않게 한다.
+   * 소속 칩. 기본 혜택을 같이 쓰는 소속과 소속별 예외 혜택 모두 이 테두리 칩 하나를 쓴다 —
+   * 예전엔 예외만 꽉 찬 색 칩이라 같은 시트 안에서 소속 표시가 두 가지로 보였다.
    */
   sharedChip: {
     borderWidth: 1,
@@ -361,17 +398,6 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(0,0,0,0.12)",
     gap: 5,
     alignItems: "flex-start",
-  },
-  exceptionChip: {
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2.5,
-  },
-  exceptionChipText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: COLORS.white,
-    letterSpacing: 0.2,
   },
   /**
    * 이용 방법은 별도 구획이 아니라, 그것이 딸린 혜택 줄(기본 혜택 또는
