@@ -229,10 +229,9 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
               const note = PARTNER_AFFILIATION_USAGE_NOTES[item.affiliation];
               return (
                 <View key={item.affiliation} style={styles.exceptionRow}>
-                  <View
-                    style={[styles.exceptionChip, { backgroundColor: meta.color }]}
-                  >
-                    <Text style={styles.exceptionChipText}>
+                  {/* 소속 칩은 기본 혜택 줄과 같은 모양(테두리 칩) 하나로 통일한다(10-13 요청). */}
+                  <View style={[styles.sharedChip, { borderColor: meta.color }]}>
+                    <Text style={[styles.sharedChipText, { color: meta.color }]}>
                       {item.affiliation}
                     </Text>
                   </View>
@@ -369,9 +368,8 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   /**
-   * 기본 혜택을 공유하는 소속 칩. 예외 칩(꽉 찬 색)과 달리 테두리만 둔다 —
-   * "이 소속들엔 다 같은 혜택"이라 예외처럼 눈길을 끌 필요가 없고,
-   * 소속이 여럿(소코아 4개) 겹칠 때 꽉 찬 칩만큼 무거워 보이지 않게 한다.
+   * 소속 칩. 기본 혜택을 같이 쓰는 소속과 소속별 예외 혜택 모두 이 테두리 칩 하나를 쓴다 —
+   * 예전엔 예외만 꽉 찬 색 칩이라 같은 시트 안에서 소속 표시가 두 가지로 보였다.
    */
   sharedChip: {
     borderWidth: 1,
@@ -395,17 +393,6 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(0,0,0,0.12)",
     gap: 5,
     alignItems: "flex-start",
-  },
-  exceptionChip: {
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 2.5,
-  },
-  exceptionChipText: {
-    fontFamily: FONTS.bold,
-    fontSize: 10,
-    color: COLORS.white,
-    letterSpacing: 0.2,
   },
   /**
    * 이용 방법은 별도 구획이 아니라, 그것이 딸린 혜택 줄(기본 혜택 또는
