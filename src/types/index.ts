@@ -231,6 +231,11 @@ export interface Partner {
   hours?: string
   contact?: string
   link?: ExternalLink
+  /**
+   * 기간 한정 제휴가 끝나는 날(YYYY-MM-DD, 이 날까지). 없으면 기한 없음.
+   * 이 날이 지나면 서버가 지도 데이터에서 빼므로 앱은 따로 거르지 않는다.
+   */
+  endsOn?: string
 }
 
 export interface TreeNode {

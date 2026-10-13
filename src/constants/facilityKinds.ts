@@ -31,25 +31,24 @@ export interface FacilityKindMeta {
 /**
  * 배열 순서가 곧 칩이 놓이는 순서다.
  *
- * 찾는 목적이 비슷한 것끼리 묶었다 — 학업(프린터·증명서 발급·열람실),
- * 먹고 마시는 것(정수기·카페·식당·편의점), 사람을 만나거나 둘러보는 곳(학생처·학과사무실·행사·전시).
+ * 자주 찾는 순서로 앞에 둔다(10-13 요청): 행정·지원과 학과사무실을 앞쪽으로 올리고, 열람실·식당은 뒤로 보냈다.
  * 색은 이 레이어 안에서만 구분되면 된다. 편의시설과 제휴 업체는 최상단 칩으로
  * 갈려 한 화면에 같이 뜨지 않기 때문이다.
  */
 export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '프린터', icon: 'print', color: '#4F46E5' },
   { key: '증명서 발급', icon: 'ribbon', color: '#0F766E' },
-  { key: '열람실', icon: 'book', color: '#059669' },
+  // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
+  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
   { key: '스터디룸', icon: 'people-circle', color: '#2563EB' },
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
   { key: '카페', icon: 'cafe', color: '#9333EA' },
-  { key: '식당', icon: 'restaurant', color: '#DC2626' },
+  { key: '학과사무실', icon: 'business-outline', color: '#1E3A8A' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
   { key: '라운지', icon: 'sofa', color: '#65A30D' },
   { key: '수면실', icon: 'bed', color: '#0891B2' },
-  // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
-  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
-  { key: '학과사무실', icon: 'business-outline', color: '#1E3A8A' },
+  { key: '열람실', icon: 'book', color: '#059669' },
+  { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
   { key: '흡연구역', icon: 'logo-no-smoking', color: '#57534E' },
   { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },

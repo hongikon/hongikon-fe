@@ -11,6 +11,11 @@ export const TREE_DATA: TreeNode[] = [
     ]},
     { id: '대학혁신지원사업', name: '대학혁신지원사업' },
     { id: '장학', name: '장학' },
+    // 취업진로지원센터 사이트(inno.hongik.ac.kr/career)의 게시판 둘. 국제협력본부와 같은 모양으로 게시판마다 따로 구독한다.
+    { id: '취업진로지원센터', name: '취업진로지원센터', children: [
+      { id: '취업진로공지', name: '취업진로 공지' },
+      { id: '채용정보', name: '채용정보' },
+    ]},
     { id: '학사', name: '학사' },
     { id: '학생상담', name: '학생상담' },
     { id: '학생활동', name: '학생활동' },
