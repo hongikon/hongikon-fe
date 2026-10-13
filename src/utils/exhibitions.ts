@@ -43,16 +43,14 @@ export function formatYmdShort(ymd: string): string {
 }
 
 /**
- * '12월 31일까지'. 올해가 아니면 '2027년 3월 1일까지'. 제휴 종료일처럼 "이 날까지"를 문장으로 보여 줄 때 쓴다.
+ * '2026년 12월 31일까지'. 제휴 종료일처럼 "이 날까지"를 문장으로 보여 줄 때 쓴다. 해를 넘기는 제휴가 헷갈리지 않게 연도를 항상 붙인다.
  * 날짜가 아니면 null.
  */
-export function formatUntilYmd(ymd: string, now: number = Date.now()): string | null {
+export function formatUntilYmd(ymd: string): string | null {
   const index = ymdToDayIndex(ymd)
   if (index === null) return null
   const date = new Date(index * DAY_MS)
-  const thisYear = Number(kstTodayYmd(now).slice(0, 4))
-  const year = date.getUTCFullYear() === thisYear ? '' : `${date.getUTCFullYear()}년 `
-  return `${year}${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일까지`
+  return `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일까지`
 }
 
 /** '10/12(월) ~ 10/16(금)'. 하루짜리면 '10/12(월)'. */
