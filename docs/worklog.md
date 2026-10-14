@@ -1301,3 +1301,17 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
 - 로컬 확인: 에버랜드 시트에 "QR코드 스캔 / 인증코드 입력 / 이용권 구매" 3단계와 "총학생회 인스타그램 게시물 열기" 버튼, 월리는 기본 안내 그대로. `tsc` 통과.
 - 서버에 `usage_note` 가 배포되기 전에는 값이 오지 않아 기존 문구가 그대로 나온다.
 - (10-14) `changelog.ts` 에 2026-10-14 항목 추가 후 dev → main 병합(--no-ff). OTA 는 백엔드 배포(#56 승인, PR #57) 뒤에 낸다.
+
+## 2026-10-14 — Android 운영 AAB(1.0.0 / versionCode 6), 건물 시트 '건물 안 시설', 시트 스크롤 이어 끌기 (dev)
+
+- Android: main `b49e268` 에서 `eas build --local --profile production -p android`(이 Mac 첫 Android 로컬 빌드, SDK·NDK 자동 설치로 약 1시간 50분).
+  첫 시도는 Maven 저장소 DNS 일시 오류로 실패하며 versionCode 5 를 소모 → 다시 빌드해 6. EAS 업로드 키로 서명 확인, 매니페스트에 `AD_ID`·막아 둔 권한 없음.
+  아직 FCM(`GOOGLE_SERVICES_JSON`)이 EAS 운영 환경에 없어 Android 푸시는 안 된다. `USE_BIOMETRIC`/`USE_FINGERPRINT`(expo-secure-store 기본)는 다음 네이티브 빌드 때 `blockedPermissions` 후보.
+  Play 서비스 계정 키가 없어 `eas submit` 대신 Play Console 비공개 테스트에 직접 올린다(현재 4 (1.0.0) 게시 중).
+- 건물 시트: 운영 건물 데이터는 종류만 있고 층수·시간·설명이 비어 있어, 지도 데이터의 편의시설을 칩 순서대로 종류별 한 줄("프린터 3곳 · B2·7F·9F")로 보여 준다.
+  줄을 누르면 검색과 같은 길(`openFacilitySheet`)로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다. 층은 4개까지, 넘으면 '외'. 서버 placeholder 종류 '확인 필요'는 숨긴다.
+  로컬(웹, 로컬 백엔드)에서 홍문관 R동·와우관 L동·운동장(시설 없음) 시트와 프린터 줄 → 시설 시트 이동 확인. `tsc` 통과.
+- 시트 본문 스크롤: 끝까지 스크롤한 그 손동작으로 계속 끌면 시트로 넘어가게 `disableScrollViewPanResponder`(sheetGesture 가 있을 때).
+  원인: RN ScrollView 는 이번 손동작에서 스크롤했으면 응답자 넘기기를 거절한다(`_observedScrollSinceBecomingResponder`) — 그래서 손을 뗐다 다시 끌어야 했다.
+  iOS 는 네이티브 스크롤 제스처가 JS 터치를 끊지 않아(`RCTSurfaceTouchHandler.canBePreventedByGestureRecognizer`) 같은 손동작에서 넘어갈 것. **실기기 미확인.**
+  웹은 브라우저가 스크롤을 시작하면 터치를 가져가 여전히 다시 끌어야 한다(로컬에서 확인). Android 도 네이티브 스크롤이 터치를 가져갈 수 있다.

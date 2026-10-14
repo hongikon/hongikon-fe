@@ -711,11 +711,12 @@ export default function MapScreen() {
   );
 
   /**
-   * 검색에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면 그 지점)로
-   * 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
+   * 검색이나 건물 시트에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면
+   * 그 지점)로 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
+   * `facility` 가 있으면(검색) 시트에서 그 줄을 강조한다.
    */
-  const handleSearchSelectFacility = useCallback(
-    (facility: Facility) => {
+  const openFacilitySheet = useCallback(
+    (kind: FacilityKind, buildingName: string, facility: Facility | null) => {
       setShowSearch(false);
       // 갈래 전환(handleSelectLayer)과 같은 정리: 제휴·제보 선택과 마커를 지운다.
       setLayer("편의시설");
@@ -729,21 +730,39 @@ export default function MapScreen() {
       setSelectedReport(null);
       postToMap({ type: "clearReports" });
 
-      setFacilityKind(facility.kind);
-      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, facility.kind), facilities, exhibitions);
-      const building = buildings.find((b) => b.name === facility.buildingName);
-      const lat = facility.lat ?? building?.lat;
-      const lng = facility.lng ?? building?.lng;
+      setFacilityKind(kind);
+      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, kind), facilities, exhibitions);
+      const building = buildings.find((b) => b.name === buildingName);
+      const lat = facility?.lat ?? building?.lat;
+      const lng = facility?.lng ?? building?.lng;
       // 건물 하나가 화면 가운데 오도록 좁은 범위(약 ±70m)를 준다.
       const bounds =
         lat !== undefined && lng !== undefined
           ? { swLat: lat - 0.0006, swLng: lng - 0.0008, neLat: lat + 0.0006, neLng: lng + 0.0008 }
           : null;
       postToMap({ type: "setFacilities", markers, bounds });
-      setSelectedFacilityBuilding(facility.buildingName);
+      setSelectedFacilityBuilding(buildingName);
       setSearchedFacility(facility);
     },
     [facilities, buildings, exhibitions, postToMap],
+  );
+
+  const handleSearchSelectFacility = useCallback(
+    (facility: Facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
+    [openFacilitySheet],
+  );
+
+  /** 건물 시트의 '건물 안 시설' 줄을 눌렀다. 검색과 같은 길로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다(강조할 줄은 없음). */
+  const handleOpenBuildingFacility = useCallback(
+    (kind: FacilityKind) => {
+      if (selectedBuilding) openFacilitySheet(kind, selectedBuilding.name, null);
+    },
+    [selectedBuilding, openFacilitySheet],
+  );
+
+  const selectedBuildingFacilities = useMemo(
+    () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
+    [selectedBuilding, facilities],
   );
 
   // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
@@ -1646,6 +1665,8 @@ export default function MapScreen() {
             <BuildingSheet
               key={selectedBuilding.name}
               building={selectedBuilding}
+              facilities={selectedBuildingFacilities}
+              onOpenFacility={handleOpenBuildingFacility}
               onClose={handleCloseBuilding}
               routeFindingEnabled={ROUTE_FINDING_ENABLED}
               onSetFrom={handleSetFrom}
