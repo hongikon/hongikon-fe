@@ -769,12 +769,27 @@ export default function MapScreen() {
   );
 
   /** 건물 시트의 '건물 안 시설' 줄을 눌렀다. 검색과 같은 길로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다(강조할 줄은 없음). */
+  /**
+   * 건물 시트에서 넘어온 시설 시트면 그 건물과 넘어오기 전 칩 상태를 기억한다. 시설 시트의 '<'로 그 건물 시트에 돌아간다(10-15 요청 —
+   * 문헌관 → 프린터를 누르면 프린터 칩이 켜지며 시설 시트로 바뀌어, 문헌관 정보로 돌아갈 길이 없었다).
+   */
+  const [facilityFrom, setFacilityFrom] = useState<{ building: Building; layer: MapLayer | null; kind: FacilityKind | null } | null>(null);
+
   const handleOpenBuildingFacility = useCallback(
     (kind: FacilityKind) => {
-      if (selectedBuilding) openFacilitySheet(kind, selectedBuilding.name, null);
+      if (!selectedBuilding) return;
+      const from = { building: selectedBuilding, layer, kind: facilityKind };
+      openFacilitySheet(kind, selectedBuilding.name, null);
+      setFacilityFrom(from);
     },
-    [selectedBuilding, openFacilitySheet],
+    [selectedBuilding, layer, facilityKind, openFacilitySheet],
   );
+
+  // 시설 시트가 닫히거나 다른 건물·검색으로 바뀌면 돌아갈 곳을 잊는다.
+  useEffect(() => {
+    if (facilityFrom && selectedFacilityBuilding !== facilityFrom.building.name) setFacilityFrom(null);
+  }, [facilityFrom, selectedFacilityBuilding]);
+
 
   const selectedBuildingFacilities = useMemo(
     () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
@@ -899,6 +914,19 @@ export default function MapScreen() {
     },
     [facilities, buildings, exhibitions, postToMap],
   );
+
+  const handleBackToBuilding = useCallback(() => {
+    const from = facilityFrom;
+    if (!from) return;
+    setFacilityFrom(null);
+    setSearchedFacility(null);
+    // 넘어오기 전 칩으로 되돌린다(같은 종류면 그대로 두고 시트만 닫는다). 제휴·제보에서 왔으면 그 갈래 칩만 다시 보인다.
+    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
+    else setSelectedFacilityBuilding(null);
+    setLayer(from.layer);
+    setSelectedBuilding(from.building);
+    postToMap({ type: "selectBuilding", name: from.building.name });
+  }, [facilityFrom, facilityKind, applyFacilityKind, postToMap]);
 
   /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
   const handleSelectFacilityKind = useCallback(
@@ -1724,6 +1752,8 @@ export default function MapScreen() {
                   : null
               }
               onClose={() => setSelectedFacilityBuilding(null)}
+              onBack={facilityFrom ? handleBackToBuilding : undefined}
+              backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
             />
           )}
 
