@@ -88,6 +88,8 @@ import ContentColumn from "../components/common/ContentColumn";
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
 const EMPTY_REPORTS: ReportListItem[] = [];
+/** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
+const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key);
 
 /** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
 interface PreviewTarget {
@@ -259,12 +261,6 @@ export default function MapScreen() {
         : fetchedReportData,
     [fetchedReportData, hotOnly, reportsMatchHot],
   );
-  /** 종류 칩 줄에 올릴 종류 — 지금 목록에 있는 것만, 제보 쓰기 칩과 같은 순서로. 고른 종류는 목록에서 빠져도 남긴다. */
-  const reportCategoryOptions = useMemo(() => {
-    const present = new Set(hotReportData?.map((report) => report.category));
-    if (reportCategory) present.add(reportCategory);
-    return REPORT_CATEGORIES.map((meta) => meta.key).filter((key) => present.has(key));
-  }, [hotReportData, reportCategory]);
   const shownReportData = useMemo(
     () =>
       hotReportData !== undefined && reportCategory !== null
@@ -1792,7 +1788,7 @@ export default function MapScreen() {
               onSelectFacilityKind={handleSelectFacilityKind}
               onToggleReports={handleToggleReports}
               onToggleHot={handleToggleHot}
-              reportCategories={reportCategoryOptions}
+              reportCategories={REPORT_CATEGORY_KEYS}
               reportCategory={reportCategory}
               onSelectReportCategory={handleSelectReportCategory}
             />

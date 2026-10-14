@@ -46,8 +46,7 @@ interface MapFilterChipsProps {
   hotAvailable?: boolean
   onToggleHot?: () => void
   /**
-   * 제보 종류 칩 줄('전체 · 행사 · 공연 …'). 지금 받은 제보에 있는 종류만 넘긴다(순서도 넘긴 그대로).
-   * 비어 있으면 줄을 그리지 않는다.
+   * 제보 종류 칩 줄('전체 · 행사 · 공연 …'). 넘긴 순서대로 그린다. 비어 있으면 줄을 그리지 않는다.
    */
   reportCategories?: readonly ReportCategory[]
   /** 고른 제보 종류. null 이면 '전체'. */
