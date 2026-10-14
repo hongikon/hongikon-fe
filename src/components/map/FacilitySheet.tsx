@@ -25,6 +25,7 @@ import { CAFETERIA_FACILITY_IDS } from "../../apis/cafeteria";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
+import { ADMIN_OFFICE_DETAILS, type AdminOfficeDetail } from "../../constants/adminOffices";
 import SheetScrollBody from "./SheetScrollBody";
 
 interface FacilitySheetProps {
@@ -140,6 +141,15 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
               </View>
             );
           }
+          const office = kind === "학생처" ? ADMIN_OFFICE_DETAILS[item.id] : undefined;
+          if (office) {
+            return (
+              <View key={item.id} style={styles.venue} onLayout={onLayout}>
+                {row}
+                <OfficeDetail detail={office} />
+              </View>
+            );
+          }
           if (kind !== "행사·전시") return <View key={item.id} onLayout={onLayout}>{row}</View>;
           return (
             <View key={item.id} style={styles.venue} onLayout={onLayout}>
@@ -150,6 +160,78 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
         })}
       </SheetScrollBody>
     </Animated.View>
+  );
+}
+
+/** 펼치기 전에 보여 주는 업무별 연락처 줄 수. */
+const OFFICE_CONTACTS_FOLDED = 3;
+
+/**
+ * 행정·지원 한 곳의 담당 업무와 연락처(10-14 요청). 학교 홈페이지 부서 페이지의 '주요업무'·'담당정보'(업무별 전화)·대표 메일.
+ * 담당자 이름은 학교가 공개하지 않아 없다. 처음엔 업무 소개 두 줄과 연락처 몇 줄만, "모두 보기"로 펼친다.
+ * 전화·메일은 누르면 바로 건다(tel:, mailto:). 원문 링크로 학교 페이지를 연다.
+ */
+function OfficeDetail({ detail }: { detail: AdminOfficeDetail }) {
+  const [expanded, setExpanded] = useState(false);
+  const contacts = detail.contacts ?? [];
+  const shown = expanded ? contacts : contacts.slice(0, OFFICE_CONTACTS_FOLDED);
+  const summary = detail.summary?.trim();
+  const foldable = contacts.length > OFFICE_CONTACTS_FOLDED || (!!summary && (summary.length > DESCRIPTION_FOLD_CHARS || summary.includes("\n")));
+  const call = (phone: string) => Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {});
+
+  return (
+    <View style={styles.office}>
+      {summary ? (
+        <Text style={styles.description} numberOfLines={expanded ? undefined : 2}>
+          {summary}
+        </Text>
+      ) : null}
+      {detail.email ? (
+        <TouchableOpacity
+          style={styles.contactRow}
+          onPress={() => Linking.openURL(`mailto:${detail.email}`).catch(() => {})}
+          accessibilityRole="link"
+          accessibilityLabel={`대표 메일 ${detail.email} 보내기`}
+        >
+          <Ionicons name="mail-outline" size={13} color={COLORS.primary} />
+          <Text style={styles.contactValue}>{detail.email}</Text>
+          <Text style={styles.contactDuty}>대표 메일</Text>
+        </TouchableOpacity>
+      ) : null}
+      {shown.length > 0 ? <Text style={styles.sectionLabel}>업무별 연락처</Text> : null}
+      {shown.map((c, i) => (
+        <TouchableOpacity
+          key={`${c.phone}:${i}`}
+          style={styles.contactRow}
+          onPress={() => call(c.phone)}
+          accessibilityRole="button"
+          accessibilityLabel={`${c.duty} 전화 ${c.phone} 걸기`}
+        >
+          <Ionicons name="call-outline" size={13} color={COLORS.primary} />
+          <Text style={styles.contactValue}>{c.phone}</Text>
+          <Text style={styles.contactDuty}>{c.duty}</Text>
+        </TouchableOpacity>
+      ))}
+      {foldable && (
+        <TouchableOpacity
+          onPress={() => setExpanded((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Text style={styles.moreText}>{expanded ? "접기" : contacts.length > OFFICE_CONTACTS_FOLDED ? `연락처 ${contacts.length}개 모두 보기` : "자세히 보기"}</Text>
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity
+        style={styles.linkBtn}
+        onPress={() => openExternalUrl(detail.source)}
+        accessibilityRole="link"
+        accessibilityLabel="학교 홈페이지에서 부서 안내 보기"
+      >
+        <Ionicons name="open-outline" size={14} color={COLORS.primary} />
+        <Text style={styles.linkText}>학교 홈페이지에서 보기</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -375,6 +457,10 @@ const styles = StyleSheet.create({
   noteLink: { color: COLORS.primary, fontFamily: FONTS.semibold, textDecorationLine: "underline" },
   noteLine: { fontSize: 13.5, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   venue: { borderRadius: 12, backgroundColor: COLORS.background, overflow: "hidden" },
+  office: { paddingHorizontal: 14, paddingBottom: 12, gap: 6 },
+  contactRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, paddingVertical: 2 },
+  contactValue: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.primary, fontVariant: ["tabular-nums"] },
+  contactDuty: { flex: 1, fontSize: 12.5, fontFamily: FONTS.regular, color: COLORS.textSecondary, lineHeight: 18 },
   exhibitions: { paddingHorizontal: 12, paddingBottom: 12, gap: 10 },
   emptyText: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   current: {
