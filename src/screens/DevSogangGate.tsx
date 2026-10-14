@@ -9,7 +9,7 @@ import { FONTS } from '../constants/typography'
  * 다만 정적 웹이라 진짜 잠금은 아니다(번들 파일 주소를 알면 받을 수 있다). 학교가 공개한 정보를 링크 없이 숨겨 두는 정도의 용도.
  * 키를 바꾸려면 새 키의 SHA-256(`printf '%s' 새키 | shasum -a 256`)으로 아래 값을 바꾼다.
  */
-const KEY_SHA256 = '6b3f927cda9dcace8dc6f355afb3a3a793cd5cbbd943211a66d3d954096db878'
+const KEY_SHA256 = '6b980606c6e01c1c613834d4b1546aae577730932517e62e6572c78cc0458dd5'
 const UNLOCK_KEY = '@hongikon_dev_sogang_unlocked'
 
 const DevSogangScreen = lazy(() => import('./DevSogangScreen'))
