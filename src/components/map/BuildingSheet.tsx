@@ -9,7 +9,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import type { Building } from "../../types";
+import type { Building, Facility, FacilityKind } from "../../types";
+import { FACILITY_KINDS, facilityKindLabel } from "../../constants/facilityKinds";
+import { formatFloor } from "../../utils/floors";
+import { KindIcon } from "./ChipIcon";
 import { FONTS } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
@@ -20,6 +23,10 @@ import SheetScrollBody from "./SheetScrollBody";
 
 interface BuildingSheetProps {
   building: Building;
+  /** 이 건물에 등록된 편의시설(지도 데이터). 종류별로 한 줄씩 보여 준다. */
+  facilities: readonly Facility[];
+  /** 종류 줄을 누르면 그 종류의 시설 시트(층·위치 목록)를 연다. */
+  onOpenFacility: (kind: FacilityKind) => void;
   onClose: () => void;
   /** false 면 출발/도착 버튼을 그리지 않는다(출시 전 기능 안내도 띄우지 않는다 — 심사 2.1). */
   routeFindingEnabled: boolean;
@@ -27,12 +34,42 @@ interface BuildingSheetProps {
   onSetTo: () => void;
 }
 
+/** 서버가 건물 종류를 아직 모를 때 넣어 둔 값. 사용자에게는 보이지 않게 한다. */
+const UNKNOWN_TYPE = "확인 필요";
+/** 종류 줄에 층을 이만큼까지만 적고 나머지는 '외'로 줄인다(홍문관 행정 부서처럼 층이 많은 경우). */
+const MAX_FLOORS_SHOWN = 4;
+
+interface KindRow {
+  kind: FacilityKind;
+  count: number;
+  floors: number[];
+}
+
+/** 이 건물의 편의시설을 칩 순서(FACILITY_KINDS)대로 종류별로 묶는다. */
+function groupByKind(facilities: readonly Facility[]): KindRow[] {
+  return FACILITY_KINDS.flatMap(({ key }) => {
+    const items = facilities.filter((f) => f.kind === key);
+    if (items.length === 0) return [];
+    const floors = [...new Set(items.flatMap((f) => (f.floor === undefined ? [] : [f.floor])))].sort((a, b) => a - b);
+    return [{ kind: key, count: items.length, floors }];
+  });
+}
+
+function floorSummary(floors: number[]): string | null {
+  if (floors.length === 0) return null;
+  const shown = floors.slice(0, MAX_FLOORS_SHOWN).map(formatFloor).join(" · ");
+  return floors.length > MAX_FLOORS_SHOWN ? `${shown} 외` : shown;
+}
+
 /**
  * 건물 정보 배너. 확인된 값이 있는 줄만 보여준다.
- * (floors / description / facilities / hours / contact / link)
+ * (종류·층수 / description / 건물 안 시설 / hours / contact / link)
+ * '건물 안 시설'은 지도 데이터의 편의시설을 종류별로 묶어 보여 주고, 누르면 그 시설 시트로 간다(10-14 요청).
  */
 export default function BuildingSheet({
   building,
+  facilities,
+  onOpenFacility,
   onClose,
   routeFindingEnabled,
   onSetFrom,
@@ -44,6 +81,15 @@ export default function BuildingSheet({
   });
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
+  const kindRows = groupByKind(facilities);
+  const type = building.type && building.type !== UNKNOWN_TYPE ? building.type : null;
+  const typeLine = [
+    type,
+    building.floors !== undefined ? `지상 ${building.floors}층` : null,
+    building.basementFloors ? `지하 ${building.basementFloors}층` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Animated.View style={[styles.sheet, { paddingBottom: 30 + insets.bottom, transform: [{ translateY }] }]}>
       <View onLayout={onChromeLayout} {...chromeHandlers}>
@@ -67,17 +113,43 @@ export default function BuildingSheet({
       </View>
 
       <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} style={{ height: bodyHeight }} bounces={false}>
-      <Text style={styles.type}>
-        {building.floors === undefined
-          ? building.type
-          : `${building.type} · 지상 ${building.floors}층`}
-      </Text>
+      {typeLine !== "" && <Text style={styles.type}>{typeLine}</Text>}
 
       {building.description && (
         <Text style={styles.description}>{building.description}</Text>
       )}
 
-      {building.facilities && building.facilities.length > 0 && (
+      {kindRows.length > 0 && (
+        <View style={styles.kindSection}>
+          <Text style={styles.sectionTitle}>건물 안 시설</Text>
+          {kindRows.map((row) => {
+            const meta = FACILITY_KINDS.find((k) => k.key === row.kind)!;
+            const label = facilityKindLabel(row.kind);
+            const floors = floorSummary(row.floors);
+            return (
+              <TouchableOpacity
+                key={row.kind}
+                style={styles.kindRow}
+                onPress={() => onOpenFacility(row.kind)}
+                accessibilityRole="button"
+                accessibilityLabel={`${label} ${row.count}곳${floors ? `, ${floors}` : ""}`}
+              >
+                <View style={styles.kindIcon}>
+                  <KindIcon name={meta.icon} size={15} color={meta.color} />
+                </View>
+                <Text style={styles.kindLabel}>{label}</Text>
+                {row.count > 1 && <Text style={styles.kindCount}>{row.count}곳</Text>}
+                <Text style={styles.kindFloors} numberOfLines={1}>
+                  {floors ?? ""}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textTertiary} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {kindRows.length === 0 && building.facilities && building.facilities.length > 0 && (
         <View style={styles.facilities}>
           {building.facilities.map((facility) => (
             <View key={facility} style={styles.facilityChip}>
@@ -186,6 +258,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     fontFamily: FONTS.medium,
+  },
+  kindSection: { paddingLeft: 18, marginBottom: 10 },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: FONTS.semibold,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  kindRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 40,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  kindIcon: { width: 20, alignItems: "center" },
+  kindLabel: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textPrimary },
+  kindCount: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  kindFloors: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
   },
   hoursRow: {
     flexDirection: "row",

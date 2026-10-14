@@ -96,6 +96,11 @@ export default function SheetScrollBody({
         // 기본값('never')이면 키보드가 떠 있을 때 첫 탭을 키보드 닫기로 먹어 댓글 보내기가 눌리지 않았다(10-09).
         keyboardShouldPersistTaps="handled"
         {...rest}
+        // ScrollView 는 이번 손동작에서 한 번이라도 스크롤했으면 JS 응답자를 내주지 않는다(_observedScrollSinceBecomingResponder).
+        // 그러면 끝까지 스크롤한 그 손가락으로 계속 끌어도 시트로 안 넘어가고, 손을 뗐다 다시 끌어야 했다(10-14 요청).
+        // 스크롤은 네이티브가 하므로 JS 응답자를 맡지 않게 해 두면, 끝에 닿은 순간 위 PanResponder 가 바로 이어받는다.
+        // iOS 는 네이티브 스크롤이 JS 터치를 끊지 않아 같은 손동작에서 넘어간다. Android 는 네이티브 스크롤이 터치를 가져가 여전히 다시 끌어야 할 수 있다.
+        disableScrollViewPanResponder={sheetGesture ? true : rest.disableScrollViewPanResponder}
         scrollEnabled={rest.scrollEnabled !== false && !handingOff}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={32}
