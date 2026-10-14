@@ -1,7 +1,6 @@
 import { ApiError, apiGetRaw } from './client'
 import type { Building, Exhibition, Facility, Partner } from '../types'
 import { isFacilityKind } from '../constants/facilityKinds'
-import { applyFacilityOverride } from '../constants/facilityOverrides'
 
 /**
  * 지도 데이터(건물·편의시설·제휴업체) 한 벌. `GET /map/data` 응답(비로그인 허용).
@@ -52,18 +51,15 @@ export function normalizeMapData(raw: unknown): MapData {
       isFiniteNumber((b as Building).lat) &&
       isFiniteNumber((b as Building).lng),
   )
-  const facilities = arrayOf(body.facilities)
-    .filter(
-      (f): f is Facility =>
-        !!f &&
-        typeof (f as Facility).id === 'string' &&
-        typeof (f as Facility).kind === 'string' &&
-        // 앱이 모르는 종류(서버에 먼저 추가된 것)는 뺀다 — 칩·아이콘이 없어 그릴 수 없고, 검색 줄에서 오류가 난다.
-        isFacilityKind((f as Facility).kind) &&
-        typeof (f as Facility).buildingName === 'string',
-    )
-    // 서버가 따라오기 전까지 앱이 먼저 바로잡는 값(신한은행 → 은행·ATM 등). 서버가 바뀌면 그대로 서버 값.
-    .map(applyFacilityOverride)
+  const facilities = arrayOf(body.facilities).filter(
+    (f): f is Facility =>
+      !!f &&
+      typeof (f as Facility).id === 'string' &&
+      typeof (f as Facility).kind === 'string' &&
+      // 앱이 모르는 종류(서버에 먼저 추가된 것)는 뺀다 — 칩·아이콘이 없어 그릴 수 없고, 검색 줄에서 오류가 난다.
+      isFacilityKind((f as Facility).kind) &&
+      typeof (f as Facility).buildingName === 'string',
+  )
   const partners = arrayOf(body.partners).filter(
     (p): p is Partner =>
       !!p &&
