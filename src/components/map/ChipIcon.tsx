@@ -13,7 +13,7 @@ interface ChipIconProps {
  * 지도 핀(mapHtml.ts 의 소파 SVG)과 칩·시트·검색 결과의 라운지 아이콘을 같은 모양으로 맞춘다(10-07 요청).
  */
 export function KindIcon({ name, size, color }: { name: FacilityIconName; size: number; color: string }) {
-  if (name === "sofa") return <MaterialCommunityIcons name="sofa" size={size + 1} color={color} />;
+  if (name === "sofa" || name === "bank") return <MaterialCommunityIcons name={name} size={size + 1} color={color} />;
   return <Ionicons name={name} size={size} color={color} />;
 }
 

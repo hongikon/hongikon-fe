@@ -11,8 +11,8 @@ import { FONTS } from '../constants/typography'
 import { SOGANG_BUILDINGS, SOGANG_CENTER, SOGANG_FACILITIES, type SogangFacility } from '../debug/sogangData'
 
 /** 칩에 없는 종류(조사에서 따로 모은 것)의 색. */
-const EXTRA_COLOR: Record<string, string> = { '은행·ATM': '#0F766E', 기타: '#64748B' }
-const KIND_ORDER = [...FACILITY_KINDS.map((k) => k.key as string), '은행·ATM', '기타']
+const EXTRA_COLOR: Record<string, string> = { 기타: '#64748B' }
+const KIND_ORDER = [...FACILITY_KINDS.map((k) => k.key as string), '기타']
 
 function kindColor(kind: string): string {
   return FACILITY_KINDS.find((k) => k.key === kind)?.color ?? EXTRA_COLOR[kind] ?? COLORS.primary
@@ -109,7 +109,7 @@ export default function DevSogangScreen() {
           <Chip key={k} label={`${kindLabel(k)} ${counts.get(k)}`} active={kind === k} color={kindColor(k)} onPress={() => setKind(kind === k ? null : k)} />
         ))}
       </View>
-      <Text style={styles.hint}>칩에 없는 칸(스터디룸·정수기·수면실·흡연구역·엘리베이터)은 공식 페이지에 정보가 없어요.</Text>
+      <Text style={styles.hint}>칩에 없는 칸(스터디룸·정수기·라운지·흡연구역·엘리베이터)은 공식 페이지에 정보가 없어요.</Text>
       {grouped.map(([k, items]) => (
         <View key={k} style={styles.section}>
           <Text style={[styles.sectionTitle, { color: kindColor(k) }]}>{`${kindLabel(k)} ${items.length}`}</Text>

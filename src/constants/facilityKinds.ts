@@ -3,8 +3,8 @@ import type { Ionicons } from '@expo/vector-icons'
 import type { FacilityKind } from '../types'
 
 type IoniconName = ComponentProps<typeof Ionicons>['name']
-/** 시설 아이콘 이름. 'sofa'(라운지)만 Ionicons 에 없어 MaterialCommunityIcons 로 그린다(`ChipIcon.tsx` KindIcon). */
-export type FacilityIconName = IoniconName | 'sofa'
+/** 시설 아이콘 이름. 'sofa'(라운지)·'bank'(은행·ATM)는 Ionicons 에 없어 MaterialCommunityIcons 로 그린다(`ChipIcon.tsx` KindIcon). */
+export type FacilityIconName = IoniconName | 'sofa' | 'bank'
 
 export interface FacilityKindMeta {
   key: FacilityKind
@@ -45,8 +45,11 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '학과사무실', icon: 'business-outline', color: '#1E3A8A' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
+  // 은행 창구·ATM. 편의점(밝은 호박색)과 갈리게 짙은 금색(10-14 추가).
+  { key: '은행·ATM', icon: 'bank', color: '#854D0E' },
   { key: '라운지', icon: 'sofa', color: '#65A30D' },
-  { key: '수면실', icon: 'bed', color: '#0891B2' },
+  // 서버 값은 '수면실' 그대로, 화면에는 '휴게실'(10-14 요청 — 실제 데이터가 남·여학생 휴게실이다). 아이콘은 침대 그대로.
+  { key: '수면실', label: '휴게실', icon: 'bed', color: '#0891B2' },
   { key: '열람실', icon: 'book', color: '#059669' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
@@ -65,6 +68,11 @@ export function facilityKindMeta(key: FacilityKind): FacilityKindMeta {
 }
 
 /** 편의시설 종류의 화면 이름(label 이 있으면 label). */
+/** 이 앱이 아는 편의시설 종류인지. 서버에 새 종류가 먼저 생겨도 옛 앱이 그 항목에서 멈추지 않게 지도 데이터를 받을 때 거른다. */
+export function isFacilityKind(key: string): key is FacilityKind {
+  return META_BY_KEY.has(key as FacilityKind)
+}
+
 export function facilityKindLabel(key: FacilityKind): string {
   return META_BY_KEY.get(key)?.label ?? key
 }

@@ -1,5 +1,6 @@
 import { ApiError, apiGetRaw } from './client'
 import type { Building, Exhibition, Facility, Partner } from '../types'
+import { isFacilityKind } from '../constants/facilityKinds'
 
 /**
  * 지도 데이터(건물·편의시설·제휴업체) 한 벌. `GET /map/data` 응답(비로그인 허용).
@@ -55,6 +56,8 @@ export function normalizeMapData(raw: unknown): MapData {
       !!f &&
       typeof (f as Facility).id === 'string' &&
       typeof (f as Facility).kind === 'string' &&
+      // 앱이 모르는 종류(서버에 먼저 추가된 것)는 뺀다 — 칩·아이콘이 없어 그릴 수 없고, 검색 줄에서 오류가 난다.
+      isFacilityKind((f as Facility).kind) &&
       typeof (f as Facility).buildingName === 'string',
   )
   const partners = arrayOf(body.partners).filter(

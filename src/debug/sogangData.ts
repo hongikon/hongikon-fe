@@ -512,21 +512,21 @@ export const SOGANG_FACILITIES: SogangFacility[] = [
   "hours": "06:00~23:00"
  },
  {
-  "kind": "라운지",
+  "kind": "수면실",
   "name": "J관 여학생 휴게실",
   "building": "정하상관(J관)",
   "floor": 4,
   "where": "J관 407호"
  },
  {
-  "kind": "라운지",
+  "kind": "수면실",
   "name": "BW관 여학생 휴게실",
   "building": "베르크만스 우정원(BW관)",
   "floor": 4,
   "where": "BW관 432호"
  },
  {
-  "kind": "라운지",
+  "kind": "수면실",
   "name": "BW관 남학생 휴게실",
   "building": "베르크만스 우정원(BW관)",
   "floor": 3,
