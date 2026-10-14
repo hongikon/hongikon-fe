@@ -18,7 +18,7 @@ import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
-import { DevPathAuditEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
+import { DevPathAuditEntry, DevSogangEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
@@ -74,7 +74,7 @@ function WebDocumentTitleBridge() {
  * `/temp/*` 는 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
  * (`SHOW_DEVELOPER_TOOLS`). `/dev/path`(경로망 점검)만 운영 웹에서도 연다. 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit' | 'sogang'
 
 const tempDebugMode: TempDebugMode | null =
   Platform.OS === 'web' && typeof window !== 'undefined'
@@ -83,6 +83,8 @@ const tempDebugMode: TempDebugMode | null =
         // `/dev/path` = 경로망 점검(빠진 지점·끊긴 간선·망에 안 닿은 건물을 목록과 지도 점으로).
         // 경로망 데이터는 앱에서도 공개되는 캠퍼스 좌표라, 팀원이 바로 볼 수 있게 운영 웹(hongikon.com/dev/path)에서도 연다.
         if (path === '/dev/path') return 'pathAudit'
+        // `/dev/sogang` = 서강대 시설 조사 미리보기. 학교 홈페이지에 공개된 위치 정보라 /dev/path 처럼 운영 웹에서도 연다(noindex).
+        if (path === '/dev/sogang') return 'sogang'
         if (!SHOW_DEVELOPER_TOOLS) return null
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
@@ -194,7 +196,15 @@ export default function App() {
     )
   }
 
-  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && TempEntranceDebugEntry) {
+  if (tempDebugMode === 'sogang' && DevSogangEntry) {
+    return (
+      <Suspense fallback={null}>
+        <DevSogangEntry />
+      </Suspense>
+    )
+  }
+
+  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && tempDebugMode !== 'sogang' && TempEntranceDebugEntry) {
     return (
       <Suspense fallback={null}>
         <TempEntranceDebugEntry mode={tempDebugMode} />

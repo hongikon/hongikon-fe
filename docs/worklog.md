@@ -1321,3 +1321,10 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
   iOS 기본 Smart App Banner. Safari 가 아닌 iPhone 브라우저(카카오톡·네이버·인스타 인앱, Chrome 등 — 기본 배너가 안 뜬다)는 `WebAppInstallBanner` 가 맨 위에 붙어 화면을 아래로 민다.
   '앱 받기' → App Store(지금 창, 인앱 브라우저의 새 창 차단 회피), 닫으면 14일 숨김(localStorage `@hongikon_install_banner_dismissed_until`, 개인정보 아님). /admin·데스크톱은 안 띄운다.
   Android 는 Play 가 비공개 테스트라 `PLAY_STORE_URL = null` — 프로덕션 출시 뒤 값만 넣으면 뜬다. 로컬에서 UA 별(카카오톡 iPhone 뜸 / Safari·Android 안 뜸)·닫기 유지, `pnpm build:web` 결과에 메타 태그 확인.
+
+## 2026-10-14 — `/dev/sogang` 서강대 시설 조사 미리보기 (dev)
+
+- 서강대 공식 홈페이지 공개 페이지로 시설 110곳·건물 37곳 좌표를 모았다(조사 문서 `../docs/sogang-facilities-research.md`, 데이터 `../docs/sogang/*.tsv`).
+- `/dev/sogang`(웹 전용, `/dev/path` 와 같은 방식 — 운영 웹에서도 열리고 noindex): 홍익온 지도 페이지를 건물 없이 띄워 서강대 건물 점·이름과 시설 수를 덧그린다.
+  칩(우리 편의시설 종류 + 은행·ATM·기타)으로 거르고, 목록 줄을 누르면 그 건물로 간다. 데이터는 `src/debug/sogangData.ts`(TSV 에서 생성, 웹 지연 로드라 앱 번들에는 안 실림).
+- 로컬에서 전체·카페 보기 확인, 콘솔 오류 없음. `tsc` 통과.
