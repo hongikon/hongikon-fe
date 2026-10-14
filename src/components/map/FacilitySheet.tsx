@@ -39,6 +39,8 @@ interface FacilitySheetProps {
   /** 건물 시트에서 넘어왔으면 그 건물 시트로 돌아가기. 머리에 '<'를 단다. */
   onBack?: () => void;
   backLabel?: string;
+  /** 행정·지원 부서 안내 표. 기본은 홍익대(`ADMIN_OFFICE_DETAILS`). `/dev/sogang` 미리보기는 서강대 표를 넘긴다. */
+  officeDetails?: Record<string, AdminOfficeDetail>;
   /** 검색으로 찾아온 시설 id. 그 줄을 메인 색 테두리로 표시하고 보이게 스크롤한다(10-12 요청). */
   highlightId?: string | null;
 }
@@ -49,7 +51,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, highlightId = null }: FacilitySheetProps) {
+export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -76,7 +78,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   const scrolledFor = useRef<string | null>(null);
   // 행정·지원 줄의 '>'를 누르면 그 부서만의 안내(주요업무 전문·연락처 전체)를 시트 안에서 연다. '<'로 목록에 돌아온다.
   const [openOffice, setOpenOffice] = useState<Facility | null>(null);
-  const officeDetail = openOffice ? ADMIN_OFFICE_DETAILS[openOffice.id] : undefined;
+  const officeDetail = openOffice ? officeDetails[openOffice.id] : undefined;
   const showOffice = (item: Facility | null) => {
     setOpenOffice(item);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -168,7 +170,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
               </View>
             );
           }
-          const office = kind === "학생처" ? ADMIN_OFFICE_DETAILS[item.id] : undefined;
+          const office = kind === "학생처" ? officeDetails[item.id] : undefined;
           if (office) {
             return (
               <TouchableOpacity
