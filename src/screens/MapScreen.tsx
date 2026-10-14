@@ -75,8 +75,10 @@ import type {
   Partner,
   PartnerAffiliation,
   PartnerCategory,
+  ReportCategory,
   ReportListItem,
 } from "../types";
+import { REPORT_CATEGORIES, reportCategoryMeta } from "../constants/reportCategories";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { RADIUS } from "../constants/spacing";
@@ -86,6 +88,8 @@ import ContentColumn from "../components/common/ContentColumn";
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
 const EMPTY_REPORTS: ReportListItem[] = [];
+/** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
+const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key);
 
 /** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
 interface PreviewTarget {
@@ -198,6 +202,8 @@ export default function MapScreen() {
    * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
    */
   const [hotOnly, setHotOnly] = useState(false);
+  /** 제보 종류 칩('전체 · 행사 · 공연 …'). null 이면 전체. 받아 온 목록을 기기에서 좁힌다. */
+  const [reportCategory, setReportCategory] = useState<ReportCategory | null>(null);
   /** 서버가 🔥 를 아는지(목록 항목에 fireCount 가 오는지). 모르면 HOT 칩을 숨긴다(커뮤니티 기능 배포 전). */
   const [hotAvailable, setHotAvailable] = useState(false);
   // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
@@ -248,13 +254,24 @@ export default function MapScreen() {
     return () => clearTimeout(timer);
   }, [reportsLoading]);
   // HOT 을 켰는데 아직 전체 목록뿐이면, HOT 목록이 오기 전에도 HOT 인 제보만 남긴다(HOT 아닌 마커가 잠깐 남았다 사라지지 않게).
-  const shownReportData = useMemo(
+  const hotReportData = useMemo(
     () =>
       fetchedReportData !== undefined && hotOnly && !reportsMatchHot
         ? fetchedReportData.filter((report) => report.hot === true)
         : fetchedReportData,
     [fetchedReportData, hotOnly, reportsMatchHot],
   );
+  const shownReportData = useMemo(
+    () =>
+      hotReportData !== undefined && reportCategory !== null
+        ? hotReportData.filter((report) => report.category === reportCategory)
+        : hotReportData,
+    [hotReportData, reportCategory],
+  );
+  // 제보를 끄면(다른 갈래로 옮기거나 칩을 끄면) 종류 칩도 '전체'로 돌린다.
+  useEffect(() => {
+    if (!reportsOn) setReportCategory(null);
+  }, [reportsOn]);
   const reports = shownReportData ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
@@ -1071,6 +1088,12 @@ export default function MapScreen() {
     }
   }, [hotOnly]);
 
+  /** 제보 종류 칩. 같은 칩을 다시 누르면 '전체'로 돌아간다. 열려 있던 제보 시트는 닫는다(목록에서 빠질 수 있다). */
+  const handleSelectReportCategory = useCallback((next: ReportCategory | null) => {
+    setReportCategory((current) => (current === next ? null : next));
+    setSelectedReport(null);
+  }, []);
+
   /** '이벤트' 갈래를 열면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
   useEffect(() => {
     if (layer !== "이벤트" || hotAvailable) return;
@@ -1182,8 +1205,9 @@ export default function MapScreen() {
         applyFacilityKind(null);
       }
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
-      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다).
+      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다). 종류 칩도 같은 까닭으로 '전체'로.
       setHotOnly(false);
+      setReportCategory(null);
       if (reportsOn) reportsResource.retry();
       else setReportsOn(true);
       try {
@@ -1493,7 +1517,13 @@ export default function MapScreen() {
 
           {!pickingLocation && reportsEmpty && (
             <DismissibleNotice
-              message={hotOnly ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요" : "지금은 진행 중인 제보가 없어요"}
+              message={
+                reportCategory !== null
+                  ? `지금은 ${reportCategoryMeta(reportCategory).label} 제보가 없어요`
+                  : hotOnly
+                    ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요"
+                    : "지금은 진행 중인 제보가 없어요"
+              }
               dismissed={dismissedNotices}
               onDismiss={dismissNotice}
             />
@@ -1758,6 +1788,9 @@ export default function MapScreen() {
               onSelectFacilityKind={handleSelectFacilityKind}
               onToggleReports={handleToggleReports}
               onToggleHot={handleToggleHot}
+              reportCategories={REPORT_CATEGORY_KEYS}
+              reportCategory={reportCategory}
+              onSelectReportCategory={handleSelectReportCategory}
             />
 
             {layer === "제휴업체" && (
