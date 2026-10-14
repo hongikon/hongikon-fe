@@ -7,9 +7,10 @@ import { useMapData } from '../../lib/mapData'
 import { chipStyles, useChipRowScrollStyle } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
-import type { FacilityKind, MapLayer } from '../../types'
+import type { FacilityKind, MapLayer, ReportCategory } from '../../types'
 import * as haptics from '../../lib/haptics'
 import FlameIcon from '../common/FlameIcon'
+import { reportCategoryMeta } from '../../constants/reportCategories'
 
 const LAYERS: readonly {
   key: MapLayer
@@ -44,6 +45,14 @@ interface MapFilterChipsProps {
   hotOn?: boolean
   hotAvailable?: boolean
   onToggleHot?: () => void
+  /**
+   * 제보 종류 칩 줄('전체 · 행사 · 공연 …'). 지금 받은 제보에 있는 종류만 넘긴다(순서도 넘긴 그대로).
+   * 비어 있으면 줄을 그리지 않는다.
+   */
+  reportCategories?: readonly ReportCategory[]
+  /** 고른 제보 종류. null 이면 '전체'. */
+  reportCategory?: ReportCategory | null
+  onSelectReportCategory?: (value: ReportCategory | null) => void
 }
 
 /**
@@ -66,6 +75,9 @@ export default function MapFilterChips({
   hotOn = false,
   hotAvailable = false,
   onToggleHot,
+  reportCategories = [],
+  reportCategory = null,
+  onSelectReportCategory,
 }: MapFilterChipsProps) {
   const rowScroll = useChipRowScrollStyle()
   // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
@@ -219,6 +231,42 @@ export default function MapFilterChips({
               <Text style={[chipStyles.label, hotOn && chipStyles.labelActive]}>HOT</Text>
             </TouchableOpacity>
           ) : null}
+        </ScrollView>
+      )}
+
+      {/* 제보(또는 HOT)를 켰을 때 그 아래 한 줄 더: 제보 종류로 좁혀 보기. */}
+      {layer === '이벤트' && (reportsOn || hotOn) && reportCategories.length > 0 && onSelectReportCategory && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={rowScroll}
+          contentContainerStyle={chipStyles.row}
+        >
+          {[null, ...reportCategories].map((key) => {
+            const isActive = reportCategory === key
+            const meta = key === null ? null : reportCategoryMeta(key)
+            const label = meta?.label ?? '전체'
+            return (
+              <TouchableOpacity
+                key={key ?? 'ALL'}
+                activeOpacity={0.75}
+                onPress={() => {
+                  haptics.selection()
+                  onSelectReportCategory(key)
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={key === null ? '제보 전체 보기' : `${label} 제보만 보기`}
+                style={[
+                  chipStyles.chip,
+                  isActive && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                ]}
+              >
+                {meta ? <ChipIcon name={meta.icon} color={COLORS.primary} active={isActive} /> : null}
+                <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>{label}</Text>
+              </TouchableOpacity>
+            )
+          })}
         </ScrollView>
       )}
     </>
