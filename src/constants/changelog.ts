@@ -18,6 +18,17 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.0.0',
+    date: '2026-10-15',
+    title: '행정실 담당 업무·연락처 안내',
+    kind: 'ota',
+    items: [
+      '편의 시설 > 행정·지원에서 부서를 누르면 그 부서가 맡는 업무와 업무별 전화번호, 대표 메일을 볼 수 있어요. 번호를 누르면 바로 전화가 걸려요.',
+      '건물 정보에서 시설을 눌러 들어간 뒤 왼쪽 위 화살표로 그 건물 정보로 돌아올 수 있어요.',
+      '수면실 칩 이름을 휴게실로 바꿨어요.',
+    ],
+  },
+  {
+    version: '1.0.0',
     date: '2026-10-14',
     title: '제보를 종류별로 보기',
     kind: 'ota',
