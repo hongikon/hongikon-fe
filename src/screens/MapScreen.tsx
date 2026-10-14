@@ -735,12 +735,11 @@ export default function MapScreen() {
       const building = buildings.find((b) => b.name === buildingName);
       const lat = facility?.lat ?? building?.lat;
       const lng = facility?.lng ?? building?.lng;
-      // 건물 하나가 화면 가운데 오도록 좁은 범위(약 ±70m)를 준다.
-      const bounds =
-        lat !== undefined && lng !== undefined
-          ? { swLat: lat - 0.0006, swLng: lng - 0.0008, neLat: lat + 0.0006, neLng: lng + 0.0008 }
-          : null;
-      postToMap({ type: "setFacilities", markers, bounds });
+      // 핀을 직접 누를 때와 같은 배율·자리(FOCUS_ZOOM, 시트 위 가운데)로 간다. 전에는 ±70m 범위 맞춤(fitBounds)이라
+      // 화면 크기에 따라 한두 단계 덜 확대돼, 직접 누를 때(19)와 배율이 달랐다(10-14). 'focusReport' 는 이름과 달리
+      // 좌표로 가는 일반 이동이다 — 배포된 지도 페이지에 이미 있는 메시지라 페이지를 다시 올리지 않아도 된다.
+      postToMap({ type: "setFacilities", markers, bounds: null });
+      if (lat !== undefined && lng !== undefined) postToMap({ type: "focusReport", lat, lng, zoom: FOCUS_ZOOM });
       setSelectedFacilityBuilding(buildingName);
       setSearchedFacility(facility);
     },

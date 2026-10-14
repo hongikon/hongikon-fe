@@ -1315,3 +1315,5 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
   원인: RN ScrollView 는 이번 손동작에서 스크롤했으면 응답자 넘기기를 거절한다(`_observedScrollSinceBecomingResponder`) — 그래서 손을 뗐다 다시 끌어야 했다.
   iOS 는 네이티브 스크롤 제스처가 JS 터치를 끊지 않아(`RCTSurfaceTouchHandler.canBePreventedByGestureRecognizer`) 같은 손동작에서 넘어갈 것. **실기기 미확인.**
   웹은 브라우저가 스크롤을 시작하면 터치를 가져가 여전히 다시 끌어야 한다(로컬에서 확인). Android 도 네이티브 스크롤이 터치를 가져갈 수 있다.
+- 배율 통일(같은 날): 검색·건물 시트에서 편의시설을 고르면 ±70m 범위 맞춤(`fitBounds`)이라 폰에서 17~18 정도로 덜 확대됐고, 핀·건물을 직접 누르면 `focusOn` 으로 19(`FOCUS_ZOOM`).
+  `openFacilitySheet` 도 `bounds: null` + `focusReport`(좌표·배율 이동, 배포된 지도 페이지에 이미 있는 메시지)로 바꿔 같은 19·시트 위 가운데로 간다. 로컬에서 전/후 화면 비교.
