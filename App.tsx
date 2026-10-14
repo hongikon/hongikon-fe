@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react'
-import { Platform } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import { useFonts } from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { SettingsProvider } from './src/contexts/SettingsContext'
 import { AuthProvider } from './src/contexts/AuthContext'
 import RootNavigator from './src/navigation/RootNavigator'
+import WebAppInstallBanner from './src/components/common/WebAppInstallBanner'
 import { navigationRef } from './src/navigation/navigationRef'
 import { WEB_LINKING, formatDocumentTitle } from './src/navigation/linking'
 import { usePushNotifications } from './src/lib/pushNotifications'
@@ -219,7 +220,15 @@ export default function App() {
               <PushNotificationsBridge />
               {Platform.OS === 'web' && <WebReturnPathBridge />}
               {Platform.OS === 'web' && <WebDocumentTitleBridge />}
-              <RootNavigator />
+              {Platform.OS === 'web' ? (
+                // 휴대폰 브라우저로 볼 때만 맨 위에 앱 설치 안내를 붙이고 화면을 그만큼 아래로 민다(Safari 기본 배너처럼).
+                <View style={styles.webColumn}>
+                  <WebAppInstallBanner />
+                  <RootNavigator />
+                </View>
+              ) : (
+                <RootNavigator />
+              )}
               {/* 모든 화면 위에 떠야 해서 내비게이터 뒤(위 레이어)에 둔다. 네이티브 Modal 위로는 못 올라간다. */}
               <NetworkStatusBanner />
               <UpdateBanner />
@@ -237,3 +246,7 @@ export default function App() {
     </ErrorBoundary>
   )
 }
+
+const styles = StyleSheet.create({
+  webColumn: { flex: 1 },
+})

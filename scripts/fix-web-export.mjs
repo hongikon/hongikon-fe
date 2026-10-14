@@ -87,9 +87,13 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   const links =
     `<link rel="icon" type="image/png" sizes="196x196" href="/favicon.png?v=${version}"/>` +
     `<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=${version}"/>`
+  // iPhone Safari 가 주소창 아래에 띄우는 'App Store 에서 받기' 기본 배너(Smart App Banner). 다른 브라우저는
+  // 앱 안의 WebAppInstallBanner 가 맡는다. id 는 src/constants/storeLinks.ts 의 APP_STORE_ID 와 같아야 한다.
+  const smartBanner = '<meta name="apple-itunes-app" content="app-id=6818954901"/>'
   const html = readFileSync(indexHtml, 'utf8')
     .replace(/<link rel="icon" href="\/favicon\.ico"\/>/g, `<link rel="icon" href="/favicon.ico?v=${version}" sizes="any"/>${links}`)
-  if (!html.includes('apple-touch-icon')) {
+    .replace('</head>', `${smartBanner}</head>`)
+  if (!html.includes('apple-touch-icon') || !html.includes('apple-itunes-app')) {
     console.error('[fix-web-export] index.html 에서 파비콘 링크를 찾지 못함 — Expo 템플릿이 바뀌었는지 확인')
     process.exit(1)
   }

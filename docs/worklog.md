@@ -1317,3 +1317,7 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
   웹은 브라우저가 스크롤을 시작하면 터치를 가져가 여전히 다시 끌어야 한다(로컬에서 확인). Android 도 네이티브 스크롤이 터치를 가져갈 수 있다.
 - 배율 통일(같은 날): 검색·건물 시트에서 편의시설을 고르면 ±70m 범위 맞춤(`fitBounds`)이라 폰에서 17~18 정도로 덜 확대됐고, 핀·건물을 직접 누르면 `focusOn` 으로 19(`FOCUS_ZOOM`).
   `openFacilitySheet` 도 `bounds: null` + `focusReport`(좌표·배율 이동, 배포된 지도 페이지에 이미 있는 메시지)로 바꿔 같은 19·시트 위 가운데로 간다. 로컬에서 전/후 화면 비교.
+- 웹판 앱 설치 안내(같은 날): iPhone Safari 는 `index.html` 의 `<meta name="apple-itunes-app" content="app-id=6818954901">`(빌드 후처리 `fix-web-export.mjs`, 없으면 빌드 실패)로
+  iOS 기본 Smart App Banner. Safari 가 아닌 iPhone 브라우저(카카오톡·네이버·인스타 인앱, Chrome 등 — 기본 배너가 안 뜬다)는 `WebAppInstallBanner` 가 맨 위에 붙어 화면을 아래로 민다.
+  '앱 받기' → App Store(지금 창, 인앱 브라우저의 새 창 차단 회피), 닫으면 14일 숨김(localStorage `@hongikon_install_banner_dismissed_until`, 개인정보 아님). /admin·데스크톱은 안 띄운다.
+  Android 는 Play 가 비공개 테스트라 `PLAY_STORE_URL = null` — 프로덕션 출시 뒤 값만 넣으면 뜬다. 로컬에서 UA 별(카카오톡 iPhone 뜸 / Safari·Android 안 뜸)·닫기 유지, `pnpm build:web` 결과에 메타 태그 확인.
