@@ -36,6 +36,9 @@ interface FacilitySheetProps {
   /** 지도 데이터의 전시 전체. '행사·전시' 시트에서만 쓴다(시설 id 로 골라 각 줄 아래에 보여 준다). */
   exhibitions?: readonly Exhibition[];
   onClose: () => void;
+  /** 건물 시트에서 넘어왔으면 그 건물 시트로 돌아가기. 머리에 '<'를 단다. */
+  onBack?: () => void;
+  backLabel?: string;
   /** 검색으로 찾아온 시설 id. 그 줄을 메인 색 테두리로 표시하고 보이게 스크롤한다(10-12 요청). */
   highlightId?: string | null;
 }
@@ -46,7 +49,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, highlightId = null }: FacilitySheetProps) {
+export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, highlightId = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -104,6 +107,9 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
           </View>
         ) : (
         <View style={styles.titleRow}>
+          {onBack ? (
+            <IconButton icon="chevron-back" size={22} color={COLORS.textPrimary} onPress={onBack} accessibilityLabel={backLabel ?? "건물 정보로 돌아가기"} />
+          ) : null}
           <View style={[styles.icon, { backgroundColor: color }]}>
             <KindIcon name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
           </View>
