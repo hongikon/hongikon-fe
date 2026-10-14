@@ -71,6 +71,13 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   const rowY = useRef(new Map<string, number>());
   const [layoutTick, setLayoutTick] = useState(0);
   const scrolledFor = useRef<string | null>(null);
+  // 행정·지원 줄의 '>'를 누르면 그 부서만의 안내(주요업무 전문·연락처 전체)를 시트 안에서 연다. '<'로 목록에 돌아온다.
+  const [openOffice, setOpenOffice] = useState<Facility | null>(null);
+  const officeDetail = openOffice ? ADMIN_OFFICE_DETAILS[openOffice.id] : undefined;
+  const showOffice = (item: Facility | null) => {
+    setOpenOffice(item);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
   useEffect(() => {
     if (!highlightId || scrolledFor.current === highlightId) return;
     const y = rowY.current.get(highlightId);
@@ -85,6 +92,17 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       <SheetHandle panHandlers={panHandlers} />
 
       <View style={styles.header}>
+        {openOffice && officeDetail ? (
+          <View style={styles.titleRow}>
+            <IconButton icon="chevron-back" size={22} color={COLORS.textPrimary} onPress={() => showOffice(null)} accessibilityLabel={`${facilityKindLabel(kind)} 목록으로`} />
+            <View style={styles.titleText}>
+              <Text style={styles.name} numberOfLines={1}>{splitFacilityNote(openOffice.note ?? kind).title}</Text>
+              <Text style={styles.building}>
+                {openOffice.floor !== undefined ? `${buildingName} ${formatFloor(openOffice.floor)}` : buildingName}
+              </Text>
+            </View>
+          </View>
+        ) : (
         <View style={styles.titleRow}>
           <View style={[styles.icon, { backgroundColor: color }]}>
             <KindIcon name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
@@ -94,6 +112,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
             <Text style={styles.building}>{buildingName}</Text>
           </View>
         </View>
+        )}
         <IconButton
           icon="close"
           size={20}
@@ -115,7 +134,9 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
         contentContainerStyle={styles.list}
         bounces={false}
       >
-        {sorted.map((item) => {
+        {openOffice && officeDetail ? (
+          <OfficeFull note={openOffice.note} detail={officeDetail} />
+        ) : sorted.map((item) => {
           const highlighted = item.id === highlightId;
           const onLayout = (e: { nativeEvent: { layout: { y: number } } }) => {
             rowY.current.set(item.id, e.nativeEvent.layout.y);
@@ -144,10 +165,18 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
           const office = kind === "학생처" ? ADMIN_OFFICE_DETAILS[item.id] : undefined;
           if (office) {
             return (
-              <View key={item.id} style={styles.venue} onLayout={onLayout}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.venue}
+                onLayout={onLayout}
+                onPress={() => showOffice(item)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${splitFacilityNote(item.note ?? kind).title} 담당 업무와 연락처 보기`}
+              >
                 {row}
-                <OfficeDetail detail={office} />
-              </View>
+                <OfficePreview detail={office} />
+              </TouchableOpacity>
             );
           }
           if (kind !== "행사·전시") return <View key={item.id} onLayout={onLayout}>{row}</View>;
@@ -163,65 +192,86 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   );
 }
 
-/** 펼치기 전에 보여 주는 업무별 연락처 줄 수. */
-const OFFICE_CONTACTS_FOLDED = 3;
-
 /**
- * 행정·지원 한 곳의 담당 업무와 연락처(10-14 요청). 학교 홈페이지 부서 페이지의 '주요업무'·'담당정보'(업무별 전화)·대표 메일.
- * 담당자 이름은 학교가 공개하지 않아 없다. 처음엔 업무 소개 두 줄과 연락처 몇 줄만, "모두 보기"로 펼친다.
- * 전화·메일은 누르면 바로 건다(tel:, mailto:). 원문 링크로 학교 페이지를 연다.
+ * 행정·지원 목록 줄 아래의 짧은 미리보기(10-14 요청): 주요업무 두 줄 + "담당 업무·연락처 N개 >". 줄 전체를 누르면 부서 화면(`OfficeFull`).
  */
-function OfficeDetail({ detail }: { detail: AdminOfficeDetail }) {
-  const [expanded, setExpanded] = useState(false);
-  const contacts = detail.contacts ?? [];
-  const shown = expanded ? contacts : contacts.slice(0, OFFICE_CONTACTS_FOLDED);
+function OfficePreview({ detail }: { detail: AdminOfficeDetail }) {
   const summary = detail.summary?.trim();
-  const foldable = contacts.length > OFFICE_CONTACTS_FOLDED || (!!summary && (summary.length > DESCRIPTION_FOLD_CHARS || summary.includes("\n")));
-  const call = (phone: string) => Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {});
-
+  const count = detail.contacts?.length ?? 0;
   return (
     <View style={styles.office}>
       {summary ? (
-        <Text style={styles.description} numberOfLines={expanded ? undefined : 2}>
+        <Text style={styles.officeSummary} numberOfLines={2}>
           {summary}
         </Text>
       ) : null}
-      {detail.email ? (
-        <TouchableOpacity
-          style={styles.contactRow}
-          onPress={() => Linking.openURL(`mailto:${detail.email}`).catch(() => {})}
-          accessibilityRole="link"
-          accessibilityLabel={`대표 메일 ${detail.email} 보내기`}
-        >
-          <Ionicons name="mail-outline" size={13} color={COLORS.primary} />
-          <Text style={styles.contactValue}>{detail.email}</Text>
-          <Text style={styles.contactDuty}>대표 메일</Text>
-        </TouchableOpacity>
+      <View style={styles.officeMore}>
+        <Text style={styles.moreText}>{count > 0 ? `담당 업무·연락처 ${count}개` : "부서 안내 보기"}</Text>
+        <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * 부서 하나의 안내 화면(시트 안). 학교 홈페이지 부서 페이지의 '주요업무' 전문, 대표 메일, '담당정보' 업무별 전화 전부.
+ * 담당자 이름은 학교가 공개하지 않아 없다. 전화·메일은 누르면 바로 건다(tel:, mailto:).
+ */
+function OfficeFull({ note, detail }: { note?: string; detail: AdminOfficeDetail }) {
+  const { lines } = splitFacilityNote(note ?? "");
+  const summary = detail.summary?.trim();
+  const contacts = detail.contacts ?? [];
+  const call = (phone: string) => Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {});
+  return (
+    <View style={styles.officeFull}>
+      {lines.length > 0 ? (
+        <View style={styles.officeInfo}>
+          {lines.map((line, i) => (
+            <Text key={i} style={styles.noteLine}>
+              {line}
+            </Text>
+          ))}
+        </View>
       ) : null}
-      {shown.length > 0 ? <Text style={styles.sectionLabel}>업무별 연락처</Text> : null}
-      {shown.map((c, i) => (
-        <TouchableOpacity
-          key={`${c.phone}:${i}`}
-          style={styles.contactRow}
-          onPress={() => call(c.phone)}
-          accessibilityRole="button"
-          accessibilityLabel={`${c.duty} 전화 ${c.phone} 걸기`}
-        >
-          <Ionicons name="call-outline" size={13} color={COLORS.primary} />
-          <Text style={styles.contactValue}>{c.phone}</Text>
-          <Text style={styles.contactDuty}>{c.duty}</Text>
-        </TouchableOpacity>
-      ))}
-      {foldable && (
-        <TouchableOpacity
-          onPress={() => setExpanded((prev) => !prev)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-        >
-          <Text style={styles.moreText}>{expanded ? "접기" : contacts.length > OFFICE_CONTACTS_FOLDED ? `연락처 ${contacts.length}개 모두 보기` : "자세히 보기"}</Text>
-        </TouchableOpacity>
-      )}
+      {summary ? (
+        <View style={styles.officeSection}>
+          <Text style={styles.sectionLabel}>주요업무</Text>
+          <Text style={styles.description}>{summary}</Text>
+        </View>
+      ) : null}
+      {detail.email ? (
+        <View style={styles.officeSection}>
+          <Text style={styles.sectionLabel}>대표 메일</Text>
+          <TouchableOpacity
+            style={styles.contactRow}
+            onPress={() => Linking.openURL(`mailto:${detail.email}`).catch(() => {})}
+            accessibilityRole="link"
+            accessibilityLabel={`대표 메일 ${detail.email} 보내기`}
+          >
+            <Ionicons name="mail-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.contactValue}>{detail.email}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+      {contacts.length > 0 ? (
+        <View style={styles.officeSection}>
+          <Text style={styles.sectionLabel}>{`업무별 연락처 ${contacts.length}`}</Text>
+          {contacts.map((c, i) => (
+            <TouchableOpacity
+              key={`${c.phone}:${i}`}
+              style={styles.contactRow}
+              onPress={() => call(c.phone)}
+              accessibilityRole="button"
+              accessibilityLabel={`${c.duty} 전화 ${c.phone} 걸기`}
+            >
+              <Ionicons name="call-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.contactValue}>{c.phone}</Text>
+              <Text style={styles.contactDuty}>{c.duty}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+      <Text style={styles.officeNote}>담당자 이름은 학교 홈페이지에 공개되지 않아 업무별 전화만 보여 드려요.</Text>
       <TouchableOpacity
         style={styles.linkBtn}
         onPress={() => openExternalUrl(detail.source)}
@@ -458,6 +508,13 @@ const styles = StyleSheet.create({
   noteLine: { fontSize: 13.5, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   venue: { borderRadius: 12, backgroundColor: COLORS.background, overflow: "hidden" },
   office: { paddingHorizontal: 14, paddingBottom: 12, gap: 6 },
+  officeSummary: { fontSize: 12.5, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  officeMore: { flexDirection: "row", alignItems: "center", gap: 2 },
+  officeFull: { gap: 16, paddingBottom: 8 },
+  officeInfo: { gap: 2 },
+  officeSection: { gap: 6 },
+  officeNote: { fontSize: 11.5, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  titleText: { flexShrink: 1 },
   contactRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, paddingVertical: 2 },
   contactValue: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.primary, fontVariant: ["tabular-nums"] },
   contactDuty: { flex: 1, fontSize: 12.5, fontFamily: FONTS.regular, color: COLORS.textSecondary, lineHeight: 18 },
