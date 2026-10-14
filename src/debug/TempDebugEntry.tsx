@@ -6,5 +6,7 @@ import type { ComponentType } from 'react'
  */
 export const TempEntranceDebugEntry: ComponentType<{ mode: 'dots' | 'paths' | 'nodes' }> | null = null
 export const DevPathAuditEntry: ComponentType | null = null
+/** 개발용 `/dev/path-survey` — 경로망 현장 조사. 웹 전용이라 네이티브에서는 null. */
+export const DevPathSurveyEntry: ComponentType | null = null
 export const DevSogangEntry: ComponentType | null = null
 export const TempNotificationPreviewEntry: ComponentType | null = null
