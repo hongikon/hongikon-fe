@@ -19,6 +19,15 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.0.0',
     date: '2026-10-14',
+    title: '제보를 종류별로 보기',
+    kind: 'ota',
+    items: [
+      '지도에서 이벤트 → 제보를 켜면 아래에 전체·행사·공연·간식행사·부스·기타 칩이 나와요. 고르면 그 종류 제보만 지도에 보여요.',
+    ],
+  },
+  {
+    version: '1.0.0',
+    date: '2026-10-14',
     title: '건물 안 시설 한눈에 보기',
     kind: 'ota',
     items: [
