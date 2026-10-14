@@ -1073,13 +1073,15 @@ export function buildMapHTML(
       '편의점': partnerSVG('<path d="M3 4h18v3H3z"/><path fill-rule="evenodd" d="M4 9h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9zm6 4v7h4v-7h-4z"/>'),
       // 라운지: 등받이·팔걸이가 있는 소파. 휴식 공간임을 한눈에 알린다.
       '라운지': partnerSVG('<rect x="4" y="6" width="16" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="5" rx="1"/><rect x="2" y="9" width="3" height="8" rx="1.5"/><rect x="19" y="9" width="3" height="8" rx="1.5"/><rect x="5" y="19" width="1.5" height="2"/><rect x="17.5" y="19" width="1.5" height="2"/>'),
-      // 수면실: 헤드보드·베개가 있는 침대. 라운지(소파)와 한눈에 갈린다.
+      // 수면실(화면 이름 '휴게실'): 헤드보드·베개가 있는 침대. 라운지(소파)와 한눈에 갈린다.
       '수면실': partnerSVG('<rect x="2" y="4" width="3" height="15" rx="1"/><rect x="2" y="14" width="20" height="3" rx="1"/><rect x="4" y="9" width="6" height="4" rx="1.5"/><rect x="2" y="19" width="2" height="2"/><rect x="20" y="19" width="2" height="2"/>'),
       // 행사·전시: 상설 전시 공간이라 액자로 그린다. 속을 비워(evenodd)
       // 배지 색이 비쳐 보이게 해, 꽉 찬 다른 글리프와 구분된다.
       '행사·전시': partnerSVG('<path fill-rule="evenodd" d="M2.6 3h18.8v13.4H2.6V3zm2 2v9.4h14.8V5H4.6z"/><path d="M11 17.4h2v3.1h-2z"/><path d="M6.4 20.4h11.2V22H6.4z"/>'),
       // 흡연구역: 연기가 피어오르는 담배. '금연' 기호와 헷갈리지 않도록 사선을 넣지 않는다.
       '흡연구역': partnerSVG('<rect x="2" y="10.3" width="13" height="3.4" rx="1"/><circle cx="16.7" cy="12" r="1.9"/><circle cx="18.6" cy="8.6" r="1.1"/><circle cx="20.1" cy="6" r="0.8"/><circle cx="21.2" cy="3.8" r="0.6"/>'),
+      // 은행·ATM: 지붕(삼각)과 기둥이 있는 은행 건물. 카드 모양은 작은 크기에서 프린터와 헷갈린다.
+      '은행·ATM': partnerSVG('<path d="M12 2.5 2.5 7.6v1.9h19V7.6L12 2.5z"/><path d="M4.5 11h2.6v6.5H4.5zM10.7 11h2.6v6.5h-2.6zM16.9 11h2.6v6.5h-2.6z"/><path d="M2.5 19h19v2.5h-19z"/>'),
       // 엘리베이터: 위·아래 화살표. 층간 이동 시설임을 나타낸다.
       '엘리베이터': partnerSVG('<path d="M12 2l4 5H8l4-5z"/><path d="M12 22l-4-5h8l-4 5z"/><rect x="10.7" y="8" width="2.6" height="8" rx="1"/>')
     };
