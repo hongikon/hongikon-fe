@@ -18,7 +18,7 @@ import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
-import { DevPathAuditEntry, DevPathSurveyEntry, DevSogangEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
+import { DevPathAuditEntry, DevPathSurveyEntry, DevCampusEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
@@ -74,7 +74,7 @@ function WebDocumentTitleBridge() {
  * `/temp/*` 는 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
  * (`SHOW_DEVELOPER_TOOLS`). `/dev/path`(경로망 점검)만 운영 웹에서도 연다. 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit' | 'pathSurvey' | 'sogang'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit' | 'pathSurvey' | 'sogang' | 'yonsei' | 'ewha'
 
 const tempDebugMode: TempDebugMode | null =
   Platform.OS === 'web' && typeof window !== 'undefined'
@@ -86,8 +86,10 @@ const tempDebugMode: TempDebugMode | null =
         // `/dev/path-survey` = 경로망 현장 조사(지점·간선 찍기, 메모). 서버에 쓰지 않고 브라우저에만 저장하는 도구라
         // /dev/path 처럼 운영 웹에서도 연다(폰으로 현장에서 쓰려면 운영 웹에서 열려야 한다). noindex.
         if (path === '/dev/path-survey') return 'pathSurvey'
-        // `/dev/sogang` = 서강대 시설 조사 미리보기. 학교 홈페이지에 공개된 위치 정보라 /dev/path 처럼 운영 웹에서도 연다(noindex).
+        // `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` = 다른 학교 시설 조사 미리보기. 학교 홈페이지에 공개된 위치 정보라 /dev/path 처럼 운영 웹에서도 연다(noindex).
         if (path === '/dev/sogang') return 'sogang'
+        if (path === '/dev/yonsei') return 'yonsei'
+        if (path === '/dev/ewha') return 'ewha'
         if (!SHOW_DEVELOPER_TOOLS) return null
         if (path === '/temp/dots') return 'dots'
         if (path === '/temp/path') return 'paths'
@@ -207,15 +209,15 @@ export default function App() {
     )
   }
 
-  if (tempDebugMode === 'sogang' && DevSogangEntry) {
+  if ((tempDebugMode === 'sogang' || tempDebugMode === 'yonsei' || tempDebugMode === 'ewha') && DevCampusEntry) {
     return (
       <Suspense fallback={null}>
-        <DevSogangEntry />
+        <DevCampusEntry campus={tempDebugMode} />
       </Suspense>
     )
   }
 
-  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && tempDebugMode !== 'pathSurvey' && tempDebugMode !== 'sogang' && TempEntranceDebugEntry) {
+  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && tempDebugMode !== 'pathSurvey' && tempDebugMode !== 'sogang' && tempDebugMode !== 'yonsei' && tempDebugMode !== 'ewha' && TempEntranceDebugEntry) {
     return (
       <Suspense fallback={null}>
         <TempEntranceDebugEntry mode={tempDebugMode} />

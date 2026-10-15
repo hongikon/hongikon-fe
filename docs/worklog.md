@@ -1364,3 +1364,11 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
 - `/dev/sogang` 화면: 지도 페이지에 서강대 건물을 그리고, 위 칩으로 핀, 건물·핀을 누르면 앱과 같은 `BuildingSheet`·`FacilitySheet`(행정 부서 화면, '<' 돌아가기 포함). 넓은 화면은 오른쪽에 전체 목록.
   `/dev/*` 는 앱 공통 틀보다 먼저 갈라져 SafeAreaProvider 로 감쌌다. `FacilitySheet` 에 `officeDetails` prop(기본 홍익대 표).
 - 인증키 `2026gradproject`(해시만 저장) — 운영 웹에서 열리는 것 확인. 로컬에서 BW관 시트·행정·지원·학생지원팀 부서 화면 확인, 콘솔 오류 없음. `tsc` 통과.
+
+## 2026-10-15 — `/dev/yonsei`·`/dev/ewha` 연세대·이화여대 시설 조사 미리보기 (dev → main 웹만, 앱 OTA 없음)
+- 서강대와 같은 방식으로 연세대 신촌·이화여대 신촌 공개 페이지를 모아 앱 `Building`/`Facility` 모양으로 만들었다(`src/debug/yonseiData.ts`, `ewhaData.ts`, 생성 스크립트 scratchpad `uni/yonsei/gen_yonsei.py`, `uni/ewha/gen_ewha.py`). 조사 문서: 루트 `docs/yonsei-facilities-research.md`, `docs/ewha-facilities-research.md`.
+  - 연세대: 건물 125(외곽선 89, 층수 51), 시설 195, 기타 28(AED 등), 행정 팀 49곳(위치·전화·업무).
+  - 이화여대: 건물 69(외곽선 57, 층수 54), 시설 307, 기타 11, 행정 팀 32곳(팀 소개·대표 메일·업무별 교내번호).
+- 화면을 학교 공통으로: `DevSogangScreen`/`DevSogangGate` → `DevCampusScreen`/`DevCampusGate`(학교 키를 받음), 데이터 모양은 `src/debug/campusPreview.ts`. 키를 맞힌 뒤 그 학교 데이터 파일만 받는다. 세 곳 같은 인증키(`2026gradproject`, 해시만 저장).
+- 개인정보: 교수연구실 등 사람 이름이 붙는 방은 쓰지 않았고, 담당자 이름·개인 메일은 넣지 않았다(이화여대 jws@ 는 부서 메일인지 불분명해 뺐다). 도서관 사이트는 연세대는 robots 허용 경로(`/local/html/`)만, 이화여대는 robots 가 막아 요청하지 않았다.
+- 배포: dev 에 '물어보기'(eb87477·0f17792·b24f94e)가 있어 dev→main 병합 대신 이 커밋만 main 에 cherry-pick 해 웹만 배포. 로컬 headless 로 세 페이지(키 입력, 건물 시트, 행정·지원 → 부서 화면) 확인, 페이지 오류 없음. `tsc` 통과.
