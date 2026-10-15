@@ -1,0 +1,398 @@
+[
+ {
+  "q": "등록금 언제 내요?",
+  "expect": "registration"
+ },
+ {
+  "q": "등록금 납부 방법",
+  "expect": "registration"
+ },
+ {
+  "q": "등록금 고지서 어디서 뽑아요",
+  "expect": "registration"
+ },
+ {
+  "q": "등록금가상계좌",
+  "expect": "registration"
+ },
+ {
+  "q": "2학기 등록기간 언제야",
+  "expect": "registration"
+ },
+ {
+  "q": "등록금 은행 가서 내도 돼요?",
+  "expect": "registration"
+ },
+ {
+  "q": "전액장학금인데 0원 등록 해야돼요?",
+  "expect": "registration-zero"
+ },
+ {
+  "q": "고지서 0원인데 은행 가야 하나요",
+  "expect": "registration-zero"
+ },
+ {
+  "q": "등록금 낼게 없는데 등록 해야돼?",
+  "expect": "registration-zero"
+ },
+ {
+  "q": "등록금 납부확인서 출력",
+  "expect": "tuition-receipt"
+ },
+ {
+  "q": "등록금 냈는지 확인하고 싶어요",
+  "expect": "tuition-receipt"
+ },
+ {
+  "q": "등록금 영수증 어디서 받아요",
+  "expect": "tuition-receipt"
+ },
+ {
+  "q": "등록금 납입증명서",
+  "expect": "tuition-receipt"
+ },
+ {
+  "q": "등록금 환불 받을 수 있어요?",
+  "expect": "tuition-refund"
+ },
+ {
+  "q": "낸 등록금 돌려받고 싶어",
+  "expect": "tuition-refund"
+ },
+ {
+  "q": "등록금반환 기준",
+  "expect": "tuition-refund"
+ },
+ {
+  "q": "등록금 분할납부 신청",
+  "expect": "installment"
+ },
+ {
+  "q": "등록금 분납 되나요",
+  "expect": "installment"
+ },
+ {
+  "q": "등록금 나눠서 낼 수 있어?",
+  "expect": "installment"
+ },
+ {
+  "q": "등록금 할부 가능?",
+  "expect": "installment"
+ },
+ {
+  "q": "등록금 납부 연기하고 싶어요",
+  "expect": "installment"
+ },
+ {
+  "q": "초과학기 등록금 얼마예요",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "9학기 등록금",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "졸업 못했는데 등록금 다 내야 해?",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "학기초과자 3학점만 들으면 등록금",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "1학점만 들어도 등록금 전액이에요?",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "등록금 인상 회의록",
+  "expect": "tuition-committee"
+ },
+ {
+  "q": "등심위 결과",
+  "expect": "tuition-committee"
+ },
+ {
+  "q": "학자금대출 어떻게 받아요",
+  "expect": "loan"
+ },
+ {
+  "q": "학자금 대출 신청",
+  "expect": "loan"
+ },
+ {
+  "q": "생활비대출 받을 수 있나요",
+  "expect": "loan"
+ },
+ {
+  "q": "취업후상환 학자금",
+  "expect": "loan"
+ },
+ {
+  "q": "든든학자금 대출실행 언제 눌러요",
+  "expect": "loan"
+ },
+ {
+  "q": "장학금이랑 학자금대출 같이 받으면 어떻게 돼요",
+  "expect": "double-support"
+ },
+ {
+  "q": "학자금 중복지원이 뭐예요",
+  "expect": "double-support"
+ },
+ {
+  "q": "장학금 토해내야 한대요",
+  "expect": "double-support"
+ },
+ {
+  "q": "국가장학금 신청 기간",
+  "expect": "national-scholarship"
+ },
+ {
+  "q": "국장 언제 신청해요",
+  "expect": "national-scholarship"
+ },
+ {
+  "q": "한국장학재단 장학금 신청",
+  "expect": "national-scholarship"
+ },
+ {
+  "q": "국가장학금 2유형",
+  "expect": "national-scholarship"
+ },
+ {
+  "q": "소득분위 몇이어야 장학금 받아요",
+  "expect": "national-scholarship"
+ },
+ {
+  "q": "국가우수장학금 이공계",
+  "expect": "national-excellence"
+ },
+ {
+  "q": "인문100년 장학금",
+  "expect": "national-excellence"
+ },
+ {
+  "q": "예술체육비전 장학금 신청",
+  "expect": "national-excellence"
+ },
+ {
+  "q": "국가근로 신청 방법",
+  "expect": "national-work"
+ },
+ {
+  "q": "국근 하고싶어요",
+  "expect": "national-work"
+ },
+ {
+  "q": "근로장학생 하고 싶어요",
+  "expect": "school-work"
+ },
+ {
+  "q": "교내근로 어떻게 지원해요",
+  "expect": "school-work"
+ },
+ {
+  "q": "학교 알바 하고싶은데",
+  "expect": "school-work"
+ },
+ {
+  "q": "봉사장학생 자격",
+  "expect": "school-work"
+ },
+ {
+  "q": "외부장학금 어디서 찾아요",
+  "expect": "outside-scholarship"
+ },
+ {
+  "q": "교외장학금 신청",
+  "expect": "outside-scholarship"
+ },
+ {
+  "q": "구청 장학금 공고",
+  "expect": "outside-scholarship"
+ },
+ {
+  "q": "10분위라 국가장학금 신청 안했는데 교내장학금 받을 수 있어?",
+  "expect": "scholarship-income10"
+ },
+ {
+  "q": "가구원동의 안 하면 장학금 못받아요?",
+  "expect": "scholarship-income10"
+ },
+ {
+  "q": "장학금 두개 동시에 받을 수 있어요?",
+  "expect": "scholarship-double"
+ },
+ {
+  "q": "국가장학금이랑 교내장학금 중복수혜 되나요",
+  "expect": "scholarship-double"
+ },
+ {
+  "q": "부모님 회사 학자금 지원 받는데 학교 장학금 숨길 수 있어?",
+  "expect": "scholarship-hide"
+ },
+ {
+  "q": "형제가 같이 다니면 장학금 있어요?",
+  "expect": "scholarship-sibling"
+ },
+ {
+  "q": "고른기회전형 장학금",
+  "expect": "scholarship-equal"
+ },
+ {
+  "q": "신입생은 1학기에 장학금 못 받아요?",
+  "expect": "scholarship-freshman"
+ },
+ {
+  "q": "새내기 장학금",
+  "expect": "scholarship-freshman"
+ },
+ {
+  "q": "12학점 들었는데 장학금 받을 수 있나",
+  "expect": "scholarship-15credits"
+ },
+ {
+  "q": "학점 부족해도 받는 장학금",
+  "expect": "scholarship-15credits"
+ },
+ {
+  "q": "장학금 받으려면 봉사시간 필요해요?",
+  "expect": "scholarship-volunteer"
+ },
+ {
+  "q": "성적장학금 봉사활동 10시간",
+  "expect": "scholarship-volunteer"
+ },
+ {
+  "q": "장학금 성적 기준",
+  "expect": "scholarship-criteria"
+ },
+ {
+  "q": "장학금 종류 뭐 있어요",
+  "expect": "scholarship-criteria"
+ },
+ {
+  "q": "장학금 커트 몇점이에요",
+  "expect": "scholarship-criteria"
+ },
+ {
+  "q": "장학금 결과 조회",
+  "expect": "scholarship-check"
+ },
+ {
+  "q": "장학금 받았는지 어떻게 확인해",
+  "expect": "scholarship-check"
+ },
+ {
+  "q": "장학금 수혜확인서 발급",
+  "expect": "scholarship-check"
+ },
+ {
+  "q": "장학금 언제 들어와요",
+  "expect": "scholarship-pay"
+ },
+ {
+  "q": "장학금 입금 계좌",
+  "expect": "scholarship-pay"
+ },
+ {
+  "q": "장학금지급규정",
+  "expect": "scholarship-rules"
+ },
+ {
+  "q": "교내장학금 신청 방법",
+  "expect": "scholarship"
+ },
+ {
+  "q": "장학금",
+  "expect": "scholarship"
+ },
+ {
+  "q": "홍익인간 장학금",
+  "expect": "scholarship"
+ },
+ {
+  "q": "면학장학금 얼마예요",
+  "expect": "scholarship"
+ },
+ {
+  "q": "성적장학금 받고 싶어요",
+  "expect": "scholarship"
+ },
+ {
+  "q": "휴학하면 등록금 환불돼요?",
+  "expect": "leave-of-absence/tuition"
+ },
+ {
+  "q": "장학금 받았는데 휴학하면",
+  "expect": "leave-of-absence/tuition"
+ },
+ {
+  "q": "자퇴하면 등록금 돌려받아요?",
+  "expect": "dropout"
+ },
+ {
+  "q": "계절학기 등록금 납부",
+  "expect": "seasonal"
+ },
+ {
+  "q": "계절학기 수강료 환불",
+  "expect": "seasonal"
+ },
+ {
+  "q": "도서 대출 연장",
+  "expect": "library"
+ },
+ {
+  "q": "봉사활동 시간 확인",
+  "expect": "volunteer"
+ },
+ {
+  "q": "재학증명서 발급",
+  "expect": "certificate"
+ },
+ {
+  "q": "학생증 신청",
+  "expect": "student-card"
+ },
+ {
+  "q": "복수전공 신청 기간",
+  "expect": "double-major"
+ },
+ {
+  "q": "대출 연장",
+  "expect": "library"
+ },
+ {
+  "q": "학고 받으면 장학금 못받아요?",
+  "expect": "scholarship-criteria"
+ },
+ {
+  "q": "장학금신청",
+  "expect": "scholarship"
+ },
+ {
+  "q": "국가장학금이랑교내장학금둘다받을수있어",
+  "expect": "scholarship-double"
+ },
+ {
+  "q": "학자금대출받으려면",
+  "expect": "loan"
+ },
+ {
+  "q": "등록금내는법",
+  "expect": "registration"
+ },
+ {
+  "q": "성적경고 기준",
+  "expect": "warning"
+ },
+ {
+  "q": "노트북 대여",
+  "expect": "none"
+ },
+ {
+  "q": "등록금 안 내면 제적돼요?",
+  "expect": "expulsion"
+ }
+]

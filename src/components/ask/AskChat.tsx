@@ -15,15 +15,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
-import { askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
-import { ASK_FLOWS, type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
+import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
+import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
 import ContentColumn from "../common/ContentColumn";
+import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
-const EXAMPLES = ["휴학 신청 기간", "학생증 재발급", "에어컨 켜 주세요", "군입대 휴학", "와이파이가 안 돼요", "주차 문의"] as const;
+const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
 
 /**
  * 대화 한 줄. 고객센터 챗봇처럼 봇이 버튼으로 되묻고(question), 고른 버튼은 사용자 말풍선으로 남는다.
@@ -65,7 +66,7 @@ export default function AskChat({ onClose }: AskChatProps) {
 
   /** 흐름의 한 단계를 대화에 잇는다. 끝 답이면 '해결됐나요?'를 붙인다. */
   const stepMessages = (flowId: string, nodeId: string, question: string): NewMessage[] => {
-    const flow = ASK_FLOWS.find((item) => item.id === flowId);
+    const flow = ALL_ASK_FLOWS.find((item) => item.id === flowId);
     const node = flow?.nodes[nodeId];
     if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
     if (node.kind === "question") return [{ role: "question", node, flowId, chosen: null }];
@@ -199,6 +200,19 @@ export default function AskChat({ onClose }: AskChatProps) {
     </TouchableOpacity>
   );
 
+  /** 찾아갈 부서 위치(건물·층). /dev/ask 는 지도와 떨어진 화면이라 글로만 보여 준다. 지도 데이터에 없으면 그리지 않는다. */
+  const renderPlace = (facilityId: string) => {
+    const facility = facilities.find((item) => item.id === facilityId);
+    if (!facility) return null;
+    const place = [facility.buildingName, facility.floor !== undefined ? formatFloor(facility.floor) : null].filter(Boolean).join(" ");
+    return (
+      <View style={styles.placeRow}>
+        <Ionicons name="location" size={14} color={COLORS.primary} />
+        <Text style={styles.placeText}>{[facility.note, place].filter(Boolean).join(" · ")}</Text>
+      </View>
+    );
+  };
+
   const renderOffice = (office: OfficeAskResult) => (
     <View key={office.facility.id} style={styles.card}>
       <View style={styles.cardTitle}>
@@ -253,6 +267,7 @@ export default function AskChat({ onClose }: AskChatProps) {
           <View style={styles.botBubble}>
             <Text style={[styles.botText, item.node.sections?.length ? styles.lead : null]}>{item.node.text}</Text>
             {item.node.sections?.map((section, index) => renderSection(section, `${index}`))}
+            {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
             {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
             {item.node.followUps && !item.followed ? (
               <View style={styles.options}>
@@ -482,6 +497,8 @@ const styles = StyleSheet.create({
   cardTitle: { gap: 2 },
   name: { fontSize: 15, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   place: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  placeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  placeText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.medium, color: COLORS.textPrimary },
   contact: { flexDirection: "row", alignItems: "center", gap: 10 },
   duty: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   phone: {

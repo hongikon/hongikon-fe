@@ -76,3 +76,6 @@ partners_seed.sql
 
 # EAS Submit 용 Google Play 서비스 계정 키 등 — 절대 커밋하지 않는다
 secrets/
+
+# 물어보기 크롤링 원본 HTML(다시 받을 수 있음)
+scripts/ask/cache/

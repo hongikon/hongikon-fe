@@ -1,7 +1,11 @@
 import { ASK_FLOWS, type AskFlow } from '../constants/askAnswers'
+import { ASK_PAGE_FLOWS } from '../constants/askPages'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
 import { formatFloor } from './floors'
 import type { Facility } from '../types'
+
+/** 운영진이 다듬은 흐름(`ASK_FLOWS`) 먼저, 그 뒤에 학교 홈페이지 원문을 옮긴 흐름(`ASK_PAGE_FLOWS`). */
+export const ALL_ASK_FLOWS: readonly AskFlow[] = [...ASK_FLOWS, ...ASK_PAGE_FLOWS]
 
 /**
  * '물어보기'(지도 검색바 옆 말풍선). "냉난방이 안 돼요"처럼 할 일을 물으면 그 일을 맡은 부서를 찾아 준다.
@@ -243,13 +247,24 @@ export function askOffices(
 /** 안내 흐름(`ASK_FLOWS`) 가운데 질문에 맞는 첫 흐름과 시작할 단계. 질문이 상황을 이미 말하면 되묻지 않고 그 답에서 시작한다. */
 export function matchAskFlow(
   question: string,
-  flows: readonly AskFlow[] = ASK_FLOWS,
+  flows: readonly AskFlow[] = ALL_ASK_FLOWS,
 ): { flow: AskFlow; nodeId: string } | null {
   const text = squash(question).replace(/\|/g, '')
   if (!text) return null
+  // 걸린 낱말 길이를 더한 점수가 가장 큰 길로 간다('휴학 등록금'은 등록금 안내보다 휴학 흐름의 등록금 답). 같으면 앞 흐름.
+  let best: { flow: AskFlow; nodeId: string; score: number } | null = null
   for (const flow of flows) {
-    const entry = flow.entries.find((candidate) => candidate.match.every((group) => group.some((word) => text.includes(word))))
-    if (entry) return { flow, nodeId: entry.node }
+    for (const entry of flow.entries) {
+      if (entry.not?.some((word) => text.includes(word))) continue
+      let score = 0
+      const hit = entry.match.every((group) => {
+        const words = group.filter((word) => text.includes(word))
+        if (words.length === 0) return false
+        score += Math.max(...words.map((word) => word.length))
+        return true
+      })
+      if (hit && (!best || score > best.score)) best = { flow, nodeId: entry.node, score }
+    }
   }
-  return null
+  return best ? { flow: best.flow, nodeId: best.nodeId } : null
 }

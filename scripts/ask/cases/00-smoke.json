@@ -1,0 +1,1 @@
+[{"q":"와이파이 접속 방법","expect":"wifi"},{"q":"학교에서 다쳤어요","expect":"injury"},{"q":"자퇴하려면 어떻게 해요","expect":"dropout"},{"q":"휴학하면 등록금","expect":"leave-of-absence/tuition"},{"q":"복학 신청","expect":"return"},{"q":"학교 메일 계정","expect":"school-mail"},{"q":"지메일 계정 만들기","expect":"school-mail/gmail"}]
