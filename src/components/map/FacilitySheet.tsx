@@ -43,6 +43,11 @@ interface FacilitySheetProps {
   officeDetails?: Record<string, AdminOfficeDetail>;
   /** 검색으로 찾아온 시설 id. 그 줄을 메인 색 테두리로 표시하고 보이게 스크롤한다(10-12 요청). */
   highlightId?: string | null;
+  /**
+   * '물어보기'에서 고른 부서. 목록 대신 그 부서 안내(주요업무·연락처)를 바로 연다. 같은 부서를 다시 골라도 열리도록
+   * 고를 때마다 새 객체로 넘긴다.
+   */
+  openOfficeRequest?: { id: string } | null;
 }
 
 /**
@@ -51,7 +56,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null }: FacilitySheetProps) {
+export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null, openOfficeRequest = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -83,6 +88,13 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
     setOpenOffice(item);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   };
+  useEffect(() => {
+    if (!openOfficeRequest) return;
+    const item = items.find((facility) => facility.id === openOfficeRequest.id);
+    if (item && officeDetails[item.id]) showOffice(item);
+    // items·officeDetails 가 바뀔 때마다 다시 열면 '<'로 목록에 돌아간 뒤에도 상세로 튕긴다 — 요청이 올 때만 연다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openOfficeRequest]);
   useEffect(() => {
     if (!highlightId || scrolledFor.current === highlightId) return;
     const y = rowY.current.get(highlightId);

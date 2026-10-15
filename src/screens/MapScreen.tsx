@@ -44,6 +44,7 @@ import { useHiddenAuthorKeys, withoutHiddenAuthors } from "../lib/hiddenAuthors"
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
+import AskOfficeModal from "../components/map/AskOfficeModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -767,6 +768,22 @@ export default function MapScreen() {
     (facility: Facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
     [openFacilitySheet],
   );
+
+  /** 검색바 옆 '물어보기'. 고른 부서는 검색과 같은 길로 시트를 열고, 목록 대신 그 부서 안내를 바로 펼친다. */
+  const [showAsk, setShowAsk] = useState(false);
+  const [askedOffice, setAskedOffice] = useState<{ id: string } | null>(null);
+  const handleAskSelect = useCallback(
+    (facility: Facility) => {
+      setShowAsk(false);
+      openFacilitySheet(facility.kind, facility.buildingName, facility);
+      setAskedOffice({ id: facility.id });
+    },
+    [openFacilitySheet],
+  );
+  // 시설 시트가 닫히면 요청을 지운다. 남겨 두면 나중에 같은 건물 시트를 핀으로 열 때 목록 대신 그 부서가 바로 펼쳐진다.
+  useEffect(() => {
+    if (selectedFacilityBuilding === null) setAskedOffice(null);
+  }, [selectedFacilityBuilding]);
 
   /** 건물 시트의 '건물 안 시설' 줄을 눌렀다. 검색과 같은 길로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다(강조할 줄은 없음). */
   /**
@@ -1751,6 +1768,7 @@ export default function MapScreen() {
                   ? searchedFacility.id
                   : null
               }
+              openOfficeRequest={askedOffice}
               onClose={() => setSelectedFacilityBuilding(null)}
               onBack={facilityFrom ? handleBackToBuilding : undefined}
               backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
@@ -1803,6 +1821,16 @@ export default function MapScreen() {
               >
                 <Ionicons name="search" size={18} color={COLORS.textTertiary} />
                 <Text style={styles.searchPlaceholder}>제휴 업체·편의시설 검색</Text>
+              </TouchableOpacity>
+              {/* 돋보기 옆 '물어보기' — 할 일을 물으면 맡은 학교 부서와 전화번호를 찾아 준다(10-15 요청). */}
+              <TouchableOpacity
+                style={styles.askButton}
+                activeOpacity={0.7}
+                onPress={() => setShowAsk(true)}
+                accessibilityRole="button"
+                accessibilityLabel="학교 일 물어보기 — 어디에 연락할지 찾아 줘요"
+              >
+                <Ionicons name="chatbubble-ellipses" size={19} color={COLORS.primary} />
               </TouchableOpacity>
             </View>
 
@@ -2004,6 +2032,13 @@ export default function MapScreen() {
         </SafeAreaProvider>
       </Modal>
 
+      <AskOfficeModal
+        visible={showAsk}
+        topInset={insets.top}
+        onClose={() => setShowAsk(false)}
+        onSelect={handleAskSelect}
+      />
+
       <PartnerSearchModal
         visible={showSearch}
         topInset={insets.top}
@@ -2109,8 +2144,11 @@ const styles = StyleSheet.create({
   searchBarWrap: {
     paddingHorizontal: 16,
     paddingBottom: 10,
+    flexDirection: "row",
+    gap: 8,
   },
   searchBar: {
+    flex: 1,
     height: 44,
     borderRadius: RADIUS.floating,
     backgroundColor: COLORS.white,
@@ -2118,6 +2156,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  // 검색바와 같은 높이의 흰 동그라미. 그림자도 검색바와 같게 둬 한 줄로 떠 보이게 한다.
+  askButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.white,
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
