@@ -1,4 +1,4 @@
-import { ASK_ANSWERS, type AskAnswer } from '../constants/askAnswers'
+import { ASK_FLOWS, type AskFlow } from '../constants/askAnswers'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
 import { formatFloor } from './floors'
 import type { Facility } from '../types'
@@ -45,6 +45,8 @@ const STOPWORDS = new Set([
   '어디', '어디에', '어디로', '어디서', '누구', '누구한테', '전화', '전화번호', '번호', '연락', '연락처', '문의', '하나요', '해야',
   '해야돼', '해야되나요', '해야하나요', '하려면', '싶어요', '돼요', '되나요', '안돼요', '안', '어떻게', '방법', '좀', '알려줘', '알려주세요',
   '학교', '홍익대', '궁금해요', '있나요', '어디예요', '곳', '고장', '신청', '하고싶어', '문의처', '담당', '부서',
+  // 일의 종류가 아니라 무엇을 묻는지만 말하는 낱말. '휴학 신청 기간'의 '기간'이 도서관 '대출기간' 같은 줄에 걸렸다(10-15).
+  '기간', '일정', '언제', '마감', '기한', '절차', '방법', '서류', '어떻게해', '알려',
 ])
 
 /** 낱말 끝에 붙는 조사·어미. 긴 것부터 떼어 '냉난방이'·'학생증을'·'주차는' 이 본말로 걸리게 한다. */
@@ -108,6 +110,8 @@ export interface OfficeAskResult {
   contacts: AdminOfficeContact[]
   /** 연락처 줄에 안 걸리고 주요업무 문단에만 걸렸을 때, 왜 이 부서인지 보여 줄 문단 한 토막. */
   snippet?: string
+  /** 학교 홈페이지의 그 부서 안내 페이지. */
+  source: string
 }
 
 /** 글에 낱말이 있는지. 바로 뒤에 '제외'가 붙은 언급('냉/난방 제외')은 그 일을 맡지 않는다는 뜻이라 치지 않는다. */
@@ -212,6 +216,7 @@ export function askOffices(
         place: [facility.buildingName, facility.floor !== undefined ? formatFloor(facility.floor) : null].filter(Boolean).join(' '),
         contacts: shownContacts,
         snippet: hitContacts.size === 0 && snippetTerm ? snippetAround(detail.summary ?? '', snippetTerm) : undefined,
+        source: detail.source,
       },
     })
   }
@@ -235,9 +240,16 @@ export function askOffices(
   return [...unique.values()].slice(0, MAX_RESULTS).map((item) => item.result)
 }
 
-/** 운영진이 확인한 답(`ASK_ANSWERS`) 가운데 질문에 맞는 것. 묶음마다 하나 이상의 낱말이 질문에 있어야 한다. */
-export function matchAskAnswers(question: string, answers: readonly AskAnswer[] = ASK_ANSWERS): AskAnswer[] {
+/** 안내 흐름(`ASK_FLOWS`) 가운데 질문에 맞는 첫 흐름과 시작할 단계. 질문이 상황을 이미 말하면 되묻지 않고 그 답에서 시작한다. */
+export function matchAskFlow(
+  question: string,
+  flows: readonly AskFlow[] = ASK_FLOWS,
+): { flow: AskFlow; nodeId: string } | null {
   const text = squash(question).replace(/\|/g, '')
-  if (!text) return []
-  return answers.filter((answer) => answer.match.every((group) => group.some((word) => text.includes(word))))
+  if (!text) return null
+  for (const flow of flows) {
+    const entry = flow.entries.find((candidate) => candidate.match.every((group) => group.some((word) => text.includes(word))))
+    if (entry) return { flow, nodeId: entry.node }
+  }
+  return null
 }

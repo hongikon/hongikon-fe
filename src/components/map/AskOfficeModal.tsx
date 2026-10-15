@@ -16,8 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
-import { askOffices, matchAskAnswers, type OfficeAskResult } from "../../utils/officeAsk";
-import type { AskAnswer } from "../../constants/askAnswers";
+import { askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
+import { ASK_FLOWS, type AskAnswerNode, type AskLink, type AskQuestionNode } from "../../constants/askAnswers";
 import type { Facility } from "../../types";
 import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
@@ -25,29 +25,37 @@ import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
-const EXAMPLES = ["에어컨 켜 주세요", "학생증 재발급", "휴학하려면", "와이파이가 안 돼요", "주차 문의", "엘리베이터 고장", "장학금"] as const;
+const EXAMPLES = ["휴학 신청 기간", "학생증 재발급", "에어컨 켜 주세요", "군입대 휴학", "와이파이가 안 돼요", "주차 문의"] as const;
 
-/** 확인한 답이 있을 때 아래에 덧붙일 관련 부서 수. 답이 이미 있으니 짧게. */
-const RELATED_WITH_ANSWER = 2;
-
+/**
+ * 대화 한 줄. 고객센터 챗봇처럼 봇이 버튼으로 되묻고(question), 고른 버튼은 사용자 말풍선으로 남는다.
+ * 끝 답(answer) 뒤에는 '해결됐나요?'(feedback)를 붙이고, 아니라고 하면 맡은 부서(offices)를 이어 보여 준다.
+ */
 type ChatMessage =
   | { id: number; role: "user"; text: string }
-  | { id: number; role: "bot"; question: string; answers: AskAnswer[]; offices: OfficeAskResult[] };
+  | { id: number; role: "question"; node: AskQuestionNode; flowId: string; chosen: string | null }
+  | { id: number; role: "answer"; node: AskAnswerNode; checkedAt: string }
+  | { id: number; role: "feedback"; question: string; resolved: boolean | null }
+  | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
+  | { id: number; role: "text"; text: string };
+
+type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
 
 interface AskOfficeModalProps {
   visible: boolean;
   /** 상위 화면(Modal 밖)에서 잰 top safe-area inset. */
   topInset: number;
   onClose: () => void;
-  /** 부서·장소를 골랐다. 지도에서 그 시설 시트를 연다. */
+  /** '위치 보기'를 눌렀다. 지도에서 그 시설 시트를 연다. */
   onSelect: (facility: Facility) => void;
 }
 
 /**
- * 지도 검색바 옆 '물어보기'. 채팅처럼 묻고 답한다 — "에어컨 켜 주세요"처럼 할 일을 물으면
- * ① 운영진이 확인한 답(`ASK_ANSWERS`)을 먼저, ② 학교 홈페이지 부서 안내에서 그 일을 맡은 부서와 업무별 전화를 보여 준다.
+ * 지도 검색바 옆 '물어보기'. 고객센터 챗봇처럼 묻고 답한다.
+ * ① 안내 흐름(`ASK_FLOWS` — 학교 안내 페이지·운영진 확인)에 맞으면 필요한 것만 버튼으로 되물어 답하고 그 학교 페이지로 잇는다.
+ * ② 흐름이 없으면 학교 홈페이지 부서 안내에서 그 일을 맡은 부서와 업무별 전화를 보여 준다.
  * 네트워크 없이 앱에 담아 둔 표만 훑는다 — 답을 지어내지 않고, 없으면 없다고 한다.
- * 대화는 창을 닫았다 열어도(부서 시트를 보고 돌아와도) 앱을 켜 둔 동안 남는다.
+ * 대화는 창을 닫았다 열어도 앱을 켜 둔 동안 남는다.
  */
 export default function AskOfficeModal({ visible, topInset, onClose, onSelect }: AskOfficeModalProps) {
   const insets = useSafeAreaInsets();
@@ -58,29 +66,76 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
   const inputRef = useRef<TextInput>(null);
   const { facilities } = useMapData();
 
+  const push = (...items: NewMessage[]) =>
+    setMessages((prev) => [...prev, ...items.map((item) => ({ ...item, id: nextId.current++ }) as ChatMessage)]);
+
+  /** 흐름의 한 단계를 대화에 잇는다. 끝 답이면 '해결됐나요?'를 붙인다. */
+  const stepMessages = (flowId: string, nodeId: string, question: string): NewMessage[] => {
+    const flow = ASK_FLOWS.find((item) => item.id === flowId);
+    const node = flow?.nodes[nodeId];
+    if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
+    if (node.kind === "question") return [{ role: "question", node, flowId, chosen: null }];
+    return [
+      { role: "answer", node, checkedAt: flow.checkedAt },
+      { role: "feedback", question, resolved: null },
+    ];
+  };
+
   const ask = (raw: string) => {
     const question = raw.trim();
     if (!question) return;
     haptics.selection();
-    const answers = matchAskAnswers(question);
-    // 확인한 답이 가야 할 곳까지 정해 주면(학생증 → 신한은행) 부서 목록은 붙이지 않는다 — 학사지원팀으로 헷갈려 가지 않게.
-    const placeGiven = answers.some((answer) => answer.facilityId);
-    const offices = placeGiven
-      ? []
-      : askOffices(facilities, question).slice(0, answers.length > 0 ? RELATED_WITH_ANSWER : undefined);
-    const userId = nextId.current++;
-    const botId = nextId.current++;
-    setMessages((prev) => [
-      ...prev,
-      { id: userId, role: "user", text: question },
-      { id: botId, role: "bot", question, answers, offices },
-    ]);
     setInput("");
+    const matched = matchAskFlow(question);
+    if (matched) {
+      push({ role: "user", text: question }, ...stepMessages(matched.flow.id, matched.nodeId, question));
+      return;
+    }
+    const offices = askOffices(facilities, question);
+    push(
+      { role: "user", text: question },
+      offices.length > 0
+        ? { role: "offices", intro: "이 일을 맡은 부서예요. 전화하거나 학교 홈페이지의 부서 안내를 확인해 보세요.", offices }
+        : {
+            role: "text",
+            text: `아직 '${question}'에 맞는 안내를 못 찾았어요. 학교 홈페이지 안내와 부서 업무로 찾고 있어요 — 다른 낱말로 물어봐 주세요.`,
+          },
+    );
+  };
+
+  const choose = (message: Extract<ChatMessage, { role: "question" }>, label: string, next: string) => {
+    if (message.chosen !== null) return;
+    haptics.selection();
+    // '해결 안 됨'일 때 부서를 찾을 수 있게 처음 질문 글을 넘긴다(버튼 글자로는 부서가 잘 안 걸린다).
+    const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
+    push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
+  };
+
+  const answerFeedback = (message: Extract<ChatMessage, { role: "feedback" }>, resolved: boolean) => {
+    if (message.resolved !== null) return;
+    haptics.selection();
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, resolved } : item)));
+    if (resolved) {
+      push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
+      return;
+    }
+    const offices = askOffices(facilities, message.question).slice(0, 3);
+    push(
+      offices.length > 0
+        ? { role: "offices", intro: "담당 부서에 직접 물어보면 가장 정확해요.", offices }
+        : { role: "text", text: "더 도와드리지 못해 아쉬워요. 위 학교 안내 페이지의 담당 부서로 문의해 보세요." },
+    );
   };
 
   const call = (phone: string) => {
     haptics.selection();
     Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {});
+  };
+
+  const openLink = (url: string) => {
+    haptics.selection();
+    Linking.openURL(url).catch(() => {});
   };
 
   const openPlace = (facilityId: string) => {
@@ -105,114 +160,153 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
     </View>
   );
 
-  const renderOffice = (office: OfficeAskResult) => (
+  const renderLink = (link: AskLink, key: string) => (
     <TouchableOpacity
-      key={office.facility.id}
-      style={styles.card}
+      key={key}
+      style={styles.linkButton}
       activeOpacity={0.7}
-      onPress={() => onSelect(office.facility)}
-      accessibilityRole="button"
-      accessibilityLabel={`${office.name}, ${office.place}. 부서 안내 보기`}
+      onPress={() => openLink(link.url)}
+      accessibilityRole="link"
+      accessibilityLabel={`${link.label} 열기`}
     >
-      <View style={styles.cardHead}>
-        <View style={styles.cardTitle}>
-          <Text style={styles.name} numberOfLines={1}>{office.name}</Text>
-          <Text style={styles.place} numberOfLines={1}>{office.place}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
-      </View>
-      {office.contacts.map((contact, index) => renderPhone(contact.duty, contact.phone, `${contact.phone}-${index}`))}
-      {office.snippet ? <Text style={styles.snippet} numberOfLines={3}>{office.snippet}</Text> : null}
+      <Text style={styles.linkText} numberOfLines={1}>{link.label}</Text>
+      <Ionicons name="open-outline" size={15} color={COLORS.primary} />
     </TouchableOpacity>
   );
 
-  const renderBot = (message: Extract<ChatMessage, { role: "bot" }>) => {
-    const { answers, offices } = message;
-    if (answers.length === 0 && offices.length === 0) {
-      return (
-        <View style={styles.botBubble}>
-          <Text style={styles.botText}>
-            아직 '{message.question}'에 맞는 곳을 못 찾았어요. 학교 홈페이지 부서 안내에 적힌 업무로 찾고 있어요 — 다른 낱말로 물어봐 주세요.
-          </Text>
-        </View>
-      );
-    }
-    return (
-      <View style={styles.botGroup}>
-        {answers.map((answer) => (
-          <View key={answer.id} style={styles.botBubble}>
-            <Text style={styles.botText}>{answer.text}</Text>
-            {answer.phones?.map((p) => renderPhone(p.label, p.phone, `${answer.id}-${p.phone}`))}
-            {answer.facilityId ? (
-              <TouchableOpacity
-                style={styles.mapLink}
-                activeOpacity={0.7}
-                onPress={() => openPlace(answer.facilityId as string)}
-                accessibilityRole="button"
-                accessibilityLabel="지도에서 위치 보기"
-              >
-                <Ionicons name="location" size={14} color={COLORS.primary} />
-                <Text style={styles.mapLinkText}>지도에서 위치 보기</Text>
-              </TouchableOpacity>
-            ) : null}
-            {answer.source ? (
-              <TouchableOpacity
-                style={styles.mapLink}
-                activeOpacity={0.7}
-                onPress={() => Linking.openURL(answer.source as string).catch(() => {})}
-                accessibilityRole="link"
-                accessibilityLabel="학교 홈페이지에서 자세히 보기"
-              >
-                <Ionicons name="open-outline" size={14} color={COLORS.primary} />
-                <Text style={styles.mapLinkText}>학교 홈페이지에서 자세히</Text>
-              </TouchableOpacity>
-            ) : null}
-            <Text style={styles.checked}>
-              {answer.source ? "학교 안내" : "운영진"} 확인 {answer.checkedAt}
-            </Text>
-          </View>
-        ))}
-        {offices.length > 0 ? (
-          <View style={styles.botBubble}>
-            <Text style={styles.botText}>
-              {answers.length > 0 ? "관련 부서도 함께 알려 드려요." : "이 일을 맡은 부서예요. 누르면 지도에서 부서 안내를 열어요."}
-            </Text>
-            {offices.map(renderOffice)}
-          </View>
-        ) : null}
+  const renderPlace = (facilityId: string) => (
+    <TouchableOpacity
+      style={styles.placeLink}
+      activeOpacity={0.7}
+      onPress={() => openPlace(facilityId)}
+      accessibilityRole="button"
+      accessibilityLabel="지도에서 위치 보기"
+    >
+      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+      <Text style={styles.placeLinkText}>지도에서 위치 보기</Text>
+    </TouchableOpacity>
+  );
+
+  const renderOffice = (office: OfficeAskResult) => (
+    <View key={office.facility.id} style={styles.card}>
+      <View style={styles.cardTitle}>
+        <Text style={styles.name} numberOfLines={1}>{office.name}</Text>
+        <Text style={styles.place} numberOfLines={1}>{office.place}</Text>
       </View>
-    );
+      {office.contacts.map((contact, index) => renderPhone(contact.duty, contact.phone, `${contact.phone}-${index}`))}
+      {office.snippet ? <Text style={styles.snippet} numberOfLines={3}>{office.snippet}</Text> : null}
+      {renderLink({ label: "학교 홈페이지 · 부서 안내", url: office.source }, "source")}
+      {renderPlace(office.facility.id)}
+    </View>
+  );
+
+  const renderMessage = ({ item }: { item: ChatMessage }) => {
+    switch (item.role) {
+      case "user":
+        return (
+          <View style={styles.userBubble}>
+            <Text style={styles.userText}>{item.text}</Text>
+          </View>
+        );
+      case "text":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.botText}>{item.text}</Text>
+          </View>
+        );
+      case "question":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.botText}>{item.node.text}</Text>
+            {item.chosen === null ? (
+              <View style={styles.options}>
+                {item.node.options.map((option) => (
+                  <TouchableOpacity
+                    key={option.next + option.label}
+                    style={styles.option}
+                    activeOpacity={0.7}
+                    onPress={() => choose(item, option.label, option.next)}
+                    accessibilityRole="button"
+                    accessibilityLabel={option.label}
+                  >
+                    <Text style={styles.optionText}>{option.label}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        );
+      case "answer":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.botText}>{item.node.text}</Text>
+            {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
+            {item.node.links?.map((link) => renderLink(link, link.url))}
+            {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
+            <Text style={styles.checked}>
+              {item.node.links?.length ? "학교 안내" : "운영진"} 확인 {item.checkedAt}
+            </Text>
+          </View>
+        );
+      case "feedback":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.botText}>궁금한 점이 해결됐나요?</Text>
+            {item.resolved === null ? (
+              <View style={styles.feedbackRow}>
+                <TouchableOpacity
+                  style={styles.feedbackButton}
+                  activeOpacity={0.7}
+                  onPress={() => answerFeedback(item, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="네, 해결됐어요"
+                >
+                  <Text style={styles.feedbackText}>네, 해결됐어요</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.feedbackButton}
+                  activeOpacity={0.7}
+                  onPress={() => answerFeedback(item, false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="아니요, 더 알고 싶어요"
+                >
+                  <Text style={styles.feedbackText}>아니요, 더 알고 싶어요</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.feedbackDone}>{item.resolved ? "네, 해결됐어요" : "아니요, 더 알고 싶어요"}</Text>
+            )}
+          </View>
+        );
+      case "offices":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.botText}>{item.intro}</Text>
+            {item.offices.map(renderOffice)}
+          </View>
+        );
+    }
   };
 
-  const renderMessage = ({ item }: { item: ChatMessage }) =>
-    item.role === "user" ? (
-      <View style={styles.userBubble}>
-        <Text style={styles.userText}>{item.text}</Text>
-      </View>
-    ) : (
-      renderBot(item)
-    );
-
   const intro = (
-    <View style={styles.botGroup}>
-      <View style={styles.botBubble}>
-        <Text style={styles.botText}>
-          학교에서 해야 할 일을 물어보세요. 어디에 가거나 전화하면 되는지 찾아 드려요.
-        </Text>
-        <View style={styles.examples}>
-          {EXAMPLES.map((example) => (
-            <TouchableOpacity
-              key={example}
-              style={styles.example}
-              activeOpacity={0.7}
-              onPress={() => ask(example)}
-              accessibilityRole="button"
-              accessibilityLabel={`${example} 물어보기`}
-            >
-              <Text style={styles.exampleText}>{example}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    <View style={styles.botBubble}>
+      <Text style={styles.botText}>
+        학교에서 해야 할 일을 물어보세요. 필요한 건 몇 가지 되물어서, 어떻게 하면 되는지와 어디에 연락하면 되는지 알려 드려요.
+      </Text>
+      <View style={styles.examples}>
+        {EXAMPLES.map((example) => (
+          <TouchableOpacity
+            key={example}
+            style={styles.example}
+            activeOpacity={0.7}
+            onPress={() => ask(example)}
+            accessibilityRole="button"
+            accessibilityLabel={`${example} 물어보기`}
+          >
+            <Text style={styles.exampleText}>{example}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -221,10 +315,7 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} onShow={() => inputRef.current?.focus()}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={[styles.container, { paddingTop: topInset }]}>
           <ContentColumn>
             <ScreenHeader
@@ -237,10 +328,10 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
                     onPress={() => setMessages([])}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="대화 지우기"
+                    accessibilityLabel="처음으로 — 대화 지우기"
                     style={styles.clear}
                   >
-                    <Text style={styles.clearText}>지우기</Text>
+                    <Text style={styles.clearText}>처음으로</Text>
                   </TouchableOpacity>
                 ) : undefined
               }
@@ -255,12 +346,13 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
               ListHeaderComponent={intro}
               ListFooterComponent={
                 <Text style={styles.footnote}>
-                  학교 홈페이지 부서 안내(2026-10-14)와 운영진이 확인한 내용으로 답해요. 학교 공식 안내가 아니니 자세한 건 부서에 확인해 주세요.
+                  학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
                 </Text>
               }
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+              // 새 말풍선이 그려진 뒤에 내려야 끝까지 간다(바로 부르면 늘어나기 전 높이에서 멈춰 답이 아래에 잘렸다).
+              onContentSizeChange={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
             />
 
             <View style={[styles.composer, { paddingBottom: 10 + insets.bottom }]}>
@@ -269,7 +361,7 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
                 style={styles.input}
                 value={input}
                 onChangeText={setInput}
-                placeholder="예: 에어컨 켜 주세요"
+                placeholder="예: 휴학 신청 기간"
                 placeholderTextColor={COLORS.textPlaceholder}
                 returnKeyType="send"
                 onSubmitEditing={() => ask(input)}
@@ -299,7 +391,6 @@ const styles = StyleSheet.create({
   clear: { paddingHorizontal: 6, paddingVertical: 4 },
   clearText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 10 },
-  botGroup: { gap: 8, alignItems: "flex-start" },
   botBubble: {
     maxWidth: "92%",
     alignSelf: "flex-start",
@@ -331,9 +422,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   exampleText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textPrimary },
+  // 되묻는 버튼은 한 줄에 하나씩(고객센터 챗봇의 선택지 목록처럼) — 글이 길어도 잘리지 않게.
+  options: { gap: 6 },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.fill,
+  },
+  optionText: { flex: 1, fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   card: { borderRadius: 14, backgroundColor: COLORS.fill, padding: 12, gap: 8 },
-  cardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cardTitle: { flex: 1, gap: 2 },
+  cardTitle: { gap: 2 },
   name: { fontSize: 15, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   place: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   contact: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -349,9 +453,33 @@ const styles = StyleSheet.create({
   },
   phoneText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
   snippet: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textTertiary },
-  mapLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" },
-  mapLinkText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
+  linkButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  linkText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
+  placeLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" },
+  placeLinkText: { fontSize: 12, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   checked: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  feedbackRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  feedbackButton: {
+    paddingHorizontal: 12,
+    height: 36,
+    justifyContent: "center",
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  feedbackText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textPrimary },
+  feedbackDone: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textTertiary },
   footnote: { marginTop: 6, fontSize: 11, lineHeight: 16, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   composer: {
     flexDirection: "row",
