@@ -44,7 +44,8 @@ def faq_link(q):
 def check(t):
     """주제표 오타를 생성 전에 잡는다."""
     errs = []
-    for key in [t.get('page'), t.get('faqpage')] + list(t.get('pages', [])):
+    more = t.get('faqpage') or []
+    for key in [t.get('page')] + ([more] if isinstance(more, str) else list(more)) + list(t.get('pages', [])):
         if key and key not in PAGES:
             errs.append(f'페이지 없음 {key}')
     for q in list(t.get('faqs', [])) + list(t.get('faq', [])):
@@ -178,11 +179,13 @@ def build(t):
         for i, q in enumerate(t.get('faq', [])):
             nodes[f'faq{i}'] = answer(f"학사 FAQ '{q}' 답변이에요.", faq_sections(q), faq_link(q), t)
             follow.append({'label': f'자주 묻는 질문 · {q}', 'next': f'faq{i}'})
-        if t.get('faqpage'):
-            k2 = t['faqpage']
-            nodes['more'] = answer(f"학교 홈페이지 '{page_title(k2)}' 안내예요.", sections_of(PAGES[k2]['sections']),
-                                   [{'label': source_label(k2), 'url': url_of(k2)}], t)
-            follow.append({'label': page_title(k2), 'next': 'more'})
+        # faqpage: 키 하나 또는 여러 개. 첫 페이지 단계 id 는 예전처럼 'more', 다음부터 'more1'·'more2' ….
+        more = t.get('faqpage') or []
+        for i, k2 in enumerate([more] if isinstance(more, str) else more):
+            node_id = 'more' if i == 0 else f'more{i}'
+            nodes[node_id] = answer(f"{PAGES[k2].get('source', '학교 홈페이지')} '{page_title(k2)}' 안내예요.", sections_of(PAGES[k2]['sections']),
+                                    [{'label': source_label(k2), 'url': url_of(k2)}], t)
+            follow.append({'label': page_title(k2), 'next': node_id})
         a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + contacts_links(key), t)
         if follow:
             a = {**a, 'followUps': follow}

@@ -24,7 +24,19 @@ ARCH = ['건축']
 LAWECON = ['법대', '법과대학', '법학', '경제학', '경제과', '경제', '사범대', '사범', '수학교육', '수교', '국어교육', '국교', '영어교육',
            '영교', '역사교육', '역교', '교육학']
 
+CE = ['컴공', '컴퓨터공학', '컴과', '컴퓨터과']
+
 TOPICS = [
+    # 컴퓨터공학과만의 요건: 책자 공-10·11(PDF 98·99쪽, 학과지정 과목·학년별 전공필수) + 학과 홈페이지 졸업프로젝트 규정.
+    # 공대 공통 요건(인증·비인증)은 아래 버튼으로 붙인다. grad-eng 보다 앞에 두어 같은 점수면 이쪽이 답한다.
+    dict(id='grad-ce', page='curriculum_ce', faqpage=['dept_ce_project', 'curriculum_eng_abeek', 'curriculum_eng_nonabeek'],
+         match=[[CE, GRADW], [CE, CREDIT, GRADW], [CE, ['전공필수', '전필', '필수과목', '교과과정', '이수체계', '커리큘럼', '졸업프로젝트', '종합설계', '졸프']],
+                [CE, MSC]],
+         exclude=NOT + ['과사', '사무실'] + NONABEEK,
+         lead='컴퓨터공학과는 공과대학 졸업요건(공학교육인증과정 또는 비인증과정, 총 132학점 이상)에 더해 학과 요건이 있어요. '
+              '2022학년도 입학생부터 학과지정 과목 객체지향프로그래밍·C-프로그래밍(6학점)을 들어야 하고, 학년별 전공필수는 아래와 같아요. '
+              '종합설계프로젝트1·2, AIML응용프로젝트는 졸업논문 대체 과목이자 졸업 필수 요건이에요. '
+              '비인증과정 학생의 MSC는 2024학년도 입학생부터 수학·과학 17학점과 전산 6학점(2022~2023학년도 입학생은 수학·과학 18학점)이에요. 공대 공통 요건은 아래 버튼에서 봐요.'),
     # 출처: curriculum_eng_nonabeek(책자 8~9쪽, PDF 10~11쪽).
     dict(id='grad-eng-nonabeek', page='curriculum_eng_nonabeek', faqpage='curriculum_eng_abeek',
          match=[[NONABEEK, GRADW + MSC + CREDIT]],

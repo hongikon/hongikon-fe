@@ -11,7 +11,7 @@
   question    pages/faqs 여러 개일 때 되묻는 말
   phones      contacts.P 키, 또는 ('라벨', '번호') 튜플(adminOffices 담당정보 표에 있는 번호만)
   facility    contacts.F 키, 또는 지도 시설 id('hi-…', src/constants/adminOffices.ts 의 키)
-  faq         답 아래 '자주 묻는 질문' 버튼으로 붙일 FAQ 제목 / faqpage  함께 붙일 다른 페이지 키
+  faq         답 아래 '자주 묻는 질문' 버튼으로 붙일 FAQ 제목 / faqpage  함께 붙일 다른 페이지 키(여러 개면 목록 — 답 아래 버튼마다 하나)
   max_sections 페이지가 길 때 앞에서 몇 덩어리만 옮길지
 """
 import importlib, pkgutil
