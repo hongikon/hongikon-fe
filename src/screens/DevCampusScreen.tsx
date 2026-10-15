@@ -137,6 +137,11 @@ function DevCampusMap({ data, path }: { data: CampusPreviewData; path: string })
         {`건물 ${BUILDINGS.length}(외곽선 ${BUILDINGS.filter((b) => b.boundary).length}) · 시설 ${FACILITIES.length} · 기타 ${EXTRAS.length}`}
       </Text>
       <Text style={styles.hint}>건물을 누르면 건물 안 시설, 칩을 고르면 그 시설 핀이 떠요. 외곽선: © OpenStreetMap contributors</Text>
+      {data.notes?.map((n) => (
+        <Text key={n} style={styles.note}>
+          {n}
+        </Text>
+      ))}
       {kinds.map((k) => {
         const items = FACILITIES.filter((f) => f.kind === k.key)
         return (
@@ -263,6 +268,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.textPrimary },
   summary: { fontFamily: FONTS.medium, fontSize: 12.5, color: COLORS.textSecondary, marginTop: -8 },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  note: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textSecondary, marginTop: -6 },
   section: { gap: 2 },
   sectionTitle: { fontFamily: FONTS.bold, fontSize: 13.5, marginBottom: 2 },
   row: { flexDirection: 'row', gap: 10, paddingVertical: 5, paddingHorizontal: 6, borderRadius: 6 },

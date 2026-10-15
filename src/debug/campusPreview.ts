@@ -20,6 +20,8 @@ export interface CampusPreviewData {
   facilities: Facility[]
   /** 칩 종류에 없는 것. 넓은 화면의 목록에만 보인다. */
   extras: CampusPreviewExtra[]
+  /** 넓은 화면 목록 위에 보이는 조사 한계 안내(예: '엘리베이터는 실제보다 적어요') */
+  notes?: string[]
   /** 행정·지원 시설 id → 담당 업무·연락처 */
   officeDetails: Record<string, AdminOfficeDetail>
 }
