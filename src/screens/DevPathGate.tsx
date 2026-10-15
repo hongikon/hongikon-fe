@@ -8,8 +8,12 @@ const UNLOCK_KEY = '@hongikon_dev_path_unlocked'
 
 const DevPathAuditScreen = lazy(() => import('./DevPathAuditScreen'))
 const DevPathSurveyScreen = lazy(() => import('./DevPathSurveyScreen'))
+const DevAskScreen = lazy(() => import('./DevAskScreen'))
 
-type DevPathMode = 'audit' | 'survey'
+/** 'ask' = `/dev/ask` 물어보기 챗봇 미리보기(같은 암호키). */
+type DevPathMode = 'audit' | 'survey' | 'ask'
+
+const TITLES: Record<DevPathMode, string> = { audit: '경로망 점검', survey: '경로망 현장 조사', ask: '물어보기 미리보기' }
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
@@ -36,7 +40,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
     meta.name = 'robots'
     meta.content = 'noindex, nofollow'
     document.head.appendChild(meta)
-    document.title = mode === 'audit' ? '경로망 점검 | 홍익온' : '경로망 현장 조사 | 홍익온'
+    document.title = `${TITLES[mode]} | 홍익온`
     return () => {
       meta.remove()
     }
@@ -45,7 +49,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   if (unlocked) {
     return (
       <Suspense fallback={<Text style={styles.loading}>불러오는 중이에요</Text>}>
-        {mode === 'audit' ? <DevPathAuditScreen /> : <DevPathSurveyScreen />}
+        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : <DevAskScreen />}
       </Suspense>
     )
   }
@@ -76,7 +80,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>{mode === 'audit' ? '경로망 점검' : '경로망 현장 조사'}</Text>
+        <Text style={styles.title}>{TITLES[mode]}</Text>
         <Text style={styles.sub}>개발용 페이지예요. 암호키를 입력해 주세요.</Text>
         <TextInput
           value={value}

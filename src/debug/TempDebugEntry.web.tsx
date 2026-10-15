@@ -16,6 +16,10 @@ export const DevPathAuditEntry: ComponentType | null = lazy(() =>
 export const DevPathSurveyEntry: ComponentType | null = lazy(() =>
   import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="survey" /> })),
 )
+/** 개발용 `/dev/ask` — 암호키 입력 후 '물어보기' 챗봇 미리보기(완성 전까지 운영 앱에 넣지 않는다). */
+export const DevAskEntry: ComponentType | null = lazy(() =>
+  import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="ask" /> })),
+)
 /** 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 시설 조사 결과 미리보기. 인증키를 맞혀야 화면·데이터를 받는다(`DevCampusGate`). */
 export const DevCampusEntry: ComponentType<{ campus: CampusPreviewKey }> | null = lazy(() => import('../screens/DevCampusGate'))
 export const TempNotificationPreviewEntry: ComponentType | null = lazy(

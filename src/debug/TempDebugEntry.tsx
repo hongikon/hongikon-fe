@@ -9,5 +9,7 @@ export const TempEntranceDebugEntry: ComponentType<{ mode: 'dots' | 'paths' | 'n
 export const DevPathAuditEntry: ComponentType | null = null
 /** 개발용 `/dev/path-survey` — 경로망 현장 조사. 웹 전용이라 네이티브에서는 null. */
 export const DevPathSurveyEntry: ComponentType | null = null
+/** 개발용 `/dev/ask` — 물어보기 챗봇 미리보기. 웹 전용이라 네이티브에서는 null. */
+export const DevAskEntry: ComponentType | null = null
 export const DevCampusEntry: ComponentType<{ campus: CampusPreviewKey }> | null = null
 export const TempNotificationPreviewEntry: ComponentType | null = null

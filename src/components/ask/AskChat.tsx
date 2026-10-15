@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   FlatList,
-  Modal,
   TouchableOpacity,
   Linking,
   KeyboardAvoidingView,
@@ -17,8 +16,7 @@ import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
-import { ASK_FLOWS, type AskAnswerNode, type AskLink, type AskQuestionNode } from "../../constants/askAnswers";
-import type { Facility } from "../../types";
+import { ASK_FLOWS, type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
 import ContentColumn from "../common/ContentColumn";
 import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
@@ -34,30 +32,26 @@ const EXAMPLES = ["휴학 신청 기간", "학생증 재발급", "에어컨 켜 
 type ChatMessage =
   | { id: number; role: "user"; text: string }
   | { id: number; role: "question"; node: AskQuestionNode; flowId: string; chosen: string | null }
-  | { id: number; role: "answer"; node: AskAnswerNode; checkedAt: string }
+  | { id: number; role: "answer"; node: AskAnswerNode; flowId: string; checkedAt: string; question: string; followed: boolean }
   | { id: number; role: "feedback"; question: string; resolved: boolean | null }
   | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
   | { id: number; role: "text"; text: string };
 
 type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
 
-interface AskOfficeModalProps {
-  visible: boolean;
-  /** 상위 화면(Modal 밖)에서 잰 top safe-area inset. */
-  topInset: number;
-  onClose: () => void;
-  /** '위치 보기'를 눌렀다. 지도에서 그 시설 시트를 연다. */
-  onSelect: (facility: Facility) => void;
+interface AskChatProps {
+  /** 있으면 머리에 뒤로 가기 버튼을 단다. */
+  onClose?: () => void;
 }
 
 /**
- * 지도 검색바 옆 '물어보기'. 고객센터 챗봇처럼 묻고 답한다.
+ * '물어보기' 챗봇 화면. 고객센터 챗봇처럼 묻고 답한다.
+ * 완성 전까지는 운영 앱에 넣지 않고 웹 `/dev/ask`(암호키 인증, `DevPathGate`)에서만 연다(10-15 요청).
  * ① 안내 흐름(`ASK_FLOWS` — 학교 안내 페이지·운영진 확인)에 맞으면 필요한 것만 버튼으로 되물어 답하고 그 학교 페이지로 잇는다.
  * ② 흐름이 없으면 학교 홈페이지 부서 안내에서 그 일을 맡은 부서와 업무별 전화를 보여 준다.
  * 네트워크 없이 앱에 담아 둔 표만 훑는다 — 답을 지어내지 않고, 없으면 없다고 한다.
- * 대화는 창을 닫았다 열어도 앱을 켜 둔 동안 남는다.
  */
-export default function AskOfficeModal({ visible, topInset, onClose, onSelect }: AskOfficeModalProps) {
+export default function AskChat({ onClose }: AskChatProps) {
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -76,7 +70,7 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
     if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
     if (node.kind === "question") return [{ role: "question", node, flowId, chosen: null }];
     return [
-      { role: "answer", node, checkedAt: flow.checkedAt },
+      { role: "answer", node, flowId, checkedAt: flow.checkedAt, question, followed: false },
       { role: "feedback", question, resolved: null },
     ];
   };
@@ -112,6 +106,42 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
   };
 
+  /** 답 아래 '이어서 물어보기' 버튼. 한 번 누르면 그 답의 버튼은 접는다. */
+  const follow = (message: Extract<ChatMessage, { role: "answer" }>, label: string, next: string) => {
+    if (message.followed) return;
+    haptics.selection();
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, followed: true } : item)));
+    push({ role: "user", text: label }, ...stepMessages(message.flowId, next, message.question));
+  };
+
+  const renderSection = (section: AskSection, key: string) => (
+    <View key={key} style={styles.section}>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      {section.table ? (
+        <View style={styles.table}>
+          {[section.table.head, ...section.table.rows].map((row, rowIndex) => (
+            <View key={rowIndex} style={[styles.tableRow, rowIndex === 0 && styles.tableHead]}>
+              {row.map((cell, cellIndex) => (
+                <Text
+                  key={cellIndex}
+                  style={[styles.tableCell, rowIndex === 0 && styles.tableHeadText, cellIndex === 0 && styles.tableFirst]}
+                >
+                  {cell}
+                </Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {section.items?.map((itemText, index) => (
+        <View key={index} style={styles.itemRow}>
+          <Text style={[styles.itemMark, section.ordered && styles.itemNumber]}>{section.ordered ? `${index + 1}` : "•"}</Text>
+          <Text style={styles.itemText}>{itemText}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
   const answerFeedback = (message: Extract<ChatMessage, { role: "feedback" }>, resolved: boolean) => {
     if (message.resolved !== null) return;
     haptics.selection();
@@ -136,11 +166,6 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
   const openLink = (url: string) => {
     haptics.selection();
     Linking.openURL(url).catch(() => {});
-  };
-
-  const openPlace = (facilityId: string) => {
-    const facility = facilities.find((item) => item.id === facilityId);
-    if (facility) onSelect(facility);
   };
 
   const renderPhone = (label: string, phone: string, key: string) => (
@@ -174,19 +199,6 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
     </TouchableOpacity>
   );
 
-  const renderPlace = (facilityId: string) => (
-    <TouchableOpacity
-      style={styles.placeLink}
-      activeOpacity={0.7}
-      onPress={() => openPlace(facilityId)}
-      accessibilityRole="button"
-      accessibilityLabel="지도에서 위치 보기"
-    >
-      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-      <Text style={styles.placeLinkText}>지도에서 위치 보기</Text>
-    </TouchableOpacity>
-  );
-
   const renderOffice = (office: OfficeAskResult) => (
     <View key={office.facility.id} style={styles.card}>
       <View style={styles.cardTitle}>
@@ -196,7 +208,6 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
       {office.contacts.map((contact, index) => renderPhone(contact.duty, contact.phone, `${contact.phone}-${index}`))}
       {office.snippet ? <Text style={styles.snippet} numberOfLines={3}>{office.snippet}</Text> : null}
       {renderLink({ label: "학교 홈페이지 · 부서 안내", url: office.source }, "source")}
-      {renderPlace(office.facility.id)}
     </View>
   );
 
@@ -240,10 +251,28 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
       case "answer":
         return (
           <View style={styles.botBubble}>
-            <Text style={styles.botText}>{item.node.text}</Text>
+            <Text style={[styles.botText, item.node.sections?.length ? styles.lead : null]}>{item.node.text}</Text>
+            {item.node.sections?.map((section, index) => renderSection(section, `${index}`))}
             {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
+            {item.node.followUps && !item.followed ? (
+              <View style={styles.options}>
+                <Text style={styles.followTitle}>이어서 물어보기</Text>
+                {item.node.followUps.map((option) => (
+                  <TouchableOpacity
+                    key={option.next + option.label}
+                    style={styles.option}
+                    activeOpacity={0.7}
+                    onPress={() => follow(item, option.label, option.next)}
+                    accessibilityRole="button"
+                    accessibilityLabel={option.label}
+                  >
+                    <Text style={styles.optionText}>{option.label}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
             {item.node.links?.map((link) => renderLink(link, link.url))}
-            {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
             <Text style={styles.checked}>
               {item.node.links?.length ? "학교 안내" : "운영진"} 확인 {item.checkedAt}
             </Text>
@@ -314,9 +343,8 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
   const canSend = input.trim().length > 0;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} onShow={() => inputRef.current?.focus()}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={[styles.container, { paddingTop: topInset }]}>
+        <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
           <ContentColumn>
             <ScreenHeader
               title="물어보기"
@@ -381,7 +409,6 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
           </ContentColumn>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
   );
 }
 
@@ -436,6 +463,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.fill,
   },
   optionText: { flex: 1, fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  lead: { fontFamily: FONTS.semibold },
+  section: { gap: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
+  sectionTitle: { fontSize: 13, fontFamily: FONTS.bold, color: COLORS.primary },
+  itemRow: { flexDirection: "row", gap: 8 },
+  itemMark: { width: 14, fontSize: 14, lineHeight: 21, fontFamily: FONTS.bold, color: COLORS.textTertiary, textAlign: "center" },
+  itemNumber: { color: COLORS.primary },
+  itemText: { flex: 1, fontSize: 14, lineHeight: 21, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  // 표는 말풍선 폭 안에서 칸을 고르게 나눈다(첫 칸만 조금 넓게). 좁은 화면에선 칸 안에서 줄을 바꾼다.
+  table: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, overflow: "hidden" },
+  tableRow: { flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
+  tableHead: { borderTopWidth: 0, backgroundColor: COLORS.fill },
+  tableCell: { flex: 1, paddingHorizontal: 6, paddingVertical: 7, fontSize: 12, lineHeight: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  tableFirst: { flex: 1.3 },
+  tableHeadText: { fontFamily: FONTS.semibold, color: COLORS.textSecondary },
+  followTitle: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textTertiary, marginTop: 2 },
   card: { borderRadius: 14, backgroundColor: COLORS.fill, padding: 12, gap: 8 },
   cardTitle: { gap: 2 },
   name: { fontSize: 15, fontFamily: FONTS.bold, color: COLORS.textPrimary },
@@ -466,8 +508,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   linkText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
-  placeLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" },
-  placeLinkText: { fontSize: 12, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   checked: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   feedbackRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   feedbackButton: {
