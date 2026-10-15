@@ -1,0 +1,1378 @@
+[
+ {
+  "q": "교환학생 지원자격이 뭐예요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환학생 평점 몇 이상이어야 돼요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환학생 면접 어떻게 봐요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환학생 경쟁률 커트라인",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환학생 토플 점수 필요해요?",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환 제출서류 뭐 필요해요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "편입생도 교환학생 갈 수 있어요? 몇 학기 다녀야 해요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환이랑 방문 차이가 뭐예요",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "방문학생은 떨어질 수도 있어요?",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "교환학생 복수지원 가능해요?",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "휴학생도 교환학생 지원 돼요?",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "교환학생 기간 연장 가능해요",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "교환학생도 장학금 받아요?",
+  "expect": "intl-exchange-scholarship"
+ },
+ {
+  "q": "국제교류장학금 얼마예요",
+  "expect": "intl-exchange-scholarship"
+ },
+ {
+  "q": "교환학생 등록금 어디에 내요",
+  "expect": "intl-exchange-scholarship"
+ },
+ {
+  "q": "교환학생 포기하고 싶어요",
+  "expect": "intl-exchange-forms"
+ },
+ {
+  "q": "교환학생 취소 신청서",
+  "expect": "intl-exchange-forms"
+ },
+ {
+  "q": "교환학생 학점인정신청서 양식",
+  "expect": "intl-exchange-forms"
+ },
+ {
+  "q": "해외 자매대학 계절학기 듣고 싶어요",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "외국 대학 썸머스쿨 학점 인정",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "어학연수 다녀오면 학점 인정돼요?",
+  "expect": "intl-language-credit"
+ },
+ {
+  "q": "해외어학연수 학점인정 신청",
+  "expect": "intl-language-credit"
+ },
+ {
+  "q": "랭귀지스쿨 학점",
+  "expect": "intl-language-credit"
+ },
+ {
+  "q": "어학연수 가고 싶어요",
+  "expect": "intl-language-credit"
+ },
+ {
+  "q": "해외인턴십 학점인정",
+  "expect": "intl-intern-credit"
+ },
+ {
+  "q": "해외 인턴 학점 받을 수 있어요?",
+  "expect": "intl-intern-credit"
+ },
+ {
+  "q": "전공연계 해외파견 프로그램",
+  "expect": "intl-global-program"
+ },
+ {
+  "q": "해외취업 인턴십 장학금",
+  "expect": "intl-global-program"
+ },
+ {
+  "q": "버디 모집 언제 해요",
+  "expect": "intl-buddy"
+ },
+ {
+  "q": "버디 프로그램 신청",
+  "expect": "intl-buddy"
+ },
+ {
+  "q": "교환학생 도우미 하고 싶어요",
+  "expect": "intl-buddy"
+ },
+ {
+  "q": "국제협력본부 어디 있어요",
+  "expect": "intl-office"
+ },
+ {
+  "q": "국제교류실 전화번호",
+  "expect": "intl-office"
+ },
+ {
+  "q": "국제학생지원실 위치",
+  "expect": "intl-office"
+ },
+ {
+  "q": "국제학생지원실",
+  "expect": "intl-office"
+ },
+ {
+  "q": "ISL 몇시까지 해요",
+  "expect": "intl-isl"
+ },
+ {
+  "q": "유학생 라운지 어디예요",
+  "expect": "intl-isl"
+ },
+ {
+  "q": "유학생 휴학하면 비자 어떻게 돼요",
+  "expect": "intl-visa-leave"
+ },
+ {
+  "q": "외국인 학생 복학할 때 비자",
+  "expect": "intl-visa-leave"
+ },
+ {
+  "q": "출국신고서 어디서 써요",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "유학생 학기 중에 고향 가도 돼요",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "결핵검진 어디서 해요",
+  "expect": "intl-tb-test"
+ },
+ {
+  "q": "결핵 검사",
+  "expect": "intl-tb-test"
+ },
+ {
+  "q": "비자 연장 어떻게 해요",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "D-2 비자 연장 서류",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "유학비자 발급 수수료",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "외국인등록증 발급",
+  "expect": "intl-arc"
+ },
+ {
+  "q": "ARC 신청 방법",
+  "expect": "intl-arc"
+ },
+ {
+  "q": "외국인등록증 잃어버렸어요",
+  "expect": "intl-arc-lost"
+ },
+ {
+  "q": "외국인등록증 재발급",
+  "expect": "intl-arc-lost"
+ },
+ {
+  "q": "이사했는데 외국인등록 주소 변경",
+  "expect": "intl-arc-change"
+ },
+ {
+  "q": "유학생 아르바이트 해도 돼요",
+  "expect": "intl-parttime"
+ },
+ {
+  "q": "외국인 알바 허가",
+  "expect": "intl-parttime"
+ },
+ {
+  "q": "시간제 취업 허가 서류",
+  "expect": "intl-parttime"
+ },
+ {
+  "q": "유학생 건강보험 가입",
+  "expect": "intl-insurance"
+ },
+ {
+  "q": "외국인 학생 의료보험 얼마예요",
+  "expect": "intl-insurance"
+ },
+ {
+  "q": "유학생 장학금",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "외국인 장학금 종류",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "토픽 장학금",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "유학생 전과 가능해요?",
+  "expect": "intl-academic"
+ },
+ {
+  "q": "외국인 성적경고 제적",
+  "expect": "intl-academic"
+ },
+ {
+  "q": "유학생 수강신청 방법",
+  "expect": "intl-course"
+ },
+ {
+  "q": "유학생 기숙사 신청 언제",
+  "expect": "intl-dorm"
+ },
+ {
+  "q": "외국인 기숙사 어디 들어가요",
+  "expect": "intl-dorm"
+ },
+ {
+  "q": "유학생 도우미 신청",
+  "expect": "intl-support"
+ },
+ {
+  "q": "유학생 상담지도교수",
+  "expect": "intl-support"
+ },
+ {
+  "q": "유학생 취업 특강",
+  "expect": "intl-foreign-jobs"
+ },
+ {
+  "q": "외국인 유학생 취업 지원",
+  "expect": "intl-foreign-jobs"
+ },
+ {
+  "q": "중국어 튜터링",
+  "expect": "intl-chinese-tutoring"
+ },
+ {
+  "q": "중국어 배우고 싶어요 중국인 유학생",
+  "expect": "intl-chinese-tutoring"
+ },
+ {
+  "q": "출입국관리사무소 어디",
+  "expect": "intl-immigration"
+ },
+ {
+  "q": "하이코리아 방문예약",
+  "expect": "intl-immigration"
+ },
+ {
+  "q": "1345 전화",
+  "expect": "intl-immigration"
+ },
+ {
+  "q": "한국어 도우미 하고 싶어요",
+  "expect": "intl-kle-buddy"
+ },
+ {
+  "q": "국제언어교육원 도우미 봉사장학금",
+  "expect": "intl-kle-buddy"
+ },
+ {
+  "q": "한국어 도우미 봉사시간 확인서",
+  "expect": "intl-kle-buddy-cert"
+ },
+ {
+  "q": "어학당 도우미 활동 증명서 출력",
+  "expect": "intl-kle-buddy-cert"
+ },
+ {
+  "q": "어학당 학비 얼마예요",
+  "expect": "intl-korean-fee"
+ },
+ {
+  "q": "한국어 과정 수강료",
+  "expect": "intl-korean-fee"
+ },
+ {
+  "q": "어학당 환불",
+  "expect": "intl-korean-fee"
+ },
+ {
+  "q": "D-4 비자",
+  "expect": "intl-korean-visa"
+ },
+ {
+  "q": "어학연수생 보험",
+  "expect": "intl-korean-insurance"
+ },
+ {
+  "q": "한국어 과정 지원 방법",
+  "expect": "intl-korean-apply"
+ },
+ {
+  "q": "어학당 입학 서류",
+  "expect": "intl-korean-apply"
+ },
+ {
+  "q": "한국어 배우고 싶어요",
+  "expect": "intl-korean-course"
+ },
+ {
+  "q": "한국어 과정 개강일",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "국제언어교육원 위치",
+  "expect": "intl-kli-office"
+ },
+ {
+  "q": "언어교육원 전화번호",
+  "expect": "intl-kli-office"
+ },
+ {
+  "q": "국제언어교육원 영어 강좌",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "외국어 강좌 있어요?",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "외국 대학 친구가 홍익대로 방문학생 오려면",
+  "expect": "intl-inbound-visit"
+ },
+ {
+  "q": "외국인 방문학생 수업료 얼마예요",
+  "expect": "intl-inbound-visit"
+ },
+ {
+  "q": "외국대학 학생이 홍대 계절학기 들으러 오려면",
+  "expect": "intl-inbound-visit"
+ },
+ {
+  "q": "교환학생 가려면 어떻게 해요",
+  "expect": "exchange"
+ },
+ {
+  "q": "교환학생 신청 언제",
+  "expect": "exchange"
+ },
+ {
+  "q": "교환학생 학점 인정",
+  "expect": "exchange"
+ },
+ {
+  "q": "교환학생 기숙사",
+  "expect": "exchange"
+ },
+ {
+  "q": "교환학생 비자",
+  "expect": "exchange"
+ },
+ {
+  "q": "일본 교환학생",
+  "expect": "exchange"
+ },
+ {
+  "q": "외국인 교환학생으로 홍익대 오려면",
+  "expect": "exchange-inbound"
+ },
+ {
+  "q": "유학생 상담",
+  "expect": "counseling"
+ },
+ {
+  "q": "유학생 기숙사",
+  "expect": "dorm"
+ },
+ {
+  "q": "HISC 버디",
+  "expect": "hisc"
+ },
+ {
+  "q": "유학생회",
+  "expect": "vois"
+ },
+ {
+  "q": "국제학생증 발급",
+  "expect": "isic"
+ },
+ {
+  "q": "외국인 학생증",
+  "expect": "student-card"
+ },
+ {
+  "q": "유학생 멘토 하고 싶어요",
+  "expect": "ctl-hitouch"
+ },
+ {
+  "q": "계절학기 신청",
+  "expect": "seasonal"
+ },
+ {
+  "q": "학생증 교환",
+  "expect": "student-card"
+ },
+ {
+  "q": "휴학하고 싶어요",
+  "expect": "leave-of-absence"
+ },
+ {
+  "q": "전과 하고 싶어요",
+  "expect": "change-major"
+ },
+ {
+  "q": "장학금 신청",
+  "expect": "scholarship"
+ },
+ {
+  "q": "학교에서 다쳤는데 보험 청구",
+  "expect": "injury"
+ },
+ {
+  "q": "해외봉사",
+  "expect": "overseas-volunteer"
+ },
+ {
+  "q": "봉사활동 확인서 발급",
+  "expect": "volunteer-cert"
+ },
+ {
+  "q": "유학생인데 휴학 신청 어떻게 해요",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "외국인 학생 휴학원서 어디서 받아요",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "유학생은 클래스넷으로 휴학 못 해요?",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "유학생 복학 신청 방법",
+  "expect": "intl-return-apply"
+ },
+ {
+  "q": "외국인유학생 복학원서 제출",
+  "expect": "intl-return-apply"
+ },
+ {
+  "q": "유학생 자퇴하고 싶어요",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "외국인 학생 자퇴하면 등록금 환불 돼요?",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "유학생 자퇴 절차",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "학기 중에 본국에 잠깐 다녀와도 돼요? 유학생이에요",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "출국신고 안 하면 어떻게 돼요",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "초과학기자 비자 연장 서류",
+  "expect": "intl-advisor-form"
+ },
+ {
+  "q": "학기 초과했는데 D-2 연장하려면",
+  "expect": "intl-advisor-form"
+ },
+ {
+  "q": "지도교수 확인서 양식",
+  "expect": "intl-advisor-form"
+ },
+ {
+  "q": "시간제 취업 확인서 양식",
+  "expect": "intl-parttime-form"
+ },
+ {
+  "q": "유학생 알바 확인서 어디서 받아요",
+  "expect": "intl-parttime-form"
+ },
+ {
+  "q": "아르바이트 근로계약서 유학생",
+  "expect": "intl-parttime-form"
+ },
+ {
+  "q": "어학당 출석률 몇 퍼센트",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "언어교육원 결석하면 비자 연장 안돼요?",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "한국어과정 진급 조건",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "어학당 유급",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "어학당 휴학 가능해요?",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "한국어과정 일시귀국",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "국제언어교육원 가는 길",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "언어교육원 어떻게 가요",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "어학당 상수역에서 가까워요?",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "국제언어교육원 몇 층이에요",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "한국어 도우미 보고서 제출",
+  "expect": "intl-kle-buddy-report"
+ },
+ {
+  "q": "한국어도우미 중간보고서",
+  "expect": "intl-kle-buddy-report"
+ },
+ {
+  "q": "유학생활도우미 최종보고서 어떻게 써요",
+  "expect": "intl-kle-buddy-report"
+ },
+ {
+  "q": "어학당 다음 학기 개강 언제",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "한국어과정 접수기간",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "국제언어교육원 원서접수 언제",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "ISL 주말에도 열어요?",
+  "expect": "intl-isl"
+ },
+ {
+  "q": "외국인유학생라운지 몇시까지",
+  "expect": "intl-isl"
+ },
+ {
+  "q": "휴학 신청 어떻게 해요",
+  "expect": "leave-of-absence"
+ },
+ {
+  "q": "자퇴하고 싶어요",
+  "expect": "dropout"
+ },
+ {
+  "q": "복학 신청 언제",
+  "expect": "return"
+ },
+ {
+  "q": "알바 하고 싶어요",
+  "expect": "none"
+ },
+ {
+  "q": "비자 연장 서류",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "유학생 비자 연장 서류",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "교환학생 취소하고 싶어요",
+  "expect": "intl-exchange-forms"
+ },
+ {
+  "q": "버디 보고서",
+  "expect": "hisc"
+ },
+ {
+  "q": "학생상담센터 위치",
+  "expect": "counseling"
+ },
+ {
+  "q": "외국인인데 휴학하려면 어디로 가요",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "유학생 휴학하면 비자 취소돼요?",
+  "expect": "intl-visa-leave"
+ },
+ {
+  "q": "중국인 유학생 휴학 절차 알려주세요",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "유학생 복학할 때 비자 뭐로 들어와요",
+  "expect": "intl-visa-leave"
+ },
+ {
+  "q": "외국인 유학생 학교 그만두고 싶어요",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "유학생 자퇴원서 양식",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "고향에 갔다 와야 하는데 유학생 신고해야 해요?",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "유학생 출국신고서 양식",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "졸업유예하면 비자 연장 어떻게",
+  "expect": "intl-overterm"
+ },
+ {
+  "q": "수료생 비자 연장 지도교수 확인서",
+  "expect": "intl-advisor-form"
+ },
+ {
+  "q": "유학생 아르바이트 허가 몇 시간",
+  "expect": "intl-parttime"
+ },
+ {
+  "q": "시간제취업 확인서 사장님 서명",
+  "expect": "intl-parttime-form"
+ },
+ {
+  "q": "어학당 지각하면",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "어학당 시험 안 보면",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "한국어과정 제적 기준",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "어학연수생 출석 기준",
+  "expect": "intl-korean-rules"
+ },
+ {
+  "q": "국제언어교육원 주소",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "어학당 가는 법 지하철",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "한국어교육부 오시는 길",
+  "expect": "intl-kli-directions"
+ },
+ {
+  "q": "한국어 도우미 활동계획서",
+  "expect": "intl-kle-buddy-report"
+ },
+ {
+  "q": "어학당 도우미 보고서 안 내면",
+  "expect": "intl-kle-buddy-report"
+ },
+ {
+  "q": "한국어 과정 언제 개강해요",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "어학당 겨울학기 개강",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "한국어과정 모집기간",
+  "expect": "intl-korean-schedule"
+ },
+ {
+  "q": "외국인유학생라운지 토요일",
+  "expect": "intl-isl"
+ },
+ {
+  "q": "교환학생 학점인정 신청서 양식",
+  "expect": "intl-exchange-forms"
+ },
+ {
+  "q": "외국인 등록증 잃어버렸어요",
+  "expect": "intl-arc-lost"
+ },
+ {
+  "q": "유학생 장학금 뭐 있어요",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "국제학생지원실 전화번호",
+  "expect": "intl-office"
+ },
+ {
+  "q": "유학생 수강신청 어떻게",
+  "expect": "intl-course"
+ },
+ {
+  "q": "휴학원서 양식",
+  "expect": "leave-of-absence"
+ },
+ {
+  "q": "등록금 환불 기준",
+  "expect": "tuition-refund"
+ },
+ {
+  "q": "출국 전에 뭐 해야 돼요",
+  "expect": "none"
+ },
+ {
+  "q": "4학년 2학기에 교환학생 갈 수 있어요?",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "마지막 학기에 교환 가도 돼요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "초과학기에 교환학생 가능한가요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "졸업유예하고 교환 갈 수 있나요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "교환학생 몇 학년까지 갈 수 있어요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "8학기에 파견 가능해요?",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "건축학과 10학기 교환학생 되나요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "방문학생 마지막 학기에 가능?",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "추가학기 교환학생 신청돼요?",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "SAF 방문학생이 뭐예요",
+  "expect": "intl-saf"
+ },
+ {
+  "q": "saf로 교환 가는 거 어떻게 해요",
+  "expect": "intl-saf"
+ },
+ {
+  "q": "자매대학 아닌 학교로 교환 갈 수 있어요?",
+  "expect": "intl-saf"
+ },
+ {
+  "q": "비자매 대학 방문학생 가능한가요",
+  "expect": "intl-saf"
+ },
+ {
+  "q": "협약 없는 학교로 유학 가도 학점 인정돼요?",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "ECTS 학점 어떻게 환산해요",
+  "expect": "intl-ects"
+ },
+ {
+  "q": "유럽 교환학생 학점 환산 기준",
+  "expect": "intl-ects"
+ },
+ {
+  "q": "30 ects면 홍대 몇학점이에요",
+  "expect": "intl-ects"
+ },
+ {
+  "q": "해외대학 학점 변환 비율",
+  "expect": "intl-ects"
+ },
+ {
+  "q": "학교에서 토익 강좌 들을 수 있어요?",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "토익 특강 어디서 해요",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "국제언어교육원 토익 수업",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "신입생 특별과정 뭐예요",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "영어집중과정 방학에 있어요?",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "학교에서 영어회화 배울 수 있나요",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "교내 토플 강좌 있어요?",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "외국어교육부 전화번호",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "중국어 강좌 학교에서 하나요",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "독일어 강좌 있어요",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "맞춤형 어학강좌 신청",
+  "expect": "intl-foreign-language"
+ },
+ {
+  "q": "한자 특강 있나요",
+  "expect": "intl-kli-courses"
+ },
+ {
+  "q": "속성 한자 강좌",
+  "expect": "intl-kli-courses"
+ },
+ {
+  "q": "한국어 교원 양성 과정",
+  "expect": "intl-kli-courses"
+ },
+ {
+  "q": "법률 영어 강좌",
+  "expect": "intl-kli-courses"
+ },
+ {
+  "q": "어학당 양식 어디서 받아요",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "어학당 일시출국 신고서",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "언어교육원 환불 신청서",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "한국어과정 수강취소 신청서",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "번역자확인서 양식",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "거주숙소제공확인서 어디서 받아",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "국제언어교육원 서류 양식",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "어학당 신원보증서 양식",
+  "expect": "intl-kle-forms"
+ },
+ {
+  "q": "외국인등록 90일 안에 해야 돼요?",
+  "expect": "intl-arc"
+ },
+ {
+  "q": "1345 몇시까지 해요",
+  "expect": "intl-immigration"
+ },
+ {
+  "q": "1345 주말에도 돼요?",
+  "expect": "intl-immigration"
+ },
+ {
+  "q": "학기 중에 고향 가려면 신고해야 돼요?",
+  "expect": "intl-departure"
+ },
+ {
+  "q": "방문학생 1년 가능?",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "외국인 교환학생 버디",
+  "expect": "intl-buddy"
+ },
+ {
+  "q": "유학생인데 학교 그만두고 싶어요",
+  "expect": "intl-withdraw"
+ },
+ {
+  "q": "외국인 학생 휴학 어떻게 신청해요",
+  "expect": "intl-leave-apply"
+ },
+ {
+  "q": "유학생 아르바이트 몇 시간까지",
+  "expect": "intl-parttime"
+ },
+ {
+  "q": "외국인 유학생 보험료 얼마",
+  "expect": "intl-insurance"
+ },
+ {
+  "q": "외국인등록증 주소 변경",
+  "expect": "intl-arc-change"
+ },
+ {
+  "q": "유학생 장학금 종류",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "교환학생 커트라인",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "교환학생 내부선발 언제 공고해요",
+  "expect": "intl-exchange-apply"
+ },
+ {
+  "q": "토익 응시료 지원돼요?",
+  "expect": "language-test-fee"
+ },
+ {
+  "q": "토익 점수 졸업요건",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "영어강의 몇과목 들어야 돼요",
+  "expect": "english-course"
+ },
+ {
+  "q": "교환학생 학점인정 어떻게 받아요",
+  "expect": "exchange"
+ },
+ {
+  "q": "교환학생 언제 모집해요",
+  "expect": "exchange"
+ },
+ {
+  "q": "자매대학 어디 있어요",
+  "expect": "exchange-partners"
+ },
+ {
+  "q": "유학생 튜터링 받고 싶어요",
+  "expect": "ctl-intl-tutoring"
+ },
+ {
+  "q": "미래에셋 장학금 교환학생도 받을 수 있어요?",
+  "expect": "intl-mirae"
+ },
+ {
+  "q": "미래에셋 해외교환 장학생 언제 뽑아요",
+  "expect": "intl-mirae"
+ },
+ {
+  "q": "박현주재단 교환학생 장학금",
+  "expect": "intl-mirae"
+ },
+ {
+  "q": "아셈듀오 장학금이 뭐예요",
+  "expect": "intl-asemduo"
+ },
+ {
+  "q": "ASEM-DUO 장학금 신청 방법",
+  "expect": "intl-asemduo"
+ },
+ {
+  "q": "DUO-KOREA 장학금",
+  "expect": "intl-asemduo"
+ },
+ {
+  "q": "한미 WEST 프로그램이 뭐예요",
+  "expect": "intl-west"
+ },
+ {
+  "q": "WEST 인턴 다녀오면 학점 인정돼요?",
+  "expect": "intl-west"
+ },
+ {
+  "q": "웨스트 프로그램 지원 자격",
+  "expect": "intl-west"
+ },
+ {
+  "q": "자매대학 아닌 학교 수업 들으면 학점 인정돼요?",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "비자매대학에서 개인적으로 수업 들었는데 학점인정 되나요",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "교환학생 인정학점 복수전공으로 인정돼요?",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "교환 가서 들은 과목 부전공 학점으로 받을 수 있나",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "내부선발 없이 개인적으로 방문학생 가면 학점 인정돼?",
+  "expect": "intl-exchange-credit-rules"
+ },
+ {
+  "q": "자매대학 아닌 곳으로 교환 가고 싶어요",
+  "expect": "intl-saf"
+ },
+ {
+  "q": "건축학부 교환학생 대체학점 사전승인",
+  "expect": "intl-arch-credit"
+ },
+ {
+  "q": "건축학과 교환 가면 대체학점 어떻게 받아요",
+  "expect": "intl-arch-credit"
+ },
+ {
+  "q": "실내건축 방문학생 대체학점",
+  "expect": "intl-arch-credit"
+ },
+ {
+  "q": "교류학생 대체학점 사전승인 확인서",
+  "expect": "intl-arch-credit"
+ },
+ {
+  "q": "유학생 졸업유예 하면 비자 어떻게 돼요",
+  "expect": "intl-overterm"
+ },
+ {
+  "q": "외국인 유학생 학사학위취득유예 신청해도 돼요?",
+  "expect": "intl-overterm"
+ },
+ {
+  "q": "유학생인데 학위취득유예하면 비자 연장 돼요",
+  "expect": "intl-overterm"
+ },
+ {
+  "q": "D-2 비자 졸업유예",
+  "expect": "intl-overterm"
+ },
+ {
+  "q": "졸업유예 신청 언제 해요",
+  "expect": "deferred"
+ },
+ {
+  "q": "초과학기 등록금 얼마예요",
+  "expect": "excess-semester"
+ },
+ {
+  "q": "초과학기 유학생 비자 연장 서류",
+  "expect": "intl-advisor-form"
+ },
+ {
+  "q": "해외자매대학 계절학기 몇 학점까지 인정돼요",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "해외 썸머스쿨 가면 학교 계절학기 같이 들을 수 있어?",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "외국 대학 여름학기 학점인정 조건",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "자매대학 윈터스쿨 평점 몇 이상",
+  "expect": "intl-seasonal-abroad"
+ },
+ {
+  "q": "교환학생 상대교가 쿼터제면 학점 어떻게 돼요",
+  "expect": "intl-quarter"
+ },
+ {
+  "q": "방문학생 쿼터 두개 들으면 한학기로 쳐줘?",
+  "expect": "intl-quarter"
+ },
+ {
+  "q": "교환학생 어학성적 유효기간 지나면 안돼요?",
+  "expect": "intl-exchange-score"
+ },
+ {
+  "q": "교환학생 토플 성적표 pdf 출력해서 내도 돼요",
+  "expect": "intl-exchange-score"
+ },
+ {
+  "q": "교환 지원할때 어학성적표 원본 내야해?",
+  "expect": "intl-exchange-score"
+ },
+ {
+  "q": "내부선발 토익 점수 만료되면",
+  "expect": "intl-exchange-score"
+ },
+ {
+  "q": "유학생 사이버강좌 몇 개 들을 수 있어요",
+  "expect": "intl-cyber"
+ },
+ {
+  "q": "외국인 학생 온라인강의 제한 있어요?",
+  "expect": "intl-cyber"
+ },
+ {
+  "q": "외국인 유학생 인강 몇과목",
+  "expect": "intl-cyber"
+ },
+ {
+  "q": "사이버강좌 몇 학점까지 들을 수 있어요",
+  "expect": "cyber"
+ },
+ {
+  "q": "군대에서 사이버강좌 듣기",
+  "expect": "military-elearning"
+ },
+ {
+  "q": "유학생 장학금 건축대학도 받아요?",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "미래에셋 증권 계좌 개설",
+  "expect": "none"
+ },
+ {
+  "q": "유학생인데 등록금 어떻게 내요",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "외국인 학생 등록금 납부 은행 어디",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "유학생 등록금 가상계좌로만 내야 하나요",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "외국인 유학생 등록금 창구 납부 돼요?",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "유학생 학비 송금 방법",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "중국 유학생 위챗페이로 등록금 낼 수 있나요",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "유학생 등록금 고지서 어디서 출력",
+  "expect": "intl-tuition-pay"
+ },
+ {
+  "q": "유학생 등록금 환불",
+  "expect": "tuition-refund"
+ },
+ {
+  "q": "유학생 장학금 받으면 등록금",
+  "expect": "intl-scholarship"
+ },
+ {
+  "q": "등록금 납부 방법",
+  "expect": "registration"
+ },
+ {
+  "q": "방문학생으로 다녀오면 학점인정 돼요?",
+  "expect": "intl-visit-credit"
+ },
+ {
+  "q": "방문학생 학점 인정 조건",
+  "expect": "intl-visit-credit"
+ },
+ {
+  "q": "방문프로그램 학점 인정받으려면 뭐 해야 해요",
+  "expect": "intl-visit-credit"
+ },
+ {
+  "q": "방문학생 내부선발 안 하고 가면 학점인정 안 돼요?",
+  "expect": "intl-visit-credit"
+ },
+ {
+  "q": "외국인 방문학생 계절학기 학점",
+  "expect": "intl-inbound-visit"
+ },
+ {
+  "q": "교환학생 토익 점수 없어도 지원돼요?",
+  "expect": "intl-exchange-no-score"
+ },
+ {
+  "q": "상대교 어학요건 없는데 영어성적 내야 돼요",
+  "expect": "intl-exchange-no-score"
+ },
+ {
+  "q": "교환 내부선발 영어점수 없이 지원 가능?",
+  "expect": "intl-exchange-no-score"
+ },
+ {
+  "q": "교환학생 토플 유효기간 지났어요",
+  "expect": "intl-exchange-score"
+ },
+ {
+  "q": "교환학생 지원 여권 없는데 여권정보증명서 돼요?",
+  "expect": "intl-exchange-passport"
+ },
+ {
+  "q": "교환학생 여권사본 꼭 내야 하나요",
+  "expect": "intl-exchange-passport"
+ },
+ {
+  "q": "유학생 여권 재발급",
+  "expect": "none"
+ },
+ {
+  "q": "교환학생 다른 학과로 지원할 수 있어요?",
+  "expect": "intl-exchange-major"
+ },
+ {
+  "q": "교환학생 부전공으로 지원 가능?",
+  "expect": "intl-exchange-major"
+ },
+ {
+  "q": "교환 갈 때 전공이랑 다른 과 수업 들어도 돼요",
+  "expect": "intl-exchange-major"
+ },
+ {
+  "q": "교환학생 상대교 최종합격 떨어지는 경우 있어요?",
+  "expect": "intl-exchange-second-round"
+ },
+ {
+  "q": "내부선발 붙었는데 상대교에서 탈락할 수도 있어요?",
+  "expect": "intl-exchange-second-round"
+ },
+ {
+  "q": "교환학생 입학허가 거절되면",
+  "expect": "intl-exchange-second-round"
+ },
+ {
+  "q": "교환학생 몇 학기째까지 갈 수 있어요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "휴학했는데 교환학생 몇 번째 학기까지 가능해요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "상치휴학하면 교환학생 학기 계산 어떻게 해요",
+  "expect": "intl-exchange-last-semester"
+ },
+ {
+  "q": "해외어학연수 학점인정 신청서 다운",
+  "expect": "intl-language-credit"
+ },
+ {
+  "q": "해외인턴십 기관소개자료 양식",
+  "expect": "intl-intern-credit"
+ },
+ {
+  "q": "해외인턴 학점인정 서식",
+  "expect": "intl-intern-credit"
+ },
+ {
+  "q": "외국인 기숙사 입사할 때 서류",
+  "expect": "intl-dorm-docs"
+ },
+ {
+  "q": "유학생 기숙사 결핵 진단서 내야 해요?",
+  "expect": "intl-dorm-docs"
+ },
+ {
+  "q": "외국인 학생 기숙사 건강진단서",
+  "expect": "intl-dorm-docs"
+ },
+ {
+  "q": "기숙사 결핵 진단서 유효기간",
+  "expect": "life-dorm-movein"
+ },
+ {
+  "q": "교환학생 장학금",
+  "expect": "intl-exchange-scholarship"
+ },
+ {
+  "q": "복수전공 신청 기간",
+  "expect": "double-major"
+ },
+ {
+  "q": "유학생 기숙사 홍역 접종 증명서 내야 해요",
+  "expect": "life-dorm-movein"
+ },
+ {
+  "q": "방문학생도 홍대에 등록금 내야 돼요",
+  "expect": "intl-exchange-vs-visit"
+ },
+ {
+  "q": "교환학생 여권 사본 대신 여권정보증명서",
+  "expect": "intl-exchange-passport"
+ },
+ {
+  "q": "복수전공으로 교환학생 지원",
+  "expect": "intl-exchange-major"
+ },
+ {
+  "q": "교환학생 2차 탈락",
+  "expect": "intl-exchange-second-round"
+ },
+ {
+  "q": "국제학생회 뭐예요",
+  "expect": "hisc"
+ },
+ {
+  "q": "유학생회 있어요",
+  "expect": "vois"
+ },
+ {
+  "q": "해외인턴십 학점인정 신청서 어디서 받아요",
+  "expect": "intl-intern-credit"
+ }
+]

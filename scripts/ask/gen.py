@@ -3,24 +3,37 @@ data/pages.json·data/faq.json(학교 홈페이지 수집본) + topics/*.py(주�
 사용: python3 -I scripts/ask/gen.py   (그다음 node scripts/ask/test-routing.mjs 로 질문 경로를 검사한다)
 페이지 본문(제목·목록·표)을 그대로 옮기고, 찾는 낱말·담당 전화·위치는 주제표에 손으로 단다.
 """
-import json, os, re, sys
+import glob, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 from contacts import P, F
-from sources import url_of
+from sources import url_of as _site_url
 from topics import TOPICS
 
 OUT = os.path.join(ROOT, '..', '..', 'src', 'constants', 'askPages.ts')
 _pages = json.load(open(os.path.join(ROOT, 'data', 'pages.json'), encoding='utf-8'))
 _faq = json.load(open(os.path.join(ROOT, 'data', 'faq.json'), encoding='utf-8'))
-PAGES = _pages['pages']
+PAGES = dict(_pages['pages'])
+# 부속 사이트(sites/*.py → data/pages-<이름>.json)도 함께 쓴다.
+for _path in sorted(glob.glob(os.path.join(ROOT, 'data', 'pages-*.json'))):
+    PAGES.update(json.load(open(_path, encoding='utf-8'))['pages'])
 FAQ = {f['q']: f for f in _faq['faq']}
 CHECKED = _pages['crawledAt']
 FAQ_URLS = {
     'academic-faq': ('학사FAQ', 'https://www.hongik.ac.kr/kr/education/academic-faq.do'),
     'scholarship-faq': ('장학FAQ', 'https://www.hongik.ac.kr/kr/education/scholarship-faq.do'),
 }
+
+
+
+def url_of(key):
+    return PAGES.get(key, {}).get('url') or _site_url(key)
+
+
+def source_label(key):
+    """출처 링크 이름. 부속 사이트는 그 사이트 이름(예: '중앙도서관 홈페이지 · 대출 안내')."""
+    return f"{PAGES[key].get('source', '학교 홈페이지')} · {page_title(key)}"
 
 
 def faq_link(q):
@@ -168,9 +181,9 @@ def build(t):
         if t.get('faqpage'):
             k2 = t['faqpage']
             nodes['more'] = answer(f"학교 홈페이지 '{page_title(k2)}' 안내예요.", sections_of(PAGES[k2]['sections']),
-                                   [{'label': f'학교 홈페이지 · {page_title(k2)}', 'url': url_of(k2)}], t)
+                                   [{'label': source_label(k2), 'url': url_of(k2)}], t)
             follow.append({'label': page_title(k2), 'next': 'more'})
-        a = answer(lead, secs, [{'label': f'학교 홈페이지 · {title}', 'url': url_of(key)}] + contacts_links(key), t)
+        a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + contacts_links(key), t)
         if follow:
             a = {**a, 'followUps': follow}
         nodes['start'] = a

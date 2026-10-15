@@ -1,18 +1,22 @@
-"""cache/ 의 HTML → data/pages.json(안내 페이지)·data/faq.json(게시판 FAQ). 사용: python3 -I scripts/ask/extract.py
+"""cache/ 의 HTML → data/pages.json(안내 페이지)·data/faq.json(게시판 FAQ). 사용: python3 -I scripts/ask/extract.py [--site 이름]
 안내 페이지 본문(#cms-content)을 h3/h4 제목 → section, ol/ul → items, table → table, p → items 로 옮긴다.
 """
-import glob, html, json, os, re, sys
+import glob, html, importlib, json, os, re, sys
+from datetime import date
 from html.parser import HTMLParser
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(ROOT, 'cache')
 DATA = os.path.join(ROOT, 'data')
 
-BLOCK_HEAD = {'h3', 'h4', 'h5'}
+BLOCK_HEAD = {'h2', 'h3', 'h4', 'h5'}
 
 class P(HTMLParser):
-    def __init__(self):
+    def __init__(self, content=None):
         super().__init__(convert_charrefs=True)
+        # 본문 상자: 속성 이름 → 값(class 는 여러 값 중 하나만 맞아도 된다). 학교 홈페이지는 id="cms-content".
+        self.content = content or {'id': 'cms-content'}
+        self.ctag = 'div'
         self.depth = 0; self.inside = False; self.cdepth = None
         self.sections = []; self.cur = None
         self.buf = []; self.mode = None  # 'head','li','p','cell'
@@ -21,6 +25,16 @@ class P(HTMLParser):
         self.table = None; self.row = None
         self.links = []
         self.skip = 0
+    def is_content(self, tag, a):
+        for name, value in self.content.items():
+            if name == 'tag':
+                if tag != value: return False
+            elif name == 'class':
+                if value not in (a.get('class') or '').split(): return False
+            elif a.get(name) != value:
+                return False
+        return True
+
     def sec(self):
         if self.cur is None:
             self.cur = {'title': '', 'items': [], 'ordered': False}
@@ -33,12 +47,12 @@ class P(HTMLParser):
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if not self.inside:
-            if a.get('id') == 'cms-content': self.inside = True; self.cdepth = 0
+            if self.is_content(tag, a): self.inside = True; self.cdepth = 0; self.ctag = tag
             return
         if tag in ('script', 'style'): self.skip += 1
         if tag in ('div','ul','ol','li','table','tr','td','th','p','h3','h4','h5','span','a','strong','b','em','tbody','thead','label','button','img','br','i','u','sup','sub','font','colgroup','col','dl','dt','dd','caption','section','iframe','hr','input','select','option'):
             pass
-        if tag == 'div': self.cdepth += 1
+        if tag == self.ctag: self.cdepth += 1
         if tag in BLOCK_HEAD:
             self.end_text(); self.mode = 'head'
         elif tag in ('ol', 'ul'):
@@ -71,7 +85,7 @@ class P(HTMLParser):
     def handle_endtag(self, tag):
         if not self.inside: return
         if tag in ('script', 'style'): self.skip -= 1
-        if tag == 'div':
+        if tag == self.ctag:
             self.cdepth -= 1
             if self.cdepth < 0: self.end_text(); self.inside = False; return
         if tag in BLOCK_HEAD and self.mode == 'head': self.end_text()
@@ -99,10 +113,10 @@ class P(HTMLParser):
             else: return
         self.buf.append(data)
 
-def extract(path):
+def extract(path, content=None):
     raw = open(path, encoding='utf-8', errors='ignore').read()
     t = re.search(r'<title>(.*?)</title>', raw, re.S)
-    p = P(); p.feed(raw); p.end_text()
+    p = P(content); p.feed(raw); p.end_text()
     secs = []
     for s in p.sections:
         items = [i for i in s['items'] if i.strip() and i.strip() not in ('-', '·')]
@@ -139,7 +153,32 @@ def faq_items(path, board):
     return out
 
 
-if __name__ == '__main__':
+def extract_site(name):
+    """학교 부속 사이트 하나(sites/<name>.py) → data/pages-<name>.json."""
+    sys.path.insert(0, ROOT)
+    site = importlib.import_module(f'sites.{name}')
+    pages = {}
+    for key, url in site.PAGES.items():
+        path = os.path.join(CACHE, name, key + '.html')
+        if not os.path.exists(path):
+            continue
+        page = extract(path, getattr(site, 'CONTENT', None))
+        hook = getattr(site, 'postprocess', None)
+        if hook:
+            page = hook(key, page, open(path, encoding='utf-8', errors='ignore').read())
+        page['url'] = url
+        page['source'] = site.LABEL
+        page['contacts'] = []
+        if page['sections']:
+            pages[key] = page
+    out = os.path.join(DATA, f'pages-{name}.json')
+    json.dump({'crawledAt': date.today().isoformat(), 'pages': pages}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print(name, 'pages', len(pages), 'of', len(site.PAGES))
+
+
+if __name__ == '__main__' and len(sys.argv) > 2 and sys.argv[1] == '--site':
+    extract_site(sys.argv[2])
+elif __name__ == '__main__':
     meta = json.load(open(os.path.join(CACHE, 'meta.json'), encoding='utf-8'))
     pages = {}
     for path in sorted(glob.glob(os.path.join(CACHE, 'html', '*.html'))):

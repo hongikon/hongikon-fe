@@ -79,3 +79,4 @@ secrets/
 
 # 물어보기 크롤링 원본 HTML(다시 받을 수 있음)
 scripts/ask/cache/
+__pycache__/

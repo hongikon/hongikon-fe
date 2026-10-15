@@ -14,6 +14,9 @@
   faq         답 아래 '자주 묻는 질문' 버튼으로 붙일 FAQ 제목 / faqpage  함께 붙일 다른 페이지 키
   max_sections 페이지가 길 때 앞에서 몇 덩어리만 옮길지
 """
-from . import academic, courses, money, life, it_campus
+import importlib, pkgutil
 
-TOPICS = academic.TOPICS + courses.TOPICS + money.TOPICS + life.TOPICS + it_campus.TOPICS
+# 분야 파일 순서가 곧 같은 점수일 때의 우선순위다. 부속 사이트 주제(ext_*.py)는 그 뒤에 이름순으로 붙는다.
+_CORE = ['academic', 'courses', 'money', 'life', 'it_campus']
+_EXTRA = sorted(m.name for m in pkgutil.iter_modules(__path__) if m.name not in _CORE)
+TOPICS = [t for name in _CORE + _EXTRA for t in importlib.import_module(f'{__name__}.{name}').TOPICS]

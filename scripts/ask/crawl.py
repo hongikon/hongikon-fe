@@ -1,4 +1,4 @@
-"""학교 홈페이지 안내 페이지를 받아 cache/ 에 HTML 그대로 둔다. 사용: python3 -I scripts/ask/crawl.py
+"""학교 홈페이지 안내 페이지를 받아 cache/ 에 HTML 그대로 둔다. 사용: python3 -I scripts/ask/crawl.py [--site 이름]
 받은 뒤 extract.py 로 data/pages.json·data/faq.json 을 만든다. 대상은 sources.py.
 """
 import hashlib, html, json, os, re, sys, time, urllib.parse, urllib.request
@@ -82,7 +82,21 @@ def crawl_articles(meta):
         meta[key] = {'url': url, 'title': title_of(raw), 'sha': hashlib.sha1(raw.encode()).hexdigest()[:12]}
 
 
-if __name__ == '__main__':
+def crawl_site(name):
+    """학교 부속 사이트 하나(sites/<name>.py 의 PAGES)를 cache/<name>/ 에 받는다."""
+    import importlib
+    site = importlib.import_module(f'sites.{name}')
+    for key, url in site.PAGES.items():
+        try:
+            save(name, key, fetch(url))
+            print('ok', key, url, flush=True)
+        except Exception as e:
+            print('ERR', key, url, e, flush=True)
+
+
+if __name__ == '__main__' and len(sys.argv) > 2 and sys.argv[1] == '--site':
+    crawl_site(sys.argv[2])
+elif __name__ == '__main__':
     meta = {}
     crawl_menu(meta)
     crawl_faq(meta)

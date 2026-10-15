@@ -198,7 +198,7 @@ TOPICS = [
     dict(id='language-test-fee', page='life_seoul-career-support-center',
          match=[[['응시료', '응시장학', '응시지원']],
                 [['토익', '토플', '오픽', 'toeic', 'opic', 'toefl', '어학시험', '어학인증', '어학성적'], ['지원', '장학', '돈', '비용', '환급', '지원금', '내줘']]],
-         lead='취업진로지원센터는 4학기 이상 이수한 재학생에게 어학인증시험 응시료(10종 시험)를 응시장학금으로 지원해요.',
+         lead='취업진로지원센터는 4학기 이상 이수한 재학생에게 어학인증시험 응시료를 응시장학금으로 지원해요(TOEIC·TOEFL·OPIc·IELTS 등 11종, 취업진로지원센터 홈페이지 기준).',
          phones=[CAREER_MAIN, 'career'], facility='career'),
     dict(id='career-consulting', page='life_seoul-career-support-center',
          match=[[['자소서', '자기소개서', '이력서', '모의면접', '면접준비', '면접연습', '면접코칭', '취업면접', '컨설팅', '첨삭', '취업상담', '취업컨설팅']]],
