@@ -1,0 +1,18 @@
+[
+ {"q": "교과과정 어디서 봐", "expect": "curriculum"},
+ {"q": "학과별 교육과정 보는 법", "expect": "curriculum"},
+ {"q": "커리큘럼 어디서 봐", "expect": "curriculum"},
+ {"q": "전공 커리큘럼 알려줘", "expect": "curriculum"},
+ {"q": "우리과 교육과정표", "expect": "curriculum"},
+ {"q": "교과과정책자 어디 있어요", "expect": "curriculum"},
+ {"q": "교과과정 담당 전화", "expect": "curriculum"},
+ {"q": "한국어교육과정 신청", "expect": "intl-korean-apply"},
+ {"q": "근로장학 시급", "expect": "work-wage"},
+ {"q": "국가근로 시급 얼마야", "expect": "work-wage"},
+ {"q": "근로장학생 월급 얼마 받아요", "expect": "work-wage"},
+ {"q": "국근 근무시간", "expect": "work-wage"},
+ {"q": "교내근로 시간당 얼마", "expect": "work-wage"},
+ {"q": "국가근로 신청", "expect": "national-work"},
+ {"q": "교내근로 하고싶어", "expect": "school-work"},
+ {"q": "근로장학생 어떻게 뽑아", "expect": "school-work"}
+]
