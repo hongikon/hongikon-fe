@@ -1,3 +1,4 @@
+import { ASK_ANSWERS, type AskAnswer } from '../constants/askAnswers'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
 import { formatFloor } from './floors'
 import type { Facility } from '../types'
@@ -232,4 +233,11 @@ export function askOffices(
     }
   }
   return [...unique.values()].slice(0, MAX_RESULTS).map((item) => item.result)
+}
+
+/** 운영진이 확인한 답(`ASK_ANSWERS`) 가운데 질문에 맞는 것. 묶음마다 하나 이상의 낱말이 질문에 있어야 한다. */
+export function matchAskAnswers(question: string, answers: readonly AskAnswer[] = ASK_ANSWERS): AskAnswer[] {
+  const text = squash(question).replace(/\|/g, '')
+  if (!text) return []
+  return answers.filter((answer) => answer.match.every((group) => group.some((word) => text.includes(word))))
 }
