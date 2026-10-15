@@ -1,4 +1,5 @@
 import { lazy, type ComponentType } from 'react'
+import type { CampusPreviewKey } from './campusPreview'
 
 /**
  * 웹 전용 `/temp/*` 디버그 화면 진입점. 해당 경로로 들어왔을 때만 지연 로드해, 일반 화면을 여는
@@ -15,8 +16,8 @@ export const DevPathAuditEntry: ComponentType | null = lazy(() =>
 export const DevPathSurveyEntry: ComponentType | null = lazy(() =>
   import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="survey" /> })),
 )
-/** 개발용 `/dev/sogang` — 서강대 시설 조사 결과 미리보기. 인증키를 맞혀야 화면·데이터를 받는다(`DevSogangGate`). */
-export const DevSogangEntry: ComponentType | null = lazy(() => import('../screens/DevSogangGate'))
+/** 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 시설 조사 결과 미리보기. 인증키를 맞혀야 화면·데이터를 받는다(`DevCampusGate`). */
+export const DevCampusEntry: ComponentType<{ campus: CampusPreviewKey }> | null = lazy(() => import('../screens/DevCampusGate'))
 export const TempNotificationPreviewEntry: ComponentType | null = lazy(
   () => import('../screens/TempNotificationPreviewScreen'),
 )

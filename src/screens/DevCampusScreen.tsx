@@ -13,31 +13,26 @@ import type { Building, FacilityKind } from '../types'
 import { formatFloor } from '../utils/floors'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import {
-  SOGANG_BUILDINGS,
-  SOGANG_CENTER,
-  SOGANG_EXTRAS,
-  SOGANG_FACILITIES,
-  SOGANG_OFFICE_DETAILS,
-} from '../debug/sogangData'
+import type { CampusPreviewData } from '../debug/campusPreview'
 
 /**
- * 개발용 `/dev/sogang` — 서강대 조사 데이터(`src/debug/sogangData.ts`)를 홍익대 지도와 같은 화면으로 본다.
- * 지도 페이지에 서강대 건물(외곽선)을 그리고, 위 칩으로 편의시설 핀을 켠다. 건물·핀을 누르면 앱과 같은 건물 시트·시설 시트·행정 부서 화면이 열린다.
- * 넓은 화면에서는 오른쪽에 전체 목록(칩에 없는 '기타' 포함)을 함께 보여 준다. 인증키 뒤에 있다(`DevSogangGate`). 검색엔진 noindex.
+ * 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 조사 데이터(`src/debug/<학교>Data.ts`)를 홍익대 지도와 같은 화면으로 본다.
+ * 지도 페이지에 그 학교 건물(외곽선)을 그리고, 위 칩으로 편의시설 핀을 켠다. 건물·핀을 누르면 앱과 같은 건물 시트·시설 시트·행정 부서 화면이 열린다.
+ * 넓은 화면에서는 오른쪽에 전체 목록(칩에 없는 '기타' 포함)을 함께 보여 준다. 인증키 뒤에 있다(`DevCampusGate`). 검색엔진 noindex.
  */
 /** `/dev/*` 는 앱 공통 틀(SafeAreaProvider 등)보다 먼저 갈라지므로, 시트가 쓰는 화면 여백 정보를 여기서 준다. */
-export default function DevSogangScreen() {
+export default function DevCampusScreen({ data, path }: { data: CampusPreviewData; path: string }) {
   return (
     <SafeAreaProvider>
-      <DevSogangMap />
+      <DevCampusMap data={data} path={path} />
     </SafeAreaProvider>
   )
 }
 
-function DevSogangMap() {
+function DevCampusMap({ data, path }: { data: CampusPreviewData; path: string }) {
+  const { buildings: BUILDINGS, facilities: FACILITIES, extras: EXTRAS, center: CENTER, officeDetails: OFFICE_DETAILS } = data
   const webViewRef = useRef<NaverMapViewHandle>(null)
-  const mapHTML = useMemo(() => buildMapHTML(SOGANG_BUILDINGS), [])
+  const mapHTML = useMemo(() => buildMapHTML(BUILDINGS), [BUILDINGS])
   const { width } = useWindowDimensions()
   const wide = width >= 900
   const [kind, setKind] = useState<FacilityKind | null>(null)
@@ -53,32 +48,32 @@ function DevSogangMap() {
   }, [])
 
   const kinds = useMemo(
-    () => FACILITY_KINDS.filter((k) => SOGANG_FACILITIES.some((f) => f.kind === k.key)),
-    [],
+    () => FACILITY_KINDS.filter((k) => FACILITIES.some((f) => f.kind === k.key)),
+    [FACILITIES],
   )
 
   const showKind = useCallback(
     (next: FacilityKind | null) => {
       setKind(next)
       if (next === null) post({ type: 'clearFacilities' })
-      else post({ type: 'setFacilities', markers: facilityMarkers(SOGANG_FACILITIES, SOGANG_BUILDINGS, next), bounds: null })
+      else post({ type: 'setFacilities', markers: facilityMarkers(FACILITIES, BUILDINGS, next), bounds: null })
     },
-    [post],
+    [post, FACILITIES, BUILDINGS],
   )
 
-  // 지도 페이지가 (다시) 준비되면 서강대로 옮기고 지금 상태를 다시 그린다. 지도 페이지는 홍익대 범위로 묶여 있어 그 제한을 푼다.
+  // 지도 페이지가 (다시) 준비되면 그 학교로 옮기고 지금 상태를 다시 그린다. 지도 페이지는 홍익대 범위로 묶여 있어 그 제한을 푼다.
   const onReady = useCallback(() => {
     webViewRef.current?.injectJavaScript(`(function(){
       if (typeof map === 'undefined' || !window.naver) return;
       map.setOptions({ minZoom: 10, maxBounds: null });
-      map.setCenter(new naver.maps.LatLng(${SOGANG_CENTER.lat}, ${SOGANG_CENTER.lng})); map.setZoom(17);
+      map.setCenter(new naver.maps.LatLng(${CENTER.lat}, ${CENTER.lng})); map.setZoom(17);
     })(); true;`)
-    if (kind) post({ type: 'setFacilities', markers: facilityMarkers(SOGANG_FACILITIES, SOGANG_BUILDINGS, kind), bounds: null })
-  }, [kind, post])
+    if (kind) post({ type: 'setFacilities', markers: facilityMarkers(FACILITIES, BUILDINGS, kind), bounds: null })
+  }, [kind, post, CENTER, FACILITIES, BUILDINGS])
 
   useEffect(() => {
-    if (typeof document !== 'undefined') document.title = '서강대 시설 미리보기 | 홍익온'
-  }, [])
+    if (typeof document !== 'undefined') document.title = `${data.name} 시설 미리보기 | 홍익온`
+  }, [data.name])
 
   const sheetOpen = facilityBuilding !== null
   useEffect(() => {
@@ -93,7 +88,7 @@ function DevSogangMap() {
       return
     }
     if (msg.type === 'buildingTap') {
-      const b = SOGANG_BUILDINGS.find((x) => x.name === msg.name) ?? null
+      const b = BUILDINGS.find((x) => x.name === msg.name) ?? null
       setFacilityBuilding(null)
       setFrom(null)
       setSelectedBuilding(b)
@@ -106,7 +101,7 @@ function DevSogangMap() {
       setFacilityBuilding(null)
       setFrom(null)
     }
-  }, [])
+  }, [BUILDINGS])
 
   const openFromBuilding = (k: FacilityKind) => {
     if (!selectedBuilding) return
@@ -133,17 +128,17 @@ function DevSogangMap() {
     post({ type: 'selectBuilding', name: null })
   }
 
-  const buildingFacilities = selectedBuilding ? SOGANG_FACILITIES.filter((f) => f.buildingName === selectedBuilding.name) : []
+  const buildingFacilities = selectedBuilding ? FACILITIES.filter((f) => f.buildingName === selectedBuilding.name) : []
 
   const panel = wide ? (
     <ScrollView style={styles.panel} contentContainerStyle={styles.panelBody}>
-      <Text style={styles.title}>서강대 시설 미리보기 (/dev/sogang)</Text>
+      <Text style={styles.title}>{`${data.name} 시설 미리보기 (${path})`}</Text>
       <Text style={styles.summary}>
-        {`건물 ${SOGANG_BUILDINGS.length}(외곽선 ${SOGANG_BUILDINGS.filter((b) => b.boundary).length}) · 시설 ${SOGANG_FACILITIES.length} · 기타 ${SOGANG_EXTRAS.length}`}
+        {`건물 ${BUILDINGS.length}(외곽선 ${BUILDINGS.filter((b) => b.boundary).length}) · 시설 ${FACILITIES.length} · 기타 ${EXTRAS.length}`}
       </Text>
       <Text style={styles.hint}>건물을 누르면 건물 안 시설, 칩을 고르면 그 시설 핀이 떠요. 외곽선: © OpenStreetMap contributors</Text>
       {kinds.map((k) => {
-        const items = SOGANG_FACILITIES.filter((f) => f.kind === k.key)
+        const items = FACILITIES.filter((f) => f.kind === k.key)
         return (
           <View key={k.key} style={styles.section}>
             <Text style={[styles.sectionTitle, { color: k.color }]}>{`${facilityKindLabel(k.key)} ${items.length}`}</Text>
@@ -170,8 +165,8 @@ function DevSogangMap() {
         )
       })}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: COLORS.textSecondary }]}>{`기타(칩 없음) ${SOGANG_EXTRAS.length}`}</Text>
-        {SOGANG_EXTRAS.map((f) => (
+        <Text style={[styles.sectionTitle, { color: COLORS.textSecondary }]}>{`기타(칩 없음) ${EXTRAS.length}`}</Text>
+        {EXTRAS.map((f) => (
           <View key={f.id} style={styles.row}>
             <Text style={styles.floor}>{f.floor !== undefined ? formatFloor(f.floor) : '-'}</Text>
             <View style={styles.rowMain}>
@@ -227,8 +222,8 @@ function DevSogangMap() {
               key={`${kind}:${facilityBuilding}`}
               kind={kind}
               buildingName={facilityBuilding}
-              items={SOGANG_FACILITIES.filter((f) => f.kind === kind && f.buildingName === facilityBuilding)}
-              officeDetails={SOGANG_OFFICE_DETAILS}
+              items={FACILITIES.filter((f) => f.kind === kind && f.buildingName === facilityBuilding)}
+              officeDetails={OFFICE_DETAILS}
               onClose={() => {
                 setFacilityBuilding(null)
                 setFrom(null)
