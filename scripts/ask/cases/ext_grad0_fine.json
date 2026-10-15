@@ -1,0 +1,53 @@
+[
+  {"q": "미대 공통 전공선택 몇 과목 들어야 돼", "expect": "grad-fineart-common"},
+  {"q": "기초평면2 필수야?", "expect": "grad-fineart-common"},
+  {"q": "기초입체 꼭 들어야 하나요", "expect": "grad-fineart-common"},
+  {"q": "미술대학 공통전공선택 학점 인정", "expect": "grad-fineart-common"},
+  {"q": "미대 전공기초 과목 뭐야", "expect": "grad-fineart-common"},
+  {"q": "공통전선 최대 몇학점", "expect": "grad-fineart-common"},
+
+  {"q": "동양화과 졸업요건", "expect": "grad-oriental-painting"},
+  {"q": "동양화 전공학점", "expect": "grad-oriental-painting"},
+  {"q": "동양화과 전필 뭐 있어", "expect": "grad-oriental-painting"},
+  {"q": "22학번 동양화과 졸업하려면 몇학점", "expect": "grad-oriental-painting"},
+  {"q": "동양화전공 교과과정", "expect": "grad-oriental-painting"},
+  {"q": "동양화과 커리큘럼", "expect": "grad-oriental-painting"},
+  {"q": "동양화과 과사 어디", "expect": "dept-office"},
+
+  {"q": "회화과 졸업 조건", "expect": "grad-painting"},
+  {"q": "회화과 졸업요건 알려줘", "expect": "grad-painting"},
+  {"q": "회화과 전공필수", "expect": "grad-painting"},
+  {"q": "회화과 졸업전시 하려면 뭐 들어야 돼", "expect": "grad-painting"},
+  {"q": "회화과 졸업논문 대신 졸전이야?", "expect": "grad-painting"},
+  {"q": "21학번 회화전공 졸업학점", "expect": "grad-painting"},
+  {"q": "회화과 졸전 언제", "expect": "thesis"},
+  {"q": "회화과 과사무실 전화", "expect": "dept-office"},
+
+  {"q": "판화과 졸업학점", "expect": "grad-printmaking"},
+  {"q": "판화과 졸업요건", "expect": "grad-printmaking"},
+  {"q": "판화 전필 뭐야", "expect": "grad-printmaking"},
+  {"q": "판화과 판화사 꼭 들어야 해?", "expect": "grad-printmaking"},
+  {"q": "판화과 졸전 하려면 무슨 과목", "expect": "grad-printmaking"},
+  {"q": "판화과 복수전공 졸업전시 조건", "expect": "grad-printmaking"},
+  {"q": "20학번 판화전공 졸업하려면", "expect": "grad-printmaking"},
+  {"q": "판화과 사무실 위치", "expect": "dept-office"},
+
+  {"q": "조소과 졸업요건", "expect": "grad-sculpture"},
+  {"q": "조소 전공필수 뭐 있어", "expect": "grad-sculpture"},
+  {"q": "조소과 졸업하려면 몇 학점", "expect": "grad-sculpture"},
+  {"q": "23학번 조소과 교과과정", "expect": "grad-sculpture"},
+  {"q": "조소전공 전필", "expect": "grad-sculpture"},
+  {"q": "조소과 과사 번호", "expect": "dept-office"},
+
+  {"q": "예술학과 졸업요건", "expect": "grad-art-studies"},
+  {"q": "예술학과 교과과정", "expect": "grad-art-studies"},
+  {"q": "예술학과 전필", "expect": "grad-art-studies"},
+  {"q": "예술학과 졸업논문 분량", "expect": "grad-art-studies"},
+  {"q": "예술학과 휴학 중에 졸업논문 써도 돼?", "expect": "grad-art-studies"},
+  {"q": "19학번 예술학과 졸업학점", "expect": "grad-art-studies"},
+  {"q": "예술학과 사무실 어디야", "expect": "dept-office"},
+  {"q": "공연예술학부 졸업요건", "expect": "dept-grad-perform"},
+
+  {"q": "미대 졸업하려면 몇 학점", "expect": "grad-req-fineart"},
+  {"q": "졸업요건", "expect": "graduation-credit"}
+]

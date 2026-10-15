@@ -1,0 +1,105 @@
+"""공과대학 학과 홈페이지 — 학과 고유 졸업 규정(건설환경공학과·화학공학전공·산업·데이터공학과·기계·시스템디자인공학과).
+
+sites/dept_ce.py 와 같은 방식: 원문에 그대로 있는 규정 문장만 옮긴다(공백·별표는 비교에서 뺀다). 날짜·서식·담당자·교수 이름은 옮기지 않는다.
+- 건설환경공학과: 공학인증 '학위명칭 및 이수요건'(정적 페이지, 표 칸마다 '항목: 내용'으로 옮김), 심화과정 졸업요건 변경 공지,
+  졸업포트폴리오 서식 공지(졸업포트폴리오 = 졸업논문 대체).
+- 화학공학전공: 창의적테크노프레너십설계 4학년 수강신청 안내(졸업논문조 필수 과목).
+- 산업·데이터공학과: 심화과정(공학인증) 졸업예정자 졸업시험 제출 안내.
+- 기계·시스템디자인공학과: 졸업예정자 졸업요건 안내(학기마다 다시 올라온다 — 새 글이 올라오면 articleNo 를 바꾼다).
+- 전자·전기공학부는 메뉴(과목목록·이수체계도는 자바스크립트로 그림)와 게시판(제목 '졸업')에서 상시 규정 글을 찾지 못했다.
+- 신소재공학전공은 sites/dept_grad.py 'dept_grad_mse'(학과 홈페이지 졸업요건)를 그대로 쓴다.
+"""
+import html, re
+
+LABEL = '학과 홈페이지'
+PAGES = {
+    'deptrule_eng_civil_req': 'https://civil.hongik.ac.kr/civil/sub/030302.do',
+    'deptrule_eng_civil_change': 'https://civil.hongik.ac.kr/civil/0401.do?mode=view&articleNo=127535',
+    'deptrule_eng_civil_portfolio': 'https://civil.hongik.ac.kr/civil/0404.do?mode=view&articleNo=146798',
+    'deptrule_eng_chem_capstone': 'https://chemeng.hongik.ac.kr/chemeng/sub/0401.do?mode=view&articleNo=148577',
+    'deptrule_eng_ie_exam': 'https://ie.hongik.ac.kr/ie/0401.do?mode=view&articleNo=133444',
+    'deptrule_eng_me_grad': 'https://me.hongik.ac.kr/me/0701.do?mode=view&articleNo=152277',
+}
+TITLES = {
+    'deptrule_eng_civil_req': '건설환경공학과 심화과정(공학인증) 이수요건',
+    'deptrule_eng_civil_change': '건설환경공학과 심화과정 졸업요건 변경',
+    'deptrule_eng_civil_portfolio': '건설환경공학과 졸업포트폴리오(졸업논문 대체)',
+    'deptrule_eng_chem_capstone': '화학공학전공 4학년 필수 수강(졸업논문조)',
+    'deptrule_eng_ie_exam': '산업·데이터공학과 심화과정 졸업시험',
+    'deptrule_eng_me_grad': '기계·시스템디자인공학과 졸업요건 안내',
+}
+
+# 한 규정 = 문자열, 또는 (항목, 내용…) 튜플(표 칸). 튜플은 칸마다 원문에 있어야 하고 ': ' 로 이어 한 줄로 옮긴다.
+_RULES = {
+    'deptrule_eng_civil_req': [
+        ('설계학점', '기초설계, 종합설계 포함 12학점'),
+        ('전공', '전공필수를 포함하여 총 54학점'),
+        ('졸업학점', '132학점'),
+        ('영어', 'TOEIC 650점 이상, New TEPS 245-246 이상, TOEIC Speaking 110점 이상'),
+        'Opic IM1 이상, TEPS-S 46점 이상, IELTS 6.0점 이상, G-Telp Lv2 56점 이상',
+        'TOEFL IBT 74-75점 이상 (PBT 523 이상), 실용영어(1)&(2) 교과목 이수',
+        '※ 위 조건 중 1개 이상 만족하는 경우 통과',
+        ('학습성과 최소달성기준', '학습성과는 각 상(5점), 중(3점), 하(1점)으로 평가함.'),
+        '졸업 전 안내에 따라 포트폴리오를 제작하고 졸업인터뷰를 진행하여 PO1~PO10까지의 학습성과를 모두 중(3점) 이상 취득하여야 함.',
+    ],
+    'deptrule_eng_civil_change': [
+        '-기존 졸업 요건은 같음(학과 졸업 사정 요건 및 교과과정 졸업요건 참고)',
+        "-심화과정 학위 취득을 위하여 '미분방정식이 포함된 수학과목 이수' 조건에 따라 '응용수학(1),(2)' 중 한과목 이상 이수가 추가됨",
+        "-심화과정 학위 취득을 위하여 '최소 4개 이상의 전공분야에서 각 전공별 2개 교과목이상 이수' 조건에 따라 건설환경공학 전공분야"
+        "(구조공학, 지반공학, 수공학, 환경공학, 건설관리) 중 최소 4분야에 대해 각각 2과목 이상 이수가 추가됨",
+        '(※구조공학, 수공학은 전공필수 2과목으로 심화과정 모든 학생이 만족)',
+        '(※지반공학, 환경공학은 전공필수 1과목으로 분야별 1과목 이상 이수 시 만족)',
+        '(※건설관리는 2과목 이상 이수 시 만족)',
+        '(설계교과목 이수, 설계학점 12학점 이수(학과 조건), 영어성적, 졸업인터뷰 및 포트폴리오 등)',
+    ],
+    'deptrule_eng_civil_portfolio': [
+        '졸업포트폴리오는 심화과정(공학인증) 학생들만 작성하면 되며, 졸업논문을 대체하는 우리 학과의 졸업요건입니다.',
+    ],
+    'deptrule_eng_chem_capstone': [
+        '1. 창의적테크노프레너십설계(캡스톤디자인) - 130724 → 전공 선택',
+        '* 위 교과목은 졸업논문조 활동으로 졸업을 위해 필수적으로 수강 해야 하는 교과목입니다.',
+        '2. 창의적종합설계(NCS) - 130820 ->전공 선택',
+        '* 위 교과목은 필수 과목이 아니며 , 창의적종합설계(NCS)를 제외한 화학공학과 전공 선택 과목을 4학년 2학기 때 최소 한 과목 이상 수강해야 합니다.',
+    ],
+    'deptrule_eng_ie_exam': [
+        '1. 졸업시험 , 에세이 , 설문조사에 관한 안내',
+        '시험 미응시 및 제출 서류가 누락되었을 시 , 졸업이 불가하오니 필히 일정을 확인하시기 바랍니다 .',
+    ],
+    'deptrule_eng_me_grad': [
+        'Ⅰ 포스터 제출 절차',
+        'Ⅱ 프레젠테이션(1분 발표) 제출 절차',
+        'Ⅲ 졸업논문 제출 절차',
+        '논문 합불 여부는 각 분반 지도 교원의 평가서가 기준입니다.',
+        'Ⅳ영어 성적',
+        '* 재학 4년 기간 내 취득한 영어성적의 경우 유효기간과 무관.',
+        'Ⅴ 세미나 이수',
+        '※대체 에세이 작성 기준',
+        '①인정 영상 시간 : 50분 이상',
+        '②필수 기재 사항 : 세미나 제목, 강연 장소, 강연 일자',
+        '③에세이 형식 : 자유 양식, 서론/본론/결론',
+        '※해당 학기 졸업 신청자 내에서만 대체 에세이 제출 가능.',
+        '③다전공 졸업요건을 갖추었으나 주전공 졸업요건을 갖추지 않은 경우 : 졸업 불가',
+    ],
+}
+_SECTION = {
+    'deptrule_eng_civil_req': '심화과정(공학인증) 이수요건(2019학년도 입학생부터)',
+    'deptrule_eng_civil_change': '심화과정 졸업요건 변경 사항',
+    'deptrule_eng_civil_portfolio': '졸업포트폴리오',
+    'deptrule_eng_chem_capstone': '4학년 수강 교과목',
+    'deptrule_eng_ie_exam': '심화과정(공학인증) 졸업예정자 졸업시험',
+    'deptrule_eng_me_grad': '졸업요건(졸업예정자 안내)',
+}
+
+
+def _flat(text):
+    return re.sub(r'[\s*]+', '', text)
+
+
+def postprocess(key, page, raw):
+    body = _flat(html.unescape(re.sub(r'<[^>]+>', ' ', raw)))
+    kept = []
+    for rule in _RULES[key]:
+        parts = rule if isinstance(rule, tuple) else (rule,)
+        if all(_flat(part) in body for part in parts):
+            kept.append(': '.join(parts))
+    return {'title': TITLES[key], 'sections': [{'title': _SECTION[key], 'items': kept, 'ordered': False}] if kept else []}

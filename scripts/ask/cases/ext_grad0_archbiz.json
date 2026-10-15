@@ -1,0 +1,234 @@
+[
+ {
+  "q": "건축학과 졸업요건",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "건축학전공 졸업하려면 몇학점",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "건축 5년제 졸업학점 22학번",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "건축과 전필 뭐야",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "건축학 교과과정",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "건축학과 졸업설계 전공필수야?",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "실내건축 졸업요건",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "실내건축학전공 졸업하려면 몇학점",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "실건 졸업 조건",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "실내건축 전필 뭐 있어",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "실내건축 졸업 포트폴리오",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "실내건축 졸업작품 심사",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "21학번 실내건축학과 졸업학점",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "도시공학과 졸업요건",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "도시공학 졸업하려면 몇학점",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "도시공 전필",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "도시공학과 msc 몇학점",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "도시공학과 커리큘럼",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "23학번 도시공학 졸업 조건",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "경영학과 졸업요건",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영대 졸업하려면 몇학점",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영 전필 뭐야",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영학부 졸업논문 대체서류",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영 졸업시험",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영학전공 졸업 조건 22학번",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영대 전공기초 졸업학점",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경제학과 졸업요건",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "경제학부 졸업하려면 전공 몇학점",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "경제 전필 뭐 있어",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "경제학과 졸업논문 대체",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "경제학전공 교과과정",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "16학번 경제 졸업 조건",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "법대 졸업요건",
+  "expect": "grad-law"
+ },
+ {
+  "q": "법학부 졸업하려면 몇학점",
+  "expect": "grad-law"
+ },
+ {
+  "q": "법학과 전필",
+  "expect": "grad-law"
+ },
+ {
+  "q": "법대 졸업논문 대체서류",
+  "expect": "grad-law"
+ },
+ {
+  "q": "법학부 토익 몇점 졸업",
+  "expect": "grad-law"
+ },
+ {
+  "q": "법과대학 커리큘럼",
+  "expect": "grad-law"
+ },
+ {
+  "q": "20학번 법학 졸업 조건",
+  "expect": "grad-law"
+ },
+ {
+  "q": "도시공학과 과사 어디",
+  "expect": "dept-office"
+ },
+ {
+  "q": "경영학부 사무실 전화",
+  "expect": "dept-office"
+ },
+ {
+  "q": "법학부 과사 어디 있어요",
+  "expect": "dept-office"
+ },
+ {
+  "q": "경제학부 과사 어디예요",
+  "expect": "dept-office-econ"
+ },
+ {
+  "q": "실내건축 과사 전화번호",
+  "expect": "dept-office"
+ },
+ {
+  "q": "건축학과 사무실 위치",
+  "expect": "dept-office"
+ },
+ {
+  "q": "경제학과 졸업시험",
+  "expect": "thesis"
+ },
+ {
+  "q": "건축과 졸업전시",
+  "expect": "thesis"
+ },
+ {
+  "q": "경영 졸업사진 언제 찍어",
+  "expect": "grad-album"
+ },
+ {
+  "q": "건축학과 졸업식 언제",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "법대 졸업식 언제야",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "졸업요건",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "졸업하려면 몇학점",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "건축대 졸업요건",
+  "expect": "grad-arch"
+ },
+ {
+  "q": "건축학부 교환학생 대체학점 사전승인",
+  "expect": "intl-arch-credit"
+ },
+ {
+  "q": "법학도서관 위치",
+  "expect": "law-library"
+ },
+ {
+  "q": "경영학과 졸업 유예",
+  "expect": "deferred"
+ },
+ {
+  "q": "경제학과 조기졸업",
+  "expect": "early-graduation"
+ },
+ {
+  "q": "5년제 건축학전공 졸업설계 필수야",
+  "expect": "grad-architecture"
+ }
+]

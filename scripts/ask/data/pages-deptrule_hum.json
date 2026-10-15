@@ -1,0 +1,80 @@
+{
+ "crawledAt": "2026-10-16",
+ "pages": {
+  "deptrule_hum_english": {
+   "title": "영어영문학과 졸업 요건(졸업레포트)",
+   "sections": [
+    {
+     "title": "영어영문학과 졸업 요건",
+     "items": [
+      "졸업 요건 1. 입학연도별 졸업 요건 충족",
+      "졸업 요건 2. 영어영문학과 졸업레포트 4편(=졸업논문) 제출",
+      "a. 복수전공, 편입생들은 2편만 제출하시면 됩니다.",
+      "b. 토익 등으로 대체 불가합니다."
+     ],
+     "ordered": false
+    }
+   ],
+   "url": "https://english.hongik.ac.kr/english/0401.do?mode=view&articleNo=133162",
+   "source": "학과 홈페이지",
+   "contacts": []
+  },
+  "deptrule_hum_german": {
+   "title": "독어독문학과 논문대체(논문 작성 과목)",
+   "sections": [
+    {
+     "title": "독어독문학과 논문대체 관련",
+     "items": [
+      "[202611] 논문 작성 / 3학년 2학기 개설",
+      "<수강 완료 후 독문과 사무실 이메일 제출요망>",
+      "이름 / 학번 / \"입학년도 - 학기\""
+     ],
+     "ordered": false
+    }
+   ],
+   "url": "https://german.hongik.ac.kr/german/0401.do?mode=view&articleNo=157135",
+   "source": "학과 홈페이지",
+   "contacts": []
+  },
+  "deptrule_hum_iim": {
+   "title": "디자인·예술경영학부 졸업논문·논문대체원",
+   "sections": [
+    {
+     "title": "졸업논문",
+     "items": [
+      "'졸업논문'은 졸업 논문을 작성하여 심사를 통과하거나, 논문대체원을 제출하여 합격 요건을 충족할 시 합격으로 처리합니다."
+     ],
+     "ordered": false
+    },
+    {
+     "title": "논문대체원 ① 전공성적확인서 합격요건",
+     "items": [
+      "1) 신입학생 : 본인이 이수했던 전공필수를 모두 포함하여 50학점 이상이 되도록 선별한 전공과목들의 평점 평균 3.0 이상",
+      "2) 편입학생 : 50학점 이상이 되도록 선별한 전공과목들의 평점 평균 3.0 이상",
+      "4) 전공기초는 제외함"
+     ],
+     "ordered": false
+    },
+    {
+     "title": "논문대체원 ② 공인어학성적표",
+     "items": [
+      "라. 합격요건 : TOEIC 700점, TOEFL(CBT) 207점, TOEFL(IBT) 76점, TEPS 327점, NEAT 220점, HSK 4급, JLPT N3 이상",
+      "마. 유효기간 : 시험일로 부터 2년"
+     ],
+     "ordered": false
+    },
+    {
+     "title": "졸업논문 작성",
+     "items": [
+      "연구(논문) 계획서를 작성하여 사전에 논문 지도교수를(학부 전임교원) 신청해야함",
+      "최종 제출안 기준으로 표절 검사 결과 표절 확인 비율 15% 이상일 경우 불합격 처리함"
+     ],
+     "ordered": false
+    }
+   ],
+   "url": "https://iim.hongik.ac.kr/iim/0401.do?mode=view&articleNo=153752",
+   "source": "학과 홈페이지",
+   "contacts": []
+  }
+ }
+}
