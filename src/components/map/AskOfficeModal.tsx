@@ -155,7 +155,21 @@ export default function AskOfficeModal({ visible, topInset, onClose, onSelect }:
                 <Text style={styles.mapLinkText}>지도에서 위치 보기</Text>
               </TouchableOpacity>
             ) : null}
-            <Text style={styles.checked}>운영진 확인 {answer.checkedAt}</Text>
+            {answer.source ? (
+              <TouchableOpacity
+                style={styles.mapLink}
+                activeOpacity={0.7}
+                onPress={() => Linking.openURL(answer.source as string).catch(() => {})}
+                accessibilityRole="link"
+                accessibilityLabel="학교 홈페이지에서 자세히 보기"
+              >
+                <Ionicons name="open-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.mapLinkText}>학교 홈페이지에서 자세히</Text>
+              </TouchableOpacity>
+            ) : null}
+            <Text style={styles.checked}>
+              {answer.source ? "학교 안내" : "운영진"} 확인 {answer.checkedAt}
+            </Text>
           </View>
         ))}
         {offices.length > 0 ? (
