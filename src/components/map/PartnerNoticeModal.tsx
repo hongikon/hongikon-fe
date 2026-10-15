@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { useIsFocused } from '@react-navigation/native'
 import { View, Text, StyleSheet, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -10,6 +10,41 @@ import Button from '../common/Button'
 
 const STORAGE_KEY = '@hongik_partner_notice_seen'
 
+/**
+ * 안내를 이미 봤는지. 앱 전체가 함께 본다 — 알림 안내(NotificationPrimer)가 이 창이 닫힐 때까지 기다린다.
+ * 처음 로그인하고 지도에 들어오면 이 창과 알림 안내(전체 화면 Modal)가 거의 동시에 떴는데, 네이티브 Modal 두 개가
+ * 겹쳐 뜨면 뒤 것이 제대로 안 열리고 보이지 않는 막만 남아 화면을 눌러도 반응이 없었다(10-15 iOS·Android 첫 설치 제보).
+ * 'unknown' = 저장소를 아직 안 읽음, 'pending' = 띄울 차례, 'seen' = 봤음(또는 못 읽어 건너뜀).
+ */
+type NoticeState = 'unknown' | 'pending' | 'seen'
+let noticeState: NoticeState = 'unknown'
+let loading = false
+const listeners = new Set<() => void>()
+
+function setNoticeState(next: NoticeState): void {
+  if (noticeState === next) return
+  noticeState = next
+  listeners.forEach((listener) => listener())
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  if (!loading) {
+    loading = true
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((seen) => setNoticeState(seen ? 'seen' : 'pending'))
+      .catch(() => setNoticeState('seen'))
+  }
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/** 제휴 안내가 아직 닫히지 않았는지(판단 전 포함). 다른 첫 실행 안내 창은 이게 false 가 된 뒤에 띄운다. */
+export function usePartnerNoticePending(): boolean {
+  return useSyncExternalStore(subscribe, () => noticeState, () => noticeState) !== 'seen'
+}
+
 export const PARTNER_NOTICE_TEXT =
   '해당 정보들은 각 단과대의 instagram을 참고하여 제작하였으며 잘못된 제휴 내용은 업데이트를 위해 제보 부탁드립니다.'
 
@@ -19,21 +54,13 @@ export const PARTNER_NOTICE_TEXT =
  * 같은 문구는 설정 탭 공지사항에도 실려 있어, 언제든 다시 확인할 수 있다.
  */
 export default function PartnerNoticeModal() {
-  const [visible, setVisible] = useState(false)
+  const visible = useSyncExternalStore(subscribe, () => noticeState, () => noticeState) === 'pending'
   // 지도 탭이 화면에 보일 때만 띄운다. 소식 상세 링크로 바로 들어오면 지도 탭이 뒤에서 먼저 그려지는데,
   // 그때 이 창이 소식 화면 위를 덮었다.
   const focused = useIsFocused()
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((seen) => {
-        if (!seen) setVisible(true)
-      })
-      .catch(() => {})
-  }, [])
-
   const handleConfirm = () => {
-    setVisible(false)
+    setNoticeState('seen')
     AsyncStorage.setItem(STORAGE_KEY, '1').catch(() => {})
   }
 
