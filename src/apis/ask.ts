@@ -20,6 +20,10 @@ export interface AskRouteResult {
   catalogVersion: string
   /** 답의 근거로 쓴 학교 공지·학식(제목·원문 링크·게시일/날짜). */
   references?: { title: string; url: string | null; date: string | null }[]
+  /** 답 카드 아래 버튼 — 근거 안내의 학교 페이지·담당 전화·위치(서버가 정한다). 없으면(옛 서버) 앱이 자기 안내 데이터에서 찾는다. */
+  pages?: { title: string; url: string }[]
+  phones?: { label: string; phone: string }[]
+  facilityId?: string | null
 }
 
 /**

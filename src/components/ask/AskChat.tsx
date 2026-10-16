@@ -61,6 +61,8 @@ type ChatMessage =
       sources: { flowId: string; nodeId: string }[];
       /** 근거로 쓴 학교 공지·학식 — 근거 목록에 링크로 붙는다. */
       links: { title: string; url: string | null; date: string | null }[];
+      /** 서버가 정해 보낸 버튼(학교 페이지·전화·위치). null 이면 옛 서버 — 앱의 안내 데이터에서 찾는다. */
+      buttons: { pages: { title: string; url: string }[]; phones: { label: string; phone: string }[]; facilityId: string | null } | null;
       question: string;
       /** 서버가 아직 답을 만들고 있다(진행 단계와 답 글자가 실시간으로 바뀐다). */
       streaming: boolean;
@@ -223,6 +225,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       found: true,
       sources: [],
       links: [],
+      buttons: null,
       question,
       streaming: true,
       status: "질문을 이해하고 있어요",
@@ -266,6 +269,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
           found: result.found !== false,
           sources,
           links: result.references ?? [],
+          buttons: result.pages
+            ? { pages: result.pages, phones: result.phones ?? [], facilityId: result.facilityId ?? null }
+            : null,
           streaming: false,
         }));
         push({ role: "feedback", question, resolved: null });
@@ -372,8 +378,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
    * 서버 답 글을 안내 카드 모양으로 — 첫 단락은 요약, '[소제목]' 줄은 소제목, '- '·'1. ' 줄은 항목. 흘러나오는 도중에도 같은 모양으로 그린다.
    * 처음엔 글을 통째로 보여 줬더니 예전 안내 카드보다 읽기 힘들었다(10-16 사용자 지적).
    */
-  const parseReply = (text: string): { lead: string; sections: AskSection[] } => {
+  const parseReply = (text: string): { lead: string; sections: AskSection[]; tail: string } => {
     const lead: string[] = [];
+    const tail: string[] = [];
     const sections: { title: string; items: string[]; ordered?: boolean }[] = [];
     let current: { title: string; items: string[]; ordered?: boolean } | null = null;
     for (const raw of text.split("\n")) {
@@ -381,6 +388,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       if (!line) continue;
       const heading = line.match(/^\[(.+)\]$/);
       if (heading) {
+        tail.length = 0;
         current = { title: heading[1], items: [] };
         sections.push(current);
         continue;
@@ -396,10 +404,11 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         current.items.push((bullet ?? numbered)![1]);
         continue;
       }
-      if (current) current.items.push(line);
+      // 소제목 뒤에 '- ' 없이 온 줄은 그 소제목의 항목이 아니라 카드 끝 문장('다친 곳을 알려 주시면 …' 같은 되묻기).
+      if (current) tail.push(line);
       else lead.push(line);
     }
-    return { lead: lead.join(" "), sections };
+    return { lead: lead.join(" "), sections, tail: tail.join(" ") };
   };
 
   /** 서버 답 — 예전 안내 카드처럼 요약·소제목·항목, 그 아래 근거 안내의 위치·담당 전화·학교 페이지와 공지 버튼. */
@@ -412,18 +421,28 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         </View>
       );
     }
-    const { lead, sections } = parseReply(item.text);
+    const { lead, sections, tail } = parseReply(item.text);
     const nodes = item.streaming
       ? []
       : item.sources
           .map((source) => ALL_ASK_FLOWS.find((flow) => flow.id === source.flowId)?.nodes[source.nodeId])
           .filter((node): node is AskAnswerNode => node?.kind === "answer");
-    const phones = nodes
-      .flatMap((node) => node.phones ?? [])
-      .filter((phone, index, all) => all.findIndex((other) => other.phone === phone.phone) === index)
-      .slice(0, 3);
-    const place = nodes.find((node) => node.facilityId)?.facilityId;
-    const links = item.streaming ? [] : sourceLinks(item).filter((source) => source.url);
+    // 버튼은 서버가 보낸 것을 쓴다(링크 순서·전화를 서버만 고쳐 바꿀 수 있게). 옛 서버면 앱의 안내 데이터에서.
+    const phones = item.buttons
+      ? item.buttons.phones
+      : nodes
+          .flatMap((node) => node.phones ?? [])
+          .filter((phone, index, all) => all.findIndex((other) => other.phone === phone.phone) === index)
+          .slice(0, 3);
+    const place = item.buttons ? item.buttons.facilityId : nodes.find((node) => node.facilityId)?.facilityId;
+    const links = item.streaming
+      ? []
+      : item.buttons
+        ? [
+            ...item.buttons.pages.map((page) => ({ key: page.url, title: page.title, url: page.url as string | null, date: null as string | null })),
+            ...item.links.filter((link) => link.url).map((link) => ({ key: link.url ?? link.title, title: link.title, url: link.url, date: link.date })),
+          ]
+        : sourceLinks(item).filter((source) => source.url);
     const cursor = item.streaming ? <Text style={styles.cursor}>▍</Text> : null;
     return (
       <View style={styles.botBubble}>
@@ -434,6 +453,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
           </Text>
         ) : null}
         {sections.map((section, index) => renderSection(section, `${index}`))}
+        {tail ? <Text style={[styles.botText, styles.replyTail]}>{tail}</Text> : null}
         {sections.length > 0 ? cursor : null}
         {place ? renderPlace(place) : null}
         {phones.map((phone) => renderPhone(phone.label, phone.phone, phone.phone))}
@@ -1038,6 +1058,7 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   stepText: { flexShrink: 1, fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   itemLabel: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  replyTail: { marginTop: 12 },
   thinkingRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 22 },
   thinkingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
   thinkingText: { flexShrink: 1, fontSize: 14, lineHeight: 20, fontFamily: FONTS.medium, color: COLORS.primary },
