@@ -655,7 +655,7 @@ export default function DevPathSurveyScreen() {
       </Text>
       <View style={styles.tabRow}>
         {TABS.map((t) => (
-          <Btn key={t.key} label={t.label} kind={tab === t.key ? 'active' : 'default'} onPress={() => setTab(t.key)} style={{ flex: 1 }} />
+          <Btn key={t.key} label={t.label} kind={tab === t.key ? 'active' : 'default'} onPress={() => setTab(t.key)} style={styles.tab} />
         ))}
       </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -713,7 +713,9 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.textPrimary },
   summary: { fontFamily: FONTS.medium, fontSize: 12.5, color: COLORS.textSecondary, marginTop: -6 },
   modeRow: { flexDirection: 'row', gap: 6 },
-  tabRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
+  tabRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  /** 폰에서 탭 다섯 개가 한 줄에 끼면 글자가 잘려 3 + 2 줄로 나눈다. */
+  tab: { minWidth: '30%' },
   pending: { fontFamily: FONTS.semibold, fontSize: 12.5, color: '#EA580C' },
   notice: { fontFamily: FONTS.medium, fontSize: 12.5, color: '#1D4ED8' },
   })
