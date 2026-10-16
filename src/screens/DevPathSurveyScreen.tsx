@@ -6,6 +6,7 @@ import { buildMapHTML } from '../utils/mapHtml'
 import { useMapData } from '../lib/mapData'
 import { PATH_WAYPOINTS } from '../constants/pathNodes'
 import {
+  addCustomColor,
   addEdge,
   addNode,
   createModule,
@@ -31,6 +32,7 @@ import { FONTS } from '../constants/typography'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
 import EdgePanel from './pathSurvey/EdgePanel'
 import ModulePanel from './pathSurvey/ModulePanel'
+import ModuleProps from './pathSurvey/ModuleProps'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
 import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
 
@@ -461,6 +463,7 @@ export default function DevPathSurveyScreen() {
     </>
   )
 
+  const detailModule = findModule(store, detailId)
   const modulesTab = (
     <ModulePanel
       store={store}
@@ -473,7 +476,19 @@ export default function DevPathSurveyScreen() {
       onReopen={reopen}
       onRename={rename}
       onDelete={removeModule}
-    />
+    >
+      {detailModule ? (
+        <ModuleProps
+          key={detailModule.id}
+          module={detailModule}
+          customColors={store.customColors}
+          buildings={buildings}
+          onChange={(fn, record = true) => commit(updateModule(storeRef.current, detailModule.id, fn), record)}
+          onAddColor={(color) => commit(addCustomColor(storeRef.current, color), false)}
+          onNotice={setNotice}
+        />
+      ) : null}
+    </ModulePanel>
   )
 
   const panel = (
