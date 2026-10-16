@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { buildMapHTML } from '../utils/mapHtml'
@@ -10,12 +10,15 @@ import {
   addNode,
   createModule,
   darken,
+  deleteModule,
   findModule,
+  finishModule,
   hasModuleEdge,
   loadStore,
   moveNode,
   removeEdgeBetween,
   removeNode,
+  reopenModule,
   saveStore,
   setEdgeMemo,
   setNodeMemo,
@@ -27,8 +30,9 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
 import EdgePanel from './pathSurvey/EdgePanel'
+import ModulePanel from './pathSurvey/ModulePanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
-import { Btn, Check, Row, Section, shortId, ui } from './pathSurvey/ui'
+import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
 
 type Mode = 'add' | 'link' | 'move'
 type Tab = 'edit' | 'modules' | 'legacy'
@@ -171,6 +175,7 @@ export default function DevPathSurveyScreen() {
   const [pending, setPending] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
+  const [detailId, setDetailId] = useState<string | null>(() => boot.store.activeModuleId ?? boot.store.modules[0]?.id ?? null)
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(DEFAULT_LEGACY)
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState(() => {
@@ -285,24 +290,53 @@ export default function DevPathSurveyScreen() {
     setNotice('간선을 지웠어요')
   }
 
+  const clearSelection = () => {
+    setSelected(null)
+    setSelectedEdge(null)
+    setPending(null)
+  }
+
   const startModule = () => {
     const { store: next, module } = createModule(storeRef.current)
     commit(next)
-    setSelected(null)
-    setSelectedEdge(null)
-    setPending(null)
+    clearSelection()
+    setDetailId(module.id)
     setTab('edit')
-    setNotice(`'${module.name}' 를 시작했어요. 지도를 눌러 지점을 찍으세요.`)
+    setNotice(`'${module.name}' 를 시작했어요. 지도를 눌러 지점을 찍으세요. 이름·장소는 "모듈" 탭에서 정해요.`)
   }
 
-  const activate = (id: string) => {
-    const m = findModule(storeRef.current, id)
-    if (!m || m.status !== 'draft') return
-    commit({ ...storeRef.current, activeModuleId: id }, false)
+  /** 모듈 마치기: 이어 찍기를 끊고(선택 해제) done 으로. 장소가 없으면 바꾸지 않고 이유를 알린다. */
+  const finish = (id: string) => {
+    const { store: next, problems } = finishModule(storeRef.current, id)
+    if (problems.length) {
+      setDetailId(id)
+      setTab('modules')
+      return setNotice(`아직 마칠 수 없어요 · ${problems.join(' · ')}`)
+    }
+    commit(next)
+    clearSelection()
+    setNotice(`'${findModule(next, id)?.name}' 를 마쳤어요. 고치려면 "다시 편집"을 누르세요.`)
+  }
+
+  const reopen = (id: string) => {
+    commit(reopenModule(storeRef.current, id))
     setHidden((h) => ({ ...h, [id]: false }))
-    setSelected(null)
-    setSelectedEdge(null)
-    setPending(null)
+    clearSelection()
+    setDetailId(id)
+    setNotice(`'${findModule(storeRef.current, id)?.name}' 를 편집해요`)
+  }
+
+  const rename = (id: string, name: string) => commit(updateModule(storeRef.current, id, (m) => ({ ...m, name })), false)
+
+  const removeModule = (id: string) => {
+    const m = findModule(storeRef.current, id)
+    if (!m) return
+    if (!confirmAction(`'${m.name}' 모듈을 지울까요? 지점 ${m.nodes.length} · 간선 ${m.edges.length} 이 함께 지워져요. (되돌리기로 살릴 수 있어요)`)) return
+    const wasActive = id === storeRef.current.activeModuleId
+    commit(deleteModule(storeRef.current, id))
+    if (wasActive) clearSelection()
+    setDetailId(storeRef.current.modules[0]?.id ?? null)
+    setNotice(`'${m.name}' 를 지웠어요`)
   }
 
   // 지도에서 온 이벤트. 최신 상태를 보게 매번 갱신한 함수를 ref 로 부른다.
@@ -368,6 +402,7 @@ export default function DevPathSurveyScreen() {
 
   const editTab = (
     <>
+      {!active ? <Text style={ui.warn}>편집 중인 모듈이 없어요. 아래 "새 모듈 시작"을 누르거나 "모듈" 탭에서 이어서 편집할 모듈을 고르세요.</Text> : null}
       <View style={styles.modeRow}>
         {MODES.map((m) => (
           <Btn
@@ -408,6 +443,8 @@ export default function DevPathSurveyScreen() {
       </Section>
       <Row>
         <Btn label="되돌리기" onPress={undo} />
+        {active ? <Btn label="모듈 마치기" onPress={() => finish(active.id)} /> : null}
+        <Btn label="새 모듈 시작" onPress={startModule} />
       </Row>
       {active ? (
         <EdgePanel
@@ -425,24 +462,18 @@ export default function DevPathSurveyScreen() {
   )
 
   const modulesTab = (
-    <Section title="모듈" help="모듈 하나는 한 층위예요. 편집 중인 모듈 외에는 흐리게 보여요. 체크를 끄면 지도에서 숨겨요.">
-      {store.modules.map((m) => {
-        const isActive = m.id === store.activeModuleId
-        return (
-          <View key={m.id} style={[ui.listRow, isActive && ui.listRowOn]}>
-            <Pressable onPress={() => setHidden((h) => ({ ...h, [m.id]: !h[m.id] }))} accessibilityRole="checkbox" accessibilityState={{ checked: !hidden[m.id] }} style={styles.visBox}>
-              <View style={[ui.check, !hidden[m.id] && { backgroundColor: m.color, borderColor: m.color }]} />
-            </Pressable>
-            <Text style={ui.rowText} numberOfLines={1}>
-              {`${m.name} · ${m.status === 'done' ? '완료' : '작성 중'} · 지점 ${m.nodes.length} · 간선 ${m.edges.length}`}
-            </Text>
-            {m.status === 'draft' && !isActive ? <Btn label="편집" onPress={() => activate(m.id)} style={{ flexGrow: 0 }} /> : null}
-          </View>
-        )
-      })}
-      {store.modules.length === 0 ? <Text style={ui.empty}>아직 모듈이 없어요</Text> : null}
-      <Btn label="새 모듈 시작" kind="primary" onPress={startModule} />
-    </Section>
+    <ModulePanel
+      store={store}
+      hidden={hidden}
+      detailId={detailId}
+      onDetail={setDetailId}
+      onToggleHidden={(id) => setHidden((h) => ({ ...h, [id]: !h[id] }))}
+      onStart={startModule}
+      onFinish={finish}
+      onReopen={reopen}
+      onRename={rename}
+      onDelete={removeModule}
+    />
   )
 
   const panel = (
@@ -497,5 +528,4 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
   pending: { fontFamily: FONTS.semibold, fontSize: 12.5, color: '#EA580C' },
   notice: { fontFamily: FONTS.medium, fontSize: 12.5, color: '#1D4ED8' },
-  visBox: { minWidth: 32, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-})
+  })
