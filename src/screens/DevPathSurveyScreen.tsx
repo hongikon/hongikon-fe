@@ -17,6 +17,7 @@ import {
   removeEdgeBetween,
   removeNode,
   saveStore,
+  setEdgeMemo,
   setNodeMemo,
   updateModule,
   type SurveyModule,
@@ -25,6 +26,7 @@ import {
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
+import EdgePanel from './pathSurvey/EdgePanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
 import { Btn, Check, Row, Section, shortId, ui } from './pathSurvey/ui'
 
@@ -167,6 +169,7 @@ export default function DevPathSurveyScreen() {
   const [chain, setChain] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(DEFAULT_LEGACY)
   const [ready, setReady] = useState(false)
@@ -236,6 +239,7 @@ export default function DevPathSurveyScreen() {
     })
     if (!ok) return
     setSelected(newId)
+    setSelectedEdge(null)
     setNotice(`${shortId(newId)} 추가${linkFrom ? ` · ${shortId(linkFrom)}와 이었어요` : ''}`)
   }
 
@@ -252,6 +256,7 @@ export default function DevPathSurveyScreen() {
 
   const onNodePress = (id: string) => {
     setSelected(id)
+    setSelectedEdge(null)
     if (mode !== 'link') return
     if (!pending) return setPending(id)
     if (pending === id) return setPending(null)
@@ -267,10 +272,24 @@ export default function DevPathSurveyScreen() {
     setPending(null)
   }
 
+  const onEdgePress = (id: string) => {
+    setSelectedEdge(id)
+    setSelected(null)
+    setPending(null)
+    setTab('edit')
+  }
+
+  const deleteEdge = (id: string) => {
+    editActive((m) => ({ ...m, edges: m.edges.filter((e) => e.id !== id) }))
+    setSelectedEdge(null)
+    setNotice('간선을 지웠어요')
+  }
+
   const startModule = () => {
     const { store: next, module } = createModule(storeRef.current)
     commit(next)
     setSelected(null)
+    setSelectedEdge(null)
     setPending(null)
     setTab('edit')
     setNotice(`'${module.name}' 를 시작했어요. 지도를 눌러 지점을 찍으세요.`)
@@ -282,6 +301,7 @@ export default function DevPathSurveyScreen() {
     commit({ ...storeRef.current, activeModuleId: id }, false)
     setHidden((h) => ({ ...h, [id]: false }))
     setSelected(null)
+    setSelectedEdge(null)
     setPending(null)
   }
 
@@ -292,6 +312,7 @@ export default function DevPathSurveyScreen() {
     if (!msg) return
     if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
     else if (msg.type === 'node') onNodePress(msg.id)
+    else if (msg.type === 'edge') onEdgePress(msg.id)
     else if (msg.type === 'move') editActive((m) => moveNode(m, msg.id, msg.lat, msg.lng))
   }
 
@@ -338,9 +359,9 @@ export default function DevPathSurveyScreen() {
       })
       // 편집 중인 모듈을 맨 나중에 그려 위로 올린다.
       .sort((x, y) => Number(x.active) - Number(y.active))
-    const state = { legacy: { nodes: legacyNodes, lines: legacyLines }, modules, selected, pending, selectedEdge: null, mode }
+    const state = { legacy: { nodes: legacyNodes, lines: legacyLines }, modules, selected, pending, selectedEdge, mode }
     webViewRef.current?.injectJavaScript(`window.__surveyRender && window.__surveyRender(${JSON.stringify(state)}); true;`)
-  }, [ready, store, selected, pending, mode, hidden, legacyToggles, overlay])
+  }, [ready, store, selected, pending, selectedEdge, mode, hidden, legacyToggles, overlay])
 
   const selectedNode = active && selected ? active.nodes.find((n) => n.id === selected) : undefined
   const activeMode = MODES.find((m) => m.key === mode)!
@@ -388,6 +409,18 @@ export default function DevPathSurveyScreen() {
       <Row>
         <Btn label="되돌리기" onPress={undo} />
       </Row>
+      {active ? (
+        <EdgePanel
+          module={active}
+          selectedEdge={selectedEdge}
+          onSelect={(id) => {
+            setSelectedEdge(id)
+            if (id) setSelected(null)
+          }}
+          onMemo={(id, text) => editActive((m) => setEdgeMemo(m, id, text), false)}
+          onDelete={deleteEdge}
+        />
+      ) : null}
     </>
   )
 
