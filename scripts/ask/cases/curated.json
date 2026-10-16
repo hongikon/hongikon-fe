@@ -115,5 +115,8 @@
   {"q": "배아파요", "expect": "injury/clinic"},
   {"q": "학교 보험 청구 서류", "expect": "injury/insurance"},
   {"q": "학교 이메일로 매트랩", "expect": "matlab"},
-  {"q": "인터넷 강의", "expect": "none"}
+  {"q": "인터넷 강의", "expect": "none"},
+  {"q": "T동 강의실 예약 방법", "expect": "t-classroom-booking/start"},
+  {"q": "제4공학관 강의실 대여하려면", "expect": "t-classroom-booking/start"},
+  {"q": "T501 강의실 빌리고 싶어", "expect": "t-classroom-booking/start"}
 ]

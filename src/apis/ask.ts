@@ -24,6 +24,8 @@ export interface AskRouteResult {
   pages?: { title: string; url: string }[]
   phones?: { label: string; phone: string }[]
   facilityId?: string | null
+  /** 이 답의 서버 기록 id — '해결됐나요' 응답을 붙일 때 쓴다(기록이 꺼졌으면 없음). */
+  logId?: number | null
 }
 
 /**
@@ -31,21 +33,29 @@ export interface AskRouteResult {
  * hint 는 앱 낱말 찾기가 고른 안내(참고용). devKey 는 /dev 게이트에 입력한 암호키(서버는 그 SHA-256 만 비교한다).
  * 실패하면 부르는 쪽이 낱말 찾기로 돌아간다. 답 쓰기는 안내를 더 찾아보느라 여러 번 부를 수 있어 넉넉히 기다린다.
  */
-export function routeAsk(question: string, history: AskRouteTurn[], devKey: string, hint?: string): Promise<AskRouteResult> {
+export function routeAsk(
+  question: string,
+  history: AskRouteTurn[],
+  devKey: string,
+  hint?: string,
+  signal?: AbortSignal,
+  conversationId?: string,
+): Promise<AskRouteResult> {
   return apiRequest<AskRouteResult>('/ask/route', {
     method: 'POST',
-    body: { question, hint, history },
+    body: { question, hint, history, conversationId },
     headers: { 'X-Ask-Dev-Key': devKey },
     timeoutMs: 45_000,
     retries: 0,
     skipTokenRefresh: true,
+    signal,
   })
 }
 
 /** 흘려받기 진행 이벤트(서버가 실제로 한 일만). done 은 routeAsk 응답과 같은 모양. */
 export type AskStreamEvent =
   | { event: 'picked'; data: { titles: string[] } }
-  | { event: 'search' | 'noticeSearch'; data: { query: string } }
+  | { event: 'search' | 'noticeSearch' | 'facilitySearch'; data: { query: string } }
   | { event: 'read'; data: { titles: string[] } }
   | { event: 'noticeRead'; data: { title: string } }
   | { event: 'cafeteria'; data: { date: string } }
@@ -55,6 +65,7 @@ export type AskStreamEvent =
 /**
  * 물어보기 답 흘려받기(POST /ask/route/stream, SSE). 진행·답 글자를 onEvent 로 넘기고 마지막 결과를 돌려준다.
  * 웹 fetch 의 ReadableStream 이 없거나(일부 네이티브) 연결이 안 되면 throw — 부르는 쪽이 routeAsk 나 낱말 찾기로 돌아간다.
+ * signal 로 학생이 멈춤을 누르면 바로 끊는다(서버는 끊긴 연결에 더 보내지 않는다).
  */
 export async function streamAsk(
   question: string,
@@ -62,14 +73,19 @@ export async function streamAsk(
   devKey: string,
   hint: string | undefined,
   onEvent: (event: AskStreamEvent) => void,
+  signal?: AbortSignal,
+  conversationId?: string,
 ): Promise<AskRouteResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 90_000)
+  const stop = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  signal?.addEventListener('abort', stop)
   try {
     const response = await fetch(`${API_BASE_URL}/ask/route/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-Ask-Dev-Key': devKey },
-      body: JSON.stringify({ question, hint, history }),
+      body: JSON.stringify({ question, hint, history, conversationId }),
       signal: controller.signal,
     })
     if (!response.ok || !response.body) throw new Error(`ask stream ${response.status}`)
@@ -101,5 +117,17 @@ export async function streamAsk(
     throw new Error('ask stream ended without result')
   } finally {
     clearTimeout(timer)
+    signal?.removeEventListener('abort', stop)
   }
+}
+
+/** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
+export function sendAskFeedback(logId: number, conversationId: string, resolved: boolean, devKey: string): Promise<void> {
+  return apiRequest<void>('/ask/route/feedback', {
+    method: 'POST',
+    body: { logId, conversationId, resolved },
+    headers: { 'X-Ask-Dev-Key': devKey },
+    retries: 0,
+    skipTokenRefresh: true,
+  })
 }
