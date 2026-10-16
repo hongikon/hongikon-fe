@@ -19,7 +19,7 @@ import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
-import { routeAsk, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
+import { routeAsk, sendAskFeedback, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
 import { getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
@@ -50,7 +50,7 @@ type ChatMessage =
       followed: boolean;
       viaServer: boolean;
     }
-  | { id: number; role: "feedback"; question: string; resolved: boolean | null }
+  | { id: number; role: "feedback"; question: string; resolved: boolean | null; logId?: number | null }
   | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
   /** 서버가 안내 원문 안에서만 쓴 답. sources 는 근거 안내('근거 안내 보기'로 원문을 펼친다). */
   | {
@@ -68,6 +68,10 @@ type ChatMessage =
       streaming: boolean;
       /** 지금 하는 일 한 줄(흘러나오는 동안 제자리에서 바뀐다). 쉬운 말만 — 안내 id·검색어·문장 조각은 보이지 않는다. */
       status: string;
+      /** 학생이 멈춤을 눌러 중간에 끊긴 답. */
+      stopped: boolean;
+      /** 서버 기록 id('해결됐나요' 응답을 붙인다). */
+      logId: number | null;
       /** 서버가 실제로 한 일(관련 안내 확인·공지 읽음·답 정리 …). 끝나면 '살펴본 과정'으로 접는다. */
       steps: string[];
       stepsOpen: boolean;
@@ -117,6 +121,17 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
   const [pending, setPending] = useState(false);
+  /** 지금 받고 있는 서버 답을 끊는 손잡이(멈춤 버튼). */
+  const abortRef = useRef<AbortController | null>(null);
+  /**
+   * 이 화면(탭)의 대화 id — 서버 기록에서 같은 대화의 질문끼리만 잇는다. 사람·계정과는 잇지 않는 임의 값이고 저장하지 않는다
+   * (새로 열면 새 대화).
+   */
+  const conversationId = useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+  ).current;
   const nextId = useRef(1);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -228,6 +243,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       buttons: null,
       question,
       streaming: true,
+      stopped: false,
+      logId: null,
       status: "질문을 이해하고 있어요",
       steps: ["질문 이해"],
       stepsOpen: false,
@@ -235,35 +252,46 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     const patchLive = (patch: (item: Extract<ChatMessage, { role: "reply" }>) => Partial<Extract<ChatMessage, { role: "reply" }>>) =>
       setMessages((prev) => prev.map((item) => (item.id === liveId && item.role === "reply" ? { ...item, ...patch(item) } : item)));
     const removeLive = () => setMessages((prev) => prev.filter((item) => item.id !== liveId));
+    const abort = new AbortController();
+    abortRef.current = abort;
     try {
       const hint = matched ? `${matched.flow.id}/${matched.nodeId}` : undefined;
       let heard = false;
       let result: AskRouteResult;
       try {
-        result = await streamAsk(question.slice(0, 200), history, serverKey, hint, (event) => {
-          heard = true;
-          if (event.event === "delta") patchLive((item) => ({ text: item.text + event.data.text }));
-          else if (event.event === "reset") patchLive(() => ({ text: "" }));
-          else {
-            const info = stepInfo(event);
-            if (info) {
-              // 같은 일이 잇따르면(공지를 여러 번 찾기 등) 과정에는 한 번만 남긴다.
-              patchLive((item) => ({
-                status: info.status,
-                steps: item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
-              }));
+        result = await streamAsk(
+          question.slice(0, 200),
+          history,
+          serverKey,
+          hint,
+          (event) => {
+            heard = true;
+            if (event.event === "delta") patchLive((item) => ({ text: item.text + event.data.text }));
+            else if (event.event === "reset") patchLive(() => ({ text: "" }));
+            else {
+              const info = stepInfo(event);
+              if (info) {
+                // 같은 일이 잇따르면(공지를 여러 번 찾기 등) 과정에는 한 번만 남긴다.
+                patchLive((item) => ({
+                  status: info.status,
+                  steps: item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
+                }));
+              }
             }
-          }
-        });
+          },
+          abort.signal,
+          conversationId,
+        );
       } catch (error) {
-        // 흘려받기 자체가 안 되면(이벤트를 하나도 못 받음) 한 번에 받기로. 도중에 끊겼으면 같은 질문을 두 번 묻지 않는다.
-        if (heard) throw error;
-        result = await routeAsk(question.slice(0, 200), history, serverKey, hint);
+        // 흘려받기 자체가 안 되면(이벤트를 하나도 못 받음) 한 번에 받기로. 도중에 끊겼거나 학생이 멈췄으면 다시 묻지 않는다.
+        if (heard || abort.signal.aborted) throw error;
+        result = await routeAsk(question.slice(0, 200), history, serverKey, hint, abort.signal, conversationId);
       }
       const sources = (result.nodeIds.length > 0 ? result.nodeIds : [result.nodeId])
         .map(findStep)
         .filter((step): step is { flowId: string; nodeId: string } => step !== null);
-      if (result.answer && sources.length > 0) {
+      // 서버가 답을 썼으면 근거 안내가 없어도(지도 시설·공지만으로 답한 경우) 보인다.
+      if (result.answer) {
         patchLive(() => ({
           text: result.answer ?? "",
           found: result.found !== false,
@@ -273,8 +301,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
             ? { pages: result.pages, phones: result.phones ?? [], facilityId: result.facilityId ?? null }
             : null,
           streaming: false,
+          logId: result.logId ?? null,
         }));
-        push({ role: "feedback", question, resolved: null });
+        push({ role: "feedback", question, resolved: null, logId: result.logId ?? null });
         return;
       }
       removeLive();
@@ -283,13 +312,39 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         push(...stepMessages(step.flowId, step.nodeId, question, true));
         return;
       }
+      // 서버가 맞는 안내를 못 찾았다(none). 여기서 앱 낱말 찾기로 돌아가면 낱말만 겹치는 엉뚱한 안내가 나온다
+      // ('K동 공동학습실' → '공동학습실' 낱말이 도서관 안내에 걸림, 10-16) — 못 찾았다고 하고 운영진에게 물어볼 길을 준다.
+      push(
+        { role: "text", text: "홍익온 안내에서 맞는 내용을 찾지 못했어요. 다른 말로 물어보거나 운영진에게 물어봐 주세요." },
+        { role: "handoff", question, answer: "", sources: [], note: "", contact: "", status: "editing", error: null },
+      );
+      return;
     } catch {
+      if (abort.signal.aborted) {
+        // 학생이 멈춤을 눌렀다 — 나온 글자가 있으면 그대로 두고 '중간에 멈춘 답'으로, 없으면 말풍선을 지우고 한 줄만.
+        const stoppedId = nextId.current++;
+        setMessages((prev) => {
+          const live = prev.find((item) => item.id === liveId);
+          if (live?.role === "reply" && live.text) {
+            return prev.map((item) => (item.id === liveId && item.role === "reply" ? { ...item, streaming: false, stopped: true } : item));
+          }
+          return [...prev.filter((item) => item.id !== liveId), { id: stoppedId, role: "text", text: "요청을 멈췄어요." }];
+        });
+        return;
+      }
       // 서버가 꺼졌거나(503) 한도(429)·네트워크 오류 — 아래 낱말 찾기로 답한다.
       removeLive();
     } finally {
+      abortRef.current = null;
       setPending(false);
     }
     push(...answerLocally(question, matched));
+  };
+
+  /** 답을 받는 동안 보내기 버튼이 멈춤으로 바뀐다. */
+  const stopAsk = () => {
+    haptics.selection();
+    abortRef.current?.abort();
   };
 
   const choose = (message: Extract<ChatMessage, { role: "question" }>, label: string, next: string) => {
@@ -493,7 +548,11 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         ) : null}
         {!item.streaming ? (
           <Text style={styles.checked}>
-            {item.found ? "학교 안내 원문에서 찾아 답했어요" : "안내에서 확인되지 않은 내용이 있어요 — 담당 부서에 확인해 주세요"}
+            {item.stopped
+              ? "중간에 멈춘 답이에요"
+              : item.found
+                ? "학교 안내 원문에서 찾아 답했어요"
+                : "안내에서 확인되지 않은 내용이 있어요 — 담당 부서에 확인해 주세요"}
           </Text>
         ) : null}
       </View>
@@ -504,6 +563,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     if (message.resolved !== null) return;
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, resolved } : item)));
+    // 서버 답이면 그 기록에 응답을 붙인다(무엇이 해결 안 됐는지 알아야 고친다). 실패해도 화면은 그대로.
+    if (message.logId && serverKey) sendAskFeedback(message.logId, conversationId, resolved, serverKey).catch(() => {});
     if (resolved) {
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
@@ -881,6 +942,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
                   ) : null}
                   <Text style={styles.footnote}>
                     학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
+                    {serverKey
+                      ? " 질문과 답은 답변 개선을 위해 기록돼요(1년 보관). 학번·연락처 같은 개인정보는 적지 말아 주세요."
+                      : ""}
                   </Text>
                 </>
               }
@@ -903,15 +967,26 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
                 submitBehavior="submit"
                 accessibilityLabel="학교 일 물어보기"
               />
-              <TouchableOpacity
-                style={[styles.send, !canSend && styles.sendOff]}
-                onPress={() => ask(input)}
-                disabled={!canSend}
-                accessibilityRole="button"
-                accessibilityLabel="보내기"
-              >
-                <Ionicons name="arrow-up" size={20} color={COLORS.white} />
-              </TouchableOpacity>
+              {pending && serverKey ? (
+                <TouchableOpacity
+                  style={styles.send}
+                  onPress={stopAsk}
+                  accessibilityRole="button"
+                  accessibilityLabel="답 받기 멈추기"
+                >
+                  <Ionicons name="stop" size={16} color={COLORS.white} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.send, !canSend && styles.sendOff]}
+                  onPress={() => ask(input)}
+                  disabled={!canSend}
+                  accessibilityRole="button"
+                  accessibilityLabel="보내기"
+                >
+                  <Ionicons name="arrow-up" size={20} color={COLORS.white} />
+                </TouchableOpacity>
+              )}
             </View>
           </ContentColumn>
         </View>
