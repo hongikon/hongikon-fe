@@ -27,17 +27,19 @@ import {
   type SurveyModule,
   type SurveyStore,
 } from '../utils/pathSurveyStore'
+import { applyImport, describePlan, parseBundle, planImport } from '../utils/pathSurveySync'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
 import EdgePanel from './pathSurvey/EdgePanel'
 import ModulePanel from './pathSurvey/ModulePanel'
 import ModuleProps from './pathSurvey/ModuleProps'
+import TransferPanel from './pathSurvey/TransferPanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
 import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
 
 type Mode = 'add' | 'link' | 'move'
-type Tab = 'edit' | 'modules' | 'legacy'
+type Tab = 'edit' | 'modules' | 'legacy' | 'transfer'
 
 const MODES: { key: Mode; label: string; help: string }[] = [
   { key: 'add', label: '지점 찍기', help: '지도를 누르면 편집 중인 모듈에 지점이 생겨요. "이어 찍기"를 켜면 직전 지점과 간선까지 같이 만들어요.' },
@@ -49,6 +51,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'edit', label: '편집' },
   { key: 'modules', label: '모듈' },
   { key: 'legacy', label: '기존 자료' },
+  { key: 'transfer', label: '내보내기' },
 ]
 
 /** 웹뷰/iframe 어느 쪽에서 왔든 같은 모양으로 푼다. 이 화면이 보낸 메시지만 통과시킨다. */
@@ -341,6 +344,27 @@ export default function DevPathSurveyScreen() {
     setNotice(`'${m.name}' 를 지웠어요`)
   }
 
+  /** 가져오기: 새 모듈은 추가, 같은 id 가 더 최신이면 덮어쓰기 전에 묻는다(취소하면 새 모듈만). */
+  const runImport = (text: string) => {
+    let incoming
+    try {
+      incoming = parseBundle(text)
+    } catch (e) {
+      return setNotice(`가져오지 못했어요 · ${(e as Error).message}`)
+    }
+    const plan = planImport(storeRef.current, incoming)
+    if (plan.added.length === 0 && plan.newer.length === 0) return setNotice(`가져올 새 내용이 없어요 · ${describePlan(plan)}`)
+    const overwrite =
+      plan.newer.length > 0 &&
+      confirmAction(`${describePlan(plan)}
+
+더 최신인 모듈로 이 기기의 같은 모듈을 덮어쓸까요? 취소하면 새 모듈만 추가해요.`)
+    const next = applyImport(storeRef.current, plan, overwrite)
+    if (!findModule(next, next.activeModuleId)) clearSelection()
+    commit(next)
+    setNotice(`가져왔어요 · 새 모듈 ${plan.added.length}${plan.newer.length ? ` · 덮어쓴 모듈 ${overwrite ? plan.newer.length : 0}` : ''}`)
+  }
+
   // 지도에서 온 이벤트. 최신 상태를 보게 매번 갱신한 함수를 ref 로 부른다.
   const handlerRef = useRef<(event: unknown) => void>(() => {})
   handlerRef.current = (event) => {
@@ -503,7 +527,10 @@ export default function DevPathSurveyScreen() {
         ))}
       </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      {tab === 'edit' ? editTab : tab === 'modules' ? modulesTab : <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} />}
+      {tab === 'edit' ? editTab : null}
+      {tab === 'modules' ? modulesTab : null}
+      {tab === 'legacy' ? <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} /> : null}
+      {tab === 'transfer' ? <TransferPanel store={store} initialModuleId={detailId ?? store.activeModuleId} onImport={runImport} onNotice={setNotice} /> : null}
     </ScrollView>
   )
 

@@ -1,4 +1,5 @@
 import type { PathEdge, PathWaypoint } from '../types'
+import type { SurveyModule } from './pathSurveyStore'
 
 /**
  * 경로망 현장 조사 초안 — 개발용 `/dev/path-survey` 화면이 쓴다. SurveyDraft 는 v1 저장 모양이다(hongikon.pathSurvey.v1).
@@ -39,9 +40,10 @@ export const round7 = (n: number) => Math.round(n * 1e7) / 1e7
 
 const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim()
 
-/** pathNodes.ts 에 붙여 넣을 코드 조각. */
-export function formatExport(draft: SurveyDraft): string {
+/** pathNodes.ts 에 붙여 넣을 코드 조각. header 는 맨 위 주석 줄, edgeMemos(edgeKey → 메모)는 간선 줄 끝 주석. */
+export function formatExport(draft: SurveyDraft, options: { header?: string[]; edgeMemos?: Record<string, string> } = {}): string {
   const out: string[] = []
+  if (options.header?.length) out.push(...options.header.map((line) => `// ${oneLine(line)}`), '')
   const newIds = new Set(draft.nodes.map((n) => n.id))
 
   if (draft.nodes.length > 0) {
@@ -55,7 +57,10 @@ export function formatExport(draft: SurveyDraft): string {
 
   if (draft.edges.length > 0) {
     out.push('// ── PATH_EDGES 배열 맨 끝에 추가 ──')
-    for (const [a, b] of draft.edges) out.push(`  ['${a}', '${b}'],`)
+    for (const [a, b] of draft.edges) {
+      const memo = options.edgeMemos?.[edgeKey(a, b)]
+      out.push(`  ['${a}', '${b}'],${memo ? ` // ${oneLine(memo)}` : ''}`)
+    }
     out.push('')
   }
 
@@ -66,5 +71,32 @@ export function formatExport(draft: SurveyDraft): string {
     out.push('')
   }
 
-  return out.length > 0 ? out.join('\n') : '// 아직 찍은 지점이 없어요'
+  return draft.nodes.length + draft.edges.length + oldMemos.length > 0 ? out.join('\n') : '// 아직 찍은 지점이 없어요'
+}
+
+const floorText = (floor: number) => (floor > 0 ? `${floor}F` : `B${Math.abs(floor)}`)
+
+/**
+ * 모듈 하나를 pathNodes.ts 붙여넣기용 코드 조각으로. v1 변환 때 복사해 온 기존 지점(ref)은 새 지점으로 내지 않고 원래 id 로 잇는다.
+ * 모듈 지점 id('모듈id-n3')는 조사용이라, 실제로 합칠 때는 n번호로 바꿔야 한다(합치는 작업은 아직 하지 않는다).
+ */
+export function formatModuleExport(module: SurveyModule): string {
+  const idOf = new Map(module.nodes.map((n) => [n.id, n.ref ?? n.id]))
+  const mapId = (id: string) => idOf.get(id) ?? id
+  const draft: SurveyDraft = {
+    nodes: module.nodes.filter((n) => !n.ref).map((n) => ({ id: n.id, lat: n.lat, lng: n.lng })),
+    edges: module.edges.map((e): PathEdge => [mapId(e.a), mapId(e.b)]),
+    memos: Object.fromEntries(module.nodes.filter((n) => n.memo).map((n) => [mapId(n.id), n.memo!])),
+  }
+  const edgeMemos = Object.fromEntries(module.edges.filter((e) => e.memo).map((e) => [edgeKey(mapId(e.a), mapId(e.b)), e.memo!]))
+  const places = module.places.map((p) => `${p.buildingName} ${floorText(p.floor)}${p.label ? `(${p.label})` : ''}`).join(', ')
+  return formatExport(draft, {
+    header: [
+      `모듈 ${module.name} (${module.status === 'done' ? '완료' : '작성 중'}) · ${module.id}`,
+      `장소: ${places || '없음'}`,
+      ...(module.memo.trim() ? [`메모: ${module.memo}`] : []),
+      '지점 id 는 조사용이에요. pathNodes.ts 에 합칠 때 n번호로 바꿔 주세요.',
+    ],
+    edgeMemos,
+  })
 }
