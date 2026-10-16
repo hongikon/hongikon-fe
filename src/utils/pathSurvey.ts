@@ -19,17 +19,28 @@ export const EMPTY_DRAFT: SurveyDraft = { nodes: [], edges: [], memos: {} }
 
 const STORAGE_KEY = 'hongikon.pathSurvey.v1'
 
+/** v1 저장값(또는 그 모양의 아무 값)을 SurveyDraft 로 푼다. 모양이 틀린 칸은 버린다. */
+export function parseV1Draft(parsed: unknown): SurveyDraft {
+  const p = parsed && typeof parsed === 'object' ? (parsed as any) : {}
+  const isEdge = (e: unknown): e is PathEdge => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && typeof e[1] === 'string'
+  const isNode = (n: any): n is PathWaypoint =>
+    !!n && typeof n.id === 'string' && Number.isFinite(n.lat) && Number.isFinite(n.lng)
+  return {
+    nodes: Array.isArray(p.nodes) ? p.nodes.filter(isNode) : [],
+    edges: Array.isArray(p.edges) ? p.edges.filter(isEdge) : [],
+    memos:
+      p.memos && typeof p.memos === 'object'
+        ? Object.fromEntries(Object.entries(p.memos).filter((e): e is [string, string] => typeof e[1] === 'string'))
+        : {},
+  }
+}
+
 /** 웹에서만 localStorage 로 자동 저장한다(탭을 닫아도 조사 내용이 남도록). 앱(WebView 밖 네이티브)에서는 건너뛴다. */
 export function loadDraft(): SurveyDraft {
   try {
     const raw = (globalThis as any).localStorage?.getItem(STORAGE_KEY)
     if (!raw) return EMPTY_DRAFT
-    const parsed = JSON.parse(raw)
-    return {
-      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
-      edges: Array.isArray(parsed.edges) ? parsed.edges : [],
-      memos: parsed.memos && typeof parsed.memos === 'object' ? parsed.memos : {},
-    }
+    return parseV1Draft(JSON.parse(raw))
   } catch {
     return EMPTY_DRAFT
   }
