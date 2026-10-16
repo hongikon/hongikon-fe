@@ -2,6 +2,7 @@
 // 기본 출력은 옆 백엔드 레포의 src/main/resources/ask/ 아래 두 파일.
 //  - catalog.json: 고르는 데 쓰는 노드 요약(id·종류·요약·대표 낱말, 되묻기 단계는 버튼이 가리키는 안내 next). 서버가 질문에 맞는 안내 id 를 고른다.
 //  - sources.json: 노드마다 안내 원문 전체(본문·섹션·표·전화·링크·확인일). 서버가 고른 안내의 원문만 주고 그 안에서만 답하게 한다.
+//    meta 에는 답 카드 아래 버튼용 링크·전화·위치(지도 시설 id)를 따로 둔다 — 서버가 응답에 실어 보내, 버튼·링크 순서를 바꿀 때 앱 배포 없이 서버만 고치면 된다.
 // 흐름·문구를 바꾸면 다시 돌리고 백엔드에도 같이 커밋한다(앱이 모르는 id 를 받으면 낱말 찾기로 돌아간다).
 // 같은 입력이면 바이트까지 같은 파일이 나와야 한다 — 서버가 이 내용을 프롬프트 캐시 앞부분으로 쓴다.
 import { register } from 'node:module'
@@ -50,6 +51,7 @@ const sourceText = (flow, node) => {
 
 const entries = []
 const sources = {}
+const meta = {}
 for (const flow of ALL_ASK_FLOWS) {
   for (const [nodeId, node] of Object.entries(flow.nodes)) {
     // 이 노드로 바로 들어오는 길의 낱말(묶음마다 앞 낱말 둘). 질문을 어떤 말로 하는지 알려 주는 힌트다.
@@ -65,6 +67,13 @@ for (const flow of ALL_ASK_FLOWS) {
     const next = node.kind === 'question' ? [...new Set(node.options.map((option) => `${flow.id}/${option.next}`))] : undefined
     entries.push({ id: `${flow.id}/${nodeId}`, kind: node.kind, line: parts.join(' '), ...(next ? { next } : {}) })
     sources[`${flow.id}/${nodeId}`] = sourceText(flow, node)
+    if (node.kind === 'answer' && (node.links?.length || node.phones?.length || node.facilityId)) {
+      meta[`${flow.id}/${nodeId}`] = {
+        links: (node.links ?? []).map(({ label, url }) => ({ label, url })),
+        phones: (node.phones ?? []).map(({ label, phone }) => ({ label, phone })),
+        ...(node.facilityId ? { facilityId: node.facilityId } : {}),
+      }
+    }
   }
 }
 
@@ -74,8 +83,8 @@ for (const { id } of entries) {
   ids.add(id)
 }
 
-const version = createHash('sha256').update(JSON.stringify([entries, sources])).digest('hex').slice(0, 12)
+const version = createHash('sha256').update(JSON.stringify([entries, sources, meta])).digest('hex').slice(0, 12)
 mkdirSync(outDir, { recursive: true })
 writeFileSync(join(outDir, 'catalog.json'), `${JSON.stringify({ version, entries }, null, 1)}\n`)
-writeFileSync(join(outDir, 'sources.json'), `${JSON.stringify({ version, sources }, null, 1)}\n`)
+writeFileSync(join(outDir, 'sources.json'), `${JSON.stringify({ version, sources, meta }, null, 1)}\n`)
 console.log(`${entries.length}개 노드 → ${outDir}catalog.json · sources.json (version ${version})`)
