@@ -27,7 +27,25 @@ import {
   type SurveyModule,
   type SurveyStore,
 } from '../utils/pathSurveyStore'
-import { applyImport, describePlan, parseBundle, planImport } from '../utils/pathSurveySync'
+import {
+  applyImport,
+  describePlan,
+  dropLocallyDeleted,
+  fetchGistBundle,
+  hasUnsyncedChanges,
+  loadGistMeta,
+  loadGistSettings,
+  metaAfterSync,
+  parseBundle,
+  planImport,
+  pushConflicts,
+  pushGistBundle,
+  saveGistMeta,
+  saveGistSettings,
+  type GistMeta,
+  type GistSettings,
+  type ImportPlan,
+} from '../utils/pathSurveySync'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
@@ -35,11 +53,12 @@ import EdgePanel from './pathSurvey/EdgePanel'
 import ModulePanel from './pathSurvey/ModulePanel'
 import ModuleProps from './pathSurvey/ModuleProps'
 import TransferPanel from './pathSurvey/TransferPanel'
+import GistPanel from './pathSurvey/GistPanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
 import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
 
 type Mode = 'add' | 'link' | 'move'
-type Tab = 'edit' | 'modules' | 'legacy' | 'transfer'
+type Tab = 'edit' | 'modules' | 'legacy' | 'transfer' | 'sync'
 
 const MODES: { key: Mode; label: string; help: string }[] = [
   { key: 'add', label: '지점 찍기', help: '지도를 누르면 편집 중인 모듈에 지점이 생겨요. "이어 찍기"를 켜면 직전 지점과 간선까지 같이 만들어요.' },
@@ -52,6 +71,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'modules', label: '모듈' },
   { key: 'legacy', label: '기존 자료' },
   { key: 'transfer', label: '내보내기' },
+  { key: 'sync', label: '동기화' },
 ]
 
 /** 웹뷰/iframe 어느 쪽에서 왔든 같은 모양으로 푼다. 이 화면이 보낸 메시지만 통과시킨다. */
@@ -191,6 +211,12 @@ export default function DevPathSurveyScreen() {
       r.refNodes ? ` · 기존 지점 복사 ${r.refNodes}` : ''
     }${r.renamed.length ? ` · id 바꿈 ${r.renamed.join(', ')}` : ''}`
   })
+  const [gistSettings, setGistSettings] = useState<GistSettings>(() => loadGistSettings())
+  const [gistMeta, setGistMeta] = useState<GistMeta>(() => loadGistMeta())
+  const [online, setOnline] = useState(() => (globalThis as any).navigator?.onLine !== false)
+  const [gistBusy, setGistBusy] = useState(false)
+  const [gistStatus, setGistStatus] = useState('')
+  const [gistError, setGistError] = useState('')
   /** v2 를 읽지 못했으면 이 탭에서는 저장하지 않는다(사람이 확인하기 전에 덮어쓰지 않게). */
   const saveBlocked = boot.corrupt
 
@@ -344,7 +370,23 @@ export default function DevPathSurveyScreen() {
     setNotice(`'${m.name}' 를 지웠어요`)
   }
 
-  /** 가져오기: 새 모듈은 추가, 같은 id 가 더 최신이면 덮어쓰기 전에 묻는다(취소하면 새 모듈만). */
+  /** 계획을 적용한다. 같은 id 가 더 최신이면 덮어쓰기 전에 묻는다(취소하면 새 모듈만). 적용한 저장소를 돌려준다. */
+  const applyPlan = (plan: ImportPlan, extra = ''): SurveyStore | null => {
+    if (plan.added.length === 0 && plan.newer.length === 0) {
+      setNotice(`가져올 새 내용이 없어요 · ${describePlan(plan)}${extra}`)
+      return null
+    }
+    const overwrite =
+      plan.newer.length > 0 &&
+      confirmAction(`${describePlan(plan)}${extra}\n\n더 최신인 모듈로 이 기기의 같은 모듈을 덮어쓸까요? 취소하면 새 모듈만 추가해요.`)
+    const next = applyImport(storeRef.current, plan, overwrite)
+    if (!findModule(next, next.activeModuleId)) clearSelection()
+    commit(next)
+    setNotice(`가져왔어요 · 새 모듈 ${plan.added.length}${plan.newer.length ? ` · 덮어쓴 모듈 ${overwrite ? plan.newer.length : 0}` : ''}${extra}`)
+    return next
+  }
+
+  /** 내보낸 JSON 가져오기. */
   const runImport = (text: string) => {
     let incoming
     try {
@@ -352,18 +394,103 @@ export default function DevPathSurveyScreen() {
     } catch (e) {
       return setNotice(`가져오지 못했어요 · ${(e as Error).message}`)
     }
-    const plan = planImport(storeRef.current, incoming)
-    if (plan.added.length === 0 && plan.newer.length === 0) return setNotice(`가져올 새 내용이 없어요 · ${describePlan(plan)}`)
-    const overwrite =
-      plan.newer.length > 0 &&
-      confirmAction(`${describePlan(plan)}
-
-더 최신인 모듈로 이 기기의 같은 모듈을 덮어쓸까요? 취소하면 새 모듈만 추가해요.`)
-    const next = applyImport(storeRef.current, plan, overwrite)
-    if (!findModule(next, next.activeModuleId)) clearSelection()
-    commit(next)
-    setNotice(`가져왔어요 · 새 모듈 ${plan.added.length}${plan.newer.length ? ` · 덮어쓴 모듈 ${overwrite ? plan.newer.length : 0}` : ''}`)
+    applyPlan(planImport(storeRef.current, incoming))
   }
+
+  const saveSettings = (next: GistSettings) => {
+    saveGistSettings(next)
+    setGistSettings(next)
+    setGistError('')
+    setGistStatus(next.token ? '설정을 이 기기에 저장했어요' : '이 기기에서 토큰과 gist id 를 지웠어요')
+  }
+
+  /**
+   * Gist 로 올리기. 먼저 원격을 읽어 모듈별 updatedAt 을 비교하고, 원격이 더 최신이거나 다른 기기에서 만든 모듈이 있으면
+   * 덮어쓰기 전에 확인한다. 실패하면 사유만 보여 주고 이 기기의 조사 내용(localStorage)은 그대로 둔다.
+   */
+  const pushGist = async () => {
+    if (!online) return setGistError('오프라인이에요. 변경은 이 기기에 저장돼 있으니 온라인이 되면 다시 눌러 주세요.')
+    setGistBusy(true)
+    setGistError('')
+    setGistStatus('')
+    try {
+      const local = storeRef.current
+      if (gistSettings.gistId) {
+        const remote = await fetchGistBundle(gistSettings)
+        const c = pushConflicts(local, remote?.modules ?? [], gistMeta)
+        if (c.remoteNewer.length || c.remoteOnly.length) {
+          const lines = [
+            ...(c.remoteNewer.length ? [`Gist 쪽이 더 최신인 모듈 ${c.remoteNewer.length}: ${c.remoteNewer.map((m) => m.name).join(', ')}`] : []),
+            ...(c.remoteOnly.length ? [`Gist 에만 있는 모듈 ${c.remoteOnly.length}: ${c.remoteOnly.map((m) => m.name).join(', ')}`] : []),
+          ]
+          if (!confirmAction(`${lines.join('\n')}\n\n올리면 Gist 의 이 내용이 이 기기 것으로 바뀌어 사라져요. 먼저 "불러오기"를 권해요. 그래도 올릴까요?`)) {
+            setGistStatus('올리기를 멈췄어요. 불러오기로 먼저 합쳐 주세요.')
+            return
+          }
+        }
+      }
+      const id = await pushGistBundle(gistSettings, local)
+      if (id !== gistSettings.gistId) {
+        const next = { ...gistSettings, gistId: id }
+        saveGistSettings(next)
+        setGistSettings(next)
+      }
+      const meta = metaAfterSync(local)
+      saveGistMeta(meta)
+      setGistMeta(meta)
+      setGistStatus(`올렸어요 · 모듈 ${local.modules.length}${id !== gistSettings.gistId ? ' · 비공개 Gist 를 새로 만들었어요' : ''}`)
+    } catch (e) {
+      setGistError(`올리지 못했어요 · ${(e as Error).message}`)
+    } finally {
+      setGistBusy(false)
+    }
+  }
+
+  /** Gist 에서 불러와 합치기. 마지막 동기화 뒤 이 기기에서 지운 모듈은 되살리지 않는다. */
+  const pullGist = async () => {
+    if (!online) return setGistError('오프라인이에요. 온라인이 되면 다시 눌러 주세요.')
+    setGistBusy(true)
+    setGistError('')
+    setGistStatus('')
+    try {
+      const remote = await fetchGistBundle(gistSettings)
+      if (!remote) return setGistStatus('Gist 에 아직 조사 파일이 없어요. 먼저 올려 주세요.')
+      const { plan, skipped } = dropLocallyDeleted(planImport(storeRef.current, remote), gistMeta)
+      const extra = skipped.length ? ` · 이 기기에서 지운 모듈 ${skipped.length}개는 되살리지 않았어요` : ''
+      const next = applyPlan(plan, extra) ?? storeRef.current
+      const remoteById = new Map(remote.modules.map((m) => [m.id, m]))
+      const localAhead = next.modules.some((m) => (remoteById.get(m.id)?.updatedAt ?? -1) < m.updatedAt)
+      const meta = { ...metaAfterSync(next, remote.modules), syncedStoreUpdatedAt: localAhead ? gistMeta.syncedStoreUpdatedAt : next.updatedAt }
+      saveGistMeta(meta)
+      setGistMeta(meta)
+      setGistStatus(`불러왔어요 · Gist 모듈 ${remote.modules.length}${localAhead ? ' · 이 기기에 더 최신인 모듈이 있어 올리기가 필요해요' : ''}`)
+    } catch (e) {
+      setGistError(`불러오지 못했어요 · ${(e as Error).message}`)
+    } finally {
+      setGistBusy(false)
+    }
+  }
+
+  const dirty = hasUnsyncedChanges(store, gistMeta)
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
+
+  // 오프라인이면 변경 표시만 남기고, 온라인으로 돌아오면 올리지 않은 변경이 있을 때 안내한다.
+  useEffect(() => {
+    const w = globalThis as any
+    if (typeof w.addEventListener !== 'function') return
+    const on = () => {
+      setOnline(true)
+      if (dirtyRef.current && loadGistSettings().token) setNotice('다시 온라인이에요. 올리지 않은 변경이 있어요 — "동기화" 탭에서 올리기를 눌러 주세요.')
+    }
+    const off = () => setOnline(false)
+    w.addEventListener('online', on)
+    w.addEventListener('offline', off)
+    return () => {
+      w.removeEventListener('online', on)
+      w.removeEventListener('offline', off)
+    }
+  }, [])
 
   // 지도에서 온 이벤트. 최신 상태를 보게 매번 갱신한 함수를 ref 로 부른다.
   const handlerRef = useRef<(event: unknown) => void>(() => {})
@@ -376,8 +503,10 @@ export default function DevPathSurveyScreen() {
     else if (msg.type === 'move') editActive((m) => moveNode(m, msg.id, msg.lat, msg.lng))
   }
 
+  const lastRenderRef = useRef('')
   const handleReady = useCallback(() => {
     webViewRef.current?.injectJavaScript(SETUP_JS)
+    lastRenderRef.current = ''
     setReady(true)
   }, [])
 
@@ -419,8 +548,11 @@ export default function DevPathSurveyScreen() {
       })
       // 편집 중인 모듈을 맨 나중에 그려 위로 올린다.
       .sort((x, y) => Number(x.active) - Number(y.active))
-    const state = { legacy: { nodes: legacyNodes, lines: legacyLines }, modules, selected, pending, selectedEdge, mode }
-    webViewRef.current?.injectJavaScript(`window.__surveyRender && window.__surveyRender(${JSON.stringify(state)}); true;`)
+    const state = JSON.stringify({ legacy: { nodes: legacyNodes, lines: legacyLines }, modules, selected, pending, selectedEdge, mode })
+    // 메모·이름을 칠 때마다 저장소가 바뀌지만 지도에 그릴 내용은 그대로라 다시 그리지 않는다(폰에서 글자 입력이 끊기지 않게).
+    if (state === lastRenderRef.current) return
+    lastRenderRef.current = state
+    webViewRef.current?.injectJavaScript(`window.__surveyRender && window.__surveyRender(${state}); true;`)
   }, [ready, store, selected, pending, selectedEdge, mode, hidden, legacyToggles, overlay])
 
   const selectedNode = active && selected ? active.nodes.find((n) => n.id === selected) : undefined
@@ -530,6 +662,20 @@ export default function DevPathSurveyScreen() {
       {tab === 'edit' ? editTab : null}
       {tab === 'modules' ? modulesTab : null}
       {tab === 'legacy' ? <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} /> : null}
+      {tab === 'sync' ? (
+        <GistPanel
+          settings={gistSettings}
+          meta={gistMeta}
+          online={online}
+          dirty={dirty}
+          busy={gistBusy}
+          status={gistStatus}
+          error={gistError}
+          onSaveSettings={saveSettings}
+          onPush={pushGist}
+          onPull={pullGist}
+        />
+      ) : null}
       {tab === 'transfer' ? <TransferPanel store={store} initialModuleId={detailId ?? store.activeModuleId} onImport={runImport} onNotice={setNotice} /> : null}
     </ScrollView>
   )

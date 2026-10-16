@@ -97,7 +97,7 @@ export function darken(hex: string, amount = 0.35): string {
   return `#${[ch(16), ch(8), ch(0)].map((v) => v.toString(16).padStart(2, '0')).join('')}`.toUpperCase()
 }
 
-// ── id ──
+// id
 
 /** 모듈 id. 기기 두 대에서 따로 만들어도 겹치지 않게 시각 + 난수로 만든다. */
 export function newModuleId(now = Date.now(), rand: () => number = Math.random): string {
@@ -120,7 +120,7 @@ function nextSeq(ids: readonly string[], prefix: string): number {
 export const nextNodeId = (module: SurveyModule) => `${module.id}-n${nextSeq(module.nodes.map((n) => n.id), `${module.id}-n`)}`
 export const nextEdgeId = (module: SurveyModule) => `${module.id}-e${nextSeq(module.edges.map((e) => e.id), `${module.id}-e`)}`
 
-// ── 정리(불러온 값 검증) ──
+// 정리(불러온 값 검증)
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -206,7 +206,7 @@ export function normalizeStore(raw: any, now = Date.now()): SurveyStore {
   return store
 }
 
-// ── v1 초안 변환 ──
+// v1 초안 변환
 
 export interface MigrationReport {
   /** v1 에서 새로 찍은 지점 수 / 변환된 모듈의 v1 지점 수(ref 복사본 제외). */
@@ -312,7 +312,7 @@ export function migrateV1(
   }
 }
 
-// ── 저장 ──
+// 저장
 
 function defaultStorage(): StorageLike | null {
   try {
@@ -378,7 +378,7 @@ export function loadStore(
   return { store, migrated, corrupt: false }
 }
 
-// ── 편집(모두 새 객체를 돌려준다) ──
+// 편집(모두 새 객체를 돌려준다)
 
 export function updateModule(store: SurveyStore, id: string, fn: (m: SurveyModule) => SurveyModule, now = Date.now()): SurveyStore {
   let changed = false
@@ -463,7 +463,7 @@ export const setEdgeMemo = (module: SurveyModule, id: string, memo: string): Sur
   edges: module.edges.map((e) => (e.id === id ? withMemo(e, memo) : e)),
 })
 
-// ── 확정(done) ──
+// 확정(done)
 
 /** done 으로 바꿀 수 없는 이유. 빈 배열이면 바꿀 수 있다. */
 export function doneProblems(module: SurveyModule): string[] {

@@ -72,3 +72,79 @@ test('모듈 코드 조각: 기존 지점 복사본은 원래 id 로, 간선 메
   assert.match(text, /\['mA-n1', 'n12'\], \/\/ 경사로/)
   assert.match(text, /학생회관 G동 B1/)
 })
+
+// Gist(네트워크는 모의 fetch)
+
+function fakeFetch(handler) {
+  const calls = []
+  const fn = async (url, init = {}) => {
+    calls.push({ url, init })
+    const { status = 200, body = {} } = await handler(url, init)
+    return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) }
+  }
+  fn.calls = calls
+  return fn
+}
+
+test('Gist 올리기: id 가 있으면 PATCH, 없으면 비공개로 새로 만든다. 토큰은 헤더에만', async () => {
+  const store = { ...S.emptyStore(0), modules: [moduleOf('mA', 1)] }
+  const patch = fakeFetch(() => ({ body: { id: 'g1' } }))
+  assert.equal(await Y.pushGistBundle({ token: 'TKN', gistId: 'g1' }, store, patch, 5), 'g1')
+  assert.equal(patch.calls[0].init.method, 'PATCH')
+  assert.match(patch.calls[0].url, /\/gists\/g1$/)
+  assert.equal(patch.calls[0].init.headers.Authorization, 'Bearer TKN')
+  assert.ok(!patch.calls[0].init.body.includes('TKN'))
+  const files = JSON.parse(patch.calls[0].init.body).files
+  assert.equal(Y.parseBundle(files[Y.GIST_FILE].content).modules[0].id, 'mA')
+
+  const create = fakeFetch(() => ({ status: 201, body: { id: 'gNew' } }))
+  assert.equal(await Y.pushGistBundle({ token: 'TKN', gistId: '' }, store, create, 5), 'gNew')
+  assert.equal(create.calls[0].init.method, 'POST')
+  assert.equal(JSON.parse(create.calls[0].init.body).public, false)
+})
+
+test('Gist 실패 사유는 사람이 읽을 문구로, 토큰은 담지 않는다', async () => {
+  const settings = { token: 'SECRET-TOKEN', gistId: 'g1' }
+  for (const [status, pattern] of [[401, /401/], [403, /403/], [404, /404/], [502, /502/]]) {
+    await assert.rejects(Y.fetchGistBundle(settings, fakeFetch(() => ({ status }))), (e) => {
+      assert.ok(e instanceof Y.GistError)
+      assert.match(e.message, pattern)
+      assert.ok(!e.message.includes('SECRET-TOKEN'))
+      return true
+    })
+  }
+  const down = async () => {
+    throw new TypeError('Failed to fetch')
+  }
+  await assert.rejects(Y.fetchGistBundle(settings, down), /닿지 못했어요/)
+  await assert.rejects(Y.pushGistBundle({ token: '', gistId: 'g1' }, S.emptyStore(0), down), /토큰/)
+})
+
+test('Gist 불러오기: 파일 내용을 읽고, 파일이 없으면 null', async () => {
+  const content = Y.serializeAll({ ...S.emptyStore(0), modules: [moduleOf('mR', 3)] }, 1)
+  const ok = fakeFetch(() => ({ body: { id: 'g1', files: { [Y.GIST_FILE]: { content } } } }))
+  assert.equal((await Y.fetchGistBundle({ token: 't', gistId: 'g1' }, ok)).modules[0].id, 'mR')
+  const empty = fakeFetch(() => ({ body: { id: 'g1', files: {} } }))
+  assert.equal(await Y.fetchGistBundle({ token: 't', gistId: 'g1' }, empty), null)
+})
+
+test('올리기 전 충돌: 원격이 더 최신인 모듈, 다른 기기에서 새로 만든 모듈. 이 기기에서 지운 모듈은 충돌 아님', () => {
+  const store = { ...S.emptyStore(0), modules: [moduleOf('mA', 10), moduleOf('mB', 10)] }
+  const meta = { lastSyncAt: 1, syncedStoreUpdatedAt: 1, synced: { mA: 10, mB: 10, mGone: 7 } }
+  const remote = [moduleOf('mA', 12), moduleOf('mB', 9), moduleOf('mGone', 7), moduleOf('mNew', 3)]
+  const c = Y.pushConflicts(store, remote, meta)
+  assert.deepEqual(c.remoteNewer.map((m) => m.id), ['mA'])
+  assert.deepEqual(c.remoteOnly.map((m) => m.id), ['mNew'])
+
+  const { plan, skipped } = Y.dropLocallyDeleted(Y.planImport(store, { modules: remote }), meta)
+  assert.deepEqual(skipped.map((m) => m.id), ['mGone'])
+  assert.deepEqual(plan.added.map((m) => m.id), ['mNew'])
+})
+
+test('올리지 않은 변경 표시', () => {
+  const store = { ...S.emptyStore(0), modules: [moduleOf('mA', 10)], updatedAt: 10 }
+  assert.equal(Y.hasUnsyncedChanges(store, Y.EMPTY_META), true)
+  const meta = Y.metaAfterSync(store, [], 11)
+  assert.equal(Y.hasUnsyncedChanges(store, meta), false)
+  assert.equal(Y.hasUnsyncedChanges({ ...store, updatedAt: 12 }, meta), true)
+})

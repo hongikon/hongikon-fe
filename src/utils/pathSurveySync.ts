@@ -109,7 +109,7 @@ export function describePlan(plan: ImportPlan): string {
   return parts.join(' · ')
 }
 
-// ── 브라우저 도우미(웹 전용 화면) ──
+// 브라우저 도우미(웹 전용 화면)
 
 /** 파일로 저장(다운로드). 웹이 아니면 false. */
 export function downloadText(filename: string, text: string): boolean {
@@ -157,3 +157,187 @@ export const stamp = (now = new Date()) =>
   `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(
     now.getMinutes(),
   ).padStart(2, '0')}`
+
+// GitHub Gist 동기화(조사자 1명 가정)
+// 토큰과 gist id 는 사용자가 화면에서 넣고 그 기기 localStorage 에만 둔다. 코드·로그·오류 문구에 토큰을 넣지 않는다.
+
+export const GIST_SETTINGS_KEY = 'hongikon.pathSurvey.gist'
+export const GIST_META_KEY = 'hongikon.pathSurvey.gistMeta'
+export const GIST_FILE = 'hongikon-path-survey.json'
+const GIST_API = 'https://api.github.com/gists'
+const GIST_TIMEOUT_MS = 20000
+
+export interface GistSettings {
+  token: string
+  gistId: string
+}
+
+export interface GistMeta {
+  /** 마지막으로 올리거나 불러온 시각. */
+  lastSyncAt: number | null
+  /** 그때 저장소의 updatedAt — 이보다 지금 저장소가 새로우면 올리지 않은 변경이 있다. */
+  syncedStoreUpdatedAt: number | null
+  /** 그때 모듈별 updatedAt. 이 기기에서 지운 모듈과 다른 기기에서 새로 만든 모듈을 가르는 데 쓴다. */
+  synced: Record<string, number>
+}
+
+export const EMPTY_META: GistMeta = { lastSyncAt: null, syncedStoreUpdatedAt: null, synced: {} }
+
+type Storage = { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem?(k: string): void }
+const ls = (): Storage | null => {
+  try {
+    return (globalThis as any).localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+function readJSON<T>(key: string, fallback: T, storage: Storage | null): T {
+  try {
+    const raw = storage?.getItem(key)
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback
+  } catch {
+    return fallback
+  }
+}
+
+export const loadGistSettings = (storage = ls()): GistSettings => {
+  const s = readJSON<GistSettings>(GIST_SETTINGS_KEY, { token: '', gistId: '' }, storage)
+  return { token: typeof s.token === 'string' ? s.token : '', gistId: typeof s.gistId === 'string' ? s.gistId : '' }
+}
+
+export function saveGistSettings(settings: GistSettings, storage = ls()): void {
+  try {
+    if (!settings.token && !settings.gistId) storage?.removeItem?.(GIST_SETTINGS_KEY)
+    else storage?.setItem(GIST_SETTINGS_KEY, JSON.stringify({ token: settings.token.trim(), gistId: settings.gistId.trim() }))
+  } catch {
+    // 저장이 막혀 있으면 이번 탭에서만 쓴다.
+  }
+}
+
+export const loadGistMeta = (storage = ls()): GistMeta => readJSON<GistMeta>(GIST_META_KEY, EMPTY_META, storage)
+
+export function saveGistMeta(meta: GistMeta, storage = ls()): void {
+  try {
+    storage?.setItem(GIST_META_KEY, JSON.stringify(meta))
+  } catch {
+    // 표시용 정보라 저장이 안 돼도 조사 내용에는 영향이 없다.
+  }
+}
+
+export function metaAfterSync(store: SurveyStore, remoteModules: readonly SurveyModule[] = [], now = Date.now()): GistMeta {
+  const synced: Record<string, number> = {}
+  for (const m of remoteModules) synced[m.id] = m.updatedAt
+  for (const m of store.modules) synced[m.id] = Math.max(synced[m.id] ?? 0, m.updatedAt)
+  return { lastSyncAt: now, syncedStoreUpdatedAt: store.updatedAt, synced }
+}
+
+export const hasUnsyncedChanges = (store: SurveyStore, meta: GistMeta) =>
+  meta.syncedStoreUpdatedAt === null ? store.modules.length > 0 : store.updatedAt > meta.syncedStoreUpdatedAt
+
+/** 사람이 읽을 사유를 담은 실패. 토큰은 넣지 않는다. */
+export class GistError extends Error {}
+
+const isOffline = () => (globalThis as any).navigator?.onLine === false
+
+async function gistFetch(url: string, init: { method?: string; body?: string }, token: string, fetchImpl: typeof fetch): Promise<any> {
+  if (isOffline()) throw new GistError('오프라인이에요. 변경은 이 기기에 저장돼 있으니 온라인이 되면 다시 눌러 주세요.')
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), GIST_TIMEOUT_MS) : null
+  let res: Response
+  try {
+    res = await fetchImpl(url, {
+      method: init.method ?? 'GET',
+      body: init.body,
+      signal: controller?.signal,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    })
+  } catch (e) {
+    const aborted = (e as any)?.name === 'AbortError'
+    throw new GistError(aborted ? `GitHub 응답이 ${GIST_TIMEOUT_MS / 1000}초 안에 오지 않았어요.` : 'GitHub 에 닿지 못했어요(네트워크 연결을 확인해 주세요).')
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+  if (res.ok) return res.json()
+  const reasons: Record<number, string> = {
+    401: '토큰이 맞지 않거나 만료됐어요(401).',
+    403: '토큰에 Gist 권한이 없거나 GitHub 요청 한도를 넘었어요(403).',
+    404: 'Gist 를 찾지 못했어요. gist id 와, 그 Gist 가 이 토큰 계정 것인지 확인해 주세요(404).',
+    422: 'GitHub 가 보낸 내용을 받지 않았어요(422).',
+  }
+  throw new GistError(reasons[res.status] ?? `GitHub 오류 ${res.status}${res.status >= 500 ? ' — 잠시 뒤 다시 시도해 주세요' : ''}.`)
+}
+
+/** Gist 에 올라간 조사 내용. 파일이 없으면 null. */
+export async function fetchGistBundle(
+  settings: GistSettings,
+  fetchImpl: typeof fetch = (globalThis as any).fetch,
+): Promise<{ modules: SurveyModule[]; customColors: string[] } | null> {
+  if (!settings.gistId.trim()) throw new GistError('gist id 를 먼저 넣어 주세요.')
+  const gist = await gistFetch(`${GIST_API}/${encodeURIComponent(settings.gistId.trim())}`, {}, settings.token.trim(), fetchImpl)
+  const file = gist?.files?.[GIST_FILE]
+  if (!file) return null
+  let content: string = file.content ?? ''
+  if (file.truncated && file.raw_url) {
+    try {
+      const raw = await fetchImpl(file.raw_url)
+      if (!raw.ok) throw new Error()
+      content = await raw.text()
+    } catch {
+      throw new GistError('Gist 파일이 커서 따로 받아야 하는데 받지 못했어요.')
+    }
+  }
+  try {
+    return parseBundle(content)
+  } catch (e) {
+    throw new GistError(`Gist 의 ${GIST_FILE} 을 읽지 못했어요 · ${(e as Error).message}`)
+  }
+}
+
+/** 올린다. gist id 가 비어 있으면 비공개 Gist 를 새로 만들고 그 id 를 돌려준다. */
+export async function pushGistBundle(
+  settings: GistSettings,
+  store: SurveyStore,
+  fetchImpl: typeof fetch = (globalThis as any).fetch,
+  now = Date.now(),
+): Promise<string> {
+  if (!settings.token.trim()) throw new GistError('GitHub 토큰을 먼저 넣어 주세요.')
+  const files = { [GIST_FILE]: { content: serializeAll(store, now) } }
+  const id = settings.gistId.trim()
+  const gist = id
+    ? await gistFetch(`${GIST_API}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ files }) }, settings.token.trim(), fetchImpl)
+    : await gistFetch(GIST_API, { method: 'POST', body: JSON.stringify({ description: '홍익온 경로망 조사', public: false, files }) }, settings.token.trim(), fetchImpl)
+  if (typeof gist?.id !== 'string') throw new GistError('GitHub 응답에 gist id 가 없어요.')
+  return gist.id
+}
+
+export interface PushConflicts {
+  /** 원격 쪽 updatedAt 이 이 기기보다 새로운 모듈 — 올리면 원격 변경이 사라진다. */
+  remoteNewer: SurveyModule[]
+  /** 원격에만 있고, 마지막 동기화 뒤 이 기기에서 지운 것도 아닌 모듈 — 다른 기기에서 새로 만든 것. */
+  remoteOnly: SurveyModule[]
+}
+
+export function pushConflicts(store: SurveyStore, remote: readonly SurveyModule[], meta: GistMeta): PushConflicts {
+  const out: PushConflicts = { remoteNewer: [], remoteOnly: [] }
+  for (const r of remote) {
+    const local = store.modules.find((m) => m.id === r.id)
+    if (local) {
+      if (r.updatedAt > local.updatedAt) out.remoteNewer.push(r)
+    } else if (!(r.id in meta.synced) || r.updatedAt > meta.synced[r.id]) {
+      out.remoteOnly.push(r)
+    }
+  }
+  return out
+}
+
+/** 불러올 때, 마지막 동기화 뒤 이 기기에서 지운 모듈(원격도 그 뒤 바뀌지 않음)은 되살리지 않는다. */
+export function dropLocallyDeleted(plan: ImportPlan, meta: GistMeta): { plan: ImportPlan; skipped: SurveyModule[] } {
+  const skipped = plan.added.filter((m) => m.id in meta.synced && m.updatedAt <= meta.synced[m.id])
+  return { plan: { ...plan, added: plan.added.filter((m) => !skipped.includes(m)) }, skipped }
+}
