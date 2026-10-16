@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Linking,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +19,9 @@ import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
+import { routeAsk, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
+import { submitFeedback } from "../../apis/feedback";
+import { getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
 import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
@@ -26,23 +31,72 @@ import * as haptics from "../../lib/haptics";
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
 const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
 
+
 /**
  * 대화 한 줄. 고객센터 챗봇처럼 봇이 버튼으로 되묻고(question), 고른 버튼은 사용자 말풍선으로 남는다.
  * 끝 답(answer) 뒤에는 '해결됐나요?'(feedback)를 붙이고, 아니라고 하면 맡은 부서(offices)를 이어 보여 준다.
  */
 type ChatMessage =
   | { id: number; role: "user"; text: string }
-  | { id: number; role: "question"; node: AskQuestionNode; flowId: string; chosen: string | null }
-  | { id: number; role: "answer"; node: AskAnswerNode; flowId: string; checkedAt: string; question: string; followed: boolean }
+  | { id: number; role: "question"; node: AskQuestionNode; flowId: string; nodeId: string; chosen: string | null; viaServer: boolean }
+  | {
+      id: number;
+      role: "answer";
+      node: AskAnswerNode;
+      flowId: string;
+      nodeId: string;
+      checkedAt: string;
+      question: string;
+      followed: boolean;
+      viaServer: boolean;
+    }
   | { id: number; role: "feedback"; question: string; resolved: boolean | null }
   | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
-  | { id: number; role: "text"; text: string };
+  /** 서버가 안내 원문 안에서만 쓴 답. sources 는 근거 안내('근거 안내 보기'로 원문을 펼친다). */
+  | {
+      id: number;
+      role: "reply";
+      text: string;
+      found: boolean;
+      sources: { flowId: string; nodeId: string }[];
+      /** 근거로 쓴 학교 공지·학식 — 근거 목록에 링크로 붙는다. */
+      links: { title: string; url: string | null; date: string | null }[];
+      question: string;
+      /** 서버가 아직 답을 만들고 있다(진행 단계와 답 글자가 실시간으로 바뀐다). */
+      streaming: boolean;
+      /** 지금 하는 일 한 줄(흘러나오는 동안 제자리에서 바뀐다). 쉬운 말만 — 안내 id·검색어·문장 조각은 보이지 않는다. */
+      status: string;
+      /** 서버가 실제로 한 일(관련 안내 확인·공지 읽음·답 정리 …). 끝나면 '살펴본 과정'으로 접는다. */
+      steps: string[];
+      stepsOpen: boolean;
+    }
+  | { id: number; role: "text"; text: string }
+  /**
+   * 해결이 안 됐을 때 운영진에게 넘기기(기존 문의하기 /feedback, 게스트). 보낼 내용(질문·홍익온 답·근거)을 미리 보여 주고,
+   * 학생이 더 알고 싶은 점·답 받을 이메일(선택)을 적어 직접 보내기를 눌러야만 보낸다.
+   */
+  | {
+      id: number;
+      role: "handoff";
+      question: string;
+      answer: string;
+      sources: string[];
+      note: string;
+      contact: string;
+      status: "editing" | "sending" | "sent";
+      error: string | null;
+    };
 
 type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
 
 interface AskChatProps {
   /** 있으면 머리에 뒤로 가기 버튼을 단다. */
   onClose?: () => void;
+  /**
+   * 서버 LLM 분류(/ask/route)에 보낼 /dev 암호키. 있으면 낱말로 못 찾은 질문과 앞 대화를 가리키는 질문을 서버에 묻는다.
+   * 없으면(운영 앱) 지금처럼 앱 안의 낱말 찾기만 한다.
+   */
+  serverKey?: string;
 }
 
 /**
@@ -51,51 +105,185 @@ interface AskChatProps {
  * ① 안내 흐름(`ASK_FLOWS` — 학교 안내 페이지·운영진 확인)에 맞으면 필요한 것만 버튼으로 되물어 답하고 그 학교 페이지로 잇는다.
  * ② 흐름이 없으면 학교 홈페이지 부서 안내에서 그 일을 맡은 부서와 업무별 전화를 보여 준다.
  * 네트워크 없이 앱에 담아 둔 표만 훑는다 — 답을 지어내지 않고, 없으면 없다고 한다.
+ * ③ serverKey 가 있으면(/dev/ask) 모든 질문을 서버에 묻는다. 서버는 앞 대화를 보고 필요한 안내를 골라 그 안내 원문 안에서만
+ *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
+ *    되묻기 단계면 ①처럼 버튼으로 되묻고, 서버가 실패하거나 앱이 모르는 id 면 ①·②로 돌아간다.
  */
-export default function AskChat({ onClose }: AskChatProps) {
+export default function AskChat({ onClose, serverKey }: AskChatProps) {
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
+  const [pending, setPending] = useState(false);
   const nextId = useRef(1);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
   const { facilities } = useMapData();
 
-  const push = (...items: NewMessage[]) =>
-    setMessages((prev) => [...prev, ...items.map((item) => ({ ...item, id: nextId.current++ }) as ChatMessage)]);
+  /** 말풍선을 잇고 붙인 id 를 돌려준다. id 는 상태 갱신 함수 밖에서 매긴다(개발 모드에서 갱신 함수가 두 번 돌아도 겹치지 않게). */
+  const push = (...items: NewMessage[]) => {
+    const added = items.map((item) => ({ ...item, id: nextId.current++ }) as ChatMessage);
+    setMessages((prev) => [...prev, ...added]);
+    return added.map((item) => item.id);
+  };
+
+  /**
+   * 흘려받기 진행 이벤트 → 지금 하는 일 한 줄(status)과 '살펴본 과정' 한 줄(step). 쉬운 말만 쓴다 — 안내 id·검색어·안내 첫 문장 조각을
+   * 그대로 보였더니 알아보기 힘들었다(10-16 사용자 지적). 사람이 읽을 수 있는 공지 제목·학식 날짜만 과정에 남긴다.
+   */
+  const stepInfo = (event: AskStreamEvent): { status: string; step: string } | null => {
+    switch (event.event) {
+      case "picked":
+        return { status: "관련 문서를 읽고 있어요", step: `관련 안내 ${event.data.titles.length}개 확인` };
+      case "search":
+        return { status: "관련 문서를 더 찾고 있어요", step: "다른 안내 찾아봄" };
+      case "read":
+        return { status: "찾은 문서를 읽고 있어요", step: "안내 원문 읽음" };
+      case "noticeSearch":
+        return { status: "학교 공지를 찾고 있어요", step: "학교 공지 찾아봄" };
+      case "noticeRead":
+        return { status: "공지를 읽고 있어요", step: `공지 읽음 · ${event.data.title}` };
+      case "cafeteria":
+        return { status: "학식 메뉴를 확인하고 있어요", step: `학식 확인 · ${event.data.date}` };
+      case "writing":
+        return { status: "답을 정리하고 있어요", step: "답 정리" };
+      default:
+        return null;
+    }
+  };
 
   /** 흐름의 한 단계를 대화에 잇는다. 끝 답이면 '해결됐나요?'를 붙인다. */
-  const stepMessages = (flowId: string, nodeId: string, question: string): NewMessage[] => {
+  const stepMessages = (flowId: string, nodeId: string, question: string, viaServer = false): NewMessage[] => {
     const flow = ALL_ASK_FLOWS.find((item) => item.id === flowId);
     const node = flow?.nodes[nodeId];
     if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
-    if (node.kind === "question") return [{ role: "question", node, flowId, chosen: null }];
+    if (node.kind === "question") return [{ role: "question", node, flowId, nodeId, chosen: null, viaServer }];
     return [
-      { role: "answer", node, flowId, checkedAt: flow.checkedAt, question, followed: false },
+      { role: "answer", node, flowId, nodeId, checkedAt: flow.checkedAt, question, followed: false, viaServer },
       { role: "feedback", question, resolved: null },
     ];
   };
 
-  const ask = (raw: string) => {
-    const question = raw.trim();
-    if (!question) return;
-    haptics.selection();
-    setInput("");
-    const matched = matchAskFlow(question);
-    if (matched) {
-      push({ role: "user", text: question }, ...stepMessages(matched.flow.id, matched.nodeId, question));
-      return;
-    }
+  /** 낱말 찾기로 답한다 — 흐름이 맞으면 그 단계, 없으면 맡은 부서. */
+  const answerLocally = (question: string, matched: ReturnType<typeof matchAskFlow>): NewMessage[] => {
+    if (matched) return stepMessages(matched.flow.id, matched.nodeId, question);
     const offices = askOffices(facilities, question);
-    push(
-      { role: "user", text: question },
+    return [
       offices.length > 0
         ? { role: "offices", intro: "이 일을 맡은 부서예요. 전화하거나 학교 홈페이지의 부서 안내를 확인해 보세요.", offices }
         : {
             role: "text",
             text: `아직 '${question}'에 맞는 안내를 못 찾았어요. 학교 홈페이지 안내와 부서 업무로 찾고 있어요 — 다른 낱말로 물어봐 주세요.`,
           },
-    );
+    ];
+  };
+
+  /** 서버에 넘길 앞 대화(최근 3턴) — 사용자 말, 그 뒤에 처음 열린 안내, 서버가 써 준 답. */
+  const recentTurns = (): AskRouteTurn[] => {
+    const turns: AskRouteTurn[] = [];
+    for (const item of messages) {
+      const last = turns[turns.length - 1];
+      if (item.role === "user") turns.push({ question: item.text.slice(0, 200) });
+      else if (last && !last.nodeId && (item.role === "question" || item.role === "answer")) {
+        last.nodeId = `${item.flowId}/${item.nodeId}`;
+      } else if (last && !last.answer && item.role === "reply") {
+        if (!last.nodeId && item.sources[0]) last.nodeId = `${item.sources[0].flowId}/${item.sources[0].nodeId}`;
+        last.answer = item.text.slice(0, 1000);
+      }
+    }
+    return turns.slice(-3);
+  };
+
+  /** 서버가 고른 '흐름/단계' id 를 앱의 흐름에서 찾는다. 'none' 이거나 앱이 모르는 id(서버 목록이 더 새것)면 null. */
+  const findStep = (id: string): { flowId: string; nodeId: string } | null => {
+    const slash = id.indexOf("/");
+    if (slash < 0) return null;
+    const flowId = id.slice(0, slash);
+    const nodeId = id.slice(slash + 1);
+    return ALL_ASK_FLOWS.find((flow) => flow.id === flowId)?.nodes[nodeId] ? { flowId, nodeId } : null;
+  };
+
+  const ask = async (raw: string) => {
+    const question = raw.trim();
+    if (!question || pending) return;
+    haptics.selection();
+    setInput("");
+    const matched = matchAskFlow(question);
+    const history = recentTurns();
+    push({ role: "user", text: question });
+    if (!serverKey) {
+      push(...answerLocally(question, matched));
+      return;
+    }
+    setPending(true);
+    // 답 말풍선을 먼저 띄우고 서버가 하는 일·답 글자를 흘려받아 채운다. 답이 없으면(되묻기·none·실패) 지우고 아래로.
+    const [liveId] = push({
+      role: "reply",
+      text: "",
+      found: true,
+      sources: [],
+      links: [],
+      question,
+      streaming: true,
+      status: "질문을 이해하고 있어요",
+      steps: ["질문 이해"],
+      stepsOpen: false,
+    });
+    const patchLive = (patch: (item: Extract<ChatMessage, { role: "reply" }>) => Partial<Extract<ChatMessage, { role: "reply" }>>) =>
+      setMessages((prev) => prev.map((item) => (item.id === liveId && item.role === "reply" ? { ...item, ...patch(item) } : item)));
+    const removeLive = () => setMessages((prev) => prev.filter((item) => item.id !== liveId));
+    try {
+      const hint = matched ? `${matched.flow.id}/${matched.nodeId}` : undefined;
+      let heard = false;
+      let result: AskRouteResult;
+      try {
+        result = await streamAsk(question.slice(0, 200), history, serverKey, hint, (event) => {
+          heard = true;
+          if (event.event === "delta") patchLive((item) => ({ text: item.text + event.data.text }));
+          else if (event.event === "reset") patchLive(() => ({ text: "" }));
+          else {
+            const info = stepInfo(event);
+            if (info) {
+              // 같은 일이 잇따르면(공지를 여러 번 찾기 등) 과정에는 한 번만 남긴다.
+              patchLive((item) => ({
+                status: info.status,
+                steps: item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
+              }));
+            }
+          }
+        });
+      } catch (error) {
+        // 흘려받기 자체가 안 되면(이벤트를 하나도 못 받음) 한 번에 받기로. 도중에 끊겼으면 같은 질문을 두 번 묻지 않는다.
+        if (heard) throw error;
+        result = await routeAsk(question.slice(0, 200), history, serverKey, hint);
+      }
+      const sources = (result.nodeIds.length > 0 ? result.nodeIds : [result.nodeId])
+        .map(findStep)
+        .filter((step): step is { flowId: string; nodeId: string } => step !== null);
+      if (result.answer && sources.length > 0) {
+        patchLive(() => ({
+          text: result.answer ?? "",
+          found: result.found !== false,
+          sources,
+          links: result.references ?? [],
+          streaming: false,
+        }));
+        push({ role: "feedback", question, resolved: null });
+        return;
+      }
+      removeLive();
+      const step = findStep(result.nodeId);
+      if (step) {
+        push(...stepMessages(step.flowId, step.nodeId, question, true));
+        return;
+      }
+    } catch {
+      // 서버가 꺼졌거나(503) 한도(429)·네트워크 오류 — 아래 낱말 찾기로 답한다.
+      removeLive();
+    } finally {
+      setPending(false);
+    }
+    push(...answerLocally(question, matched));
   };
 
   const choose = (message: Extract<ChatMessage, { role: "question" }>, label: string, next: string) => {
@@ -105,6 +293,30 @@ export default function AskChat({ onClose }: AskChatProps) {
     const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
+  };
+
+  /**
+   * 서버 답 아래 '출처' — 답에 실제로 쓴 안내를 학교 홈페이지 페이지로 묶어(같은 페이지는 한 줄) 실제 페이지 이름으로 보이고,
+   * 근거로 쓴 공지·학식을 잇는다. 누르면 원문 페이지가 열린다. 안내 첫 문장을 제목으로 쓰거나 근거 원문을 대화에 펼치던 것은
+   * 와닿지 않고 답이 연달아 나온 것처럼 보여 뺐다(10-16 사용자 지적).
+   */
+  const sourceLinks = (message: Extract<ChatMessage, { role: "reply" }>) => {
+    const seen = new Set<string>();
+    const out: { key: string; title: string; url: string | null; date: string | null; kind: "page" | "notice" | "menu" }[] = [];
+    for (const source of message.sources) {
+      const node = ALL_ASK_FLOWS.find((flow) => flow.id === source.flowId)?.nodes[source.nodeId];
+      const link = node?.kind === "answer" ? node.links?.[0] : undefined;
+      if (!link || seen.has(link.url)) continue;
+      seen.add(link.url);
+      out.push({ key: link.url, title: link.label, url: link.url, date: null, kind: "page" });
+    }
+    for (const link of message.links) {
+      const key = link.url ?? link.title;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ key, title: link.title, url: link.url, date: link.date, kind: link.title.startsWith("학식 ") ? "menu" : "notice" });
+    }
+    return out;
   };
 
   /** 답 아래 '이어서 물어보기' 버튼. 한 번 누르면 그 답의 버튼은 접는다. */
@@ -117,7 +329,7 @@ export default function AskChat({ onClose }: AskChatProps) {
 
   const renderSection = (section: AskSection, key: string) => (
     <View key={key} style={styles.section}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
+      {section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null}
       {section.table ? (
         <View style={styles.table}>
           {[section.table.head, ...section.table.rows].map((row, rowIndex) => (
@@ -137,11 +349,136 @@ export default function AskChat({ onClose }: AskChatProps) {
       {section.items?.map((itemText, index) => (
         <View key={index} style={styles.itemRow}>
           <Text style={[styles.itemMark, section.ordered && styles.itemNumber]}>{section.ordered ? `${index + 1}` : "•"}</Text>
-          <Text style={styles.itemText}>{itemText}</Text>
+          <Text style={styles.itemText}>{itemLabel(itemText)}</Text>
         </View>
       ))}
     </View>
   );
+
+  /** '라벨: 내용' 항목은 라벨을 굵게(서버 답이 '- 자격·조건: …'처럼 쓴다). */
+  const itemLabel = (itemText: string) => {
+    const match = itemText.match(/^([^:：\n]{1,16})[:：]\s+([\s\S]+)$/);
+    return match ? (
+      <>
+        <Text style={styles.itemLabel}>{match[1]}: </Text>
+        {match[2]}
+      </>
+    ) : (
+      itemText
+    );
+  };
+
+  /**
+   * 서버 답 글을 안내 카드 모양으로 — 첫 단락은 요약, '[소제목]' 줄은 소제목, '- '·'1. ' 줄은 항목. 흘러나오는 도중에도 같은 모양으로 그린다.
+   * 처음엔 글을 통째로 보여 줬더니 예전 안내 카드보다 읽기 힘들었다(10-16 사용자 지적).
+   */
+  const parseReply = (text: string): { lead: string; sections: AskSection[] } => {
+    const lead: string[] = [];
+    const sections: { title: string; items: string[]; ordered?: boolean }[] = [];
+    let current: { title: string; items: string[]; ordered?: boolean } | null = null;
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      const heading = line.match(/^\[(.+)\]$/);
+      if (heading) {
+        current = { title: heading[1], items: [] };
+        sections.push(current);
+        continue;
+      }
+      const bullet = line.match(/^[-•·]\s+([\s\S]*)$/);
+      const numbered = line.match(/^\d+[.)]\s+([\s\S]*)$/);
+      if (bullet || numbered) {
+        if (!current) {
+          current = { title: "", items: [] };
+          sections.push(current);
+        }
+        if (numbered && current.items.length === 0) current.ordered = true;
+        current.items.push((bullet ?? numbered)![1]);
+        continue;
+      }
+      if (current) current.items.push(line);
+      else lead.push(line);
+    }
+    return { lead: lead.join(" "), sections };
+  };
+
+  /** 서버 답 — 예전 안내 카드처럼 요약·소제목·항목, 그 아래 근거 안내의 위치·담당 전화·학교 페이지와 공지 버튼. */
+  const renderReply = (item: Extract<ChatMessage, { role: "reply" }>) => {
+    if (item.streaming && !item.text) {
+      // Claude 앱처럼 지금 하는 일 한 줄만 제자리에서 바꿔 가며 깜빡인다(쌓지 않는다).
+      return (
+        <View style={styles.botBubble}>
+          <ThinkingLine text={item.status} />
+        </View>
+      );
+    }
+    const { lead, sections } = parseReply(item.text);
+    const nodes = item.streaming
+      ? []
+      : item.sources
+          .map((source) => ALL_ASK_FLOWS.find((flow) => flow.id === source.flowId)?.nodes[source.nodeId])
+          .filter((node): node is AskAnswerNode => node?.kind === "answer");
+    const phones = nodes
+      .flatMap((node) => node.phones ?? [])
+      .filter((phone, index, all) => all.findIndex((other) => other.phone === phone.phone) === index)
+      .slice(0, 3);
+    const place = nodes.find((node) => node.facilityId)?.facilityId;
+    const links = item.streaming ? [] : sourceLinks(item).filter((source) => source.url);
+    const cursor = item.streaming ? <Text style={styles.cursor}>▍</Text> : null;
+    return (
+      <View style={styles.botBubble}>
+        {lead ? (
+          <Text style={[styles.botText, sections.length > 0 && styles.lead]}>
+            {lead}
+            {sections.length === 0 ? cursor : null}
+          </Text>
+        ) : null}
+        {sections.map((section, index) => renderSection(section, `${index}`))}
+        {sections.length > 0 ? cursor : null}
+        {place ? renderPlace(place) : null}
+        {phones.map((phone) => renderPhone(phone.label, phone.phone, phone.phone))}
+        {links.map((source) =>
+          renderLink({ label: source.date ? `${source.title} · ${source.date}` : source.title, url: source.url as string }, source.key),
+        )}
+        {!item.streaming && item.steps.length > 1 ? (
+          <>
+            <TouchableOpacity
+              style={styles.sourceToggle}
+              activeOpacity={0.7}
+              onPress={() =>
+                setMessages((prev) =>
+                  prev.map((message) =>
+                    message.id === item.id && message.role === "reply" ? { ...message, stepsOpen: !message.stepsOpen } : message,
+                  ),
+                )
+              }
+              accessibilityRole="button"
+              accessibilityState={{ expanded: item.stepsOpen }}
+              accessibilityLabel={`살펴본 과정 ${item.steps.length}단계 ${item.stepsOpen ? "접기" : "보기"}`}
+            >
+              <Text style={styles.sourceToggleText}>살펴본 과정 {item.steps.length}단계</Text>
+              <Ionicons name={item.stepsOpen ? "chevron-up" : "chevron-down"} size={14} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            {item.stepsOpen ? (
+              <View style={styles.stepList}>
+                {item.steps.map((step, index) => (
+                  <View key={`${index}-${step}`} style={styles.stepRow}>
+                    <Ionicons name="checkmark" size={13} color={COLORS.textTertiary} />
+                    <Text style={styles.stepText}>{step}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+        {!item.streaming ? (
+          <Text style={styles.checked}>
+            {item.found ? "학교 안내 원문에서 찾아 답했어요" : "안내에서 확인되지 않은 내용이 있어요 — 담당 부서에 확인해 주세요"}
+          </Text>
+        ) : null}
+      </View>
+    );
+  };
 
   const answerFeedback = (message: Extract<ChatMessage, { role: "feedback" }>, resolved: boolean) => {
     if (message.resolved !== null) return;
@@ -151,12 +488,78 @@ export default function AskChat({ onClose }: AskChatProps) {
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
     }
+    // 바로 위 답에 담당 부서 전화가 있으면 그 부서로 안내한다. 질문 글로 부서를 다시 찾으면 엉뚱한 곳이 걸린다
+    // ('아이디는 뭘로?'의 '아이디'가 연구소 소개의 '아이디어'에 걸려 미술디자인문화연구소가 나왔다, 10-15).
+    const answer = [...messages].reverse().find((item) => (item.role === "answer" || item.role === "reply") && item.id < message.id);
+    const answerNode =
+      answer?.role === "answer"
+        ? answer.node
+        : answer?.role === "reply" && answer.sources[0]
+          ? ALL_ASK_FLOWS.find((flow) => flow.id === answer.sources[0].flowId)?.nodes[answer.sources[0].nodeId]
+          : undefined;
+    const phone = answerNode?.kind === "answer" ? answerNode.phones?.[0] : undefined;
+    // 해결이 안 됐으면 운영진에게 이 대화를 넘길 수 있게 한다 — 챗봇에서 막혔을 때 다음 길이 없다는 게 가장 큰 불만이라(10-16 조사).
+    const handoff: NewMessage = {
+      role: "handoff",
+      question: message.question,
+      answer: answer?.role === "reply" ? answer.text : answer?.role === "answer" ? answer.node.text : "",
+      sources:
+        answer?.role === "reply"
+          ? answer.sources.map((source) => `${source.flowId}/${source.nodeId}`)
+          : answer?.role === "answer"
+            ? [`${answer.flowId}/${answer.nodeId}`]
+            : [],
+      note: "",
+      contact: "",
+      status: "editing",
+      error: null,
+    };
+    if (phone) {
+      push({ role: "text", text: `위 안내의 담당 부서(${phone.label} ${phone.phone})에 물어보면 가장 정확해요.` }, handoff);
+      return;
+    }
     const offices = askOffices(facilities, message.question).slice(0, 3);
     push(
       offices.length > 0
         ? { role: "offices", intro: "담당 부서에 직접 물어보면 가장 정확해요.", offices }
         : { role: "text", text: "더 도와드리지 못해 아쉬워요. 위 학교 안내 페이지의 담당 부서로 문의해 보세요." },
+      handoff,
     );
+  };
+
+  const updateHandoff = (id: number, patch: Partial<Extract<ChatMessage, { role: "handoff" }>>) =>
+    setMessages((prev) => prev.map((item) => (item.id === id && item.role === "handoff" ? { ...item, ...patch } : item)));
+
+  /** 운영진에게 보낼 문의 글(1000자 안). 질문·홍익온 답(앞부분)·근거 안내 id·학생이 더 적은 말. */
+  const handoffContent = (message: Extract<ChatMessage, { role: "handoff" }>) => {
+    const answer = message.answer.replace(/\s+/g, " ").trim();
+    const lines = [
+      "[물어보기에서 넘어온 문의]",
+      `질문: ${message.question}`,
+      answer ? `홍익온 답: ${answer.length > 350 ? `${answer.slice(0, 350)}…` : answer}` : null,
+      message.sources.length ? `근거: ${message.sources.join(", ")}` : null,
+      `더 알고 싶은 점: ${message.note.trim() || "(없음)"}`,
+    ].filter((line): line is string => line !== null);
+    return lines.join("\n").slice(0, 1000);
+  };
+
+  const sendHandoff = async (message: Extract<ChatMessage, { role: "handoff" }>) => {
+    if (message.status !== "editing") return;
+    const contact = message.contact.trim();
+    if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+      updateHandoff(message.id, { error: "이메일 주소를 다시 확인해 주세요." });
+      return;
+    }
+    haptics.selection();
+    updateHandoff(message.id, { status: "sending", error: null });
+    try {
+      // POST 라 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 학생이 다시 누른다.
+      await submitFeedback({ content: handoffContent(message), contact: contact || undefined });
+      updateHandoff(message.id, { status: "sent" });
+      haptics.success();
+    } catch (error) {
+      updateHandoff(message.id, { status: "editing", error: getErrorMessage(error, "보내지 못했어요. 잠시 뒤 다시 보내 주세요.") });
+    }
   };
 
   const call = (phone: string) => {
@@ -239,6 +642,66 @@ export default function AskChat({ onClose }: AskChatProps) {
             <Text style={styles.botText}>{item.text}</Text>
           </View>
         );
+      case "handoff":
+        return (
+          <View style={styles.botBubble}>
+            <Text style={styles.handoffTitle}>운영진에게 물어보기</Text>
+            {item.status === "sent" ? (
+              <Text style={styles.botText}>
+                운영진에게 보냈어요. 확인한 뒤{item.contact.trim() ? " 적어 주신 이메일로" : ""} 답변드릴게요.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.handoffDesc}>
+                  아래 대화와 남기신 말을 운영진 문의함으로 보내요.{"\n"}이메일을 적으면 그 주소로 답을 드려요(선택).
+                </Text>
+                <View style={styles.handoffPreview}>
+                  <Text style={styles.handoffPreviewText} numberOfLines={4}>
+                    질문: {item.question}
+                    {item.answer ? `\n홍익온 답: ${item.answer.replace(/\s+/g, " ")}` : ""}
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.handoffInput, styles.handoffNote]}
+                  value={item.note}
+                  onChangeText={(note) => updateHandoff(item.id, { note, error: null })}
+                  placeholder="더 알고 싶은 점을 적어 주세요"
+                  placeholderTextColor={COLORS.textPlaceholder}
+                  multiline
+                  maxLength={400}
+                  editable={item.status === "editing"}
+                  accessibilityLabel="운영진에게 더 알고 싶은 점"
+                />
+                <TextInput
+                  style={styles.handoffInput}
+                  value={item.contact}
+                  onChangeText={(contact) => updateHandoff(item.id, { contact, error: null })}
+                  placeholder="답 받을 이메일 (선택)"
+                  placeholderTextColor={COLORS.textPlaceholder}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={100}
+                  editable={item.status === "editing"}
+                  accessibilityLabel="답 받을 이메일"
+                />
+                {item.error ? <Text style={styles.handoffError}>{item.error}</Text> : null}
+                <TouchableOpacity
+                  style={[styles.handoffSend, item.status === "sending" && styles.sendOff]}
+                  activeOpacity={0.8}
+                  disabled={item.status === "sending"}
+                  onPress={() => sendHandoff(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel="운영진에게 보내기"
+                >
+                  <Text style={styles.handoffSendText}>{item.status === "sending" ? "보내는 중이에요" : "보내기"}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        );
+      case "reply":
+        return renderReply(item);
       case "question":
         return (
           <View style={styles.botBubble}>
@@ -260,6 +723,7 @@ export default function AskChat({ onClose }: AskChatProps) {
                 ))}
               </View>
             ) : null}
+            {item.viaServer ? <Text style={styles.checked}>질문 뜻을 풀어 찾은 안내예요</Text> : null}
           </View>
         );
       case "answer":
@@ -290,6 +754,7 @@ export default function AskChat({ onClose }: AskChatProps) {
             {item.node.links?.map((link) => renderLink(link, link.url))}
             <Text style={styles.checked}>
               {item.node.links?.length ? "학교 안내" : "운영진"} 확인 {item.checkedAt}
+              {item.viaServer ? " · 질문 뜻을 풀어 찾은 안내예요" : ""}
             </Text>
           </View>
         );
@@ -355,7 +820,7 @@ export default function AskChat({ onClose }: AskChatProps) {
     </View>
   );
 
-  const canSend = input.trim().length > 0;
+  const canSend = input.trim().length > 0 && !pending;
 
   return (
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -388,9 +853,16 @@ export default function AskChat({ onClose }: AskChatProps) {
               renderItem={renderMessage}
               ListHeaderComponent={intro}
               ListFooterComponent={
-                <Text style={styles.footnote}>
-                  학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
-                </Text>
+                <>
+                  {pending && !serverKey ? (
+                    <View style={[styles.botBubble, styles.pending]}>
+                      <Text style={styles.botText}>안내를 찾아 답을 쓰고 있어요…</Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.footnote}>
+                    학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
+                  </Text>
+                </>
               }
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled"
@@ -424,6 +896,41 @@ export default function AskChat({ onClose }: AskChatProps) {
           </ContentColumn>
         </View>
       </KeyboardAvoidingView>
+  );
+}
+
+/** 서버가 지금 하는 일 한 줄. 글이 바뀌면 살짝 떠오르며 바뀌고, 그동안 은은하게 깜빡인다. */
+function ThinkingLine({ text }: { text: string }) {
+  const pulse = useRef(new Animated.Value(0.45)).current;
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== "web" }),
+        Animated.timing(pulse, { toValue: 0.45, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== "web" }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+  useEffect(() => {
+    enter.setValue(0);
+    Animated.timing(enter, { toValue: 1, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: Platform.OS !== "web" }).start();
+  }, [text, enter]);
+  return (
+    <Animated.View
+      style={[
+        styles.thinkingRow,
+        { opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }] },
+      ]}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={text}
+    >
+      <Animated.View style={[styles.thinkingDot, { opacity: pulse }]} />
+      <Animated.Text style={[styles.thinkingText, { opacity: pulse }]} numberOfLines={1}>
+        {text}
+      </Animated.Text>
+    </Animated.View>
   );
 }
 
@@ -526,6 +1033,36 @@ const styles = StyleSheet.create({
   },
   linkText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
   checked: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  pending: { marginTop: 10 },
+  stepList: { gap: 4 },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  stepText: { flexShrink: 1, fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  itemLabel: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  thinkingRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 22 },
+  thinkingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
+  thinkingText: { flexShrink: 1, fontSize: 14, lineHeight: 20, fontFamily: FONTS.medium, color: COLORS.primary },
+  cursor: { color: COLORS.primary },
+  handoffTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 4 },
+  handoffDesc: { fontSize: 13, lineHeight: 19, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  handoffPreview: { marginTop: 8, padding: 10, borderRadius: 10, backgroundColor: COLORS.background },
+  handoffPreviewText: { fontSize: 12, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  handoffInput: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    color: COLORS.textPrimary,
+  },
+  handoffNote: { minHeight: 72, textAlignVertical: "top" },
+  handoffError: { marginTop: 6, fontSize: 12, fontFamily: FONTS.regular, color: COLORS.danger },
+  handoffSend: { marginTop: 10, borderRadius: 10, paddingVertical: 11, alignItems: "center", backgroundColor: COLORS.primary },
+  handoffSendText: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.white },
+  sourceToggle: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", marginTop: 10, paddingVertical: 4 },
+  sourceToggleText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textSecondary },
   feedbackRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   feedbackButton: {
     paddingHorizontal: 12,

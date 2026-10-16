@@ -5,6 +5,11 @@ import { FONTS } from '../constants/typography'
 
 const KEY_SHA256 = '6b980606c6e01c1c613834d4b1546aae577730932517e62e6572c78cc0458dd5'
 const UNLOCK_KEY = '@hongikon_dev_path_unlocked'
+/**
+ * 입력한 암호키 원문(탭을 닫으면 지워지는 sessionStorage). /dev/ask 가 서버 LLM 분류(/ask/route)에 보내 서버가 SHA-256 으로 확인한다.
+ * 개발 페이지라 이 탭 안에서만 둔다. 없으면(예전에 연 탭) 물어보기는 서버 없이 낱말 찾기만 한다.
+ */
+const RAW_KEY = '@hongikon_dev_path_key'
 
 const DevPathAuditScreen = lazy(() => import('./DevPathAuditScreen'))
 const DevPathSurveyScreen = lazy(() => import('./DevPathSurveyScreen'))
@@ -20,6 +25,14 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+function readRawKey(): string | undefined {
+  try {
+    return window.sessionStorage.getItem(RAW_KEY) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 function readUnlocked(): boolean {
   try {
     return window.sessionStorage.getItem(UNLOCK_KEY) === KEY_SHA256
@@ -30,6 +43,7 @@ function readUnlocked(): boolean {
 
 export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   const [unlocked, setUnlocked] = useState(readUnlocked)
+  const [rawKey, setRawKey] = useState(readRawKey)
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
@@ -49,7 +63,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   if (unlocked) {
     return (
       <Suspense fallback={<Text style={styles.loading}>불러오는 중이에요</Text>}>
-        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : <DevAskScreen />}
+        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : <DevAskScreen devKey={rawKey} />}
       </Suspense>
     )
   }
@@ -66,9 +80,11 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
       }
       try {
         window.sessionStorage.setItem(UNLOCK_KEY, KEY_SHA256)
+        window.sessionStorage.setItem(RAW_KEY, key)
       } catch {
         // 저장소를 사용할 수 없으면 새로고침 때 다시 암호키를 묻는다.
       }
+      setRawKey(key)
       setUnlocked(true)
     } catch {
       setError('이 브라우저에서는 확인할 수 없어요. https 주소로 열어 주세요.')

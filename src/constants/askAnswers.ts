@@ -90,7 +90,8 @@ const LEAVE_NOT = ['복학', '증명', '제적', '미복학', '국가장학', '�
 const IT_CENTER_ID = 'hi-q-10f-office-01'
 const WIFI_PHONE = { label: '정보전산원 · 무선랜(Q동 906호)', phone: '02-320-1405' }
 const WIFI_PAGE: AskLink = { label: '학교 홈페이지 · Hongik WIFI', url: 'https://www.hongik.ac.kr/kr/life/hongik-wifi.do' }
-const WIFI_GUIDE: AskLink = { label: '무선랜 안내 · 기기별 설정 설명서', url: 'http://wifi.hongik.ac.kr/hongik_wifi/' }
+/** 와이파이는 기기별로 따라 하는 설정 설명서가 학교 소개 페이지보다 쓸모 있어 앞에 둔다(10-16 운영진). */
+const WIFI_GUIDE: AskLink = { label: '무선랜 안내 · 기기별 설정 설명서', url: 'https://wifi.hongik.ac.kr/hongik_wifi/' }
 /** 질문의 문장부호는 지우고 비교하므로 'Wi-Fi'·'Hongik_wifi' 도 'wifi' 로 걸린다. */
 const WIFI_WORDS = ['와이파이', '와파', 'wifi', '무선랜', '무선인터넷', '인터넷'] as const
 /** '인터넷증명발급'·'인터넷강의'처럼 인터넷이 들어간 다른 일. */
@@ -384,7 +385,9 @@ export const ASK_FLOWS: readonly AskFlow[] = [
             title: '질병·임신·출산·육아휴학',
             items: [
               "낸 등록금은 '대학 등록금에 관한 규칙'에 따라 돌려받고, 복학 학기에 전액 다시 내요.",
-              '학기 시작(3월 1일·9월 1일)부터 30일까지 수업료의 5/6, 60일까지 2/3, 90일까지 1/2, 그 뒤엔 반환 없음.',
+              // 학교 휴학 안내의 질병휴학 '등록금 환급 기준' 표(10-15 재확인). 처음엔 '학기 시작 전 전액' 줄을 빠뜨렸었다.
+              '돌려받는 금액은 휴학원서를 최종 제출한 날 기준이에요. 학기 시작(3월 1일·9월 1일) 전이면 전액, 시작부터 30일까지 수업료의 5/6, 60일까지 2/3, 90일까지 1/2, 그 뒤엔 반환 없음.',
+              '신입생은 학기 시작일 이후에만 질병휴학을 받고, 등록금 전액 반환은 안 돼요.',
             ],
           },
           {
@@ -612,7 +615,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
         ],
         followUps: [{ label: '그래도 연결이 안 돼요', next: 'trouble' }],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
       },
       android: {
         kind: 'answer',
@@ -633,7 +636,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
         ],
         followUps: [{ label: '그래도 연결이 안 돼요', next: 'trouble' }],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
       },
       windows: {
         kind: 'answer',
@@ -649,7 +652,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
         ],
         followUps: [{ label: '그래도 연결이 안 돼요', next: 'trouble' }],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
       },
       mac: {
         kind: 'answer',
@@ -672,7 +675,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
         ],
         followUps: [{ label: '그래도 연결이 안 돼요', next: 'trouble' }],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
       },
       trouble: {
         kind: 'answer',
@@ -694,7 +697,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
           { label: '맥북 설정 방법', next: 'mac' },
         ],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
         facilityId: IT_CENTER_ID,
       },
       account: {
@@ -715,7 +718,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
           { label: '그래도 연결이 안 돼요', next: 'trouble' },
         ],
         phones: [WIFI_PHONE],
-        links: [WIFI_PAGE, WIFI_GUIDE],
+        links: [WIFI_GUIDE, WIFI_PAGE],
       },
       eduroam: {
         kind: 'answer',

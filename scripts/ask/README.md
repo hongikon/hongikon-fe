@@ -7,6 +7,7 @@ python3 -I scripts/ask/crawl.py     # 학교 홈페이지 → cache/(HTML, git �
 python3 -I scripts/ask/extract.py   # cache/ → data/pages.json · data/faq.json
 python3 -I scripts/ask/gen.py       # data/ + topics/*.py → src/constants/askPages.ts
 node scripts/ask/test-routing.mjs   # cases/*.json 정답표로 질문 → 답 경로 검사
+node scripts/ask/export-catalog.mjs # 흐름 → 백엔드 ask/catalog.json(서버 LLM 분류 /ask/route 가 고르는 목록). 흐름을 바꾸면 다시 돌린다
 ```
 
 - **어떤 질문에 어떤 답:** `topics/*.py` 주제표. 형식은 `topics/__init__.py` 에 적혀 있다.
