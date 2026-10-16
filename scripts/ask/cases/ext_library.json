@@ -1,0 +1,1474 @@
+[
+  {
+    "q": "도서관 책 몇권까지 빌릴 수 있어요",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "학부생 대출 권수",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "책 몇 주 빌릴 수 있어요",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "대출기간 얼마나 돼요",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "빌린 책 언제까지 반납해야 돼",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "대학원생은 몇권 빌려요",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "중도에서 최대 몇권 대출돼?",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "도서관 책 예약하는 법",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "책 예약 몇권까지",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "대출중인 책 예약할 수 있어요?",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "빌린 책 목록 어디서 봐요",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "대출 연장 몇번 돼요",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "내가 빌린 책 확인",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "책 몇시까지 빌릴 수 있어요",
+    "expect": "lib-loan-hours"
+  },
+  {
+    "q": "토요일에 책 대출 돼요? 몇시까지",
+    "expect": "lib-loan-hours"
+  },
+  {
+    "q": "학위논문 대출 되나요",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "잡지 빌릴 수 있어요",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "참고자료 대출 가능?",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "빌린 책 친구한테 빌려줘도 돼요",
+    "expect": "lib-sublend"
+  },
+  {
+    "q": "휴학하면 빌린 책 반납해야 해요?",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "졸업하면 대출한 책 어떻게",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "연체료 어떻게 내요",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "연체료 계좌",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "도서관 연체료 온라인 납부",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "연체하면 불이익 있어요?",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "빌린 책 잃어버렸어요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "도서관 책 찢어졌어요 변상",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "책에 물 쏟아서 젖었어요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "반납 안 하면 증명서 못 떼요?",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "도서관 이용정지",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "도서관 책 통째로 복사해도 돼요?",
+    "expect": "lib-copy-rule"
+  },
+  {
+    "q": "도서관 공휴일에 열어요?",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "도서관 휴관일",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "추석에 도서관 쉬어요?",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "개교기념일 도서관",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "외부인 도서관 이용 가능해요?",
+    "expect": "lib-eligibility"
+  },
+  {
+    "q": "다른 학교 학생도 도서관 들어갈 수 있나요",
+    "expect": "lib-eligibility"
+  },
+  {
+    "q": "대출자료실 몇층이에요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "그룹스터디룸 어디",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "도서관 층별 안내",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "소설책 몇층에 있어요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "정기간행물실 어디",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "크리에이티브 라운지",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "교외접속 어떻게 해요",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "집에서 논문 다운 받는법",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "dbpia 학교 계정으로 접속",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "riss 로그인 안돼요",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "휴학생 교외접속",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "학외접속 주소",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "희망도서 신청",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "도서관에 없는 책 사달라고 하고 싶어요",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "책 구입신청 몇권까지",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "카피킬러 어디서 해요",
+    "expect": "lib-plagiarism"
+  },
+  {
+    "q": "레포트 표절 검사 프로그램",
+    "expect": "lib-plagiarism"
+  },
+  {
+    "q": "턴잇인 학교 계정",
+    "expect": "lib-plagiarism"
+  },
+  {
+    "q": "전자책 빌리는 법",
+    "expect": "lib-ebook"
+  },
+  {
+    "q": "해커스 인강 무료로 들을 수 있어요?",
+    "expect": "lib-ebook"
+  },
+  {
+    "q": "뉴욕타임스 학교에서 구독",
+    "expect": "lib-ebook"
+  },
+  {
+    "q": "엔드노트 쓰는법",
+    "expect": "lib-endnote"
+  },
+  {
+    "q": "참고문헌 자동으로 만들어주는 거",
+    "expect": "lib-endnote"
+  },
+  {
+    "q": "상호대차 신청",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "다른 학교 책 빌리고 싶어요",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "원문복사 서비스",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "열람증 발급",
+    "expect": "lib-reading-card"
+  },
+  {
+    "q": "졸업생 도서관 이용",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "졸업하고도 도서관 갈 수 있어요?",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "졸업생 교외접속",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "책 기증하고 싶어요",
+    "expect": "lib-donation"
+  },
+  {
+    "q": "장기기증",
+    "expect": "none"
+  },
+  {
+    "q": "튜터링 신청 언제 해요",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "튜터 하고 싶어요",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "홍익투게더",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "성적경고 받았는데 튜터링",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "튜터 자격 학점 몇 이상",
+    "expect": "ctl-tutor-rules"
+  },
+  {
+    "q": "튜티는 1학년도 돼요?",
+    "expect": "ctl-tutor-rules"
+  },
+  {
+    "q": "스터디그룹 신청 방법",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "스터디 장학금 받는 법",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "자기주도학습동아리",
+    "expect": "ctl-club"
+  },
+  {
+    "q": "학습동아리 지원금",
+    "expect": "ctl-club"
+  },
+  {
+    "q": "홍익전공마스터 신청",
+    "expect": "ctl-master"
+  },
+  {
+    "q": "학습법 워크숍",
+    "expect": "ctl-workshop"
+  },
+  {
+    "q": "공부법 특강 있어요?",
+    "expect": "ctl-workshop"
+  },
+  {
+    "q": "글쓰기 클리닉 신청",
+    "expect": "ctl-clinic"
+  },
+  {
+    "q": "레포트 첨삭 받고 싶어요",
+    "expect": "ctl-clinic"
+  },
+  {
+    "q": "보고서 봐주는 곳",
+    "expect": "ctl-clinic"
+  },
+  {
+    "q": "글쓰기 워크숍 언제",
+    "expect": "ctl-writing-workshop"
+  },
+  {
+    "q": "서평쓰기 대회",
+    "expect": "ctl-contest"
+  },
+  {
+    "q": "에세이 대회 상금",
+    "expect": "ctl-contest"
+  },
+  {
+    "q": "글쓰기대회 언제 접수해요",
+    "expect": "ctl-contest"
+  },
+  {
+    "q": "영어 말하기 대회",
+    "expect": "ctl-english-contest"
+  },
+  {
+    "q": "포트폴리오 워크숍",
+    "expect": "ctl-portfolio"
+  },
+  {
+    "q": "하이터치 멘토링",
+    "expect": "ctl-hitouch"
+  },
+  {
+    "q": "유학생 멘토 하고 싶어요",
+    "expect": "ctl-hitouch"
+  },
+  {
+    "q": "빔프로젝터 대여",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "캠코더 빌릴 수 있어요",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "발표용 마이크 대여",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "교수학습지원센터 어디에 있어요",
+    "expect": "ctl-location"
+  },
+  {
+    "q": "교수학습지원센터 전화번호",
+    "expect": "ctl-location"
+  },
+  {
+    "q": "러닝365",
+    "expect": "ctl-elearning"
+  },
+  {
+    "q": "kmooc",
+    "expect": "ctl-elearning"
+  },
+  {
+    "q": "도서관 몇시까지 해요",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 시험기간 몇시까지",
+    "expect": "library"
+  },
+  {
+    "q": "스터디룸 예약",
+    "expect": "library"
+  },
+  {
+    "q": "공동학습실 예약 방법",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 좌석 예약",
+    "expect": "library"
+  },
+  {
+    "q": "책 반납 어디서",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 대출 연장",
+    "expect": "library"
+  },
+  {
+    "q": "튜터링",
+    "expect": "learning"
+  },
+  {
+    "q": "토익 스터디 구해요",
+    "expect": "learning"
+  },
+  {
+    "q": "학자금 대출 연장",
+    "expect": "loan"
+  },
+  {
+    "q": "학자금대출 연체",
+    "expect": "loan"
+  },
+  {
+    "q": "자소서 첨삭",
+    "expect": "career-consulting"
+  },
+  {
+    "q": "학생증 분실 도서관",
+    "expect": "student-card/lost"
+  },
+  {
+    "q": "법학도서관 위치",
+    "expect": "law-library"
+  },
+  {
+    "q": "프린트 어디서 해요",
+    "expect": "print-center"
+  },
+  {
+    "q": "도서관 와이파이",
+    "expect": "wifi"
+  },
+  {
+    "q": "교내 근로 도서관",
+    "expect": "school-work"
+  },
+  {
+    "q": "졸업논문 제출",
+    "expect": "thesis"
+  },
+  {
+    "q": "휴학하면 사물함 반납",
+    "expect": "leave-of-absence"
+  },
+  {
+    "q": "논문 표절검사",
+    "expect": "none"
+  },
+  {
+    "q": "복사기 어디 있어요",
+    "expect": "none"
+  },
+  {
+    "q": "도서관에서 노트북 빌릴 수 있어요?",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "중도 노트북 대여",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "도서관 노트북 대출 어떻게 해요",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "도서관 아이패드 빌려주나요",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "중앙도서관 기기대여",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "도서관 프린트 어디서 해요",
+    "expect": "lib-print"
+  },
+  {
+    "q": "중도에서 인쇄 가능해요?",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관 복사기 있어요?",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관에서 스캔하고 싶어요",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관 프린터 요금",
+    "expect": "lib-print"
+  },
+  {
+    "q": "중앙도서관 출력 어떻게 해요",
+    "expect": "lib-print"
+  },
+  {
+    "q": "법학도서관 주말에 열어요?",
+    "expect": "lib-law-weekend"
+  },
+  {
+    "q": "법학도서관 토요일 몇시까지",
+    "expect": "lib-law-weekend"
+  },
+  {
+    "q": "법도서관 일요일 운영",
+    "expect": "lib-law-weekend"
+  },
+  {
+    "q": "법학도서관 공휴일에 열어요",
+    "expect": "lib-law-weekend"
+  },
+  {
+    "q": "맥북으로 교외접속하면 로그인이 계속 풀려요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "맥에서 dbpia 안돼요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "교외접속 로그인 풀림",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "사파리로 도서관 전자자료 접속 안돼요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "macos 학외접속 튕겨요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "교외접속 자꾸 로그아웃 돼요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "도서관 연체료 어떻게 내요",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "연체료 어디서 내요",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "연체금 온라인으로 낼 수 있어요",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "졸업하면 도서관 못써요?",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "수료생 도서관 열람증",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "졸업생도 책 대출 돼요?",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "예약한 책 어디서 확인해요",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "연체된 책 확인",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "대출 현황 어디서 봐요",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "자퇴하면 빌린 책 반납",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "정학 받으면 도서관 책 반납해야 돼요",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "홍익투게더 튜티 성적 기준",
+    "expect": "ctl-tutor-rules"
+  },
+  {
+    "q": "유학생도 튜티 할 수 있어요 학년",
+    "expect": "ctl-tutor-rules"
+  },
+  {
+    "q": "영어 글쓰기 대회",
+    "expect": "ctl-english-contest"
+  },
+  {
+    "q": "하이터치 멘토 신청",
+    "expect": "ctl-hitouch"
+  },
+  {
+    "q": "이러닝 강의 제작 kocw",
+    "expect": "ctl-elearning"
+  },
+  {
+    "q": "노트북열람실 몇시까지",
+    "expect": "law-library"
+  },
+  {
+    "q": "맥북 와이파이",
+    "expect": "wifi"
+  },
+  {
+    "q": "노트북 대여",
+    "expect": "none"
+  },
+  {
+    "q": "빔프로젝터 빌리고 싶어요",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "집에서 디비피아 보는 법",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "도서관 책 복사해도 되나요",
+    "expect": "lib-copy-rule"
+  },
+  {
+    "q": "프린터 쿼터 충전 어디서 해요",
+    "expect": "printer-quota"
+  },
+  {
+    "q": "24시간 열람실 어디 있어요",
+    "expect": "library"
+  },
+  {
+    "q": "수료생인데 도서관 책 빌릴 수 있어요?",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "수료했는데 중도 이용 가능?",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "연구등록금 냈는데 도서관 대출이 안돼요",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "연구생증명비 내면 도서관 쓸 수 있나요",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "무효수료생 열람증 예치금 얼마",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "수료 후 도서관 전자자료 이용",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "수료생 교외접속 돼요?",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "수료생 도서관 이용",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "유학생 튜터링 신청",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "외국인 유학생 튜터링 장학금",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "유학생 튜터 되고 싶어요",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "유학생 튜터 하고 싶어요",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "성적경고 받은 유학생 튜터링",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "유학생 튜티 신청",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "독서스터디그룹 신청",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "독서 스터디 그룹 하고 싶어요",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "독서토론 프로그램",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "책읽기 모임 지원",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "독서 모임 프로그램 있어요",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "비실기전형 입학했는데 드로잉 배울 수 있어요",
+    "expect": "ctl-basic-art"
+  },
+  {
+    "q": "미대 신입생 기초실기 교육",
+    "expect": "ctl-basic-art"
+  },
+  {
+    "q": "기초 드로잉 수업 방학에 있어요?",
+    "expect": "ctl-basic-art"
+  },
+  {
+    "q": "비실기 미대 신입생 드로잉 수업",
+    "expect": "ctl-basic-art"
+  },
+  {
+    "q": "기초학습역량강화 프로그램",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "수학 기초 보충 특강",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "논리적 사고력 특강",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "기초수학 보충 프로그램",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "수학 기초가 부족해요 학교에서 보충 수업",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "교과연계 워크숍 신청",
+    "expect": "ctl-course-workshop"
+  },
+  {
+    "q": "교과연계 특강 언제",
+    "expect": "ctl-course-workshop"
+  },
+  {
+    "q": "IoT 교육 신청",
+    "expect": "ctl-iot-ai"
+  },
+  {
+    "q": "사물인터넷 교육 방학",
+    "expect": "ctl-iot-ai"
+  },
+  {
+    "q": "여름방학 AI 교육 학부생",
+    "expect": "ctl-iot-ai"
+  },
+  {
+    "q": "IoT AI 교육 방학",
+    "expect": "ctl-iot-ai"
+  },
+  {
+    "q": "중도 1층에 뭐 있어요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "도서관 3층에 뭐가 있나요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "도서관 크리에이티브 라운지 몇층",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "수료 요건",
+    "expect": "completion"
+  },
+  {
+    "q": "수료생 비자 연장 지도교수 확인서",
+    "expect": "intl-advisor-form"
+  },
+  {
+    "q": "유학생 성적경고 기준",
+    "expect": "intl-academic"
+  },
+  {
+    "q": "유학생 비자 연장",
+    "expect": "intl-visa"
+  },
+  {
+    "q": "드로잉 수업 수강신청",
+    "expect": "classes"
+  },
+  {
+    "q": "졸업생 열람증",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "졸업 후 교외접속 돼요",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "홍익투게더 튜터 신청",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "학부생은 책 몇 권까지 빌릴 수 있어요?",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "중도 책 몇권 빌려",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "책 빌리면 언제까지 반납해야 돼",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "대출기간 며칠이에요",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "대학원생 대출 권수",
+    "expect": "lib-loan-limit"
+  },
+  {
+    "q": "책 예약은 어떻게 해요",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "예약도서 몇권까지",
+    "expect": "lib-reserve"
+  },
+  {
+    "q": "빌린 책 목록 보고 싶어요",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "내 대출 현황",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "연체료 얼마 내야돼",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "연체료 온라인으로 낼 수 있어?",
+    "expect": "lib-fine"
+  },
+  {
+    "q": "책 반납 안하면 어떻게 돼요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "책 연체하면 증명서 못떼요?",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "도서관 책 잃어버렸어요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "빌린 책에 커피 쏟았어요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "빌린 책 찢어졌는데 어떡해",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "친구한테 도서관 책 빌려줘도 돼?",
+    "expect": "lib-sublend"
+  },
+  {
+    "q": "학위논문 대출 돼요?",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "잡지도 빌릴 수 있나요",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "DVD 대출 가능?",
+    "expect": "lib-not-loanable"
+  },
+  {
+    "q": "도서관 개교기념일에 열어요?",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "공휴일에 열람실 열어요?",
+    "expect": "lib-closed-days"
+  },
+  {
+    "q": "외부인도 도서관 들어갈 수 있어요?",
+    "expect": "lib-eligibility"
+  },
+  {
+    "q": "다른 학교 학생 도서관 이용 가능?",
+    "expect": "lib-eligibility"
+  },
+  {
+    "q": "도서관 몇층에 뭐 있어요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "문학책 몇층이에요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "예술 책 어디 있어요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "그룹스터디룸 몇층",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "학위논문실 위치",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "집에서 논문 보는 법",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "학교 밖에서 RISS 접속",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "교외접속 휴학생도 돼요?",
+    "expect": "lib-offcampus"
+  },
+  {
+    "q": "턴잇인 학교에서 무료?",
+    "expect": "lib-plagiarism"
+  },
+  {
+    "q": "표절 검사 프로그램",
+    "expect": "lib-plagiarism"
+  },
+  {
+    "q": "뉴욕타임스 무료 구독",
+    "expect": "lib-ebook"
+  },
+  {
+    "q": "엔드노트 학교에서 써요?",
+    "expect": "lib-endnote"
+  },
+  {
+    "q": "도서구입신청 몇권까지",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "상호대차 어떻게 해요",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "신촌 다른 대학 책 빌리기",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "원문복사 신청",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "졸업생 도서관 출입",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "졸업하고 교외접속 돼요?",
+    "expect": "lib-alumni"
+  },
+  {
+    "q": "수료생 도서관 대출",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "연구등록금 냈는데 도서관 이용 안돼요",
+    "expect": "lib-completion"
+  },
+  {
+    "q": "휴학하면 빌린 책 반납해야 해?",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "졸업 전에 책 반납",
+    "expect": "lib-leave-return"
+  },
+  {
+    "q": "대출 몇시까지 해요",
+    "expect": "lib-loan-hours"
+  },
+  {
+    "q": "토요일에 책 빌릴 수 있어요?",
+    "expect": "lib-loan-hours"
+  },
+  {
+    "q": "도서관 노트북 대여",
+    "expect": "lib-laptop"
+  },
+  {
+    "q": "중도 프린터 어딨어요",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관에서 스캔 가능?",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관 책 통째로 복사해도 돼?",
+    "expect": "lib-copy-rule"
+  },
+  {
+    "q": "법학도서관 토요일",
+    "expect": "lib-law-weekend"
+  },
+  {
+    "q": "맥북으로 교외접속 안돼요",
+    "expect": "lib-mac-proxy"
+  },
+  {
+    "q": "튜터 하려면 학점 몇 이상",
+    "expect": "ctl-tutor-rules"
+  },
+  {
+    "q": "튜터링 장학금",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "튜티 신청하고 싶어요",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "홍익투게더가 뭐예요",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "스터디그룹 지원금",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "학습동아리 지원",
+    "expect": "learning"
+  },
+  {
+    "q": "자격증 스터디 지원해주나요",
+    "expect": "ctl-club"
+  },
+  {
+    "q": "전공마스터 신청",
+    "expect": "ctl-master"
+  },
+  {
+    "q": "학습법 특강",
+    "expect": "ctl-workshop"
+  },
+  {
+    "q": "공부법 워크숍",
+    "expect": "ctl-workshop"
+  },
+  {
+    "q": "에세이 봐주는 곳",
+    "expect": "ctl-clinic"
+  },
+  {
+    "q": "글쓰기 대회",
+    "expect": "ctl-contest"
+  },
+  {
+    "q": "서평 대회 언제",
+    "expect": "ctl-contest"
+  },
+  {
+    "q": "하이터치 멘토",
+    "expect": "ctl-hitouch"
+  },
+  {
+    "q": "유학생 튜터링",
+    "expect": "ctl-intl-tutoring"
+  },
+  {
+    "q": "프로젝터 빌리기",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "캠코더 대여",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "교수학습지원센터 위치",
+    "expect": "ctl-location"
+  },
+  {
+    "q": "IoT 교육",
+    "expect": "ctl-iot-ai"
+  },
+  {
+    "q": "비실기 드로잉 교육",
+    "expect": "ctl-basic-art"
+  },
+  {
+    "q": "독서 스터디",
+    "expect": "ctl-reading-group"
+  },
+  {
+    "q": "교과연계 워크숍",
+    "expect": "ctl-course-workshop"
+  },
+  {
+    "q": "기초수리 특강",
+    "expect": "ctl-basic-math"
+  },
+  {
+    "q": "연체하면 어떻게 돼요",
+    "expect": "lib-penalty"
+  },
+  {
+    "q": "토요일에 책 반납",
+    "expect": "library"
+  },
+  {
+    "q": "주말에 도서관 책 빌려도 돼?",
+    "expect": "lib-loan-hours"
+  },
+  {
+    "q": "학자금 연체하면 어떻게 돼요",
+    "expect": "loan"
+  },
+  {
+    "q": "학생증 잃어버렸어요",
+    "expect": "student-card/lost"
+  },
+  {
+    "q": "토요일에 학생식당 해요?",
+    "expect": "cafeteria"
+  },
+  {
+    "q": "교수학습지원센터",
+    "expect": "learning"
+  },
+  {
+    "q": "등록금 연체하면 어떻게 돼요",
+    "expect": "registration"
+  },
+  {
+    "q": "사물함 열쇠 반납 안하면",
+    "expect": "library"
+  },
+  {
+    "q": "휴학 신청 방법",
+    "expect": "leave-of-absence"
+  },
+  {
+    "q": "도서관 몇시까지",
+    "expect": "library"
+  },
+  {
+    "q": "24시간 열람실",
+    "expect": "library"
+  },
+  {
+    "q": "T동 24시간 열람실 몇층이에요",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "방학에도 24시간 열람실 열어요?",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "24시간 열람실 몇층",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "겨울방학 24시간 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "밤새 공부할 수 있는 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "밤새 공부할 곳 있나요",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "새벽에도 여는 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "올나잇 가능한 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "4공 열람실 24시간",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "제4공학관 열람실 몇층",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "시험기간 24시간 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "중간고사 때 밤새 공부할 열람실",
+    "expect": "lib-24h"
+  },
+  {
+    "q": "도서관 24시간이에요?",
+    "expect": "library"
+  },
+  {
+    "q": "여름방학에 도서관 몇시까지 해요",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "겨울방학 도서관 운영시간",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "도서관 방학 때 몇시까지 해요",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "방학 중 대출 가능해요?",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "방학때 열람실 열어요?",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "방학에 책 빌릴 수 있어요?",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "방학 중 중도 토요일에 열어요?",
+    "expect": "lib-vacation-hours"
+  },
+  {
+    "q": "중앙도서관 어디에 있어요",
+    "expect": "lib-where"
+  },
+  {
+    "q": "중도 위치 알려줘",
+    "expect": "lib-where"
+  },
+  {
+    "q": "도서관 무슨 건물이야",
+    "expect": "lib-where"
+  },
+  {
+    "q": "중앙도서관 가는 길",
+    "expect": "lib-where"
+  },
+  {
+    "q": "대학로도서관 몇시까지",
+    "expect": "lib-daehakro"
+  },
+  {
+    "q": "대학로도서관 어디",
+    "expect": "lib-daehakro"
+  },
+  {
+    "q": "대학로캠퍼스 도서관 운영시간",
+    "expect": "lib-daehakro"
+  },
+  {
+    "q": "도서관 게이트 QR",
+    "expect": "lib-qr"
+  },
+  {
+    "q": "도서관 QR 오류",
+    "expect": "lib-qr"
+  },
+  {
+    "q": "중도 큐알 인식 안돼요",
+    "expect": "lib-qr"
+  },
+  {
+    "q": "QR 유효기간 에러 도서관",
+    "expect": "lib-qr"
+  },
+  {
+    "q": "모바일 학생증으로 도서관 출입",
+    "expect": "student-card"
+  },
+  {
+    "q": "모바일 학생증 QR 안돼요",
+    "expect": "student-card"
+  },
+  {
+    "q": "신착도서 어디",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "신간 어디 있어요",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "책 연장하고 싶어요",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "반납기한 연장 가능?",
+    "expect": "lib-my-loans"
+  },
+  {
+    "q": "도서관에 책 신청하고 싶어요",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "읽고 싶은 책 신청하려면",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "보고싶은 책이 도서관에 없어요",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "찾는 책이 없는데 어떡해요",
+    "expect": "lib-purchase"
+  },
+  {
+    "q": "학생 작품 전시 신청 도서관",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 상호대차 신청방법",
+    "expect": "lib-ill"
+  },
+  {
+    "q": "도서관 좌석 신청하고 싶어",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 이용교육 신청하고 싶어요",
+    "expect": "library"
+  },
+  {
+    "q": "튜터 하면 돈 줘요?",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "성적경고 받았는데 공부 도와주는 프로그램",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "선배한테 과외받는 프로그램",
+    "expect": "ctl-tutoring"
+  },
+  {
+    "q": "전공 공부 같이 할 팀 지원",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "스터디 만들면 학교에서 돈 줘?",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "스터디그룹 몇주 해요",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "하이업 시스템 어디",
+    "expect": "ctl-studygroup"
+  },
+  {
+    "q": "토익 스터디도 지원돼요?",
+    "expect": "ctl-club"
+  },
+  {
+    "q": "토익 스터디 지원",
+    "expect": "ctl-club"
+  },
+  {
+    "q": "토익 응시료 지원",
+    "expect": "language-test-fee"
+  },
+  {
+    "q": "스터디 카페 추천",
+    "expect": "cafe"
+  },
+  {
+    "q": "학사경고 받았어요 도움받을 곳",
+    "expect": "warning"
+  },
+  {
+    "q": "법학도서관 노트북열람실 몇시까지",
+    "expect": "law-library"
+  },
+  {
+    "q": "계절학기 때 도서관 열어?",
+    "expect": "seasonal"
+  },
+  {
+    "q": "법학도서관 어디",
+    "expect": "law-library"
+  },
+  {
+    "q": "공동학습실 어디",
+    "expect": "library"
+  },
+  {
+    "q": "도서관 프린터 어디",
+    "expect": "lib-print"
+  },
+  {
+    "q": "도서관 몇층에 그룹스터디룸",
+    "expect": "lib-floor"
+  },
+  {
+    "q": "24시간 편의점 어디",
+    "expect": "convenience-store"
+  },
+  {
+    "q": "기숙사 24시간 열람실",
+    "expect": "life-dorm-reading"
+  },
+  {
+    "q": "방학 중 기숙사 운영",
+    "expect": "life-dorm-vacation"
+  },
+  {
+    "q": "방학 중 학생식당 운영",
+    "expect": "cafeteria"
+  },
+  {
+    "q": "방학 도서관 이용교육",
+    "expect": "library"
+  }
+]

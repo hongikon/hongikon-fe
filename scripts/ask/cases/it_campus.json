@@ -1,0 +1,338 @@
+[
+ {
+  "q": "엑셀 무료로 쓸 수 있어요?",
+  "expect": "office365"
+ },
+ {
+  "q": "워드 설치하고 싶어요",
+  "expect": "office365"
+ },
+ {
+  "q": "피피티 학교에서 공짜로 받는 법",
+  "expect": "office365"
+ },
+ {
+  "q": "오피스365 설치 방법",
+  "expect": "office365"
+ },
+ {
+  "q": "office365 용량 2GB 넘으면 어떻게 돼요",
+  "expect": "office365"
+ },
+ {
+  "q": "졸업하면 오피스 못써요?",
+  "expect": "office365"
+ },
+ {
+  "q": "원드라이브 학교 계정",
+  "expect": "office365"
+ },
+ {
+  "q": "맥북에 오피스 깔 수 있나요",
+  "expect": "office365"
+ },
+ {
+  "q": "오피스 비번 까먹었어요",
+  "expect": "office365-password"
+ },
+ {
+  "q": "오피스365 비밀번호 재설정 어떻게 해요",
+  "expect": "office365-password"
+ },
+ {
+  "q": "office 비밀번호 잊어버렸어",
+  "expect": "office365-password"
+ },
+ {
+  "q": "오피스365 메일 주소가 뭐예요",
+  "expect": "school-mail"
+ },
+ {
+  "q": "아웃룩 메일 설정",
+  "expect": "school-mail"
+ },
+ {
+  "q": "office365 계정",
+  "expect": "school-mail/office365"
+ },
+ {
+  "q": "패스워드 변경",
+  "expect": "none"
+ },
+ {
+  "q": "윈도우 정품 학교에서 받을 수 있어요?",
+  "expect": "windows"
+ },
+ {
+  "q": "윈도우11 무료",
+  "expect": "windows"
+ },
+ {
+  "q": "windows 제품키 어디서 봐요",
+  "expect": "windows"
+ },
+ {
+  "q": "애저 학생 가입",
+  "expect": "windows"
+ },
+ {
+  "q": "윈도우 노트북 와이파이 연결",
+  "expect": "wifi/windows"
+ },
+ {
+  "q": "매트랩 설치",
+  "expect": "matlab"
+ },
+ {
+  "q": "MATLAB 라이선스 학생용",
+  "expect": "matlab"
+ },
+ {
+  "q": "메트랩 다운로드 어디서해요",
+  "expect": "matlab"
+ },
+ {
+  "q": "포토샵 학교에서 무료로 쓸 수 있나요",
+  "expect": "adobe"
+ },
+ {
+  "q": "어도비 설치 방법",
+  "expect": "adobe"
+ },
+ {
+  "q": "일러스트 집에서 안켜져요",
+  "expect": "adobe"
+ },
+ {
+  "q": "에펙 학교 라이선스",
+  "expect": "adobe"
+ },
+ {
+  "q": "프리미어 프로 깔고싶어요",
+  "expect": "adobe"
+ },
+ {
+  "q": "지멘스 NX 설치",
+  "expect": "siemens"
+ },
+ {
+  "q": "simcenter 쓸 수 있는 곳",
+  "expect": "siemens"
+ },
+ {
+  "q": "PACE센터 어디예요",
+  "expect": "siemens"
+ },
+ {
+  "q": "프린터 쿼터 충전 어디서 해요",
+  "expect": "printer-quota"
+ },
+ {
+  "q": "인쇄 요금 얼마예요",
+  "expect": "printer-quota"
+ },
+ {
+  "q": "출력 카드로 돼요?",
+  "expect": "printer-quota"
+ },
+ {
+  "q": "쿼터 환불",
+  "expect": "printer-quota"
+ },
+ {
+  "q": "오토캐드 깔린 컴퓨터실",
+  "expect": "pc-software"
+ },
+ {
+  "q": "PC실에 매트랩 있어요?",
+  "expect": "pc-software"
+ },
+ {
+  "q": "SAS 쓸 수 있는 실습실",
+  "expect": "pc-software"
+ },
+ {
+  "q": "컴퓨터실 어도비 깔려있나요",
+  "expect": "pc-software"
+ },
+ {
+  "q": "PC실 몇시까지 해요",
+  "expect": "pc-room"
+ },
+ {
+  "q": "프린터 어디 있어요",
+  "expect": "pc-room"
+ },
+ {
+  "q": "알키퍼 설치",
+  "expect": "alkeeper"
+ },
+ {
+  "q": "에듀롬 연결",
+  "expect": "wifi/eduroam"
+ },
+ {
+  "q": "헤이영 캠퍼스 앱",
+  "expect": "student-card/mobile"
+ },
+ {
+  "q": "모바일학생증 발급",
+  "expect": "student-card/mobile"
+ },
+ {
+  "q": "학교 와이파이 안돼요",
+  "expect": "wifi/trouble"
+ },
+ {
+  "q": "학교 지메일 가입",
+  "expect": "school-mail/gmail"
+ },
+ {
+  "q": "학교 주차 요금 얼마예요",
+  "expect": "parking"
+ },
+ {
+  "q": "차 가지고 가도 돼요?",
+  "expect": "parking"
+ },
+ {
+  "q": "주차장 어디예요",
+  "expect": "parking"
+ },
+ {
+  "q": "학생도 주차 정기권 돼요?",
+  "expect": "parking"
+ },
+ {
+  "q": "전기차 충전 가능해요?",
+  "expect": "parking"
+ },
+ {
+  "q": "홍대 가는 길 알려줘",
+  "expect": "directions"
+ },
+ {
+  "q": "지하철로 어떻게 가요",
+  "expect": "directions"
+ },
+ {
+  "q": "학교 주소가 어떻게 되나요",
+  "expect": "directions"
+ },
+ {
+  "q": "홍대입구역 몇번 출구",
+  "expect": "directions"
+ },
+ {
+  "q": "상수역에서 후문",
+  "expect": "directions"
+ },
+ {
+  "q": "학교 가는 버스 노선",
+  "expect": "directions"
+ },
+ {
+  "q": "셔틀버스 있어요?",
+  "expect": "none"
+ },
+ {
+  "q": "통학버스 시간표",
+  "expect": "none"
+ },
+ {
+  "q": "도서관 몇시까지 해요",
+  "expect": "library"
+ },
+ {
+  "q": "중도 운영시간",
+  "expect": "library"
+ },
+ {
+  "q": "책 빌리는 법",
+  "expect": "library"
+ },
+ {
+  "q": "책반납 연체되면 어떻게 돼요",
+  "expect": "library"
+ },
+ {
+  "q": "24시간 열람실 어디 있어요",
+  "expect": "library"
+ },
+ {
+  "q": "열람실 시험기간 몇시에 열어요",
+  "expect": "library"
+ },
+ {
+  "q": "도서 대출 연장",
+  "expect": "library"
+ },
+ {
+  "q": "법학도서관 위치",
+  "expect": "law-library"
+ },
+ {
+  "q": "노트북열람실 몇시까지",
+  "expect": "law-library"
+ },
+ {
+  "q": "중도휴학 하고 싶어요",
+  "expect": "leave-of-absence"
+ },
+ {
+  "q": "학자금 대출 연장",
+  "expect": "loan"
+ },
+ {
+  "q": "교수님 연락처 어디서 찾아요",
+  "expect": "phone-search"
+ },
+ {
+  "q": "교내 전화번호 검색",
+  "expect": "phone-search"
+ },
+ {
+  "q": "과사무실 번호 알려줘",
+  "expect": "phone-search"
+ },
+ {
+  "q": "통합로그인 비밀번호 찾기",
+  "expect": "login-account"
+ },
+ {
+  "q": "기숙사 가는 길",
+  "expect": "dorm"
+ },
+ {
+  "q": "주소 변경하고 싶어요",
+  "expect": "none"
+ },
+ {
+  "q": "증명서 무료 출력",
+  "expect": "certificate"
+ },
+ {
+  "q": "오피스텔 구하기",
+  "expect": "none"
+ },
+ {
+  "q": "학생증 카드 출력",
+  "expect": "student-card"
+ },
+ {
+  "q": "도서관 와이파이",
+  "expect": "wifi"
+ },
+ {
+  "q": "등록금 연체",
+  "expect": "registration"
+ },
+ {
+  "q": "한컴오피스 무료",
+  "expect": "none"
+ },
+ {
+  "q": "비밀번호 찾기",
+  "expect": "none"
+ }
+]

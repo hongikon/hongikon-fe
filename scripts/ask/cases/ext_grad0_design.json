@@ -1,0 +1,226 @@
+[
+ {
+  "q": "시디 졸업요건",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "시각디자인전공 졸업하려면 뭐 들어야돼",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "22학번 시각디자인 졸업학점",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "시디 전필 뭐있어",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "시각디자인과 커리큘럼",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "시디 몇학점 들어야 졸업",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "시각디자인 졸업프로젝트",
+  "expect": "grad-vd"
+ },
+ {
+  "q": "산디 졸업요건",
+  "expect": "grad-id"
+ },
+ {
+  "q": "산업디자인전공 졸업 조건",
+  "expect": "grad-id"
+ },
+ {
+  "q": "23학번 산디 졸업하려면",
+  "expect": "grad-id"
+ },
+ {
+  "q": "산디 전공필수",
+  "expect": "grad-id"
+ },
+ {
+  "q": "산업디자인 코스트랙",
+  "expect": "grad-id"
+ },
+ {
+  "q": "산디 졸업 몇학점",
+  "expect": "grad-id"
+ },
+ {
+  "q": "금속조형 졸업요건",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "금속조형디자인과 졸업하려면 뭐 들어야 돼",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "금속과 전필",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "21학번 금속조형 졸업학점",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "금속조형 졸업전시 과목",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "금속 커리큘럼",
+  "expect": "grad-metal"
+ },
+ {
+  "q": "도예유리과 졸업요건",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "도예 졸업하려면",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "도예·유리과 전공필수",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "도예과 졸전 조건",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "22학번 도예 졸업학점",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "도예유리 복수전공 졸업요건",
+  "expect": "grad-ceramic"
+ },
+ {
+  "q": "목조형가구학과 졸업요건",
+  "expect": "grad-wood"
+ },
+ {
+  "q": "목조 졸업하려면 뭐 들어",
+  "expect": "grad-wood"
+ },
+ {
+  "q": "목조형 전필",
+  "expect": "grad-wood"
+ },
+ {
+  "q": "가구디자인 졸업학점",
+  "expect": "grad-wood"
+ },
+ {
+  "q": "24학번 목조형 졸업 조건",
+  "expect": "grad-wood"
+ },
+ {
+  "q": "섬유미술패션디자인과 졸업요건",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "섬유 졸업하려면",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "패션디자인 전공필수",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "섬패 졸업학점",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "23학번 섬유미술 졸업 조건",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "패디 커리큘럼",
+  "expect": "grad-textile"
+ },
+ {
+  "q": "뮤지컬전공 졸업요건",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "뮤지컬 졸업하려면 뭐 들어야 돼",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "뮤지컬 전필",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "22학번 뮤지컬 졸업학점",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "뮤지컬 졸업공연",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "뮤지컬전공 교과과정",
+  "expect": "grad-musical"
+ },
+ {
+  "q": "실용음악 졸업요건",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "실음 졸업하려면",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "실용음악전공 전공필수",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "23학번 실용음악 졸업학점",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "실용음악 졸업시험",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "실음과 커리큘럼",
+  "expect": "grad-appliedmusic"
+ },
+ {
+  "q": "시디 과사 번호",
+  "expect": "dept-office"
+ },
+ {
+  "q": "도예유리과 과사무실 어디",
+  "expect": "dept-office"
+ },
+ {
+  "q": "뮤지컬 과사 전화번호",
+  "expect": "dept-office"
+ },
+ {
+  "q": "산디 졸업식 언제",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "졸업요건 알려줘",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "기시디 졸업요건",
+  "expect": "grad-me"
+ },
+ {
+  "q": "미대 졸업요건",
+  "expect": "grad-req-fineart"
+ },
+ {
+  "q": "디자인학부 졸업요건",
+  "expect": "grad-req-fineart"
+ }
+]

@@ -1,0 +1,226 @@
+[
+ {
+  "q": "컴공 졸업요건",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴퓨터공학과 졸업하려면 뭐 들어야돼",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "전자전기 졸업 요건 23학번",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "기계과 졸업학점 몇이야",
+  "expect": "grad-me"
+ },
+ {
+  "q": "산업데이터공학과 졸업요건",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "18학번 공대 졸업요건",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "화공 졸업하려면 몇학점",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "건설환경공학과 졸업 조건",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "MSC 몇 학점",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "msc 수학 과학 몇학점 들어야 돼",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "공학인증 졸업요건",
+  "expect": "abeek"
+ },
+ {
+  "q": "컴공 MSC 학점",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "공학교육 비인증 졸업요건",
+  "expect": "grad-eng-nonabeek"
+ },
+ {
+  "q": "비인증과정 msc 몇학점",
+  "expect": "grad-eng-nonabeek"
+ },
+ {
+  "q": "컴공 비인증 졸업학점",
+  "expect": "grad-eng-nonabeek"
+ },
+ {
+  "q": "경영학과 졸업요건 22학번",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영대 전공 몇학점 들어야 졸업",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "경영 졸업하려면 몇학점",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "건축학과 5년제 졸업요건",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "실내건축 졸업학점",
+  "expect": "grad-interior"
+ },
+ {
+  "q": "수학교육과 졸업요건",
+  "expect": "grad-mathedu"
+ },
+ {
+  "q": "법대 졸업 요건",
+  "expect": "grad-law"
+ },
+ {
+  "q": "경제학부 졸업하려면 전공 몇학점",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "사범대 졸업학점",
+  "expect": "grad-lawecon"
+ },
+ {
+  "q": "졸업요건 몇 학점",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "졸업하려면 몇학점 들어야돼",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "컴공 졸업논문",
+  "expect": "thesis"
+ },
+ {
+  "q": "신소재 졸업요건",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "공학인증 문의",
+  "expect": "abeek"
+ },
+ {
+  "q": "컴공 과사무실 전화번호",
+  "expect": "dept-office-ce"
+ },
+ {
+  "q": "경영 졸업사진 언제 찍어",
+  "expect": "grad-album"
+ },
+ {
+  "q": "msc가 뭐야",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "전전 졸업학점",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "도시공학과 졸업요건",
+  "expect": "grad-urban"
+ },
+ {
+  "q": "기계시스템디자인공학과 졸업하려면",
+  "expect": "grad-me"
+ },
+ {
+  "q": "산공 졸업 몇학점",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "경영학부 졸업 조건",
+  "expect": "grad-bizadmin"
+ },
+ {
+  "q": "역사교육과 졸업하려면 몇 학점",
+  "expect": "grad-hisedu"
+ },
+ {
+  "q": "법학부 졸업요건",
+  "expect": "grad-law"
+ },
+ {
+  "q": "경제 졸업요건 16학번",
+  "expect": "grad-econ"
+ },
+ {
+  "q": "건축 졸업 학점 몇점",
+  "expect": "grad-architecture"
+ },
+ {
+  "q": "경제학과 졸업시험",
+  "expect": "thesis"
+ },
+ {
+  "q": "컴공 졸업식 언제",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "기계과 졸업유예",
+  "expect": "deferred"
+ },
+ {
+  "q": "건축과 졸업전시",
+  "expect": "thesis"
+ },
+ {
+  "q": "졸업 학점 132",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "컴공 전공필수 뭐 있어",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴퓨터공학과 졸업 조건",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴공 졸업프로젝트 필수야?",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴공 교과과정",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴과 졸업하려면 몇학점",
+  "expect": "grad-ce"
+ },
+ {
+  "q": "컴공 비인증 졸업학점",
+  "expect": "grad-eng-nonabeek"
+ },
+ {
+  "q": "전전 졸업요건",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "컴공 과사 어디",
+  "expect": "dept-office-ce"
+ },
+ {
+  "q": "컴공 졸업식",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "졸업요건",
+  "expect": "graduation-credit"
+ }
+]

@@ -1,0 +1,390 @@
+[
+{
+"q": "자퇴 절차 알려줘",
+"expect": "dropout"
+},
+{
+"q": "자퇴서 어디에 내요?",
+"expect": "dropout"
+},
+{
+"q": "학교 그만두고 싶은데 어떻게 해야 돼요",
+"expect": "dropout"
+},
+{
+"q": "대학 관두려면 뭐부터 해야해",
+"expect": "dropout"
+},
+{
+"q": "자퇴하면 등록금 환불 받을 수 있어요?",
+"expect": "dropout"
+},
+{
+"q": "중퇴하려고요",
+"expect": "dropout"
+},
+{
+"q": "자퇴했는데 다시 다니고 싶어요",
+"expect": "readmission"
+},
+{
+"q": "자퇴 후 재입학 가능한가요",
+"expect": "readmission"
+},
+{
+"q": "재입학 신청 기간 언제야",
+"expect": "readmission"
+},
+{
+"q": "제적됐는데 다시 학교 다닐 수 있나요",
+"expect": "readmission"
+},
+{
+"q": "재입학 서류 뭐 내요",
+"expect": "readmission"
+},
+{
+"q": "복학 신청 어떻게 해요",
+"expect": "return"
+},
+{
+"q": "복학신청기간이 언제예요?",
+"expect": "return"
+},
+{
+"q": "전역하고 바로 학교 다닐 수 있어?",
+"expect": "return"
+},
+{
+"q": "제대 후 복학 서류",
+"expect": "return"
+},
+{
+"q": "학기상치복학이 뭐예요",
+"expect": "return"
+},
+{
+"q": "한 학기 미리 복학하고 싶어요",
+"expect": "return"
+},
+{
+"q": "예비군 전입신고 어디서 해요",
+"expect": "reserve-forces"
+},
+{
+"q": "학생예비군 신청",
+"expect": "reserve-forces"
+},
+{
+"q": "제적 기준이 뭐예요",
+"expect": "expulsion"
+},
+{
+"q": "미복학 제적 당하나요",
+"expect": "expulsion"
+},
+{
+"q": "재학연한 넘으면 어떻게 돼요",
+"expect": "expulsion"
+},
+{
+"q": "등록 안 하면 미등록 제적돼요?",
+"expect": "expulsion"
+},
+{
+"q": "전과하려면 어떻게 해야 돼요",
+"expect": "change-major"
+},
+{
+"q": "전과 면접 준비",
+"expect": "change-major"
+},
+{
+"q": "학과 바꾸고 싶어요",
+"expect": "change-major"
+},
+{
+"q": "다른과로 옮기고 싶은데 가능해요?",
+"expect": "change-major"
+},
+{
+"q": "전과 학점 기준",
+"expect": "change-major"
+},
+{
+"q": "전과목 재수강 가능해요?",
+"expect": "course-retake"
+},
+{
+"q": "주전공 신청",
+"expect": "main-major-pick"
+},
+{
+"q": "주전공 정하는 법",
+"expect": "main-major-pick"
+},
+{
+"q": "자율전공인데 전공 언제 정해요",
+"expect": "main-major-pick"
+},
+{
+"q": "주전공 바꾸고 싶어요",
+"expect": "main-major-change"
+},
+{
+"q": "세부전공 변경 가능한가요",
+"expect": "main-major-change"
+},
+{
+"q": "주전공이 뭐예요",
+"expect": "main-major/start"
+},
+{
+"q": "개명했는데 학적 바꿔야 해요?",
+"expect": "academic-record"
+},
+{
+"q": "학적부 정정 신청",
+"expect": "academic-record"
+},
+{
+"q": "주민등록번호가 잘못 나와 있어요",
+"expect": "academic-record"
+},
+{
+"q": "이름 변경 했어요 학교에 어떻게 알려요",
+"expect": "academic-record"
+},
+{
+"q": "병역 연기 어떻게 해요",
+"expect": "military-service"
+},
+{
+"q": "입영연기 신청",
+"expect": "military-service"
+},
+{
+"q": "군대 연기하고 싶어요",
+"expect": "military-service"
+},
+{
+"q": "병무 관련 문의",
+"expect": "military-service"
+},
+{
+"q": "군입대 휴학 신청",
+"expect": "leave-of-absence/military"
+},
+{
+"q": "입대하면 기말 성적은 어떻게 돼요",
+"expect": "military-grade"
+},
+{
+"q": "복수전공 신청 기간",
+"expect": "double-major"
+},
+{
+"q": "복전 하려면 몇 학점 필요해요",
+"expect": "double-major"
+},
+{
+"q": "복수전공 포기하고 싶어요",
+"expect": "double-major"
+},
+{
+"q": "다전공 신청 어떻게 해",
+"expect": "double-major"
+},
+{
+"q": "복수전공 등록금 더 내요?",
+"expect": "double-major"
+},
+{
+"q": "부전공 신청 자격",
+"expect": "minor"
+},
+{
+"q": "부전공 몇 학점 들어야 돼",
+"expect": "minor"
+},
+{
+"q": "부전공 철회 방법",
+"expect": "minor"
+},
+{
+"q": "융합전공 종류 뭐 있어요",
+"expect": "convergence-major"
+},
+{
+"q": "융합전공 신청하려면",
+"expect": "convergence-major"
+},
+{
+"q": "미세전공이 뭐예요",
+"expect": "fine-major"
+},
+{
+"q": "마이크로디그리 신청",
+"expect": "fine-major"
+},
+{
+"q": "교직이수 어떻게 해요",
+"expect": "teaching"
+},
+{
+"q": "교사자격증 따고 싶어요",
+"expect": "teaching"
+},
+{
+"q": "교직과정 신청 언제",
+"expect": "teaching"
+},
+{
+"q": "교직원 식당 어디예요",
+"expect": "cafeteria"
+},
+{
+"q": "학석사 연계과정 조건",
+"expect": "bachelor-master"
+},
+{
+"q": "학·석사연계 지원 자격",
+"expect": "bachelor-master"
+},
+{
+"q": "학부 때 대학원 수업 미리 듣는 거",
+"expect": "bachelor-master"
+},
+{
+"q": "교환학생 가려면 어떻게 해요",
+"expect": "exchange"
+},
+{
+"q": "교환학생 신청 언제",
+"expect": "exchange"
+},
+{
+"q": "교환 가고 싶어요",
+"expect": "exchange"
+},
+{
+"q": "해외 학점교류 프로그램",
+"expect": "exchange"
+},
+{
+"q": "복수학위 프로그램 있어요?",
+"expect": "exchange"
+},
+{
+"q": "교환학생 학점 인정",
+"expect": "exchange"
+},
+{
+"q": "방문학생 프로그램",
+"expect": "exchange"
+},
+{
+"q": "자매대학 어디어디 있어요",
+"expect": "exchange-partners"
+},
+{
+"q": "교환학생 어느 학교로 갈 수 있어요",
+"expect": "exchange-partners"
+},
+{
+"q": "교환 갈 수 있는 대학 목록",
+"expect": "exchange-partners"
+},
+{
+"q": "협정교 리스트",
+"expect": "exchange-partners"
+},
+{
+"q": "외국인 교환학생으로 홍익대 오려면",
+"expect": "exchange-inbound"
+},
+{
+"q": "학점교류",
+"expect": "none"
+},
+{
+"q": "학생증 교환 어디로 가요",
+"expect": "student-card"
+},
+{
+"q": "휴학하고 싶어요",
+"expect": "leave-of-absence"
+},
+{
+"q": "성적경고 받으면 제적돼요?",
+"expect": "warning"
+},
+{
+"q": "학기재수강 신청",
+"expect": "semester-retake"
+},
+{
+"q": "졸업유예 신청",
+"expect": "deferred"
+},
+{
+"q": "국가장학금 신청",
+"expect": "national-scholarship"
+},
+{
+"q": "군대 가는데 학교는 어떻게 해요",
+"expect": "military-leave"
+},
+{
+"q": "입영통지서 나왔어요",
+"expect": "military-leave"
+},
+{
+"q": "다음달 입대예정이에요",
+"expect": "military-leave"
+},
+{
+"q": "학교때려치고싶다",
+"expect": "dropout"
+},
+{
+"q": "수강과목 변경하고 싶어요",
+"expect": "course-change"
+},
+{
+"q": "전과하면 장학금 못 받아요?",
+"expect": "change-major"
+},
+{
+"q": "2전공 신청",
+"expect": "double-major"
+},
+{
+"q": "이름 바뀜 학교 서류",
+"expect": "academic-record"
+},
+{
+"q": "다른 대학 수업 듣기",
+"expect": "none"
+},
+{
+"q": "국내 학점교류",
+"expect": "none"
+},
+{
+"q": "자전거 주차",
+"expect": "none"
+},
+{
+"q": "재입금 해야 돼요",
+"expect": "none"
+},
+{
+"q": "외국 대학에서 공부하고 싶어요",
+"expect": "exchange"
+},
+{
+"q": "교환학생 기숙사",
+"expect": "exchange"
+}
+]

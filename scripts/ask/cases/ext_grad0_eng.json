@@ -1,0 +1,230 @@
+[
+ {
+  "q": "건설환경공학과 졸업요건",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "건환 졸업하려면 몇학점",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "토목과 졸업 조건",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "건설환경 전공필수 뭐야",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "22학번 건환 졸업학점",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "건설환경공학과 졸업포트폴리오",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "건환 커리큘럼",
+  "expect": "grad-civil"
+ },
+ {
+  "q": "전자전기 졸업요건",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "전전 전필 뭐 있어",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "전자전기공학부 졸업하려면 몇학점",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "전자공학과 졸업 조건 21학번",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "전전 교과과정",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "전기과 졸업학점",
+  "expect": "grad-ee"
+ },
+ {
+  "q": "신소재 전공필수",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "신소재공학과 졸업하려면",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "23학번 신소재 졸업학점",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "신소재 실험과목 몇개 들어야 졸업",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "신소재 커리큘럼",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "재료공학 졸업요건",
+  "expect": "grad-mse"
+ },
+ {
+  "q": "화공 졸업요건",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "화학공학과 전필",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "화공 졸업하려면 몇학점",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "화학공학전공 교과과정",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "화공 캡스톤 필수야",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "20학번 화공 졸업 조건",
+  "expect": "grad-chem"
+ },
+ {
+  "q": "산업데이터공학과 졸업요건",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "산공 졸업 몇학점",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "산데공 전공필수",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "산업공학과 졸업하려면",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "산업데이터 졸업시험",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "산업·데이터공학과 커리큘럼",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "24학번 산공 졸업학점",
+  "expect": "grad-ie"
+ },
+ {
+  "q": "기계과 졸업요건",
+  "expect": "grad-me"
+ },
+ {
+  "q": "기시디 졸업하려면 몇학점",
+  "expect": "grad-me"
+ },
+ {
+  "q": "기계시스템디자인공학과 전필",
+  "expect": "grad-me"
+ },
+ {
+  "q": "기계공학과 졸업 조건 22학번",
+  "expect": "grad-me"
+ },
+ {
+  "q": "기계과 교과과정",
+  "expect": "grad-me"
+ },
+ {
+  "q": "기계과 세미나 이수",
+  "expect": "grad-me"
+ },
+ {
+  "q": "창의적공학설계와기업가정신 필수야",
+  "expect": "grad-eng-common"
+ },
+ {
+  "q": "공대 공통 과목",
+  "expect": "grad-eng-common"
+ },
+ {
+  "q": "기초설계 과목 뭐야",
+  "expect": "grad-eng-common"
+ },
+ {
+  "q": "건설환경공학과 과사 전화번호",
+  "expect": "dept-office"
+ },
+ {
+  "q": "화공 과사 어디",
+  "expect": "dept-office-chemeng"
+ },
+ {
+  "q": "신소재 과사 위치",
+  "expect": "dept-office-mse"
+ },
+ {
+  "q": "기계과 과사무실 번호",
+  "expect": "dept-office"
+ },
+ {
+  "q": "전전 과사 어디",
+  "expect": "dept-office"
+ },
+ {
+  "q": "신소재 공학인증 영어성적 기준",
+  "expect": "dept-grad-mse"
+ },
+ {
+  "q": "신소재 졸업논문",
+  "expect": "dept-grad-mse"
+ },
+ {
+  "q": "기계과 졸업식 언제",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "화공 졸업식",
+  "expect": "degree-ceremony"
+ },
+ {
+  "q": "기계과 졸업유예",
+  "expect": "deferred"
+ },
+ {
+  "q": "전전 비인증 졸업학점",
+  "expect": "grad-eng-nonabeek"
+ },
+ {
+  "q": "졸업요건",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "졸업하려면 몇학점 들어야돼",
+  "expect": "graduation-credit"
+ },
+ {
+  "q": "18학번 공대 졸업요건",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "MSC 몇 학점",
+  "expect": "grad-eng"
+ },
+ {
+  "q": "도시공학과 졸업요건",
+  "expect": "grad-urban"
+ }
+]

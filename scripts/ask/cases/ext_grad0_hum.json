@@ -1,0 +1,57 @@
+[
+  {"q": "영문과 졸업요건", "expect": "grad-english"},
+  {"q": "영어영문학과 졸업하려면 몇학점", "expect": "grad-english"},
+  {"q": "영문과 22학번 졸업 요건", "expect": "grad-english"},
+  {"q": "영문과 전필 뭐야", "expect": "grad-english"},
+  {"q": "영어영문 교과과정", "expect": "grad-english"},
+  {"q": "영문과 졸업논문 토익으로 대체 돼?", "expect": "grad-english"},
+  {"q": "영문과 졸업레포트 몇 편", "expect": "grad-english"},
+  {"q": "영문과 과사 어디야", "expect": "dept-office"},
+  {"q": "졸업식 언제", "expect": "degree-ceremony"},
+
+  {"q": "독문과 졸업요건", "expect": "grad-german"},
+  {"q": "독어독문학과 졸업학점", "expect": "grad-german"},
+  {"q": "독문과 21학번 졸업하려면", "expect": "grad-german"},
+  {"q": "독문과 전공필수 과목", "expect": "grad-german"},
+  {"q": "독어독문 커리큘럼", "expect": "grad-german"},
+  {"q": "독문과 논문대체 어떻게 해", "expect": "grad-german"},
+  {"q": "독문과 과사무실 전화번호", "expect": "dept-office"},
+
+  {"q": "불문과 졸업요건", "expect": "grad-french"},
+  {"q": "불어불문학과 졸업하려면 몇학점", "expect": "grad-french"},
+  {"q": "불문과 전공학점", "expect": "grad-french"},
+  {"q": "불문과 전필", "expect": "grad-french"},
+  {"q": "프랑스어문 23학번 졸업 조건", "expect": "grad-french"},
+  {"q": "불문과 교과과정", "expect": "grad-french"},
+  {"q": "불문과 과사 번호", "expect": "dept-office"},
+
+  {"q": "국문과 졸업요건", "expect": "grad-korean"},
+  {"q": "국어국문학과 졸업학점 몇이야", "expect": "grad-korean"},
+  {"q": "국문과 졸업하려면 몇학점", "expect": "grad-korean"},
+  {"q": "국문과 전필 뭐 있어", "expect": "grad-korean"},
+  {"q": "국문과 20학번 졸업 요건", "expect": "grad-korean"},
+  {"q": "국어국문 커리큘럼", "expect": "grad-korean"},
+  {"q": "국문과 학과사무실 위치", "expect": "dept-office"},
+
+  {"q": "디자인경영 졸업요건", "expect": "grad-designmgmt"},
+  {"q": "디자인경영전공 졸업하려면 몇학점", "expect": "grad-designmgmt"},
+  {"q": "디자인경영융합학부 졸업요건", "expect": "grad-designmgmt"},
+  {"q": "디경 전필", "expect": "grad-designmgmt"},
+  {"q": "디자인경영 논문대체원", "expect": "grad-designmgmt"},
+  {"q": "디자인·예술경영학부 디자인경영전공 졸업요건", "expect": "grad-designmgmt"},
+
+  {"q": "예술경영 졸업요건", "expect": "grad-artsmgmt"},
+  {"q": "예술경영전공 졸업학점", "expect": "grad-artsmgmt"},
+  {"q": "예술경영 전공필수", "expect": "grad-artsmgmt"},
+  {"q": "예경 24학번 졸업 요건", "expect": "grad-artsmgmt"},
+  {"q": "예술경영전공 졸업논문 대체", "expect": "grad-artsmgmt"},
+  {"q": "디자인예술경영학부 예술경영전공 교과과정", "expect": "grad-artsmgmt"},
+
+  {"q": "디자인예술경영학부 졸업요건", "expect": "grad-dam"},
+  {"q": "디자인·예술경영학부 졸업논문", "expect": "grad-dam"},
+  {"q": "디자인예술경영 졸업하려면 몇학점", "expect": "grad-dam"},
+  {"q": "디자인예술경영학부 과사", "expect": "dept-office"},
+
+  {"q": "졸업요건", "expect": "graduation-credit"},
+  {"q": "문과대 졸업요건", "expect": "grad-req-humanities"}
+]

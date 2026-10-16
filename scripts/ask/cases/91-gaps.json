@@ -1,0 +1,82 @@
+[
+ {
+  "q": "재수강 하면 성적 몇까지 나와요",
+  "expect": "course-retake"
+ },
+ {
+  "q": "프린트 어디서 해요",
+  "expect": "print-center"
+ },
+ {
+  "q": "출력 어디서 해",
+  "expect": "print-center"
+ },
+ {
+  "q": "인쇄소 있어요?",
+  "expect": "print-center"
+ },
+ {
+  "q": "pc실 프린터",
+  "expect": "pc-room"
+ },
+ {
+  "q": "홍익대 전화번호 알려줘",
+  "expect": "phone-search"
+ },
+ {
+  "q": "학교 전화번호",
+  "expect": "phone-search"
+ },
+ {
+  "q": "F 받으면 어떻게 돼요",
+  "expect": "grades"
+ },
+ {
+  "q": "셔틀버스 있나요",
+  "expect": "none"
+ },
+ {
+  "q": "불났어요 비상연락처",
+  "expect": "none"
+ },
+ {
+  "q": "국제교류 프로그램",
+  "expect": "exchange"
+ },
+ {
+  "q": "홍대 가는 버스",
+  "expect": "directions"
+ },
+ {
+  "q": "학교 대표전화",
+  "expect": "main-phone"
+ },
+ {
+  "q": "시험기간에 밤샘 공부할 곳",
+  "expect": "lib-24h"
+ },
+ {
+  "q": "외국인 비자 연장",
+  "expect": "intl-visa"
+ },
+ {
+  "q": "도서관 몇시까지",
+  "expect": "library"
+ },
+ {
+  "q": "학사일정",
+  "expect": "academic-calendar"
+ },
+ {
+  "q": "중간고사 언제",
+  "expect": "exam-period"
+ },
+ {
+  "q": "기숙사비 얼마",
+  "expect": "life-dorm-fee"
+ },
+ {
+  "q": "분실물 어디서 찾아요",
+  "expect": "lost-found"
+ }
+]
