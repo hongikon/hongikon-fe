@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Modal, View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { Keyboard, Modal, View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS, TYPE } from '../../constants/typography'
@@ -38,6 +38,10 @@ interface ReportTimeSheetProps {
  * 지난 칸·범위 밖 칸은 흐리게 막고, 고른 조합이 안 되면 가장 가까운 되는 시각으로 맞춘다.
  */
 export default function ReportTimeSheet(props: ReportTimeSheetProps) {
+  // 작성창 제목·본문 입력칸에 포커스가 남아 있으면 이 시트 위로 키보드가 올라와 다이얼을 가린다(10-19 지적) — 열 때 내린다.
+  useEffect(() => {
+    if (props.visible) Keyboard.dismiss()
+  }, [props.visible])
   return (
     <Modal transparent visible={props.visible} animationType="fade" onRequestClose={props.onCancel}>
       {/* 바깥 작성창 Modal 위에 따로 뜨므로 inset 을 새로 잡는다. */}
@@ -60,7 +64,12 @@ function SheetBody({ title, baseMidnight, dayCount, dayLabel, isValid, initialMs
     return best
   }
 
-  const [draft, setDraft] = useState(() => (isValid(initialMs) ? initialMs : nearestValid(initialMs) ?? initialMs))
+  // 10분 칸에 맞춰 시작한다. 칸에 안 맞는 값(예: 14:24)이 들어오면 분 다이얼은 목록에 24가 없어 '00분'을 보여 주는데
+  // 실제 값·미리보기는 24분으로 남아, 다이얼과 고른 시각이 어긋났다(10-19 지적).
+  const [draft, setDraft] = useState(() => {
+    const snapped = Math.round(initialMs / STEP_MS) * STEP_MS
+    return isValid(snapped) ? snapped : nearestValid(snapped) ?? snapped
+  })
   const day = Math.floor((draft - baseMidnight) / DAY_MS)
   const hour = Math.floor((draft - baseMidnight - day * DAY_MS) / HOUR_MS)
   const minute = Math.round((draft % HOUR_MS) / MINUTE_MS)
