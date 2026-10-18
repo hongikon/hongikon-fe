@@ -1,7 +1,9 @@
-import { useCallback, type ReactElement, type Ref } from 'react'
+import { useCallback, useMemo, useState, type ReactElement, type Ref } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
+import NewsFoldCard from './NewsFoldCard'
+import { foldNewsRows, type NewsListRow } from '../../utils/newsFold'
 import { COLORS } from '../../constants/colors'
 import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
@@ -9,7 +11,7 @@ import { useTabBarInset } from '../../hooks/useTabBarInset'
 
 interface NewsListProps {
   /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 목록 ref. */
-  listRef?: Ref<FlatList<NewsItem>>
+  listRef?: Ref<FlatList<NewsListRow>>
   /** 손을 뗄 때(검색 화면이 맨 위에서 끌어내려 닫기에 쓴다). */
   onScrollEndDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   items: NewsItem[]
@@ -26,6 +28,8 @@ interface NewsListProps {
   loadingMore?: boolean
   /** 목록 끝에 붙일 것(다음 페이지 실패 안내 등). `loadingMore`일 땐 스피너가 우선. */
   footer?: ReactElement | null
+  /** 날짜별 한 장으로 접을 게시판(sourceId). 구독 피드의 채용정보처럼 글이 너무 많은 곳(`foldNewsRows`). */
+  foldSourceIds?: readonly string[]
   /** 당겨서 새로고침. 둘 다 있어야 켜진다. */
   refreshing?: boolean
   onRefresh?: () => void
@@ -53,22 +57,38 @@ export default function NewsList({
   onRefresh,
   listRef,
   onScrollEndDrag,
+  foldSourceIds,
 }: NewsListProps) {
   const tabInset = useTabBarInset()
+  const [expandedFolds, setExpandedFolds] = useState<ReadonlySet<string>>(() => new Set())
+  const rows = useMemo(() => foldNewsRows(items, foldSourceIds, expandedFolds), [items, foldSourceIds, expandedFolds])
+
+  const toggleFold = useCallback((key: string) => {
+    haptics.selection()
+    setExpandedFolds((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<NewsItem>) => (
-      <NewsCard
-        item={item}
-        bookmarked={isBookmarked(item.id)}
-        onPress={onPressItem}
-        onToggleBookmark={onToggleBookmark}
-      />
-    ),
-    [isBookmarked, onPressItem, onToggleBookmark],
+    ({ item: row }: ListRenderItemInfo<NewsListRow>) =>
+      row.type === 'fold' ? (
+        <NewsFoldCard foldKey={row.key} date={row.date} items={row.items} expanded={row.expanded} onToggle={toggleFold} />
+      ) : (
+        <NewsCard
+          item={row.item}
+          bookmarked={isBookmarked(row.item.id)}
+          onPress={onPressItem}
+          onToggleBookmark={onToggleBookmark}
+        />
+      ),
+    [isBookmarked, onPressItem, onToggleBookmark, toggleFold],
   )
 
-  const keyExtractor = useCallback((item: NewsItem) => item.id, [])
+  const keyExtractor = useCallback((row: NewsListRow) => row.key, [])
 
   // 당겨서 새로고침이 걸리는 순간 가볍게 진동한다.
   const handleRefresh = useCallback(() => {
@@ -83,7 +103,7 @@ export default function NewsList({
       style={styles.list}
       // 넓은 화면(폴드 펼침·웹)에선 카드가 화면 끝까지 늘어나지 않게 가운데 읽기 폭으로 모은다.
       contentContainerStyle={[styles.content, layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset + 12 }]}
-      data={items}
+      data={rows}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       // 검색창(목록 머리·화면 머리)을 눌러 올라온 키보드는 목록을 아래로 끌면 내려간다. 결과 카드는 키보드가 떠 있어도 한 번에 눌린다.
