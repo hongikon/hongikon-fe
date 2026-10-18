@@ -8,7 +8,8 @@ export interface RoutePoint {
 
 /**
  * 층 번호 표기 규칙
- * 양수는 지상(1 → '1F'), 음수는 지하(-1 → 'B1'). 0층은 존재하지 않는다.
+ * 양수는 지상(1 → '1F'), 음수는 지하(-1 → 'B1').
+ * 0 은 B1 과 1F 사이의 로비층으로 'L' 이라 쓴다(홍문관 R동 L층). 그 밖의 건물에는 0층이 없다.
  * 홍문관 R동의 1.5층처럼 중간층 출입구가 있으면 소수로 표기한다('1.5F').
  */
 export interface FloorOption {
@@ -17,14 +18,17 @@ export interface FloorOption {
 }
 
 export function formatFloor(floor: number): string {
+  if (floor === 0) return 'L'
   return floor > 0 ? `${floor}F` : `B${Math.abs(floor)}`
 }
 
 /**
  * 층을 오르내린 횟수를 셀 수 있는 연속 눈금으로 바꾼다.
  * 0층이 없어 B1(-1)과 1F(1) 사이가 한 개 층이 되도록 지상층을 하나씩 내린다.
+ * 로비층 L(0)은 그 사이 반 층으로 본다.
  */
 function levelIndex(floor: number): number {
+  if (floor === 0) return -0.5
   return floor > 0 ? floor - 1 : floor
 }
 

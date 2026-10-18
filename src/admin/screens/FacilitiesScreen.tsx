@@ -72,7 +72,7 @@ function buildInput(draft: FacilityDraft): { input: AdminFacilityInput } | { err
   let floor: number | undefined
   if (draft.floor.trim()) {
     const value = Number(draft.floor.trim())
-    if (!Number.isInteger(value)) errors.push('층은 정수로 입력해 주세요(지하는 음수, B1 = -1).')
+    if (!Number.isInteger(value)) errors.push('층은 정수로 입력해 주세요(지하는 음수, B1 = -1, 로비층 L = 0).')
     else floor = value
   }
   const noteError = tooLong(draft.note, 255, '위치 설명')
@@ -258,7 +258,7 @@ export default function FacilitiesScreen() {
           </Field>
           <View style={formStyles.row}>
             <View style={formStyles.half}>
-              <Field label="층" hint="지하는 음수(B1 = -1). 모르면 비웁니다.">
+              <Field label="층" hint="지하는 음수(B1 = -1), 홍문관 로비층 L 은 0. 모르면 비웁니다.">
                 <TextRow value={draft.floor} onChangeText={(floor) => update({ floor })} placeholder="예: 3" keyboardType="numbers-and-punctuation" accessibilityLabel="층" />
               </Field>
             </View>
