@@ -1515,3 +1515,11 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
 - `ReportSheet`(지도 제보 시트)·`ReportPostBody`(제보 본문) 사진 탭 → 이 창. `openExternalUrl` 호출 제거. 관리자 화면 사진은 원본 열기 그대로.
 - `tsc --noEmit` 통과. 서버 없이라 사진 붙은 제보로 화면 확인은 못 함 — 실기기에서 확인 필요.
 
+---
+
+## 2026-10-19 — 제보 429 까닭을 서버 문구 그대로 (dev)
+
+- 사용자 지적: 제보 4~5건째부터 안 올라감. 원인은 서버 도배 방지 — 승인 대기(PENDING) 3건 이상(`report.create.max-pending=3`)이면 429, 1시간 5건(`report.create.limit-per-hour=5`) 넘어도 429.
+- 앱은 429 를 모두 "제보를 너무 자주 올렸어요"로 바꿔 보여, 승인 대기에 막힌 경우에도 까닭을 알 수 없었다 → 서버가 준 문구(`serverMessage`)를 그대로 보이고, 없을 때만 예전 문구.
+- `tsc --noEmit` 통과.
+
