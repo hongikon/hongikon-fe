@@ -192,6 +192,18 @@ export async function getLiveReports(
   return reports
 }
 
+/**
+ * 공식 계정 작성자의 제보 시간 수정(`PUT /reports/{id}/schedule`). 일반 회원·남의 제보는 403.
+ * 시작을 그대로 두려면 받은 `startsAt` 문자열을 그대로 보낸다(서버가 같은 값이면 이미 지난 시작도 받는다).
+ */
+export async function updateReportSchedule(
+  id: number,
+  input: { startsAt: string; endsAt: string },
+  accessToken: string,
+): Promise<Report> {
+  return apiRequest<Report>(`/reports/${id}/schedule`, { method: 'PUT', body: input, accessToken })
+}
+
 /** 본인 제보 삭제. */
 export async function deleteReport(id: number, accessToken: string): Promise<void> {
   await apiRequest<void>(`/reports/${id}`, { method: 'DELETE', accessToken })

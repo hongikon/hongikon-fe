@@ -9,17 +9,39 @@ interface ReportOwnerMenuProps {
   notifyEnabled: boolean
   /** 설정의 "내 제보 결과 알림"이 꺼져 있으면 이 제보 알림을 켜도 오지 않는다 — 안내만 붙인다. */
   globalOff: boolean
-  onToggleNotify: () => void
+  /** 없으면(서버가 notifyEnabled 를 안 줌) 알림 줄을 그리지 않는다. */
+  onToggleNotify?: () => void
+  /** 공식 계정이 올린 제보만 — '시간 수정'(PUT /reports/{id}/schedule). */
+  onEditSchedule?: () => void
 }
 
-/** 내 제보의 ⋯ 메뉴. 지금은 "이 제보 알림 끄기/켜기" 하나(남의 제보 ⋯ 와 같은 아래 시트 모양). */
-export default function ReportOwnerMenu({ visible, onClose, notifyEnabled, globalOff, onToggleNotify }: ReportOwnerMenuProps) {
+/** 내 제보의 ⋯ 메뉴. "이 제보 알림 끄기/켜기", 공식 계정이면 "시간 수정"(남의 제보 ⋯ 와 같은 아래 시트 모양). */
+export default function ReportOwnerMenu({
+  visible,
+  onClose,
+  notifyEnabled,
+  globalOff,
+  onToggleNotify,
+  onEditSchedule,
+}: ReportOwnerMenuProps) {
   const insets = useSafeAreaInsets()
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={menuStyles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="메뉴 닫기">
         <Pressable style={[menuStyles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]} onPress={() => {}}>
           <View accessibilityRole="menu">
+            {onEditSchedule && (
+              <MenuRow
+                icon="time-outline"
+                label="시간 수정"
+                hint="행사가 늦게 시작하거나 길어지면 시작·종료 시각을 고쳐요"
+                onPress={() => {
+                  onClose()
+                  onEditSchedule()
+                }}
+              />
+            )}
+            {onToggleNotify && (
             <MenuRow
               icon={notifyEnabled ? 'notifications-off-outline' : 'notifications-outline'}
               label={notifyEnabled ? '이 제보 알림 끄기' : '이 제보 알림 켜기'}
@@ -35,6 +57,7 @@ export default function ReportOwnerMenu({ visible, onClose, notifyEnabled, globa
                 onToggleNotify()
               }}
             />
+            )}
           </View>
           <TouchableOpacity style={menuStyles.cancel} onPress={onClose} accessibilityRole="button">
             <Text style={menuStyles.cancelText}>취소</Text>
