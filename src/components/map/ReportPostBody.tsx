@@ -1,10 +1,11 @@
+import { useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { formatFreshness, reportImageUrls } from '../../utils/reports'
-import { openExternalUrl } from '../../utils/openExternalUrl'
+import ImageViewerModal from '../common/ImageViewerModal'
 import OfficialBadge from '../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import { reportAuthorName } from '../../utils/nickname'
@@ -26,6 +27,8 @@ export default function ReportPostBody({
 }) {
   const meta = reportCategoryMeta(report.category)
   const photos = reportImageUrls(report)
+  // 크게 보는 사진 번호. null 이면 닫힘.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   return (
     <View style={styles.body}>
       <View style={styles.badge}>
@@ -52,15 +55,16 @@ export default function ReportPostBody({
           {photos.map((url, index) => (
             <Pressable
               key={url}
-              onPress={() => openExternalUrl(url)}
+              onPress={() => setViewerIndex(index)}
               accessibilityRole="imagebutton"
-              accessibilityLabel={`제보 첨부 사진 ${index + 1}/${photos.length}, 원본 보기`}
+              accessibilityLabel={`제보 첨부 사진 ${index + 1}/${photos.length}, 크게 보기`}
             >
               <Image source={{ uri: url }} style={styles.photo} resizeMode="cover" />
             </Pressable>
           ))}
         </View>
       )}
+      <ImageViewerModal urls={photos} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
 
       <View style={styles.authorRow}>
         <Text style={styles.author} numberOfLines={1}>

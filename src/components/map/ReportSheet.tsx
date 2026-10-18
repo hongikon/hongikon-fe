@@ -16,9 +16,9 @@ import { flagReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
+import ImageViewerModal from '../common/ImageViewerModal'
 import { reportPlaceText } from '../../utils/shareReport'
 import { isUpcomingReport } from '../../utils/reportSchedule'
-import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
@@ -141,6 +141,8 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const [failedPhotoUrls, setFailedPhotoUrls] = useState<readonly string[]>([])
   // 최대 3장(등록 순서). 여러 장 기능 전 서버는 imageUrl 1장만 준다.
   const photoUrls = reportImageUrls(report).filter((url) => !failedPhotoUrls.includes(url))
+  // 크게 보는 사진 번호. null 이면 닫힘.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const markPhotoFailed = (url: string) =>
     setFailedPhotoUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
   const [error, setError] = useState<{
@@ -290,18 +292,18 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       {photoUrls.length > 0 && (
-        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 원본(presigned URL)을 브라우저로 연다.
+        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 앱 안 사진 보기(ImageViewerModal)로 크게 연다.
         <View style={styles.photoRow}>
           {photoUrls.map((url, index) => (
             <Pressable
               key={url}
               style={[styles.photoTile, photoUrls.length > 1 && styles.photoTileSmall]}
-              onPress={() => openExternalUrl(url)}
+              onPress={() => setViewerIndex(index)}
               accessibilityRole="imagebutton"
               accessibilityLabel={
                 photoUrls.length > 1
-                  ? `제보 첨부 사진 ${index + 1}/${photoUrls.length}, 원본 보기`
-                  : '제보 첨부 사진, 원본 보기'
+                  ? `제보 첨부 사진 ${index + 1}/${photoUrls.length}, 크게 보기`
+                  : '제보 첨부 사진, 크게 보기'
               }
             >
               <Image
@@ -314,6 +316,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           ))}
         </View>
       )}
+      <ImageViewerModal urls={photoUrls} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
 
       <ReportActionRow report={report} onPatch={applyPatch} />
 
