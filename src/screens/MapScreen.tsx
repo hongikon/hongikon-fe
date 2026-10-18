@@ -21,6 +21,7 @@ import FloorChips from "../components/map/FloorChips";
 import BuildingSheet from "../components/map/BuildingSheet";
 import FacilitySheet from "../components/map/FacilitySheet";
 import MapFilterChips from "../components/map/MapFilterChips";
+import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
@@ -178,7 +179,8 @@ export default function MapScreen() {
   const [fromFloor, setFromFloor] = useState<number | null>(null);
   const [toFloor, setToFloor] = useState<number | null>(null);
   // 최상단 필터. 무엇을 볼지 먼저 고르게 한다. null 이면 하위 칩 줄이 없다.
-  const [layer, setLayer] = useState<MapLayer | null>(null);
+  // 처음엔 '이벤트 > 제보'가 켜진 채로 연다 — 제보가 앱의 주 기능이라 첫 화면에서 바로 보이게(10-18 요청).
+  const [layer, setLayer] = useState<MapLayer | null>("이벤트");
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
@@ -196,7 +198,7 @@ export default function MapScreen() {
   } | null>(null);
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
-  const [reportsOn, setReportsOn] = useState(false);
+  const [reportsOn, setReportsOn] = useState(true);
   /**
    * '🔥 HOT' 칩. 켜면 제보 레이어를 HOT·인기 제보(`GET /reports?sort=hot`, 최근 60분 🔥 순)로만 채우고 위에 짧은 목록을 띄운다.
    * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
@@ -1579,36 +1581,14 @@ export default function MapScreen() {
           )}
         </View>
 
-        {/* 시트가 열려 있으면 오른쪽 아래 버튼(제보하기·캠퍼스로)이 시트 가장자리로 삐져나와 숨긴다. */}
+        {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
         {!pickingLocation && !sheetOpen && (
-          <View style={[styles.mapControls, { bottom: 20 + tabBarHeight }]}>
-            <TouchableOpacity
-              style={styles.controlBtn}
-              onPress={handleStartReportPicker}
-              accessibilityRole="button"
-              accessibilityLabel="제보하기"
-            >
-              <ReportMegaphoneIcon size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            {ROUTE_FINDING_ENABLED && (
-              <TouchableOpacity
-                style={styles.controlBtn}
-                onPress={handleOpenRoute}
-                accessibilityRole="button"
-                accessibilityLabel="길찾기"
-              >
-                <Ionicons name="navigate" size={17} color={COLORS.primary} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.controlBtn}
-              onPress={handleRecenter}
-              accessibilityRole="button"
-              accessibilityLabel="캠퍼스로 돌아가기"
-            >
-              <Ionicons name="school-outline" size={17} color={COLORS.primary} />
-            </TouchableOpacity>
-          </View>
+          <MapActionMenu
+            style={[styles.mapControls, { bottom: 20 + tabBarHeight }]}
+            onReport={handleStartReportPicker}
+            onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
+            onRecenter={handleRecenter}
+          />
         )}
 
         {pickingLocation && (
@@ -2242,29 +2222,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 12.5,
     color: COLORS.textPrimary,
-  },
-  // 오른쪽 아래 둥근 버튼(제보하기·캠퍼스로): 하단 탭 바 캡슐과 같은 맑은 유리(10-08). 웹은 흐림 + 위 가장자리 흰 반사광,
-  // 네이티브는 흐림이 없어 조금 덜 투명하게.
-  controlBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Platform.OS === "web" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.8)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 4,
-    ...(Platform.OS === "web"
-      ? {
-          backdropFilter: "blur(2px) saturate(160%)",
-          boxShadow: "inset 0 0.5px 0 rgba(255,255,255,0.7), 0 2px 8px rgba(0,0,0,0.06)",
-        }
-      : null),
   },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   bannerStack: {
