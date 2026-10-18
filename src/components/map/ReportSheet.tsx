@@ -12,13 +12,13 @@ import * as haptics from '../../lib/haptics'
 import { useToast } from '../common/Toast'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
-import { flagReport } from '../../apis/reports'
+import { flagReport, updateReportSchedule } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
+import ImageViewerModal from '../common/ImageViewerModal'
 import { reportPlaceText } from '../../utils/shareReport'
 import { isUpcomingReport } from '../../utils/reportSchedule'
-import { openExternalUrl } from '../../utils/openExternalUrl'
 import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
@@ -27,6 +27,7 @@ import ReportCommentsModal from './comments/ReportCommentsModal'
 import ModerationMenu from './ModerationMenu'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import ReportOwnerMenu from './ReportOwnerMenu'
+import ReportScheduleEditModal from './ReportScheduleEditModal'
 import HotBadge from '../common/HotBadge'
 import OfficialBadge from '../common/OfficialBadge'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -61,6 +62,9 @@ function contentNeedsMore(content: string): boolean {
   return trimmed.includes('\n') || trimmed.length > 60
 }
 
+/** 시트에서 바로 바뀌는 값(🔥·관심·조회·알림·공식 계정 시간 수정). 지도 목록을 다시 받기 전까지 덮어 둔다. */
+type SheetPatch = ReportCommunityPatch & { notifyEnabled?: boolean | null; startsAt?: string; endsAt?: string }
+
 export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
@@ -73,10 +77,10 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const { accessToken, logout } = useAuth()
   const { settings } = useSettings()
   // 🔥·관심·조회 수·알림 설정은 시트에서 바로 바뀐다. 목록(지도)을 다시 받기 전까지 시트 사본에 덮어 둔다.
-  const [patch, setPatch] = useState<ReportCommunityPatch & { notifyEnabled?: boolean | null }>({})
+  const [patch, setPatch] = useState<SheetPatch>({})
   useEffect(() => setPatch({}), [reportProp.id])
   const report: ReportListItem = { ...reportProp, ...patch }
-  const applyPatch = (next: ReportCommunityPatch & { notifyEnabled?: boolean | null }) =>
+  const applyPatch = (next: SheetPatch) =>
     setPatch((prev) => ({ ...prev, ...next }))
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
   // 제보 본문 창(본문 + 댓글 전체 + 입력줄). '본문 보기'·댓글 미리보기·"댓글 달기"가 모두 이 창을 연다.
@@ -106,6 +110,29 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportProp.id, tracksViews])
   const canToggleNotify = report.isMine && typeof report.notifyEnabled === 'boolean' && !!accessToken
+  // 공식 계정이 올린 제보는 작성자가 시간을 고칠 수 있다(서버도 공식 계정 작성자만 받는다).
+  const canEditSchedule = report.isMine && !!report.authorOfficial && !!accessToken
+  const hasOwnerMenu = canToggleNotify || canEditSchedule
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [scheduleSaving, setScheduleSaving] = useState(false)
+  const handleSaveSchedule = async (next: { startsAt: string; endsAt: string }) => {
+    if (!accessToken) return
+    setScheduleSaving(true)
+    try {
+      const saved = await updateReportSchedule(report.id, next, accessToken)
+      applyPatch({ startsAt: saved.startsAt, endsAt: saved.endsAt })
+      setScheduleOpen(false)
+      haptics.success()
+      toast.show({ message: '제보 시간을 고쳤어요' })
+    } catch (caught) {
+      toast.show({
+        message: caught instanceof ApiError && caught.serverMessage ? caught.serverMessage : '시간을 고치지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+        tone: 'warning',
+      })
+    } finally {
+      setScheduleSaving(false)
+    }
+  }
   const handleToggleNotify = async () => {
     if (!accessToken || typeof report.notifyEnabled !== 'boolean') return
     const next = !report.notifyEnabled
@@ -141,6 +168,8 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const [failedPhotoUrls, setFailedPhotoUrls] = useState<readonly string[]>([])
   // 최대 3장(등록 순서). 여러 장 기능 전 서버는 imageUrl 1장만 준다.
   const photoUrls = reportImageUrls(report).filter((url) => !failedPhotoUrls.includes(url))
+  // 크게 보는 사진 번호. null 이면 닫힘.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const markPhotoFailed = (url: string) =>
     setFailedPhotoUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
   const [error, setError] = useState<{
@@ -254,7 +283,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
       </View>
 
-      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen} style={{ height: bodyHeight }} bounces={false}>
+      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen || scheduleOpen} style={{ height: bodyHeight }} bounces={false}>
       {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
@@ -290,18 +319,18 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       {photoUrls.length > 0 && (
-        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 원본(presigned URL)을 브라우저로 연다.
+        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 앱 안 사진 보기(ImageViewerModal)로 크게 연다.
         <View style={styles.photoRow}>
           {photoUrls.map((url, index) => (
             <Pressable
               key={url}
               style={[styles.photoTile, photoUrls.length > 1 && styles.photoTileSmall]}
-              onPress={() => openExternalUrl(url)}
+              onPress={() => setViewerIndex(index)}
               accessibilityRole="imagebutton"
               accessibilityLabel={
                 photoUrls.length > 1
-                  ? `제보 첨부 사진 ${index + 1}/${photoUrls.length}, 원본 보기`
-                  : '제보 첨부 사진, 원본 보기'
+                  ? `제보 첨부 사진 ${index + 1}/${photoUrls.length}, 크게 보기`
+                  : '제보 첨부 사진, 크게 보기'
               }
             >
               <Image
@@ -314,6 +343,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           ))}
         </View>
       )}
+      <ImageViewerModal urls={photoUrls} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
 
       <ReportActionRow report={report} onPatch={applyPatch} />
 
@@ -329,13 +359,17 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
             <Text style={styles.flaggedText}>신고 접수됨</Text>
           ) : null}
           {/* 내 제보는 ⋯ 에 "이 제보 알림 끄기/켜기"(서버가 notifyEnabled 를 줄 때만). */}
-          {canToggleNotify && (
+          {hasOwnerMenu && (
             <TouchableOpacity
               style={styles.moreBtn}
               onPress={() => setOwnerMenuOpen(true)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={`내 제보 메뉴(이 제보 알림 ${report.notifyEnabled ? '끄기' : '켜기'})`}
+              accessibilityLabel={
+                canToggleNotify
+                  ? `내 제보 메뉴(${canEditSchedule ? '시간 수정, ' : ''}이 제보 알림 ${report.notifyEnabled ? '끄기' : '켜기'})`
+                  : '내 제보 메뉴(시간 수정)'
+              }
             >
               <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textTertiary} />
             </TouchableOpacity>
@@ -356,13 +390,24 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         </View>
       </View>
 
-      {canToggleNotify && (
+      {hasOwnerMenu && (
         <ReportOwnerMenu
           visible={ownerMenuOpen}
           onClose={() => setOwnerMenuOpen(false)}
           notifyEnabled={!!report.notifyEnabled}
           globalOff={!settings.reportStatusAlert}
-          onToggleNotify={() => void handleToggleNotify()}
+          onToggleNotify={canToggleNotify ? () => void handleToggleNotify() : undefined}
+          onEditSchedule={canEditSchedule ? () => setScheduleOpen(true) : undefined}
+        />
+      )}
+      {canEditSchedule && (
+        <ReportScheduleEditModal
+          visible={scheduleOpen}
+          startsAt={report.startsAt}
+          endsAt={report.endsAt}
+          saving={scheduleSaving}
+          onClose={() => setScheduleOpen(false)}
+          onSave={(next) => void handleSaveSchedule(next)}
         />
       )}
 
