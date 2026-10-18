@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, type FlatList, type ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useScrollToTop, type CompositeNavigationProp } from '@react-navigation/native'
@@ -19,7 +19,6 @@ import { NewsListSkeleton } from '../components/common/Skeleton'
 import * as haptics from '../lib/haptics'
 import { FONTS } from '../constants/typography'
 import NewsList from '../components/news/NewsList'
-import type { NewsListRow } from '../utils/newsFold'
 import DeptTreeList from '../components/news/DeptTreeList'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import RetryableError from '../components/common/RetryableError'
@@ -33,9 +32,6 @@ type NavProp = CompositeNavigationProp<
   NativeStackNavigationProp<NewsStackParamList>,
   NativeStackNavigationProp<RootStackParamList>
 >
-
-/** 구독 피드에서 날짜별로 접는 게시판(하루 10~20건 올라오는 채용정보). */
-const FOLDED_FEED_SOURCE_IDS: readonly string[] = ['채용정보']
 
 /** 구독 학과 id → 표시 이름. 구독 칩에 쓴다. */
 const DEPT_NAME_BY_ID = new Map(SUBSCRIBABLE_ITEMS.map((item) => [item.id, item.name]))
@@ -54,7 +50,7 @@ export default function NewsScreen() {
   )
   const [subManagerOpen, setSubManagerOpen] = useState(false)
   // 이미 소식 탭에 있을 때 하단 '소식' 탭을 다시 누르면 지금 보이는 목록을 맨 위로 올린다(10-08 요청).
-  const listRef = useRef<FlatList<NewsListRow>>(null)
+  const listRef = useRef<FlatList<NewsItem>>(null)
   const treeRef = useRef<ScrollView>(null)
   useScrollToTop(listRef)
   useScrollToTop(treeRef)
@@ -71,11 +67,6 @@ export default function NewsScreen() {
   const bookmarked = useBookmarkedNews(settings.bookmarkedNews)
 
   const isBookmarkTab = activeTab === '북마크'
-  // 채용정보는 하루 10~20건이라 구독 피드에서 날짜별 한 장으로 접는다(10-18). 채용정보만 구독했으면 접을 까닭이 없어 그대로 둔다.
-  const foldSourceIds = useMemo(
-    () => (settings.subscribedDepts.some((id) => !FOLDED_FEED_SOURCE_IDS.includes(id)) ? FOLDED_FEED_SOURCE_IDS : undefined),
-    [settings.subscribedDepts],
-  )
   const displayedNews = isBookmarkTab ? bookmarked.items : subscribedFeed.items
   const feedState = isBookmarkTab
     ? { ...bookmarked, retrying: bookmarked.refreshing || bookmarked.loading }
@@ -143,7 +134,6 @@ export default function NewsScreen() {
           isBookmarked={isBookmarked}
           onPressItem={handlePressItem}
           onToggleBookmark={toggleBookmark}
-          foldSourceIds={isBookmarkTab ? undefined : foldSourceIds}
           onEndReached={isBookmarkTab ? undefined : subscribedFeed.loadMore}
           loadingMore={!isBookmarkTab && subscribedFeed.loadingMore}
           refreshing={isBookmarkTab ? undefined : subscribedFeed.refreshing}
