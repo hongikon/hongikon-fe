@@ -118,5 +118,11 @@
   {"q": "인터넷 강의", "expect": "none"},
   {"q": "T동 강의실 예약 방법", "expect": "t-classroom-booking/start"},
   {"q": "제4공학관 강의실 대여하려면", "expect": "t-classroom-booking/start"},
-  {"q": "T501 강의실 빌리고 싶어", "expect": "t-classroom-booking/start"}
+  {"q": "T501 강의실 빌리고 싶어", "expect": "t-classroom-booking/start"},
+  {"q": "아트앤디자인밸리가 뭐야", "expect": "art-design-valley/start"},
+  {"q": "아트엔디자인밸리 어디 있어요", "expect": "art-design-valley/start"},
+  {"q": "디자인밸리 가는 길", "expect": "art-design-valley/start"},
+  {"q": "아트앤디자인밸리 입주 업체", "expect": "art-design-valley/tenants"},
+  {"q": "슬런치팩토리 몇 층이에요", "expect": "art-design-valley/tenants"},
+  {"q": "창업동아리 하고 싶어요", "expect": "startup/start"}
 ]
