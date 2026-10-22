@@ -102,15 +102,19 @@ export default function ReportScheduleFields({
   const todayMidnight = kstMidnight(now)
   const [sheet, setSheet] = useState<'start' | 'end' | null>(null)
 
-  /** 시작을 바꾼다. 직접 고른 종료는 진행 기간을 유지한 채 같이 옮긴다. */
+  /**
+   * 시작을 바꿀 때의 종료. 직접 고른 종료는 고른 시각 그대로 둔다 — 전에는 진행 기간을 유지한 채 같이 밀려
+   * 고른 종료가 엉뚱한 시각으로 옮겨졌다(10-22 지적). 새 시작보다 앞이거나 7일을 넘어 쓸 수 없게 되면
+   * 'N시간 뒤'(마지막에 고른 진행 시간)로 돌려 새 시작 기준으로 다시 잡는다.
+   */
+  const endFor = (nextStartMs: number): Pick<ReportSchedule, 'endMode' | 'customEndMs'> => {
+    if (value.endMode !== 'custom') return { endMode: value.endMode, customEndMs: value.customEndMs }
+    const fits = value.customEndMs > nextStartMs && value.customEndMs - nextStartMs <= MAX_DURATION_MS
+    return fits ? { endMode: 'custom', customEndMs: value.customEndMs } : { endMode: 'duration', customEndMs: value.customEndMs }
+  }
+
   const setStart = (nextStartMs: number) => {
-    const delta = nextStartMs - startMs
-    onChange({
-      ...value,
-      startMode: 'scheduled',
-      scheduledStartMs: nextStartMs,
-      customEndMs: value.endMode === 'custom' ? clampEnd(value.customEndMs + delta, nextStartMs) : value.customEndMs,
-    })
+    onChange({ ...value, startMode: 'scheduled', scheduledStartMs: nextStartMs, ...endFor(nextStartMs) })
   }
 
   // 고른 시작 시각이 (창을 열어 둔 사이) 지나가면 가장 가까운 다음 칸으로 민다.
@@ -172,18 +176,8 @@ export default function ReportScheduleFields({
           label="지금"
           active={!scheduled}
           disabled={disabled}
-          onPress={() =>
-            // 직접 고른 종료도 시작을 옮길 때(setStart)처럼 진행 기간을 유지한 채 지금 기준으로 당긴다.
-            // 안 그러면 며칠 뒤로 잡아 둔 종료가 그대로 남아 '지금 ~ 10/12' 처럼 늘어나거나 7일 상한에 걸린다.
-            onChange({
-              ...value,
-              startMode: 'now',
-              customEndMs:
-                value.endMode === 'custom' && scheduled
-                  ? clampEnd(Math.round((value.customEndMs + (now - startMs)) / STEP_MS) * STEP_MS, now)
-                  : value.customEndMs,
-            })
-          }
+          // 직접 고른 종료는 시작을 옮길 때(setStart)처럼 그대로 두고, 지금 기준으로 쓸 수 없을 때만 'N시간 뒤'로 돌린다.
+          onPress={() => onChange({ ...value, startMode: 'now', ...endFor(now) })}
           accessibilityLabel="지금 시작"
         />
       </View>

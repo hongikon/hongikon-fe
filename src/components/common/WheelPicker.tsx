@@ -36,8 +36,12 @@ interface WheelPickerProps<T> {
 
 export const WHEEL_ITEM_HEIGHT = 44
 const DEFAULT_VISIBLE_ROWS = 5
-/** 스크롤이 이만큼(ms) 멈춰 있으면 가장 가까운 칸에 맞춘다. 웹은 스냅 이벤트가 없어 이걸로 맞춘다. */
+/**
+ * 웹: 스크롤이 이만큼(ms) 멈춰 있으면 가장 가까운 칸에 맞춘다(스냅 이벤트가 없다).
+ * 앱: 손을 뗀 뒤 이만큼 관성·스냅이 시작되지 않으면 그 자리에서 맞춘다.
+ */
 const SETTLE_DELAY_MS = 120
+const IS_WEB = Platform.OS === 'web'
 
 /**
  * iOS 식 다이얼(돌려서 고르는 휠). 네이티브 모듈 없이 ScrollView 로만 만들어 OTA·웹에서도 그대로 돈다.
@@ -66,10 +70,17 @@ export default function WheelPicker<T>({
   const lastY = useRef(selectedIndex * WHEEL_ITEM_HEIGHT)
   const dragging = useRef(false)
   /**
-   * 코드로 돌리는 중인 목표 위치. 그 사이 오는 스크롤 이벤트는 사용자가 돌린 게 아니라 값으로 받지 않는다
+   * 사용자가 끌어서 돌린 스크롤이 아직 값으로 확정되지 않았는지(앱). 코드로 돌린 스크롤(값이 바깥에서 바뀜, 막힌 칸 건너뛰기,
+   * 칸 누르기)의 스크롤·멈춤 이벤트는 값으로 받지 않는다.
+   */
+  const userScroll = useRef(false)
+  /**
+   * 코드로 돌리는 중인 목표 위치(웹). 그 사이 오는 스크롤 이벤트는 사용자가 돌린 게 아니라 값으로 받지 않는다
    * (애니메이션 중간 칸이 값으로 들어가는 것을 막는다).
    */
   const programmatic = useRef<{ y: number; until: number } | null>(null)
+  // contentOffset 은 처음 위치로만 쓴다 — 렌더마다 바뀐 값을 넘기면 iOS 가 돌리는 중에도 그 위치로 되돌린다.
+  const initialOffset = useRef({ x: 0, y: selectedIndex * WHEEL_ITEM_HEIGHT }).current
   // 늦게 도는 타이머가 옛 값·옛 콜백을 쓰지 않게 최신 값을 ref 로 들고 있는다.
   const latest = useRef({ items, value, onChange })
   latest.current = { items, value, onChange }
@@ -121,18 +132,35 @@ export default function WheelPicker<T>({
     [],
   )
 
-  const scheduleSettle = () => {
+  const clearSettle = () => {
     if (settleTimer.current) clearTimeout(settleTimer.current)
-    settleTimer.current = setTimeout(() => {
-      if (dragging.current) return
-      commitRef.current(Math.round(lastY.current / WHEEL_ITEM_HEIGHT))
-    }, SETTLE_DELAY_MS)
+    settleTimer.current = null
+  }
+
+  /** 사용자가 돌린 스크롤이 멈춘 자리(lastY)를 값으로 확정한다. */
+  const settleNow = () => {
+    clearSettle()
+    if (dragging.current) return
+    userScroll.current = false
+    commitRef.current(Math.round(lastY.current / WHEEL_ITEM_HEIGHT))
+  }
+
+  const scheduleSettle = (delay: number = SETTLE_DELAY_MS) => {
+    clearSettle()
+    settleTimer.current = setTimeout(() => settleNow(), delay)
   }
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = event.nativeEvent.contentOffset.y
     const index = Math.min(Math.max(Math.round(y / WHEEL_ITEM_HEIGHT), 0), items.length - 1)
     if (index !== centerIndex) setCenterIndex(index)
+    if (!IS_WEB) {
+      // 앱은 OS 가 칸에 붙이고(snapToInterval) 멈춤 이벤트로 확정한다. 여기서는 위치만 기억한다.
+      // 전에는 이벤트가 120ms 끊기면 중간 위치로 확정하고 직접 애니메이션을 걸어, OS 스냅과 맞붙어 값이 튀거나
+      // 되돌아가고 가운데 칸과 값이 어긋났다(10-23 지적).
+      if (userScroll.current) lastY.current = y
+      return
+    }
     const target = programmatic.current
     if (target && !dragging.current) {
       // 코드로 돌리는 중 — 도착했거나 시간이 지나면 끝낸다. 값은 commit 이 이미 정했다.
@@ -203,20 +231,27 @@ export default function WheelPicker<T>({
         onScroll={handleScroll}
         onScrollBeginDrag={() => {
           dragging.current = true
+          userScroll.current = true
           programmatic.current = null
+          clearSettle()
         }}
-        onScrollEndDrag={() => {
-          dragging.current = false
-          // 관성 없이 멈췄으면 더 오는 스크롤 이벤트가 없다 — 여기서 맞춘다(관성이 있으면 뒤 이벤트가 미룬다).
-          scheduleSettle()
-        }}
-        onMomentumScrollEnd={(event) => {
-          if (programmatic.current) return
+        onScrollEndDrag={(event) => {
           dragging.current = false
           lastY.current = event.nativeEvent.contentOffset.y
+          // 관성·스냅 없이 그 자리에 멈췄으면 멈춤 이벤트가 안 온다 — 잠깐 기다렸다 맞춘다.
+          // 관성이 이어지면(onMomentumScrollBegin) 이 타이머를 지우고 멈춤 이벤트에서 확정한다. 웹은 뒤 스크롤 이벤트가 미룬다.
           scheduleSettle()
         }}
-        contentOffset={{ x: 0, y: selectedIndex * WHEEL_ITEM_HEIGHT }}
+        onMomentumScrollBegin={() => {
+          if (!IS_WEB) clearSettle()
+        }}
+        onMomentumScrollEnd={(event) => {
+          // 코드로 돌린 애니메이션이 끝나도 이 이벤트가 온다 — 사용자가 돌린 것만 값으로 받는다.
+          if (!userScroll.current || dragging.current) return
+          lastY.current = event.nativeEvent.contentOffset.y
+          settleNow()
+        }}
+        contentOffset={initialOffset}
         contentContainerStyle={{ paddingVertical: WHEEL_ITEM_HEIGHT * padRows }}
         // 처음 그릴 때 고른 칸으로 맞춘다(웹은 contentOffset 을 무시한다).
         onLayout={() => {
