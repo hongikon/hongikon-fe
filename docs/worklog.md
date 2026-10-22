@@ -1542,3 +1542,13 @@ Xcode 27(iOS 27 SDK)로 만든 앱은 UIScene 을 안 쓰면 iOS 27 에서 실�
 - 사용자: 일자별 채용 카드가 별로. 71662fa(구독 피드 채용정보 날짜별 접기)를 되돌렸다 — `newsFold.ts`·`NewsFoldCard.tsx` 삭제, `NewsList`·`NewsScreen` 원래대로.
 - 대안(피드 맨 위 채용정보 한 장 → 게시판 / 피드에서 빼기)은 사용자가 고른 뒤 다시.
 
+
+---
+
+## 2026-10-23 — Android R8 난독화 켬 (dev)
+
+- Play Console 경고: "DEX 코드 최적화가 기준점 미만" — 난독화 1%(기준 25%), 출시 7 (1.0.0), 해결 기한 2027-02. 그동안 release 빌드에 R8 이 꺼져 있었다(`minifyEnabled false`).
+- `app.json` `expo-build-properties.android` 에 `enableMinifyInReleaseBuilds`·`enableShrinkResourcesInReleaseBuilds` true. prebuild 결과 `gradle.properties` 에 두 값이 들어가 `minifyEnabled`/`shrinkResources` 로 이어지는 것 확인.
+- 네이티브 설정이라 OTA 로는 안 바뀐다 — 다음 `eas build --local -p android --profile production` 부터 적용.
+- R8 은 리플렉션 쓰는 코드를 지울 수 있어, 새 빌드는 내부 테스트 트랙에서 로그인(카카오·웹뷰)·지도 웹뷰·사진 첨부·푸시를 한 번씩 확인한 뒤 올린다.
+- 크래시 스택이 난독화돼 보이므로, 빌드마다 `android/app/build/outputs/mapping/release/mapping.txt` 를 Play Console(App Bundle 탐색기 → 난독화 해제 파일)에 올린다.
