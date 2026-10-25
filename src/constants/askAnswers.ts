@@ -1152,7 +1152,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
     // 등록금 고지서의 학생회비는 선택납부금이다. '학생회비 납부'를 총학생회 소개로 답하던 것을 막는다(10-25 운영진 제보).
     id: 'student-fee-pay',
     entries: [
-      { match: [['학생회비', '선택납부금', '선택납부']], node: 'start' },
+      { match: [['학생회비', '학생회회비', '선택납부금', '선택납부']], node: 'start' },
     ],
     nodes: {
       start: {
