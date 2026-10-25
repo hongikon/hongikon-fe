@@ -87,7 +87,7 @@
   {"q": "창업 동아리 지원금", "expect": "startup"},
   {"q": "장애학생 장학금", "expect": "disability"},
   {"q": "학교폭력 신고", "expect": "human-rights"},
-  {"q": "졸업 앨범", "expect": "council"},
+  {"q": "졸업 앨범", "expect": "grad-album/start"},
   {"q": "교수 어디 계세요", "expect": "none"},
   {"q": "홈페이지 장애", "expect": "none"},
   {"q": "에프터서비스 어디서", "expect": "none"},

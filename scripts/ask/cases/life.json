@@ -120,7 +120,7 @@
 
   {"q": "총학생회실 어디", "expect": "council"},
   {"q": "총학 연락처", "expect": "council"},
-  {"q": "졸업앨범", "expect": "council"},
+  {"q": "졸업앨범", "expect": "grad-album/start"},
   {"q": "공대 학생회", "expect": "council-engineering"},
   {"q": "미대 학생회실 위치", "expect": "council-art"},
   {"q": "경영대 학생회", "expect": "council-business"},

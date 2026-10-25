@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 from contacts import P, F
 from sources import url_of as _site_url
 from topics import TOPICS
+from fixes import FIXES
 
 OUT = os.path.join(ROOT, '..', '..', 'src', 'constants', 'askPages.ts')
 _pages = json.load(open(os.path.join(ROOT, 'data', 'pages.json'), encoding='utf-8'))
@@ -222,6 +223,29 @@ if __name__ == '__main__':
     if errors:
         raise SystemExit('\n'.join(errors))
     flows = [build(t) for t in TOPICS]
+    # 최신 학교 공지와 어긋나는 안내 문구를 바로잡는다(fixes.py). 옛 문구가 하나도 안 보이면 멈춘다.
+    used = {old: 0 for old, _ in FIXES}
+
+    def fix(text):
+        for old, new in FIXES:
+            if old in text:
+                used[old] += 1
+                text = text.replace(old, new)
+        return text
+
+    for flow in flows:
+        for node in flow['nodes'].values():
+            if node['kind'] != 'answer':
+                continue
+            node['text'] = fix(node['text'])
+            for sec in node['sections']:
+                if 'items' in sec:
+                    sec['items'] = [fix(i) for i in sec['items']]
+                if 'table' in sec:
+                    sec['table']['rows'] = [[fix(c) for c in r] for r in sec['table']['rows']]
+    unused = [old for old, n in used.items() if n == 0]
+    if unused:
+        raise SystemExit('fixes.py 에서 쓰이지 않은 문구:\n' + '\n'.join(unused))
     header = """import type { AskFlow } from './askAnswers'
 
 /**

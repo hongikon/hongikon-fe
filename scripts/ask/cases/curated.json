@@ -124,5 +124,18 @@
   {"q": "디자인밸리 가는 길", "expect": "art-design-valley/start"},
   {"q": "아트앤디자인밸리 입주 업체", "expect": "art-design-valley/tenants"},
   {"q": "슬런치팩토리 몇 층이에요", "expect": "art-design-valley/tenants"},
-  {"q": "창업동아리 하고 싶어요", "expect": "startup/start"}
+  {"q": "창업동아리 하고 싶어요", "expect": "startup/start"},
+  {"q": "과학생회비 얼마야", "expect": "dept-council-fee"},
+  {"q": "학생회비 내야 돼?", "expect": "student-fee-pay"},
+  {"q": "학생회비 납부", "expect": "student-fee-pay"},
+  {"q": "학생회비 못 냈는데 어떻게 내요", "expect": "student-fee-pay"},
+  {"q": "총학생회비 어떻게 내", "expect": "student-fee-pay"},
+  {"q": "우리 과 학생회비 어디에 내", "expect": "dept-council-fee"},
+  {"q": "과비 얼마예요", "expect": "dept-council-fee"},
+  {"q": "편입 자퇴", "expect": "transfer-out"},
+  {"q": "다른 학교로 편입하는데 자퇴해야 돼?", "expect": "transfer-out"},
+  {"q": "타대 편입 합격했는데 자퇴 어떻게 해", "expect": "transfer-out"},
+  {"q": "휴학 신청 기간", "expect": "leave-of-absence/general"},
+  {"q": "졸업앨범", "expect": "grad-album/start"},
+  {"q": "졸업 앨범", "expect": "grad-album/start"}
 ]

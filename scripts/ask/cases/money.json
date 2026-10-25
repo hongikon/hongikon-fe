@@ -269,7 +269,7 @@
  },
  {
   "q": "장학금 종류 뭐 있어요",
-  "expect": "scholarship-criteria"
+  "expect": "scholarship-main/start"
  },
  {
   "q": "장학금 커트 몇점이에요",
@@ -297,7 +297,7 @@
  },
  {
   "q": "장학금지급규정",
-  "expect": "scholarship-rules"
+  "expect": "scholarship-main/start"
  },
  {
   "q": "교내장학금 신청 방법",
@@ -309,15 +309,15 @@
  },
  {
   "q": "홍익인간 장학금",
-  "expect": "scholarship"
+  "expect": "scholarship-main/start"
  },
  {
   "q": "면학장학금 얼마예요",
-  "expect": "scholarship"
+  "expect": "scholarship-main/start"
  },
  {
   "q": "성적장학금 받고 싶어요",
-  "expect": "scholarship"
+  "expect": "scholarship-main/start"
  },
  {
   "q": "휴학하면 등록금 환불돼요?",

@@ -24,6 +24,11 @@ export interface AskRouteResult {
   pages?: { title: string; url: string }[]
   phones?: { label: string; phone: string }[]
   facilityId?: string | null
+  /**
+   * 답 아래 소제목별 목록·표 — 서버가 구조로 준다(표는 열 4개·행 12개까지). 없으면(옛 서버) 앱이 answer 글을 잘라 그린다.
+   * answer 는 이때 요약 1~3문장만 담는다.
+   */
+  sections?: { title: string; items: string[]; ordered: boolean; table: { head: string[]; rows: string[][] } | null }[]
   /** 이 답의 서버 기록 id — '해결됐나요' 응답을 붙일 때 쓴다(기록이 꺼졌으면 없음). */
   logId?: number | null
 }
