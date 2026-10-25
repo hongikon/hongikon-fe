@@ -36,7 +36,7 @@ TOPICS = [
              [['전역', '제대'], ['학교', '복학', '수업', '개강', '학기']],
              [['상치복학', '학기상치', '미리복학', '한학기미리']],
          ],
-         exclude=['재입학', '예비군'],
+         exclude=['재입학', '예비군', '장학'],
          lead='복학은 정해진 복학신청 기간에 클래스넷 › 학사/학적 › 휴/복학/휴학연장 신청 메뉴에서 해요. 휴학이 끝나도 저절로 복학되지 않아요.',
          phones=['leave'], facility='support', faq=['복학']),
     dict(id='reserve-forces', page='education_going-back-to-school',
