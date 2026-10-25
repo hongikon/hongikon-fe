@@ -113,6 +113,10 @@ interface AskChatProps {
  * 서버 답 없이 안내 원문을 그대로 보일 때의 상한. 학교 페이지를 통째로 옮긴 안내(교내장학금 등)는 수십 줄이고
  * 같은 소제목이 두 번 나오기도 해서(10-25 운영진 제보) 앞부분만 보이고 나머지는 아래 학교 페이지 버튼으로 넘긴다.
  */
+/** 이어 묻는 말로 보는 짧은 질문(공백 뺀 글자 수)과 말투. */
+const FOLLOW_UP_MAX = 20;
+const FOLLOW_UP_WORDS = ["어떻게", "신청", "서류", "언제", "어디", "얼마", "방법", "기간", "그럼", "그거", "이거", "거기", "필요", "내야", "되나", "돼", "가능", "누가", "대상", "마감"];
+
 const BRIEF_SECTIONS = 3;
 const BRIEF_ITEMS = 4;
 const BRIEF_TOTAL_ITEMS = 8;
@@ -249,6 +253,32 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     return turns.slice(-3);
   };
 
+  /**
+   * 이어 묻는 말('어떻게 신청해?', '서류는?')은 낱말만으로 흐름을 못 찾는다 — 앞 질문과 합쳐 다시 찾고, 그래도 없으면 이어 묻는
+   * 말투의 짧은 질문은 바로 앞에 본 안내로 간다(10-25 '학생포상 신청' 뒤 '어떻게 신청해?'가 엉뚱한 부서로 가던 것).
+   * 서버 답이 없을 때(낱말 찾기)와 서버에 넘기는 후보(hint) 둘 다 이것을 쓴다.
+   */
+  const followUpMatch = (question: string): ReturnType<typeof matchAskFlow> => {
+    let lastQuestion: string | null = null;
+    let lastStep: { flowId: string; nodeId: string } | null = null;
+    for (let i = messages.length - 1; i >= 0 && (!lastQuestion || !lastStep); i--) {
+      const item = messages[i];
+      if (item.role === "user") lastQuestion ??= item.text;
+      else if (item.role === "answer" || item.role === "question") lastStep ??= { flowId: item.flowId, nodeId: item.nodeId };
+      else if (item.role === "reply" && item.sources[0]) lastStep ??= item.sources[0];
+    }
+    if (lastQuestion) {
+      const joined = matchAskFlow(`${lastQuestion} ${question}`);
+      if (joined) return joined;
+    }
+    const flow = lastStep ? ALL_ASK_FLOWS.find((item) => item.id === lastStep.flowId) : undefined;
+    const squashed = question.replace(/\s/g, "");
+    if (flow && lastStep && flow.nodes[lastStep.nodeId] && squashed.length <= FOLLOW_UP_MAX && FOLLOW_UP_WORDS.some((word) => squashed.includes(word))) {
+      return { flow, nodeId: lastStep.nodeId };
+    }
+    return null;
+  };
+
   /** 서버가 고른 '흐름/단계' id 를 앱의 흐름에서 찾는다. 'none' 이거나 앱이 모르는 id(서버 목록이 더 새것)면 null. */
   const findStep = (id: string): { flowId: string; nodeId: string } | null => {
     const slash = id.indexOf("/");
@@ -263,7 +293,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     if (!question || pending) return;
     haptics.selection();
     setInput("");
-    const matched = matchAskFlow(question);
+    const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
     if (!serverKey) {
