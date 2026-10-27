@@ -381,6 +381,8 @@ interface SheetSizingOptions {
   smallRatio?: number
   /** 보통 크기 = 시트 전체(머리줄 포함)가 화면 높이 × 이 값을 차지하는 크기. */
   midRatio?: number
+  /** 처음 열 크기. 기본은 작게. 검색으로 찾아온 줄을 보여 줄 때처럼 작게로는 잘려 보이면 'mid'(보통). */
+  openAt?: 'small' | 'mid'
 }
 
 /**
@@ -393,7 +395,7 @@ interface SheetSizingOptions {
  */
 export function useSheetSizing(
   onClose: () => void,
-  { smallRatio = 0.22, midRatio = 0.63 }: SheetSizingOptions = {},
+  { smallRatio = 0.22, midRatio = 0.63, openAt = 'small' }: SheetSizingOptions = {},
 ) {
   const { height: windowHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -408,7 +410,12 @@ export function useSheetSizing(
   const mid = Math.round(cap(Math.max(small, windowHeight * midRatio - chromeHeight - insets.bottom - 40)))
   const top = Math.round(cap(fullHeight))
   const points = Array.from(new Set([small, mid, top]))
-  const { translateY, bodyHeight, panHandlers, areaHandlers, bodyGesture } = useResizableSheet(onClose, { initial: small, points })
+  // 처음 크기는 열 때 한 번만 정한다 — 열린 뒤 같은 시트에서 다시 검색해 와도 사용자가 고른 크기를 바꾸지 않게.
+  const [openMid] = useState(openAt === 'mid')
+  const { translateY, bodyHeight, panHandlers, areaHandlers, bodyGesture } = useResizableSheet(onClose, {
+    initial: openMid ? mid : small,
+    points,
+  })
 
   // 본문이 이 높이를 넘으면 시트 윗변이 검색바·칩 오버레이 밑으로 들어간다 → 오버레이를 숨기게 알린다.
   const coverAt = windowHeight - Math.max(insets.top, header.headerHeight) - insets.bottom - chromeHeight - 48

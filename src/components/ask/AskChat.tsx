@@ -75,6 +75,10 @@ type ChatMessage =
       /** 서버가 실제로 한 일(관련 안내 확인·공지 읽음·답 정리 …). 끝나면 '살펴본 과정'으로 접는다. */
       steps: string[];
       stepsOpen: boolean;
+      /** 서버가 구조로 준 목록·표. null 이면(흘러나오는 중·옛 서버) text 를 잘라 그린다. */
+      sections: AskSection[] | null;
+      /** 접어 둔 연락처·링크 버튼을 펼쳤는지. */
+      moreOpen: boolean;
     }
   | { id: number; role: "text"; text: string }
   /**
@@ -103,6 +107,44 @@ interface AskChatProps {
    * 없으면(운영 앱) 지금처럼 앱 안의 낱말 찾기만 한다.
    */
   serverKey?: string;
+}
+
+/**
+ * 서버 답 없이 안내 원문을 그대로 보일 때의 상한. 학교 페이지를 통째로 옮긴 안내(교내장학금 등)는 수십 줄이고
+ * 같은 소제목이 두 번 나오기도 해서(10-25 운영진 제보) 앞부분만 보이고 나머지는 아래 학교 페이지 버튼으로 넘긴다.
+ */
+/** 이어 묻는 말로 보는 짧은 질문(공백 뺀 글자 수)과 말투. */
+const FOLLOW_UP_MAX = 20;
+const FOLLOW_UP_WORDS = ["어떻게", "신청", "서류", "언제", "어디", "얼마", "방법", "기간", "그럼", "그거", "이거", "거기", "필요", "내야", "되나", "돼", "가능", "누가", "대상", "마감"];
+
+const BRIEF_SECTIONS = 3;
+const BRIEF_ITEMS = 4;
+const BRIEF_TOTAL_ITEMS = 8;
+const BRIEF_TABLE_ROWS = 8;
+
+function briefSections(sections: readonly AskSection[] | undefined): { shown: AskSection[]; cut: boolean } {
+  const shown: AskSection[] = [];
+  const titles = new Set<string>();
+  let total = 0;
+  let cut = false;
+  for (const section of sections ?? []) {
+    if (section.title && titles.has(section.title)) {
+      cut = true;
+      continue;
+    }
+    if (shown.length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
+      cut = true;
+      break;
+    }
+    const room = Math.min(BRIEF_ITEMS, BRIEF_TOTAL_ITEMS - total);
+    const items = section.items?.slice(0, room);
+    const table = section.table ? { head: section.table.head, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
+    if ((section.items?.length ?? 0) > room || (section.table?.rows.length ?? 0) > BRIEF_TABLE_ROWS) cut = true;
+    total += items?.length ?? 0;
+    titles.add(section.title);
+    shown.push({ ...section, items, table });
+  }
+  return { shown, cut };
 }
 
 /**
@@ -211,6 +253,32 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     return turns.slice(-3);
   };
 
+  /**
+   * 이어 묻는 말('어떻게 신청해?', '서류는?')은 낱말만으로 흐름을 못 찾는다 — 앞 질문과 합쳐 다시 찾고, 그래도 없으면 이어 묻는
+   * 말투의 짧은 질문은 바로 앞에 본 안내로 간다(10-25 '학생포상 신청' 뒤 '어떻게 신청해?'가 엉뚱한 부서로 가던 것).
+   * 서버 답이 없을 때(낱말 찾기)와 서버에 넘기는 후보(hint) 둘 다 이것을 쓴다.
+   */
+  const followUpMatch = (question: string): ReturnType<typeof matchAskFlow> => {
+    let lastQuestion: string | null = null;
+    let lastStep: { flowId: string; nodeId: string } | null = null;
+    for (let i = messages.length - 1; i >= 0 && (!lastQuestion || !lastStep); i--) {
+      const item = messages[i];
+      if (item.role === "user") lastQuestion ??= item.text;
+      else if (item.role === "answer" || item.role === "question") lastStep ??= { flowId: item.flowId, nodeId: item.nodeId };
+      else if (item.role === "reply" && item.sources[0]) lastStep ??= item.sources[0];
+    }
+    if (lastQuestion) {
+      const joined = matchAskFlow(`${lastQuestion} ${question}`);
+      if (joined) return joined;
+    }
+    const flow = lastStep ? ALL_ASK_FLOWS.find((item) => item.id === lastStep.flowId) : undefined;
+    const squashed = question.replace(/\s/g, "");
+    if (flow && lastStep && flow.nodes[lastStep.nodeId] && squashed.length <= FOLLOW_UP_MAX && FOLLOW_UP_WORDS.some((word) => squashed.includes(word))) {
+      return { flow, nodeId: lastStep.nodeId };
+    }
+    return null;
+  };
+
   /** 서버가 고른 '흐름/단계' id 를 앱의 흐름에서 찾는다. 'none' 이거나 앱이 모르는 id(서버 목록이 더 새것)면 null. */
   const findStep = (id: string): { flowId: string; nodeId: string } | null => {
     const slash = id.indexOf("/");
@@ -225,7 +293,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     if (!question || pending) return;
     haptics.selection();
     setInput("");
-    const matched = matchAskFlow(question);
+    const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
     if (!serverKey) {
@@ -248,6 +316,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       status: "질문을 이해하고 있어요",
       steps: ["질문 이해"],
       stepsOpen: false,
+      sections: null,
+      moreOpen: false,
     });
     const patchLive = (patch: (item: Extract<ChatMessage, { role: "reply" }>) => Partial<Extract<ChatMessage, { role: "reply" }>>) =>
       setMessages((prev) => prev.map((item) => (item.id === liveId && item.role === "reply" ? { ...item, ...patch(item) } : item)));
@@ -302,6 +372,14 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
             : null,
           streaming: false,
           logId: result.logId ?? null,
+          sections: result.sections
+            ? result.sections.map((section) => ({
+                title: section.title,
+                items: section.items,
+                ordered: section.ordered,
+                table: section.table ?? undefined,
+              }))
+            : null,
         }));
         push({ role: "feedback", question, resolved: null, logId: result.logId ?? null });
         return;
@@ -467,6 +545,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   };
 
   /** 서버 답 — 예전 안내 카드처럼 요약·소제목·항목, 그 아래 근거 안내의 위치·담당 전화·학교 페이지와 공지 버튼. */
+  /** 답 아래 처음부터 보이는 전화·링크 버튼 수. 나머지는 '더 보기'로 접는다. */
+  const VISIBLE_ACTIONS = 2;
+
   const renderReply = (item: Extract<ChatMessage, { role: "reply" }>) => {
     if (item.streaming && !item.text) {
       // Claude 앱처럼 지금 하는 일 한 줄만 제자리에서 바꿔 가며 깜빡인다(쌓지 않는다).
@@ -476,7 +557,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         </View>
       );
     }
-    const { lead, sections, tail } = parseReply(item.text);
+    // 서버가 목록·표를 구조로 줬으면 그대로 그린다(text 는 요약만). 옛 서버·흘러나오는 중이면 글을 잘라 그린다.
+    const { lead, sections, tail } = item.sections ? { lead: item.text, sections: item.sections, tail: "" } : parseReply(item.text);
     const nodes = item.streaming
       ? []
       : item.sources
@@ -499,6 +581,13 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
           ]
         : sourceLinks(item).filter((source) => source.url);
     const cursor = item.streaming ? <Text style={styles.cursor}>▍</Text> : null;
+    // 전화·학교 페이지·공지 버튼은 앞의 몇 개만 보이고 나머지는 접는다 — 한 답에 버튼이 줄줄이 붙어 답이 묻혔다(10-24 지적).
+    const actions = [
+      ...phones.map((phone) => renderPhone(phone.label, phone.phone, phone.phone)),
+      ...links.map((source) =>
+        renderLink({ label: source.date ? `${source.title} · ${source.date}` : source.title, url: source.url as string }, source.key),
+      ),
+    ];
     return (
       <View style={styles.botBubble}>
         {lead ? (
@@ -511,10 +600,29 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         {tail ? <Text style={[styles.botText, styles.replyTail]}>{tail}</Text> : null}
         {sections.length > 0 ? cursor : null}
         {place ? renderPlace(place) : null}
-        {phones.map((phone) => renderPhone(phone.label, phone.phone, phone.phone))}
-        {links.map((source) =>
-          renderLink({ label: source.date ? `${source.title} · ${source.date}` : source.title, url: source.url as string }, source.key),
-        )}
+        {actions.slice(0, VISIBLE_ACTIONS)}
+        {actions.length > VISIBLE_ACTIONS ? (
+          <>
+            <TouchableOpacity
+              style={styles.sourceToggle}
+              activeOpacity={0.7}
+              onPress={() =>
+                setMessages((prev) =>
+                  prev.map((message) =>
+                    message.id === item.id && message.role === "reply" ? { ...message, moreOpen: !message.moreOpen } : message,
+                  ),
+                )
+              }
+              accessibilityRole="button"
+              accessibilityState={{ expanded: item.moreOpen }}
+              accessibilityLabel={`연락처·링크 ${actions.length - VISIBLE_ACTIONS}개 ${item.moreOpen ? "접기" : "더 보기"}`}
+            >
+              <Text style={styles.sourceToggleText}>연락처·링크 {actions.length - VISIBLE_ACTIONS}개 더 보기</Text>
+              <Ionicons name={item.moreOpen ? "chevron-up" : "chevron-down"} size={14} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            {item.moreOpen ? actions.slice(VISIBLE_ACTIONS) : null}
+          </>
+        ) : null}
         {!item.streaming && item.steps.length > 1 ? (
           <>
             <TouchableOpacity
@@ -807,11 +915,13 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
             {item.viaServer ? <Text style={styles.checked}>질문 뜻을 풀어 찾은 안내예요</Text> : null}
           </View>
         );
-      case "answer":
+      case "answer": {
+        const brief = briefSections(item.node.sections);
         return (
           <View style={styles.botBubble}>
             <Text style={[styles.botText, item.node.sections?.length ? styles.lead : null]}>{item.node.text}</Text>
-            {item.node.sections?.map((section, index) => renderSection(section, `${index}`))}
+            {brief.shown.map((section, index) => renderSection(section, `${index}`))}
+            {brief.cut ? <Text style={styles.checked}>전체 내용은 아래 학교 페이지에서 볼 수 있어요.</Text> : null}
             {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
             {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
             {item.node.followUps && !item.followed ? (
@@ -839,6 +949,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
             </Text>
           </View>
         );
+      }
       case "feedback":
         return (
           <View style={styles.botBubble}>

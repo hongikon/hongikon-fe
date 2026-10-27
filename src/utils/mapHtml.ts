@@ -3,7 +3,6 @@ import {
   BUILDING_PIN_WIDTH_SELECTED_PX,
   CAMPUS_CENTER,
   DEFAULT_ZOOM,
-  FOCUS_ZOOM,
   MARKER_CLICK_GUARD_MS,
   PARTNER_BADGE_SIZE_PX,
   PARTNER_BADGE_SIZE_SELECTED_PX,
@@ -376,7 +375,7 @@ export function buildMapHTML(
     // 하나를 눌러 볼 때(건물·제휴·편의시설·제보·검색) 항상 같은 배율로 그 자리를 가운데에 둔다.
     // 누른 지점으로 카메라를 부드럽게 옮긴다(예전엔 setCenter·setZoom 으로 한 번에 순간이동해 화면이 확 바뀌었다).
     // 네이버 지도 웹 API 는 확대 단계 변경을 애니메이션하지 않고 이동(panTo)만 부드럽게 움직인다. 그래서
-    // 1) 지금 확대 단계 그대로 지점까지 미끄러지듯 이동하고 2) 도착한 다음 정해 둔 확대 단계(FOCUS_ZOOM, 검색·알림은 넘겨받은 값)까지
+    // 1) 지금 확대 단계 그대로 지점까지 미끄러지듯 이동하고 2) 도착한 다음 넘겨받은 확대 단계(검색·알림)까지
     // 한 단계씩 잠깐 간격을 두고 들어간다. 지점은 아래에서 올라오는 시트에 가리지 않게 화면 가운데보다 조금 위(13%)에 둔다.
     var focusToken = 0;
     function centerFor(point, zoom) {
@@ -407,7 +406,9 @@ export function buildMapHTML(
     function focusOn(lat, lng, zoom) {
       cancelFocus();
       var token = focusToken;
-      var target = typeof zoom === 'number' ? zoom : ${FOCUS_ZOOM};
+      // 핀을 눌렀을 때(zoom 없음)는 확대하지 않고 지금 배율 그대로 가운데로만 옮긴다(10-27 요청 — 누를 때마다 19까지 들어가 답답했다).
+      // 검색·알림처럼 앱이 배율을 넘겨줄 때만 그 배율로 들어간다.
+      var target = typeof zoom === 'number' ? zoom : Math.round(map.getZoom());
       var point = new naver.maps.LatLng(lat, lng);
       var center = centerFor(point, target);
       var stepIn = function() {

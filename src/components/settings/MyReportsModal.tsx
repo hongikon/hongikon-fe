@@ -62,7 +62,8 @@ function categoryLabel(report: MyReport): string {
 function placeLabel(report: MyReport): string | null {
   const parts = [report.buildingName, report.floor !== null && report.floor !== undefined ? formatFloor(report.floor) : null]
   const text = parts.filter(Boolean).join(' ')
-  return text || null
+  // 캠퍼스 밖 제보는 건물·층이 없어 적은 장소 설명을 보여 준다.
+  return text || report.placeLabel?.trim() || null
 }
 
 type LoadState =

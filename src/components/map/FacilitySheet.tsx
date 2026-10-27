@@ -26,7 +26,7 @@ import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeDetail } from "../../constants/adminOffices";
-import SheetScrollBody from "./SheetScrollBody";
+import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
 
 interface FacilitySheetProps {
   kind: FacilityKind;
@@ -69,6 +69,8 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
+    // 검색으로 찾아온 줄은 맨 위로 스크롤해 보여 준다. 작게(화면 22%)로 열면 그 줄과 안내가 반쯤 잘려 보여(10-27) 보통 크기로 연다.
+    openAt: highlightId ? "mid" : "small",
   });
   // 찾아온 줄이 목록 아래쪽(홍문관 행정 부서 20여 곳 등)이면 처음 한 번 그 줄이 맨 위에 오게 스크롤한다.
   // 줄마다 위치를 기억해 두어, 시트가 열린 채 같은 건물의 다른 시설을 다시 검색해 와도 바로 스크롤한다.
@@ -173,7 +175,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
           const office = kind === "학생처" ? officeDetails[item.id] : undefined;
           if (office) {
             return (
-              <TouchableOpacity
+              <SheetTouchable
                 key={item.id}
                 style={styles.venue}
                 onLayout={onLayout}
@@ -184,7 +186,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
               >
                 {row}
                 <OfficePreview detail={office} />
-              </TouchableOpacity>
+              </SheetTouchable>
             );
           }
           if (kind !== "행사·전시") return <View key={item.id} onLayout={onLayout}>{row}</View>;

@@ -102,15 +102,31 @@ export default function ReportScheduleFields({
   const todayMidnight = kstMidnight(now)
   const [sheet, setSheet] = useState<'start' | 'end' | null>(null)
 
-  /** 시작을 바꾼다. 직접 고른 종료는 진행 기간을 유지한 채 같이 옮긴다. */
+  // 시작을 옮기다 고른 종료를 자동으로 맞췄을 때 한 줄 알려 준다. 종료를 다시 고르면 지운다.
+  const [endAutoFit, setEndAutoFit] = useState(false)
+
+  /**
+   * 시작을 바꿀 때의 종료. 직접 고른 종료는 고른 시각 그대로 둔다 — 전에는 진행 기간을 유지한 채 같이 밀려
+   * 고른 종료가 엉뚱한 시각으로 옮겨졌다(10-22 지적). 새 시작보다 앞이거나 7일을 넘어 쓸 수 없게 되면
+   * 원래 진행 시간만큼 새 시작 뒤로 자동으로 맞춘다(제보 시간 수정 창과 같은 동작) — 전에는 'N시간 뒤' 칩으로
+   * 돌아가 종료를 먼저 고른 사람에게 고르지 않은 칩이 켜져 보였다(10-27 지적).
+   */
+  const endFor = (nextStartMs: number): Pick<ReportSchedule, 'endMode' | 'customEndMs'> => {
+    if (value.endMode !== 'custom') return { endMode: value.endMode, customEndMs: value.customEndMs }
+    const fits = value.customEndMs > nextStartMs && value.customEndMs - nextStartMs <= MAX_DURATION_MS
+    if (fits) return { endMode: 'custom', customEndMs: value.customEndMs }
+    const kept = Math.max(value.customEndMs - startMs, STEP_MS)
+    return { endMode: 'custom', customEndMs: clampEnd(Math.ceil((nextStartMs + kept) / STEP_MS) * STEP_MS, nextStartMs) }
+  }
+
+  const changeStart = (next: Pick<ReportSchedule, 'startMode' | 'scheduledStartMs'>, nextStartMs: number) => {
+    const end = endFor(nextStartMs)
+    setEndAutoFit(value.endMode === 'custom' && end.customEndMs !== value.customEndMs)
+    onChange({ ...value, ...next, ...end })
+  }
+
   const setStart = (nextStartMs: number) => {
-    const delta = nextStartMs - startMs
-    onChange({
-      ...value,
-      startMode: 'scheduled',
-      scheduledStartMs: nextStartMs,
-      customEndMs: value.endMode === 'custom' ? clampEnd(value.customEndMs + delta, nextStartMs) : value.customEndMs,
-    })
+    changeStart({ startMode: 'scheduled', scheduledStartMs: nextStartMs }, nextStartMs)
   }
 
   // 고른 시작 시각이 (창을 열어 둔 사이) 지나가면 가장 가까운 다음 칸으로 민다.
@@ -172,18 +188,8 @@ export default function ReportScheduleFields({
           label="지금"
           active={!scheduled}
           disabled={disabled}
-          onPress={() =>
-            // 직접 고른 종료도 시작을 옮길 때(setStart)처럼 진행 기간을 유지한 채 지금 기준으로 당긴다.
-            // 안 그러면 며칠 뒤로 잡아 둔 종료가 그대로 남아 '지금 ~ 10/12' 처럼 늘어나거나 7일 상한에 걸린다.
-            onChange({
-              ...value,
-              startMode: 'now',
-              customEndMs:
-                value.endMode === 'custom' && scheduled
-                  ? clampEnd(Math.round((value.customEndMs + (now - startMs)) / STEP_MS) * STEP_MS, now)
-                  : value.customEndMs,
-            })
-          }
+          // 직접 고른 종료는 시작을 옮길 때(setStart)처럼 그대로 두고, 지금 기준으로 쓸 수 없을 때만 자동으로 맞춘다.
+          onPress={() => changeStart({ startMode: 'now', scheduledStartMs: value.scheduledStartMs }, now)}
           accessibilityLabel="지금 시작"
         />
       </View>
@@ -204,7 +210,10 @@ export default function ReportScheduleFields({
             label={`${hours}시간 뒤`}
             active={value.endMode === 'duration' && value.durationHours === hours}
             disabled={disabled}
-            onPress={() => onChange({ ...value, endMode: 'duration', durationHours: hours })}
+            onPress={() => {
+              setEndAutoFit(false)
+              onChange({ ...value, endMode: 'duration', durationHours: hours })
+            }}
             accessibilityLabel={`시작하고 ${hours}시간 뒤에 종료`}
           />
         ))}
@@ -231,6 +240,11 @@ export default function ReportScheduleFields({
           {summary}
         </Text>
       </Animated.View>
+      {endAutoFit && value.endMode === 'custom' ? (
+        <Text style={styles.autoFit} accessibilityLiveRegion="polite">
+          시작 시각이 바뀌어 종료 시각을 원래 진행 시간에 맞춰 옮겼어요. 다르면 다시 골라 주세요.
+        </Text>
+      ) : null}
       <Text style={styles.hint}>
         {scheduled
           ? '운영진이 확인한 뒤, 시작 시각이 되면 지도에 올라가요. 끝나는 시각에 자동으로 내려가요.'
@@ -262,6 +276,7 @@ export default function ReportScheduleFields({
         onCancel={() => setSheet(null)}
         onConfirm={(ms) => {
           setSheet(null)
+          setEndAutoFit(false)
           onChange({ ...value, endMode: 'custom', customEndMs: ms })
         }}
       />
@@ -358,5 +373,6 @@ const styles = StyleSheet.create({
   summaryValue: { flex: 1, fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.primary },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.chipBorder },
   summaryText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, marginTop: 6 },
+  autoFit: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.primary, marginTop: 8 },
   hint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 8 },
 })

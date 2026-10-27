@@ -19,7 +19,7 @@ import { sheetCloseStyle } from "./chipStyles";
 import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { RADIUS } from "../../constants/spacing";
-import SheetScrollBody from "./SheetScrollBody";
+import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
 
 interface BuildingSheetProps {
   building: Building;
@@ -127,7 +127,7 @@ export default function BuildingSheet({
             const label = facilityKindLabel(row.kind);
             const floors = floorSummary(row.floors);
             return (
-              <TouchableOpacity
+              <SheetTouchable
                 key={row.kind}
                 style={styles.kindRow}
                 onPress={() => onOpenFacility(row.kind)}
@@ -143,7 +143,7 @@ export default function BuildingSheet({
                   {floors ?? ""}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={COLORS.textTertiary} />
-              </TouchableOpacity>
+              </SheetTouchable>
             );
           })}
         </View>

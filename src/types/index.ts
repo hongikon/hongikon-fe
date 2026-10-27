@@ -74,13 +74,12 @@ export type PathEdge = [string, string]
 
 /**
  * 지도에 무엇을 올릴지 고르는 최상단 필터. 한 번에 한 갈래만 본다.
- * 편의시설·제휴 업체·이벤트를 같이 띄우면 마커가 뒤섞여 어느 쪽인지 알 수 없다.
+ * 편의시설(화면 이름 '학교 시설')·제휴 업체를 같이 띄우면 마커가 뒤섞여 어느 쪽인지 알 수 없다.
  *
- * '이벤트'의 하위 두 칩(전시/제보)은 `MapFilterChips`가 그린다. '전시'는
- * '행사·전시' 편의시설 데이터를 그대로 쓰고(축을 옮겨 왔을 뿐 데이터는 하나다),
- * '제보'는 기존 제보 토글(`reportsOn`)과 같은 상태를 공유한다.
+ * '이벤트' 갈래는 10-27 에 없앴다. 전시는 학교 시설의 '행사·전시' 종류 칩으로, 제보는 갈래와 따로
+ * 켜고 끄는 레이어(`reportsOn`, 지도 오른쪽 아래 메뉴)로 옮겼다.
  */
-export type MapLayer = '편의시설' | '제휴업체' | '이벤트'
+export type MapLayer = '편의시설' | '제휴업체'
 
 /**
  * 편의시설 종류. 유니온에 적은 순서가 곧 칩 순서다.
@@ -447,10 +446,13 @@ export interface ReportCommentFlagResult {
 
 /** `POST /reports` 요청 바디. */
 export interface CreateReportInput {
-  /** 서버 `buildings.id`(필수). 앱 건물 이름은 `getServerBuildingId` 로 바꾼다. */
-  buildingId: number
-  /** 필수. 지하는 음수(B1 = -1). */
-  floor: number
+  /**
+   * 서버 `buildings.id`. 앱 건물 이름은 `getServerBuildingId` 로 바꾼다. 캠퍼스 밖(홍대 생활권) 제보는 건물이 없어 보내지 않는다 —
+   * 그때는 floor 도 보내지 않고 placeLabel 이 필수다(10-27).
+   */
+  buildingId?: number
+  /** 건물이 있을 때 필수. 지하는 음수(B1 = -1). */
+  floor?: number
   lat: number
   lng: number
   category: ReportCategory

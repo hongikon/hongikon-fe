@@ -105,7 +105,7 @@
  {"q": "메일 용량 초과", "expect": "school-mail/not-working"},
  {"q": "열람실 시험기간 몇시에 열어요", "expect": "library"},
  {"q": "기말고사 전에 군입대하면 성적은?", "expect": "military-grade"},
- {"q": "졸업앨범", "expect": "council"},
+ {"q": "졸업앨범", "expect": "grad-album/start"},
  {"q": "예비군 훈련", "expect": "reserve-forces"},
  {"q": "강의평가 언제까지야", "expect": "lecture-evaluation"},
  {"q": "강의평가 안 하면 성적 못 봐?", "expect": "lecture-evaluation"},

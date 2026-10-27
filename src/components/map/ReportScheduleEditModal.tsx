@@ -10,6 +10,7 @@ import { menuStyles } from './ModerationMenu'
 import {
   REPORT_MAX_DURATION_DAYS,
   REPORT_START_MAX_DAYS,
+  REPORT_TIME_STEP_MINUTES,
   dayChipLabel,
   formatClock,
   formatDay,
@@ -20,6 +21,7 @@ import { parseServerTime } from '../../utils/serverTime'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
+const STEP_MS = REPORT_TIME_STEP_MINUTES * 60 * 1000
 
 interface ReportScheduleEditModalProps {
   visible: boolean
@@ -140,8 +142,10 @@ export default function ReportScheduleEditModal({
             onCancel={() => setPicker(null)}
             onConfirm={(ms) => {
               setPicker(null)
-              // 진행 기간을 그대로 두고 종료도 같이 옮긴다(등록 화면과 같은 동작).
-              setEndMs((prev) => prev + (ms - startMs))
+              // 종료는 고른 시각 그대로 둔다(등록 화면과 같은 동작, 10-22). 새 시작보다 앞이거나 7일을 넘을 때만 원래 진행 시간만큼 뒤로.
+              setEndMs((prev) =>
+                prev > ms && prev - ms <= MAX_DURATION_MS ? prev : ms + Math.max(prev - startMs, STEP_MS),
+              )
               setStartMs(ms)
             }}
           />
