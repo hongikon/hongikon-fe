@@ -34,3 +34,4 @@
 
 - 검증: `tsc --noEmit` 통과. 화면 확인은 운영진(웹 localhost:8081, 앱).
 - 운영(main)에는 아직 10-22 '시작을 바꿔도 고른 종료 유지'(2aea1b6)도 없다 — dev→main 때 같이 나간다.
+- 지도 핀을 누르면 확대하지 않고 지금 배율 그대로 가운데(시트 위)로만 옮긴다(운영진 요청 — 누를 때마다 19까지 들어갔다). `focusOn` 은 배율을 넘겨받을 때(검색·알림·미리보기)만 확대한다. `src/utils/mapHtml.ts`·`public/map.html`(앱이 원격으로 불러오는 페이지라 main 배포 때 Netlify 로 앱에도 바로 적용) 같이 고침. 건물 시트의 '건물 안 시설'도 확대 없이(`MapScreen` openFacilitySheet — 검색일 때만 FOCUS_ZOOM).

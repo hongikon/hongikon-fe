@@ -758,7 +758,9 @@ export default function MapScreen() {
       // 화면 크기에 따라 한두 단계 덜 확대돼, 직접 누를 때(19)와 배율이 달랐다(10-14). 'focusReport' 는 이름과 달리
       // 좌표로 가는 일반 이동이다 — 배포된 지도 페이지에 이미 있는 메시지라 페이지를 다시 올리지 않아도 된다.
       postToMap({ type: "setFacilities", markers, bounds: null });
-      if (lat !== undefined && lng !== undefined) postToMap({ type: "focusReport", lat, lng, zoom: FOCUS_ZOOM });
+      // 검색으로 찾아왔을 때만 확대한다. 건물 시트에서 '건물 안 시설'을 누른 것은 핀을 누를 때처럼 지금 배율로 가운데만 옮긴다(10-27).
+      if (lat !== undefined && lng !== undefined)
+        postToMap({ type: "focusReport", lat, lng, ...(facility ? { zoom: FOCUS_ZOOM } : {}) });
       setSelectedFacilityBuilding(buildingName);
       setSearchedFacility(facility);
     },
