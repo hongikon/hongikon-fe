@@ -9,11 +9,12 @@ interface ChipIconProps {
 }
 
 /**
- * 시설·업종 아이콘 하나. Ionicons 에 소파가 없어 라운지('sofa')만 MaterialCommunityIcons 로 그린다 —
+ * 시설·업종 아이콘 하나. Ionicons 에 없는 소파(라운지)·은행·흡연(사선 없는 담배)은 MaterialCommunityIcons 로 그린다 —
  * 지도 핀(mapHtml.ts 의 소파 SVG)과 칩·시트·검색 결과의 라운지 아이콘을 같은 모양으로 맞춘다(10-07 요청).
  */
 export function KindIcon({ name, size, color }: { name: FacilityIconName; size: number; color: string }) {
-  if (name === "sofa" || name === "bank") return <MaterialCommunityIcons name={name} size={size + 1} color={color} />;
+  if (name === "sofa" || name === "bank" || name === "smoking")
+    return <MaterialCommunityIcons name={name} size={size + 1} color={color} />;
   return <Ionicons name={name} size={size} color={color} />;
 }
 

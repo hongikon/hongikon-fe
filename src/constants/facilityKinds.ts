@@ -4,7 +4,7 @@ import type { FacilityKind } from '../types'
 
 type IoniconName = ComponentProps<typeof Ionicons>['name']
 /** 시설 아이콘 이름. 'sofa'(라운지)·'bank'(은행·ATM)는 Ionicons 에 없어 MaterialCommunityIcons 로 그린다(`ChipIcon.tsx` KindIcon). */
-export type FacilityIconName = IoniconName | 'sofa' | 'bank'
+export type FacilityIconName = IoniconName | 'sofa' | 'bank' | 'smoking'
 
 export interface FacilityKindMeta {
   key: FacilityKind
@@ -53,7 +53,8 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '열람실', icon: 'book', color: '#059669' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
-  { key: '흡연구역', icon: 'logo-no-smoking', color: '#57534E' },
+  // 사선 없는 담배(MaterialCommunityIcons 'smoking') — Ionicons 'logo-no-smoking' 은 금연 표시라 뜻이 반대였다(10-27). 지도 핀도 사선 없음.
+  { key: '흡연구역', icon: 'smoking', color: '#57534E' },
   { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },
 ]
 
