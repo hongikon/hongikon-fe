@@ -1,0 +1,7 @@
+[
+  {"q": "신소재 화공 전공 배정 어떻게 해?", "expect": "major-assign-msechem"},
+  {"q": "화공 희망전공 신청 언제야", "expect": "major-assign-msechem"},
+  {"q": "1학년 때 신소재랑 화공 언제 나뉘어?", "expect": "major-assign-msechem"},
+  {"q": "신소재 배정된 전공 바꿀 수 있어?", "expect": "major-assign-msechem"},
+  {"q": "신소재화공 주전공 신청 안 하면 어떻게 돼", "expect": "major-assign-msechem"}
+]
