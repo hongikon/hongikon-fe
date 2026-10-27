@@ -1,57 +1,41 @@
 import { useMemo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
-import { FACILITY_KINDS, facilityKindMeta } from '../../constants/facilityKinds'
+import { FACILITY_KINDS } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { useMapData } from '../../lib/mapData'
 import { chipStyles, useChipRowScrollStyle } from './chipStyles'
 import ChipIcon from './ChipIcon'
-import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
-import type { FacilityKind, MapLayer, ReportCategory } from '../../types'
+import type { FacilityKind, MapLayer } from '../../types'
 import * as haptics from '../../lib/haptics'
-import FlameIcon from '../common/FlameIcon'
-import { reportCategoryMeta } from '../../constants/reportCategories'
 
 const LAYERS: readonly {
   key: MapLayer
   label: string
-  icon: 'business' | 'pricetags' | 'calendar'
+  icon: 'business' | 'pricetags'
 }[] = [
   { key: '제휴업체', label: '제휴 업체', icon: 'pricetags' },
-  { key: '편의시설', label: '편의 시설', icon: 'business' },
-  { key: '이벤트', label: '이벤트', icon: 'calendar' },
+  // '편의시설' 갈래. 전시(미술관·박물관)까지 들어와 '편의'보다 넓어 화면 이름은 '학교 시설'(10-27).
+  { key: '편의시설', label: '학교 시설', icon: 'business' },
 ]
 
-// '행사·전시'는 '이벤트' 하위 칩으로만 보여준다. 편의시설 줄에도 두면 같은
-// 데이터가 두 곳에 뜨는 것처럼 보인다.
+// '이벤트' 갈래는 없앴다(10-27). 전시는 학교 시설 종류 칩 하나가 되고, 제보 보기(켜기·종류·HOT)는
+// 지도 오른쪽 아래 메뉴(MapActionMenu)로 옮겼다 — 위쪽 칩은 '어디에 뭐가 있나'만 맡는다.
 // 엘리베이터는 위치가 건물 단위로만 확인돼 쓸모가 적어 칩에서 숨긴다(데이터는 남겨 둔다, 10-02 요청).
 // 흡연구역은 10-05 에 숨겼다가 운영진이 11곳 좌표를 직접 찍어 정리한 뒤 다시 보인다(10-27).
-const HIDDEN_FACILITY_KINDS = new Set(['행사·전시', '엘리베이터'])
+const HIDDEN_FACILITY_KINDS = new Set(['엘리베이터'])
 const VISIBLE_FACILITY_KINDS = FACILITY_KINDS.filter((meta) => !HIDDEN_FACILITY_KINDS.has(meta.key))
-const EXHIBIT_META = facilityKindMeta('행사·전시')
+/** 칩에는 짧게. 서버 값 '행사·전시'의 행사는 이제 제보로 받는다. */
+const CHIP_LABEL: Partial<Record<FacilityKind, string>> = { '행사·전시': '전시' }
 
 interface MapFilterChipsProps {
   /** 최상단 갈래. 고르지 않았으면 null 이고, 아래 칩 줄은 나오지 않는다. */
   layer: MapLayer | null
-  /** 편의시설 종류. 레이어가 '편의시설' 이거나 '이벤트'(전시)일 때 쓰인다. */
+  /** 편의시설 종류. 레이어가 '편의시설' 일 때 쓰인다. */
   facilityKind: FacilityKind | null
-  /** 제보 레이어 on/off. 레이어가 '이벤트' 일 때 '제보' 칩의 선택 상태로 쓰인다. */
-  reportsOn: boolean
   /** 같은 칩을 다시 눌렀을 때의 해제 처리는 호출하는 쪽이 맡는다. */
   onSelectLayer: (value: MapLayer) => void
   onSelectFacilityKind: (value: FacilityKind) => void
-  onToggleReports: () => void
-  /** '🔥 HOT' 칩 선택 상태. 서버가 🔥 를 모르면(hotAvailable=false) 칩을 그리지 않는다. */
-  hotOn?: boolean
-  hotAvailable?: boolean
-  onToggleHot?: () => void
-  /**
-   * 제보 종류 칩 줄('전체 · 행사 · 공연 …'). 넘긴 순서대로 그린다. 비어 있으면 줄을 그리지 않는다.
-   */
-  reportCategories?: readonly ReportCategory[]
-  /** 고른 제보 종류. null 이면 '전체'. */
-  reportCategory?: ReportCategory | null
-  onSelectReportCategory?: (value: ReportCategory | null) => void
 }
 
 /**
@@ -67,16 +51,8 @@ interface MapFilterChipsProps {
 export default function MapFilterChips({
   layer,
   facilityKind,
-  reportsOn,
   onSelectLayer,
   onSelectFacilityKind,
-  onToggleReports,
-  hotOn = false,
-  hotAvailable = false,
-  onToggleHot,
-  reportCategories = [],
-  reportCategory = null,
-  onSelectReportCategory,
 }: MapFilterChipsProps) {
   const rowScroll = useChipRowScrollStyle()
   // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
@@ -146,7 +122,7 @@ export default function MapFilterChips({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`${meta.label ?? meta.key} ${count}곳`}
+                accessibilityLabel={`${CHIP_LABEL[meta.key] ?? meta.label ?? meta.key} ${count}곳`}
                 style={[
                   chipStyles.chip,
                   isActive && { backgroundColor: meta.color, borderColor: meta.color },
@@ -154,7 +130,7 @@ export default function MapFilterChips({
               >
                 <ChipIcon name={meta.icon} color={meta.color} active={isActive} />
                 <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                  {meta.label ?? meta.key}
+                  {CHIP_LABEL[meta.key] ?? meta.label ?? meta.key}
                 </Text>
               </TouchableOpacity>
             )
@@ -162,112 +138,6 @@ export default function MapFilterChips({
         </ScrollView>
       )}
 
-      {layer === '이벤트' && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={rowScroll}
-          contentContainerStyle={chipStyles.row}
-        >
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => {
-              haptics.selection()
-              onSelectFacilityKind('행사·전시')
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: facilityKind === '행사·전시' }}
-            accessibilityLabel="전시"
-            style={[
-              chipStyles.chip,
-              facilityKind === '행사·전시' && {
-                backgroundColor: EXHIBIT_META.color,
-                borderColor: EXHIBIT_META.color,
-              },
-            ]}
-          >
-            <ChipIcon
-              name={EXHIBIT_META.icon}
-              color={EXHIBIT_META.color}
-              active={facilityKind === '행사·전시'}
-            />
-            <Text style={[chipStyles.label, facilityKind === '행사·전시' && chipStyles.labelActive]}>
-              전시
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => {
-              haptics.selection()
-              onToggleReports()
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: reportsOn }}
-            accessibilityLabel={reportsOn ? '제보 숨기기' : '제보 보기'}
-            style={[
-              chipStyles.chip,
-              reportsOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-            ]}
-          >
-            <ReportMegaphoneIcon size={15} color={reportsOn ? COLORS.white : COLORS.primary} />
-            <Text style={[chipStyles.label, reportsOn && chipStyles.labelActive]}>제보</Text>
-          </TouchableOpacity>
-
-          {hotAvailable && onToggleHot ? (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              onPress={() => {
-                haptics.selection()
-                onToggleHot()
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ selected: hotOn }}
-              accessibilityLabel={hotOn ? 'HOT 제보만 보기 끄기' : 'HOT 제보만 보기'}
-              style={[chipStyles.chip, hotOn && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
-            >
-              <FlameIcon variant={hotOn ? 'hot' : 'full'} size={15} />
-              <Text style={[chipStyles.label, hotOn && chipStyles.labelActive]}>HOT</Text>
-            </TouchableOpacity>
-          ) : null}
-        </ScrollView>
-      )}
-
-      {/* 제보(또는 HOT)를 켰을 때 그 아래 한 줄 더: 제보 종류로 좁혀 보기. */}
-      {layer === '이벤트' && (reportsOn || hotOn) && reportCategories.length > 0 && onSelectReportCategory && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={rowScroll}
-          contentContainerStyle={chipStyles.row}
-        >
-          {[null, ...reportCategories].map((key) => {
-            const isActive = reportCategory === key
-            const meta = key === null ? null : reportCategoryMeta(key)
-            const label = meta?.label ?? '전체'
-            return (
-              <TouchableOpacity
-                key={key ?? 'ALL'}
-                activeOpacity={0.75}
-                onPress={() => {
-                  haptics.selection()
-                  onSelectReportCategory(key)
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={key === null ? '제보 전체 보기' : `${label} 제보만 보기`}
-                style={[
-                  chipStyles.chip,
-                  isActive && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-                ]}
-              >
-                {meta ? <ChipIcon name={meta.icon} color={COLORS.primary} active={isActive} /> : null}
-                <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>{label}</Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      )}
     </>
   )
 }

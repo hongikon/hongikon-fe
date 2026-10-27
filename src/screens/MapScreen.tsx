@@ -12,6 +12,7 @@ import {
   Animated,
   BackHandler,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -93,6 +94,7 @@ import ContentColumn from "../components/common/ContentColumn";
 const EMPTY_REPORTS: ReportListItem[] = [];
 /** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
 const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key);
+const ALL_REPORT_CATEGORIES: ReadonlySet<ReportCategory> = new Set(REPORT_CATEGORY_KEYS);
 
 /** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
 interface PreviewTarget {
@@ -135,6 +137,7 @@ export default function MapScreen() {
   // 지도 탭만 탭바를 지도 위에 띄운다(TabNavigator.tsx) — 그만큼 화면 맨
   // 아래에 깔린 버튼·배너가 탭바에 가리지 않게 이 높이만큼 띄워 올린다.
   const tabBarHeight = useBottomTabBarHeight();
+  const { height: windowHeight } = useWindowDimensions();
   const navigation = useNavigation();
   // 검색바·필터 칩이 지도 위에 뜨는 오버레이로 바뀌면서(§아래 JSX), 실제
   // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
@@ -180,9 +183,8 @@ export default function MapScreen() {
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
   const [toFloor, setToFloor] = useState<number | null>(null);
-  // 최상단 필터. 무엇을 볼지 먼저 고르게 한다. null 이면 하위 칩 줄이 없다.
-  // 처음엔 '이벤트 > 제보'가 켜진 채로 연다 — 제보가 앱의 주 기능이라 첫 화면에서 바로 보이게(10-18 요청).
-  const [layer, setLayer] = useState<MapLayer | null>("이벤트");
+  // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
+  const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
@@ -200,14 +202,16 @@ export default function MapScreen() {
   } | null>(null);
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
+  // 지도 탭에선 늘 켜 둔다 — 제보가 앱의 주 기능이라(10-18). 끄는 스위치는 없고 메뉴에서 종류·HOT 만 고른다(10-27).
   const [reportsOn, setReportsOn] = useState(true);
   /**
    * '🔥 HOT' 칩. 켜면 제보 레이어를 HOT·인기 제보(`GET /reports?sort=hot`, 최근 60분 🔥 순)로만 채우고 위에 짧은 목록을 띄운다.
    * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
    */
   const [hotOnly, setHotOnly] = useState(false);
-  /** 제보 종류 칩('전체 · 행사 · 공연 …'). null 이면 전체. 받아 온 목록을 기기에서 좁힌다. */
-  const [reportCategory, setReportCategory] = useState<ReportCategory | null>(null);
+  /** 지도에 보일 제보 종류(메뉴의 종류 칩, 여러 개 고름). 처음엔 전부. 받아 온 목록을 기기에서 좁힌다. */
+  const [reportCategories, setReportCategories] = useState<ReadonlySet<ReportCategory>>(ALL_REPORT_CATEGORIES);
+  const reportsNarrowed = reportCategories.size < ALL_REPORT_CATEGORIES.size;
   /** 서버가 🔥 를 아는지(목록 항목에 fireCount 가 오는지). 모르면 HOT 칩을 숨긴다(커뮤니티 기능 배포 전). */
   const [hotAvailable, setHotAvailable] = useState(false);
   // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
@@ -267,15 +271,11 @@ export default function MapScreen() {
   );
   const shownReportData = useMemo(
     () =>
-      hotReportData !== undefined && reportCategory !== null
-        ? hotReportData.filter((report) => report.category === reportCategory)
+      hotReportData !== undefined && reportsNarrowed
+        ? hotReportData.filter((report) => reportCategories.has(report.category))
         : hotReportData,
-    [hotReportData, reportCategory],
+    [hotReportData, reportsNarrowed, reportCategories],
   );
-  // 제보를 끄면(다른 갈래로 옮기거나 칩을 끄면) 종류 칩도 '전체'로 돌린다.
-  useEffect(() => {
-    if (!reportsOn) setReportCategory(null);
-  }, [reportsOn]);
   const reports = shownReportData ?? EMPTY_REPORTS;
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
@@ -746,10 +746,8 @@ export default function MapScreen() {
       setSelectedAffiliation(null);
       setSelectedCategory(null);
       postToMap({ type: "clearPartners" });
-      setReportsOn(false);
-      setHotOnly(false);
+      // 제보는 갈래와 따로라 끄지 않는다(10-27). 열려 있던 제보 시트만 닫는다.
       setSelectedReport(null);
-      postToMap({ type: "clearReports" });
 
       setFacilityKind(kind);
       const markers = withExhibitionHints(facilityMarkers(facilities, buildings, kind), facilities, exhibitions);
@@ -955,11 +953,8 @@ export default function MapScreen() {
       setSelectedCategory(null);
       postToMap({ type: "clearPartners" });
       applyFacilityKind(null);
-      // 이벤트(제보) 칩과도 한 번에 하나만 켠다. 안 그러면 편의시설·제휴로 넘어가도 제보 마커와 시트가 남는다.
-      setReportsOn(false);
-      setHotOnly(false);
+      // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
       setSelectedReport(null);
-      postToMap({ type: "clearReports" });
     },
     [layer, postToMap, applyFacilityKind],
   );
@@ -1087,24 +1082,6 @@ export default function MapScreen() {
     });
   }, [reportsOn, shownReportData, postToMap]);
 
-  /** 제보 버튼. 켜면 지금 진행 중인 제보를 받아 오고, 끄면 지도에서 내린다. */
-  const handleToggleReports = useCallback(() => {
-    // HOT 만 보고 있었으면 '제보'를 눌렀을 때 전체 제보로 바꾼다(끄지 않는다).
-    const next = !(reportsOn && !hotOnly);
-    setReportsOn(next);
-    setHotOnly(false);
-    setSelectedReport(null);
-    if (!next) {
-      postToMap({ type: "clearReports" });
-      return;
-    }
-    // '제보'는 '이벤트' 갈래 안의 하위 칩이다. 갈래(layer)는 그대로 두고 열려 있던 배너만 닫는다 —
-    // 예전엔 여기서 layer 까지 비워 '이벤트' 줄이 통째로 사라졌다. 편의시설·제휴 정리는 갈래를 바꿀 때(handleSelectLayer) 한다.
-    setSelectedPartner(null);
-    setSelectedBuilding(null);
-    setSelectedFacilityBuilding(null);
-  }, [reportsOn, hotOnly, postToMap]);
-
   /**
    * 'HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 전체 제보 보기로 돌아간다('제보' 칩이 켜진 상태).
    * 예전엔 다시 누르면 제보 레이어까지 꺼져 지도가 텅 비었다(10-06). 마커는 지우지 않고 새 목록이 오면 바꿔 그린다 —
@@ -1122,15 +1099,25 @@ export default function MapScreen() {
     }
   }, [hotOnly]);
 
-  /** 제보 종류 칩. 같은 칩을 다시 누르면 '전체'로 돌아간다. 열려 있던 제보 시트는 닫는다(목록에서 빠질 수 있다). */
-  const handleSelectReportCategory = useCallback((next: ReportCategory | null) => {
-    setReportCategory((current) => (current === next ? null : next));
-    setSelectedReport(null);
-  }, []);
+  /**
+   * 메뉴의 제보 종류 칩(여러 개 고름). 누를 때마다 그 종류만 넣고 뺀다. 제보는 지도에 늘 켜 두므로(10-27)
+   * 마지막 하나는 뺄 수 없다 — 다 빼면 지도가 비어 고장처럼 보인다. 열려 있던 제보 시트는 닫는다(목록에서 빠질 수 있다).
+   */
+  const handleToggleReportCategory = useCallback(
+    (category: ReportCategory) => {
+      if (reportCategories.size === 1 && reportCategories.has(category)) return;
+      setSelectedReport(null);
+      const next = new Set(reportCategories);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      setReportCategories(next);
+    },
+    [reportCategories],
+  );
 
-  /** '이벤트' 갈래를 열면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
+  /** 제보를 켜 두면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
   useEffect(() => {
-    if (layer !== "이벤트" || hotAvailable) return;
+    if (!reportsOn || hotAvailable) return;
     const controller = new AbortController();
     getLiveReports({ accessToken, signal: controller.signal })
       .then((list) => {
@@ -1138,7 +1125,7 @@ export default function MapScreen() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [layer, hotAvailable, accessToken]);
+  }, [reportsOn, hotAvailable, accessToken]);
 
   /**
    * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
@@ -1229,19 +1216,11 @@ export default function MapScreen() {
       // 위치를 고르던 중이면 그 모드부터 끈다 — 안 그러면 지도가 탭을 막은 채 제보 시트만 뜬다.
       stopPicker();
       openReport(null);
-      // 제보는 '이벤트' 갈래의 하위 칩이다. 다른 갈래(편의시설·제휴)를 보고 있었으면 그 마커를 거두고 '이벤트'로 옮긴다 —
-      // 안 그러면 편의시설 핀과 제보 마커가 섞이고, 제보를 끌 '제보' 칩도 화면에 없다(갈래는 한 번에 하나).
-      if (layer !== "이벤트") {
-        setLayer("이벤트");
-        setSelectedAffiliation(null);
-        setSelectedCategory(null);
-        postToMap({ type: "clearPartners" });
-        applyFacilityKind(null);
-      }
+      // 제보는 갈래(제휴·학교 시설)와 따로라 보던 칩은 그대로 둔다(10-27).
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
-      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다). 종류 칩도 같은 까닭으로 '전체'로.
+      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다). 종류도 같은 까닭으로 전부 켠다.
       setHotOnly(false);
-      setReportCategory(null);
+      setReportCategories(ALL_REPORT_CATEGORIES);
       if (reportsOn) reportsResource.retry();
       else setReportsOn(true);
       try {
@@ -1263,7 +1242,7 @@ export default function MapScreen() {
         toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
       }
     },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, layer, applyFacilityKind, stopPicker, openReport],
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, stopPicker, openReport],
   );
 
   /**
@@ -1549,19 +1528,6 @@ export default function MapScreen() {
             </View>
           )}
 
-          {!pickingLocation && reportsEmpty && (
-            <DismissibleNotice
-              message={
-                reportCategory !== null
-                  ? `지금은 ${reportCategoryMeta(reportCategory).label} 제보가 없어요`
-                  : hotOnly
-                    ? "지금은 HOT 제보가 없어요. 제보에 공감을 눌러 응원해 보세요"
-                    : "지금은 진행 중인 제보가 없어요"
-              }
-              dismissed={dismissedNotices}
-              onDismiss={dismissNotice}
-            />
-          )}
 
           {!pickingLocation && unresolvedCount > 0 && (
             <DismissibleNotice
@@ -1592,6 +1558,16 @@ export default function MapScreen() {
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
+            // 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지.
+            maxItemsHeight={Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12)}
+            reportFilter={{
+              categories: REPORT_CATEGORY_KEYS,
+              selected: reportCategories,
+              onToggleCategory: handleToggleReportCategory,
+              hotOn: hotOnly,
+              hotAvailable,
+              onToggleHot: handleToggleHot,
+            }}
           />
         )}
 
@@ -1811,16 +1787,8 @@ export default function MapScreen() {
             <MapFilterChips
               layer={layer}
               facilityKind={facilityKind}
-              reportsOn={reportsOn && !hotOnly}
-              hotOn={hotOnly}
-              hotAvailable={hotAvailable}
               onSelectLayer={handleSelectLayer}
               onSelectFacilityKind={handleSelectFacilityKind}
-              onToggleReports={handleToggleReports}
-              onToggleHot={handleToggleHot}
-              reportCategories={REPORT_CATEGORY_KEYS}
-              reportCategory={reportCategory}
-              onSelectReportCategory={handleSelectReportCategory}
             />
 
             {layer === "제휴업체" && (
