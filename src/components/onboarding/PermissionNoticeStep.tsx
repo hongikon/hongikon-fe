@@ -6,6 +6,7 @@ import { FONTS, TYPE } from '../../constants/typography'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 import { ONBOARDING_TINT } from './OnboardingIllustration'
+import { canLocate } from '../../lib/nearbyPartners/platform'
 
 interface PermissionNoticeStepProps {
   onNext: () => void
@@ -28,6 +29,16 @@ const PERMISSIONS: PermissionItem[] = [
     name: '알림',
     reason: '로그인하면 구독한 게시판의 새 공지, 내 제보 처리 결과와 캠퍼스 새 제보를 알려 드려요',
   },
+  // 위치 모듈이 든 빌드에서만 묻는다(OTA 로 이 코드를 받은 예전 빌드는 위치를 쓰지 않으니 적지 않는다).
+  ...(canLocate()
+    ? [
+        {
+          icon: 'navigate-outline' as const,
+          name: '위치',
+          reason: '지도 검색의 "내 주변 제휴 보기"를 누를 때만 물어봐요. 위치는 저장하거나 서버로 보내지 않아요',
+        },
+      ]
+    : []),
   {
     icon: 'camera-outline',
     name: '카메라',
@@ -47,7 +58,7 @@ const PERMISSIONS: PermissionItem[] = [
 /**
  * 온보딩 "앱 접근권한 안내"(iOS·Android 만). 정보통신망법 제22조의2·시행령 제9조의2의 앱 최초 실행 시 고지.
  * 필수/선택 구분, 권한별 항목·이유, 선택 권한은 허용하지 않아도 된다는 사실을 알린다.
- * 여기서는 아무 권한도 요청하지 않는다 — 알림은 로그인한 뒤, 카메라·사진은 해당 버튼을 누를 때 묻는다.
+ * 여기서는 아무 권한도 요청하지 않는다 — 알림은 로그인한 뒤, 카메라·사진·위치는 해당 버튼을 누를 때 묻는다.
  */
 export default function PermissionNoticeStep({ onNext }: PermissionNoticeStepProps) {
   return (
@@ -81,7 +92,7 @@ export default function PermissionNoticeStep({ onNext }: PermissionNoticeStepPro
         </View>
 
         <View style={styles.notes}>
-          <Text style={styles.note}>· 필수 접근권한은 없어요. 위치·연락처·마이크 권한은 요청하지 않아요.</Text>
+          <Text style={styles.note}>· 필수 접근권한은 없어요. {canLocate() ? '앱을 쓰지 않을 때의 위치(백그라운드 위치)·연락처·마이크' : '위치·연락처·마이크'} 권한은 요청하지 않아요.</Text>
           {Platform.OS === 'android' && (
             <Text style={styles.note}>· 제보 사진은 권한 없이 휴대폰의 사진 선택기로 골라요.</Text>
           )}

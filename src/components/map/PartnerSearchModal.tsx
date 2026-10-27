@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import EmptyState from "../common/EmptyState";
 import SearchBar from "../news/SearchBar";
 import Button from "../common/Button";
 import { useMapData } from "../../lib/mapData";
+import NearbyPartners, { INITIAL_NEARBY_STATE, type NearbyState } from "./NearbyPartners";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -61,6 +62,11 @@ export default function PartnerSearchModal({
 }: PartnerSearchModalProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
+  // "내 주변 제휴" 결과. 검색어를 쳤다 지워도 남고, 창이 닫히면 지운다(읽은 좌표를 창 밖으로 남기지 않는다).
+  const [nearbyState, setNearbyState] = useState<NearbyState>(INITIAL_NEARBY_STATE);
+  useEffect(() => {
+    if (!visible) setNearbyState(INITIAL_NEARBY_STATE);
+  }, [visible]);
 
   // 지도 데이터를 아직 못 받았으면(빈 배열) 검색·목록 대신 안내를 띄운다.
   const { partners, facilities, data, status, reload } = useMapData();
@@ -305,6 +311,7 @@ export default function PartnerSearchModal({
             ListHeaderComponent={
               <>
                 {farOnTop && farBlock}
+                <NearbyPartners partners={partners} onSelect={handleSelect} state={nearbyState} onStateChange={setNearbyState} />
                 <Text style={styles.browseHint}>
                   제휴 업체는 상호명·혜택·주소·소속으로, 편의시설은 부서·종류·건물로 찾을 수 있어요. 예: 총학생회 · 10%할인 · 교무처 · 프린터
                 </Text>

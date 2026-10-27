@@ -22,6 +22,12 @@ import {
 } from '../../lib/notificationPermission'
 import { notify } from '../../utils/dialog'
 import * as haptics from '../../lib/haptics'
+import {
+  canLocate,
+  getLocationPermission,
+  requestLocationPermission,
+  type LocationPermissionState,
+} from '../../lib/nearbyPartners/platform'
 import ModalHeader from './ModalHeader'
 import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
@@ -38,7 +44,8 @@ interface AppPermissionsModalProps {
  *
  * - 알림: notificationPermission.ts 의 공용 상태를 그대로 쓴다.
  * - 카메라·사진: 제보 작성(ReportComposerModal)에서 [카메라로 찍기]·[앨범에서 고르기]를 누를 때만 쓴다.
- * - 위치: 기기 위치(GPS)는 쓰지 않는다(개인정보 처리방침과 같다). 제보 위치는 지도에서 직접 고른다.
+ * - 위치(앱 사용 중): 지도 검색의 "내 주변 제휴 보기"를 누를 때만 쓴다(`lib/nearbyPartners/platform.ts`). 위치 모듈이 없는
+ *   예전 빌드(OTA)에서는 줄을 그리지 않는다. 백그라운드 위치는 쓰지 않는다. 제보 위치는 여전히 지도에서 직접 고른다.
  * 휴대폰 설정에서 바꾸고 돌아오면(앱이 다시 앞으로 오면) 상태를 다시 읽는다.
  */
 
@@ -131,6 +138,37 @@ function useMediaLibraryPermission(enabled: boolean) {
   return { state, request }
 }
 
+function fromLocation(res: LocationPermissionState | null): PermissionView {
+  if (!res) return { kind: 'loading' }
+  if (res.status === 'granted') return { kind: 'granted' }
+  return { kind: res.status, canAskAgain: res.canAskAgain }
+}
+
+/** 위치(앱 사용 중) 권한. 카메라와 같이 앱 복귀 때 다시 읽는다. */
+function useLocationPermission(enabled: boolean) {
+  const [state, setState] = useState<PermissionView>({ kind: 'loading' })
+
+  const refresh = useCallback(async () => {
+    const res = await getLocationPermission()
+    if (res) setState(fromLocation(res))
+  }, [])
+
+  const request = useCallback(async () => {
+    setState(fromLocation(await requestLocationPermission()))
+  }, [])
+
+  useEffect(() => {
+    if (!enabled) return
+    void refresh()
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refresh()
+    })
+    return () => sub.remove()
+  }, [enabled, refresh])
+
+  return { state, request }
+}
+
 function openPhoneSettings(what: string) {
   Linking.openSettings().catch(() =>
     notify('설정을 열지 못했어요', `휴대폰 설정 > 홍익온 > ${what}에서 바꿀 수 있어요.`),
@@ -144,6 +182,8 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
   const notification = fromNotification(useNotificationPermission())
   const media = useMediaLibraryPermission(visible && !isWeb && !isAndroid)
   const camera = useCameraPermission(visible && !isWeb)
+  const hasLocation = !isWeb && canLocate()
+  const location = useLocationPermission(visible && hasLocation)
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -155,14 +195,14 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
           <ModalHeader title="앱 권한" onClose={onClose} />
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, layoutStyles.readable]}>
             <Text style={styles.lead}>
-              홍익온이 휴대폰에 요청하는 권한은 아래 세 가지뿐이에요. 모두 선택 권한이라 허용하지 않아도 홍익온을 쓸 수 있고, 그 기능만 쓸 수 없어요. 필요한 순간에만 묻고, 언제든 바꿀 수 있어요.
+              홍익온이 휴대폰에 요청하는 권한은 아래 {hasLocation ? '네' : '세'} 가지뿐이에요. 모두 선택 권한이라 허용하지 않아도 홍익온을 쓸 수 있고, 그 기능만 쓸 수 없어요. 필요한 순간에만 묻고, 언제든 바꿀 수 있어요.
             </Text>
 
             {isWeb ? (
               <View style={styles.webNote}>
                 <Ionicons name="phone-portrait-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.webNoteText}>
-                  알림·카메라·사진 권한은 휴대폰 앱에서 설정해요. 웹에서는 따로 요청하는 권한이 없어요.
+                  알림·카메라·사진 권한은 휴대폰 앱에서 설정해요. 웹에서는 "내 주변 제휴 보기"를 누를 때만 브라우저가 위치 허용 여부를 물어요.
                 </Text>
               </View>
             ) : (
@@ -203,6 +243,21 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                   }}
                   settingsName="사진"
                 />
+                {hasLocation && (
+                  <>
+                    <View style={styles.separator} />
+                    <PermissionRow
+                      icon="navigate-outline"
+                      title="위치"
+                      purpose="(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때만 위치를 한 번 읽어 가까운 제휴 업체를 보여 줘요. 저장하거나 서버로 보내지 않아요"
+                      state={location.state}
+                      onRequest={() => {
+                        void location.request()
+                      }}
+                      settingsName="위치"
+                    />
+                  </>
+                )}
               </View>
             )}
 
@@ -211,9 +266,13 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <Ionicons name="location-outline" size={17} color={COLORS.textSecondary} />
               </View>
               <View style={styles.infoBody}>
-                <Text style={styles.infoTitle}>위치(GPS)·마이크·연락처는 사용하지 않아요</Text>
+                <Text style={styles.infoTitle}>
+                  {hasLocation ? '백그라운드 위치·마이크·연락처는 사용하지 않아요' : '위치(GPS)·마이크·연락처는 사용하지 않아요'}
+                </Text>
                 <Text style={styles.infoText}>
-                  기기 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.
+                  {hasLocation
+                    ? '앱을 쓰지 않을 때의 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'
+                    : '기기 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'}
                 </Text>
               </View>
             </View>

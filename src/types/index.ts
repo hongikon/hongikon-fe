@@ -253,6 +253,11 @@ export interface Partner {
    * 예: 에버랜드는 학생증이 아니라 "게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매". " / " 로 단계를 나눈다.
    */
   usageNote?: string
+  /**
+   * 관리자가 "근처 알림 대상"으로 켠 업체만 true(아니면 서버가 생략). 근처 제휴 알림(`lib/nearbyPartners/rules.ts`)이
+   * 이 업체를 알릴 수 있는지에 쓴다. 이 필드를 모르는 서버(배포 전)에서는 모든 업체가 대상 밖이다.
+   */
+  nearbyAlert?: boolean
 }
 
 export interface TreeNode {

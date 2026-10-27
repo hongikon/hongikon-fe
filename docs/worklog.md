@@ -18,6 +18,84 @@
 
 ---
 
+## 2026-10-26
+
+**목표**: 근처 제휴 알림 A~C단계(`docs/nearby-partner-alert-impl-plan.md`) — 서버 필드, 판단 규칙, 앱 안 "내 주변 제휴". 백그라운드 알림(D)은 아직.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/nearbyPartners/rules.ts` | 신규 | 판단 규칙(대상 업체, 가까운 19곳, 머무름·재진입 3분, 밤 시간·하루 횟수, 이미 반경 안, 여러 곳 묶기) |
+| `src/lib/nearbyPartners/copy.ts` | 신규 | 알림 문구("(광고)", 수신 거부 줄, 소속 혜택, "N곳 더") |
+| `src/lib/nearbyPartners/platform.ts` · `platform.web.ts` | 신규 | 위치 한 번 읽기(앱: expo-location, 웹: 브라우저) |
+| `src/components/map/NearbyPartners.tsx` | 신규 | 지도 검색 맨 위 "내 주변 제휴"(500m, 10곳) |
+| `src/components/map/PartnerSearchModal.tsx` | +2 | 위 블록 넣기 |
+| `src/admin/screens/PartnersScreen.tsx` · `src/admin/mock.ts` | 수정 | 관리자 "근처 알림 대상" 토글·배지 |
+| `src/types/index.ts` · `src/apis/mapData.ts` | 수정 | `Partner.nearbyAlert`, `MapData.nearbyAlertsEnabled` |
+| `src/constants/legalText.ts` | 수정 | 처리방침: 위치(앱 사용 중) 추가, "GPS 수집 안 함" 문장 교체 |
+| `app.json` · `package.json` | 수정 | expo-location 57.0.22 + 한국어 권한 문구(백그라운드 끔), `pnpm test` |
+| `scripts/test/*` | 신규 | Node 내장 테스트 로더 + 규칙 테스트 12개 |
+
+커밋 전.
+
+### 1. 구버전 바이너리 보호
+runtimeVersion 이 appVersion(1.0.0)이라 이 JS 가 OTA 로 예전 빌드에 가면 ExpoLocation 네이티브 모듈이 없다. `appleAuth.ts`와 같이 `requireOptionalNativeModule('ExpoLocation')` 이 있을 때만 `require` 하고, 없으면 "내 주변 제휴"를 그리지 않는다. 위치 권한·문구는 새 네이티브 빌드에서만 생긴다.
+
+### 2. 확인
+- `pnpm test` 12/12, `tsc --noEmit` 통과.
+- `expo config --type introspect`: iOS NSLocation* 한국어 3개, Android COARSE·FINE 만(BACKGROUND 없음), UIBackgroundModes location 없음.
+- `pnpm build:web` 성공. 웹 번들에 ExpoLocation 없음, 브라우저 geolocation 사용.
+- 서버(hongikon-be, 같은 날): `./gradlew test` 668/668. 운영 배포 전 `db/alter_partners_nearby_alert_2026_10_26.sql` 필요(be worklog).
+
+> **미결**: 실기기 확인(권한 거부·설정 열기·위치 꺼짐) 아직. 처리방침 적용일(14항 "2026년 10월 6일")은 출시일이 정해지면 바꾸고 7일 전 공지. 광고성 정보 수신 동의 문구는 D단계에서.
+
+---
+
+## 2026-10-27 · 근처 제휴 기기 테스트
+
+**목표**: "내 주변 제휴"(C단계) 실기기 대신 Android 에뮬레이터로 자동 테스트하고, 안 되는 부분 고치기.
+
+이 맥 미니에는 Xcode 가 없어(Command Line Tools 만) iOS 시뮬레이터는 못 썼다. Android 에뮬레이터(Android 36, arm64)를 깔고 preview APK 를 로컬 빌드해(`builds/hongikon-preview-1027b.apk`) adb 로 화면을 읽고 눌러 시나리오를 돌렸다.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/nearbyPartners/platform.ts` | 수정 | 위치 얻는 순서(Wi-Fi·기지국 5초 → 최근 위치 2분 → GPS 10초), 정확도 개선 창 끔, 권한 읽기·묻기, Android 위치 켜기, 개발 빌드 실패 로그 |
+| `src/lib/nearbyPartners/platform.web.ts` | 수정 | 같은 이름 내보내기(웹은 없음) |
+| `src/components/map/NearbyPartners.tsx` | 수정 | 상태를 검색 창이 들고 있게, 설정에서 돌아오면 자동으로 찾기, 문구, 위치 켜기 버튼, 500m 안에 없으면 가장 가까운 1곳 |
+| `src/components/map/PartnerSearchModal.tsx` | 수정 | "내 주변 제휴" 상태 보관, 창 닫으면 지움 |
+| `src/components/onboarding/PermissionNoticeStep.tsx` | 수정 | 앱 접근권한 안내에 위치 추가 |
+| `src/components/settings/AppPermissionsModal.tsx` | 수정 | 설정 > 앱 권한에 위치 줄과 상태 |
+
+커밋 전.
+
+### 1. 1차 테스트에서 찾은 문제
+
+| # | 문제 | 원인 |
+|---|---|---|
+| 1 | 온보딩 "앱 접근권한 안내"가 "위치 권한은 요청하지 않아요" | 처리방침만 고치고 안내 화면 두 곳(온보딩, 설정 > 앱 권한)을 빠뜨림 |
+| 2 | 누를 때마다 Google "위치 정확도 개선" 창 | `getCurrentPositionAsync` 의 `mayShowUserSettingsDialog` 기본값이 켜짐 |
+| 3 | "위치를 확인하지 못했어요"로 실패 | Balanced(Wi-Fi·기지국) 하나만 써서, 그 위치가 없거나 위 창에서 "괜찮습니다"를 누르면 통째로 실패. 에뮬레이터에서 `dumpsys location` 으로 GPS 요청이 OFF 인 것 확인 |
+| 4 | 실패 이유를 알 수 없음 | `catch` 가 오류를 삼킴 |
+| 5 | 한 번 거부 뒤 문구는 "설정에서 바꾸세요"인데 버튼은 "다시 시도" | 문구가 canAskAgain 을 안 봄 |
+| 6 | 설정에서 허용하고 돌아와도 "꺼져 있어요" 그대로 | 앱 복귀를 듣지 않음 |
+
+코드 검토로 더한 것: 캠퍼스에서 먼 곳이면 "없어요"로 끝남 → 가장 가까운 1곳과 거리, Android 위치 서비스 꺼짐에 "위치 켜기", 검색어를 쳤다 지우면 결과가 사라짐 → 검색 창이 상태 보관.
+
+### 2. 2차 테스트(고친 APK, 새로 설치)
+
+8개 시나리오 모두 통과: 온보딩 위치 항목, 한 번 거부 문구, 두 번 거부 → 설정 열기 → 허용하고 돌아오면 자동으로 목록(50m~170m, 10곳), 정확도 개선 창 안 뜸, 검색어 쳤다 지워도 유지, 잠실에서 "500m 안 없음 + 베스트 검진센터 강남점 5.4km", 위치 끔 → 위치 켜기 → 다시 찾음, 목록 줄 → 지도 시트(에그섬), 설정 > 앱 권한 "네 가지 · 위치 허용됨". logcat 에 JS 오류·크래시 없음. `pnpm test` 12/12, tsc, `pnpm build:web` 통과(웹 번들에 ExpoLocation 없음).
+
+> **미결**: iOS 는 처음엔 Xcode 가 없어 못 봤다가 같은 날 확인(아래 3). 예전 바이너리(위치 모듈 없음)에 OTA 로 갔을 때 숨겨지는지는 그런 빌드가 없어 코드로만 확인. 최근 위치(2분) 대신 쓰는 탓에 2분 안에 크게 움직이면 옛 위치로 보일 수 있음(에뮬레이터처럼 Wi-Fi·기지국 위치가 없는 기기에서만).
+
+### 3. iOS 시뮬레이터(같은 날)
+Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔고 XCUITest 로 같은 흐름을 돌렸다. 온보딩 위치 항목, 거부 → 바로 "설정 열기"(iOS 는 한 번 거부하면 다시 묻지 않음), 허용 → 홍대 정문 근처 10곳(50m~), 줄 → 에그섬 시트, 잠실 → 가장 가까운 곳(km), 설정 > 앱 권한 "네 가지 · 위치 허용됨" 모두 통과. iOS 권한 창에 app.json 의 한국어 설명이 그대로 나옴.
+> **미결(이번 기능과 별개, 기존 문제)**: iOS 첫 실행 온보딩에서 아이콘(방패·권한 줄 아이콘·뒤로 화살표)이 모두 빈 칸으로 보임. Android 는 정상이고 iOS 도 지도·검색 화면 아이콘은 정상 — 온보딩 때 아이콘 글꼴이 아직 안 불러와진 것으로 보임.
+
+---
+
 ## 2026-10-27
 
 **목표**: 제보 종료 시각 자동 맞춤, 검색으로 연 시설 시트가 잘려 보이던 것과 스크롤하다 줄이 눌리던 것(운영진 지적).

@@ -16,6 +16,7 @@
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-image-picker": "~57.0.18",
+    "expo-location": "~57.0.22",
     "expo-notifications": "~57.0.19",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "^57.0.9",
@@ -49,7 +50,8 @@
     "update:production": "node scripts/eas-update.mjs production",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "licenses:generate": "node scripts/generate-licenses.mjs",
-    "netlify:env:sync": "node scripts/netlify-env-sync.mjs"
+    "netlify:env:sync": "node scripts/netlify-env-sync.mjs",
+    "test": "node --import ./scripts/test/register.mjs --test \"scripts/test/*.test.ts\""
   },
   "private": true
 }
