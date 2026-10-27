@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react'
 import {
   Animated,
   PanResponder,
   type ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -16,6 +17,34 @@ import type { SheetBodyGesture } from '../../hooks/useResizableSheet'
 const FADE_HEIGHT = 28
 /** 이만큼 세로로 끌어야 시트 끌기로 넘긴다(가로 사진 넘기기·탭과 헷갈리지 않게). */
 const HANDOFF_SLOP_PX = 8
+/** 누른 뒤 이만큼 넘게 움직였으면 스크롤로 보고, 손을 뗄 때 줄 누르기로 치지 않는다. */
+const PRESS_SLOP_PX = 8
+/** 스크롤이 멈춘 직후 이 시간(ms) 안의 누르기는 스크롤을 멈추려던 손동작으로 본다. */
+const SCROLL_SETTLE_MS = 120
+
+/**
+ * 본문 안 줄(행정·지원 부서, 건물 안 시설 등)을 누를 때 쓴다. 스크롤하려고 끈 손동작이 줄 누르기로 먹어 엉뚱하게 들어가던 것(10-27)을 막는다.
+ * 시트 스크롤은 시트 끌기로 넘기려고 JS 응답자를 맡지 않아(disableScrollViewPanResponder), 스크롤해도 줄의 누르기가 취소되지 않는다.
+ */
+const SheetPressGuardContext = createContext<() => boolean>(() => false)
+
+/** 시트 본문 안에서 누르는 줄. 스크롤하려고 끈 손동작은 누르기로 치지 않는다. */
+export function SheetTouchable({ onPress, ...rest }: ComponentProps<typeof TouchableOpacity> & { onPress: () => void }) {
+  const guard = useSheetPress()
+  return <TouchableOpacity {...rest} onPress={guard(onPress)} />
+}
+
+/** `guard(fn)` 은 방금 스크롤한 손동작이면 fn 을 부르지 않는다. */
+export function useSheetPress() {
+  const scrolled = useContext(SheetPressGuardContext)
+  return useCallback(
+    (fn: () => void) => () => {
+      if (scrolled()) return
+      fn()
+    },
+    [scrolled],
+  )
+}
 
 type Props = ComponentProps<typeof Animated.ScrollView> & {
   /** `useSheetSizing().bodyGesture`. 주면 스크롤이 맨 위에서 아래로 끌면 시트가 작아지고(끝까지 내리면 닫힘),
@@ -56,6 +85,24 @@ export default function SheetScrollBody({
   // 시트를 끄는 동안 본문 스크롤을 멈춘다 — 같은 손가락으로 되돌아 끌 때 시트와 내용이 같이 움직이지 않게.
   const [handingOff, setHandingOff] = useState(false)
 
+  // 이번 손동작이 스크롤이었는지. 터치 이동 거리와 마지막 스크롤 시각으로 본다(웹·앱 같은 방식).
+  const touch = useRef({ startY: 0, startX: 0, moved: false })
+  const lastScrollAt = useRef(0)
+  const scrolledRecently = useCallback(
+    () => touch.current.moved || Date.now() - lastScrollAt.current < SCROLL_SETTLE_MS,
+    [],
+  )
+  type TouchEvt = { nativeEvent: { pageX: number; pageY: number } }
+  const touchHandlers = {
+    onTouchStart: (e: TouchEvt) => {
+      touch.current = { startX: e.nativeEvent.pageX, startY: e.nativeEvent.pageY, moved: false }
+    },
+    onTouchMove: (e: TouchEvt) => {
+      const t = touch.current
+      if (!t.moved && Math.hypot(e.nativeEvent.pageX - t.startX, e.nativeEvent.pageY - t.startY) > PRESS_SLOP_PX) t.moved = true
+    },
+  }
+
   const handoff = useMemo(() => {
     let startDy = 0
     const finish = () => setHandingOff(false)
@@ -88,7 +135,8 @@ export default function SheetScrollBody({
   }, [])
 
   return (
-    <View {...(sheetGesture ? handoff.panHandlers : null)}>
+    <SheetPressGuardContext.Provider value={scrolledRecently}>
+    <View {...(sheetGesture ? handoff.panHandlers : null)} {...touchHandlers}>
       <Animated.ScrollView
         ref={scrollRef}
         bounces={false}
@@ -116,6 +164,7 @@ export default function SheetScrollBody({
         }}
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           setOffset(e.nativeEvent.contentOffset.y)
+          lastScrollAt.current = Date.now()
           metrics.current.offset = e.nativeEvent.contentOffset.y
           if (typeof onScroll === 'function') onScroll(e)
         }}
@@ -136,6 +185,7 @@ export default function SheetScrollBody({
         </View>
       )}
     </View>
+    </SheetPressGuardContext.Provider>
   )
 }
 

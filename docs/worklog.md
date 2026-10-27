@@ -15,3 +15,22 @@
   - 평가(로컬): 기준 정답표 29 → 31/32, 학과 공지 정답표 23 → 35~36/40, 범위 21/21 거절·잘못 거절 0.
   > **미결(학교 확인 필요)**: 재무팀 등록금 번호(안내 3139 vs 공지 3137·3138·1069), 세종 학자금대출 번호, 외국인 휴학·제적 시 출국 14일 vs 30일, 기숙사 입사 기한 7일 vs 10일, 반입 전자제품, 사이버강좌 '교양만 2과목' vs '최대 2과목' 등 25건 — 목록은 scratchpad audit 결과.
   > **남은 구조 문제**: 낱말 찾기 점수가 같으면 앞 흐름이 이긴다(library·dorm·grades·classes 같은 넓은 흐름이 이김). officeAsk.ts 동점 처리 변경은 따로.
+
+---
+
+## 2026-10-27
+
+**목표**: 제보 종료 시각 자동 맞춤, 검색으로 연 시설 시트가 잘려 보이던 것과 스크롤하다 줄이 눌리던 것(운영진 지적).
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/components/map/ReportScheduleFields.tsx` | 수정 | 종료 시각을 먼저 고른 뒤 시작을 옮겨 그 종료를 쓸 수 없게 되면, 'N시간 뒤' 칩으로 돌리지 않고 원래 진행 시간만큼 새 시작 뒤로 자동으로 맞춘다(제보 시간 수정 창과 같은 동작). 맞췄을 때 요약 아래 한 줄로 알린다 |
+| `src/hooks/useResizableSheet.ts` | 수정 | `useSheetSizing` 에 `openAt`('small' 기본 / 'mid') — 처음 열 크기 |
+| `src/components/map/FacilitySheet.tsx` | 수정 | 검색으로 찾아온 줄이 있으면 보통 크기로 연다(작게 22%로 열고 그 줄을 맨 위로 올려, 학과사무실·행정 부서 줄과 안내가 반쯤 잘려 보였다). 행정·지원 줄은 `SheetTouchable` |
+| `src/components/map/SheetScrollBody.tsx` | 수정 | `SheetTouchable`·`useSheetPress` — 누른 뒤 8px 넘게 움직였거나 스크롤이 멈춘 지 120ms 안이면 줄 누르기로 치지 않는다. 시트 끌기 넘김 때문에 스크롤이 JS 응답자를 맡지 않아(disableScrollViewPanResponder), 스크롤해도 줄의 누르기가 취소되지 않았다 |
+| `src/components/map/BuildingSheet.tsx` | 수정 | '건물 안 시설' 줄도 `SheetTouchable` |
+
+- 검증: `tsc --noEmit` 통과. 화면 확인은 운영진(웹 localhost:8081, 앱).
+- 운영(main)에는 아직 10-22 '시작을 바꿔도 고른 종료 유지'(2aea1b6)도 없다 — dev→main 때 같이 나간다.
