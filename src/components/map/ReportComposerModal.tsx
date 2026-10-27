@@ -31,6 +31,7 @@ import {
   REPORT_CONTENT_MAX_LENGTH,
   REPORT_CUSTOM_CATEGORY_MAX_LENGTH,
   REPORT_DEFAULT_DURATION_HOURS,
+  REPORT_OFF_CAMPUS_MAX_METERS,
   REPORT_TITLE_MAX_LENGTH,
 } from '../../constants/report'
 import ReportScheduleFields, {
@@ -49,6 +50,8 @@ import {
   type PickedReportImage,
 } from '../../apis/reports'
 import { getServerBuildingId } from '../../apis/buildings'
+import { CAMPUS_CENTER } from '../../constants/map'
+import { haversineMeters } from '../../utils/geo'
 import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
 import { useMapData } from '../../lib/mapData'
 import RetryableError from '../common/RetryableError'
@@ -197,6 +200,17 @@ export default function ReportComposerModal({
   )
   // 층은 다이얼 두 개(지상/지하 · 1~30)로 고른다. 표시는 '3F'·'B1', 서버에는 정수(지하는 음수, B1 = -1)로 보낸다.
   const [basement, setBasement] = useState(false)
+  /** 핀 근처 건물로 만든 기본 장소 설명. 건물이 없으면 빈칸(좌표는 자리표시로만 보여 준다). */
+  const defaultPlace = target?.buildingName ? `${target.buildingName} 근처` : ''
+  const shownPlace = placeEdited ? placeLabel : defaultPlace
+  /**
+   * 학교 건물 근처가 아니지만 홍대 생활권(캠퍼스에서 2.5km) 안인 핀 — 건물·층 없이, 장소 설명을 꼭 적어 올린다(10-27).
+   * 그보다 멀면(지도 범위 사각형의 모서리 등) 올릴 수 없다. 서버도 같은 규칙으로 거른다.
+   */
+  const offCampus =
+    building === null &&
+    target !== null &&
+    haversineMeters(CAMPUS_CENTER.lat, CAMPUS_CENTER.lng, target.lat, target.lng) <= REPORT_OFF_CAMPUS_MAX_METERS
   const [floorNumber, setFloorNumber] = useState(1)
   const floor = basement ? -floorNumber : floorNumber
   const floorItems = useMemo<WheelItem<number>[]>(
@@ -219,8 +233,13 @@ export default function ReportComposerModal({
    * - 직접 입력 칸을 열어 두고 ✓ 로 적용하지 않으면 카테고리가 이전 값으로 올라가므로 빠진 것으로 본다.
    */
   const missing: { field: RequiredField; message: string }[] = []
-  if (building === null) {
-    missing.push({ field: 'building', message: '건물 가까이에 핀을 놓아야 제보할 수 있어요.' })
+  if (building === null && !offCampus) {
+    missing.push({
+      field: 'building',
+      message: `캠퍼스와 홍대 근처(캠퍼스에서 ${REPORT_OFF_CAMPUS_MAX_METERS / 1000}km 안)까지만 제보할 수 있어요.`,
+    })
+  } else if (offCampus && shownPlace.trim().length === 0) {
+    missing.push({ field: 'building', message: '캠퍼스 밖 제보는 장소를 적어 주세요. 예: 홍대입구역 9번 출구 앞' })
   }
   if (customInputOpen) {
     missing.push({
@@ -288,7 +307,7 @@ export default function ReportComposerModal({
   useEffect(() => () => {
     if (focusTimerRef.current) clearTimeout(focusTimerRef.current)
   }, [])
-  const buildingFlash = useAttentionFlash(flash.building, building === null, COLORS.warningSoft)
+  const buildingFlash = useAttentionFlash(flash.building, missingMessage('building') !== null, COLORS.warningSoft)
 
   /**
    * 필수 항목을 확인한다. 빠졌으면 빠진 칸마다 테두리를 깜빡이고 안내를 띄우며, 첫 칸으로 스크롤해 포커스를 주고
@@ -362,9 +381,6 @@ export default function ReportComposerModal({
   }
 
   const isCustomActive = category === 'ETC' && trimmedCustomLabel.length > 0
-  /** 핀 근처 건물로 만든 기본 장소 설명. 건물이 없으면 빈칸(좌표는 자리표시로만 보여 준다). */
-  const defaultPlace = target?.buildingName ? `${target.buildingName} 근처` : ''
-  const shownPlace = placeEdited ? placeLabel : defaultPlace
 
   /**
    * 요청 세대. 창을 닫을 때 올려, 닫은 뒤 늦게 끝난 등록 결과가 상태를 건드리지 못하게 한다
@@ -522,7 +538,7 @@ export default function ReportComposerModal({
   }
 
   const submit = async (picked: readonly PickedReportImage[]) => {
-    if (!target || !building || submitting || trimmedTitle.length === 0) return
+    if (!target || (!building && !offCampus) || submitting || trimmedTitle.length === 0) return
 
     // 제보 등록은 로그인이 필요하다(`POST /reports` — 게스트는 401).
     if (!accessToken) {
@@ -582,9 +598,10 @@ export default function ReportComposerModal({
       }
 
       if (isStale()) return
-      // 서버 건물 id. 서버는 buildingId·floor 를 필수로 받는다(없으면 400). 지도 데이터(`GET /map/data`)의 건물에는
+      // 서버 건물 id. 캠퍼스 안 제보는 buildingId·floor 가 필수다(없으면 400). 지도 데이터(`GET /map/data`)의 건물에는
       // id 가 실려 오므로 그대로 쓰고, 혹시 없으면(id 를 싣지 않는 서버) 예전처럼 이름으로 서버 건물 목록에서 찾는다.
-      const buildingId = building.id ?? (await getServerBuildingId(building.name))
+      // 캠퍼스 밖 제보는 건물·층 없이 보낸다.
+      const buildingId = building ? building.id ?? (await getServerBuildingId(building.name)) : undefined
       if (buildingId === null) {
         throw new Error('이 건물은 아직 제보를 받을 수 없어요. 가까운 다른 건물로 위치를 옮겨 주세요.')
       }
@@ -597,7 +614,7 @@ export default function ReportComposerModal({
           imageKeys: imageKeys.length > 0 ? imageKeys : undefined,
           imageKey: imageKeys[0],
           buildingId,
-          floor,
+          floor: building ? floor : undefined,
           lat: target.lat,
           lng: target.lng,
           category,
@@ -711,19 +728,31 @@ export default function ReportComposerModal({
                           setPlaceEdited(true)
                           setPlaceLabel(value)
                         }}
-                        placeholder={target ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}` : '장소'}
+                        placeholder={
+                          offCampus
+                            ? '예: 홍대입구역 9번 출구 앞'
+                            : target
+                              ? `${formatCoord(target.lat)}, ${formatCoord(target.lng)}`
+                              : '장소'
+                        }
                         accessibilityLabel="장소 설명"
                         maxLength={REPORT_PLACE_MAX_LENGTH}
                       />
                       <Text style={styles.placeHint}>
-                        {placeEdited ? '직접 고친 장소로 올라가요.' : '핀 위치로 채웠어요. 더 정확하게 고칠 수 있어요(예: T동 1층 로비 앞).'}
+                        {offCampus && !placeEdited
+                          ? '캠퍼스 밖이라 어디인지 꼭 적어 주세요. 제보 시트와 알림에 이 장소로 보여요.'
+                          : placeEdited
+                            ? '직접 고친 장소로 올라가요.'
+                            : '핀 위치로 채웠어요. 더 정확하게 고칠 수 있어요(예: T동 1층 로비 앞).'}
                       </Text>
 
                       {building === null ? (
                         <Animated.View style={[styles.errorBox, styles.buildingBox, buildingFlash]}>
                           <Ionicons name="information-circle" size={15} color={COLORS.warningIcon} />
                           <Text style={styles.errorText}>
-                            제보는 건물·층 단위로 올라가요. 창을 닫고 지도에서 핀을 건물 가까이로 옮겨 주세요.
+                            {offCampus
+                              ? '학교 건물 밖이라 층 없이 올라가요. 위 장소 칸에 어디인지 적어 주세요.'
+                              : `캠퍼스와 홍대 근처(캠퍼스에서 ${REPORT_OFF_CAMPUS_MAX_METERS / 1000}km 안)까지만 제보할 수 있어요. 창을 닫고 핀을 더 가까이 옮겨 주세요.`}
                           </Text>
                         </Animated.View>
                       ) : (

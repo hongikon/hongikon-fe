@@ -21,8 +21,11 @@ export interface MyReport {
   category: ReportCategory
   customCategoryLabel: string | null
   buildingId: number | null
+  /** 캠퍼스 밖(홍대 생활권) 제보는 건물·층이 없고 장소 설명만 있다(10-27). */
   buildingName: string | null
   floor: number | null
+  /** 작성자가 적은 장소 설명. 이전 서버는 없을 수 있다. */
+  placeLabel?: string | null
   lat: number
   lng: number
   startsAt: string

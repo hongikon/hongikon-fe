@@ -414,7 +414,10 @@ function ReportCard({
     if (report.lat === null || report.lng === null) return
     if (app) {
       // 앱 관리 탭: 우리 지도 탭으로 옮겨 그 좌표에 핀을 찍는다(승인 전 제보도 확인 가능).
-      const place = [report.buildingName, report.floor !== null ? formatFloor(report.floor) : null].filter(Boolean).join(' ')
+      const place =
+        [report.buildingName, report.floor !== null ? formatFloor(report.floor) : null].filter(Boolean).join(' ') ||
+        report.placeLabel?.trim() ||
+        ''
       const detail = [report.authorDisplayName ? `작성자 ${report.authorDisplayName}` : null, place || null]
         .filter(Boolean)
         .join(' · ')
@@ -426,7 +429,10 @@ function ReportCard({
     openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${report.lat},${report.lng}`)
   }
 
-  const location = [report.buildingName, report.floor !== null ? `${report.floor}층` : null].filter(Boolean).join(' ')
+  // 캠퍼스 밖 제보는 건물·층이 없어 장소 설명에 '캠퍼스 밖'을 붙여 보여 준다(검토 때 위치를 바로 알게).
+  const location =
+    [report.buildingName, report.floor !== null ? `${report.floor}층` : null].filter(Boolean).join(' ') ||
+    (report.placeLabel?.trim() ? `캠퍼스 밖 · ${report.placeLabel.trim()}` : '')
   const busy = pending !== null
   const trimmedNote = note.trim()
 

@@ -80,6 +80,8 @@ import type {
   ReportListItem,
 } from "../types";
 import { REPORT_CATEGORIES, reportCategoryMeta } from "../constants/reportCategories";
+import { REPORT_OFF_CAMPUS_MAX_METERS } from "../constants/report";
+import { haversineMeters } from "../utils/geo";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { RADIUS } from "../constants/spacing";
@@ -1631,7 +1633,13 @@ export default function MapScreen() {
                   {pickerCenter
                     ? pickerCenter.buildingName
                       ? `${pickerCenter.buildingName} 근처`
-                      : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
+                      : pickerPurpose === "report"
+                        ? // 캠퍼스 밖 제보(10-27): 홍대 생활권 안이면 장소를 직접 적어 올리고, 더 멀면 올릴 수 없다고 미리 알린다.
+                          haversineMeters(CAMPUS_CENTER.lat, CAMPUS_CENTER.lng, pickerCenter.lat, pickerCenter.lng) <=
+                          REPORT_OFF_CAMPUS_MAX_METERS
+                          ? "캠퍼스 밖 · 다음 화면에서 장소를 적어 주세요"
+                          : `캠퍼스에서 ${REPORT_OFF_CAMPUS_MAX_METERS / 1000}km 밖은 제보할 수 없어요`
+                        : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
                     : "위치 확인 중..."}
                 </Text>
               </View>

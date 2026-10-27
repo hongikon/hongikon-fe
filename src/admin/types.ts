@@ -50,8 +50,11 @@ export interface AdminReport {
   /** 사진 보기 URL 들(최대 3장, 등록 순서). 여러 장 기능 전 서버는 없다 — `reportImageUrls` 로 읽는다. */
   imageUrls?: string[]
   buildingId: number | null
+  /** 캠퍼스 밖(홍대 생활권) 제보는 건물·층이 없고 장소 설명(placeLabel)만 있다(10-27). */
   buildingName: string | null
   floor: number | null
+  /** 작성자가 적은 장소 설명. */
+  placeLabel?: string | null
   lat: number | null
   lng: number | null
   startsAt: string

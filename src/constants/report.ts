@@ -34,6 +34,12 @@ export const REPORT_DURATION_OPTIONS_HOURS: readonly number[] = [1, 2, 3, 6]
 export const REPORT_DEFAULT_DURATION_HOURS = 2
 
 /**
+ * 학교 건물이 없는 곳(캠퍼스 밖) 제보를 받는 거리(캠퍼스 중심에서, m). 서버 `report.off-campus-max-distance-meters` 와 같고,
+ * 지도를 옮길 수 있는 범위(CAMPUS_VIEW_RADIUS_METERS)와도 같다 — 홍대입구·합정·상수·연남 등 홍대 생활권(10-27).
+ */
+export const REPORT_OFF_CAMPUS_MAX_METERS = 2500
+
+/**
  * 제보 신고 사유(`POST /reports/{id}/flags` 의 reason). 서버 `ReportService.FLAG_REASONS` 와 같다.
  * PRIVACY 는 서버에 나중에 추가됐다 — 구버전 서버가 400 을 주면 ETC 로 다시 보낸다(ReportSheet).
  */

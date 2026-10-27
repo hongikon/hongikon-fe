@@ -447,10 +447,13 @@ export interface ReportCommentFlagResult {
 
 /** `POST /reports` 요청 바디. */
 export interface CreateReportInput {
-  /** 서버 `buildings.id`(필수). 앱 건물 이름은 `getServerBuildingId` 로 바꾼다. */
-  buildingId: number
-  /** 필수. 지하는 음수(B1 = -1). */
-  floor: number
+  /**
+   * 서버 `buildings.id`. 앱 건물 이름은 `getServerBuildingId` 로 바꾼다. 캠퍼스 밖(홍대 생활권) 제보는 건물이 없어 보내지 않는다 —
+   * 그때는 floor 도 보내지 않고 placeLabel 이 필수다(10-27).
+   */
+  buildingId?: number
+  /** 건물이 있을 때 필수. 지하는 음수(B1 = -1). */
+  floor?: number
   lat: number
   lng: number
   category: ReportCategory
