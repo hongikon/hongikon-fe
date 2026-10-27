@@ -1628,7 +1628,7 @@ export default function MapScreen() {
             {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
             <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + tabBarHeight }]}>
               <View style={styles.pickerLocationRow}>
-                <Ionicons name="location" size={14} color={COLORS.primary} />
+                <Ionicons name="location" size={16} color={COLORS.primary} />
                 <Text style={styles.pickerLocationText} numberOfLines={1}>
                   {pickerCenter
                     ? pickerCenter.buildingName
@@ -1642,6 +1642,16 @@ export default function MapScreen() {
                         : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
                     : "위치 확인 중..."}
                 </Text>
+                {/* 위쪽 안내 줄의 X 까지 손을 뻗지 않아도 되게 아래 카드에도 취소를 둔다(10-27 요청).
+                    오른손 엄지가 닿는 오른쪽, 위치 문구와 같은 줄. */}
+                <TouchableOpacity
+                  onPress={handleCancelReportPicker}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="위치 선택 취소"
+                >
+                  <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+                </TouchableOpacity>
               </View>
               <Button
                 label={pickerPurpose === "partner" ? "이 위치로 정보 제보" : "이 위치 제보하기"}
@@ -2230,7 +2240,7 @@ const styles = StyleSheet.create({
   pickerLocationText: {
     flex: 1,
     fontFamily: FONTS.regular,
-    fontSize: 12.5,
+    fontSize: 14.5,
     color: COLORS.textPrimary,
   },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.

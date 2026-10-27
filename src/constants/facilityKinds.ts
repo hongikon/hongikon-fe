@@ -42,6 +42,8 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
   { key: '스터디룸', icon: 'people-circle', color: '#2563EB' },
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
+  // 사선 없는 담배(MaterialCommunityIcons 'smoking') — Ionicons 'logo-no-smoking' 은 금연 표시라 뜻이 반대였다(10-27). 칩은 카페 바로 왼쪽(10-27 요청). 지도 핀도 사선 없음.
+  { key: '흡연구역', icon: 'smoking', color: '#57534E' },
   { key: '카페', icon: 'cafe', color: '#9333EA' },
   { key: '학과사무실', icon: 'business-outline', color: '#1E3A8A' },
   { key: '편의점', icon: 'storefront', color: '#D97706' },
@@ -53,8 +55,6 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '열람실', icon: 'book', color: '#059669' },
   { key: '식당', icon: 'restaurant', color: '#DC2626' },
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
-  // 사선 없는 담배(MaterialCommunityIcons 'smoking') — Ionicons 'logo-no-smoking' 은 금연 표시라 뜻이 반대였다(10-27). 지도 핀도 사선 없음.
-  { key: '흡연구역', icon: 'smoking', color: '#57534E' },
   { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },
 ]
 

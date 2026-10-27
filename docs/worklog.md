@@ -40,3 +40,4 @@
   - `CreateReportInput.buildingId`·`floor` 선택. 내 제보 내역·관리자 제보 목록은 건물이 없으면 장소 설명을 보여 준다(관리자는 '캠퍼스 밖 · ○○'). 제보 시트·HOT 목록·공유는 이미 장소 설명을 먼저 쓴다.
   - 운영 반영 순서: 서버 DB SQL(`hongikon-be/db/alter_report_building_nullable.sql`) → 서버 배포 → 앱(OTA). 앱만 먼저 나가면 캠퍼스 밖 제보가 서버에서 400.
 - 흡연구역 칩 다시 보이기(운영진이 11곳 좌표를 정리, 서버 `db/sync_facilities_2026_10_27_smoking.sql`): `MapFilterChips` 숨김 목록에서 빼고, 정보 제보 시설 종류에도 넣는다. 칩·시트 아이콘이 Ionicons `logo-no-smoking`(금연 표시, 뜻이 반대)이라 MaterialCommunityIcons `smoking`(사선 없는 담배, 지도 핀과 같은 모양)으로 바꿨다(`FacilityIconName`·`KindIcon`).
+- 흡연구역 칩을 카페 바로 왼쪽으로(`FACILITY_KINDS` 순서). 제보 위치 고르기 아래 카드: 위치 문구 12.5→14.5px, 같은 줄 오른쪽 끝에 취소 X(위쪽 안내 줄 X 와 같은 동작, 오른손 엄지 자리).
