@@ -23403,7 +23403,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
          "학군단장"
         ],
         [
-         "010-2979-8779",
+         "(개인 휴대전화 — 학교 페이지에서 확인)",
          "학군단 훈육관"
         ]
        ]

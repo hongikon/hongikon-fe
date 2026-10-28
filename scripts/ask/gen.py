@@ -256,5 +256,8 @@ if __name__ == '__main__':
  */
 export const ASK_PAGE_FLOWS: readonly AskFlow[] = """
     body = json.dumps(flows, ensure_ascii=False, indent=1)
+    # 개인 휴대전화 번호는 학교 페이지에 있어도 옮기지 않는다(10-29 공개 저장소 점검 — 학군단 안내의 학군단장 휴대전화).
+    # 부서 전화(02-…)는 그대로 둔다.
+    body = re.sub(r'\b01[016789][-. ]?\d{3,4}[-. ]?\d{4}\b', '(개인 휴대전화 — 학교 페이지에서 확인)', body)
     open(OUT, 'w', encoding='utf-8').write(header + body + '\n')
     print('flows', len(flows), 'KB', len((header + body).encode()) // 1024)
