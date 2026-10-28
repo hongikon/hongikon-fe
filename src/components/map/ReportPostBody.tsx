@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { formatFreshness, reportImageUrls } from '../../utils/reports'
 import ImageViewerModal from '../common/ImageViewerModal'
+import PhotoCarousel from '../common/PhotoCarousel'
 import OfficialBadge from '../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import { reportAuthorName } from '../../utils/nickname'
@@ -51,17 +52,9 @@ export default function ReportPostBody({
       </Text>
 
       {photos.length > 0 && (
+        // 자르지 않고 원래 비율로, 여러 장이면 옆으로 넘기며 아래 점으로 몇 번째인지 본다.
         <View style={styles.photos}>
-          {photos.map((url, index) => (
-            <Pressable
-              key={url}
-              onPress={() => setViewerIndex(index)}
-              accessibilityRole="imagebutton"
-              accessibilityLabel={`제보 첨부 사진 ${index + 1}/${photos.length}, 크게 보기`}
-            >
-              <Image source={{ uri: url }} style={styles.photo} resizeMode="cover" />
-            </Pressable>
-          ))}
+          <PhotoCarousel urls={photos} onPressPhoto={setViewerIndex} labelPrefix="제보 첨부 사진" />
         </View>
       )}
       <ImageViewerModal urls={photos} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
@@ -97,8 +90,7 @@ const styles = StyleSheet.create({
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 16 },
   content: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 24, color: COLORS.textPrimary },
-  photos: { gap: 10, marginTop: 20 },
+  photos: { marginTop: 20 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 20 },
   author: { flexShrink: 1, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
-  photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: COLORS.fill },
 })
