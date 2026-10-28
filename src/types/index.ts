@@ -503,10 +503,17 @@ export interface ReportFlagResult {
  * - ADMIN_*: `AdminAlertDispatcher` — 관리자에게만. 새 제보 승인 대기·새 문의·신고 누적 자동 숨김.
  *   제목은 "[관리] …", Android 채널 `admin`. 몰리면 서버가 2분에 한 번 묶어 `count` 에 건수를 담는다(id 는 마지막 건).
  *
+ * - NEARBY_PARTNER: 서버 푸시가 아니라 기기가 예약한 로컬 알림(근처 제휴 알림, `lib/nearbyPartners/background.ts`) — `{type, partnerId}`.
+ *
  * 제목·본문은 서버가 채워 보내고, `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
  * (`src/utils/notificationRouting.ts`, `src/lib/pushNotifications.ts`).
  */
 export type PushNotificationData =
+  | {
+      type: 'NEARBY_PARTNER'
+      /** 지도 데이터의 업체 id(code). */
+      partnerId: string
+    }
   | {
       type: 'NEWS'
       /**

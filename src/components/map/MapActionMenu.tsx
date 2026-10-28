@@ -13,6 +13,9 @@ interface MapActionMenuProps {
   /** 넘기지 않으면(길찾기 꺼짐) 항목을 그리지 않는다. */
   onRoute?: () => void
   onRecenter: () => void
+  /** 근처 알림 영역 보기(개발·현장 테스트 빌드만). 넘기지 않으면 항목을 그리지 않는다. */
+  onToggleNearbyOverlay?: () => void
+  nearbyOverlayOn?: boolean
   style?: StyleProp<ViewStyle>
 }
 
@@ -29,7 +32,14 @@ interface MenuItem {
  * 이름표와 함께 펼쳐 보인다. 접기 버튼과 나머지 항목은 하단 탭 바와 같은 맑은 유리(FloatingTabBar pill)이고,
  * 제보하기만 앱의 주 기능이라 메인 컬러로 채워 맨 아래(손에 가까운 쪽)에 둔다(10-18 요청). 항목을 누르면 접힌다.
  */
-export default function MapActionMenu({ onReport, onRoute, onRecenter, style }: MapActionMenuProps) {
+export default function MapActionMenu({
+  onReport,
+  onRoute,
+  onRecenter,
+  onToggleNearbyOverlay,
+  nearbyOverlayOn,
+  style,
+}: MapActionMenuProps) {
   const [open, setOpen] = useState(false)
   const progress = useRef(new Animated.Value(0)).current
 
@@ -47,6 +57,16 @@ export default function MapActionMenu({ onReport, onRoute, onRecenter, style }: 
   }, [])
 
   const items: MenuItem[] = [
+    ...(onToggleNearbyOverlay
+      ? [
+          {
+            key: 'nearby',
+            label: nearbyOverlayOn ? '근처 알림 영역 끄기' : '근처 알림 영역 보기',
+            icon: <Ionicons name="radio-outline" size={17} color={COLORS.primary} />,
+            onPress: onToggleNearbyOverlay,
+          },
+        ]
+      : []),
     {
       key: 'recenter',
       label: '캠퍼스로',

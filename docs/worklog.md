@@ -118,3 +118,29 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
   - `CreateReportInput.buildingId`·`floor` 선택. 내 제보 내역·관리자 제보 목록은 건물이 없으면 장소 설명을 보여 준다(관리자는 '캠퍼스 밖 · ○○'). 제보 시트·HOT 목록·공유는 이미 장소 설명을 먼저 쓴다.
   - 운영 반영 순서: 서버 DB SQL(`hongikon-be/db/alter_report_building_nullable.sql`) → 서버 배포 → 앱(OTA). 앱만 먼저 나가면 캠퍼스 밖 제보가 서버에서 400.
 - 흡연구역 칩 다시 보이기(운영진이 11곳 좌표를 정리, 서버 `db/sync_facilities_2026_10_27_smoking.sql`): `MapFilterChips` 숨김 목록에서 빼고, 정보 제보 시설 종류에도 넣는다. 칩·시트 아이콘이 Ionicons `logo-no-smoking`(금연 표시, 뜻이 반대)이라 MaterialCommunityIcons `smoking`(사선 없는 담배, 지도 핀과 같은 모양)으로 바꿨다(`FacilityIconName`·`KindIcon`).
+
+---
+
+## 2026-10-28 · 근처 제휴 알림 D단계(백그라운드 알림)
+
+**목표**: 백그라운드 근처 알림을 만들고, 밤새 Android 에뮬레이터·iOS 시뮬레이터로 확인하고, 반경을 정한다.
+
+### 변경된 파일
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/nearbyPartners/engine.ts` | 신규 | 상태 기계(진입·이탈·등록·끄기, 예약 하나, 3분 재진입, 중복 신호, 가장 가까운 업체를 이름으로) |
+| `src/lib/nearbyPartners/background.ts` · `.web.ts` | 신규 | 지오펜스 등록·백그라운드 작업·로컬 알림·기기 저장·권한, 근처 알림 빌드에서만 동작 |
+| `src/lib/nearbyPartners/useNearbyPartnerAlerts.ts` · `debug.ts` | 신규 | 앱 열기·지도 데이터·긴급 스위치에 맞춰 다시 등록, 로그아웃 정리, 개발용 시계·반경 링크 |
+| `src/components/settings/NearbyAlertSettings.tsx` | 신규 | 설정 > 알림 > 근처 제휴(안내·소속·광고성 정보 수신 동의·권한) |
+| `src/lib/nearbyPartners/rules.ts` | 수정 | 알림 사이 2시간, 밀도에 맞춘 다시 고르기 원, 저장본 타입 |
+| `index.ts` · `App.tsx` · `accountData.ts` · 알림 이동·지도 요청 · `SettingsScreen` · `apis/notificationSettings.ts` · `types` | 수정 | 연결 |
+| `app.config.ts` · `app.json` · `eas.json` · `package.json` | 수정 | `NEARBY_ALERTS_BUILD` 빌드 플래그, R8 keep, `fetch` 백그라운드 모드 제거, `nearby-test` 프로필, expo-task-manager |
+| `scripts/test/nearbyPartnerEngine.test.ts` | 신규 | 엔진 테스트(규칙 포함 27개) |
+
+커밋 전.
+
+### 1. 결과
+`docs/nearby-partner-alert-impl-plan.md` "10-28 기기 테스트 결과"·"반경은 몇 m로". 요약: Android 에뮬레이터에서 켜기·등록·5분 뒤 알림·탭 → 업체 시트·밀집 묶음(가장 가까운 업체 이름)·밤 시간 막기 확인. 반경 100m 유지(시뮬레이션). 테스트로 R8 keep, 오래된 위치, 위치 순서, 켜기 창 안내, fetch 모드를 고쳤다.
+
+> **미결**: iOS 27.1 시뮬레이터는 지오펜싱 자체가 안 됨(`GeofencingUnavailable`) — 실기기 확인 필수, 안 되면 `CLMonitor` 네이티브 모듈. Android 백그라운드 진입·이탈은 에뮬레이터 한계로 실기기 확인 필요. 운영 빌드에는 `NEARBY_ALERTS_BUILD` 를 켜지 않음(심사·위치정보법 확인 전). 처리방침에 근처 알림(백그라운드 위치·수신 동의) 문구는 아직 없음.

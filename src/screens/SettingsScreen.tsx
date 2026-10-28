@@ -19,6 +19,8 @@ import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import BoardAlertsModal from '../components/settings/BoardAlertsModal'
 import ToggleSwitch from '../components/settings/ToggleSwitch'
+import NearbyAlertSettings from '../components/settings/NearbyAlertSettings'
+import { nearbyAlertsAvailable } from '../lib/nearbyPartners/background'
 import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
@@ -577,6 +579,13 @@ export default function SettingsScreen() {
                   ) : undefined
                 }
               />
+            </View>
+          )}
+          {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). */}
+          {nearbyAlertsAvailable() && !isGuest && (
+            <View style={styles.subGroup}>
+              <Text style={styles.subGroupTitle}>근처 제휴</Text>
+              <NearbyAlertSettings />
             </View>
           )}
         </View>

@@ -13,6 +13,7 @@ import {
   partnersNear,
   pickNearest,
   pickTargets,
+  reselectRadius,
   stayStartedAt,
   type StayRecord,
 } from '../../src/lib/nearbyPartners/rules.ts'
@@ -94,6 +95,17 @@ test('가까운 업체 고르기: 거리순, 같으면 id 순, 개수 제한', (
   assert.deepEqual(pickNearest(partners, BASE.lat, BASE.lng, 3).map((p) => p.id), ['d', 'a', 'b'])
 })
 
+test('다시 고르기 원: 등록 못 한 첫 업체 반경에 닿기 전, 150m~1km', () => {
+  // 20번째 업체가 400m → 400 - 100 = 300m
+  const many = Array.from({ length: 25 }, (_, i) => partner(`p${String(i).padStart(2, '0')}`, i < 19 ? 50 : 400))
+  assert.equal(Math.round(reselectRadius(many, BASE.lat, BASE.lng)), 300)
+  // 밀집: 20번째가 120m → 150m 로 올림
+  const dense = Array.from({ length: 25 }, (_, i) => partner(`d${String(i).padStart(2, '0')}`, 120))
+  assert.equal(reselectRadius(dense, BASE.lat, BASE.lng), 150)
+  // 업체가 19곳 이하 → 1km
+  assert.equal(reselectRadius(many.slice(0, 10), BASE.lat, BASE.lng), 1000)
+})
+
 test('내 주변 제휴: 반경 밖은 빼고 가까운 순', () => {
   const partners = [partner('far', 900), partner('near', 120), partner('mid', 480)]
   const result = partnersNear(partners, BASE.lat, BASE.lng, 500, 10)
@@ -134,15 +146,21 @@ test('진입 판단: 업체당 하루 1번, 전체 하루 2번, 우선 시간대
   // 어제 보낸 건 세지 않는다.
   assert.equal(decideOnEnter('a', NOON, [{ partnerId: 'a', at: kst(12, 0, 26) }], NOON).schedule, true)
   const two = [
-    { partnerId: 'x', at: kst(11, 40) },
-    { partnerId: 'y', at: kst(11, 50) },
+    { partnerId: 'x', at: kst(8, 40) },
+    { partnerId: 'y', at: kst(9, 50) },
   ]
   assert.deepEqual(decideOnEnter('a', NOON, two, NOON), { schedule: false, reason: 'dailyLimit' })
 
-  const offPeakSent = [{ partnerId: 'x', at: kst(10, 0) }]
+  const offPeakSent = [{ partnerId: 'x', at: kst(9, 0) }]
   assert.deepEqual(decideOnEnter('a', kst(15, 0), offPeakSent, kst(15, 0)), { schedule: false, reason: 'offPeakLimit' })
   // 우선 시간대라면 하나 더 된다.
   assert.equal(decideOnEnter('a', NOON, offPeakSent, NOON).schedule, true)
+})
+
+test('진입 판단: 알림 사이 최소 2시간', () => {
+  const sent = [{ partnerId: 'x', at: kst(11, 0) }]
+  assert.deepEqual(decideOnEnter('a', NOON, sent, NOON), { schedule: false, reason: 'tooSoon' })
+  assert.equal(decideOnEnter('a', kst(13, 0), sent, kst(13, 0)).schedule, true)
 })
 
 test('등록할 때 이미 반경 안: 가만히 있어도 진입으로 처리할 업체', () => {

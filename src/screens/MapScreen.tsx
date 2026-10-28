@@ -87,6 +87,9 @@ import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { RADIUS } from "../constants/spacing";
 import { SheetHeaderContext } from "../hooks/useResizableSheet";
 import ContentColumn from "../components/common/ContentColumn";
+import { getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
+import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
+import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -127,6 +130,38 @@ function toMarker(partner: Partner) {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
+  // 근처 알림 영역 보기(개발·현장 테스트 빌드만): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
+  const showNearbyOverlayMenu = NEARBY_DEBUG_TOOLS && nearbyAlertsAvailable();
+  const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
+  const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!nearbyOverlayOn) {
+      webViewRef.current?.injectJavaScript(nearbyOverlayScript(null));
+      return;
+    }
+    let cancelled = false;
+    let focused = false;
+    const draw = async () => {
+      const overlay = await getNearbyOverlay();
+      if (cancelled) return;
+      // 처음 그릴 때만 등록한 자리로 옮긴다(그 뒤에는 사용자가 지도를 움직일 수 있게).
+      webViewRef.current?.injectJavaScript(nearbyOverlayScript(overlay, { focus: !focused && !!overlay }));
+      if (overlay) focused = true;
+      setNearbyOverlayNote(
+        overlay?.error
+          ? `등록 실패(원은 계획만 표시): ${overlay.error}\n파란 원: 업체 인식 반경 · 점선: 다시 고르기 원 · 남색 점: 기준 위치`
+          : overlay
+          ? `등록 ${overlay.regions.length}곳 · 안에 있음 ${overlay.regions.filter((r) => r.inside).length}곳 · 다시 고르기 원 ${overlay.reselectMeters}m\n파란 원: 업체 인식 반경 · 주황: 알림 예약 · 점선: 다시 고르기 원 · 남색 점: 등록한 자리`
+          : "아직 등록 전이에요. 설정에서 근처 제휴 알림을 켜고 앱을 다시 열어 주세요.",
+      );
+    };
+    void draw();
+    const id = setInterval(() => void draw(), 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [nearbyOverlayOn]);
   const { accessToken, logout } = useAuth();
   // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
@@ -1288,6 +1323,12 @@ export default function MapScreen() {
       handleStartReportPicker();
       return;
     }
+    if (intent?.type === "focusPartner") {
+      // 근처 제휴 알림 → 검색에서 고른 것과 같게(그 업체만 올리고 가운데로, 시트 열기). 지도 데이터에서 빠진 업체면 지도만 연다.
+      const partner = allPartners.find((p) => p.id === intent.partnerId);
+      if (partner) handleSearchSelect(partner);
+      return;
+    }
     if (intent?.type === "previewLocation") {
       stopPicker();
       setSelectedBuilding(null);
@@ -1299,7 +1340,7 @@ export default function MapScreen() {
       // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
       showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker]);
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect]);
 
   useFocusEffect(handleMapIntent);
   // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
@@ -1585,6 +1626,11 @@ export default function MapScreen() {
           )}
         </View>
 
+        {nearbyOverlayOn && nearbyOverlayNote && !sheetOpen && (
+          <View pointerEvents="none" style={[styles.nearbyOverlayNote, { bottom: 84 + tabBarHeight }]}>
+            <Text style={styles.nearbyOverlayNoteText}>{nearbyOverlayNote}</Text>
+          </View>
+        )}
         {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
         {!pickingLocation && !sheetOpen && (
           <MapActionMenu
@@ -1592,6 +1638,8 @@ export default function MapScreen() {
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
+            onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
+            nearbyOverlayOn={nearbyOverlayOn}
           />
         )}
 
@@ -2083,6 +2131,18 @@ function DismissibleNotice({
 }
 
 const styles = StyleSheet.create({
+  nearbyOverlayNote: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
+  nearbyOverlayNoteText: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   container: { flex: 1, backgroundColor: COLORS.white },
   // 지도 위에 뜨는 투명 오버레이. 빈 공간은 지도 터치를 그대로 통과시킨다
   // (JSX 의 pointerEvents="box-none" 참고).

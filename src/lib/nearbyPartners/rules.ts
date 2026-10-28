@@ -12,7 +12,14 @@ import type { Partner, PartnerAffiliation } from '../../types'
 
 /** 업체 하나의 지오펜스 반경. iOS 는 이보다 작게 잡아도 사실상 100~200m 로 동작한다. */
 export const PARTNER_REGION_RADIUS_METERS = 100
-/** 사용자 둘레 큰 원. 이 원을 벗어나면 가까운 업체를 다시 골라 등록한다. */
+/**
+ * 사용자 둘레 "다시 고르기" 원의 한계. 실제 반경은 `reselectRadius` 가 업체 밀도에 맞춰 정한다.
+ * 홍대 앞은 500m 안에 제휴 업체가 중앙값 86곳이라(10-28 운영 데이터) 고정 500m 원이면 19곳 밖 업체 반경에
+ * 원을 벗어나기 전에 닿는다. 최소값은 운영체제가 이탈을 믿을 만하게 알려 주는 크기(Android 권장 100~150m).
+ */
+export const MIN_RESELECT_RADIUS_METERS = 150
+export const MAX_RESELECT_RADIUS_METERS = 1000
+/** @deprecated 고정 반경 대신 `reselectRadius` 를 쓴다. */
 export const RESELECT_REGION_RADIUS_METERS = 500
 /** iOS 등록 한도 20개 중 큰 원 1개를 뺀 수. Android(100개)도 같은 수로 맞춘다. */
 export const MAX_PARTNER_REGIONS = 19
@@ -24,6 +31,8 @@ export const REENTRY_GRACE_MS = 3 * 60 * 1000
 export const MAX_ALERTS_PER_DAY = 2
 /** 점심·저녁 우선 시간대 밖에서는 하루 이만큼만. */
 export const MAX_OFF_PEAK_ALERTS_PER_DAY = 1
+/** 알림 사이 최소 간격. 가게가 몰린 거리에서 한 곳 알림 직후 옆 가게 알림이 또 오지 않게. */
+export const MIN_ALERT_GAP_MS = 2 * 60 * 60 * 1000
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 /** 정보통신망법: 21시~다음 날 8시에는 광고성 정보를 보내지 않는다(분 단위, 한국 시간). */
@@ -51,8 +60,18 @@ export function isPeakHour(now: number): boolean {
   return PEAK_WINDOWS.some(([start, end]) => minute >= start && minute < end)
 }
 
+/** 혜택 문구를 정하는 데 필요한 필드만. 기기에 저장해 둔 업체(`engine.SnapshotPartner`)도 쓴다. */
+export type BenefitSource = Pick<Partner, 'benefit' | 'affiliationBenefits'>
+
+/** 좌표를 가진 업체(지도 데이터의 Partner, 기기 저장본 모두). */
+export interface Located {
+  id: string
+  lat: number
+  lng: number
+}
+
 /** 이 소속 사용자가 받는 혜택 문구. 소속별 예외가 있으면 그것, 없으면 기본 혜택. */
-export function benefitFor(partner: Partner, affiliation: PartnerAffiliation | null): string | null {
+export function benefitFor(partner: BenefitSource, affiliation: PartnerAffiliation | null): string | null {
   const special = affiliation
     ? partner.affiliationBenefits?.find((item) => item.affiliation === affiliation)?.benefit
     : undefined
@@ -99,37 +118,55 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
   })
 }
 
-export interface PartnerDistance {
-  partner: Partner
+export interface Distanced<T extends Located> {
+  partner: T
   meters: number
 }
 
-function byDistance(partners: readonly Partner[], lat: number, lng: number): PartnerDistance[] {
+export type PartnerDistance = Distanced<Partner>
+
+function byDistance<T extends Located>(partners: readonly T[], lat: number, lng: number): Distanced<T>[] {
   return partners
     .map((partner) => ({ partner, meters: haversineMeters(lat, lng, partner.lat, partner.lng) }))
     .sort((a, b) => a.meters - b.meters || a.partner.id.localeCompare(b.partner.id))
 }
 
 /** 지오펜스로 등록할 가까운 업체(거리순, 같으면 id 순). */
-export function pickNearest(
-  targets: readonly Partner[],
+export function pickNearest<T extends Located>(
+  targets: readonly T[],
   lat: number,
   lng: number,
   limit: number = MAX_PARTNER_REGIONS,
-): Partner[] {
+): T[] {
   return byDistance(targets, lat, lng)
     .slice(0, limit)
     .map((item) => item.partner)
 }
 
+/**
+ * "다시 고르기" 원 반경: 등록하지 못한 업체 중 가장 가까운 곳(20번째) 반경에 닿기 전에 원을 벗어나도록
+ * (그 거리 - 업체 반경). 너무 작으면 이탈 신호를 믿을 수 없어 150m, 업체가 적어 모두 등록했으면 1km.
+ */
+export function reselectRadius<T extends Located>(
+  targets: readonly T[],
+  lat: number,
+  lng: number,
+  partnerRadius: number = PARTNER_REGION_RADIUS_METERS,
+  registered: number = MAX_PARTNER_REGIONS,
+): number {
+  const firstLeftOut = byDistance(targets, lat, lng)[registered]
+  if (!firstLeftOut) return MAX_RESELECT_RADIUS_METERS
+  return Math.min(MAX_RESELECT_RADIUS_METERS, Math.max(MIN_RESELECT_RADIUS_METERS, firstLeftOut.meters - partnerRadius))
+}
+
 /** 앱 안 "내 주변 제휴": 반경 안 업체를 가까운 순으로. */
-export function partnersNear(
-  partners: readonly Partner[],
+export function partnersNear<T extends Located>(
+  partners: readonly T[],
   lat: number,
   lng: number,
   radiusMeters: number,
   limit: number,
-): PartnerDistance[] {
+): Distanced<T>[] {
   return byDistance(partners, lat, lng)
     .filter((item) => item.meters <= radiusMeters)
     .slice(0, limit)
@@ -160,10 +197,13 @@ export function stayStartedAt(previous: StayRecord | null, now: number): number 
  * 지오펜스를 새로 등록할 때 이미 반경 안에 있는 업체. 운영체제는 경계를 "넘을 때"만 알려 주므로, 가게 안에 가만히
  * 앉은 채로 기능을 켜거나 업체를 바꿔 등록하면 진입 신호가 오지 않을 수 있다. 등록하는 쪽이 이 목록을 "지금 들어옴"으로 처리한다.
  */
-export function insideAtRegistration(regions: readonly Partner[], lat: number, lng: number): Partner[] {
-  return regions.filter(
-    (partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= PARTNER_REGION_RADIUS_METERS,
-  )
+export function insideAtRegistration<T extends Located>(
+  regions: readonly T[],
+  lat: number,
+  lng: number,
+  radiusMeters: number = PARTNER_REGION_RADIUS_METERS,
+): T[] {
+  return regions.filter((partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= radiusMeters)
 }
 
 /**
@@ -192,7 +232,7 @@ export interface SentAlert {
 
 export type EnterDecision =
   | { schedule: true; fireAt: number }
-  | { schedule: false; reason: 'quietHour' | 'partnerToday' | 'dailyLimit' | 'offPeakLimit' }
+  | { schedule: false; reason: 'quietHour' | 'partnerToday' | 'dailyLimit' | 'offPeakLimit' | 'tooSoon' }
 
 /**
  * 업체 반경에 들어왔을 때 알림을 예약할지. 모든 판단은 알림이 실제로 뜰 시각(`fireAt`) 기준이다 —
@@ -211,6 +251,7 @@ export function decideOnEnter(
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
   if (today.some((alert) => alert.partnerId === partnerId)) return { schedule: false, reason: 'partnerToday' }
   if (today.length >= MAX_ALERTS_PER_DAY) return { schedule: false, reason: 'dailyLimit' }
+  if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
   if (!isPeakHour(fireAt)) {
     const offPeak = today.filter((alert) => !isPeakHour(alert.at)).length
     if (offPeak >= MAX_OFF_PEAK_ALERTS_PER_DAY) return { schedule: false, reason: 'offPeakLimit' }

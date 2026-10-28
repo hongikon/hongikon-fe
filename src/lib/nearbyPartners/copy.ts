@@ -1,5 +1,5 @@
-import { benefitFor } from './rules'
-import type { Partner, PartnerAffiliation } from '../../types'
+import { benefitFor, type BenefitSource } from './rules'
+import type { PartnerAffiliation } from '../../types'
 
 /**
  * 근처 제휴 알림 문구. 광고성 정보라 제목에 "(광고)"와 수신 거부 방법을 넣는다(정보통신망법).
@@ -26,7 +26,7 @@ export interface NearbyAlertContent {
  * 혜택 문구가 없으면 null(대상 업체 고르기에서 이미 빠지지만 한 번 더 막는다).
  */
 export function nearbyAlertContent(
-  partner: Partner,
+  partner: BenefitSource & { name: string },
   affiliation: PartnerAffiliation | null,
   othersCount = 0,
 ): NearbyAlertContent | null {
