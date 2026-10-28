@@ -1,4 +1,4 @@
-// hongikon.com 의 정적 안내 페이지(/terms, /privacy, /support, /account-deletion, /licenses).
+// hongikon.com 의 정적 안내 페이지(/terms, /privacy, /support, /account-deletion, /licenses, /app).
 // scripts/fix-web-export.mjs 가 `expo export -p web` 뒤에 불러 dist/<slug>/index.html 로 쓴다.
 // 스토어 심사·외부 링크(App Store 지원 URL, Google Play 계정 삭제 URL, 크롤러 User-Agent 연락처)용이라
 // 앱(자바스크립트)을 띄우지 않고 바로 읽히는 HTML 로 만든다.
@@ -213,4 +213,106 @@ ${packages.map(item).join('\n')}
   <p class="note">이 목록은 앱을 빌드할 때 패키지 정보에서 자동으로 만들어요.</p>`,
     { description: '홍익온에 포함된 오픈소스 소프트웨어와 글꼴의 라이선스' },
   )
+}
+
+/**
+ * /app/ — 앱 받기 안내(공유·포스터 QR 용 주소 하나). 접속한 기기의 스토어를 위에 크게, 다른 스토어는 아래 작게.
+ * PC 에서는 두 버튼을 나란히 두고 휴대폰으로 찍을 QR(public/app-qr.svg)을 보여 준다.
+ * 스토어로 자동 이동하지 않는다 — 카카오톡·인스타그램 등 인앱 브라우저가 자동 이동을 막거나 엉뚱하게 처리한다.
+ * QR 은 https://hongikon.com/app 고정이라 한 번 만들어 커밋했다(qrcode 패키지, margin 0, 색 #05014A).
+ */
+export function appDownloadPage({ appStoreUrl, playStoreUrl, unofficialNotice }) {
+  const [noticeHead, ...noticeTail] = unofficialNotice.split(', ')
+  const notice = noticeTail.length
+    ? `${escapeHtml(noticeHead)},<br />${escapeHtml(noticeTail.join(', '))}`
+    : escapeHtml(unofficialNotice)
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>앱 받기 | 홍익온</title>
+<meta name="description" content="홍익온 앱을 App Store와 Google Play에서 받을 수 있어요." />
+<link rel="icon" type="image/png" href="/favicon.png" />
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: #111; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  main { max-width: 420px; margin: 0 auto; padding: 56px 20px 40px; min-height: 100vh; display: flex; flex-direction: column; }
+  .hero { text-align: center; }
+  .hero img { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 4px 16px rgba(5,1,74,.12); }
+  .hero h1 { font-size: 26px; margin: 18px 0 8px; color: #05014A; }
+  .hero p { margin: 0; font-size: 15px; line-height: 1.6; color: #666; word-break: keep-all; }
+  .stores { display: flex; flex-direction: column; gap: 12px; margin-top: 36px; }
+  .store { display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 20px; border-radius: 14px;
+           text-decoration: none; border: 1.5px solid #E8E8E8; color: #111; background: #fff; }
+  .store svg { width: 26px; height: 26px; flex: none; }
+  .store .t { display: flex; flex-direction: column; line-height: 1.2; }
+  .store small { font-size: 11.5px; color: #666; }
+  .store b { font-size: 17px; white-space: nowrap; }
+  .store.main { height: 68px; background: #05014A; border-color: #05014A; color: #fff; }
+  .store.main small { color: rgba(255,255,255,.75); }
+  .store.main .apple path { fill: #fff; }
+  .store.sub { height: 52px; }
+  .store.sub b { font-size: 15px; }
+  .qr { display: none; margin-top: 32px; text-align: center; }
+  .qr .box { display: inline-block; padding: 14px; border: 1.5px solid #E8E8E8; border-radius: 14px; }
+  .qr img { width: 140px; height: 140px; display: block; }
+  .qr p { margin: 10px 0 0; font-size: 13px; color: #666; }
+  body.pc .qr { display: block; }
+  body.pc main { max-width: 540px; }
+  body.pc .stores { flex-direction: row; }
+  body.pc .store { flex: 1; padding: 0 16px; }
+  body.pc .store b { font-size: 15px; }
+  footer { margin-top: auto; padding-top: 40px; text-align: center; font-size: 12px; color: #888; line-height: 1.7; word-break: keep-all; }
+  footer .notice { display: block; margin-bottom: 6px; text-wrap: balance; }
+  footer a { color: #05014A; }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <img src="/apple-touch-icon.png" alt="" />
+    <h1>홍익온</h1>
+    <p>학교 공지 알림, 캠퍼스 지도, 학식까지<br />홍익대 생활을 한 곳에서</p>
+  </section>
+  <section class="stores">
+    <a class="store" id="ios" href="${escapeHtml(appStoreUrl)}">
+      <svg class="apple" viewBox="0 0 24 24" aria-hidden="true"><path fill="#111" d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.87-.76-1.47.02-2.83.86-3.59 2.18-1.53 2.66-.39 6.6 1.1 8.75.73 1.05 1.6 2.23 2.73 2.19 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.3-3.5zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.68-.92 2.67.97.08 1.96-.49 2.56-1.22z"/></svg>
+      <span class="t"><small>iPhone</small><b>App Store에서 받기</b></span>
+    </a>
+    <a class="store" id="android" href="${escapeHtml(playStoreUrl)}">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#00D7FE" d="M3.6 2.2c-.2.2-.3.6-.3 1v17.6c0 .4.1.8.3 1l9.7-9.8z"/>
+        <path fill="#FFCE00" d="M16.5 15.2 13.3 12l3.2-3.2 3.8 2.2c1.1.6 1.1 1.6 0 2.2z"/>
+        <path fill="#FF3A44" d="M16.5 15.2 13.3 12l-9.7 9.8c.4.4 1 .4 1.7 0z"/>
+        <path fill="#00F076" d="M16.5 8.8 5.3 2.2c-.7-.4-1.3-.4-1.7 0l9.7 9.8z"/>
+      </svg>
+      <span class="t"><small>Android</small><b>Google Play에서 받기</b></span>
+    </a>
+  </section>
+  <section class="qr">
+    <div class="box"><img src="/app-qr.svg" alt="hongikon.com/app QR 코드" /></div>
+    <p>휴대폰 카메라로 찍으면 바로 받을 수 있어요</p>
+  </section>
+  <footer>
+    <span class="notice">${notice}</span>
+    <a href="/">웹에서 바로 쓰기</a>
+  </footer>
+</main>
+<script>
+  // 기기에 맞는 스토어를 위로 크게. 그 밖(PC·태블릿 등)은 두 버튼을 나란히 + QR.
+  (function () {
+    var ua = navigator.userAgent
+    var os = /iPhone|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'pc'
+    if (os === 'pc') { document.body.classList.add('pc'); return }
+    var main = document.getElementById(os)
+    var sub = document.getElementById(os === 'ios' ? 'android' : 'ios')
+    main.classList.add('main'); sub.classList.add('sub')
+    main.parentNode.insertBefore(main, main.parentNode.firstChild)
+  })()
+</script>
+</body>
+</html>
+`
 }
