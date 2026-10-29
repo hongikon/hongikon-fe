@@ -65,18 +65,20 @@ TOPICS = [
               '전기회로실험및설계(2학기), 4학년 IT시스템종합설계(1학기)·IT종합설계프로젝트(2학기)예요. '
               'MSC 전산 과목은 C-프로그래밍 대신 프로그래밍기초(012321)가 들어가 있어요. 공대 공통 요건은 아래 버튼에서 봐요.'),
     # 출처: curr_eng_mse(책자 공-6·7, PDF 94·95쪽), dept_grad_mse(신소재공학전공 홈페이지 졸업요건).
-    dict(id='grad-mse', page='curr_eng_mse', faqpage=['dept_grad_mse'] + _BUTTONS,
+    dict(id='grad-mse', page='curr_eng_mse', faqpage=['dept_grad_mse', 'deptrule_eng_chem_major'] + _BUTTONS,
          match=[[MSE, ['신소재'], GRADW], [MSE, ['신소재'], CREDIT, GRADW], [MSE, ['신소재'], CURR + ['실험과목', '창의적종합설계', '설계학점']],
                 [MSE, ['신소재'], MSC], [MSE, GRADW], [MSE, CURR]],
          exclude=EXCL + ['영어성적', '토익', '공학인증'],
-         lead='신소재공학전공은 ' + _ABEEK_SUM + '에 더해 학과 요건이 있어요. 학과 홈페이지 기준으로 실험과목 2과목과 졸업논문 교과목인 '
+         lead='신소재·화공시스템공학부 학생은 1학년 성적 순으로 신소재공학전공·화학공학전공 중 전공을 배정받아요(학과 공지). '
+              '신소재공학전공은 ' + _ABEEK_SUM + '에 더해 학과 요건이 있어요. 학과 홈페이지 기준으로 실험과목 2과목과 졸업논문 교과목인 '
               "'창의적종합설계'(4학년 2학기)를 반드시 이수해야 하고, 공학인증 과정은 설계학점 9학점 이상과 입학연도별 요건(영어성적 등)이 있어요. "
               '전공필수는 1학년 재료화학개론·화학공정계산·재료물성개론, 2학년 재료과학·재료열역학이에요. 학과 졸업요건과 공대 공통 요건은 아래 버튼에서 봐요.'),
     # 출처: curr_eng_chem(책자 공-8·9, PDF 96·97쪽), deptrule_eng_chem_capstone(학과 공지).
-    dict(id='grad-chem', page='curr_eng_chem', faqpage=['deptrule_eng_chem_capstone'] + _BUTTONS,
+    dict(id='grad-chem', page='curr_eng_chem', faqpage=['deptrule_eng_chem_capstone', 'deptrule_eng_chem_major'] + _BUTTONS,
          match=_dept_match(CHEM, [[CHEM, ['창의적테크노프레너십설계', '테크노프레너십', '캡스톤', '논문조']]]),
          exclude=EXCL,
-         lead='화학공학전공은 ' + _ABEEK_SUM + '에 더해 학과 요건이 있어요. 전공필수는 1학년 재료화학개론·화학공정계산·재료물성개론, '
+         lead='신소재·화공시스템공학부 학생은 1학년 성적 순으로 신소재공학전공·화학공학전공 중 전공을 배정받아요(학과 공지). '
+              '화학공학전공은 ' + _ABEEK_SUM + '에 더해 학과 요건이 있어요. 전공필수는 1학년 재료화학개론·화학공정계산·재료물성개론, '
               '2학년 2학기 유체역학, 3학년 1학기 공정열역학·열및물질전달·반응공학이에요. 4학년 창의적테크노프레너십설계(캡스톤디자인)는 '
               '졸업논문조 활동으로 졸업을 위해 꼭 들어야 하는 과목이에요. 창의적종합설계(NCS)는 필수가 아니고, 그 과목을 뺀 전공선택 과목을 '
               '4학년 2학기에 한 과목 이상 들어야 해요. 유기화학·물리화학은 MSC로 들은 뒤 화학공학전공을 고르면 전공선택 학점으로 바뀌어요. 공대 공통 요건은 아래 버튼에서 봐요.'),

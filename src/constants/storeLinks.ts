@@ -8,7 +8,7 @@ export const APP_STORE_ID = '6818954901'
 export const APP_STORE_URL = `https://apps.apple.com/kr/app/id${APP_STORE_ID}`
 
 /**
- * Google Play 주소. 아직 비공개 테스트라 일반 사용자는 열 수 없어 비워 둔다 — 이 값이 null 이면 Android 에는 안내를 띄우지 않는다.
- * 프로덕션 출시 뒤 `https://play.google.com/store/apps/details?id=com.hongikon.app` 로 바꾼다.
+ * Google Play 주소(2026-10-28 프로덕션 공개). Android 브라우저에서 웹판을 열면 이 주소로 안내한다.
+ * null 로 두면 Android 에는 안내를 띄우지 않는다.
  */
-export const PLAY_STORE_URL: string | null = null
+export const PLAY_STORE_URL: string | null = 'https://play.google.com/store/apps/details?id=com.hongikon.app'

@@ -1,0 +1,8 @@
+[
+  {"q": "전필 수강 안 해도 졸업할 수 있어?", "expect": "curriculum-rules"},
+  {"q": "전공필수가 폐지됐는데 안 들어도 돼?", "expect": "curriculum-rules"},
+  {"q": "필수과목이 선택과목으로 바뀌었으면 안 들어도 되나요", "expect": "curriculum-rules"},
+  {"q": "교과과정 적용원칙", "expect": "curriculum-rules"},
+  {"q": "복수전공이랑 주전공 같은 과목 겹치면 학점 어떻게 돼", "expect": "curriculum-rules"},
+  {"q": "전필 못 들었는데 졸업 못해?", "expect": "curriculum-rules"}
+]

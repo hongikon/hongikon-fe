@@ -23,6 +23,7 @@ import { ReportCommentsPanel } from '../ReportComments'
 import { ADMIN_COLORS, Badge, Button, Card, ConfirmBar, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
 import { confirmAction } from '../../utils/dialog'
 import { openExternalUrl } from '../../utils/openExternalUrl'
+import ImageViewerModal from '../../components/common/ImageViewerModal'
 import { reportImageUrls } from '../../utils/reports'
 import { requestMapIntent } from '../../lib/mapIntents'
 import { formatFloor } from '../../utils/floors'
@@ -341,6 +342,8 @@ function ReportCard({
   const [flagsError, setFlagsError] = useState<string | null>(null)
   /** 사진 URL 이 만료(1시간)돼 못 불러온 장. 새로고침하면 새 URL 을 받는다. */
   const [failedPhotoUrls, setFailedPhotoUrls] = useState<readonly string[]>([])
+  /** 크게 보고 있는 사진 순번. null 이면 닫혀 있다. */
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   /** 최대 3장(등록 순서). 여러 장 기능 전 서버는 imageUrl 1장만 준다. */
   const photoUrls = reportImageUrls(report)
 
@@ -475,9 +478,9 @@ function ReportCard({
               <Pressable
                 key={url}
                 style={app ? styles.photoAppTile : styles.photoTile}
-                onPress={() => openExternalUrl(url)}
-                accessibilityRole="link"
-                accessibilityLabel={photoUrls.length > 1 ? `첨부 사진 ${index + 1}/${photoUrls.length} 원본 보기` : '첨부 사진 원본 보기'}
+                onPress={() => setViewerIndex(index)}
+                accessibilityRole="button"
+                accessibilityLabel={photoUrls.length > 1 ? `첨부 사진 ${index + 1}/${photoUrls.length} 크게 보기` : '첨부 사진 크게 보기'}
               >
                 <Image
                   source={{ uri: url }}
@@ -496,6 +499,8 @@ function ReportCard({
           )}
         </View>
       ) : null}
+      {/* 원본 주소(S3)를 브라우저로 열지 않고 앱 안에서 크게 본다 — 사용자 화면(ReportSheet)과 같은 보기. */}
+      <ImageViewerModal urls={photoUrls} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
 
       <View style={styles.facts}>
         <Fact icon="location-outline" text={location || '건물 지정 없음(지도 위치)'}>

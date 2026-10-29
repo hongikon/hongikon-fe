@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
-import { accountDeletionPage, legalPage, licensesPage, supportPage } from './static-pages.mjs'
+import { accountDeletionPage, appDownloadPage, legalPage, licensesPage, supportPage } from './static-pages.mjs'
 
 const DIST = 'dist'
 const ASSETS = join(DIST, 'assets')
@@ -100,7 +100,7 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   writeFileSync(indexHtml, html)
 }
 
-// 3) 정적 안내 페이지(/terms, /privacy, /support, /account-deletion, /licenses)
+// 3) 정적 안내 페이지(/terms, /privacy, /support, /account-deletion, /licenses, /app)
 //    스토어 심사·외부 링크용. 앱을 띄우지 않고(자바스크립트 없이) 바로 읽히게 정적 HTML 로 만든다(scripts/static-pages.mjs).
 //    약관·처리방침 원문은 앱 안 화면과 같은 src/constants/legalText.ts 하나 — 따로 고치다 내용이 갈라지지 않게 한다.
 //    Netlify 는 실제 파일이 있는 경로에 SPA 대체 규칙(/* → /index.html)을 적용하지 않는다(netlify.toml 에 명시 규칙도 있음).
@@ -115,6 +115,15 @@ function constantText(source, name, file) {
   return match[2]
 }
 const unofficialNotice = constantText(readFileSync('src/constants/disclaimer.ts', 'utf8'), 'UNOFFICIAL_NOTICE', 'disclaimer.ts')
+
+// /app 의 스토어 주소는 웹 설치 배너(WebAppInstallBanner)와 같은 src/constants/storeLinks.ts 에서 읽는다.
+const storeSource = readFileSync('src/constants/storeLinks.ts', 'utf8')
+const appStoreId = constantText(storeSource, 'APP_STORE_ID', 'storeLinks.ts')
+const playStoreUrl = storeSource.match(/export const PLAY_STORE_URL[^=]*= '([^']+)'/)?.[1]
+if (!playStoreUrl) {
+  console.error('[fix-web-export] storeLinks.ts 에서 PLAY_STORE_URL 을 찾지 못함 — /app 페이지에 Google Play 주소가 필요하다')
+  process.exit(1)
+}
 
 // 오픈소스 라이선스: 앱 안 화면과 같은 목록(src/constants/openSourceLicenses.json, `pnpm licenses:generate` 로 만들어 커밋).
 // 배포 중에 `pnpm licenses list` 를 돌리지 않는다 — Netlify 가 캐시에서 되살린 node_modules 에는 pnpm 의
@@ -138,6 +147,7 @@ const pages = [
   ['support', supportPage(unofficialNotice)],
   ['account-deletion', accountDeletionPage()],
   ['licenses', licensesPage(packages, fonts)],
+  ['app', appDownloadPage({ appStoreUrl: `https://apps.apple.com/kr/app/id${appStoreId}`, playStoreUrl, unofficialNotice })],
 ]
 for (const [slug, html] of pages) {
   mkdirSync(join(DIST, slug), { recursive: true })
