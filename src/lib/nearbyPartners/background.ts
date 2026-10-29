@@ -315,8 +315,14 @@ function preciseStep(input: NearbyState, now: number, at: { lat: number; lng: nu
 
 /** GPS 위치 갱신 한 번(백그라운드 작업). 근처 업체가 없거나 오래 켜졌으면 끈다. */
 async function handlePreciseLocations(locations: { coords: { latitude: number; longitude: number; accuracy: number | null } }[]): Promise<void> {
+  // 앱이 꺼진 채 깨어난 경우 개발 도구 값(테스트 위치)을 아직 안 읽었다 — 먼저 읽어야 테스트 위치 모드에서 실제 GPS 를 쓰지 않는다.
+  await loadNearbyDebug()
+  if (testLocation()) {
+    await stopPrecise()
+    return
+  }
   const latest = locations[locations.length - 1]
-  if (!latest || testLocation()) return
+  if (!latest) return
   const at = { lat: latest.coords.latitude, lng: latest.coords.longitude }
   const accuracy = latest.coords.accuracy ?? null
   const since = Number(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null)) || Date.now()
@@ -503,6 +509,9 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
   const pkg = packages()
   const id = event.region?.identifier
   if (!pkg || !id) return
+  // 테스트 위치 모드는 운영체제 원을 쓰지 않는다(늦게 온 실제 위치 신호는 버린다).
+  await loadNearbyDebug()
+  if (testLocation()) return
   const entered = event.eventType === pkg.Location.GeofencingEventType.Enter
   lastEvent = { at: nearbyNow(), kind: entered ? 'enter' : 'exit', id }
   if (id === RESELECT_REGION_ID) {
