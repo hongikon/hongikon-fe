@@ -328,6 +328,8 @@ export default function MapScreen() {
   const [showSearch, setShowSearch] = useState(false);
   /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
   const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
+  /** 근처 제휴 알림(여러 곳)을 눌러 띄운 "지금 계신 곳 근처 제휴" 목록. 검색 창 맨 위에 둔다. */
+  const [nearbyGroup, setNearbyGroup] = useState<Partner[] | null>(null);
   const [showRoute, setShowRoute] = useState(false);
   const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1325,6 +1327,17 @@ export default function MapScreen() {
       handleStartReportPicker();
       return;
     }
+    if (intent?.type === "nearbyGroup") {
+      // 근처에 제휴가 여러 곳 겹친 알림 → 그 곳들만 목록으로(알림을 만든 순서: 앞세운 곳, 그다음 가까운 순). 하나만 남으면 바로 시트.
+      const group = intent.partnerIds.flatMap((id) => allPartners.filter((p) => p.id === id));
+      if (group.length === 1) handleSearchSelect(group[0]);
+      else if (group.length > 1) {
+        setSearchPinned(null);
+        setNearbyGroup(group);
+        setShowSearch(true);
+      }
+      return;
+    }
     if (intent?.type === "focusPartner") {
       // 근처 제휴 알림 → 검색에서 고른 것과 같게(그 업체만 올리고 가운데로, 시트 열기). 지도 데이터에서 빠진 업체면 지도만 연다.
       const partner = allPartners.find((p) => p.id === intent.partnerId);
@@ -1606,6 +1619,7 @@ export default function MapScreen() {
               message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
               actionLabel="보기"
               onPress={() => {
+                setNearbyGroup(null);
                 setSearchPinned(offscreenPartners);
                 setShowSearch(true);
               }}
@@ -1884,6 +1898,7 @@ export default function MapScreen() {
                 activeOpacity={0.7}
                 onPress={() => {
                   setSearchPinned(null);
+                  setNearbyGroup(null);
                   setShowSearch(true);
                 }}
                 accessibilityRole="button"
@@ -2087,11 +2102,21 @@ export default function MapScreen() {
       <PartnerSearchModal
         visible={showSearch}
         topInset={insets.top}
-        onClose={() => setShowSearch(false)}
+        onClose={() => {
+          setShowSearch(false);
+          setNearbyGroup(null);
+        }}
         onSelect={handleSearchSelect}
         onSelectFacility={handleSearchSelectFacility}
+        autoFocus={!nearbyGroup}
         pinned={
-          searchPinned && searchPinned.length > 0
+          nearbyGroup && nearbyGroup.length > 0
+            ? {
+                title: "지금 계신 곳 근처 제휴",
+                hint: "알림을 보낸 순간 함께 잡힌 곳이에요. 가까운 순으로, 누르면 그 가게 혜택을 볼 수 있어요.",
+                partners: nearbyGroup,
+              }
+            : searchPinned && searchPinned.length > 0
             ? {
                 title: `지도에 안 보이는 ${searchPinned.length}곳`,
                 hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",

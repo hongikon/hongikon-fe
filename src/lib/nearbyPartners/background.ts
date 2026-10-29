@@ -18,13 +18,14 @@ import {
 import {
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
+  alertGroup,
   insideAtRegistration,
   pickNearest,
   pickTargets,
   preciselyInside,
   reselectRadius,
 } from './rules'
-import { nearbyAlertContent } from './copy'
+import { nearbyAlertContent, nearbyGroupContent } from './copy'
 import {
   NEARBY_FIELD_TEST,
   SHOW_DEVELOPER_TOOLS,
@@ -186,7 +187,15 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
         continue
       }
       const partner = state.targets.find((target) => target.id === action.alert.partnerId)
-      const content = partner && nearbyAlertContent(partner, state.affiliation, action.alert.othersCount)
+      if (!partner) continue
+      // 함께 잡힌 곳(앞세운 곳 + 나머지를 그곳에서 가까운 순). 2곳 이상이면 "근처에 N곳" 알림, 누르면 목록.
+      const group = alertGroup(new Map(Object.entries(state.stays)), state.sent, nearbyNow(), state.perVisit)
+      const others = (group ? [group.leadId, ...group.others] : [])
+        .filter((id) => id !== partner.id)
+        .flatMap((id) => state.targets.filter((target) => target.id === id))
+        .sort((a, b) => haversineMeters(partner.lat, partner.lng, a.lat, a.lng) - haversineMeters(partner.lat, partner.lng, b.lat, b.lng))
+      const members = [partner, ...others]
+      const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(partner, state.affiliation)
       if (!content) continue
       await ensureChannel()
       // "몇 초 뒤"로 예약한다. DATE 트리거는 iOS 에서 밀리초를 버린 뒤 남은 시간으로 바꾸는데, 0 이하가 되거나 날짜가
@@ -195,7 +204,7 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
       if (!Number.isFinite(seconds)) throw new Error(`예약 시각이 올바르지 않음(fireAt=${action.alert.fireAt})`)
       await Notifications.scheduleNotificationAsync({
         identifier: NOTIFICATION_ID,
-        content: { ...content, data: { type: 'NEARBY_PARTNER', partnerId: action.alert.partnerId } },
+        content: { ...content, data: { type: 'NEARBY_PARTNER', partnerId: partner.id, partnerIds: members.map((m) => m.id) } },
         trigger: triggerAfter(seconds),
       })
       lastScheduleNote = `예약함 ${seconds}초 뒤(${new Date(Date.now() + seconds * 1000).toTimeString().slice(0, 5)})`

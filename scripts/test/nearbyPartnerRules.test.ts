@@ -16,7 +16,7 @@ import {
   stayStartedAt,
   type StayRecord,
 } from '../../src/lib/nearbyPartners/rules.ts'
-import { nearbyAlertContent } from '../../src/lib/nearbyPartners/copy.ts'
+import { nearbyAlertContent, nearbyGroupContent } from '../../src/lib/nearbyPartners/copy.ts'
 import type { Partner } from '../../src/types/index.ts'
 
 /** 한국 시간 2026-10-27 hh:mm 의 epoch ms. */
@@ -214,4 +214,13 @@ test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길�
   const liberal = partner('d', 0, { affiliations: ['문과대학'] })
   assert.match(nearbyAlertContent(liberal, null)!.body, /^\(문과대학 제휴\) 제휴 혜택: /)
   assert.match(nearbyAlertContent(liberal, '문과대학')!.body, /^제휴 혜택: /)
+})
+
+test('여러 곳 알림: 몇 곳인지와 이름 두 개까지, 단정하지 않는다', () => {
+  const two = nearbyGroupContent([{ name: '키이스케이프' }, { name: '수지앤파스타' }])
+  assert.equal(two.title, '근처에 제휴 가게가 2곳 있어요')
+  assert.match(two.body, /^키이스케이프 · 수지앤파스타 — 눌러서 혜택 보기\n/)
+  const four = nearbyGroupContent([{ name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }])
+  assert.match(four.body, /^a · b 외 2곳 — /)
+  assert.ok(!four.title.includes('계신가요'))
 })

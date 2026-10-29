@@ -510,8 +510,10 @@ export interface ReportFlagResult {
 export type PushNotificationData =
   | {
       type: 'NEARBY_PARTNER'
-      /** 지도 데이터의 업체 id(code). */
+      /** 지도 데이터의 업체 id(code). 여러 곳이면 이름을 앞세운 곳(가장 오래 머문·가까운 곳). */
       partnerId: string
+      /** 알림을 만든 순간 함께 잡힌 업체들(앞세운 곳부터, 그다음 가까운 순). 2곳 이상이면 탭하면 목록을 띄운다. 좌표는 없다. */
+      partnerIds?: string[]
     }
   | {
       type: 'NEWS'

@@ -26,6 +26,19 @@ export interface NearbyAlertContent {
  * `othersCount`: 같은 반경 안에 함께 있는 다른 대상 업체 수(`rules.alertGroup`). 있으면 "N곳이 더 있어요" 줄을 붙인다.
  * 혜택 문구가 없으면 null(대상 업체 고르기에서 이미 빠지지만 한 번 더 막는다).
  */
+/**
+ * 알림 반경 안에 제휴가 2곳 이상 겹쳤을 때. 한 곳을 "○○에 계신가요?"로 단정하지 않고 몇 곳인지와 이름 두 개까지만 알린다 —
+ * 누르면 그 목록에서 사용자가 고른다(10-30). `members` 는 앞세울 곳부터.
+ */
+export function nearbyGroupContent(members: readonly { name: string }[]): NearbyAlertContent {
+  const names = members.slice(0, 2).map((member) => truncate(member.name, 12))
+  const rest = members.length - names.length
+  return {
+    title: `근처에 제휴 가게가 ${members.length}곳 있어요`,
+    body: `${names.join(' · ')}${rest > 0 ? ` 외 ${rest}곳` : ''} — 눌러서 혜택 보기\n${OPT_OUT_LINE}`,
+  }
+}
+
 export function nearbyAlertContent(
   partner: BenefitSource & { name: string; affiliations?: readonly PartnerAffiliation[] },
   affiliation: PartnerAffiliation | null,

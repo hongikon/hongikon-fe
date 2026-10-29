@@ -40,6 +40,8 @@ interface PartnerSearchModalProps {
    * 열 때 그 업체들을 바로 고르게 하려고 쓴다.
    */
   pinned?: { title: string; hint?: string; partners: readonly Partner[] };
+  /** 열 때 검색창에 커서를 둘지(키보드). 근처 알림 목록처럼 고르기만 하면 될 때는 false. */
+  autoFocus?: boolean;
 }
 
 type SearchRow =
@@ -59,6 +61,7 @@ export default function PartnerSearchModal({
   onSelect,
   onSelectFacility,
   pinned,
+  autoFocus = true,
 }: PartnerSearchModalProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -254,7 +257,9 @@ export default function PartnerSearchModal({
       visible={visible}
       animationType="slide"
       onRequestClose={handleClose}
-      onShow={() => inputRef.current?.focus()}
+      onShow={() => {
+        if (autoFocus) inputRef.current?.focus();
+      }}
     >
       <View style={[styles.container, { paddingTop: topInset }]}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 검색창·목록을 가운데 읽기 폭으로 모은다. */}

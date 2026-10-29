@@ -128,7 +128,8 @@ function routeForNotification(data: PushNotificationData): void {
       return
     case 'map':
       if (target.focusReportId !== null) requestMapIntent({ type: 'focusReport', reportId: target.focusReportId })
-      if (target.focusPartnerId) requestMapIntent({ type: 'focusPartner', partnerId: target.focusPartnerId })
+      if (target.nearbyPartnerIds) requestMapIntent({ type: 'nearbyGroup', partnerIds: target.nearbyPartnerIds })
+      else if (target.focusPartnerId) requestMapIntent({ type: 'focusPartner', partnerId: target.focusPartnerId })
       navigationRef.navigate('Main', { screen: 'Map' })
       return
     case 'myReports':
