@@ -368,6 +368,106 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
   )
 }
 
+/** 휴대폰 언어가 한국어인지(시스템 창 글자를 같은 말로 그리려고). 알 수 없으면 한국어. */
+function deviceIsKorean(): boolean {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase().startsWith('ko')
+  } catch {
+    return true
+  }
+}
+
+interface PermissionStep {
+  /** 그림 위 설명("처음 뜨는 창"). */
+  caption: string
+  /** 시스템 창 제목(설정 화면 목록이면 null). */
+  title: string | null
+  options: string[]
+  /** 눌러야 할 항목 순번. */
+  pick: number
+  /** 시스템 창이 아니라 설정 화면의 선택 목록 모양으로 그린다. */
+  list?: boolean
+}
+
+/**
+ * 시스템 권한 창·설정 화면을 그대로 본뜬 그림의 내용. 실제 시스템 창에는 앱이 테두리를 그릴 수 없어(운영체제가 앱 위에 그린다)
+ * 미리 같은 모양을 보여 주고 눌러야 할 버튼을 표시한다(10-29 사용자 요청). 글자는 휴대폰 언어(한국어·영어)를 따른다.
+ */
+function permissionSteps(afterSettings: boolean): PermissionStep[] {
+  const ko = deviceIsKorean()
+  if (Platform.OS === 'ios') {
+    if (afterSettings) {
+      return [
+        {
+          caption: ko ? '휴대폰 설정 > 홍익온 > 위치에서' : '휴대폰 설정 > 홍익온 > 위치(Location)에서',
+          title: null,
+          options: ko
+            ? ['안 함', '다음번에 묻기 또는 공유할 때', '앱을 사용하는 동안', '항상']
+            : ['Never', 'Ask Next Time Or When I Share', 'While Using the App', 'Always'],
+          pick: 3,
+          list: true,
+        },
+      ]
+    }
+    return [
+      {
+        caption: '처음 뜨는 창에서',
+        title: ko ? "'홍익온'이(가) 사용자의 위치를 사용하도록 허용하겠습니까?" : "Allow '홍익온' to use your location?",
+        options: ko ? ['한 번 허용', '앱을 사용하는 동안 허용', '허용 안 함'] : ['Allow Once', 'Allow While Using App', "Don't Allow"],
+        pick: 1,
+      },
+      {
+        caption: '이어서 뜨는 창에서',
+        title: ko
+          ? "'홍익온'이(가) 앱을 사용하지 않을 때에도 사용자의 위치를 사용하도록 허용하겠습니까?"
+          : "Allow '홍익온' to also use your location even when you are not using the app?",
+        options: ko ? ['앱을 사용하는 동안만 허용 유지', '항상 허용으로 변경'] : ['Keep Only While Using', 'Change to Always Allow'],
+        pick: 1,
+      },
+    ]
+  }
+  const settingsList: PermissionStep = {
+    caption: afterSettings ? '휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치에서' : '이어서 열리는 설정 화면에서',
+    title: null,
+    options: ko ? ['항상 허용', '앱 사용 중에만 허용', '매번 확인', '허용 안함'] : ['Allow all the time', 'Allow only while using the app', 'Ask every time', "Don't allow"],
+    pick: 0,
+    list: true,
+  }
+  if (afterSettings) return [settingsList]
+  return [
+    {
+      caption: '처음 뜨는 창에서',
+      title: ko ? '홍익온에서 기기 위치에 액세스하도록 허용하시겠습니까?' : 'Allow 홍익온 to access this device’s location?',
+      options: ko ? ['앱 사용 중에만 허용', '이번만 허용', '허용 안함'] : ['While using the app', 'Only this time', "Don't allow"],
+      pick: 0,
+    },
+    settingsList,
+  ]
+}
+
+/** 시스템 권한 창(또는 설정 목록) 그림. 눌러야 할 항목에 남색 테두리와 "이걸 눌러요". */
+function PermissionMock({ title, options, pick, list }: Omit<PermissionStep, 'caption'>) {
+  return (
+    <View style={[styles.mockDialog, list && styles.mockList]} accessible accessibilityLabel={`${options[pick]} 을 고르세요`}>
+      {title ? <Text style={styles.mockTitle}>{title}</Text> : null}
+      {options.map((option, index) => {
+        const picked = index === pick
+        return (
+          <View key={option} style={[list ? styles.mockRow : styles.mockButton, picked && styles.mockPicked]}>
+            <Text style={[styles.mockButtonText, list && styles.mockRowText, picked && styles.mockPickedText]}>{option}</Text>
+            {list && picked ? <Ionicons name="checkmark" size={18} color={COLORS.primary} /> : null}
+            {picked ? (
+              <View style={styles.mockTag} pointerEvents="none">
+                <Text style={styles.mockTagText}>이걸 눌러요</Text>
+              </View>
+            ) : null}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
 /**
  * "항상 허용" 안내(시스템 권한 창 전에 띄운다 — Google Play 백그라운드 위치 정책의 "눈에 띄는 고지"이기도 하다).
  * 왜 필요한지, 시스템 창에서 무엇을 고르는지, 위치를 가져가지 않는다는 것을 한 화면에 둔다.
@@ -376,13 +476,7 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
 function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
   // 절대 위치라 SafeAreaView 의 여백을 받지 못한다 — 상태 막대·홈 표시줄만큼 직접 띄운다(10-29 시뮬레이터에서 아이콘이 시계와 겹침).
   const insets = useSafeAreaInsets()
-  const steps = afterSettings
-    ? Platform.OS === 'ios'
-      ? ['휴대폰 설정 > 홍익온 > 위치', '"항상"을 고르고 돌아오기']
-      : ['휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치', '"항상 허용"을 고르고 돌아오기']
-    : Platform.OS === 'ios'
-      ? ['처음 뜨는 창에서 "앱을 사용하는 동안 허용"', '이어서 뜨는 창에서 "항상 허용으로 변경"']
-      : ['처음 뜨는 창에서 "앱 사용 중에만 허용"', '열리는 설정 화면에서 "항상 허용"']
+  const steps = permissionSteps(afterSettings)
   return (
     <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={[styles.overlayContent, layoutStyles.readable]}>
@@ -395,16 +489,14 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
           있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.
         </Text>
 
-        <View style={styles.overlayCard}>
-          {steps.map((text, index) => (
-            <View key={text} style={styles.stepRow}>
-              <View style={[styles.stepNumber, index === steps.length - 1 && styles.stepNumberOn]}>
-                <Text style={[styles.stepNumberText, index === steps.length - 1 && styles.stepNumberTextOn]}>{index + 1}</Text>
-              </View>
-              <Text style={[styles.stepText, index === steps.length - 1 && styles.stepTextOn]}>{text}</Text>
-            </View>
-          ))}
-        </View>
+        {steps.map((item, index) => (
+          <View key={item.caption} style={styles.mockStep}>
+            <Text style={styles.mockCaption}>
+              {index + 1}. {item.caption}
+            </Text>
+            <PermissionMock title={item.title} options={item.options} pick={item.pick} list={item.list} />
+          </View>
+        ))}
 
         <View style={styles.overlayCard}>
           <View style={styles.privacyHead}>
@@ -487,22 +579,45 @@ const styles = StyleSheet.create({
   overlayTitle: { fontSize: 20, lineHeight: 28, fontFamily: FONTS.bold, color: COLORS.textPrimary, textAlign: 'center' },
   overlayBody: { fontSize: 15, lineHeight: 23, fontFamily: FONTS.regular, color: COLORS.textSecondary, textAlign: 'center' },
   overlayCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg, gap: 10 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNumberOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  stepNumberText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
-  stepNumberTextOn: { color: COLORS.white },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textPrimary },
-  stepTextOn: { fontFamily: FONTS.semibold, color: COLORS.primary },
   privacyHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  mockStep: { gap: 8 },
+  mockCaption: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  // iOS 시스템 창처럼: 둥근 회색 판, 알약 모양 버튼.
+  mockDialog: { backgroundColor: '#E9E9EE', borderRadius: 22, padding: 14, gap: 8 },
+  mockList: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: 4, gap: 0 },
+  mockTitle: { fontSize: 14, lineHeight: 19, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 4 },
+  mockButton: {
+    backgroundColor: '#D9D9DF',
+    borderRadius: 999,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  mockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  mockPicked: { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft },
+  mockButtonText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.textSecondary },
+  mockRowText: { color: COLORS.textPrimary },
+  mockPickedText: { fontFamily: FONTS.bold, color: COLORS.primary },
+  mockTag: {
+    position: 'absolute',
+    top: -11,
+    right: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  mockTagText: { fontSize: 11, fontFamily: FONTS.semibold, color: COLORS.white },
   privacyTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   overlayFooter: { gap: SPACING.sm },
 })
