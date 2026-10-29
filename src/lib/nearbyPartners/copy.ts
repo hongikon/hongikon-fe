@@ -27,16 +27,19 @@ export interface NearbyAlertContent {
  * 혜택 문구가 없으면 null(대상 업체 고르기에서 이미 빠지지만 한 번 더 막는다).
  */
 export function nearbyAlertContent(
-  partner: BenefitSource & { name: string },
+  partner: BenefitSource & { name: string; affiliations?: readonly PartnerAffiliation[] },
   affiliation: PartnerAffiliation | null,
   othersCount = 0,
 ): NearbyAlertContent | null {
   const benefit = benefitFor(partner, affiliation)
   if (!benefit) return null
   // 혜택 뒤에 "외 N곳"을 붙이면 그 혜택이 모든 곳에 해당하는 것처럼 읽혀 따로 한 줄로 둔다.
+  // 내 소속·총학생회 제휴가 아니면(현장 테스트 빌드에서만 대상이 된다) 어느 소속 제휴인지 앞에 붙인다.
+  const own = partner.affiliations?.some((item) => item === '총학생회' || item === affiliation) ?? true
+  const scope = own ? '' : `(${partner.affiliations!.join('·')} 제휴) `
   const others = othersCount > 0 ? `\n근처에 제휴업체 ${othersCount}곳이 더 있어요` : ''
   return {
     title: `${truncate(partner.name, MAX_NAME_LENGTH)}에 계신가요?`,
-    body: `제휴 혜택: ${truncate(benefit, MAX_BENEFIT_LENGTH)}${others}\n${OPT_OUT_LINE}`,
+    body: `${scope}제휴 혜택: ${truncate(benefit, MAX_BENEFIT_LENGTH)}${others}\n${OPT_OUT_LINE}`,
   }
 }

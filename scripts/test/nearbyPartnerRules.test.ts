@@ -87,6 +87,10 @@ test('대상 업체: 소속 전용 혜택만 있어도 그 소속에는 대상',
   })
   assert.equal(pickTargets([p], { affiliation: null, campusPoints: [], now: NOON }).length, 0)
   assert.equal(pickTargets([p], { affiliation: '공과대학', campusPoints: [], now: NOON }).length, 1)
+  // 현장 테스트 빌드: 소속과 상관없이(기본 혜택이 있는 다른 소속 전용 제휴도 대상).
+  const liberalOnly = partner('liberal', 300, { affiliations: ['문과대학'] })
+  assert.equal(pickTargets([liberalOnly], { affiliation: null, campusPoints: [], now: NOON }).length, 0)
+  assert.equal(pickTargets([liberalOnly], { affiliation: null, campusPoints: [], now: NOON, anyAffiliation: true }).length, 1)
 })
 
 test('가까운 업체 고르기: 거리순, 같으면 id 순, 개수 제한', () => {
@@ -198,4 +202,8 @@ test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길�
   assert.ok(firstLine.endsWith('…'))
 
   assert.equal(nearbyAlertContent(partner('c', 0, { benefit: '  ' }), null), null)
+  // 내 소속 제휴가 아니면(현장 테스트) 소속을 앞에 붙인다.
+  const liberal = partner('d', 0, { affiliations: ['문과대학'] })
+  assert.match(nearbyAlertContent(liberal, null)!.body, /^\(문과대학 제휴\) 제휴 혜택: /)
+  assert.match(nearbyAlertContent(liberal, '문과대학')!.body, /^제휴 혜택: /)
 })

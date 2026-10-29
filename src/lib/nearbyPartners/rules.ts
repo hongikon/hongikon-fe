@@ -90,6 +90,8 @@ export interface PickTargetsOptions {
   /** 캠퍼스 건물 좌표. 업체 반경이 건물에 걸치면(강의실에서 알림이 가는 경우) 뺀다. */
   campusPoints: readonly { lat: number; lng: number }[]
   now: number
+  /** 소속을 보지 않고 모든 제휴를 대상으로(현장 테스트 빌드만, 10-29). 제휴가 끝났는지는 그대로 본다. */
+  anyAffiliation?: boolean
 }
 
 /**
@@ -107,7 +109,7 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
 
     const affiliations = partner.affiliations ?? []
     const eligible = affiliations.filter((item) => {
-      if (item !== '총학생회' && item !== affiliation) return false
+      if (!options.anyAffiliation && item !== '총학생회' && item !== affiliation) return false
       const end = partner.affiliationEnds?.find((e) => e.affiliation === item)?.endsOn
       return !endedBefore(end, today)
     })

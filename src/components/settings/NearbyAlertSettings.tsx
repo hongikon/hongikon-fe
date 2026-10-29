@@ -303,7 +303,11 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
             )}
 
             <Text style={styles.label}>내 소속(선택)</Text>
-            <Text style={styles.hint}>고른 소속과 총학생회 제휴 업체만 알려 드려요. 고르지 않으면 총학생회 제휴만.</Text>
+            <Text style={styles.hint}>
+              {NEARBY_FIELD_TEST
+                ? '테스트 앱은 소속과 상관없이 모든 제휴를 알려 드려요(다른 소속 제휴는 알림에 소속이 붙어요).'
+                : '고른 소속과 총학생회 제휴 업체만 알려 드려요. 고르지 않으면 총학생회 제휴만.'}
+            </Text>
             <View style={styles.chips}>
               {PARTNER_AFFILIATIONS.filter((item) => item !== '총학생회').map((item) => {
                 const selected = affiliation === item
