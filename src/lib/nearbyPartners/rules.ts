@@ -217,11 +217,15 @@ export function alertGroup(
   stays: ReadonlyMap<string, StayRecord>,
   sent: readonly SentAlert[],
   now: number,
+  perVisit = false,
 ): { leadId: string; others: string[] } | null {
   const day = kstTodayYmd(now)
   const alertedToday = new Set(sent.filter((alert) => kstTodayYmd(alert.at) === day).map((alert) => alert.partnerId))
+  // perVisit(현장 테스트): 오늘 보낸 곳도 다시 — 이번에 들어온 뒤 이미 보낸 곳만 뺀다(나갔다 다시 들어오면 또 온다).
+  const alerted = (id: string, stay: StayRecord) =>
+    perVisit ? sent.some((alert) => alert.partnerId === id && alert.at >= stay.enteredAt) : alertedToday.has(id)
   const inside = [...stays.entries()]
-    .filter(([id, stay]) => stay.exitedAt === null && !alertedToday.has(id))
+    .filter(([id, stay]) => stay.exitedAt === null && !alerted(id, stay))
     .sort(([idA, a], [idB, b]) => a.enteredAt - b.enteredAt || idA.localeCompare(idB))
   if (inside.length === 0) return null
   return { leadId: inside[0][0], others: inside.slice(1).map(([id]) => id) }
@@ -243,8 +247,11 @@ export function decideOnEnter(
   stayStart: number,
   sent: readonly SentAlert[],
   now: number,
+  perVisit = false,
 ): EnterDecision {
   const fireAt = Math.max(stayStart + DWELL_MS, now)
+  // 현장 테스트(10-29 사용자 요청): 횟수·간격 제한 없이 방문마다 한 번(같은 방문 중복은 alertGroup 이 막는다).
+  if (perVisit) return { schedule: true, fireAt }
 
   const day = kstTodayYmd(fireAt)
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)

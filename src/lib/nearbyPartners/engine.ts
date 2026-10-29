@@ -44,6 +44,8 @@ export interface NearbyState {
   stays: Record<string, StayRecord>
   sent: SentAlert[]
   pending: PendingAlert | null
+  /** 현장 테스트 빌드: 하루·간격 제한 없이 가게에 들어갈 때마다 한 번씩 알린다. */
+  perVisit?: boolean
 }
 
 export const INITIAL_NEARBY_STATE: NearbyState = {
@@ -118,13 +120,13 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
   let desired: PendingAlert | null = null
   if (state.enabled) {
     const stays = new Map(Object.entries(state.stays))
-    const group = alertGroup(stays, state.sent, now)
+    const group = alertGroup(stays, state.sent, now, state.perVisit)
     if (group) {
       const members = [group.leadId, ...group.others]
       // 위치를 모르는 신호(이탈 등)면 이미 예약해 둔 업체가 아직 묶음에 있을 때 그대로 둔다.
       const keep = !at && state.pending && members.includes(state.pending.partnerId) ? state.pending.partnerId : group.leadId
       const leadId = chooseLead(state, members, keep, at)
-      const decision = decideOnEnter(leadId, stays.get(group.leadId)!.enteredAt, state.sent, now)
+      const decision = decideOnEnter(leadId, stays.get(group.leadId)!.enteredAt, state.sent, now, state.perVisit)
       if (decision.schedule) desired = { partnerId: leadId, fireAt: decision.fireAt, othersCount: group.others.length }
     }
   }

@@ -181,6 +181,14 @@ test('여러 곳이 겹치면 가장 오래 머문 곳 하나 + 나머지, 오�
   const sent = [{ partnerId: 'done', at: kst(9, 0) }]
   assert.deepEqual(alertGroup(stays, sent, kst(12, 5)), { leadId: 'early', others: ['late'] })
   assert.equal(alertGroup(new Map(), [], NOON), null)
+  // 방문마다(현장 테스트): 이번 방문 전에 보낸 곳은 다시, 이번 방문 중 보낸 곳은 빼기.
+  const visit = new Map<string, StayRecord>([['a', { enteredAt: kst(12, 0), exitedAt: null }]])
+  assert.equal(alertGroup(visit, [{ partnerId: 'a', at: kst(11, 0) }], kst(12, 5)), null)
+  assert.deepEqual(alertGroup(visit, [{ partnerId: 'a', at: kst(11, 0) }], kst(12, 5), true), { leadId: 'a', others: [] })
+  assert.equal(alertGroup(visit, [{ partnerId: 'a', at: kst(12, 5) }], kst(12, 6), true), null)
+  // 제한 없음
+  const many = [1, 2, 3, 4].map((i) => ({ partnerId: `x${i}`, at: kst(11, 50 + i) }))
+  assert.equal(decideOnEnter('a', NOON, many, NOON, true).schedule, true)
 })
 
 test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길이 자르기, 더 있는 곳', () => {

@@ -266,7 +266,9 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
             <View style={styles.card}>
               {[
                 `제휴 가게 ${radius}m 안에 5분 넘게 머물면 그 가게 혜택을 알려 드려요.`,
-                '같은 가게는 하루 1번, 하루 최대 3번, 알림 사이는 30분 넘게 띄워요.',
+                NEARBY_FIELD_TEST
+                  ? '테스트 앱은 횟수 제한 없이 가게에 들어갈 때마다 한 번씩 알려 드려요.'
+                  : '같은 가게는 하루 1번, 하루 최대 3번, 알림 사이는 30분 넘게 띄워요.',
                 '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
                 '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
               ].map((line) => (

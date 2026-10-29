@@ -663,7 +663,7 @@ export async function syncNearbyAlerts(
       const paused = onDisable(state, now)
       return { state: { ...paused.state, enabled: true }, actions: paused.actions }
     }
-    state = { ...state, targets: snapshot(source.partners, state.affiliation, source.campusPoints, now) }
+    state = { ...state, targets: snapshot(source.partners, state.affiliation, source.campusPoints, now), perVisit: NEARBY_FIELD_TEST }
     const at = await currentPosition(pkg.Location)
     if (!at) {
       lastSync = { at: now, result: 'noLocation', regions: 0, reselectMeters: 0 }
