@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -374,6 +374,8 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
  * `afterSettings`: "앱 사용 중"만 허용하고 돌아온 경우 — 휴대폰 설정에서 바꾸는 길을 안내한다.
  */
 function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
+  // 절대 위치라 SafeAreaView 의 여백을 받지 못한다 — 상태 막대·홈 표시줄만큼 직접 띄운다(10-29 시뮬레이터에서 아이콘이 시계와 겹침).
+  const insets = useSafeAreaInsets()
   const steps = afterSettings
     ? Platform.OS === 'ios'
       ? ['휴대폰 설정 > 홍익온 > 위치', '"항상"을 고르고 돌아오기']
@@ -382,7 +384,7 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
       ? ['처음 뜨는 창에서 "앱을 사용하는 동안 허용"', '이어서 뜨는 창에서 "항상 허용으로 변경"']
       : ['처음 뜨는 창에서 "앱 사용 중에만 허용"', '열리는 설정 화면에서 "항상 허용"']
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={[styles.overlayContent, layoutStyles.readable]}>
         <View style={styles.overlayIcon}>
           <Ionicons name="navigate" size={28} color={COLORS.white} />
