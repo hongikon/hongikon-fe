@@ -35,6 +35,12 @@ export async function wipeNearbyAlerts(): Promise<void> {}
 
 export async function resetNearbyHistoryForDebug(): Promise<void> {}
 
+export async function runNotificationScheduleTest(): Promise<void> {}
+
+export async function applyNearbyTestLocation(): Promise<boolean> {
+  return false
+}
+
 export async function getNearbyOverlay(): Promise<null> {
   return null
 }

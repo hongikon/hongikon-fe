@@ -2,7 +2,14 @@ import { useEffect, useRef } from 'react'
 import { AppState, Linking } from 'react-native'
 import { useAuth } from '../../contexts/AuthContext'
 import { useMapData } from '../mapData'
-import { nearbyAlertsAvailable, resetNearbyHistoryForDebug, syncNearbyAlerts, wipeNearbyAlerts } from './background'
+import {
+  applyNearbyTestLocation,
+  nearbyAlertsAvailable,
+  resetNearbyHistoryForDebug,
+  runNotificationScheduleTest,
+  syncNearbyAlerts,
+  wipeNearbyAlerts,
+} from './background'
 import { applyNearbyDebugUrl } from './debug'
 
 /**
@@ -11,8 +18,8 @@ import { applyNearbyDebugUrl } from './debug'
  * - 앱을 열 때·앞으로 돌아올 때·지도 데이터(업체·긴급 스위치)가 바뀔 때: 켜져 있으면 대상 업체를 다시 골라 등록한다
  *   (Android 는 재부팅·업데이트 때 지오펜스가 지워져 앱을 열 때 다시 건다).
  * - 로그아웃·게스트: 끄고 기기 기록을 지운다(근처 알림은 로그인한 계정의 수신 동의로만 켤 수 있다).
- * - 개발·테스트 빌드: `hongikon://dev/nearby?clock=12:00&radius=75&reset=1` 링크로 시계·반경을 바꾸거나 기록을 비우고
- *   다시 맞춘다(`debug.ts`).
+ * - 개발·테스트 빌드: `hongikon://dev/nearby?clock=12:00&radius=75&reset=1&at=37.5489,126.9214` 링크로 시계·반경·
+ *   테스트 위치(가짜 GPS, `at=off` 로 실제 GPS)를 바꾸거나 기록을 비우고 다시 맞춘다(`debug.ts`).
  */
 export function useNearbyPartnerAlerts(): void {
   const available = nearbyAlertsAvailable()
@@ -46,6 +53,17 @@ export function useNearbyPartnerAlerts(): void {
     const handle = async (url: string | null) => {
       if (!url || !(await applyNearbyDebugUrl(url))) return
       if (/[?&]reset=1\b/.test(url)) await resetNearbyHistoryForDebug()
+      if (/[?&]notifytest=1\b/.test(url)) {
+        await runNotificationScheduleTest()
+        return
+      }
+      // at=위도,경도 → 테스트 위치(가짜 GPS), at=off → 실제 GPS 로.
+      const at = url.match(/[?&]at=(off|-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?)/)?.[1]
+      if (at) {
+        const location = at === 'off' ? null : { lat: Number(at.split(',')[0]), lng: Number(at.split(',')[1]) }
+        void applyNearbyTestLocation(location, sourceRef.current)
+        return
+      }
       if (sourceRef.current.partners.length > 0) void syncNearbyAlerts(sourceRef.current)
     }
     void Linking.getInitialURL().then(handle)

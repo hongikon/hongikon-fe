@@ -105,6 +105,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return withoutBackgroundFetch({
     ...config,
+    // 현장 테스트 TestFlight 빌드만 버전을 따로 준다(eas.json nearby-testflight). 이미 심사를 통과한 1.0.0 에는
+    // App Store Connect 가 새 빌드를 받지 않는다. 운영 빌드는 app.json 의 version 그대로.
+    version: process.env.APP_VERSION_OVERRIDE || config.version,
     plugins,
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,
     slug: config.slug ?? 'hongik-alimi',

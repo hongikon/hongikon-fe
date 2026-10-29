@@ -1,0 +1,2 @@
+patchedDependencies:
+  expo-notifications@57.0.24: patches/expo-notifications@57.0.24.patch

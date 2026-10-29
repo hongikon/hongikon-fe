@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AppState, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useMapData } from '../../lib/mapData'
 import { requestNotificationPermission } from '../../lib/notificationPermission'
 import { patchNotificationSettings } from '../../apis/notificationSettings'
-import { NEARBY_FIELD_TEST, SHOW_DEVELOPER_TOOLS } from '../../lib/nearbyPartners/debug'
+import { NEARBY_FIELD_TEST, SHOW_DEVELOPER_TOOLS, partnerRadiusMeters, setPartnerRadius } from '../../lib/nearbyPartners/debug'
 import {
   disableNearbyAlerts,
   getNearbyDebugInfo,
@@ -22,7 +22,13 @@ import {
   requestNearbyPermission,
   syncNearbyAlerts,
 } from '../../lib/nearbyPartners/background'
-import { PARTNER_REGION_RADIUS_METERS } from '../../lib/nearbyPartners/rules'
+import { ALERT_RADIUS_METERS, PARTNER_REGION_RADIUS_METERS } from '../../lib/nearbyPartners/rules'
+
+/** 테스트 빌드에서 고를 수 있는 업체 반경(m). */
+const TEST_RADIUS_OPTIONS = [20, 30, 50, 100] as const
+/** 위치를 "항상 허용"해야 하는 이유 — 켜기 전 안내와 권한이 모자랄 때 같은 말을 쓴다. */
+const ALWAYS_ALLOW_NOTICE =
+  '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
 import ListRow from '../common/ListRow'
 import Button from '../common/Button'
 import ToggleSwitch from './ToggleSwitch'
@@ -31,7 +37,7 @@ import type { PartnerAffiliation } from '../../types'
 
 /**
  * 설정 > 알림 > "근처 제휴 알림". 근처 알림 빌드(`NEARBY_ALERTS_BUILD=1`)이고 로그인했을 때만 보인다.
- * 켜기: 안내·소속·광고성 정보 수신 동의 → 알림 권한 → 위치 "앱 사용 중" → "항상" → 서버에 동의 시각 저장 → 감시 시작.
+ * 켜기: 안내·소속·수신 동의 → "항상 허용" 안내 화면 → 알림 권한 → 위치 "앱 사용 중" → "항상" → 서버에 동의 시각 저장 → 감시 시작.
  * 끄기: 감시·예약을 멈추고 서버 동의 시각을 지운다(수신 거부).
  * 설계와 규칙: `docs/nearby-partner-alert-impl-plan.md`.
  */
@@ -44,19 +50,22 @@ export default function NearbyAlertSettings() {
   const [busy, setBusy] = useState(false)
   const [debugLine, setDebugLine] = useState<string | null>(null)
   const [unsupported, setUnsupported] = useState(false)
+  /** 켜 두었는데 위치가 "항상 허용"이 아니다 — 앱을 닫으면 알림이 오지 않는다. */
+  const [needsAlways, setNeedsAlways] = useState(false)
 
   const refresh = useCallback(async () => {
     const settings = await getNearbySettings()
     setEnabled(settings.enabled)
     setAffiliation(settings.affiliation)
     setUnsupported(nearbyGeofencingUnsupported())
+    setNeedsAlways(settings.enabled && (await getNearbyPermission()).status !== 'granted')
     if (SHOW_DEVELOPER_TOOLS) {
       const info = await getNearbyDebugInfo()
       if (info) {
-        const { last, lastEvent, state } = info
+        const { last, lastEvent, state, schedule } = info
         const pending = state.pending ? ` · 예약 ${state.targets.find((t) => t.id === state.pending?.partnerId)?.name ?? state.pending.partnerId}` : ''
         setDebugLine(
-          `[개발] 대상 ${state.targets.length}곳 · ${last ? `${last.result} ${last.regions}곳 · 다시 고르기 ${last.reselectMeters}m${last.error ? ` (${last.error})` : ''}` : '등록 전'} · 머묾 ${Object.values(state.stays).filter((s) => s.exitedAt === null).length}곳 · 보냄 ${state.sent.length}${pending}${lastEvent ? ` · 신호 ${lastEvent.kind} ${state.targets.find((t) => t.id === lastEvent.id)?.name ?? lastEvent.id}` : ''}`,
+          `[개발] 대상 ${state.targets.length}곳 · ${last ? `${last.result} ${last.regions}곳 · 다시 고르기 ${last.reselectMeters}m${last.error ? ` (${last.error})` : ''}` : '등록 전'} · 머묾 ${Object.values(state.stays).filter((s) => s.exitedAt === null).length}곳 · 보냄 ${state.sent.length}${pending}${lastEvent ? ` · 신호 ${lastEvent.kind} ${state.targets.find((t) => t.id === lastEvent.id)?.name ?? lastEvent.id}` : ''} · ${schedule}`,
         )
       }
     }
@@ -90,9 +99,11 @@ export default function NearbyAlertSettings() {
     ? '이 휴대폰은 위치 영역 알림(지오펜스)을 지원하지 않아 근처 알림이 오지 않아요.'
     : !data?.nearbyAlertsEnabled && !NEARBY_FIELD_TEST
     ? '지금은 운영진이 근처 알림을 잠시 멈췄어요.'
+    : enabled && needsAlways
+      ? '위치가 "항상 허용"이 아니라 앱을 닫으면 알림이 오지 않아요. 휴대폰 설정 > 위치에서 "항상 허용"으로 바꿔 주세요.'
     : enabled
-      ? `${affiliation ? `${affiliation}·총학생회` : '총학생회'} 제휴 업체 근처에 5분 넘게 머물면 혜택을 알려 드려요.`
-      : '제휴 업체 근처에 머물면 받을 수 있는 혜택을 알려 드려요(광고성 정보).'
+      ? `${affiliation ? `${affiliation}·총학생회` : '총학생회'} 제휴 가게에 5분 넘게 머물면 혜택을 알려 드려요.`
+      : '제휴 가게에 머물면 받을 수 있는 혜택을 알려 드려요.'
 
   return (
     <>
@@ -131,6 +142,8 @@ export default function NearbyAlertSettings() {
 type Step =
   | { kind: 'form' }
   | { kind: 'working'; message: string }
+  /** 시스템 권한 창을 띄우기 전, 왜 "항상 허용"이 필요한지와 위치를 가져가지 않는다는 안내(전체 화면). */
+  | { kind: 'explain' }
   | { kind: 'needsAlways' }
   | { kind: 'error'; message: string; openSettings?: boolean }
 
@@ -148,6 +161,7 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
   const [affiliation, setAffiliation] = useState<PartnerAffiliation | null>(initialAffiliation)
   const [consent, setConsent] = useState(alreadyOn)
   const [step, setStep] = useState<Step>({ kind: 'form' })
+  const [radius, setRadius] = useState(partnerRadiusMeters())
 
   // 창이 열릴 때만 처음 상태로 되돌린다. 켜는 도중 alreadyOn 이 바뀌어도 안내·오류 문구를 지우지 않게(10-28 테스트).
   useEffect(() => {
@@ -155,6 +169,7 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
     setAffiliation(initialAffiliation)
     setConsent(alreadyOn)
     setStep({ kind: 'form' })
+    setRadius(partnerRadiusMeters())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible])
 
@@ -163,7 +178,7 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
     // 현장 테스트 빌드(TestFlight 내부)는 서버에 동의 필드가 없어도 돌게 기기에만 남긴다.
     if (!NEARBY_FIELD_TEST) {
       try {
-        // 동의 시각을 서버에 남긴다(정보통신망법 동의 기록). 이 필드를 모르는 서버면 켜지 않는다.
+        // 동의 시각을 서버에 남긴다(수신 동의 기록). 이 필드를 모르는 서버면 켜지 않는다.
         const saved = await patchNotificationSettings({ partnerAdConsent: true }, accessToken)
         if (!saved.partnerAdConsentAt) {
           setStep({ kind: 'error', message: '서버가 아직 근처 알림을 지원하지 않아요. 잠시 뒤 다시 시도해 주세요.' })
@@ -215,6 +230,23 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
     })
   }
 
+  // 이미 "항상 허용"이면 안내 화면 없이 바로, 아니면 안내 화면부터(시스템 창은 안내에서 "계속"을 눌러야 뜬다).
+  const begin = async () => {
+    if ((await getNearbyPermission()).status === 'granted') void start()
+    else setStep({ kind: 'explain' })
+  }
+
+  // 테스트 빌드: 반경을 바꾸면 켜져 있을 때 바로 다시 등록한다.
+  const chooseRadius = async (meters: number) => {
+    await setPartnerRadius(meters === ALERT_RADIUS_METERS ? null : meters)
+    setRadius(meters)
+    if (alreadyOn) {
+      setStep({ kind: 'working', message: `반경 ${meters}m 로 다시 등록하는 중이에요` })
+      await onDone(affiliation)
+      setStep({ kind: 'form' })
+    }
+  }
+
   const saveAffiliationOnly = async () => {
     setStep({ kind: 'working', message: '저장하는 중이에요' })
     await onDone(affiliation)
@@ -227,13 +259,16 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ModalHeader title="근처 제휴 알림" onClose={onClose} />
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, layoutStyles.readable]}>
+            <View style={styles.notice}>
+              <Text style={styles.noticeText}>{ALWAYS_ALLOW_NOTICE}</Text>
+            </View>
+
             <View style={styles.card}>
               {[
-                `제휴 업체 ${PARTNER_REGION_RADIUS_METERS}m 안에 5분 넘게 머물면 그 업체 혜택을 한 번 알려 드려요.`,
-                '하루 최대 2번, 같은 업체는 하루 1번, 알림 사이는 2시간 넘게 띄워요. 밤 9시~아침 8시에는 보내지 않아요.',
+                `제휴 가게 ${radius}m 안에 5분 넘게 머물면 그 가게 혜택을 알려 드려요.`,
+                '같은 가게는 하루 1번, 하루 최대 3번, 알림 사이는 30분 넘게 띄워요.',
                 '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
-                '앱을 쓰지 않을 때도 확인하려면 위치를 "항상 허용"으로 바꿔야 해요.',
-                '옆 가게에 있어도 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
+                '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
               ].map((line) => (
                 <View key={line} style={styles.bulletRow}>
                   <Text style={styles.bullet}>·</Text>
@@ -241,6 +276,31 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
                 </View>
               ))}
             </View>
+
+            {SHOW_DEVELOPER_TOOLS && (
+              <>
+                <Text style={styles.label}>[테스트] 알림 반경</Text>
+                <Text style={styles.hint}>테스트 앱에서만 보여요. 바꾸면 근처 업체를 바로 다시 등록해요.</Text>
+                <View style={styles.chips}>
+                  {TEST_RADIUS_OPTIONS.map((meters) => {
+                    const selected = radius === meters
+                    return (
+                      <Pressable
+                        key={meters}
+                        onPress={() => void chooseRadius(meters)}
+                        disabled={step.kind === 'working'}
+                        style={[styles.chip, selected && styles.chipOn]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={`알림 반경 ${meters}미터`}
+                      >
+                        <Text style={[styles.chipText, selected && styles.chipTextOn]}>{meters}m</Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </>
+            )}
 
             <Text style={styles.label}>내 소속(선택)</Text>
             <Text style={styles.hint}>고른 소속과 총학생회 제휴 업체만 알려 드려요. 고르지 않으면 총학생회 제휴만.</Text>
@@ -268,27 +328,17 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
                 style={styles.consentRow}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: consent }}
-                accessibilityLabel="제휴 혜택 안내(광고성 정보) 알림 수신 동의"
+                accessibilityLabel="근처 제휴 혜택 알림 받기 동의"
               >
                 <Ionicons name={consent ? 'checkbox' : 'square-outline'} size={22} color={COLORS.primary} />
                 <View style={styles.consentBody}>
-                  <Text style={styles.consentTitle}>(필수) 제휴 혜택 안내(광고성 정보) 알림 수신에 동의해요</Text>
-                  <Text style={styles.hint}>
-                    알림 제목에 "(광고)"가 붙어요. 설정에서 언제든 끌 수 있고(수신 거부), 동의 여부를 2년마다 다시 알려 드려요.
-                  </Text>
+                  <Text style={styles.consentTitle}>(필수) 근처 제휴 혜택 알림을 받을게요</Text>
+                  <Text style={styles.hint}>제휴 가게에 머물 때 혜택을 알려 드려요. 설정에서 언제든 끌 수 있어요.</Text>
                 </View>
               </Pressable>
             )}
 
             {step.kind === 'working' && <Text style={styles.status}>{step.message}</Text>}
-            {step.kind === 'needsAlways' && (
-              <View style={styles.notice}>
-                <Text style={styles.noticeText}>
-                  위치가 "앱을 사용하는 동안"으로만 허용돼 있어요. 휴대폰 설정 &gt; 위치에서 "항상 허용"을 고르고 돌아오면 이어서 켜요.
-                </Text>
-                <Button label="휴대폰 설정 열기" variant="secondary" size="md" onPress={() => Linking.openSettings().catch(() => {})} />
-              </View>
-            )}
             {step.kind === 'error' && (
               <View style={styles.notice}>
                 <Text style={styles.noticeText}>{step.message}</Text>
@@ -302,12 +352,86 @@ function NearbyAlertSetupModal({ visible, alreadyOn, initialAffiliation, accessT
             {alreadyOn ? (
               <Button label="저장" size="lg" onPress={saveAffiliationOnly} loading={step.kind === 'working'} />
             ) : (
-              <Button label="근처 제휴 알림 켜기" size="lg" onPress={start} disabled={!consent} loading={step.kind === 'working'} />
+              <Button label="근처 제휴 알림 켜기" size="lg" onPress={() => void begin()} disabled={!consent} loading={step.kind === 'working'} />
             )}
           </View>
+          {(step.kind === 'explain' || step.kind === 'needsAlways') && (
+            <AlwaysAllowOverlay
+              afterSettings={step.kind === 'needsAlways'}
+              onContinue={() => void start()}
+              onCancel={() => setStep({ kind: 'form' })}
+            />
+          )}
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
+  )
+}
+
+/**
+ * "항상 허용" 안내(시스템 권한 창 전에 띄운다 — Google Play 백그라운드 위치 정책의 "눈에 띄는 고지"이기도 하다).
+ * 왜 필요한지, 시스템 창에서 무엇을 고르는지, 위치를 가져가지 않는다는 것을 한 화면에 둔다.
+ * `afterSettings`: "앱 사용 중"만 허용하고 돌아온 경우 — 휴대폰 설정에서 바꾸는 길을 안내한다.
+ */
+function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
+  const steps = afterSettings
+    ? Platform.OS === 'ios'
+      ? ['휴대폰 설정 > 홍익온 > 위치', '"항상"을 고르고 돌아오기']
+      : ['휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치', '"항상 허용"을 고르고 돌아오기']
+    : Platform.OS === 'ios'
+      ? ['처음 뜨는 창에서 "앱을 사용하는 동안 허용"', '이어서 뜨는 창에서 "항상 허용으로 변경"']
+      : ['처음 뜨는 창에서 "앱 사용 중에만 허용"', '열리는 설정 화면에서 "항상 허용"']
+  return (
+    <View style={styles.overlay}>
+      <ScrollView contentContainerStyle={[styles.overlayContent, layoutStyles.readable]}>
+        <View style={styles.overlayIcon}>
+          <Ionicons name="navigate" size={28} color={COLORS.white} />
+        </View>
+        <Text style={styles.overlayTitle}>위치를 "항상 허용"으로 해 주세요</Text>
+        <Text style={styles.overlayBody}>
+          앱을 닫아 둬도 제휴 가게에 머무는 걸 알아채려면 위치를 "항상" 쓸 수 있어야 해요. 그래야 가게에 있을 때 바로 혜택을 알려 드릴 수
+          있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.
+        </Text>
+
+        <View style={styles.overlayCard}>
+          {steps.map((text, index) => (
+            <View key={text} style={styles.stepRow}>
+              <View style={[styles.stepNumber, index === steps.length - 1 && styles.stepNumberOn]}>
+                <Text style={[styles.stepNumberText, index === steps.length - 1 && styles.stepNumberTextOn]}>{index + 1}</Text>
+              </View>
+              <Text style={[styles.stepText, index === steps.length - 1 && styles.stepTextOn]}>{text}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.overlayCard}>
+          <View style={styles.privacyHead}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.privacyTitle}>홍익온은 내 위치를 가져가지 않아요</Text>
+          </View>
+          {[
+            '위치는 휴대폰 안에서 가까운 제휴 가게를 찾는 데만 써요.',
+            '위치를 서버로 보내거나 저장하지 않아요. 운영진도 볼 수 없어요.',
+            `가게 ${PARTNER_REGION_RADIUS_METERS}m 근처에 있을 때만 잠깐 GPS 로 거리를 재고, 멀어지면 바로 꺼요.`,
+            '휴대폰에는 알림을 보낸 가게와 시각만 2일 동안 남아 같은 알림이 또 가지 않게 해요.',
+            '설정 > 근처 제휴 알림에서 언제든 끌 수 있어요.',
+          ].map((line) => (
+            <View key={line} style={styles.bulletRow}>
+              <Text style={styles.bullet}>·</Text>
+              <Text style={styles.bulletText}>{line}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      <View style={[styles.footer, layoutStyles.readable, styles.overlayFooter]}>
+        {afterSettings ? (
+          <Button label="휴대폰 설정 열기" size="lg" onPress={() => Linking.openSettings().catch(() => {})} />
+        ) : (
+          <Button label="계속하기" size="lg" onPress={onContinue} />
+        )}
+        <Button label={afterSettings ? '나중에 할게요' : '취소'} variant="secondary" size="lg" onPress={onCancel} />
+      </View>
+    </View>
   )
 }
 
@@ -347,4 +471,36 @@ const styles = StyleSheet.create({
   notice: { backgroundColor: COLORS.primarySoft, borderRadius: RADIUS.md, padding: SPACING.lg, gap: SPACING.md },
   noticeText: { fontSize: 14, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   footer: { padding: SPACING.lg },
+  overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: COLORS.background },
+  overlayContent: { padding: SPACING.lg, paddingTop: SPACING.xl, gap: SPACING.lg },
+  overlayIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  overlayTitle: { fontSize: 20, lineHeight: 28, fontFamily: FONTS.bold, color: COLORS.textPrimary, textAlign: 'center' },
+  overlayBody: { fontSize: 15, lineHeight: 23, fontFamily: FONTS.regular, color: COLORS.textSecondary, textAlign: 'center' },
+  overlayCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg, gap: 10 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  stepNumberText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
+  stepNumberTextOn: { color: COLORS.white },
+  stepText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  stepTextOn: { fontFamily: FONTS.semibold, color: COLORS.primary },
+  privacyHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  privacyTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  overlayFooter: { gap: SPACING.sm },
 })

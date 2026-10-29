@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { SHOW_DEVELOPER_TOOLS as APP_DEVELOPER_TOOLS } from '../appVariant'
-import { PARTNER_REGION_RADIUS_METERS } from './rules'
+import { ALERT_RADIUS_METERS } from './rules'
 
 /**
  * 근처 알림 개발용 조절값(개발·테스트 빌드만, 운영 빌드에서는 늘 기본값).
@@ -27,9 +27,11 @@ const DAY_MS = 24 * 60 * 60 * 1000
 interface DebugValues {
   clockOffsetMs: number
   radiusMeters: number | null
+  /** 테스트 위치(지도에서 직접 고른 곳). 있으면 근처 알림이 실제 GPS 대신 이 위치로 판단한다. */
+  testLocation: { lat: number; lng: number } | null
 }
 
-let values: DebugValues = { clockOffsetMs: 0, radiusMeters: null }
+let values: DebugValues = { clockOffsetMs: 0, radiusMeters: null, testLocation: null }
 let loaded = false
 
 export async function loadNearbyDebug(): Promise<void> {
@@ -53,8 +55,35 @@ export function toRealTime(nearbyMs: number): number {
   return nearbyMs - (SHOW_DEVELOPER_TOOLS ? values.clockOffsetMs : 0)
 }
 
+/** 개발 도구에서 고른 테스트 위치(없으면 null). 운영 빌드에서는 늘 null. */
+export function testLocation(): { lat: number; lng: number } | null {
+  return SHOW_DEVELOPER_TOOLS ? values.testLocation : null
+}
+
+export async function setTestLocation(location: { lat: number; lng: number } | null): Promise<void> {
+  if (!SHOW_DEVELOPER_TOOLS) return
+  values = { ...values, testLocation: location }
+  try {
+    await AsyncStorage.setItem(KEY, JSON.stringify(values))
+  } catch {
+    // 저장 못 해도 이번 실행에는 적용된다.
+  }
+}
+
+/** 알림 반경(m). 테스트 빌드에서 고른 값이 있으면 그것, 없으면 `ALERT_RADIUS_METERS`. */
 export function partnerRadiusMeters(): number {
-  return (SHOW_DEVELOPER_TOOLS && values.radiusMeters) || PARTNER_REGION_RADIUS_METERS
+  return (SHOW_DEVELOPER_TOOLS && values.radiusMeters) || ALERT_RADIUS_METERS
+}
+
+/** 테스트 빌드 설정 화면에서 고른 업체 반경(null 이면 기본값). 바꾼 뒤 `syncNearbyAlerts` 로 다시 등록해야 적용된다. */
+export async function setPartnerRadius(meters: number | null): Promise<void> {
+  if (!SHOW_DEVELOPER_TOOLS) return
+  values = { ...values, radiusMeters: meters }
+  try {
+    await AsyncStorage.setItem(KEY, JSON.stringify(values))
+  } catch {
+    // 저장 못 해도 이번 실행에는 적용된다.
+  }
 }
 
 /** `hongikon://dev/nearby?...` 이면 값을 바꾸고 true. 운영 빌드·다른 링크는 false. */

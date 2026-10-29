@@ -8,8 +8,7 @@ import {
   decideOnEnter,
   formatDistance,
   insideAtRegistration,
-  isPeakHour,
-  isQuietHour,
+  preciselyInside,
   partnersNear,
   pickNearest,
   pickTargets,
@@ -17,7 +16,7 @@ import {
   stayStartedAt,
   type StayRecord,
 } from '../../src/lib/nearbyPartners/rules.ts'
-import { NEARBY_ALERT_TITLE, nearbyAlertContent } from '../../src/lib/nearbyPartners/copy.ts'
+import { nearbyAlertContent } from '../../src/lib/nearbyPartners/copy.ts'
 import type { Partner } from '../../src/types/index.ts'
 
 /** 한국 시간 2026-10-27 hh:mm 의 epoch ms. */
@@ -46,15 +45,15 @@ function partner(id: string, meters: number, extra: Partial<Partner> = {}): Part
 
 const NOON = kst(12, 0)
 
-test('시간대: 21시~8시는 밤, 점심·저녁은 우선', () => {
-  assert.equal(isQuietHour(kst(20, 59)), false)
-  assert.equal(isQuietHour(kst(21, 0)), true)
-  assert.equal(isQuietHour(kst(7, 59)), true)
-  assert.equal(isQuietHour(kst(8, 0)), false)
-  assert.equal(isPeakHour(kst(11, 30)), true)
-  assert.equal(isPeakHour(kst(13, 30)), false)
-  assert.equal(isPeakHour(kst(18, 0)), true)
-  assert.equal(isPeakHour(kst(15, 0)), false)
+test('알림 반경(20m): GPS 오차는 15m 까지만 더하고, 안에 있던 곳은 25m 더 멀어져야 나간다', () => {
+  assert.equal(preciselyInside(20, 0, false), true)
+  assert.equal(preciselyInside(21, 0, false), false)
+  assert.equal(preciselyInside(30, 12, false), true)
+  // 오차가 아무리 커도 20 + 15m 까지만.
+  assert.equal(preciselyInside(36, 80, false), false)
+  assert.equal(preciselyInside(44, 0, true), true)
+  assert.equal(preciselyInside(46, 0, true), false)
+  assert.equal(preciselyInside(28, null, false, 30), true)
 })
 
 test('대상 업체: 관리자 표시·혜택·기한·소속·캠퍼스 겹침으로 거른다', () => {
@@ -130,15 +129,16 @@ test('머무름: 3분 안 재진입은 처음 들어온 때부터', () => {
   assert.equal(stayStartedAt(null, entered), entered)
 })
 
-test('진입 판단: 5분 뒤 예약, 밤 시간은 뜨는 시각 기준', () => {
+test('진입 판단: 5분 뒤 예약, 밤·새벽에도 보낸다', () => {
   assert.deepEqual(decideOnEnter('a', NOON, [], NOON), { schedule: true, fireAt: NOON + DWELL_MS })
-  // 20:57 진입 → 21:02 에 뜨므로 보내지 않는다.
-  assert.deepEqual(decideOnEnter('a', kst(20, 57), [], kst(20, 57)), { schedule: false, reason: 'quietHour' })
+  // 시간대 제한은 10-29 에 없앴다.
+  assert.equal(decideOnEnter('a', kst(22, 0), [], kst(22, 0)).schedule, true)
+  assert.equal(decideOnEnter('a', kst(2, 0), [], kst(2, 0)).schedule, true)
   // 재진입으로 머무름이 이미 5분을 넘었으면 바로.
   assert.deepEqual(decideOnEnter('a', NOON - 10 * 60_000, [], NOON), { schedule: true, fireAt: NOON })
 })
 
-test('진입 판단: 업체당 하루 1번, 전체 하루 2번, 우선 시간대 밖은 하루 1번', () => {
+test('진입 판단: 업체당 하루 1번, 전체 하루 3번', () => {
   assert.deepEqual(decideOnEnter('a', NOON, [{ partnerId: 'a', at: kst(9, 0) }], NOON), {
     schedule: false,
     reason: 'partnerToday',
@@ -149,18 +149,16 @@ test('진입 판단: 업체당 하루 1번, 전체 하루 2번, 우선 시간대
     { partnerId: 'x', at: kst(8, 40) },
     { partnerId: 'y', at: kst(9, 50) },
   ]
-  assert.deepEqual(decideOnEnter('a', NOON, two, NOON), { schedule: false, reason: 'dailyLimit' })
-
-  const offPeakSent = [{ partnerId: 'x', at: kst(9, 0) }]
-  assert.deepEqual(decideOnEnter('a', kst(15, 0), offPeakSent, kst(15, 0)), { schedule: false, reason: 'offPeakLimit' })
-  // 우선 시간대라면 하나 더 된다.
-  assert.equal(decideOnEnter('a', NOON, offPeakSent, NOON).schedule, true)
+  assert.equal(decideOnEnter('a', NOON, two, NOON).schedule, true)
+  const three = [...two, { partnerId: 'z', at: kst(10, 50) }]
+  assert.deepEqual(decideOnEnter('a', NOON, three, NOON), { schedule: false, reason: 'dailyLimit' })
 })
 
-test('진입 판단: 알림 사이 최소 2시간', () => {
-  const sent = [{ partnerId: 'x', at: kst(11, 0) }]
-  assert.deepEqual(decideOnEnter('a', NOON, sent, NOON), { schedule: false, reason: 'tooSoon' })
-  assert.equal(decideOnEnter('a', kst(13, 0), sent, kst(13, 0)).schedule, true)
+test('진입 판단: 알림 사이 최소 30분', () => {
+  const sent = [{ partnerId: 'x', at: kst(11, 40) }]
+  assert.deepEqual(decideOnEnter('a', kst(11, 50), sent, kst(11, 50)), { schedule: false, reason: 'tooSoon' })
+  // 11:45 진입 → 11:50 에 뜨면 10분 차이, 12:06 진입 → 12:11 이면 31분.
+  assert.equal(decideOnEnter('a', kst(12, 6), sent, kst(12, 6)).schedule, true)
 })
 
 test('등록할 때 이미 반경 안: 가만히 있어도 진입으로 처리할 업체', () => {
@@ -181,22 +179,22 @@ test('여러 곳이 겹치면 가장 오래 머문 곳 하나 + 나머지, 오�
   assert.equal(alertGroup(new Map(), [], NOON), null)
 })
 
-test('알림 문구: (광고), 수신 거부, 소속 혜택, 길이 자르기, 더 있는 곳', () => {
+test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길이 자르기, 더 있는 곳', () => {
   const p = partner('a', 0, {
     name: '홍익카페',
     affiliationBenefits: [{ affiliation: '미술대학', benefit: '미대생 아메리카노 1+1' }],
   })
   assert.deepEqual(nearbyAlertContent(p, null), {
-    title: NEARBY_ALERT_TITLE,
-    body: '홍익카페 — 음료 10% 할인\n알림 끄기: 설정 > 근처 제휴 알림',
+    title: '홍익카페에 계신가요?',
+    body: '제휴 혜택: 음료 10% 할인\n알림 끄기: 설정 > 근처 제휴 알림',
   })
-  assert.ok(NEARBY_ALERT_TITLE.startsWith('(광고)'))
-  assert.match(nearbyAlertContent(p, '미술대학')!.body, /^홍익카페 — 미대생 아메리카노 1\+1\n/)
+  assert.ok(!nearbyAlertContent(p, null)!.title.includes('광고'))
+  assert.match(nearbyAlertContent(p, '미술대학')!.body, /^제휴 혜택: 미대생 아메리카노 1\+1\n/)
   assert.match(nearbyAlertContent(p, null, 2)!.body, /\n근처에 제휴업체 2곳이 더 있어요\n/)
 
   const long = partner('b', 0, { benefit: '가'.repeat(80) })
   const firstLine = nearbyAlertContent(long, null)!.body.split('\n')[0]
-  assert.equal(Array.from(firstLine.split(' — ')[1]).length, 60)
+  assert.equal(Array.from(firstLine.replace('제휴 혜택: ', '')).length, 60)
   assert.ok(firstLine.endsWith('…'))
 
   assert.equal(nearbyAlertContent(partner('c', 0, { benefit: '  ' }), null), null)

@@ -10,8 +10,20 @@ import type { Partner, PartnerAffiliation } from '../../types'
  * - 근처 알림(백그라운드 지오펜스, 아직 연결 전): `pickTargets` → `pickNearest` → `stayStartedAt` → `decideOnEnter`
  */
 
-/** 업체 하나의 지오펜스 반경. iOS 는 이보다 작게 잡아도 사실상 100~200m 로 동작한다. */
+/**
+ * 업체 하나의 운영체제 지오펜스 반경(깨우는 원). iOS 는 이보다 작게 잡아도 사실상 100~200m 로 동작해,
+ * 이 원은 "가게 근처에 왔다"는 신호로만 쓰고 실제 알림 반경(`ALERT_RADIUS_METERS`)은 GPS 로 다시 잰다.
+ */
 export const PARTNER_REGION_RADIUS_METERS = 100
+/**
+ * 알림 반경: 업체 좌표에서 이만큼 안에 머물러야 알린다(10-29 — 100m 는 옆 가게·길 건너까지 걸려 20m 로).
+ * 깨우는 원에 들어오면 GPS 를 켜 이 거리를 잰다(`preciselyInside`).
+ */
+export const ALERT_RADIUS_METERS = 20
+/** GPS 오차를 얼마까지 반경에 더해 줄지(실내 오차가 커도 반경이 끝없이 넓어지지 않게). */
+const ACCURACY_ALLOWANCE_METERS = 15
+/** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
+const EXIT_MARGIN_METERS = 25
 /**
  * 사용자 둘레 "다시 고르기" 원의 한계. 실제 반경은 `reselectRadius` 가 업체 밀도에 맞춰 정한다.
  * 홍대 앞은 500m 안에 제휴 업체가 중앙값 86곳이라(10-28 운영 데이터) 고정 500m 원이면 19곳 밖 업체 반경에
@@ -27,37 +39,26 @@ export const MAX_PARTNER_REGIONS = 19
 export const DWELL_MS = 5 * 60 * 1000
 /** 나갔다가 이 안에 다시 들어오면(위치 흔들림) 이어서 머문 것으로 본다. */
 export const REENTRY_GRACE_MS = 3 * 60 * 1000
-/** 하루(한국 날짜) 전체 알림 수. */
-export const MAX_ALERTS_PER_DAY = 2
-/** 점심·저녁 우선 시간대 밖에서는 하루 이만큼만. */
-export const MAX_OFF_PEAK_ALERTS_PER_DAY = 1
-/** 알림 사이 최소 간격. 가게가 몰린 거리에서 한 곳 알림 직후 옆 가게 알림이 또 오지 않게. */
-export const MIN_ALERT_GAP_MS = 2 * 60 * 60 * 1000
+/** 하루(한국 날짜) 전체 알림 수. 같은 가게는 하루 1번(`partnerToday`)이라, 가게를 옮겨 다닐 때만 더 온다. */
+export const MAX_ALERTS_PER_DAY = 3
+/**
+ * 알림 사이 최소 간격. 20m 반경이면 실제로 그 가게에 있을 때만 오므라 2시간(10-28)은 길었다 — 밥 먹고 카페로 옮기면
+ * 카페 알림이 오게 30분(10-29). 시간대 제한(밤 9시~아침 8시, 점심·저녁 우선)은 10-29 사용자 요청으로 없앴다.
+ */
+export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-/** 정보통신망법: 21시~다음 날 8시에는 광고성 정보를 보내지 않는다(분 단위, 한국 시간). */
-const QUIET_START_MINUTE = 21 * 60
-const QUIET_END_MINUTE = 8 * 60
-/** 점심·저녁 우선 시간대 [시작, 끝) 분. */
-const PEAK_WINDOWS: readonly (readonly [number, number])[] = [
-  [11 * 60 + 30, 13 * 60 + 30],
-  [17 * 60 + 30, 19 * 60 + 30],
-]
-
-/** 한국 시간 하루 중 몇 번째 분인지(0~1439). `Intl` 시간대를 쓰지 않는 이유는 `utils/exhibitions.ts` 와 같다. */
-function kstMinuteOfDay(now: number): number {
-  const date = new Date(now + KST_OFFSET_MS)
-  return date.getUTCHours() * 60 + date.getUTCMinutes()
-}
-
-export function isQuietHour(now: number): boolean {
-  const minute = kstMinuteOfDay(now)
-  return minute >= QUIET_START_MINUTE || minute < QUIET_END_MINUTE
-}
-
-export function isPeakHour(now: number): boolean {
-  const minute = kstMinuteOfDay(now)
-  return PEAK_WINDOWS.some(([start, end]) => minute >= start && minute < end)
+/**
+ * GPS 로 잰 거리로 알림 반경 안인지. 오차(accuracy)만큼은 반경에 더해 주되 `ACCURACY_ALLOWANCE_METERS` 까지만,
+ * 이미 안으로 본 곳(`wasInside`)은 `EXIT_MARGIN_METERS` 더 멀어져야 나간 것으로 본다.
+ */
+export function preciselyInside(
+  meters: number,
+  accuracy: number | null | undefined,
+  wasInside: boolean,
+  radius: number = ALERT_RADIUS_METERS,
+): boolean {
+  const allowance = Math.min(Math.max(accuracy ?? 0, 0), ACCURACY_ALLOWANCE_METERS)
+  return meters <= radius + allowance + (wasInside ? EXIT_MARGIN_METERS : 0)
 }
 
 /** 혜택 문구를 정하는 데 필요한 필드만. 기기에 저장해 둔 업체(`engine.SnapshotPartner`)도 쓴다. */
@@ -207,7 +208,7 @@ export function insideAtRegistration<T extends Located>(
 }
 
 /**
- * 알림 한 번에 담을 업체. 가게가 몰린 곳에서는 반경 100m 안에 여러 곳이 겹친다 — 업체마다 따로 알리지 않고
+ * 알림 한 번에 담을 업체. 가게가 몰린 곳에서는 반경 안에 여러 곳이 겹친다 — 업체마다 따로 알리지 않고
  * 가장 오래 머문 곳(같으면 id 순) 하나를 이름으로 내세우고 나머지는 "외 N곳"으로 묶는다. 오늘 이미 알린 업체는 뺀다.
  */
 export function alertGroup(
@@ -232,12 +233,9 @@ export interface SentAlert {
 
 export type EnterDecision =
   | { schedule: true; fireAt: number }
-  | { schedule: false; reason: 'quietHour' | 'partnerToday' | 'dailyLimit' | 'offPeakLimit' | 'tooSoon' }
+  | { schedule: false; reason: 'partnerToday' | 'dailyLimit' | 'tooSoon' }
 
-/**
- * 업체 반경에 들어왔을 때 알림을 예약할지. 모든 판단은 알림이 실제로 뜰 시각(`fireAt`) 기준이다 —
- * 20:57 에 들어와도 21:02 에 뜨면 밤 시간이므로 보내지 않는다.
- */
+/** 업체 반경에 들어왔을 때 알림을 예약할지. 모든 판단은 알림이 실제로 뜰 시각(`fireAt`) 기준이다(날짜·간격). */
 export function decideOnEnter(
   partnerId: string,
   stayStart: number,
@@ -245,16 +243,11 @@ export function decideOnEnter(
   now: number,
 ): EnterDecision {
   const fireAt = Math.max(stayStart + DWELL_MS, now)
-  if (isQuietHour(fireAt)) return { schedule: false, reason: 'quietHour' }
 
   const day = kstTodayYmd(fireAt)
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
   if (today.some((alert) => alert.partnerId === partnerId)) return { schedule: false, reason: 'partnerToday' }
   if (today.length >= MAX_ALERTS_PER_DAY) return { schedule: false, reason: 'dailyLimit' }
   if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
-  if (!isPeakHour(fireAt)) {
-    const offPeak = today.filter((alert) => !isPeakHour(alert.at)).length
-    if (offPeak >= MAX_OFF_PEAK_ALERTS_PER_DAY) return { schedule: false, reason: 'offPeakLimit' }
-  }
   return { schedule: true, fireAt }
 }

@@ -47,6 +47,7 @@
       "env": {
         "APP_VARIANT": "preview",
         "NEARBY_ALERTS_BUILD": "1",
+        "NEARBY_FIELD_TEST": "1",
         "ALLOW_CLEARTEXT_API": "1",
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8091"
       }
@@ -57,7 +58,8 @@
       "env": {
         "APP_VARIANT": "production",
         "NEARBY_ALERTS_BUILD": "1",
-        "NEARBY_FIELD_TEST": "1"
+        "NEARBY_FIELD_TEST": "1",
+        "APP_VERSION_OVERRIDE": "1.0.1"
       }
     },
     "production": {

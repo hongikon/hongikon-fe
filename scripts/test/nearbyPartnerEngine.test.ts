@@ -78,7 +78,7 @@ test('여러 곳이 겹치면 예약은 하나 — 가장 오래 머문 곳 + N�
   ])
 })
 
-test('알림이 뜬 뒤에는 보낸 것으로 기록하고, 옆 가게 알림은 2시간 안에 다시 오지 않는다', () => {
+test('알림이 뜬 뒤에는 보낸 것으로 기록하고, 옆 가게 알림은 30분 안에 다시 오지 않는다', () => {
   let s = onEnter(base, 'a', kst(12, 0)).state
   s = onEnter(s, 'b', kst(12, 1)).state
   // 12:05 에 알림이 떴다. 12:10 에 c 에 들어옴.
@@ -108,8 +108,10 @@ test('위치를 알면 묶음에서 가장 가까운 업체 이름으로, 시각
   assert.equal(onExit(s, 'zzz', kst(12, 2)).state.pending?.partnerId, 'b')
 })
 
-test('밤 9시 이후에 뜰 알림은 예약하지 않는다', () => {
-  assert.deepEqual(onEnter(base, 'a', kst(20, 57)).actions, [])
+test('밤에도 예약한다(시간대 제한 없음, 10-29)', () => {
+  assert.deepEqual(onEnter(base, 'a', kst(20, 57)).actions, [
+    { kind: 'schedule', alert: { partnerId: 'a', fireAt: kst(21, 2), othersCount: 0 } },
+  ])
 })
 
 test('등록: 이미 안에 있는 업체는 지금 들어온 것으로, 감시에서 빠진 업체는 나간 것으로', () => {

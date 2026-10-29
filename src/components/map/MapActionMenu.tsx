@@ -16,6 +16,8 @@ interface MapActionMenuProps {
   /** 근처 알림 영역 보기(개발·현장 테스트 빌드만). 넘기지 않으면 항목을 그리지 않는다. */
   onToggleNearbyOverlay?: () => void
   nearbyOverlayOn?: boolean
+  /** 근처 알림 테스트 위치 정하기(개발·현장 테스트 빌드만). */
+  onPickNearbyTestLocation?: () => void
   style?: StyleProp<ViewStyle>
 }
 
@@ -38,6 +40,7 @@ export default function MapActionMenu({
   onRecenter,
   onToggleNearbyOverlay,
   nearbyOverlayOn,
+  onPickNearbyTestLocation,
   style,
 }: MapActionMenuProps) {
   const [open, setOpen] = useState(false)
@@ -57,6 +60,16 @@ export default function MapActionMenu({
   }, [])
 
   const items: MenuItem[] = [
+    ...(onPickNearbyTestLocation
+      ? [
+          {
+            key: 'nearbyTestLocation',
+            label: '테스트 위치 정하기',
+            icon: <Ionicons name="locate-outline" size={17} color={COLORS.primary} />,
+            onPress: onPickNearbyTestLocation,
+          },
+        ]
+      : []),
     ...(onToggleNearbyOverlay
       ? [
           {
