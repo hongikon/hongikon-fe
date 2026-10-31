@@ -5,12 +5,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Notifications from 'expo-notifications'
 import {
   INITIAL_NEARBY_STATE,
+  activeStays,
   onDisable,
   onEnter,
   onExit,
+  onPrefs,
   onRegister,
   settle,
   type NearbyAction,
+  type NearbyPrefs,
   type NearbyState,
   type SnapshotPartner,
   type Step,
@@ -19,6 +22,7 @@ import {
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
+  endOfKstDay,
   insideAtRegistration,
   pickNearest,
   pickTargets,
@@ -29,6 +33,7 @@ import { nearbyAlertContent, nearbyGroupContent } from './copy'
 import {
   NEARBY_FIELD_TEST,
   SHOW_DEVELOPER_TOOLS,
+  fieldTestUnlimited,
   loadNearbyDebug,
   nearbyNow,
   partnerRadiusMeters,
@@ -74,6 +79,10 @@ const STORAGE_KEY = 'hongikon_nearby_alerts_v1'
 /** 예약 알림은 늘 하나라 고정 id 로 덮어쓰고 지운다. */
 const NOTIFICATION_ID = 'nearby-partner'
 export const NEARBY_CHANNEL_ID = 'nearby-partner'
+/** 알림 아래 버튼(길게 누르거나 내려 펼치면 보인다): 이 가게 알림 끄기, 오늘은 그만 받기. */
+export const NEARBY_CATEGORY_ID = 'nearby-partner'
+export const NEARBY_ACTION_MUTE = 'NEARBY_MUTE'
+export const NEARBY_ACTION_SNOOZE = 'NEARBY_SNOOZE'
 
 interface Packages {
   Location: LocationPackage
@@ -151,8 +160,28 @@ function mutate(change: (state: NearbyState, now: number) => Step | Promise<Step
 
 // ── 알림 ───────────────────────────────────────────────
 
+let categoryReady = false
+/**
+ * 알림 버튼 등록. 버튼을 누르면 앱이 열리며 처리한다(`handleNearbyNotificationAction`) — 앱을 열지 않는 버튼은
+ * 앱이 꺼져 있을 때 JS 가 돌지 않아 눌러도 아무 일이 없을 수 있다.
+ */
+async function ensureCategory(): Promise<void> {
+  if (categoryReady) return
+  categoryReady = true
+  try {
+    await Notifications.setNotificationCategoryAsync(NEARBY_CATEGORY_ID, [
+      { identifier: NEARBY_ACTION_MUTE, buttonTitle: '이 가게 알림 끄기', options: { opensAppToForeground: true } },
+      { identifier: NEARBY_ACTION_SNOOZE, buttonTitle: '오늘은 그만 받기', options: { opensAppToForeground: true } },
+    ])
+  } catch (error) {
+    categoryReady = false
+    logFailure('알림 버튼 등록', error)
+  }
+}
+
 let channelReady = false
 async function ensureChannel(): Promise<void> {
+  await ensureCategory()
   if (Platform.OS !== 'android' || channelReady) return
   channelReady = true
   try {
@@ -189,7 +218,7 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
       const partner = state.targets.find((target) => target.id === action.alert.partnerId)
       if (!partner) continue
       // 함께 잡힌 곳(앞세운 곳 + 나머지를 그곳에서 가까운 순). 2곳 이상이면 "근처에 N곳" 알림, 누르면 목록.
-      const group = alertGroup(new Map(Object.entries(state.stays)), state.sent, nearbyNow(), state.perVisit)
+      const group = alertGroup(activeStays(state), state.sent, nearbyNow(), state.perVisit)
       const others = (group ? [group.leadId, ...group.others] : [])
         .filter((id) => id !== partner.id)
         .flatMap((id) => state.targets.filter((target) => target.id === id))
@@ -204,7 +233,11 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
       if (!Number.isFinite(seconds)) throw new Error(`예약 시각이 올바르지 않음(fireAt=${action.alert.fireAt})`)
       await Notifications.scheduleNotificationAsync({
         identifier: NOTIFICATION_ID,
-        content: { ...content, data: { type: 'NEARBY_PARTNER', partnerId: partner.id, partnerIds: members.map((m) => m.id) } },
+        content: {
+          ...content,
+          categoryIdentifier: NEARBY_CATEGORY_ID,
+          data: { type: 'NEARBY_PARTNER', partnerId: partner.id, partnerIds: members.map((m) => m.id) },
+        },
         trigger: triggerAfter(seconds),
       })
       lastScheduleNote = `예약함 ${seconds}초 뒤(${new Date(Date.now() + seconds * 1000).toTimeString().slice(0, 5)})`
@@ -593,6 +626,29 @@ export async function getNearbyPermission(): Promise<NearbyPermission> {
   }
 }
 
+/** 설정 화면 "알림이 오려면" 점검표. precise: 정확한 위치(iOS 정확한 위치·Android 정밀) — 모르면 null. */
+export interface NearbyChecklist {
+  notifications: boolean
+  always: boolean
+  precise: boolean | null
+}
+
+export async function getNearbyChecklist(): Promise<NearbyChecklist> {
+  const pkg = packages()
+  const notifications = await Notifications.getPermissionsAsync()
+    .then((p) => p.granted)
+    .catch(() => false)
+  if (!pkg) return { notifications, always: false, precise: null }
+  const always = (await getNearbyPermission()).status === 'granted'
+  try {
+    const fg = await pkg.Location.getForegroundPermissionsAsync()
+    const precise = fg.ios ? fg.ios.accuracy === 'full' : fg.android ? fg.android.accuracy === 'fine' : null
+    return { notifications, always, precise: fg.granted ? precise : null }
+  } catch {
+    return { notifications, always, precise: null }
+  }
+}
+
 /**
  * "앱 사용 중" → "항상" 순서로 묻는다. Android 11 이상은 "항상"을 앱 안 창으로 고를 수 없어
  * 시스템이 앱 위치 설정 화면을 연다 — 돌아온 뒤 `getNearbyPermission` 으로 다시 확인한다.
@@ -636,9 +692,101 @@ function snapshot(partners: readonly Partner[], affiliation: PartnerAffiliation 
   }))
 }
 
-export async function getNearbySettings(): Promise<{ enabled: boolean; affiliation: PartnerAffiliation | null; targetCount: number }> {
+export interface NearbySettings {
+  enabled: boolean
+  affiliation: PartnerAffiliation | null
+  targetCount: number
+  dailyLimit: number | undefined
+  quietNight: boolean
+  /** 알림을 끈 가게(이름을 알면 이름, 대상 목록에서 빠졌으면 id). */
+  muted: { id: string; name: string }[]
+  snoozeUntil: number | null
+}
+
+export async function getNearbySettings(): Promise<NearbySettings> {
   const state = settle(await loadState(), nearbyNow())
-  return { enabled: state.enabled, affiliation: state.affiliation, targetCount: state.targets.length }
+  return {
+    enabled: state.enabled,
+    affiliation: state.affiliation,
+    targetCount: state.targets.length,
+    dailyLimit: state.dailyLimit,
+    quietNight: state.quietNight === true,
+    muted: (state.muted ?? []).map((id) => ({ id, name: state.targets.find((t) => t.id === id)?.name ?? id })),
+    snoozeUntil: state.snoozeUntil ?? null,
+  }
+}
+
+/** 설정 화면·알림 버튼에서 바꾸는 값. 바로 저장하고 예약을 다시 맞춘다. */
+export async function setNearbyPrefs(prefs: NearbyPrefs): Promise<void> {
+  if (!packages()) return
+  await mutate((state, now) => onPrefs(state, prefs, now))
+}
+
+/** 이 가게(들) 알림 끄기. 다시 받으려면 설정 > 근처 제휴 알림 > 알림 안 받는 가게. */
+export async function muteNearbyPartners(ids: readonly string[]): Promise<void> {
+  if (!packages() || ids.length === 0) return
+  await mutate((state, now) => onPrefs(state, { muted: [...new Set([...(state.muted ?? []), ...ids])] }, now))
+}
+
+export async function unmuteNearbyPartner(id: string): Promise<void> {
+  if (!packages()) return
+  await mutate((state, now) => onPrefs(state, { muted: (state.muted ?? []).filter((m) => m !== id) }, now))
+}
+
+/** 오늘(한국 날짜)은 그만 받기. null 이면 다시 받기. */
+export async function snoozeNearbyToday(on: boolean): Promise<void> {
+  if (!packages()) return
+  await mutate((state, now) => onPrefs(state, { snoozeUntil: on ? endOfKstDay(now) : null }, now))
+}
+
+/**
+ * 근처 알림의 버튼을 눌렀다(`lib/pushNotifications.ts`). 처리했으면 무엇을 했는지 짧은 안내 문구, 아니면 null.
+ * 버튼이 아닌 알림 본문 탭은 여기서 다루지 않는다(지도로 이동).
+ */
+export async function handleNearbyNotificationAction(actionId: string, data: unknown): Promise<string | null> {
+  if (actionId !== NEARBY_ACTION_MUTE && actionId !== NEARBY_ACTION_SNOOZE) return null
+  if (actionId === NEARBY_ACTION_SNOOZE) {
+    await snoozeNearbyToday(true)
+    return '오늘은 근처 제휴 알림을 더 보내지 않아요.'
+  }
+  const payload = (data ?? {}) as { partnerId?: unknown; partnerIds?: unknown }
+  const ids = Array.isArray(payload.partnerIds)
+    ? payload.partnerIds.filter((id): id is string => typeof id === 'string')
+    : typeof payload.partnerId === 'string'
+      ? [payload.partnerId]
+      : []
+  await muteNearbyPartners(ids)
+  return ids.length > 1 ? `이 ${ids.length}곳 알림을 껐어요. 설정에서 다시 켤 수 있어요.` : '이 가게 알림을 껐어요. 설정에서 다시 켤 수 있어요.'
+}
+
+/**
+ * 테스트 앱 전용: 걷지 않고 알림 모양·버튼·탭 이동을 확인하려고, 가장 가까운(모르면 첫) 대상 가게 알림을 몇 초 뒤에 띄운다.
+ * 예약·보낸 기록에는 남기지 않는다(실제 판단과 섞이지 않게).
+ */
+export async function sendNearbyTestAlert(seconds = 5, group = false): Promise<string> {
+  const pkg = packages()
+  if (!pkg || !SHOW_DEVELOPER_TOOLS) return '테스트 앱에서만 쓸 수 있어요.'
+  await loadNearbyDebug()
+  const state = await loadState()
+  if (state.targets.length === 0) return '대상 가게가 없어요. 먼저 근처 제휴 알림을 켜 주세요.'
+  const at = (await quickPosition(pkg.Location)) ?? null
+  const sorted = at
+    ? [...state.targets].sort((a, b) => haversineMeters(at.lat, at.lng, a.lat, a.lng) - haversineMeters(at.lat, at.lng, b.lat, b.lng))
+    : state.targets
+  const members = sorted.slice(0, group ? 3 : 1)
+  const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(members[0], state.affiliation)
+  if (!content) return '혜택 문구가 없는 가게라 알림을 만들 수 없어요.'
+  await ensureChannel()
+  await Notifications.scheduleNotificationAsync({
+    identifier: 'nearby-partner-test',
+    content: {
+      ...content,
+      categoryIdentifier: NEARBY_CATEGORY_ID,
+      data: { type: 'NEARBY_PARTNER', partnerId: members[0].id, partnerIds: members.map((m) => m.id) },
+    },
+    trigger: triggerAfter(seconds),
+  })
+  return `${seconds}초 뒤 ${members.length > 1 ? `${members.length}곳 묶음` : members[0].name} 알림이 와요. 앱을 닫거나 홈 화면으로 나가 보세요.`
 }
 
 /**
@@ -672,7 +820,12 @@ export async function syncNearbyAlerts(
       const paused = onDisable(state, now)
       return { state: { ...paused.state, enabled: true }, actions: paused.actions }
     }
-    state = { ...state, targets: snapshot(source.partners, state.affiliation, source.campusPoints, now), perVisit: NEARBY_FIELD_TEST }
+    state = {
+      ...state,
+      targets: snapshot(source.partners, state.affiliation, source.campusPoints, now),
+      // 현장 테스트 앱은 기본으로 횟수 제한 없이. 설정의 [테스트] 스위치로 운영 규칙(하루 최대 수·간격)을 켜 볼 수 있다.
+      perVisit: NEARBY_FIELD_TEST && fieldTestUnlimited(),
+    }
     const at = await currentPosition(pkg.Location)
     if (!at) {
       lastSync = { at: now, result: 'noLocation', regions: 0, reselectMeters: 0 }

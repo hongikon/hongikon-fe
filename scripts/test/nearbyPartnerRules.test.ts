@@ -6,6 +6,8 @@ import {
   REENTRY_GRACE_MS,
   alertGroup,
   decideOnEnter,
+  endOfKstDay,
+  isQuietHour,
   formatDistance,
   insideAtRegistration,
   preciselyInside,
@@ -188,7 +190,7 @@ test('여러 곳이 겹치면 가장 오래 머문 곳 하나 + 나머지, 오�
   assert.equal(alertGroup(visit, [{ partnerId: 'a', at: kst(12, 5) }], kst(12, 6), true), null)
   // 제한 없음
   const many = [1, 2, 3, 4].map((i) => ({ partnerId: `x${i}`, at: kst(11, 50 + i) }))
-  assert.equal(decideOnEnter('a', NOON, many, NOON, true).schedule, true)
+  assert.equal(decideOnEnter('a', NOON, many, NOON, { perVisit: true }).schedule, true)
 })
 
 test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길이 자르기, 더 있는 곳', () => {
@@ -223,4 +225,23 @@ test('여러 곳 알림: 몇 곳인지와 이름 두 개까지, 단정하지 않
   const four = nearbyGroupContent([{ name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }])
   assert.match(four.body, /^a · b 외 2곳 — /)
   assert.ok(!four.title.includes('계신가요'))
+})
+
+test('설정: 하루 최대 1번, 밤에는 받지 않기(테스트 앱에서도 지킴), 오늘 끝나는 시각', () => {
+  const NOON = kst(12, 0)
+  const one = [{ partnerId: 'x', at: kst(9, 0) }]
+  assert.equal(decideOnEnter('a', NOON, one, NOON).schedule, true)
+  assert.deepEqual(decideOnEnter('a', NOON, one, NOON, { dailyLimit: 1 }), { schedule: false, reason: 'dailyLimit' })
+
+  assert.equal(isQuietHour(kst(21, 59)), false)
+  assert.equal(isQuietHour(kst(22, 0)), true)
+  assert.equal(isQuietHour(kst(7, 59)), true)
+  assert.equal(isQuietHour(kst(8, 0)), false)
+  // 21:57 에 들어와도 알림 시각(22:02)이 밤이면 보내지 않는다. 기본(꺼짐)이면 보낸다.
+  assert.deepEqual(decideOnEnter('a', kst(21, 57), [], kst(21, 57), { quietNight: true }), { schedule: false, reason: 'quiet' })
+  assert.equal(decideOnEnter('a', kst(21, 57), [], kst(21, 57)).schedule, true)
+  assert.equal(decideOnEnter('a', kst(23, 0), [], kst(23, 0), { quietNight: true, perVisit: true }).schedule, false)
+
+  assert.equal(endOfKstDay(kst(12, 0)), kst(0, 0, 28))
+  assert.equal(endOfKstDay(kst(0, 0, 28)), kst(0, 0, 29))
 })

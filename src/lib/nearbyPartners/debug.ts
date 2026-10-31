@@ -29,6 +29,8 @@ interface DebugValues {
   radiusMeters: number | null
   /** 테스트 위치(지도에서 직접 고른 곳). 있으면 근처 알림이 실제 GPS 대신 이 위치로 판단한다. */
   testLocation: { lat: number; lng: number } | null
+  /** 현장 테스트 앱: 횟수·간격 제한 없이 방문마다 알릴지(기본 true). 끄면 운영 규칙(하루 최대 수·30분 간격)으로 돈다. */
+  unlimited?: boolean
 }
 
 let values: DebugValues = { clockOffsetMs: 0, radiusMeters: null, testLocation: null }
@@ -79,6 +81,22 @@ export function partnerRadiusMeters(): number {
 export async function setPartnerRadius(meters: number | null): Promise<void> {
   if (!SHOW_DEVELOPER_TOOLS) return
   values = { ...values, radiusMeters: meters }
+  try {
+    await AsyncStorage.setItem(KEY, JSON.stringify(values))
+  } catch {
+    // 저장 못 해도 이번 실행에는 적용된다.
+  }
+}
+
+/** 현장 테스트 앱에서 횟수 제한 없이 알릴지. 테스트 앱이 아니면 늘 false. */
+export function fieldTestUnlimited(): boolean {
+  return NEARBY_FIELD_TEST && values.unlimited !== false
+}
+
+/** 바꾼 뒤 `syncNearbyAlerts` 로 다시 맞춰야 적용된다. */
+export async function setFieldTestUnlimited(on: boolean): Promise<void> {
+  if (!NEARBY_FIELD_TEST) return
+  values = { ...values, unlimited: on }
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(values))
   } catch {

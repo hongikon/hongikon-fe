@@ -87,14 +87,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   let plugins = config.plugins as PluginEntry[] | undefined
   if (NEARBY_ALERTS_BUILD) {
     plugins = withPluginOptions(plugins, 'expo-location', {
+      // 기본(app.json) 문구는 "위치를 한 번 사용해요"라 근처 알림 빌드에서는 맞지 않는다(10-31).
+      locationWhenInUsePermission:
+        '가까운 제휴 가게와 거리를 보여 주고, 제휴 가게에 머물 때 혜택을 알려 드릴 때 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysAndWhenInUsePermission:
         '제휴 업체 근처에 5분 넘게 머물면 받을 수 있는 혜택을 알려 드릴 때 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysPermission:
         '제휴 업체 근처에 5분 넘게 머물면 받을 수 있는 혜택을 알려 드릴 때 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       isIosBackgroundLocationEnabled: true,
       isAndroidBackgroundLocationEnabled: true,
-      // 지오펜싱만 쓰고 계속 추적하지 않아 포그라운드 서비스는 필요 없다.
-      isAndroidForegroundServiceEnabled: false,
+      // 가게 근처(깨우는 원 안)에 있을 때만 GPS 로 20m 를 재는 동안 Android 는 포그라운드 서비스(상단 알림)가 필요하다(10-31).
+      // 없으면 위치 갱신을 못 켜 100m 지오펜스로만 판단했다.
+      isAndroidForegroundServiceEnabled: true,
     })
   }
   if (ALLOW_CLEARTEXT_API) {

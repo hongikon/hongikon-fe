@@ -23,6 +23,7 @@ import { openNaverMapPlace } from "../../utils/openNaverMap";
 import { RADIUS } from "../../constants/spacing";
 import { formatUntilYmd } from "../../utils/exhibitions";
 import SheetScrollBody from "./SheetScrollBody";
+import NearbyAlertPromo from "./NearbyAlertPromo";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -307,6 +308,8 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             <Text style={styles.linkText}>{partner.link.label}</Text>
           </TouchableOpacity>
         )}
+
+        <NearbyAlertPromo />
       </SheetScrollBody>
     </Animated.View>
   );

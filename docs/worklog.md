@@ -158,3 +158,23 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 `docs/nearby-partner-alert-impl-plan.md` "10-28 기기 테스트 결과"·"반경은 몇 m로". 요약: Android 에뮬레이터에서 켜기·등록·5분 뒤 알림·탭 → 업체 시트·밀집 묶음(가장 가까운 업체 이름)·밤 시간 막기 확인. 반경 100m 유지(시뮬레이션). 테스트로 R8 keep, 오래된 위치, 위치 순서, 켜기 창 안내, fetch 모드를 고쳤다.
 
 > **미결**: iOS 27.1 시뮬레이터는 지오펜싱 자체가 안 됨(`GeofencingUnavailable`) — 실기기 확인 필수, 안 되면 `CLMonitor` 네이티브 모듈. Android 백그라운드 진입·이탈은 에뮬레이터 한계로 실기기 확인 필요. 운영 빌드에는 `NEARBY_ALERTS_BUILD` 를 켜지 않음(심사·위치정보법 확인 전). 처리방침에 근처 알림(백그라운드 위치·수신 동의) 문구는 아직 없음.
+
+## 2026-10-31 · 근처 제휴 알림 설정 다듬기·알림 버튼·테스트 앱 도구
+
+**목표**: 운영 출시 전에 설정에서 사용자가 받는 방법을 고를 수 있게 하고(`docs/nearby-partner-alert-release-plan.md` 2·3절), 테스트 앱에서 모두 확인할 수 있게 한다.
+
+| 파일 | 변경 | 내용 |
+|---|---|---|
+| `src/lib/nearbyPartners/rules.ts` | 수정 | `decideOnEnter` 옵션(하루 최대 수 1/3, 밤 22~8시 받지 않기 — 기본 꺼짐), `isQuietHour`, `endOfKstDay` |
+| `src/lib/nearbyPartners/engine.ts` | 수정 | 상태에 `dailyLimit`·`quietNight`·`muted`·`snoozeUntil`, `onPrefs`(바꾸면 예약 다시 맞춤), 끈 가게는 묶음에서 뺌 |
+| `src/lib/nearbyPartners/background.ts` | 수정 | 알림 버튼(이 가게 알림 끄기·오늘은 그만 받기), 설정 저장 함수, 점검표(알림·위치 항상·정확한 위치), 테스트 앱 "5초 뒤 시험 알림", 현장 테스트 횟수 제한 스위치 |
+| `src/lib/nearbyPartners/debug.ts` | 수정 | `fieldTestUnlimited`(테스트 앱에서 운영 규칙으로 바꿔 보기) |
+| `src/lib/pushNotifications.ts` | 수정 | 알림 버튼을 누르면 이동하지 않고 처리 후 안내 |
+| `src/components/settings/NearbyAlertSettings.tsx` | 수정 | 줄을 누르면 늘 창이 열림. 켜진 뒤 창: "알림이 오려면" 점검표 + 고치기, 받는 방법, 소속(바로 저장), 알림 안 받는 가게, 개인정보 한 줄, [테스트] 반경·횟수 제한·시험 알림. "항상 허용" 안내의 취소를 "켜지 않을게요"로 |
+| `src/components/map/NearbyAlertPromo.tsx` · `PartnerSheet.tsx` | 신규·수정 | 제휴 시트 아래 "제휴 가게에 있을 때 혜택을 알려 드릴까요? 설정하기"(닫으면 다시 안 뜸) |
+| `src/lib/settingsIntents.ts` · `src/screens/SettingsScreen.tsx` | 수정 | `openNearbyAlerts` 요청으로 설정 탭에서 근처 알림 창 열기 |
+| `app.config.ts` | 수정 | (근처 알림 빌드만) Android 포그라운드 서비스 켬 — 20m 정밀 판단, iOS "앱 사용 중" 위치 문구에서 "한 번" 표현 고침. **네이티브 빌드 필요** |
+
+- 테스트 33개 통과(새 6개), tsc 통과. 실기기 확인 전.
+- "내 주변 제휴"(지도 검색 맨 위, 500m)는 이미 있어(`c9d6610`) 새로 만들지 않았다.
+- 알림 버튼은 앱을 열며 처리한다(앱이 꺼진 상태에서 열지 않는 버튼은 JS 가 돌지 않을 수 있음).

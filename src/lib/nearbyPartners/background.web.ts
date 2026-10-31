@@ -1,10 +1,9 @@
 /**
  * 웹은 근처 알림이 없다(브라우저는 페이지가 닫힌 뒤 위치 경계를 감시할 수 없다). `background.ts` 와 같은 이름만 내보낸다.
  */
-import type { NearbyPermission, NearbySource } from './background'
-import type { PartnerAffiliation } from '../../types'
+import type { NearbyChecklist, NearbyPermission, NearbySettings, NearbySource } from './background'
 
-export type { NearbyPermission, NearbySource }
+export type { NearbyChecklist, NearbyPermission, NearbySettings, NearbySource }
 
 export const NEARBY_TASK = 'hongikon-nearby-partners'
 export const NEARBY_CHANNEL_ID = 'nearby-partner'
@@ -21,8 +20,28 @@ export async function requestNearbyPermission(): Promise<NearbyPermission> {
   return { status: 'unavailable' }
 }
 
-export async function getNearbySettings(): Promise<{ enabled: boolean; affiliation: PartnerAffiliation | null; targetCount: number }> {
-  return { enabled: false, affiliation: null, targetCount: 0 }
+export async function getNearbySettings(): Promise<NearbySettings> {
+  return { enabled: false, affiliation: null, targetCount: 0, dailyLimit: undefined, quietNight: false, muted: [], snoozeUntil: null }
+}
+
+export async function getNearbyChecklist(): Promise<NearbyChecklist> {
+  return { notifications: false, always: false, precise: null }
+}
+
+export async function setNearbyPrefs(): Promise<void> {}
+
+export async function muteNearbyPartners(): Promise<void> {}
+
+export async function unmuteNearbyPartner(): Promise<void> {}
+
+export async function snoozeNearbyToday(): Promise<void> {}
+
+export async function handleNearbyNotificationAction(): Promise<string | null> {
+  return null
+}
+
+export async function sendNearbyTestAlert(): Promise<string> {
+  return '웹에서는 근처 알림을 쓸 수 없어요.'
 }
 
 export async function syncNearbyAlerts(): Promise<boolean> {

@@ -302,11 +302,17 @@ export default function SettingsScreen() {
   const myReportPending = myReportCountResource.data?.pending ?? 0
   /** 반려 알림으로 들어왔을 때 내역에서 강조할 제보 */
   const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
+  /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
+  const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
 
   // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
   const handleSettingsIntent = useCallback(() => {
     const intent = consumeSettingsIntent()
-    if (intent?.type !== 'openMyReports' || isGuest) return
+    if (!intent || isGuest) return
+    if (intent.type === 'openNearbyAlerts') {
+      setNearbyOpenSignal((n) => n + 1)
+      return
+    }
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
   }, [isGuest])
@@ -585,7 +591,7 @@ export default function SettingsScreen() {
           {nearbyAlertsAvailable() && !isGuest && (
             <View style={styles.subGroup}>
               <Text style={styles.subGroupTitle}>근처 제휴</Text>
-              <NearbyAlertSettings />
+              <NearbyAlertSettings openSignal={nearbyOpenSignal} />
             </View>
           )}
         </View>

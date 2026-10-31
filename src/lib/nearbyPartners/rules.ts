@@ -46,6 +46,29 @@ export const MAX_ALERTS_PER_DAY = 3
  * 카페 알림이 오게 30분(10-29). 시간대 제한(밤 9시~아침 8시, 점심·저녁 우선)은 10-29 사용자 요청으로 없앴다.
  */
 export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
+/** 설정에서 고르는 하루 최대 알림 수(10-31). 기본은 `MAX_ALERTS_PER_DAY`. */
+export const DAILY_LIMIT_OPTIONS = [1, MAX_ALERTS_PER_DAY] as const
+export type DailyLimit = (typeof DAILY_LIMIT_OPTIONS)[number]
+/**
+ * "밤에는 받지 않기"(설정에서 고름, 기본 꺼짐 — 10-29 에 고정 금지 시간대를 뺀 결정은 그대로 두고 사용자가 고르게 했다).
+ * 한국 시간 22시부터 다음 날 8시 전까지.
+ */
+export const QUIET_START_HOUR = 22
+export const QUIET_END_HOUR = 8
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** 한국 시간으로 밤(22~8시)인지. */
+export function isQuietHour(ms: number): boolean {
+  const hour = new Date(ms + KST_OFFSET_MS).getUTCHours()
+  return hour >= QUIET_START_HOUR || hour < QUIET_END_HOUR
+}
+
+/** 이 시각이 속한 한국 날짜가 끝나는 시각(다음 날 0시). "오늘은 그만 받기"가 여기까지. */
+export function endOfKstDay(ms: number): number {
+  return Math.floor((ms + KST_OFFSET_MS) / DAY_MS) * DAY_MS + DAY_MS - KST_OFFSET_MS
+}
 
 /**
  * GPS 로 잰 거리로 알림 반경 안인지. 오차(accuracy)만큼은 반경에 더해 주되 `ACCURACY_ALLOWANCE_METERS` 까지만,
@@ -239,7 +262,16 @@ export interface SentAlert {
 
 export type EnterDecision =
   | { schedule: true; fireAt: number }
-  | { schedule: false; reason: 'partnerToday' | 'dailyLimit' | 'tooSoon' }
+  | { schedule: false; reason: 'partnerToday' | 'dailyLimit' | 'tooSoon' | 'quiet' }
+
+export interface DecideOptions {
+  /** 현장 테스트: 횟수·간격 제한 없이 방문마다 한 번. */
+  perVisit?: boolean
+  /** 하루 최대 알림 수(설정). 기본 `MAX_ALERTS_PER_DAY`. */
+  dailyLimit?: number
+  /** 밤(22~8시)에는 알리지 않기(설정). */
+  quietNight?: boolean
+}
 
 /** 업체 반경에 들어왔을 때 알림을 예약할지. 모든 판단은 알림이 실제로 뜰 시각(`fireAt`) 기준이다(날짜·간격). */
 export function decideOnEnter(
@@ -247,16 +279,18 @@ export function decideOnEnter(
   stayStart: number,
   sent: readonly SentAlert[],
   now: number,
-  perVisit = false,
+  options: DecideOptions = {},
 ): EnterDecision {
   const fireAt = Math.max(stayStart + DWELL_MS, now)
+  // 밤에는 받지 않기: 테스트 앱에서도 지킨다(설정을 확인할 수 있게). 아침까지 미루지 않고 이번 방문은 넘어간다.
+  if (options.quietNight && isQuietHour(fireAt)) return { schedule: false, reason: 'quiet' }
   // 현장 테스트(10-29 사용자 요청): 횟수·간격 제한 없이 방문마다 한 번(같은 방문 중복은 alertGroup 이 막는다).
-  if (perVisit) return { schedule: true, fireAt }
+  if (options.perVisit) return { schedule: true, fireAt }
 
   const day = kstTodayYmd(fireAt)
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
   if (today.some((alert) => alert.partnerId === partnerId)) return { schedule: false, reason: 'partnerToday' }
-  if (today.length >= MAX_ALERTS_PER_DAY) return { schedule: false, reason: 'dailyLimit' }
+  if (today.length >= (options.dailyLimit ?? MAX_ALERTS_PER_DAY)) return { schedule: false, reason: 'dailyLimit' }
   if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
   return { schedule: true, fireAt }
 }

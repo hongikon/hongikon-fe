@@ -14,6 +14,8 @@ import { isAdminNotification, notificationTarget } from '../utils/notificationRo
 import { requestSettingsIntent } from './settingsIntents'
 import { navigateToAdminTab, notifyAdminAlertReceived, requestAdminIntent } from './adminIntents'
 import { useIsAdmin } from '../admin/AdminAccess'
+import { handleNearbyNotificationAction } from './nearbyPartners/background'
+import { notify } from '../utils/dialog'
 import type { PushNotificationData } from '../types'
 
 /**
@@ -74,7 +76,19 @@ function handleNotificationResponse(response: Notifications.NotificationResponse
   const id = response.notification.request.identifier
   if (id === lastHandledNotificationId) return
   lastHandledNotificationId = id
-  pendingNotification = (response.notification.request.content.data ?? null) as PushNotificationData | null
+  const data = response.notification.request.content.data ?? null
+  // 근처 제휴 알림의 버튼(이 가게 알림 끄기·오늘은 그만 받기): 이동하지 않고 처리만 한 뒤 무엇을 했는지 알린다.
+  const action = response.actionIdentifier
+  if (action && action !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    forgetLastNotificationResponse()
+    void handleNearbyNotificationAction(action, data)
+      .then((message) => {
+        if (message) notify('근처 제휴 알림', message)
+      })
+      .catch(() => {})
+    return
+  }
+  pendingNotification = data as PushNotificationData | null
   flushPendingNotification()
 }
 
