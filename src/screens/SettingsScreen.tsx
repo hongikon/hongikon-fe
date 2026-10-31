@@ -332,14 +332,14 @@ export default function SettingsScreen() {
     const intent = consumeSettingsIntent()
     if (!intent || isGuest) return
     if (intent.type === 'openNearbyAlerts') {
-      // 근처 알림 줄은 알림 화면에 있다 — 그 화면을 연 뒤 창을 띄운다.
-      openPage('alerts')
+      // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
+      setExpanded((prev) => new Set(prev).add('alerts'))
       setNearbyOpenSignal((n) => n + 1)
       return
     }
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
-  }, [isGuest, openPage])
+  }, [isGuest])
   useFocusEffect(handleSettingsIntent)
   useEffect(() => subscribeSettingsIntent(handleSettingsIntent), [handleSettingsIntent])
 
@@ -673,8 +673,8 @@ export default function SettingsScreen() {
 
                 {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). */}
                 {nearbyAlertsAvailable() && !isGuest && (
-                  <View style={styles.section}>
-                    <SectionTitle title="근처 제휴" />
+                  <View style={styles.subBlock}>
+                    <Text style={styles.subHeader}>근처 제휴</Text>
                     <NearbyAlertSettings openSignal={nearbyOpenSignal} />
                   </View>
                 )}

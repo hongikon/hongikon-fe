@@ -384,53 +384,6 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                   <CheckRow ok={!serverPaused} label="근처 알림 운영 중" hint={serverPaused ? '운영진이 잠시 멈췄어요. 다시 켜지면 자동으로 알려 드려요.' : undefined} last />
                 </View>
 
-                <Text style={styles.sectionTitle}>받는 방법</Text>
-                <View style={styles.card}>
-                  <Text style={styles.hint}>
-                    {SHOW_DEVELOPER_TOOLS && unlimited
-                      ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
-                      : `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
-                  </Text>
-                  <View style={styles.divider} />
-                  <Text style={styles.settingLabel}>알림까지 머무는 시간</Text>
-                  <DwellStepper
-                    label="카페"
-                    value={dwell.cafe}
-                    disabled={working}
-                    onChange={(cafe) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, cafe } }))}
-                  />
-                  <DwellStepper
-                    label="그 밖의 가게"
-                    value={dwell.other}
-                    disabled={working}
-                    onChange={(other) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, other } }))}
-                  />
-                  {(dwell.cafe !== DEFAULT_DWELL_MINUTES.cafe || dwell.other !== DEFAULT_DWELL_MINUTES.other) && (
-                    <Pressable
-                      onPress={() => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: null }))}
-                      disabled={working}
-                      hitSlop={6}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.resetText}>
-                        기본값으로 되돌리기(카페 {DEFAULT_DWELL_MINUTES.cafe}분, 그 밖 {DEFAULT_DWELL_MINUTES.other}분)
-                      </Text>
-                    </Pressable>
-                  )}
-                  <Text style={styles.hint}>짧게 하면 가게 앞을 지나가기만 해도 올 수 있어요.</Text>
-                  <View style={styles.divider} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingText}>
-                      <Text style={styles.settingLabel}>{QUIET_LABEL}</Text>
-                    </View>
-                    <ToggleSwitch
-                      value={settings?.quietNight === true}
-                      onToggle={() => void run('저장하는 중이에요', () => setNearbyPrefs({ quietNight: !(settings?.quietNight === true) }))}
-                      locked={working}
-                      accessibilityLabel={QUIET_LABEL}
-                    />
-                  </View>
-                </View>
               </>
             ) : (
               <>
@@ -439,9 +392,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 </View>
                 <View style={styles.card}>
                   {[
-                    `제휴 가게 ${radius}m 안에 5분(카페는 2분) 넘게 머물면 그 가게 혜택을 알려 드려요.`,
-                    `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번까지 알려 드려요. 머무는 시간과 밤에 받지 않기는 켠 뒤에 고를 수 있어요.`,
-                    '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
+                    `제휴 가게 ${radius}m 안에 ${dwell.other}분(카페는 ${dwell.cafe}분) 넘게 머물면 그 가게 혜택을 알려 드려요.`,
+                                        '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
                     '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
                   ].map((line) => (
                     <View key={line} style={styles.bulletRow}>
@@ -452,6 +404,55 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 </View>
               </>
             )}
+
+            {/* 받는 방법은 켜기 전에도 고를 수 있게(11-01 — 켠 뒤에만 보여 머무는 시간 선택을 찾을 수 없었다). */}
+            <Text style={styles.sectionTitle}>받는 방법</Text>
+            <View style={styles.card}>
+              <Text style={styles.hint}>
+                {SHOW_DEVELOPER_TOOLS && unlimited
+                  ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
+                  : `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
+              </Text>
+              <View style={styles.divider} />
+              <Text style={styles.settingLabel}>알림까지 머무는 시간</Text>
+              <DwellStepper
+                label="카페"
+                value={dwell.cafe}
+                disabled={working}
+                onChange={(cafe) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, cafe } }))}
+              />
+              <DwellStepper
+                label="그 밖의 가게"
+                value={dwell.other}
+                disabled={working}
+                onChange={(other) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, other } }))}
+              />
+              {(dwell.cafe !== DEFAULT_DWELL_MINUTES.cafe || dwell.other !== DEFAULT_DWELL_MINUTES.other) && (
+                <Pressable
+                  onPress={() => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: null }))}
+                  disabled={working}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.resetText}>
+                    기본값으로 되돌리기(카페 {DEFAULT_DWELL_MINUTES.cafe}분, 그 밖 {DEFAULT_DWELL_MINUTES.other}분)
+                  </Text>
+                </Pressable>
+              )}
+              <Text style={styles.hint}>짧게 하면 가게 앞을 지나가기만 해도 올 수 있어요.</Text>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingText}>
+                  <Text style={styles.settingLabel}>{QUIET_LABEL}</Text>
+                </View>
+                <ToggleSwitch
+                  value={settings?.quietNight === true}
+                  onToggle={() => void run('저장하는 중이에요', () => setNearbyPrefs({ quietNight: !(settings?.quietNight === true) }))}
+                  locked={working}
+                  accessibilityLabel={QUIET_LABEL}
+                />
+              </View>
+            </View>
 
             <Text style={styles.sectionTitle}>내 소속(선택)</Text>
             <Text style={styles.hint}>
@@ -860,10 +861,10 @@ const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.md },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg, gap: 8 },
   bulletRow: { flexDirection: 'row', gap: 6 },
-  bullet: { fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, fontFamily: FONTS.regular },
-  bulletText: { flex: 1, fontSize: 14, lineHeight: 20, color: COLORS.textPrimary, fontFamily: FONTS.regular },
+  bullet: { fontSize: 15, lineHeight: 22, color: COLORS.textSecondary, fontFamily: FONTS.regular },
+  bulletText: { flex: 1, fontSize: 15, lineHeight: 22, color: COLORS.textPrimary, fontFamily: FONTS.regular },
   label: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginTop: SPACING.sm },
-  hint: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textTertiary },
+  hint: { fontSize: 14, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     borderWidth: 1,
@@ -874,7 +875,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.chipText },
+  chipText: { fontSize: 15, fontFamily: FONTS.medium, color: COLORS.chipText },
   chipTextOn: { color: COLORS.white },
   consentRow: {
     flexDirection: 'row',
@@ -885,10 +886,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   consentBody: { flex: 1, gap: 4 },
-  consentTitle: { fontSize: 14, lineHeight: 20, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  status: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textSecondary, textAlign: 'center' },
+  consentTitle: { fontSize: 16, lineHeight: 22, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  status: { fontSize: 15, fontFamily: FONTS.regular, color: COLORS.textSecondary, textAlign: 'center' },
   notice: { backgroundColor: COLORS.primarySoft, borderRadius: RADIUS.md, padding: SPACING.lg, gap: SPACING.md },
-  noticeText: { fontSize: 14, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  noticeText: { fontSize: 15, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   footer: { padding: SPACING.lg },
   overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: COLORS.background },
   overlayContent: { padding: SPACING.lg, paddingTop: SPACING.xl, gap: SPACING.lg },
@@ -945,10 +946,10 @@ const styles = StyleSheet.create({
   mockTagText: { fontSize: 11, fontFamily: FONTS.semibold, color: COLORS.white },
   privacyTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   overlayFooter: { gap: SPACING.sm },
-  sectionTitle: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary, marginTop: SPACING.sm },
+  sectionTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textSecondary, marginTop: SPACING.sm },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   settingText: { flex: 1, gap: 2 },
-  settingLabel: { fontSize: 15, lineHeight: 21, fontFamily: FONTS.medium, color: COLORS.textPrimary },
+  settingLabel: { fontSize: 16, lineHeight: 22, fontFamily: FONTS.medium, color: COLORS.textPrimary },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border, paddingBottom: 10 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   privacyCard: { gap: 6 },
@@ -961,8 +962,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primarySoft,
   },
   stepButtonOff: { opacity: 0.35 },
-  stepValue: { minWidth: 40, textAlign: 'center', fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  resetText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
+  stepValue: { minWidth: 44, textAlign: 'center', fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  resetText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.primary },
   testButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   footerRow: { flexDirection: 'row', gap: SPACING.sm },
   footerItem: { flex: 1 },
