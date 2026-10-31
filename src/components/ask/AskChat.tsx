@@ -21,7 +21,7 @@ import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from ".
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
 import { routeAsk, sendAskFeedback, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
-import { getErrorMessage } from "../../apis/client";
+import { ApiError, getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
 import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
@@ -147,6 +147,15 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
   return { shown, cut };
 }
 
+/** 서버 답이 실패했을 때 알릴 말. 상태 코드는 routeAsk(ApiError)에서만 알 수 있다 — 흘려받기 도중 끊기면 일반 문구. */
+function askFailureText(error: unknown): string {
+  const status = error instanceof ApiError ? error.status : null;
+  if (status === 429) return "질문이 많아 잠시 쉬고 있어요. 조금 뒤에 다시 물어봐 주세요.";
+  if (status === 403) return "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
+  if (status === 404) return "지금은 물어보기 서버가 꺼져 있어 답할 수 없어요.";
+  return "지금은 답을 만들 수 없어요. 잠시 뒤에 다시 물어봐 주세요.";
+}
+
 /**
  * '물어보기' 챗봇 화면. 고객센터 챗봇처럼 묻고 답한다.
  * 완성 전까지는 운영 앱에 넣지 않고 웹 `/dev/ask`(암호키 인증, `DevPathGate`)에서만 연다(10-15 요청).
@@ -155,7 +164,7 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
  * 네트워크 없이 앱에 담아 둔 표만 훑는다 — 답을 지어내지 않고, 없으면 없다고 한다.
  * ③ serverKey 가 있으면(/dev/ask) 모든 질문을 서버에 묻는다. 서버는 앞 대화를 보고 필요한 안내를 골라 그 안내 원문 안에서만
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
- *    되묻기 단계면 ①처럼 버튼으로 되묻고, 서버가 실패하거나 앱이 모르는 id 면 ①·②로 돌아간다.
+ *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
 export default function AskChat({ onClose, serverKey }: AskChatProps) {
   const insets = useSafeAreaInsets();
@@ -223,20 +232,6 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     ];
   };
 
-  /** 낱말 찾기로 답한다 — 흐름이 맞으면 그 단계, 없으면 맡은 부서. */
-  const answerLocally = (question: string, matched: ReturnType<typeof matchAskFlow>): NewMessage[] => {
-    if (matched) return stepMessages(matched.flow.id, matched.nodeId, question);
-    const offices = askOffices(facilities, question);
-    return [
-      offices.length > 0
-        ? { role: "offices", intro: "이 일을 맡은 부서예요. 전화하거나 학교 홈페이지의 부서 안내를 확인해 보세요.", offices }
-        : {
-            role: "text",
-            text: `아직 '${question}'에 맞는 안내를 못 찾았어요. 학교 홈페이지 안내와 부서 업무로 찾고 있어요 — 다른 낱말로 물어봐 주세요.`,
-          },
-    ];
-  };
-
   /** 서버에 넘길 앞 대화(최근 3턴) — 사용자 말, 그 뒤에 처음 열린 안내, 서버가 써 준 답. */
   const recentTurns = (): AskRouteTurn[] => {
     const turns: AskRouteTurn[] = [];
@@ -297,7 +292,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     const history = recentTurns();
     push({ role: "user", text: question });
     if (!serverKey) {
-      push(...answerLocally(question, matched));
+      // 낱말 찾기로 답하지 않는다(10-27 운영진 요청) — 낱말만 겹치는 엉뚱한 안내나 긴 원문이 서버 답처럼 보였다.
+      push({ role: "text", text: "암호키가 없어 답할 수 없어요. /dev 화면에서 암호키를 넣고 다시 열어 주세요." });
       return;
     }
     setPending(true);
@@ -397,7 +393,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         { role: "handoff", question, answer: "", sources: [], note: "", contact: "", status: "editing", error: null },
       );
       return;
-    } catch {
+    } catch (error) {
       if (abort.signal.aborted) {
         // 학생이 멈춤을 눌렀다 — 나온 글자가 있으면 그대로 두고 '중간에 멈춘 답'으로, 없으면 말풍선을 지우고 한 줄만.
         const stoppedId = nextId.current++;
@@ -410,13 +406,14 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         });
         return;
       }
-      // 서버가 꺼졌거나(503) 한도(429)·네트워크 오류 — 아래 낱말 찾기로 답한다.
+      // 서버가 꺼졌거나(404·503) 한도(429)·키(403)·네트워크 오류. 낱말 찾기로 답하지 않고 실패를 그대로 알린다(10-27 운영진 요청 —
+      // 실패할 때마다 낱말만 겹치는 안내·긴 원문이 서버 답처럼 나와, 답이 틀린 건지 서버가 실패한 건지 알 수 없었다).
       removeLive();
+      push({ role: "text", text: askFailureText(error) });
     } finally {
       abortRef.current = null;
       setPending(false);
     }
-    push(...answerLocally(question, matched));
   };
 
   /** 답을 받는 동안 보내기 버튼이 멈춤으로 바뀐다. */
