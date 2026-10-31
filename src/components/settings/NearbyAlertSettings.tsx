@@ -31,7 +31,6 @@ import {
   resetNearbyHistoryForDebug,
   sendNearbyTestAlert,
   setNearbyPrefs,
-  snoozeNearbyToday,
   syncNearbyAlerts,
   unmuteNearbyPartner,
   type NearbyChecklist,
@@ -40,7 +39,6 @@ import {
 } from '../../lib/nearbyPartners/background'
 import {
   ALERT_RADIUS_METERS,
-  DAILY_LIMIT_OPTIONS,
   MAX_ALERTS_PER_DAY,
   PARTNER_REGION_RADIUS_METERS,
   QUIET_END_HOUR,
@@ -75,9 +73,9 @@ function missingItems(checklist: NearbyChecklist | null): string[] {
 
 /**
  * 설정 > 알림 > "근처 제휴 알림". 근처 알림 빌드(`NEARBY_ALERTS_BUILD=1`)이고 로그인했을 때만 보인다.
- * - 줄: 켜고 끄는 스위치 + 지금 상태 한 줄(빠진 권한·오늘은 그만·받는 범위). 줄을 누르면 창이 열린다.
+ * - 줄: 켜고 끄는 스위치 + 지금 상태 한 줄(빠진 권한·받는 범위). 줄을 누르면 창이 열린다.
  * - 꺼져 있을 때 창: 안내·소속·수신 동의 → "항상 허용" 안내 화면 → 알림 권한 → 위치 "앱 사용 중" → "항상" → 감시 시작.
- * - 켜져 있을 때 창: "알림이 오려면" 점검표(빠진 권한 고치기), 받는 방법(하루 최대 수·밤에 받지 않기·오늘은 그만),
+ * - 켜져 있을 때 창: "알림이 오려면" 점검표(빠진 권한 고치기), 받는 방법(밤에 받지 않기),
  *   내 소속, 알림 안 받는 가게, (테스트 앱) 반경·횟수 제한·시험 알림. 바꾸면 바로 저장된다.
  * 끄기: 감시·예약을 멈추고 서버 동의 시각을 지운다(수신 거부). 설계: `docs/nearby-partner-alert-release-plan.md`.
  */
@@ -137,7 +135,6 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
   const source: NearbySource = { partners, campusPoints: buildings, serverEnabled: data?.nearbyAlertsEnabled === true }
   const serverPaused = !data?.nearbyAlertsEnabled && !NEARBY_FIELD_TEST
   const missing = missingItems(checklist)
-  const snoozed = !!settings?.snoozeUntil
 
   const turnOff = async () => {
     setBusy(true)
@@ -156,9 +153,7 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         ? '제휴 가게에 머물면 받을 수 있는 혜택을 알려 드려요.'
         : missing.length > 0
           ? `알림이 오려면 설정이 필요해요: ${missing.join(', ')}. 눌러서 고칠 수 있어요.`
-          : snoozed
-            ? '오늘은 그만 받기 중이에요. 내일 다시 알려 드려요.'
-            : `${affiliationLabel(settings?.affiliation ?? null)} 제휴 가게에 5분 넘게 머물면 알려 드려요.`
+          : `${affiliationLabel(settings?.affiliation ?? null)} 제휴 가게에 5분(카페는 2분) 넘게 머물면 알려 드려요.`
 
   return (
     <>
@@ -166,7 +161,7 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         icon="navigate-outline"
         label="근처 제휴 알림"
         description={debugLine ? `${description}\n${debugLine}` : description}
-        value={enabled ? (missing.length > 0 ? '확인 필요' : snoozed ? '오늘은 쉼' : undefined) : undefined}
+        value={enabled && missing.length > 0 ? '확인 필요' : undefined}
         onPress={() => setModalVisible(true)}
         last
         right={
@@ -353,7 +348,6 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   }
 
   const muted = settings?.muted ?? []
-  const dailyLimit = settings?.dailyLimit ?? MAX_ALERTS_PER_DAY
   const working = step.kind === 'working'
 
   return (
@@ -388,34 +382,11 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
 
                 <Text style={styles.sectionTitle}>받는 방법</Text>
                 <View style={styles.card}>
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingText}>
-                      <Text style={styles.settingLabel}>하루 최대</Text>
-                      <Text style={styles.hint}>
-                        {SHOW_DEVELOPER_TOOLS && unlimited
-                          ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
-                          : '같은 가게는 하루 1번, 알림 사이는 30분 넘게 띄워요.'}
-                      </Text>
-                    </View>
-                    <View style={styles.segment}>
-                      {DAILY_LIMIT_OPTIONS.map((n) => {
-                        const selected = dailyLimit === n
-                        return (
-                          <Pressable
-                            key={n}
-                            onPress={() => void run('저장하는 중이에요', () => setNearbyPrefs({ dailyLimit: n }))}
-                            disabled={working}
-                            style={[styles.segmentItem, selected && styles.segmentItemOn]}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected }}
-                            accessibilityLabel={`하루 최대 ${n}번`}
-                          >
-                            <Text style={[styles.segmentText, selected && styles.segmentTextOn]}>{n}번</Text>
-                          </Pressable>
-                        )
-                      })}
-                    </View>
-                  </View>
+                  <Text style={styles.hint}>
+                    {SHOW_DEVELOPER_TOOLS && unlimited
+                      ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
+                      : `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
+                  </Text>
                   <View style={styles.divider} />
                   <View style={styles.settingRow}>
                     <View style={styles.settingText}>
@@ -428,19 +399,6 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       accessibilityLabel={QUIET_LABEL}
                     />
                   </View>
-                  <View style={styles.divider} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingText}>
-                      <Text style={styles.settingLabel}>오늘은 그만 받기</Text>
-                      <Text style={styles.hint}>내일(자정)이 되면 다시 알려 드려요. 알림의 버튼으로도 켤 수 있어요.</Text>
-                    </View>
-                    <ToggleSwitch
-                      value={!!settings?.snoozeUntil}
-                      onToggle={() => void run('저장하는 중이에요', () => snoozeNearbyToday(!settings?.snoozeUntil))}
-                      locked={working}
-                      accessibilityLabel="오늘은 그만 받기"
-                    />
-                  </View>
                 </View>
               </>
             ) : (
@@ -450,8 +408,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 </View>
                 <View style={styles.card}>
                   {[
-                    `제휴 가게 ${radius}m 안에 5분 넘게 머물면 그 가게 혜택을 알려 드려요.`,
-                    '하루에 몇 번 받을지, 밤에는 받지 않을지는 켠 뒤에 이 화면에서 고를 수 있어요.',
+                    `제휴 가게 ${radius}m 안에 5분(카페는 2분) 넘게 머물면 그 가게 혜택을 알려 드려요.`,
+                    `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번까지 알려 드려요. 밤에는 받지 않도록 켠 뒤에 고를 수 있어요.`,
                     '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
                     '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
                   ].map((line) => (
@@ -927,11 +885,6 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 15, lineHeight: 21, fontFamily: FONTS.medium, color: COLORS.textPrimary },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border, paddingBottom: 10 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
-  segment: { flexDirection: 'row', backgroundColor: COLORS.fill, borderRadius: RADIUS.pill, padding: 3 },
-  segmentItem: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.pill },
-  segmentItemOn: { backgroundColor: COLORS.white },
-  segmentText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textSecondary },
-  segmentTextOn: { color: COLORS.primary, fontFamily: FONTS.semibold },
   privacyCard: { gap: 6 },
   testButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   footerRow: { flexDirection: 'row', gap: SPACING.sm },

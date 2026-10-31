@@ -163,20 +163,8 @@ test('끈 가게는 머물러도 알리지 않고, 예약해 둔 가게를 끄�
   assert.equal(onlyB.state.pending?.othersCount, 0)
 })
 
-test('오늘은 그만: 예약을 취소하고 한국 날짜가 바뀌면 다시 알린다', () => {
-  const entered = onEnter(base, 'a', kst(12, 0)).state
-  const snoozed = onPrefs(entered, { snoozeUntil: kst(24, 0) }, kst(12, 1))
-  assert.deepEqual(snoozed.actions, [{ kind: 'cancel' }])
-  assert.deepEqual(onEnter(snoozed.state, 'b', kst(13, 0)).actions, [])
-  // 다음 날이면 풀린다(아직 머무는 a 와 새로 온 c 를 묶어 먼저 온 a 이름으로).
-  const tomorrow = onEnter(snoozed.state, 'c', kst(24, 30))
-  assert.equal(tomorrow.state.snoozeUntil, null)
-  assert.equal(tomorrow.state.pending?.partnerId, 'a')
-  assert.equal(tomorrow.state.pending?.othersCount, 1)
-})
-
-test('하루 최대 1번으로 바꾸면 두 번째 가게는 알리지 않는다', () => {
-  const one: NearbyState = { ...base, dailyLimit: 1, sent: [{ partnerId: 'a', at: kst(9, 0) }] }
-  assert.deepEqual(onEnter(one, 'b', kst(12, 0)).actions, [])
-  assert.equal(onEnter({ ...one, dailyLimit: 3 }, 'b', kst(12, 0)).state.pending?.partnerId, 'b')
+test('카페는 2분 머물면 알린다', () => {
+  const cafe: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, category: '카페' } : t)) }
+  assert.equal(onEnter(cafe, 'a', kst(12, 0)).state.pending?.fireAt, kst(12, 2))
+  assert.equal(onEnter(cafe, 'b', kst(12, 0)).state.pending?.fireAt, kst(12, 5))
 })

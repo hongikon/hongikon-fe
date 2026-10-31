@@ -22,7 +22,6 @@ import {
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
-  endOfKstDay,
   insideAtRegistration,
   pickNearest,
   pickTargets,
@@ -79,10 +78,9 @@ const STORAGE_KEY = 'hongikon_nearby_alerts_v1'
 /** 예약 알림은 늘 하나라 고정 id 로 덮어쓰고 지운다. */
 const NOTIFICATION_ID = 'nearby-partner'
 export const NEARBY_CHANNEL_ID = 'nearby-partner'
-/** 알림 아래 버튼(길게 누르거나 내려 펼치면 보인다): 이 가게 알림 끄기, 오늘은 그만 받기. */
+/** 알림 아래 버튼(길게 누르거나 내려 펼치면 보인다): 이 가게 알림 끄기. */
 export const NEARBY_CATEGORY_ID = 'nearby-partner'
 export const NEARBY_ACTION_MUTE = 'NEARBY_MUTE'
-export const NEARBY_ACTION_SNOOZE = 'NEARBY_SNOOZE'
 
 interface Packages {
   Location: LocationPackage
@@ -171,7 +169,6 @@ async function ensureCategory(): Promise<void> {
   try {
     await Notifications.setNotificationCategoryAsync(NEARBY_CATEGORY_ID, [
       { identifier: NEARBY_ACTION_MUTE, buttonTitle: '이 가게 알림 끄기', options: { opensAppToForeground: true } },
-      { identifier: NEARBY_ACTION_SNOOZE, buttonTitle: '오늘은 그만 받기', options: { opensAppToForeground: true } },
     ])
   } catch (error) {
     categoryReady = false
@@ -686,6 +683,7 @@ function snapshot(partners: readonly Partner[], affiliation: PartnerAffiliation 
     name: p.name,
     lat: p.lat,
     lng: p.lng,
+    category: p.category,
     benefit: p.benefit,
     affiliations: p.affiliations,
     affiliationBenefits: p.affiliationBenefits,
@@ -696,11 +694,9 @@ export interface NearbySettings {
   enabled: boolean
   affiliation: PartnerAffiliation | null
   targetCount: number
-  dailyLimit: number | undefined
   quietNight: boolean
   /** 알림을 끈 가게(이름을 알면 이름, 대상 목록에서 빠졌으면 id). */
   muted: { id: string; name: string }[]
-  snoozeUntil: number | null
 }
 
 export async function getNearbySettings(): Promise<NearbySettings> {
@@ -709,10 +705,8 @@ export async function getNearbySettings(): Promise<NearbySettings> {
     enabled: state.enabled,
     affiliation: state.affiliation,
     targetCount: state.targets.length,
-    dailyLimit: state.dailyLimit,
     quietNight: state.quietNight === true,
     muted: (state.muted ?? []).map((id) => ({ id, name: state.targets.find((t) => t.id === id)?.name ?? id })),
-    snoozeUntil: state.snoozeUntil ?? null,
   }
 }
 
@@ -733,22 +727,12 @@ export async function unmuteNearbyPartner(id: string): Promise<void> {
   await mutate((state, now) => onPrefs(state, { muted: (state.muted ?? []).filter((m) => m !== id) }, now))
 }
 
-/** 오늘(한국 날짜)은 그만 받기. null 이면 다시 받기. */
-export async function snoozeNearbyToday(on: boolean): Promise<void> {
-  if (!packages()) return
-  await mutate((state, now) => onPrefs(state, { snoozeUntil: on ? endOfKstDay(now) : null }, now))
-}
-
 /**
  * 근처 알림의 버튼을 눌렀다(`lib/pushNotifications.ts`). 처리했으면 무엇을 했는지 짧은 안내 문구, 아니면 null.
  * 버튼이 아닌 알림 본문 탭은 여기서 다루지 않는다(지도로 이동).
  */
 export async function handleNearbyNotificationAction(actionId: string, data: unknown): Promise<string | null> {
-  if (actionId !== NEARBY_ACTION_MUTE && actionId !== NEARBY_ACTION_SNOOZE) return null
-  if (actionId === NEARBY_ACTION_SNOOZE) {
-    await snoozeNearbyToday(true)
-    return '오늘은 근처 제휴 알림을 더 보내지 않아요.'
-  }
+  if (actionId !== NEARBY_ACTION_MUTE) return null
   const payload = (data ?? {}) as { partnerId?: unknown; partnerIds?: unknown }
   const ids = Array.isArray(payload.partnerIds)
     ? payload.partnerIds.filter((id): id is string => typeof id === 'string')

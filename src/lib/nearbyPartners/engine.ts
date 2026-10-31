@@ -4,6 +4,7 @@ import {
   REENTRY_GRACE_MS,
   alertGroup,
   decideOnEnter,
+  dwellFor,
   stayStartedAt,
   type SentAlert,
   type StayRecord,
@@ -26,6 +27,8 @@ export interface SnapshotPartner {
   name: string
   lat: number
   lng: number
+  /** 분류(카페는 머무는 시간이 짧다, `dwellFor`). */
+  category?: string
   benefit?: string
   affiliations?: PartnerAffiliation[]
   affiliationBenefits?: { affiliation: PartnerAffiliation; benefit: string }[]
@@ -46,18 +49,14 @@ export interface NearbyState {
   pending: PendingAlert | null
   /** 현장 테스트 빌드: 하루·간격 제한 없이 가게에 들어갈 때마다 한 번씩 알린다. */
   perVisit?: boolean
-  /** 설정: 하루 최대 알림 수(없으면 `MAX_ALERTS_PER_DAY`). */
-  dailyLimit?: number
   /** 설정: 밤(22~8시)에는 받지 않기. 기본 꺼짐. */
   quietNight?: boolean
   /** 알림의 "이 가게 알림 끄기"·설정에서 끈 업체 id. 기기에만 둔다. */
   muted?: string[]
-  /** 알림의 "오늘은 그만 받기": 이 시각(한국 날짜가 바뀌는 때)까지 보내지 않는다. */
-  snoozeUntil?: number | null
 }
 
 /** 설정에서 바꾸는 값(`onPrefs`). */
-export type NearbyPrefs = Pick<NearbyState, 'dailyLimit' | 'quietNight' | 'muted' | 'snoozeUntil'>
+export type NearbyPrefs = Pick<NearbyState, 'quietNight' | 'muted'>
 
 /** 알림 대상으로 셀 머무름(끈 업체는 뺀다). 예약 묶음·알림 문구가 같은 목록을 쓴다. */
 export function activeStays(state: NearbyState): Map<string, StayRecord> {
@@ -95,8 +94,7 @@ export function settle(state: NearbyState, now: number): NearbyState {
   for (const [id, stay] of Object.entries(state.stays)) {
     if (stay.exitedAt === null || now - stay.exitedAt <= REENTRY_GRACE_MS) stays[id] = stay
   }
-  const snoozeUntil = state.snoozeUntil && state.snoozeUntil > now ? state.snoozeUntil : null
-  return { ...state, sent, pending, stays, snoozeUntil }
+  return { ...state, sent, pending, stays }
 }
 
 function sameAlert(a: PendingAlert | null, b: PendingAlert | null): boolean {
@@ -136,8 +134,7 @@ function chooseLead(state: NearbyState, ids: readonly string[], fallback: string
  */
 export function plan(state: NearbyState, now: number, at?: Position): Step {
   let desired: PendingAlert | null = null
-  const snoozed = !!state.snoozeUntil && now < state.snoozeUntil
-  if (state.enabled && !snoozed) {
+  if (state.enabled) {
     const stays = activeStays(state)
     const group = alertGroup(stays, state.sent, now, state.perVisit)
     if (group) {
@@ -147,8 +144,9 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
       const leadId = chooseLead(state, members, keep, at)
       const decision = decideOnEnter(leadId, stays.get(group.leadId)!.enteredAt, state.sent, now, {
         perVisit: state.perVisit,
-        dailyLimit: state.dailyLimit,
         quietNight: state.quietNight,
+        // 알림 시각은 묶음에서 가장 먼저 들어온 곳 기준이라 머무는 시간도 그곳 분류로 정한다.
+        dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category),
       })
       if (decision.schedule) desired = { partnerId: leadId, fireAt: decision.fireAt, othersCount: group.others.length }
     }
@@ -210,8 +208,7 @@ export function onRegister(
 }
 
 /**
- * 설정 바꾸기(하루 최대 수·밤에 받지 않기·끈 업체·오늘은 그만). 바뀐 설정으로 예약을 다시 맞춘다 —
- * 예약해 둔 가게를 끄거나 "오늘은 그만"을 누르면 그 예약은 취소된다.
+ * 설정 바꾸기(밤에 받지 않기·끈 업체). 바뀐 설정으로 예약을 다시 맞춘다 — 예약해 둔 가게를 끄면 그 예약은 취소된다.
  */
 export function onPrefs(input: NearbyState, prefs: NearbyPrefs, now: number): Step {
   const state = settle({ ...input, ...prefs }, now)

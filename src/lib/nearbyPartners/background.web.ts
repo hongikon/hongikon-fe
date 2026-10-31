@@ -21,7 +21,7 @@ export async function requestNearbyPermission(): Promise<NearbyPermission> {
 }
 
 export async function getNearbySettings(): Promise<NearbySettings> {
-  return { enabled: false, affiliation: null, targetCount: 0, dailyLimit: undefined, quietNight: false, muted: [], snoozeUntil: null }
+  return { enabled: false, affiliation: null, targetCount: 0, quietNight: false, muted: [] }
 }
 
 export async function getNearbyChecklist(): Promise<NearbyChecklist> {
@@ -33,8 +33,6 @@ export async function setNearbyPrefs(): Promise<void> {}
 export async function muteNearbyPartners(): Promise<void> {}
 
 export async function unmuteNearbyPartner(): Promise<void> {}
-
-export async function snoozeNearbyToday(): Promise<void> {}
 
 export async function handleNearbyNotificationAction(): Promise<string | null> {
   return null

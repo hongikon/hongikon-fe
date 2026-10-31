@@ -91,9 +91,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       locationWhenInUsePermission:
         '가까운 제휴 가게와 거리를 보여 주고, 제휴 가게에 머물 때 혜택을 알려 드릴 때 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysAndWhenInUsePermission:
-        '제휴 업체 근처에 5분 넘게 머물면 받을 수 있는 혜택을 알려 드릴 때 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
+        '제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드리려고 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysPermission:
-        '제휴 업체 근처에 5분 넘게 머물면 받을 수 있는 혜택을 알려 드릴 때 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
+        '제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드리려고 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       isIosBackgroundLocationEnabled: true,
       isAndroidBackgroundLocationEnabled: true,
       // 가게 근처(깨우는 원 안)에 있을 때만 GPS 로 20m 를 재는 동안 Android 는 포그라운드 서비스(상단 알림)가 필요하다(10-31).
