@@ -109,7 +109,9 @@ export default function MapActionMenu({ onReport, onRoute, onRecenter, reportFil
           {/* 넘치면 스크롤. 펼치거나 줄이 늘면 손에 가까운 맨 아래(제보하기)가 보이게 끝으로 내린다. */}
           <ScrollView
             ref={scrollRef}
-            style={maxItemsHeight !== undefined ? { maxHeight: maxItemsHeight } : null}
+            // ScrollView 는 기본이 flexGrow 1 이라 내용보다 커져(간격 + 접기 버튼만큼, 54pt) 접기(X) 버튼을 한 칸 아래로
+            // 밀었다(10-31 시뮬레이터 측정: 닫힘 y=702 → 펼침 y=756). 내용 크기만큼만(넘치면 maxHeight 에서 스크롤).
+            style={[styles.itemsScroll, maxItemsHeight !== undefined ? { maxHeight: maxItemsHeight } : null]}
             contentContainerStyle={styles.items}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
@@ -266,6 +268,7 @@ const styles = StyleSheet.create({
   wrap: { alignItems: 'flex-end', gap: 10 },
   // 스크롤 칸이 그림자를 자르지 않게 둘레를 조금 띄운다.
   items: { alignItems: 'flex-end', gap: 10, paddingTop: 6, paddingBottom: 2, paddingLeft: 8 },
+  itemsScroll: { flexGrow: 0 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   labelPill: {
     paddingHorizontal: 12,
