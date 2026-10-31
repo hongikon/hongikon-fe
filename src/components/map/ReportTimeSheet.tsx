@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Keyboard, Modal, View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native'
+import { Keyboard, Modal, Pressable, View, Text, StyleSheet } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { FONTS, TYPE } from '../../constants/typography'
@@ -100,56 +100,54 @@ function SheetBody({ title, baseMidnight, dayCount, dayLabel, isValid, initialMs
   }))
 
   return (
-    <TouchableWithoutFeedback onPress={onCancel}>
-      <View style={styles.backdrop}>
-        <TouchableWithoutFeedback onPress={() => {}}>
-          <SafeAreaView style={styles.sheet} edges={['bottom']}>
-            <View style={styles.handle} />
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
-            <Text style={styles.preview}>
-              {formatDay(draft)} {formatClock(draft)}
-            </Text>
+    <View style={styles.backdrop}>
+      {/* 바깥을 누르면 취소. 시트를 터치 부품으로 감싸면 휠 스크롤이 자주 안 먹어(10-31) 시트 뒤에 따로 깐다. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityRole="button" accessibilityLabel="시간 고르기 닫기" />
+      <SafeAreaView style={styles.sheet} edges={['bottom']}>
+        <View style={styles.handle} />
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
+        <Text style={styles.preview}>
+          {formatDay(draft)} {formatClock(draft)}
+        </Text>
 
-            <View style={styles.columns}>
-              <View style={styles.dayColumn}>
-                <Text style={styles.columnLabel}>날짜</Text>
-                <WheelPicker
-                  items={dayItems}
-                  value={day}
-                  onChange={(next) => pick(next, hour, minute)}
-                  accessibilityLabel={`${title} 날짜`}
-                />
-              </View>
-              <View style={styles.column}>
-                <Text style={styles.columnLabel}>시</Text>
-                <WheelPicker
-                  items={hourItems}
-                  value={hour}
-                  onChange={(next) => pick(day, next, minute)}
-                  accessibilityLabel={`${title} 시`}
-                />
-              </View>
-              <View style={styles.column}>
-                <Text style={styles.columnLabel}>분</Text>
-                <WheelPicker
-                  items={minuteItems}
-                  value={minute}
-                  onChange={(next) => pick(day, hour, next)}
-                  accessibilityLabel={`${title} 분`}
-                />
-              </View>
-            </View>
+        <View style={styles.columns}>
+          <View style={styles.dayColumn}>
+            <Text style={styles.columnLabel}>날짜</Text>
+            <WheelPicker
+              items={dayItems}
+              value={day}
+              onChange={(next) => pick(next, hour, minute)}
+              accessibilityLabel={`${title} 날짜`}
+            />
+          </View>
+          <View style={styles.column}>
+            <Text style={styles.columnLabel}>시</Text>
+            <WheelPicker
+              items={hourItems}
+              value={hour}
+              onChange={(next) => pick(day, next, minute)}
+              accessibilityLabel={`${title} 시`}
+            />
+          </View>
+          <View style={styles.column}>
+            <Text style={styles.columnLabel}>분</Text>
+            <WheelPicker
+              items={minuteItems}
+              value={minute}
+              onChange={(next) => pick(day, hour, next)}
+              accessibilityLabel={`${title} 분`}
+            />
+          </View>
+        </View>
 
-            <View style={styles.actions}>
-              <Button label="취소" variant="secondary" onPress={onCancel} style={styles.action} />
-              <Button label="확인" onPress={() => onConfirm(draft)} disabled={!isValid(draft)} style={styles.action} />
-            </View>
-          </SafeAreaView>
-        </TouchableWithoutFeedback>
-      </View>
-    </TouchableWithoutFeedback>
+        <View style={styles.actions}>
+          <Button label="취소" variant="secondary" onPress={onCancel} style={styles.action} />
+          <Button label="확인" onPress={() => onConfirm(draft)} disabled={!isValid(draft)} style={styles.action} />
+        </View>
+      </SafeAreaView>
+    </View>
   )
 }
 
