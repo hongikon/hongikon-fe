@@ -21,7 +21,8 @@ import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
 import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
 import { getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
 import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
-import { promptLogin } from '../../../utils/reports'
+import { promptLogin, reportImageUrls } from '../../../utils/reports'
+import ImageViewerModal from '../../common/ImageViewerModal'
 import ModalHeader, { ModalPanel } from '../../settings/ModalHeader'
 import ContentColumn from '../../common/ContentColumn'
 import RetryableError from '../../common/RetryableError'
@@ -89,6 +90,9 @@ export default function ReportCommentsModal({
   const { accessToken, logout } = useAuth()
   const toast = useToast()
   const hiddenKeys = useHiddenAuthorKeys()
+  // 크게 보는 사진 번호. null 이면 닫힘.
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const closeViewer = useCallback(() => setViewerIndex(null), [])
   const [items, setItems] = useState<ReportComment[]>([])
   const [count, setCount] = useState(0)
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
@@ -359,7 +363,8 @@ export default function ReportCommentsModal({
   )
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    // Android 뒤로 가기: 사진을 크게 보고 있으면 사진만 닫는다.
+    <Modal visible={visible} animationType="slide" onRequestClose={viewerIndex !== null ? closeViewer : onClose}>
       <SafeAreaProvider>
         <KeyboardFrame>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -380,7 +385,7 @@ export default function ReportCommentsModal({
                   refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(0, 'refresh')} />}
                   ListHeaderComponent={
                     <>
-                      <ReportPostBody report={report} placeText={placeText} onPatch={onPatch} />
+                      <ReportPostBody report={report} placeText={placeText} onPatch={onPatch} onPressPhoto={setViewerIndex} />
                       <View style={styles.commentsHeading}>
                         <Text style={styles.commentsHeadingText}>
                           댓글{state.kind === 'ready' ? <Text style={styles.commentsHeadingCount}> {count}</Text> : null}
@@ -463,6 +468,8 @@ export default function ReportCommentsModal({
           onFlag={(reason) => menuFor && actions.flag(menuFor, reason)}
         />
         <ToastViewport />
+        {/* 사진 크게 보기는 이 창 위에 덮어 그린다(창 안에 창을 띄우면 iOS 에서 닫을 때 이 창까지 닫혔다, 10-31). */}
+        <ImageViewerModal inline urls={reportImageUrls(report)} startIndex={viewerIndex} onClose={closeViewer} />
       </SafeAreaProvider>
     </Modal>
   )

@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { formatFreshness, reportImageUrls } from '../../utils/reports'
-import ImageViewerModal from '../common/ImageViewerModal'
 import PhotoCarousel from '../common/PhotoCarousel'
 import OfficialBadge from '../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
@@ -16,20 +14,21 @@ import type { ReportListItem } from '../../types'
  * 제보 본문(게시글) — 종류 배지, 제목, 시각·장소, 본문 전체, 사진, 작성자, 공감·관심·공유.
  * 제보 본문 창(ReportCommentsModal) 맨 위에 놓이고, 아래로 댓글이 이어진다(10-09 — 본문과 댓글을 한 게시글 화면으로).
  * 본문은 길게 눌러 복사할 수 있다.
+ * 사진을 누르면 onPressPhoto(순번) — 크게 보기는 본문 창이 맡는다(창 안에 창을 띄우면 iOS 에서 본문 창까지 닫혔다, 10-31).
  */
 export default function ReportPostBody({
   report,
   placeText,
   onPatch,
+  onPressPhoto,
 }: {
   report: ReportListItem
   placeText: string
   onPatch: (patch: ReportCommunityPatch) => void
+  onPressPhoto: (index: number) => void
 }) {
   const meta = reportCategoryMeta(report.category)
   const photos = reportImageUrls(report)
-  // 크게 보는 사진 번호. null 이면 닫힘.
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   return (
     <View style={styles.body}>
       <View style={styles.badge}>
@@ -54,10 +53,9 @@ export default function ReportPostBody({
       {photos.length > 0 && (
         // 자르지 않고 원래 비율로, 여러 장이면 옆으로 넘기며 아래 점으로 몇 번째인지 본다.
         <View style={styles.photos}>
-          <PhotoCarousel urls={photos} onPressPhoto={setViewerIndex} labelPrefix="제보 첨부 사진" />
+          <PhotoCarousel urls={photos} onPressPhoto={onPressPhoto} labelPrefix="제보 첨부 사진" />
         </View>
       )}
-      <ImageViewerModal urls={photos} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
 
       <View style={styles.authorRow}>
         <Text style={styles.author} numberOfLines={1}>
