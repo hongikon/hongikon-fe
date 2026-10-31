@@ -24,11 +24,12 @@ node scripts/ask/export-catalog.mjs # 흐름 → 백엔드 ask/catalog.json·sou
 ## RAG 색인용 원문(학과 홈페이지)
 
 ```sh
-python3 -I scripts/ask/depthome.py  # 학과 홈페이지 메뉴 → data/rag-depthome.json
+python3 -I scripts/ask/depthome.py            # 학과 홈페이지 메뉴 → data/rag-depthome.json
+python3 -I scripts/ask/depthome.py --faculty  # 교수진 페이지(헤드리스 Chrome으로 그려서)에서 이름·직위·연구분야만
 ```
 
 - 원문을 그대로 넣고 낱말 목록은 짜지 않는다. 백엔드 `tools/embed-server/build_index.py` 가 `data/rag-*.json` 을 색인에 함께 넣는다. 이 파일이나 `sources.json` 이 바뀌면 색인을 다시 만든다(BE `docs/ask-embedding-plan.md`).
-- **개인정보:** 교수·교직원·연구실 소개는 내용(연락처·연구실·이메일)을 옮기지 않고 페이지 위치만 남긴다(10-28 운영진 결정). 학번 줄과 게시판 목록은 빼고, 휴대전화 번호는 지운다. 새 학과를 넣으면 결과 파일에 실명·연락처가 남지 않았는지 확인한다.
+- **개인정보:** 교수진 페이지는 이름·직위·연구분야만 옮긴다(10-31 운영진 결정, `--faculty`). 학위·출신 학교·연구실·전화·이메일·사진은 읽지도 저장하지도 않는다. 교직원·연구랩·조교 소개는 페이지 위치만 남긴다. 학번 줄과 게시판 목록은 빼고, 휴대전화 번호는 지운다. 새 학과를 넣으면 결과 파일에 학생 실명·연락처가 남지 않았는지 확인한다.
 
 ## 평가(로컬 서버)
 
