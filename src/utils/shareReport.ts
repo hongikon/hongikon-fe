@@ -1,4 +1,4 @@
-import { Platform, Share } from 'react-native'
+import { shareLink, type ShareResult } from './share'
 import type { Building, ReportListItem } from '../types'
 import { formatFloor } from './floors'
 import { haversineMeters } from './geo'
@@ -46,46 +46,12 @@ export function reportShareMessage(report: ReportListItem, buildings: readonly B
   ].join('\n')
 }
 
-/**
- * OS 공유 창을 연다. 웹은 `navigator.share` 가 있으면 그걸(react-native-web Share), 없으면(데스크톱 크롬 등) 클립보드에 복사한다.
- * 결과: 'shared' | 'copied' | 'dismissed' | 'failed'.
- */
-export async function shareReport(
-  report: ReportListItem,
-  buildings: readonly Building[],
-): Promise<'shared' | 'copied' | 'dismissed' | 'failed'> {
-  const message = reportShareMessage(report, buildings)
-  const url = reportShareUrl(report.id)
-  if (Platform.OS === 'web') {
-    const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: unknown }) : undefined
-    if (nav && typeof nav.share === 'function') {
-      try {
-        await (nav.share as (data: { title?: string; text?: string; url?: string }) => Promise<void>)({
-          title: report.title,
-          // 링크는 url 로 따로 준다 — 문구 끝에도 있으면 메신저에 두 번 붙는다.
-          text: message.replace(`\n${url}`, ''),
-          url,
-        })
-        return 'shared'
-      } catch (error) {
-        if ((error as { name?: string })?.name === 'AbortError') return 'dismissed'
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(message)
-      return 'copied'
-    } catch {
-      return 'failed'
-    }
-  }
-  try {
-    // iOS 는 message + url 을 따로 주면 링크 미리보기가 붙는다. 안드로이드는 message 만 쓴다(링크 포함).
-    const result = await Share.share(
-      Platform.OS === 'ios' ? { message: message.replace(`\n${url}`, ''), url, title: report.title } : { message, title: report.title },
-      { dialogTitle: '제보 공유하기', subject: report.title },
-    )
-    return result.action === Share.dismissedAction ? 'dismissed' : 'shared'
-  } catch {
-    return 'failed'
-  }
+/** 제보 공유(OS 공유 창, 웹은 공유 창 또는 복사). 결과: 'shared' | 'copied' | 'dismissed' | 'failed'. */
+export function shareReport(report: ReportListItem, buildings: readonly Building[]): Promise<ShareResult> {
+  return shareLink({
+    title: report.title,
+    message: reportShareMessage(report, buildings),
+    url: reportShareUrl(report.id),
+    dialogTitle: '제보 공유하기',
+  })
 }

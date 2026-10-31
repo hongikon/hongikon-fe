@@ -22,6 +22,8 @@ import { NewsDetailSkeleton, DetailBodySkeleton } from '../components/common/Ske
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import type { NewsItem } from '../types'
 import { openExternalUrl } from '../utils/openExternalUrl'
+import { shareNews } from '../utils/shareNews'
+import { useToast } from '../components/common/Toast'
 import { formatNewsBody, splitLinks } from '../utils/newsBody'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewsDetail'>
@@ -103,6 +105,13 @@ function NewsDetailBody({
   const originalA11yLabel = item.link ? '원문 보기' : '원문 보기, 홍익대 홈페이지'
   const openOriginal = () => openExternalUrl(item.link, 'https://www.hongik.ac.kr')
   const insets = useSafeAreaInsets()
+  const toast = useToast()
+  // 홍익온 형식으로 공유(제목·출처·날짜·분야·본문 앞부분·홍익온 링크, `utils/shareNews.ts`).
+  const handleShare = async () => {
+    const result = await shareNews(item)
+    if (result === 'copied') toast.show({ message: '공유 문구와 링크를 복사했어요' })
+    else if (result === 'failed') toast.show({ message: '공유하지 못했어요', tone: 'warning' })
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -112,12 +121,20 @@ function NewsDetailBody({
         card
         style={layoutStyles.readable}
         right={
-          <IconButton
-            icon={bookmarked ? 'bookmark' : 'bookmark-outline'}
-            color={bookmarked ? COLORS.primary : COLORS.textSecondary}
-            onPress={() => toggleBookmark(item.id)}
-            accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
-          />
+          <View style={styles.headerActions}>
+            <IconButton
+              icon="share-outline"
+              color={COLORS.textSecondary}
+              onPress={() => void handleShare()}
+              accessibilityLabel={`${item.title} 공유하기`}
+            />
+            <IconButton
+              icon={bookmarked ? 'bookmark' : 'bookmark-outline'}
+              color={bookmarked ? COLORS.primary : COLORS.textSecondary}
+              onPress={() => toggleBookmark(item.id)}
+              accessibilityLabel={bookmarked ? `${item.title} 북마크 해제` : `${item.title} 북마크`}
+            />
+          </View>
         }
       />
 
@@ -200,6 +217,7 @@ function NewsDetailBody({
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   container: { flex: 1, backgroundColor: COLORS.background },
   column: { flex: 1 },
   loadError: { margin: 16 },
