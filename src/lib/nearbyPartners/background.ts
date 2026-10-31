@@ -19,6 +19,7 @@ import {
   type Step,
 } from './engine'
 import {
+  DEFAULT_DWELL_MINUTES,
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
@@ -27,6 +28,7 @@ import {
   pickTargets,
   preciselyInside,
   reselectRadius,
+  type DwellMinutes,
 } from './rules'
 import { nearbyAlertContent, nearbyGroupContent } from './copy'
 import {
@@ -695,6 +697,7 @@ export interface NearbySettings {
   affiliation: PartnerAffiliation | null
   targetCount: number
   quietNight: boolean
+  dwellMinutes: DwellMinutes
   /** 알림을 끈 가게(이름을 알면 이름, 대상 목록에서 빠졌으면 id). */
   muted: { id: string; name: string }[]
 }
@@ -706,6 +709,7 @@ export async function getNearbySettings(): Promise<NearbySettings> {
     affiliation: state.affiliation,
     targetCount: state.targets.length,
     quietNight: state.quietNight === true,
+    dwellMinutes: state.dwellMinutes ?? DEFAULT_DWELL_MINUTES,
     muted: (state.muted ?? []).map((id) => ({ id, name: state.targets.find((t) => t.id === id)?.name ?? id })),
   }
 }

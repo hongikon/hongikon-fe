@@ -168,3 +168,16 @@ test('카페는 2분 머물면 알린다', () => {
   assert.equal(onEnter(cafe, 'a', kst(12, 0)).state.pending?.fireAt, kst(12, 2))
   assert.equal(onEnter(cafe, 'b', kst(12, 0)).state.pending?.fireAt, kst(12, 5))
 })
+
+test('머무는 시간을 바꾸면 그 시간으로, 바꾸면 지금 예약도 다시 맞춘다', () => {
+  const cafe: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, category: '카페' } : t)) }
+  const custom: NearbyState = { ...cafe, dwellMinutes: { cafe: 1, other: 8 } }
+  assert.equal(onEnter(custom, 'a', kst(12, 0)).state.pending?.fireAt, kst(12, 1))
+  assert.equal(onEnter(custom, 'b', kst(12, 0)).state.pending?.fireAt, kst(12, 8))
+  // 머무는 중에 바꾸면 새 시각으로 다시 예약
+  const entered = onEnter(cafe, 'b', kst(12, 0)).state
+  const changed = onPrefs(entered, { dwellMinutes: { cafe: 2, other: 3 } }, kst(12, 1))
+  assert.equal(changed.state.pending?.fireAt, kst(12, 3))
+  // 범위 밖 값은 1~10분으로
+  assert.equal(onEnter({ ...cafe, dwellMinutes: { cafe: 0, other: 30 } }, 'b', kst(12, 0)).state.pending?.fireAt, kst(12, 10))
+})

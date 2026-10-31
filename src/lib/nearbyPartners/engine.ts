@@ -6,6 +6,7 @@ import {
   decideOnEnter,
   dwellFor,
   stayStartedAt,
+  type DwellMinutes,
   type SentAlert,
   type StayRecord,
 } from './rules'
@@ -51,12 +52,14 @@ export interface NearbyState {
   perVisit?: boolean
   /** 설정: 밤(22~8시)에는 받지 않기. 기본 꺼짐. */
   quietNight?: boolean
+  /** 설정: 알림까지 머무는 시간(분). 없으면 카페 2분·그 밖 5분. */
+  dwellMinutes?: DwellMinutes | null
   /** 알림의 "이 가게 알림 끄기"·설정에서 끈 업체 id. 기기에만 둔다. */
   muted?: string[]
 }
 
 /** 설정에서 바꾸는 값(`onPrefs`). */
-export type NearbyPrefs = Pick<NearbyState, 'quietNight' | 'muted'>
+export type NearbyPrefs = Pick<NearbyState, 'quietNight' | 'muted' | 'dwellMinutes'>
 
 /** 알림 대상으로 셀 머무름(끈 업체는 뺀다). 예약 묶음·알림 문구가 같은 목록을 쓴다. */
 export function activeStays(state: NearbyState): Map<string, StayRecord> {
@@ -146,7 +149,7 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
         perVisit: state.perVisit,
         quietNight: state.quietNight,
         // 알림 시각은 묶음에서 가장 먼저 들어온 곳 기준이라 머무는 시간도 그곳 분류로 정한다.
-        dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category),
+        dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category, state.dwellMinutes),
       })
       if (decision.schedule) desired = { partnerId: leadId, fireAt: decision.fireAt, othersCount: group.others.length }
     }
@@ -208,7 +211,7 @@ export function onRegister(
 }
 
 /**
- * 설정 바꾸기(밤에 받지 않기·끈 업체). 바뀐 설정으로 예약을 다시 맞춘다 — 예약해 둔 가게를 끄면 그 예약은 취소된다.
+ * 설정 바꾸기(밤에 받지 않기·끈 업체·머무는 시간). 바뀐 설정으로 예약을 다시 맞춘다 — 예약해 둔 가게를 끄면 그 예약은 취소된다.
  */
 export function onPrefs(input: NearbyState, prefs: NearbyPrefs, now: number): Step {
   const state = settle({ ...input, ...prefs }, now)

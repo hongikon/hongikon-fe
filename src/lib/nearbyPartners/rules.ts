@@ -40,9 +40,26 @@ export const DWELL_MS = 5 * 60 * 1000
 /** 카페는 주문만 하고 나가기도 해 2분이면 알린다(10-31 사용자 요청). */
 export const CAFE_DWELL_MS = 2 * 60 * 1000
 
-/** 업체 분류별로 머물러야 하는 시간. */
-export function dwellFor(category: string | undefined): number {
-  return category === '카페' ? CAFE_DWELL_MS : DWELL_MS
+/** 설정에서 고르는 "알림까지 머무는 시간"(분). 1분 미만이면 지나가기만 해도 오고, 10분 넘으면 나간 뒤에 온다. */
+export const MIN_DWELL_MINUTES = 1
+export const MAX_DWELL_MINUTES = 10
+
+/** 사용자가 바꾼 머무는 시간(분). 없으면 기본(카페 2분, 그 밖 5분). */
+export interface DwellMinutes {
+  cafe: number
+  other: number
+}
+
+export const DEFAULT_DWELL_MINUTES: DwellMinutes = { cafe: CAFE_DWELL_MS / 60_000, other: DWELL_MS / 60_000 }
+
+export function clampDwellMinutes(minutes: number): number {
+  return Math.min(MAX_DWELL_MINUTES, Math.max(MIN_DWELL_MINUTES, Math.round(minutes)))
+}
+
+/** 업체 분류별로 머물러야 하는 시간(ms). 카페와 그 밖 두 가지. */
+export function dwellFor(category: string | undefined, custom?: DwellMinutes | null): number {
+  const minutes = custom ?? DEFAULT_DWELL_MINUTES
+  return clampDwellMinutes(category === '카페' ? minutes.cafe : minutes.other) * 60_000
 }
 /** 나갔다가 이 안에 다시 들어오면(위치 흔들림) 이어서 머문 것으로 본다. */
 export const REENTRY_GRACE_MS = 3 * 60 * 1000

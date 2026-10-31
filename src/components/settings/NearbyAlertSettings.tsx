@@ -39,6 +39,9 @@ import {
 } from '../../lib/nearbyPartners/background'
 import {
   ALERT_RADIUS_METERS,
+  DEFAULT_DWELL_MINUTES,
+  MAX_DWELL_MINUTES,
+  MIN_DWELL_MINUTES,
   MAX_ALERTS_PER_DAY,
   PARTNER_REGION_RADIUS_METERS,
   QUIET_END_HOUR,
@@ -153,7 +156,7 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         ? '제휴 가게에 머물면 받을 수 있는 혜택을 알려 드려요.'
         : missing.length > 0
           ? `알림이 오려면 설정이 필요해요: ${missing.join(', ')}. 눌러서 고칠 수 있어요.`
-          : `${affiliationLabel(settings?.affiliation ?? null)} 제휴 가게에 5분(카페는 2분) 넘게 머물면 알려 드려요.`
+          : `${affiliationLabel(settings?.affiliation ?? null)} 제휴 가게에 ${settings?.dwellMinutes?.other ?? DEFAULT_DWELL_MINUTES.other}분(카페는 ${settings?.dwellMinutes?.cafe ?? DEFAULT_DWELL_MINUTES.cafe}분) 넘게 머물면 알려 드려요.`
 
   return (
     <>
@@ -348,6 +351,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   }
 
   const muted = settings?.muted ?? []
+  const dwell = settings?.dwellMinutes ?? DEFAULT_DWELL_MINUTES
   const working = step.kind === 'working'
 
   return (
@@ -388,6 +392,33 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       : `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
                   </Text>
                   <View style={styles.divider} />
+                  <Text style={styles.settingLabel}>알림까지 머무는 시간</Text>
+                  <DwellStepper
+                    label="카페"
+                    value={dwell.cafe}
+                    disabled={working}
+                    onChange={(cafe) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, cafe } }))}
+                  />
+                  <DwellStepper
+                    label="그 밖의 가게"
+                    value={dwell.other}
+                    disabled={working}
+                    onChange={(other) => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: { ...dwell, other } }))}
+                  />
+                  {(dwell.cafe !== DEFAULT_DWELL_MINUTES.cafe || dwell.other !== DEFAULT_DWELL_MINUTES.other) && (
+                    <Pressable
+                      onPress={() => void run('저장하는 중이에요', () => setNearbyPrefs({ dwellMinutes: null }))}
+                      disabled={working}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.resetText}>
+                        기본값으로 되돌리기(카페 {DEFAULT_DWELL_MINUTES.cafe}분, 그 밖 {DEFAULT_DWELL_MINUTES.other}분)
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Text style={styles.hint}>짧게 하면 가게 앞을 지나가기만 해도 올 수 있어요.</Text>
+                  <View style={styles.divider} />
                   <View style={styles.settingRow}>
                     <View style={styles.settingText}>
                       <Text style={styles.settingLabel}>{QUIET_LABEL}</Text>
@@ -409,7 +440,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 <View style={styles.card}>
                   {[
                     `제휴 가게 ${radius}m 안에 5분(카페는 2분) 넘게 머물면 그 가게 혜택을 알려 드려요.`,
-                    `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번까지 알려 드려요. 밤에는 받지 않도록 켠 뒤에 고를 수 있어요.`,
+                    `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번까지 알려 드려요. 머무는 시간과 밤에 받지 않기는 켠 뒤에 고를 수 있어요.`,
                     '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
                     '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
                   ].map((line) => (
@@ -592,6 +623,41 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
+  )
+}
+
+/** "카페  −  2분  +" 한 줄. 1~10분, 바꾸면 바로 저장한다. */
+function DwellStepper({ label, value, disabled, onChange }: { label: string; value: number; disabled: boolean; onChange: (minutes: number) => void }) {
+  const step = (delta: number) => onChange(Math.min(MAX_DWELL_MINUTES, Math.max(MIN_DWELL_MINUTES, value + delta)))
+  return (
+    <View
+      style={styles.settingRow}
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel={`${label} 알림까지 머무는 시간`}
+      accessibilityValue={{ text: `${value}분` }}
+      accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+      onAccessibilityAction={(event) => step(event.nativeEvent.actionName === 'increment' ? 1 : -1)}
+    >
+      <Text style={[styles.settingLabel, styles.settingText]}>{label}</Text>
+      <Pressable
+        onPress={() => step(-1)}
+        disabled={disabled || value <= MIN_DWELL_MINUTES}
+        style={[styles.stepButton, value <= MIN_DWELL_MINUTES && styles.stepButtonOff]}
+        hitSlop={6}
+      >
+        <Ionicons name="remove" size={18} color={COLORS.primary} />
+      </Pressable>
+      <Text style={styles.stepValue}>{value}분</Text>
+      <Pressable
+        onPress={() => step(1)}
+        disabled={disabled || value >= MAX_DWELL_MINUTES}
+        style={[styles.stepButton, value >= MAX_DWELL_MINUTES && styles.stepButtonOff]}
+        hitSlop={6}
+      >
+        <Ionicons name="add" size={18} color={COLORS.primary} />
+      </Pressable>
+    </View>
   )
 }
 
@@ -886,6 +952,17 @@ const styles = StyleSheet.create({
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border, paddingBottom: 10 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   privacyCard: { gap: 6 },
+  stepButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primarySoft,
+  },
+  stepButtonOff: { opacity: 0.35 },
+  stepValue: { minWidth: 40, textAlign: 'center', fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  resetText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
   testButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   footerRow: { flexDirection: 'row', gap: SPACING.sm },
   footerItem: { flex: 1 },
