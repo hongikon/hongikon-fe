@@ -27,6 +27,8 @@ import SheetScrollBody from "./SheetScrollBody";
 interface PartnerSheetProps {
   partner: Partner;
   onClose: () => void;
+  /** 시트 맨 아래 "정보 수정 요청" — 그 가게로 정보 제보(수정) 창을 연다. 없으면 줄을 그리지 않는다. */
+  onSuggestEdit?: () => void;
 }
 
 /**
@@ -116,7 +118,7 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  * 제휴 업체 상세. 혜택이 가장 중요하므로 카드로 강조한다.
  * benefit / address / hours / contact / link 는 값이 있을 때만 렌더한다.
  */
-export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
+export default function PartnerSheet({ partner, onClose, onSuggestEdit }: PartnerSheetProps) {
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
@@ -307,12 +309,28 @@ export default function PartnerSheet({ partner, onClose }: PartnerSheetProps) {
             <Text style={styles.linkText}>{partner.link.label}</Text>
           </TouchableOpacity>
         )}
+
+        {/* 혜택·시간이 바뀌었거나 틀렸으면 바로 운영진에게(11-01). 정보 제보 창이 '정보 수정'으로 열린다. */}
+        {onSuggestEdit && (
+          <TouchableOpacity
+            style={styles.suggestEdit}
+            onPress={onSuggestEdit}
+            accessibilityRole="button"
+            accessibilityLabel={`${partner.name} 정보 수정 요청`}
+          >
+            <Ionicons name="create-outline" size={15} color={COLORS.textSecondary} />
+            <Text style={styles.suggestEditText}>정보 수정 요청</Text>
+          </TouchableOpacity>
+        )}
       </SheetScrollBody>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  // 시트 맨 아래 작은 글자 줄(주 행동이 아니라 눈에 덜 띄게).
+  suggestEdit: { flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 4, marginTop: 16, paddingVertical: 6, paddingHorizontal: 10 },
+  suggestEditText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textSecondary, textDecorationLine: "underline" },
   sheet: {
     position: "absolute",
     bottom: 0,
