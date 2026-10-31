@@ -119,10 +119,11 @@ const styles = StyleSheet.create({
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   pressed: { backgroundColor: COLORS.fill },
   body: { flex: 1, gap: SPACING.xxs },
-  label: { ...TYPE.body, color: COLORS.textPrimary },
+  // 설정 글자가 작아 잘 안 보였다(11-01) — 이름 16, 설명 14, 값 15.
+  label: { ...TYPE.body, fontSize: 16, lineHeight: 22, color: COLORS.textPrimary },
   danger: { color: COLORS.danger },
-  description: { ...TYPE.caption, color: COLORS.textSecondary },
-  value: { ...TYPE.callout, color: COLORS.textTertiary, maxWidth: '45%' },
+  description: { ...TYPE.caption, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary },
+  value: { ...TYPE.callout, fontSize: 15, lineHeight: 21, color: COLORS.textTertiary, maxWidth: '45%' },
   badge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xxs,
