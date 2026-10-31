@@ -3,11 +3,13 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { TYPE } from '../../constants/typography'
-import { SPACING } from '../../constants/spacing'
+import { RADIUS, SPACING } from '../../constants/spacing'
 
 interface ListRowProps {
   label: string
   icon?: keyof typeof Ionicons.glyphMap
+  /** 아이콘을 남색 둥근 칸에 넣는다(설정 첫 화면의 묶음 줄). */
+  iconTile?: boolean
   /** 이름 아래 한 줄 설명 */
   description?: string
   /** 오른쪽 회색 값(앱 버전·개수 등) */
@@ -32,6 +34,7 @@ interface ListRowProps {
 export default function ListRow({
   label,
   icon,
+  iconTile = false,
   description,
   value,
   badge,
@@ -43,11 +46,18 @@ export default function ListRow({
   accessibilityLabel,
 }: ListRowProps) {
   const pressable = onPress !== undefined && right === undefined
+  // 누르는 줄은 글자를 모아 한 이름으로 읽는데, 아이콘(글꼴 글자)까지 섞여 깨진 문자가 앞에 읽혔다(10-31). 직접 정해 준다.
+  const spokenLabel = accessibilityLabel ?? [label, description, badge, value].filter(Boolean).join(', ')
   const content = (
     <>
-      {icon && (
-        <Ionicons name={icon} size={20} color={danger ? COLORS.danger : COLORS.textSecondary} />
-      )}
+      {icon &&
+        (iconTile ? (
+          <View style={styles.iconTile}>
+            <Ionicons name={icon} size={17} color={COLORS.primary} />
+          </View>
+        ) : (
+          <Ionicons name={icon} size={20} color={danger ? COLORS.danger : COLORS.textSecondary} />
+        ))}
       <View style={styles.body}>
         <Text style={[styles.label, danger && styles.danger]}>{label}</Text>
         {description !== undefined && <Text style={styles.description}>{description}</Text>}
@@ -81,7 +91,7 @@ export default function ListRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed, style]}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={spokenLabel}
     >
       {content}
     </Pressable>
@@ -97,6 +107,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     backgroundColor: COLORS.white,
+  },
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primarySoft,
   },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   pressed: { backgroundColor: COLORS.fill },

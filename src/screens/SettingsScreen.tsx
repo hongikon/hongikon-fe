@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
   Pressable,
+  BackHandler,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -47,6 +48,7 @@ import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
 import SectionTitle from '../components/common/SectionTitle'
 import TabHeaderCard from '../components/common/TabHeaderCard'
+import ScreenHeader from '../components/common/ScreenHeader'
 import { SELECTED_PILL_BG } from '../components/common/Chip'
 import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
 import {
@@ -76,6 +78,17 @@ import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
 import { useTabBarInset } from '../hooks/useTabBarInset'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
+
+/** 설정 첫 화면의 묶음(10-31). 첫 화면은 묶음 목록만, 누르면 그 묶음 화면으로 들어간다. */
+type SettingsPage = 'root' | 'account' | 'alerts' | 'general' | 'support' | 'policies'
+
+const PAGE_TITLES: Record<Exclude<SettingsPage, 'root'>, string> = {
+  account: '계정',
+  alerts: '알림',
+  general: '일반',
+  support: '고객 지원',
+  policies: '약관 및 정책',
+}
 
 type ModalType =
   | 'notices'
@@ -121,6 +134,23 @@ export default function SettingsScreen() {
   const navigation = useNavigation<NavProp>()
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
+  const [page, setPage] = useState<SettingsPage>('root')
+  /** 묶음 화면을 열거나 첫 화면으로 돌아갈 때 맨 위부터 보이게. */
+  const openPage = useCallback((next: SettingsPage) => {
+    setPage(next)
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  }, [])
+  // Android 뒤로 가기: 묶음 화면이면 첫 화면으로(탭을 떠나지 않는다).
+  useFocusEffect(
+    useCallback(() => {
+      if (page === 'root') return undefined
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        openPage('root')
+        return true
+      })
+      return () => sub.remove()
+    }, [page, openPage]),
+  )
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
@@ -340,6 +370,8 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
+        {page === 'root' ? (
+          <>
         {/* 설정은 목록이 길어 머리 카드를 위에 고정하지 않고 같이 스크롤한다(10-07 요청). */}
         <TabHeaderCard title="설정">
           {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
@@ -388,335 +420,356 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
-        {status === 'authenticated' && (
+        {/* 첫 화면은 묶음만(10-31 — 알림 설정이 늘어 한 화면이 너무 길었다). 누르면 그 묶음 화면으로 들어간다. */}
         <View style={styles.section}>
-          <SectionTitle title="계정" />
-            <>
-              <ListRow
-                icon="person-circle-outline"
-                label={
-                  loginProvider === 'apple'
-                    ? 'Apple 계정으로 로그인됨'
-                    : loginProvider === 'demo'
-                      ? '심사용 데모 계정으로 로그인됨'
-                      : '카카오 계정으로 로그인됨'
-                }
-              />
-              {/* 닉네임은 맨 위 프로필 줄에서 바꾼다. */}
-              {memberId !== null && (
-                <ListRow
-                  icon="id-card-outline"
-                  label="회원 번호"
-                  value={
-                    memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')
-                  }
-                  accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
-                />
-              )}
-              {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
-              {accountLoaded && !myReportsApiMissing && (
-                <ListRow
-                  icon="megaphone-outline"
-                  label="내 제보 내역"
-                  badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-                  onPress={() => {
-                    setHighlightReportId(null)
-                    setActiveModal('myReports')
-                  }}
-                  accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
-                />
-              )}
-              <ListRow icon="log-out-outline" label="로그아웃" danger last onPress={handleLogout} />
-            </>
-        </View>
-        )}
-
-        <View style={styles.section}>
-          <SectionTitle title="알림" />
-          {isGuest && (
-            <View style={styles.guestNotice}>
-              <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
-              <View style={styles.guestNoticeBody}>
-                <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
-                <Text style={styles.guestNoticeText}>
-                  로그인하면 계정에 저장된 알림 설정을 불러와요. 구독한 게시판은 로그인하지 않아도 소식 탭에서 볼 수 있어요.
-                </Text>
-              </View>
-              {/* 로그인 버튼은 바로 위 계정 섹션의 "로그인하기" 하나만 둔다(같은 기능 중복 방지). */}
-            </View>
+          {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
+          {status === 'authenticated' && (
+            <ListRow
+              icon="person-outline"
+              iconTile
+              label="계정"
+              value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
+              badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+              onPress={() => openPage('account')}
+            />
           )}
           <ListRow
             icon="notifications-outline"
-            label="알림 설정"
-            description={
-              isGuest
-                ? '로그인하면 켤 수 있어요'
-                : subscriptionAlert
-                  ? '아래에서 켜 둔 알림을 이 기기로 보내드려요'
-                  : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
-            }
-            last
-            right={
-              <ToggleSwitch
-                value={subscriptionAlert}
-                dimmed={isGuest}
-                onToggle={handleToggleSubscriptionAlert}
-                locked={isGuest}
-                accessibilityLabel="알림 설정"
-              />
-            }
+            iconTile
+            label="알림"
+            value={isGuest ? '로그인 후 사용' : subscriptionAlert ? '켜짐' : '꺼짐'}
+            badge={subscriptionAlert && systemBlocked ? '권한 필요' : undefined}
+            onPress={() => openPage('alerts')}
           />
-          {subscriptionAlert && status === 'authenticated' && systemBlocked && (
-            <View style={styles.permissionCard}>
-              <Ionicons name="alert-circle-outline" size={18} color={COLORS.warningIcon} />
-              <Text style={styles.permissionText}>
-                {permission.status === 'denied'
-                  ? '휴대폰 설정에서 홍익온 알림이 꺼져 있어 알림이 오지 않아요.'
-                  : '알림을 받으려면 휴대폰 알림 권한을 허용해 주세요.'}
-              </Text>
-              <TouchableOpacity
-                onPress={handleFixSystemPermission}
-                accessibilityRole="button"
-                accessibilityLabel={permission.status === 'denied' && !permission.canAskAgain ? '휴대폰 설정 열기' : '알림 허용하기'}
-              >
-                <Text style={styles.permissionAction}>
-                  {permission.status === 'denied' && !permission.canAskAgain ? '설정 열기' : '허용하기'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {/* 알림 설정 아래 하위 항목(10-08 — '제보 알림' 묶음 제목을 없애고 한 목록으로). 전체 스위치가 꺼져 있으면 흐리게.
-              제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
-          <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
-            <ListRow
-              icon="newspaper-outline"
-              label="구독 알림"
-              description={
-                isGuest
-                  ? '로그인하면 켤 수 있어요'
-                  : subscribedDepts.length === 0
-                    ? '구독한 게시판이 없어요. 눌러서 게시판을 구독해 보세요'
-                    : `구독한 게시판의 새 소식을 알려드려요 · ${alertOnCount}/${subscribedDepts.length}개 켜짐`
-              }
-              right={
-                <ToggleSwitch
-                  value={!isGuest && subscriptionNewsOn}
-                  onToggle={guarded(handleToggleSubscriptionNews)}
-                  locked={isGuest}
-                  accessibilityLabel={`구독 알림 ${subscriptionNewsOn ? '켜짐' : '꺼짐'}`}
-                />
-              }
-            />
-            <ListRow
-              icon="checkmark-done-outline"
-              label="내 제보 결과 알림"
-              description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 공감이 모이면 알려드려요"
-              right={
-                <ToggleSwitch
-                  value={reportStatusAlert}
-                  onToggle={guarded(toggleReportStatusAlert)}
-                  locked={isGuest}
-                  accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
-                />
-              }
-            />
-            <ListRow
-              icon="megaphone-outline"
-              label="캠퍼스 새 제보 알림"
-              description={
-                keywordScopeOn
-                  ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
-                  : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰리면 30분에 한 번 모아서 보내고, 밤 11시~아침 8시엔 쉬었다가 아침에 모아 보내요.'
-              }
-              last={!showReportKeywords}
-              right={
-                <ToggleSwitch
-                  value={newReportAlert}
-                  onToggle={guarded(toggleNewReportAlert)}
-                  locked={isGuest}
-                  accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
-                />
-              }
-            />
-            {showReportKeywords && (
-              <ReportKeywordAlerts
-                status={reportKeywords.status}
-                scope={reportKeywords.scope}
-                keywords={reportKeywords.keywords}
-                onRetry={reportKeywords.retry}
-                onChangeScope={reportKeywords.changeScope}
-                onAdd={reportKeywords.addKeyword}
-                onRemove={reportKeywords.removeKeyword}
-              />
-            )}
-          </View>
-          {isAdmin && adminAlert.state.status !== 'unsupported' && (
-            <View style={[styles.subGroup, detailDimmed && styles.dimmed]}>
-              <Text style={styles.subGroupTitle}>관리자</Text>
-              <ListRow
-                icon="shield-checkmark-outline"
-                label="관리자 알림"
-                description="새 제보 승인 대기·새 문의·신고로 자동 숨김된 제보를 알려드려요. 몰리면 2분에 한 번 묶어서 와요."
-                value={
-                  adminAlert.state.status === 'loading'
-                    ? '불러오는 중'
-                    : adminAlert.state.status === 'error'
-                      ? '다시 시도'
-                      : undefined
-                }
-                onPress={adminAlert.state.status === 'error' ? adminAlert.retry : undefined}
-                last
-                right={
-                  adminAlert.state.status === 'ready' ? (
-                    <ToggleSwitch
-                      value={adminAlert.state.enabled}
-                      onToggle={adminAlert.toggle}
-                      accessibilityLabel={`관리자 알림 ${adminAlert.state.enabled ? '켜짐' : '꺼짐'}`}
-                    />
-                  ) : undefined
-                }
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <SectionTitle title="구독 게시판" />
           <ListRow
             icon="bookmarks-outline"
-            label="구독 관리"
+            iconTile
+            label="구독 게시판"
             value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
             onPress={() => setSubManagerVisible(true)}
-          />
-          {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
-          <ListRow
-            icon="pricetag-outline"
-            label="키워드 알림"
-            value={isGuest ? '로그인 후 사용' : undefined}
-            onPress={() =>
-              isGuest
-                ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.')
-                : setActiveModal('keywords')
-            }
-          />
-          {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
-          <ListRow
-            icon="notifications-circle-outline"
-            label="게시판별 알림"
-            value={
-              isGuest
-                ? '로그인 후 사용'
-                : subscribedDepts.length > 0
-                  ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
-                  : '구독한 게시판 없음'
-            }
             last
-            style={detailDimmed ? styles.dimmed : undefined}
-            onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
           />
         </View>
 
         <View style={styles.section}>
-          <SectionTitle
-            title="알림 받을 분야"
-            meta={isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
-            description="구독한 게시판의 새 소식 중 선택한 분야만 알려드려요"
-            style={styles.sectionTitleWithDesc}
-          />
-          <View style={[styles.categoryGrid, detailDimmed && styles.dimmed]}>
-            {ALL_CATEGORIES.map((cat) => {
-              const isOn = alertCategories.includes(cat)
-              // 켜진 분야는 분야별 색 대신 앱 기본색(남색)으로 통일한다.
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryChip,
-                    isOn ? styles.categoryChipOn : styles.categoryChipOff,
-                  ]}
-                  onPress={guarded(() => toggleAlertCategory(cat))}
-                  activeOpacity={0.7}
-                  accessibilityRole="switch"
-                  accessibilityLabel={`${cat} 분야 알림 ${isOn ? '켜짐' : '꺼짐'}`}
-                  accessibilityState={{ checked: isOn }}
-                >
-                  <Ionicons
-                    name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={14}
-                    color={isOn ? COLORS.primary : COLORS.textSecondary}
-                  />
-                  <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textSecondary }]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-          {loggedIn && alertCategories.length === 0 && (
-            <View style={styles.warnRow}>
-              <Ionicons name="alert-circle-outline" size={14} color={COLORS.danger} />
-              <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <SectionTitle title="일반" />
-          <ListRow
-            icon="key-outline"
-            label="앱 권한"
-            value={permissionSummary}
-            onPress={() => setActiveModal('permissions')}
-          />
-          <ListRow
-            icon="megaphone-outline"
-            label="공지사항"
-            onPress={() => setActiveModal('notices')}
-          />
-          <UpdateHistoryRow />
-          <ListRow
-            icon="logo-instagram"
-            label="제휴 출처"
-            value={`${PARTNER_SOURCES.length}개 소속`}
-            onPress={() => setActiveModal('sources')}
-          />
-          <ListRow
-            icon="storefront-outline"
-            label="정보 제보하기"
-            onPress={() => setActiveModal('infoSuggest')}
-          />
-          <ListRow
-            icon="eye-off-outline"
-            label="숨긴 사용자"
-            value={hiddenAuthors.length > 0 ? `${hiddenAuthors.length}명` : undefined}
-            onPress={() => setActiveModal('hiddenUsers')}
-          />
-          <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
-          <ListRow icon="school-outline" label="학교" value="홍익대학교" />
-          {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
-          {SHOW_DEVELOPER_TOOLS && (
-            <ListRow
-              icon="pulse-outline"
-              label="앱 상태 확인"
-              onPress={() => navigation.navigate('AppStatus')}
-            />
-          )}
-          <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
-          <ListRow icon="help-buoy-outline" label="고객 지원" value="문의·자주 묻는 질문" onPress={() => setActiveModal('support')} />
-          <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
-          <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} />
-          <ListRow icon="refresh-outline" label="설정 초기화" danger last={status !== 'authenticated'} onPress={handleReset} />
-          {/* 회원 탈퇴는 설정 초기화 바로 아래. 누르면 WithdrawConfirmDialog(탈퇴를 말리는 쪽)가 뜬다. */}
-          {status === 'authenticated' && (
-            <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
-          )}
+          <ListRow icon="options-outline" iconTile label="일반" onPress={() => openPage('general')} />
+          <ListRow icon="help-buoy-outline" iconTile label="고객 지원" value="문의·자주 묻는 질문" onPress={() => openPage('support')} />
+          <ListRow icon="document-text-outline" iconTile label="약관 및 정책" onPress={() => openPage('policies')} last />
         </View>
 
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
           <LogotypeHorizontal width={112} height={20} />
         </View>
         <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
+          </>
+        ) : (
+          <>
+            <View style={styles.pageHeader}>
+              <ScreenHeader title={PAGE_TITLES[page]} onBack={() => openPage('root')} />
+            </View>
+
+            {page === 'account' && status === 'authenticated' && (
+              <View style={styles.section}>
+                <ListRow
+                  icon="person-circle-outline"
+                  label={
+                    loginProvider === 'apple'
+                      ? 'Apple 계정으로 로그인됨'
+                      : loginProvider === 'demo'
+                        ? '심사용 데모 계정으로 로그인됨'
+                        : '카카오 계정으로 로그인됨'
+                  }
+                />
+                {/* 닉네임은 첫 화면 맨 위 프로필 줄에서 바꾼다. */}
+                {memberId !== null && (
+                  <ListRow
+                    icon="id-card-outline"
+                    label="회원 번호"
+                    value={memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')}
+                    accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
+                  />
+                )}
+                {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
+                {accountLoaded && !myReportsApiMissing && (
+                  <ListRow
+                    icon="megaphone-outline"
+                    label="내 제보 내역"
+                    badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+                    onPress={() => {
+                      setHighlightReportId(null)
+                      setActiveModal('myReports')
+                    }}
+                    accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
+                  />
+                )}
+                <ListRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
+                {/* 누르면 WithdrawConfirmDialog 가 뜬다. */}
+                <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
+              </View>
+            )}
+
+            {page === 'alerts' && (
+              <>
+                <View style={styles.section}>
+                  {isGuest && (
+                    <View style={styles.guestNotice}>
+                      <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
+                      <View style={styles.guestNoticeBody}>
+                        <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
+                        <Text style={styles.guestNoticeText}>
+                          로그인하면 계정에 저장된 알림 설정을 불러와요. 구독한 게시판은 로그인하지 않아도 소식 탭에서 볼 수 있어요.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  <ListRow
+                    icon="notifications-outline"
+                    label="알림 받기"
+                    description={
+                      isGuest
+                        ? '로그인하면 켤 수 있어요'
+                        : subscriptionAlert
+                          ? '아래에서 켜 둔 알림을 이 기기로 보내드려요'
+                          : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
+                    }
+                    last
+                    right={
+                      <ToggleSwitch
+                        value={subscriptionAlert}
+                        dimmed={isGuest}
+                        onToggle={handleToggleSubscriptionAlert}
+                        locked={isGuest}
+                        accessibilityLabel="알림 받기"
+                      />
+                    }
+                  />
+                  {subscriptionAlert && status === 'authenticated' && systemBlocked && (
+                    <View style={styles.permissionCard}>
+                      <Ionicons name="alert-circle-outline" size={18} color={COLORS.warningIcon} />
+                      <Text style={styles.permissionText}>
+                        {permission.status === 'denied'
+                          ? '휴대폰 설정에서 홍익온 알림이 꺼져 있어 알림이 오지 않아요.'
+                          : '알림을 받으려면 휴대폰 알림 권한을 허용해 주세요.'}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={handleFixSystemPermission}
+                        accessibilityRole="button"
+                        accessibilityLabel={permission.status === 'denied' && !permission.canAskAgain ? '휴대폰 설정 열기' : '알림 허용하기'}
+                      >
+                        <Text style={styles.permissionAction}>
+                          {permission.status === 'denied' && !permission.canAskAgain ? '설정 열기' : '허용하기'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                {/* 공지(구독 게시판) 알림. 전체 스위치가 꺼져 있으면 흐리게. */}
+                <View style={[styles.section, detailDimmed && styles.dimmed]}>
+                  <SectionTitle title="공지 알림" />
+                  <ListRow
+                    icon="newspaper-outline"
+                    label="구독 알림"
+                    description={
+                      isGuest
+                        ? '로그인하면 켤 수 있어요'
+                        : subscribedDepts.length === 0
+                          ? '구독한 게시판이 없어요. 눌러서 게시판을 구독해 보세요'
+                          : `구독한 게시판의 새 소식을 알려드려요 · ${alertOnCount}/${subscribedDepts.length}개 켜짐`
+                    }
+                    right={
+                      <ToggleSwitch
+                        value={!isGuest && subscriptionNewsOn}
+                        onToggle={guarded(handleToggleSubscriptionNews)}
+                        locked={isGuest}
+                        accessibilityLabel={`구독 알림 ${subscriptionNewsOn ? '켜짐' : '꺼짐'}`}
+                      />
+                    }
+                  />
+                  {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
+                  <ListRow
+                    icon="notifications-circle-outline"
+                    label="게시판별 알림"
+                    value={
+                      isGuest
+                        ? '로그인 후 사용'
+                        : subscribedDepts.length > 0
+                          ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
+                          : '구독한 게시판 없음'
+                    }
+                    onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
+                  />
+                  {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
+                  <ListRow
+                    icon="pricetag-outline"
+                    label="키워드 알림"
+                    value={isGuest ? '로그인 후 사용' : undefined}
+                    onPress={() =>
+                      isGuest ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.') : setActiveModal('keywords')
+                    }
+                  />
+                  <SectionTitle
+                    title="알림 받을 분야"
+                    meta={isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
+                    description="구독한 게시판의 새 소식 중 선택한 분야만 알려드려요"
+                    style={styles.sectionTitleWithDesc}
+                  />
+                  <View style={styles.categoryGrid}>
+                    {ALL_CATEGORIES.map((cat) => {
+                      const isOn = alertCategories.includes(cat)
+                      // 켜진 분야는 분야별 색 대신 앱 기본색(남색)으로 통일한다.
+                      return (
+                        <TouchableOpacity
+                          key={cat}
+                          style={[styles.categoryChip, isOn ? styles.categoryChipOn : styles.categoryChipOff]}
+                          onPress={guarded(() => toggleAlertCategory(cat))}
+                          activeOpacity={0.7}
+                          accessibilityRole="switch"
+                          accessibilityLabel={`${cat} 분야 알림 ${isOn ? '켜짐' : '꺼짐'}`}
+                          accessibilityState={{ checked: isOn }}
+                        >
+                          <Ionicons
+                            name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={14}
+                            color={isOn ? COLORS.primary : COLORS.textSecondary}
+                          />
+                          <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textSecondary }]}>
+                            {cat}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                  {loggedIn && alertCategories.length === 0 && (
+                    <View style={styles.warnRow}>
+                      <Ionicons name="alert-circle-outline" size={14} color={COLORS.danger} />
+                      <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* 제보 알림. 제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
+                <View style={[styles.section, detailDimmed && styles.dimmed]}>
+                  <SectionTitle title="제보 알림" />
+                  <ListRow
+                    icon="checkmark-done-outline"
+                    label="내 제보 결과 알림"
+                    description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 공감이 모이면 알려드려요"
+                    right={
+                      <ToggleSwitch
+                        value={reportStatusAlert}
+                        onToggle={guarded(toggleReportStatusAlert)}
+                        locked={isGuest}
+                        accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
+                      />
+                    }
+                  />
+                  <ListRow
+                    icon="megaphone-outline"
+                    label="캠퍼스 새 제보 알림"
+                    description={
+                      keywordScopeOn
+                        ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
+                        : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰리면 30분에 한 번 모아서 보내고, 밤 11시~아침 8시엔 쉬었다가 아침에 모아 보내요.'
+                    }
+                    last={!showReportKeywords}
+                    right={
+                      <ToggleSwitch
+                        value={newReportAlert}
+                        onToggle={guarded(toggleNewReportAlert)}
+                        locked={isGuest}
+                        accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
+                      />
+                    }
+                  />
+                  {showReportKeywords && (
+                    <ReportKeywordAlerts
+                      status={reportKeywords.status}
+                      scope={reportKeywords.scope}
+                      keywords={reportKeywords.keywords}
+                      onRetry={reportKeywords.retry}
+                      onChangeScope={reportKeywords.changeScope}
+                      onAdd={reportKeywords.addKeyword}
+                      onRemove={reportKeywords.removeKeyword}
+                    />
+                  )}
+                </View>
+
+                {isAdmin && adminAlert.state.status !== 'unsupported' && (
+                  <View style={[styles.section, detailDimmed && styles.dimmed]}>
+                    <SectionTitle title="관리자" />
+                    <ListRow
+                      icon="shield-checkmark-outline"
+                      label="관리자 알림"
+                      description="새 제보 승인 대기·새 문의·신고로 자동 숨김된 제보를 알려드려요. 몰리면 2분에 한 번 묶어서 와요."
+                      value={
+                        adminAlert.state.status === 'loading'
+                          ? '불러오는 중'
+                          : adminAlert.state.status === 'error'
+                            ? '다시 시도'
+                            : undefined
+                      }
+                      onPress={adminAlert.state.status === 'error' ? adminAlert.retry : undefined}
+                      last
+                      right={
+                        adminAlert.state.status === 'ready' ? (
+                          <ToggleSwitch
+                            value={adminAlert.state.enabled}
+                            onToggle={adminAlert.toggle}
+                            accessibilityLabel={`관리자 알림 ${adminAlert.state.enabled ? '켜짐' : '꺼짐'}`}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  </View>
+                )}
+              </>
+            )}
+
+            {page === 'general' && (
+              <View style={styles.section}>
+                <ListRow icon="key-outline" label="앱 권한" value={permissionSummary} onPress={() => setActiveModal('permissions')} />
+                <ListRow icon="megaphone-outline" label="공지사항" onPress={() => setActiveModal('notices')} />
+                <UpdateHistoryRow />
+                <ListRow
+                  icon="eye-off-outline"
+                  label="숨긴 사용자"
+                  value={hiddenAuthors.length > 0 ? `${hiddenAuthors.length}명` : undefined}
+                  onPress={() => setActiveModal('hiddenUsers')}
+                />
+                <ListRow icon="school-outline" label="학교" value="홍익대학교" />
+                {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
+                {SHOW_DEVELOPER_TOOLS && (
+                  <ListRow icon="pulse-outline" label="앱 상태 확인" onPress={() => navigation.navigate('AppStatus')} />
+                )}
+                <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
+              </View>
+            )}
+
+            {page === 'support' && (
+              <View style={styles.section}>
+                <ListRow icon="help-buoy-outline" label="자주 묻는 질문·계정 삭제 안내" onPress={() => setActiveModal('support')} />
+                <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
+                <ListRow icon="storefront-outline" label="정보 제보하기" onPress={() => setActiveModal('infoSuggest')} />
+                <ListRow
+                  icon="logo-instagram"
+                  label="제휴 출처"
+                  value={`${PARTNER_SOURCES.length}개 소속`}
+                  onPress={() => setActiveModal('sources')}
+                  last
+                />
+              </View>
+            )}
+
+            {page === 'policies' && (
+              <View style={styles.section}>
+                <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
+                <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
+                <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} last />
+              </View>
+            )}
+          </>
+        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -862,6 +915,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionTitleWithDesc: { paddingBottom: SPACING.md },
+  // 묶음 화면 제목 줄도 아래 카드들과 같은 둥근 카드로(화면 끝까지 닿는 흰 띠가 어색했다).
+  pageHeader: { marginHorizontal: SPACING.md, marginTop: SPACING.sm, borderRadius: RADIUS.floating, overflow: 'hidden' },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
