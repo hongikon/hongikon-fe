@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Linking,
   Pressable,
-  BackHandler,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -46,9 +45,7 @@ import { useIsAdmin } from '../admin/AdminAccess'
 import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
 import { getUserIdFromToken } from '../lib/jwt'
 import ListRow from '../components/common/ListRow'
-import SectionTitle from '../components/common/SectionTitle'
 import TabHeaderCard from '../components/common/TabHeaderCard'
-import ScreenHeader from '../components/common/ScreenHeader'
 import { SELECTED_PILL_BG } from '../components/common/Chip'
 import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
 import {
@@ -79,16 +76,8 @@ import { useTabBarInset } from '../hooks/useTabBarInset'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
-/** 설정 첫 화면의 묶음(10-31). 첫 화면은 묶음 목록만, 누르면 그 묶음 화면으로 들어간다. */
-type SettingsPage = 'root' | 'account' | 'alerts' | 'general' | 'support' | 'policies'
-
-const PAGE_TITLES: Record<Exclude<SettingsPage, 'root'>, string> = {
-  account: '계정',
-  alerts: '알림',
-  general: '일반',
-  support: '고객 지원',
-  policies: '약관 및 정책',
-}
+/** 설정 묶음(10-31·11-01). 누르면 그 자리에서 아래로 펼친다(여러 개를 함께 펼칠 수 있다). */
+type SettingsGroup = 'account' | 'alerts' | 'general' | 'support' | 'policies'
 
 type ModalType =
   | 'notices'
@@ -134,23 +123,26 @@ export default function SettingsScreen() {
   const navigation = useNavigation<NavProp>()
 
   const [activeModal, setActiveModal] = useState<ModalType>(null)
-  const [page, setPage] = useState<SettingsPage>('root')
-  /** 묶음 화면을 열거나 첫 화면으로 돌아갈 때 맨 위부터 보이게. */
-  const openPage = useCallback((next: SettingsPage) => {
-    setPage(next)
-    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  const [expanded, setExpanded] = useState<ReadonlySet<SettingsGroup>>(new Set())
+  // 설정 탭에 있을 때 하단 '설정'을 다시 누르면 맨 위로(11-01 — useScrollToTop 만으로는 올라가지 않았다).
+  useEffect(() => {
+    const unsubscribe = (navigation as unknown as { addListener: (type: 'tabPress', cb: () => void) => () => void }).addListener(
+      'tabPress',
+      () => {
+        if (navigation.isFocused()) scrollRef.current?.scrollTo({ y: 0, animated: true })
+      },
+    )
+    return unsubscribe
+  }, [navigation])
+  const toggleGroup = useCallback((group: SettingsGroup) => {
+    haptics.selection()
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
   }, [])
-  // Android 뒤로 가기: 묶음 화면이면 첫 화면으로(탭을 떠나지 않는다).
-  useFocusEffect(
-    useCallback(() => {
-      if (page === 'root') return undefined
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        openPage('root')
-        return true
-      })
-      return () => sub.remove()
-    }, [page, openPage]),
-  )
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
@@ -370,8 +362,6 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
-        {page === 'root' ? (
-          <>
         {/* 설정은 목록이 길어 머리 카드를 위에 고정하지 않고 같이 스크롤한다(10-07 요청). */}
         <TabHeaderCard title="설정">
           {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
@@ -420,56 +410,21 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* 첫 화면은 묶음만(10-31 — 알림 설정이 늘어 한 화면이 너무 길었다). 누르면 그 묶음 화면으로 들어간다. */}
+        {/* 묶음(10-31·11-01): 누르면 그 자리에서 아래로 펼친다. 아이콘은 배경 없이 아이콘만. */}
         <View style={styles.section}>
           {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
           {status === 'authenticated' && (
-            <ListRow
-              icon="person-outline"
-              iconTile
-              label="계정"
-              value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
-              badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-              onPress={() => openPage('account')}
-            />
-          )}
-          <ListRow
-            icon="notifications-outline"
-            iconTile
-            label="알림"
-            value={isGuest ? '로그인 후 사용' : subscriptionAlert ? '켜짐' : '꺼짐'}
-            badge={subscriptionAlert && systemBlocked ? '권한 필요' : undefined}
-            onPress={() => openPage('alerts')}
-          />
-          <ListRow
-            icon="bookmarks-outline"
-            iconTile
-            label="구독 게시판"
-            value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
-            onPress={() => setSubManagerVisible(true)}
-            last
-          />
-        </View>
-
-        <View style={styles.section}>
-          <ListRow icon="options-outline" iconTile label="일반" onPress={() => openPage('general')} />
-          <ListRow icon="help-buoy-outline" iconTile label="고객 지원" value="문의·자주 묻는 질문" onPress={() => openPage('support')} />
-          <ListRow icon="document-text-outline" iconTile label="약관 및 정책" onPress={() => openPage('policies')} last />
-        </View>
-
-        <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
-          <LogotypeHorizontal width={112} height={20} />
-        </View>
-        <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
-          </>
-        ) : (
-          <>
-            <View style={styles.pageHeader}>
-              <ScreenHeader title={PAGE_TITLES[page]} onBack={() => openPage('root')} />
-            </View>
-
-            {page === 'account' && status === 'authenticated' && (
-              <View style={styles.section}>
+            <>
+              <GroupHeader
+                icon="person-outline"
+                label="계정"
+                value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
+                badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+                expanded={expanded.has('account')}
+                onPress={() => toggleGroup('account')}
+              />
+              {expanded.has('account') && (
+              <View style={styles.groupBody}>
                 <ListRow
                   icon="person-circle-outline"
                   label={
@@ -506,11 +461,20 @@ export default function SettingsScreen() {
                 {/* 누르면 WithdrawConfirmDialog 가 뜬다. */}
                 <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
               </View>
-            )}
-
-            {page === 'alerts' && (
-              <>
-                <View style={styles.section}>
+              )}
+            </>
+          )}
+          <GroupHeader
+            icon="notifications-outline"
+            label="알림"
+            value={isGuest ? '로그인 후 사용' : subscriptionAlert ? '켜짐' : '꺼짐'}
+            badge={subscriptionAlert && systemBlocked ? '권한 필요' : undefined}
+            expanded={expanded.has('alerts')}
+            onPress={() => toggleGroup('alerts')}
+          />
+          {expanded.has('alerts') && (
+              <View style={styles.groupBody}>
+                <View style={styles.subBlockFirst}>
                   {isGuest && (
                     <View style={styles.guestNotice}>
                       <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
@@ -565,8 +529,8 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* 공지(구독 게시판) 알림. 전체 스위치가 꺼져 있으면 흐리게. */}
-                <View style={[styles.section, detailDimmed && styles.dimmed]}>
-                  <SectionTitle title="공지 알림" />
+                <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
+                  <Text style={styles.subHeader}>공지 알림</Text>
                   <ListRow
                     icon="newspaper-outline"
                     label="구독 알림"
@@ -586,34 +550,14 @@ export default function SettingsScreen() {
                       />
                     }
                   />
-                  {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
-                  <ListRow
-                    icon="notifications-circle-outline"
-                    label="게시판별 알림"
-                    value={
-                      isGuest
-                        ? '로그인 후 사용'
-                        : subscribedDepts.length > 0
-                          ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
-                          : '구독한 게시판 없음'
-                    }
-                    onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
-                  />
-                  {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
-                  <ListRow
-                    icon="pricetag-outline"
-                    label="키워드 알림"
-                    value={isGuest ? '로그인 후 사용' : undefined}
-                    onPress={() =>
-                      isGuest ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.') : setActiveModal('keywords')
-                    }
-                  />
-                  <SectionTitle
-                    title="알림 받을 분야"
-                    meta={isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
-                    description="구독한 게시판의 새 소식 중 선택한 분야만 알려드려요"
-                    style={styles.sectionTitleWithDesc}
-                  />
+                  {/* 분야는 구독 알림을 거르는 설정이라 구독 알림 바로 아래(11-01). */}
+                  <View style={styles.categoryHead}>
+                    <Text style={styles.categoryTitle}>알림 받을 분야</Text>
+                    <Text style={styles.categoryMeta}>
+                      {isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
+                    </Text>
+                  </View>
+                  <Text style={styles.categoryHint}>구독한 게시판의 새 소식 중 고른 분야만 알려드려요</Text>
                   <View style={styles.categoryGrid}>
                     {ALL_CATEGORIES.map((cat) => {
                       const isOn = alertCategories.includes(cat)
@@ -646,11 +590,33 @@ export default function SettingsScreen() {
                       <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
                     </View>
                   )}
+                  {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
+                  <ListRow
+                    icon="notifications-circle-outline"
+                    label="게시판별 알림"
+                    value={
+                      isGuest
+                        ? '로그인 후 사용'
+                        : subscribedDepts.length > 0
+                          ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
+                          : '구독한 게시판 없음'
+                    }
+                    onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
+                  />
+                  {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
+                  <ListRow
+                    icon="pricetag-outline"
+                    label="키워드 알림"
+                    value={isGuest ? '로그인 후 사용' : undefined}
+                    onPress={() =>
+                      isGuest ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.') : setActiveModal('keywords')
+                    }
+                  />
                 </View>
 
                 {/* 제보 알림. 제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
-                <View style={[styles.section, detailDimmed && styles.dimmed]}>
-                  <SectionTitle title="제보 알림" />
+                <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
+                  <Text style={styles.subHeader}>제보 알림</Text>
                   <ListRow
                     icon="checkmark-done-outline"
                     label="내 제보 결과 알림"
@@ -696,8 +662,8 @@ export default function SettingsScreen() {
                 </View>
 
                 {isAdmin && adminAlert.state.status !== 'unsupported' && (
-                  <View style={[styles.section, detailDimmed && styles.dimmed]}>
-                    <SectionTitle title="관리자" />
+                  <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
+                    <Text style={styles.subHeader}>관리자</Text>
                     <ListRow
                       icon="shield-checkmark-outline"
                       label="관리자 알림"
@@ -723,11 +689,21 @@ export default function SettingsScreen() {
                     />
                   </View>
                 )}
-              </>
-            )}
+              </View>
+          )}
+          <GroupHeader
+            icon="bookmarks-outline"
+            label="구독 게시판"
+            value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
+            onPress={() => setSubManagerVisible(true)}
+            last
+          />
+        </View>
 
-            {page === 'general' && (
-              <View style={styles.section}>
+        <View style={styles.section}>
+          <GroupHeader icon="options-outline" label="일반" expanded={expanded.has('general')} onPress={() => toggleGroup('general')} />
+          {expanded.has('general') && (
+              <View style={styles.groupBody}>
                 <ListRow icon="key-outline" label="앱 권한" value={permissionSummary} onPress={() => setActiveModal('permissions')} />
                 <ListRow icon="megaphone-outline" label="공지사항" onPress={() => setActiveModal('notices')} />
                 <UpdateHistoryRow />
@@ -744,10 +720,10 @@ export default function SettingsScreen() {
                 )}
                 <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
               </View>
-            )}
-
-            {page === 'support' && (
-              <View style={styles.section}>
+          )}
+          <GroupHeader icon="help-buoy-outline" label="고객 지원" expanded={expanded.has('support')} onPress={() => toggleGroup('support')} />
+          {expanded.has('support') && (
+              <View style={styles.groupBody}>
                 <ListRow icon="help-buoy-outline" label="자주 묻는 질문·계정 삭제 안내" onPress={() => setActiveModal('support')} />
                 <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
                 <ListRow icon="storefront-outline" label="정보 제보하기" onPress={() => setActiveModal('infoSuggest')} />
@@ -759,17 +735,27 @@ export default function SettingsScreen() {
                   last
                 />
               </View>
-            )}
-
-            {page === 'policies' && (
-              <View style={styles.section}>
+          )}
+          <GroupHeader
+            icon="document-text-outline"
+            label="약관 및 정책"
+            expanded={expanded.has('policies')}
+            onPress={() => toggleGroup('policies')}
+            last={!expanded.has('policies')}
+          />
+          {expanded.has('policies') && (
+              <View style={styles.groupBody}>
                 <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
                 <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
                 <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} last />
               </View>
-            )}
-          </>
-        )}
+          )}
+        </View>
+
+        <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
+          <LogotypeHorizontal width={112} height={20} />
+        </View>
+        <Text style={styles.unofficialNotice}>{UNOFFICIAL_NOTICE}</Text>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -914,9 +900,30 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.floating,
     overflow: 'hidden',
   },
-  sectionTitleWithDesc: { paddingBottom: SPACING.md },
-  // 묶음 화면 제목 줄도 아래 카드들과 같은 둥근 카드로(화면 끝까지 닿는 흰 띠가 어색했다).
-  pageHeader: { marginHorizontal: SPACING.md, marginTop: SPACING.sm, borderRadius: RADIUS.floating, overflow: 'hidden' },
+  // 펼친 묶음의 내용(머리 줄 아래). 옅은 바탕으로 머리 줄과 구분한다.
+  groupBody: { backgroundColor: COLORS.background, paddingVertical: SPACING.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  subBlockFirst: { backgroundColor: COLORS.white },
+  subHeader: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
+  categoryHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
+  categoryTitle: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, lineHeight: 22, color: COLORS.textPrimary },
+  categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
+  categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
+  subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
+  groupHeader: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.white,
+  },
+  groupHeaderDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  groupHeaderPressed: { backgroundColor: COLORS.fill },
+  groupLabel: { flex: 1, fontFamily: FONTS.semibold, fontSize: 17, lineHeight: 23, color: COLORS.textPrimary },
+  groupValue: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.textTertiary, maxWidth: '45%' },
+  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: 999, backgroundColor: COLORS.warningSoft },
+  groupBadgeText: { ...TYPE.label, fontSize: 13, color: COLORS.warning },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -942,7 +949,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
   },
-  categoryChipText: { ...TYPE.label, fontSize: 13 },
+  categoryChipText: { ...TYPE.label, fontSize: 15, lineHeight: 20 },
   dimmed: { opacity: 0.45 },
   subGroup: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
   subGroupTitle: {
@@ -1011,3 +1018,51 @@ const styles = StyleSheet.create({
   permissionAction: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.primary },
   bottomSpacer: { height: SPACING.lg },
 })
+
+/** 묶음 머리 줄: 아이콘(배경 없이) · 이름 · 값 · 펼침 표시. expanded 가 없으면(구독 게시판) 창을 여는 줄이라 > 를 둔다. */
+function GroupHeader({
+  icon,
+  label,
+  value,
+  badge,
+  expanded,
+  onPress,
+  last = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap
+  label: string
+  value?: string
+  badge?: string
+  expanded?: boolean
+  onPress: () => void
+  last?: boolean
+}) {
+  const collapsible = expanded !== undefined
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.groupHeader, !last && !expanded && styles.groupHeaderDivider, pressed && styles.groupHeaderPressed]}
+      accessibilityRole="button"
+      accessibilityState={collapsible ? { expanded } : undefined}
+      accessibilityLabel={[label, badge, value].filter(Boolean).join(', ')}
+    >
+      <Ionicons name={icon} size={24} color={COLORS.primary} />
+      <Text style={styles.groupLabel}>{label}</Text>
+      {badge !== undefined && (
+        <View style={styles.groupBadge}>
+          <Text style={styles.groupBadgeText}>{badge}</Text>
+        </View>
+      )}
+      {value !== undefined && (
+        <Text style={styles.groupValue} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+      <Ionicons
+        name={collapsible ? (expanded ? 'chevron-up' : 'chevron-down') : 'chevron-forward'}
+        size={18}
+        color={COLORS.chevron}
+      />
+    </Pressable>
+  )
+}
