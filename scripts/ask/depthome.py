@@ -165,10 +165,11 @@ def rendered(url):
     return out.stdout.decode('utf-8', errors='ignore')
 
 
-def professors(html):
-    """교수진 목록 → [(이름, 직위, 연구분야)]. 그 밖의 칸(학위·학교·연구실·전화·이메일·사진)은 읽지 않는다."""
+def professors(html, position=''):
+    """교수진 목록 → [(이름, 직위, 연구분야)]. 그 밖의 칸(학위·학교·연구실·전화·이메일·사진)은 읽지 않는다.
+    position: 직위 칸이 없는 쪽(기계시스템디자인공학과 'professor-box' — 쪽마다 전임·초빙·겸임)에 쓸 쪽 제목."""
     if 'prof-ul' not in html:
-        return []
+        return _professor_boxes(html, position)
     out = []
     for block in html.split('class="faculty-intro"')[1:]:
         name = re.search(r'class="faculty-name"[^>]*>\s*([^<]+?)\s*</a>', block)
@@ -176,13 +177,41 @@ def professors(html):
         info = re.search(r'<ul class="info">\s*<li>\s*([^<]*?)\s*</li>', block)
         if not name:
             continue
-        field = info.group(1).strip() if info else ''
+        field = _clean(info.group(1)) if info else ''
         if NOT_FIELD.search(field):
             field = ''
-        row = (name.group(1).strip(), position.group(1).strip() if position else '', field)
+        row = (_clean(name.group(1)), _clean(position.group(1)) if position else '', field)
         if row not in out:
             out.append(row)
     return out
+
+
+def _clean(text):
+    """'함채원&nbsp;' → '함채원'."""
+    return re.sub(r'\s+', ' ', text.replace('&nbsp;', ' ').replace('\xa0', ' ').replace('&amp;', '&')).strip()
+
+
+def _professor_boxes(html, position):
+    """기계시스템디자인공학과 꼴 — 교수마다 'professor-box': 이름(h2), 연구실(랩) 이름(p.lab), 상세 첫 줄(전공 분야이거나 학위)."""
+    out = []
+    for block in html.split('class="professor-box"')[1:]:
+        name = re.search(r'<h2>\s*([^<]+?)\s*(?:<|$)', block)
+        if not name:
+            continue
+        lab = re.search(r'<p class="lab">\s*([^<]+?)\s*</p>', block)
+        first = re.search(r'class="professor-details">\s*<p><strong>•</strong>\s*([^<]+?)\s*</p>', block)
+        field = _clean(lab.group(1) if lab else (first.group(1) if first else ''))
+        if NOT_FIELD.search(field):
+            field = ''
+        row = (_clean(name.group(1)), position, field)
+        if row not in out:
+            out.append(row)
+    return out
+
+
+# 지금 가르치지 않는 분(퇴임·명예) 쪽은 넣지 않는다 — 다른 학과의 퇴임·명예교수 게시판 목록도 위치만이다.
+RETIRED_TITLE = re.compile(r'퇴임|명예')
+POSITION_TITLE = re.compile(r'(전임|초빙|겸임|객원|외래)\s*교수|강사')
 
 
 def faculty():
@@ -190,10 +219,12 @@ def faculty():
     data = json.load(open(OUT, encoding='utf-8'))
     changed = 0
     for p in data['pages']:
-        if not p.get('linkOnly') or not PROF_TITLE.search(p['title']) or NOT_PROF_TITLE.search(p['title']):
+        if not p.get('linkOnly') or not PROF_TITLE.search(p['title']) or NOT_PROF_TITLE.search(p['title']) \
+                or RETIRED_TITLE.search(p['title']):
             continue
+        position = POSITION_TITLE.search(p['title'])
         try:
-            rows = professors(rendered(p['url']))
+            rows = professors(rendered(p['url']), position.group(0).replace(' ', '') if position else '')
         except Exception as e:  # noqa: BLE001
             print(f"{p['dept']}: {p['url']} 실패 {e}", file=sys.stderr)
             continue
