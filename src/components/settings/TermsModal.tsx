@@ -1,4 +1,5 @@
 import { Text, StyleSheet, ScrollView, Modal } from 'react-native'
+import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { SPACING } from '../../constants/spacing'
@@ -14,7 +15,7 @@ interface TermsModalProps {
 
 export default function TermsModal({ visible, onClose }: TermsModalProps) {
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -30,7 +31,7 @@ export default function TermsModal({ visible, onClose }: TermsModalProps) {
         </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import SwipeBackModal from '../common/SwipeBackModal'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
@@ -99,7 +100,7 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
   }
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ContentColumn>
@@ -181,7 +182,7 @@ export default function OfficialRequestModal({ visible, onClose, memberNumber, c
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 
