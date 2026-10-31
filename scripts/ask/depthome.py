@@ -6,6 +6,9 @@
 - 대상: 백엔드 크롤러 학과 게시판(CrawlerBoards.DEPARTMENT_BOARDS)의 홈페이지. 첫 화면 메뉴의 '/<사이트>/NNNN.do'·'/<사이트>/sub/NNNN.do'.
 - 교수·구성원 소개: 내용(연락처·연구실·이메일)은 옮기지 않고 '그 페이지가 어디 있는지'만 남긴다(10-28 운영진 결정 —
   교수 정보는 우리가 답하지 않고 학과 홈페이지 교수 소개로 안내). linkOnly 쪽.
+  10-31 운영진 결정: 교수진 페이지는 이름·직위·연구분야(소속은 학과)만 옮긴다 — `--faculty` 가 화면을 그려(헤드리스 Chrome,
+  교수진 목록은 자바스크립트로 채워진다) 그 세 칸만 읽는다. 학위·출신 학교·연구실·전화·이메일·사진은 읽지도 저장하지도 않는다.
+  교직원·연구랩·조교 소개는 지금처럼 위치만.
 - 빼는 것: 게시판(글 목록이 있는 메뉴 — 공지는 서버가 매시간 따로 모은다), 이메일 주소,
   화면에서 채우는 틀('{{ … }}'), 여러 학과에 똑같이 들어간 공통 문구, 남은 본문이 짧은 페이지.
 - 예절: robots.txt 가 막은 폴더(/_attach 등)는 가지 않는다. 요청 사이 1초, 홍익온 수집기 이름(UA).
@@ -144,5 +147,71 @@ def refilter():
     print(f'다시 거름: {len(kept)}쪽')
 
 
+CHROME = os.environ.get('CHROME', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
+# 교수 목록이 있는 교수진 메뉴(교직원·연구랩·게시판 목록은 아니다).
+PROF_TITLE = re.compile(r'교수진|교수\s*소개|교수소개|교원')
+NOT_PROF_TITLE = re.compile(r'게시판|직원|연구랩|랩실|조교')
+# 연구분야 칸이 비어 첫 줄이 학위·학교·연구실이면 버린다.
+NOT_FIELD = re.compile(r'박사|석사|학사|Ph\.?\s*D|Univ|University|College|대학교|대학원|\d+호|\d층|@')
+
+
+def rendered(url):
+    """화면을 그린 뒤의 HTML(교수진 목록은 자바스크립트가 채운다). 임시 프로필, 홍익온 수집기 이름."""
+    time.sleep(DELAY)
+    import subprocess, tempfile  # noqa: E401
+    with tempfile.TemporaryDirectory() as profile:
+        out = subprocess.run([CHROME, '--headless=new', '--disable-gpu', f'--user-data-dir={profile}', f'--user-agent={UA}',
+                              '--virtual-time-budget=10000', '--dump-dom', url], capture_output=True, timeout=120)
+    return out.stdout.decode('utf-8', errors='ignore')
+
+
+def professors(html):
+    """교수진 목록 → [(이름, 직위, 연구분야)]. 그 밖의 칸(학위·학교·연구실·전화·이메일·사진)은 읽지 않는다."""
+    if 'prof-ul' not in html:
+        return []
+    out = []
+    for block in html.split('class="faculty-intro"')[1:]:
+        name = re.search(r'class="faculty-name"[^>]*>\s*([^<]+?)\s*</a>', block)
+        position = re.search(r'<p class="position">\s*([^<]*?)\s*</p>', block)
+        info = re.search(r'<ul class="info">\s*<li>\s*([^<]*?)\s*</li>', block)
+        if not name:
+            continue
+        field = info.group(1).strip() if info else ''
+        if NOT_FIELD.search(field):
+            field = ''
+        row = (name.group(1).strip(), position.group(1).strip() if position else '', field)
+        if row not in out:
+            out.append(row)
+    return out
+
+
+def faculty():
+    """이미 만든 data/rag-depthome.json 의 교수진 쪽만 화면을 그려 이름·직위·연구분야로 채운다(다른 쪽은 그대로)."""
+    data = json.load(open(OUT, encoding='utf-8'))
+    changed = 0
+    for p in data['pages']:
+        if not p.get('linkOnly') or not PROF_TITLE.search(p['title']) or NOT_PROF_TITLE.search(p['title']):
+            continue
+        try:
+            rows = professors(rendered(p['url']))
+        except Exception as e:  # noqa: BLE001
+            print(f"{p['dept']}: {p['url']} 실패 {e}", file=sys.stderr)
+            continue
+        if not rows:
+            print(f"{p['dept']}: 교수 목록 없음 — 위치만 둔다 ({p['url']})", flush=True)
+            continue
+        menu = p['title'].split('|')[-1].strip()
+        lines = [f"{p['dept']} 교수진(학과 홈페이지 '{menu}' 메뉴 기준, 이름 · 직위 · 연구분야)"]
+        lines += [' · '.join(c for c in row if c) for row in rows]
+        lines.append(f"연구실·전화·이메일·면담은 홍익온이 안내하지 않고 {p['dept']} 홈페이지 교수진 페이지로 안내해요.")
+        p.pop('linkOnly', None)
+        p.update(faculty=True, text=EMAIL.sub('', '\n'.join(lines)))
+        changed += 1
+        print(f"{p['dept']}: 교수 {len(rows)}명", flush=True)
+    data['facultyAt'] = time.strftime('%Y-%m-%d')
+    json.dump(data, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print(f'교수진 채움: {changed}쪽')
+
+
 if __name__ == '__main__':
-    refilter() if '--refilter' in sys.argv else main()
+    refilter() if '--refilter' in sys.argv else faculty() if '--faculty' in sys.argv else main()
