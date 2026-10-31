@@ -43,7 +43,10 @@ export interface PendingAlert {
 
 export interface NearbyState {
   enabled: boolean
-  affiliation: PartnerAffiliation | null
+  /** 고른 소속(여러 개 가능, 11-01). 비어 있으면 총학생회 제휴만. */
+  affiliations: PartnerAffiliation[]
+  /** 옛 저장본(소속 하나). 불러올 때 `affiliations` 로 옮긴다(`background.loadState`). */
+  affiliation?: PartnerAffiliation | null
   targets: SnapshotPartner[]
   stays: Record<string, StayRecord>
   sent: SentAlert[]
@@ -69,7 +72,7 @@ export function activeStays(state: NearbyState): Map<string, StayRecord> {
 
 export const INITIAL_NEARBY_STATE: NearbyState = {
   enabled: false,
-  affiliation: null,
+  affiliations: [],
   targets: [],
   stays: {},
   sent: [],

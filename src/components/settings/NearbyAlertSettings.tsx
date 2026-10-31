@@ -60,8 +60,8 @@ const ALWAYS_ALLOW_NOTICE =
   '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
 const QUIET_LABEL = `밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에는 받지 않기`
 
-function affiliationLabel(affiliation: PartnerAffiliation | null): string {
-  return affiliation ? `${affiliation}·총학생회` : '총학생회'
+function affiliationLabel(affiliations: readonly PartnerAffiliation[]): string {
+  return [...affiliations, '총학생회'].join('·')
 }
 
 /** 알림이 오는 데 빠진 것(설정 줄 안내·점검표). */
@@ -156,7 +156,7 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         ? '제휴 가게에 머물면 받을 수 있는 혜택을 알려 드려요.'
         : missing.length > 0
           ? `알림이 오려면 설정이 필요해요: ${missing.join(', ')}. 눌러서 고칠 수 있어요.`
-          : `${affiliationLabel(settings?.affiliation ?? null)} 제휴 가게에 ${settings?.dwellMinutes?.other ?? DEFAULT_DWELL_MINUTES.other}분(카페는 ${settings?.dwellMinutes?.cafe ?? DEFAULT_DWELL_MINUTES.cafe}분) 넘게 머물면 알려 드려요.`
+          : `${affiliationLabel(settings?.affiliations ?? [])} 제휴 가게에 ${settings?.dwellMinutes?.other ?? DEFAULT_DWELL_MINUTES.other}분(카페는 ${settings?.dwellMinutes?.cafe ?? DEFAULT_DWELL_MINUTES.cafe}분) 넘게 머물면 알려 드려요.`
 
   return (
     <>
@@ -182,8 +182,8 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         checklist={checklist}
         serverPaused={serverPaused}
         onClose={() => setModalVisible(false)}
-        onResync={async (affiliation, enable) => {
-          const watching = await syncNearbyAlerts(source, { enable, affiliation })
+        onResync={async (affiliations, enable) => {
+          const watching = await syncNearbyAlerts(source, { enable, affiliations })
           await refresh()
           return watching
         }}
@@ -214,14 +214,14 @@ interface ModalProps {
   accessToken: string
   onClose: () => void
   /** 소속을 바꾸거나 켤 때 다시 등록한다. 실제로 감시를 시작했으면 true. */
-  onResync: (affiliation: PartnerAffiliation | null, enable: boolean) => Promise<boolean>
+  onResync: (affiliations: PartnerAffiliation[], enable: boolean) => Promise<boolean>
   onRefresh: () => Promise<void>
   onTurnOff: () => Promise<void>
 }
 
 function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessToken, onClose, onResync, onRefresh, onTurnOff }: ModalProps) {
   const alreadyOn = settings?.enabled === true
-  const [affiliation, setAffiliation] = useState<PartnerAffiliation | null>(settings?.affiliation ?? null)
+  const [affiliations, setAffiliations] = useState<PartnerAffiliation[]>(settings?.affiliations ?? [])
   const [consent, setConsent] = useState(false)
   const [step, setStep] = useState<Step>({ kind: 'form' })
   const [radius, setRadius] = useState(partnerRadiusMeters())
@@ -231,7 +231,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   // 창이 열릴 때만 처음 상태로 되돌린다. 켜는 도중 설정이 바뀌어도 안내·오류 문구를 지우지 않게(10-28 테스트).
   useEffect(() => {
     if (!visible) return
-    setAffiliation(settings?.affiliation ?? null)
+    setAffiliations(settings?.affiliations ?? [])
     setConsent(false)
     setStep({ kind: 'form' })
     setRadius(partnerRadiusMeters())
@@ -256,14 +256,14 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
         return
       }
     }
-    const watching = await onResync(affiliation, true)
+    const watching = await onResync(affiliations, true)
     if (!watching) {
       setStep({ kind: 'error', message: '켜 두었어요. 지금은 위치를 확인하지 못해, 앱을 다시 열면 근처 업체를 등록해요.' })
       return
     }
     setStep({ kind: 'form' })
     if (!alreadyOn) onClose()
-  }, [accessToken, affiliation, alreadyOn, onClose, onResync])
+  }, [accessToken, affiliations, alreadyOn, onClose, onResync])
 
   // "항상 허용"을 고르러 휴대폰 설정에 다녀오면 다시 확인해 이어서 켠다.
   useEffect(() => {
@@ -315,8 +315,10 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     }
   }
 
-  const chooseAffiliation = (next: PartnerAffiliation | null) => {
-    setAffiliation(next)
+  /** 소속은 여러 개 고를 수 있다(11-01 — 복수전공·학생회 겸직 등). 누르면 넣고 빼기. */
+  const toggleAffiliation = (item: PartnerAffiliation) => {
+    const next = affiliations.includes(item) ? affiliations.filter((a) => a !== item) : [...affiliations, item]
+    setAffiliations(next)
     if (alreadyOn) void run('소속에 맞춰 다시 등록하는 중이에요', () => onResync(next, false))
   }
 
@@ -325,7 +327,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     setRadius(meters)
     void run(`반경 ${meters}m 로 다시 등록하는 중이에요`, async () => {
       await setPartnerRadius(meters === ALERT_RADIUS_METERS ? null : meters)
-      if (alreadyOn) await onResync(affiliation, false)
+      if (alreadyOn) await onResync(affiliations, false)
     })
   }
 
@@ -334,7 +336,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     setUnlimited(next)
     void run('저장하는 중이에요', async () => {
       await setFieldTestUnlimited(next)
-      if (alreadyOn) await onResync(affiliation, false)
+      if (alreadyOn) await onResync(affiliations, false)
     })
   }
 
@@ -454,19 +456,19 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>내 소속(선택)</Text>
+            <Text style={styles.sectionTitle}>내 소속(선택, 여러 개 가능)</Text>
             <Text style={styles.hint}>
               {NEARBY_FIELD_TEST
                 ? '테스트 앱은 소속과 상관없이 모든 제휴를 알려 드려요(다른 소속 제휴는 알림에 소속이 붙어요).'
-                : '고른 소속과 총학생회 제휴 업체만 알려 드려요. 고르지 않으면 총학생회 제휴만.'}
+                : '고른 소속들과 총학생회 제휴 업체만 알려 드려요. 고르지 않으면 총학생회 제휴만.'}
             </Text>
             <View style={styles.chips}>
               {PARTNER_AFFILIATIONS.filter((item) => item !== '총학생회').map((item) => {
-                const selected = affiliation === item
+                const selected = affiliations.includes(item)
                 return (
                   <Pressable
                     key={item}
-                    onPress={() => chooseAffiliation(selected ? null : item)}
+                    onPress={() => toggleAffiliation(item)}
                     disabled={working}
                     style={[styles.chip, selected && styles.chipOn]}
                     accessibilityRole="button"

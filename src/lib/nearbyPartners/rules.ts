@@ -109,11 +109,13 @@ export interface Located {
   lng: number
 }
 
-/** 이 소속 사용자가 받는 혜택 문구. 소속별 예외가 있으면 그것, 없으면 기본 혜택. */
-export function benefitFor(partner: BenefitSource, affiliation: PartnerAffiliation | null): string | null {
-  const special = affiliation
-    ? partner.affiliationBenefits?.find((item) => item.affiliation === affiliation)?.benefit
-    : undefined
+/**
+ * 이 사용자가 받는 혜택 문구. 고른 소속(여러 개 가능, 11-01) 중 앞에서부터 소속별 예외가 있으면 그것, 없으면 기본 혜택.
+ */
+export function benefitFor(partner: BenefitSource, affiliations: readonly PartnerAffiliation[]): string | null {
+  const special = affiliations
+    .map((affiliation) => partner.affiliationBenefits?.find((item) => item.affiliation === affiliation)?.benefit)
+    .find((benefit) => benefit !== undefined)
   const benefit = (special ?? partner.benefit)?.trim()
   return benefit ? benefit : null
 }
@@ -123,8 +125,8 @@ function endedBefore(endsOn: string | undefined, today: string): boolean {
 }
 
 export interface PickTargetsOptions {
-  /** 사용자가 고른 소속. null 이면 총학생회 제휴만. */
-  affiliation: PartnerAffiliation | null
+  /** 사용자가 고른 소속(여러 개 가능). 비어 있으면 총학생회 제휴만. */
+  affiliations: readonly PartnerAffiliation[]
   /** 캠퍼스 건물 좌표. 업체 반경이 건물에 걸치면(강의실에서 알림이 가는 경우) 뺀다. */
   campusPoints: readonly { lat: number; lng: number }[]
   now: number
@@ -139,15 +141,15 @@ export interface PickTargetsOptions {
  */
 export function pickTargets(partners: readonly Partner[], options: PickTargetsOptions): Partner[] {
   const today = kstTodayYmd(options.now)
-  const { affiliation } = options
+  const mine = options.affiliations
   return partners.filter((partner) => {
     if (partner.nearbyAlert !== true) return false
-    if (benefitFor(partner, affiliation) === null) return false
+    if (benefitFor(partner, mine) === null) return false
     if (endedBefore(partner.endsOn, today)) return false
 
     const affiliations = partner.affiliations ?? []
     const eligible = affiliations.filter((item) => {
-      if (!options.anyAffiliation && item !== '총학생회' && item !== affiliation) return false
+      if (!options.anyAffiliation && item !== '총학생회' && !mine.includes(item)) return false
       const end = partner.affiliationEnds?.find((e) => e.affiliation === item)?.endsOn
       return !endedBefore(end, today)
     })

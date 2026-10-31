@@ -41,14 +41,14 @@ export function nearbyGroupContent(members: readonly { name: string }[]): Nearby
 
 export function nearbyAlertContent(
   partner: BenefitSource & { name: string; affiliations?: readonly PartnerAffiliation[] },
-  affiliation: PartnerAffiliation | null,
+  affiliations: readonly PartnerAffiliation[],
   othersCount = 0,
 ): NearbyAlertContent | null {
-  const benefit = benefitFor(partner, affiliation)
+  const benefit = benefitFor(partner, affiliations)
   if (!benefit) return null
   // 혜택 뒤에 "외 N곳"을 붙이면 그 혜택이 모든 곳에 해당하는 것처럼 읽혀 따로 한 줄로 둔다.
   // 내 소속·총학생회 제휴가 아니면(현장 테스트 빌드에서만 대상이 된다) 어느 소속 제휴인지 앞에 붙인다.
-  const own = partner.affiliations?.some((item) => item === '총학생회' || item === affiliation) ?? true
+  const own = partner.affiliations?.some((item) => item === '총학생회' || affiliations.includes(item)) ?? true
   const scope = own ? '' : `(${partner.affiliations!.join('·')} 제휴) `
   const others = othersCount > 0 ? `\n근처에 제휴업체 ${othersCount}곳이 더 있어요` : ''
   return {

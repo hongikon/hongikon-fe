@@ -125,7 +125,11 @@ function logFailure(step: string, error: unknown): void {
 async function loadState(): Promise<NearbyState> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY)
-    return raw ? { ...INITIAL_NEARBY_STATE, ...(JSON.parse(raw) as Partial<NearbyState>) } : INITIAL_NEARBY_STATE
+    if (!raw) return INITIAL_NEARBY_STATE
+    const saved = JSON.parse(raw) as Partial<NearbyState>
+    // 옛 저장본은 소속 하나(affiliation)였다 — 목록으로 옮긴다.
+    const affiliations = saved.affiliations ?? (saved.affiliation ? [saved.affiliation] : [])
+    return { ...INITIAL_NEARBY_STATE, ...saved, affiliations, affiliation: undefined }
   } catch {
     return INITIAL_NEARBY_STATE
   }
@@ -223,7 +227,7 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
         .flatMap((id) => state.targets.filter((target) => target.id === id))
         .sort((a, b) => haversineMeters(partner.lat, partner.lng, a.lat, a.lng) - haversineMeters(partner.lat, partner.lng, b.lat, b.lng))
       const members = [partner, ...others]
-      const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(partner, state.affiliation)
+      const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(partner, state.affiliations)
       if (!content) continue
       await ensureChannel()
       // "몇 초 뒤"로 예약한다. DATE 트리거는 iOS 에서 밀리초를 버린 뒤 남은 시간으로 바꾸는데, 0 이하가 되거나 날짜가
@@ -676,11 +680,11 @@ export interface NearbySource {
   serverEnabled: boolean
 }
 
-function snapshot(partners: readonly Partner[], affiliation: PartnerAffiliation | null, campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
+function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
   // 현장 테스트 빌드: 서버에 업체별 대상 표시가 없어도, 소속과 상관없이 혜택 있는 업체를 모두 대상으로 본다
   // (10-29 — 문과대학 전용 제휴 앞에서 알림이 안 와 헷갈렸다). 알림 문구에 어느 소속 제휴인지 붙는다(copy.ts).
   const source = NEARBY_FIELD_TEST ? partners.map((p) => ({ ...p, nearbyAlert: true })) : partners
-  return pickTargets(source, { affiliation, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
+  return pickTargets(source, { affiliations, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
@@ -694,7 +698,7 @@ function snapshot(partners: readonly Partner[], affiliation: PartnerAffiliation 
 
 export interface NearbySettings {
   enabled: boolean
-  affiliation: PartnerAffiliation | null
+  affiliations: PartnerAffiliation[]
   targetCount: number
   quietNight: boolean
   dwellMinutes: DwellMinutes
@@ -706,7 +710,7 @@ export async function getNearbySettings(): Promise<NearbySettings> {
   const state = settle(await loadState(), nearbyNow())
   return {
     enabled: state.enabled,
-    affiliation: state.affiliation,
+    affiliations: state.affiliations,
     targetCount: state.targets.length,
     quietNight: state.quietNight === true,
     dwellMinutes: state.dwellMinutes ?? DEFAULT_DWELL_MINUTES,
@@ -762,7 +766,7 @@ export async function sendNearbyTestAlert(seconds = 5, group = false): Promise<s
     ? [...state.targets].sort((a, b) => haversineMeters(at.lat, at.lng, a.lat, a.lng) - haversineMeters(at.lat, at.lng, b.lat, b.lng))
     : state.targets
   const members = sorted.slice(0, group ? 3 : 1)
-  const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(members[0], state.affiliation)
+  const content = members.length > 1 ? nearbyGroupContent(members) : nearbyAlertContent(members[0], state.affiliations)
   if (!content) return '혜택 문구가 없는 가게라 알림을 만들 수 없어요.'
   await ensureChannel()
   await Notifications.scheduleNotificationAsync({
@@ -784,7 +788,7 @@ export async function sendNearbyTestAlert(seconds = 5, group = false): Promise<s
  */
 export async function syncNearbyAlerts(
   source: NearbySource,
-  options: { enable?: boolean; affiliation?: PartnerAffiliation | null } = {},
+  options: { enable?: boolean; affiliations?: PartnerAffiliation[] } = {},
 ): Promise<boolean> {
   const pkg = packages()
   if (!pkg) return false
@@ -794,7 +798,7 @@ export async function syncNearbyAlerts(
     let state: NearbyState = {
       ...input,
       enabled: options.enable ? true : input.enabled,
-      affiliation: options.affiliation !== undefined ? options.affiliation : input.affiliation,
+      affiliations: options.affiliations ?? input.affiliations,
     }
     if (!state.enabled) {
       lastSync = { at: now, result: 'off', regions: 0, reselectMeters: 0 }
@@ -810,7 +814,7 @@ export async function syncNearbyAlerts(
     }
     state = {
       ...state,
-      targets: snapshot(source.partners, state.affiliation, source.campusPoints, now),
+      targets: snapshot(source.partners, state.affiliations, source.campusPoints, now),
       // 현장 테스트 앱은 기본으로 횟수 제한 없이. 설정의 [테스트] 스위치로 운영 규칙(하루 최대 수·간격)을 켜 볼 수 있다.
       perVisit: NEARBY_FIELD_TEST && fieldTestUnlimited(),
     }

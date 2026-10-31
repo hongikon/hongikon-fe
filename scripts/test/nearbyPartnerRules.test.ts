@@ -73,10 +73,10 @@ test('대상 업체: 관리자 표시·혜택·기한·소속·캠퍼스 겹침�
   ]
   const campusPoints = [north(-50)]
 
-  const noAffiliation = pickTargets(partners, { affiliation: null, campusPoints, now: NOON }).map((p) => p.id)
+  const noAffiliation = pickTargets(partners, { affiliations: [], campusPoints, now: NOON }).map((p) => p.id)
   assert.deepEqual(noAffiliation, ['ok', 'endsToday'])
 
-  const art = pickTargets(partners, { affiliation: '미술대학', campusPoints, now: NOON }).map((p) => p.id)
+  const art = pickTargets(partners, { affiliations: ['미술대학'], campusPoints, now: NOON }).map((p) => p.id)
   assert.deepEqual(art, ['ok', 'endsToday', 'collegeOnly'])
 })
 
@@ -86,12 +86,12 @@ test('대상 업체: 소속 전용 혜택만 있어도 그 소속에는 대상',
     affiliations: ['총학생회', '공과대학'],
     affiliationBenefits: [{ affiliation: '공과대학', benefit: '공대생 15% 할인' }],
   })
-  assert.equal(pickTargets([p], { affiliation: null, campusPoints: [], now: NOON }).length, 0)
-  assert.equal(pickTargets([p], { affiliation: '공과대학', campusPoints: [], now: NOON }).length, 1)
+  assert.equal(pickTargets([p], { affiliations: [], campusPoints: [], now: NOON }).length, 0)
+  assert.equal(pickTargets([p], { affiliations: ['공과대학'], campusPoints: [], now: NOON }).length, 1)
   // 현장 테스트 빌드: 소속과 상관없이(기본 혜택이 있는 다른 소속 전용 제휴도 대상).
   const liberalOnly = partner('liberal', 300, { affiliations: ['문과대학'] })
-  assert.equal(pickTargets([liberalOnly], { affiliation: null, campusPoints: [], now: NOON }).length, 0)
-  assert.equal(pickTargets([liberalOnly], { affiliation: null, campusPoints: [], now: NOON, anyAffiliation: true }).length, 1)
+  assert.equal(pickTargets([liberalOnly], { affiliations: [], campusPoints: [], now: NOON }).length, 0)
+  assert.equal(pickTargets([liberalOnly], { affiliations: [], campusPoints: [], now: NOON, anyAffiliation: true }).length, 1)
 })
 
 test('가까운 업체 고르기: 거리순, 같으면 id 순, 개수 제한', () => {
@@ -197,24 +197,24 @@ test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길�
     name: '홍익카페',
     affiliationBenefits: [{ affiliation: '미술대학', benefit: '미대생 아메리카노 1+1' }],
   })
-  assert.deepEqual(nearbyAlertContent(p, null), {
+  assert.deepEqual(nearbyAlertContent(p, []), {
     title: '홍익카페에 계신가요?',
     body: '제휴 혜택: 음료 10% 할인\n알림 끄기: 설정 > 근처 제휴 알림',
   })
-  assert.ok(!nearbyAlertContent(p, null)!.title.includes('광고'))
-  assert.match(nearbyAlertContent(p, '미술대학')!.body, /^제휴 혜택: 미대생 아메리카노 1\+1\n/)
-  assert.match(nearbyAlertContent(p, null, 2)!.body, /\n근처에 제휴업체 2곳이 더 있어요\n/)
+  assert.ok(!nearbyAlertContent(p, [])!.title.includes('광고'))
+  assert.match(nearbyAlertContent(p, ['미술대학'])!.body, /^제휴 혜택: 미대생 아메리카노 1\+1\n/)
+  assert.match(nearbyAlertContent(p, [], 2)!.body, /\n근처에 제휴업체 2곳이 더 있어요\n/)
 
   const long = partner('b', 0, { benefit: '가'.repeat(80) })
-  const firstLine = nearbyAlertContent(long, null)!.body.split('\n')[0]
+  const firstLine = nearbyAlertContent(long, [])!.body.split('\n')[0]
   assert.equal(Array.from(firstLine.replace('제휴 혜택: ', '')).length, 60)
   assert.ok(firstLine.endsWith('…'))
 
-  assert.equal(nearbyAlertContent(partner('c', 0, { benefit: '  ' }), null), null)
+  assert.equal(nearbyAlertContent(partner('c', 0, { benefit: '  ' }), []), null)
   // 내 소속 제휴가 아니면(현장 테스트) 소속을 앞에 붙인다.
   const liberal = partner('d', 0, { affiliations: ['문과대학'] })
-  assert.match(nearbyAlertContent(liberal, null)!.body, /^\(문과대학 제휴\) 제휴 혜택: /)
-  assert.match(nearbyAlertContent(liberal, '문과대학')!.body, /^제휴 혜택: /)
+  assert.match(nearbyAlertContent(liberal, [])!.body, /^\(문과대학 제휴\) 제휴 혜택: /)
+  assert.match(nearbyAlertContent(liberal, ['문과대학'])!.body, /^제휴 혜택: /)
 })
 
 test('여러 곳 알림: 몇 곳인지와 이름 두 개까지, 단정하지 않는다', () => {
@@ -235,4 +235,21 @@ test('설정: 밤에는 받지 않기(테스트 앱에서도 지킴)', () => {
   assert.deepEqual(decideOnEnter('a', kst(21, 57), [], kst(21, 57), { quietNight: true }), { schedule: false, reason: 'quiet' })
   assert.equal(decideOnEnter('a', kst(21, 57), [], kst(21, 57)).schedule, true)
   assert.equal(decideOnEnter('a', kst(23, 0), [], kst(23, 0), { quietNight: true, perVisit: true }).schedule, false)
+})
+
+test('소속 여러 개: 고른 소속들의 제휴가 모두 대상, 혜택은 앞에 고른 소속 것', () => {
+  const art = partner('art', 0, { affiliations: ['미술대학'] })
+  const eng = partner('eng', 0, { affiliations: ['공과대학'] })
+  const both = partner('both', 0, {
+    affiliations: ['미술대학', '공과대학'],
+    affiliationBenefits: [
+      { affiliation: '공과대학', benefit: '공대 20%' },
+      { affiliation: '미술대학', benefit: '미대 30%' },
+    ],
+  })
+  const picked = pickTargets([art, eng, both], { affiliations: ['미술대학', '공과대학'], campusPoints: [], now: kst(12, 0) }).map((p) => p.id)
+  assert.deepEqual(picked, ['art', 'eng', 'both'])
+  assert.deepEqual(pickTargets([art, eng], { affiliations: ['공과대학'], campusPoints: [], now: kst(12, 0) }).map((p) => p.id), ['eng'])
+  assert.match(nearbyAlertContent(both, ['미술대학', '공과대학'])!.body, /^제휴 혜택: 미대 30%/)
+  assert.match(nearbyAlertContent(both, ['공과대학', '미술대학'])!.body, /^제휴 혜택: 공대 20%/)
 })
