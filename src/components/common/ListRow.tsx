@@ -19,7 +19,7 @@ interface ListRowProps {
   /** 빨간 글자. 로그아웃·초기화처럼 되돌리기 어려운 행동. */
   danger?: boolean
   onPress?: () => void
-  /** 오른쪽에 둘 컨트롤(스위치 등). 주면 줄 전체는 눌리지 않는다. */
+  /** 오른쪽에 둘 컨트롤(스위치 등). onPress 도 주면 줄을 눌러 상세를 열고 컨트롤은 따로 동작한다. */
   right?: ReactNode
   /** 섹션의 마지막 줄이면 아래 구분선을 지운다. */
   last?: boolean
@@ -45,7 +45,8 @@ export default function ListRow({
   style,
   accessibilityLabel,
 }: ListRowProps) {
-  const pressable = onPress !== undefined && right === undefined
+  // 스위치가 있어도 onPress 를 주면 줄을 누를 수 있다(11-01 — 근처 제휴 알림 줄을 눌러도 설정 창이 열리지 않았다).
+  const pressable = onPress !== undefined
   // 누르는 줄은 글자를 모아 한 이름으로 읽는데, 아이콘(글꼴 글자)까지 섞여 깨진 문자가 앞에 읽혔다(10-31). 직접 정해 준다.
   const spokenLabel = accessibilityLabel ?? [label, description, badge, value].filter(Boolean).join(', ')
   const content = (
@@ -75,7 +76,7 @@ export default function ListRow({
         </Text>
       )}
       {right}
-      {pressable && !danger && <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />}
+      {pressable && !danger && right === undefined && <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />}
     </>
   )
 
