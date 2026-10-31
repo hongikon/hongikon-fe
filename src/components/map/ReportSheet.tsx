@@ -279,7 +279,15 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         />
       </View>
 
-      <Text style={styles.title}>{report.title}</Text>
+      {/* 제목을 누르면 본문 창으로(10-31 — 제목만 눌러선 아무 일도 없었다). */}
+      <Pressable
+        onPress={() => openPost(false)}
+        style={({ pressed }) => pressed && { opacity: 0.6 }}
+        accessibilityRole="button"
+        accessibilityLabel={`${report.title}, 제보 본문 보기`}
+      >
+        <Text style={styles.title}>{report.title}</Text>
+      </Pressable>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
       </View>
 
