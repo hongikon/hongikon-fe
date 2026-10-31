@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native'
+import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -186,7 +187,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
   const location = useLocationPermission(visible && hasLocation)
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -279,7 +280,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
           </ScrollView>
         </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 

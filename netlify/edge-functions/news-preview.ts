@@ -88,9 +88,14 @@ export default async (request: Request, context: { next: () => Promise<Response>
       .catch(() => null),
   ])
   const type = page.headers.get('content-type') ?? ''
-  if (!news?.title || !type.includes('text/html')) return page
+  // 진단: 미리보기를 넣었는지(hit) 아니면 왜 원래 페이지를 돌려줬는지 응답 헤더에 남긴다.
   const headers = new Headers(page.headers)
+  if (!news?.title || !type.includes('text/html')) {
+    headers.set('x-hongikon-preview', !news?.title ? 'no-news' : `not-html:${type}`)
+    return new Response(page.body, { status: page.status, headers })
+  }
   headers.delete('content-length')
+  headers.set('x-hongikon-preview', 'hit')
   return new Response(injectMeta(await page.text(), news), { status: page.status, headers })
 }
 

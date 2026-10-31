@@ -26,7 +26,7 @@ import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
-import type { InfoSuggestLocation } from "../components/settings/InfoSuggestModal";
+import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
@@ -235,7 +235,7 @@ export default function MapScreen() {
   /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
   const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner">("report");
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
-  const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null } | null>(null);
+  const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
   const [pickerCenter, setPickerCenter] = useState<{
     lat: number;
     lng: number;
@@ -1834,7 +1834,26 @@ export default function MapScreen() {
           )}
 
           {selectedPartner && (
-            <PartnerSheet key={selectedPartner.id} partner={selectedPartner} onClose={handleClosePartner} />
+            <PartnerSheet
+              key={selectedPartner.id}
+              partner={selectedPartner}
+              onClose={handleClosePartner}
+              onSuggestEdit={() => {
+                // 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다.
+                const partner = selectedPartner;
+                handleClosePartner();
+                setPartnerSuggest({
+                  location: { lat: partner.lat, lng: partner.lng, buildingName: null },
+                  prefill: {
+                    type: "partner",
+                    kind: "fix",
+                    name: partner.name,
+                    address: partner.address ?? "",
+                    affiliation: partner.affiliations?.[0] ?? null,
+                  },
+                });
+              }}
+            />
           )}
 
           {selectedFacilityBuilding && facilityKind && (
@@ -2135,6 +2154,7 @@ export default function MapScreen() {
       <InfoSuggestModal
         visible={partnerSuggest !== null}
         location={partnerSuggest?.location ?? null}
+        prefill={partnerSuggest?.prefill ?? null}
         onClose={() => setPartnerSuggest(null)}
         onPickOnMap={() => {
           partnerLocationBeforePickRef.current = partnerSuggest?.location ?? null;

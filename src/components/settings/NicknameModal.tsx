@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
+import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { RADIUS, SPACING } from '../../constants/spacing'
@@ -117,7 +118,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
   const preview = normalized && !validation ? normalized : profile.maskedDefaultName
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>
           <ContentColumn>
@@ -212,7 +213,7 @@ export default function NicknameModal({ visible, profile, onClose, onSaved, onRe
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 

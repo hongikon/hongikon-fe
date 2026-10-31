@@ -9,6 +9,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native'
+import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -75,7 +76,11 @@ interface InfoSuggestModalProps {
   location?: InfoSuggestLocation | null
   /** 있으면 "지도에서 위치 찍기" 버튼을 보여준다(누르면 창을 닫고 지도에서 핀을 고른다). */
   onPickOnMap?: () => void
+  /** 열 때 미리 채울 값(제휴 시트의 "정보 수정 요청" — 그 가게로 '정보 수정'을 채워 연다, 11-01). */
+  prefill?: InfoSuggestPrefill | null
 }
+
+export type InfoSuggestPrefill = Partial<Pick<Draft, 'type' | 'kind' | 'name' | 'address' | 'affiliation'>>
 
 interface Draft {
   type: InfoSuggestType
@@ -301,6 +306,7 @@ export default function InfoSuggestModal({
   onClose,
   location = null,
   onPickOnMap,
+  prefill = null,
 }: InfoSuggestModalProps) {
   const { accessToken } = useAuth()
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
@@ -318,12 +324,16 @@ export default function InfoSuggestModal({
     setDraft((prev) => ({ ...prev, [key]: value }))
 
   // 지도에서 위치를 찍고 돌아왔으면 입력해 두었던 내용을 되살린다(종류와 모든 칸).
+  // 미리 채울 값이 있으면(제휴 시트의 정보 수정 요청) 그 값으로 시작한다.
   useEffect(() => {
     if (visible && savedDraft) {
       const restored = savedDraft
       savedDraft = null
       setDraft(restored)
+    } else if (visible && prefill) {
+      setDraft({ ...EMPTY_DRAFT, ...prefill })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible])
 
   const handlePickOnMap = () => {
@@ -672,7 +682,7 @@ export default function InfoSuggestModal({
   )
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -763,7 +773,7 @@ export default function InfoSuggestModal({
           </ContentColumn>
         </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 
