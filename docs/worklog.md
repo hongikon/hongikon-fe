@@ -206,3 +206,5 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
   - 앱 권한 창·첫 실행 안내의 위치 문구를 근처 알림 빌드에 맞춤("백그라운드 위치 요청 안 함" 삭제).
   - 버전 1.1.0, production 프로필에 `NEARBY_ALERTS_BUILD=1`. 1.0.0 사용자 OTA 는 `pnpm update:production:1.0.0`(같은 JS, 위치 모듈이 없어 근처 알림이 숨는다).
   - 업데이트 소식 1.1.0 항목. 테스트 34/34, tsc 통과.
+- (11-01, 사용자 요청) iOS 위치 권한 창이 영어로 뜨던 것: Info.plist 에 `CFBundleDevelopmentRegion ko` 만 있고 앱 안에 `ko.lproj` 가 없어 iOS 가 앱 언어를 영어로 잡았다(1.1.0 확인 빌드 ipa 에 .lproj 0개). 같은 이유로 앱 언어(Intl)도 영어라 "항상 허용" 안내 그림도 영어였다. `app.config.ts` 에서 Expo `locales.ko.ios` 로 `ko.lproj/InfoPlist.strings` 를 만든다 — 앱 이름·카메라·사진·위치 문구를 플러그인 값에서 그대로 옮겨 Info.plist 와 어긋나지 않게. 임시 prebuild 로 파일 생성·프로젝트 등록 확인. 네이티브 빌드 필요.
+- (11-01, 사용자 요청) "항상 허용" 안내 본문을 Android 용으로 따로: 처음 창에는 "항상 허용"이 없으니 "앱 사용 중에만 허용" → 이어지는 설정 화면에서 "항상 허용".

@@ -65,6 +65,35 @@ function withPluginOptions(plugins: PluginEntry[] | undefined, name: string, ext
   })
 }
 
+/** 플러그인 설정에서 옵션 값을 꺼낸다(없으면 undefined). */
+function pluginOption(plugins: PluginEntry[] | undefined, name: string, key: string): string | undefined {
+  const entry = (plugins ?? []).find((item) => Array.isArray(item) && item[0] === name)
+  const value = Array.isArray(entry) ? entry[1][key] : undefined
+  return typeof value === 'string' ? value : undefined
+}
+
+/**
+ * iOS 권한 창을 한국어로(11-01). Info.plist 에 CFBundleDevelopmentRegion ko 만 있고 앱 안에 ko.lproj 가 없으면, iOS 는 권한 창의
+ * 버튼("Allow While Using App" 등)을 영어로 띄운다. Expo `locales` 로 ko.lproj/InfoPlist.strings 를 만들고, 문구는 플러그인에
+ * 넣은 값을 그대로 옮겨 Info.plist 와 어긋나지 않게 한다.
+ */
+function koreanInfoPlistStrings(plugins: PluginEntry[] | undefined, displayName: string): Record<string, string> {
+  const strings: Record<string, string | undefined> = {
+    CFBundleDisplayName: displayName,
+    NSCameraUsageDescription: pluginOption(plugins, 'expo-image-picker', 'cameraPermission'),
+    NSPhotoLibraryUsageDescription: pluginOption(plugins, 'expo-image-picker', 'photosPermission'),
+    NSLocationWhenInUseUsageDescription: pluginOption(plugins, 'expo-location', 'locationWhenInUsePermission'),
+    NSLocationAlwaysAndWhenInUseUsageDescription: pluginOption(plugins, 'expo-location', 'locationAlwaysAndWhenInUsePermission'),
+    NSLocationAlwaysUsageDescription: pluginOption(plugins, 'expo-location', 'locationAlwaysPermission'),
+  }
+  // InfoPlist.strings 는 "키" = "값"; 형식이라 값 안의 따옴표·역슬래시를 이스케이프한다(플러그인은 그대로 쓴다).
+  return Object.fromEntries(
+    Object.entries(strings)
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+      .map(([key, value]) => [key, value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')]),
+  )
+}
+
 /**
  * expo-task-manager 의 설정 플러그인은 모든 빌드에 iOS 백그라운드 모드 'fetch' 를 넣는다. 근처 알림(지오펜싱)은 fetch 를 쓰지
  * 않고, 쓰지 않는 백그라운드 모드는 App Store 심사(2.5.4)에서 질문을 받을 수 있어 뺀다.
@@ -114,6 +143,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: process.env.APP_VERSION_OVERRIDE || config.version,
     plugins,
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,
+    locales: { ...config.locales, ko: { ios: koreanInfoPlistStrings(plugins, `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`) } },
     slug: config.slug ?? 'hongik-alimi',
     ios: {
       ...config.ios,

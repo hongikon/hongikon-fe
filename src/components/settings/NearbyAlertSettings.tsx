@@ -851,7 +851,10 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
         <Text style={styles.overlayTitle}>위치를 "항상 허용"으로 해 주세요</Text>
         <Text style={styles.overlayBody}>
           앱을 닫아 둬도 제휴 가게에 머무는 걸 알아채려면 위치를 "항상" 쓸 수 있어야 해요. 그래야 가게에 있을 때 바로 혜택을 알려 드릴 수
-          있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.
+          있어요.{' '}
+          {Platform.OS === 'android'
+            ? 'Android 는 처음 창에 "항상 허용"이 없어요. "앱 사용 중에만 허용"을 고른 뒤, 이어서 열리는 휴대폰 설정 화면에서 "항상 허용"을 골라 주세요. "앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
+            : '"앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'}
         </Text>
 
         {steps.map((item, index) => (
