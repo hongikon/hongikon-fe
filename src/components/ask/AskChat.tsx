@@ -205,7 +205,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const listRef = useRef<FlatList<ChatMessage>>(null);
   /** 맨 아래 근처를 보고 있는지(새 글자가 오면 따라 내릴지). */
   const atBottomRef = useRef(true);
-  // 앱 탭은 Claude·ChatGPT 앱처럼 — 답은 말풍선 없이 화면 폭 그대로, 내 질문만 오른쪽 옅은 회색 말풍선.
+  // 앱 탭은 Claude·ChatGPT 앱처럼 — 답은 말풍선 없이 화면 폭 그대로, 내 질문만 오른쪽 남색 말풍선(11-01 브랜드색 강조).
   const botStyle = appMode ? [styles.botBubble, styles.botPlain] : styles.botBubble;
   const userStyle = appMode ? [styles.userBubble, styles.userApp] : styles.userBubble;
   const userTextStyle = appMode ? [styles.userText, styles.userTextApp] : styles.userText;
@@ -811,7 +811,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const renderLink = (link: AskLink, key: string) => (
     <TouchableOpacity
       key={key}
-      style={styles.linkButton}
+      style={appMode ? [styles.linkButton, styles.linkButtonApp] : styles.linkButton}
       activeOpacity={0.7}
       onPress={() => openLink(link.url)}
       accessibilityRole="link"
@@ -1095,6 +1095,9 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   // 대화가 없을 때 가운데 인사(Claude·ChatGPT 앱처럼). 웹 /dev/ask 는 예전처럼 안내 말풍선과 예시 버튼.
   const empty = appMode ? (
     <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="chatbubble-ellipses" size={28} color={COLORS.primary} />
+      </View>
       <Text style={styles.emptyTitle}>무엇이 궁금하세요?</Text>
       <Text style={styles.emptyDesc}>휴학·수강·장학·시설처럼 학교 일을 물으면{"\n"}학교 공식 안내를 찾아 답해요.</Text>
     </View>
@@ -1340,13 +1343,14 @@ const styles = StyleSheet.create({
   clearSlot: { width: 44 },
   containerApp: { backgroundColor: COLORS.white },
   botPlain: { maxWidth: "100%", alignSelf: "stretch", backgroundColor: "transparent", borderRadius: 0, padding: 0, gap: 12 },
-  userApp: { maxWidth: "82%", backgroundColor: COLORS.fill, borderRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, paddingHorizontal: 16 },
-  userTextApp: { fontSize: 16, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.textPrimary },
+  userApp: { maxWidth: "82%", backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, paddingHorizontal: 16 },
+  userTextApp: { fontSize: 16, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.white },
   sectionApp: { gap: 6, paddingTop: 2 },
   sectionTitleApp: { fontSize: 15, lineHeight: 22, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   listApp: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24, gap: 18 },
   listEmpty: { flexGrow: 1 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 40, gap: 10 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primarySoft, marginBottom: 4 },
   emptyTitle: { fontSize: 24, lineHeight: 32, fontFamily: FONTS.bold, color: COLORS.textPrimary, textAlign: "center" },
   emptyDesc: { fontSize: 15, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.textTertiary, textAlign: "center" },
   jump: {
@@ -1498,6 +1502,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
+  /** 앱 탭: 원문 링크도 전화 버튼처럼 옅은 브랜드색 바탕(테두리 없이). */
+  linkButtonApp: { borderColor: COLORS.primarySoft, backgroundColor: COLORS.primarySoft },
   linkText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
   checked: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   pending: { marginTop: 10 },
