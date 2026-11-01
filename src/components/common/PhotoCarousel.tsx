@@ -4,12 +4,14 @@ import {
   Image,
   Pressable,
   StyleSheet,
+  Text,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
 import { COLORS } from '../../constants/colors'
+import { FONTS } from '../../constants/typography'
 
 /** 사진 틀이 가장 세로로 길어질 수 있는 비율(가로/세로). 이보다 긴 사진은 틀 안에 줄여 넣는다. */
 const MIN_FRAME_RATIO = 3 / 4
@@ -18,7 +20,7 @@ const MAX_FRAME_RATIO = 16 / 9
 const FALLBACK_RATIO = 4 / 3
 
 /**
- * 본문 사진 — 자르지 않고 원래 비율 그대로 보여 준다. 여러 장이면 옆으로 넘기고, 아래 점으로 몇 번째 장인지 알린다.
+ * 본문 사진 — 자르지 않고 원래 비율 그대로 보여 준다. 여러 장이면 옆으로 넘기고, 오른쪽 위 1/3 표시와 아래 점으로 몇 번째 장인지 알린다.
  * 틀 높이는 가장 세로로 긴 사진에 맞추고(MIN_FRAME_RATIO 까지), 나머지 사진은 그 틀 안에 비율대로 들어간다.
  * 누르면 onPressPhoto(순번) — 앱 안 전체 화면 보기(ImageViewerModal)를 연다.
  */
@@ -104,6 +106,13 @@ export default function PhotoCarousel({
           )}
         />
       )}
+      {width > 0 && urls.length > 1 && (
+        <View style={styles.counter} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Text style={styles.counterText}>
+            {index + 1}/{urls.length}
+          </Text>
+        </View>
+      )}
       {urls.length > 1 && (
         <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {urls.map((url, i) => (
@@ -118,6 +127,16 @@ export default function PhotoCarousel({
 const styles = StyleSheet.create({
   frame: { borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
   photo: { width: '100%', height: '100%' },
+  counter: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  counterText: { color: COLORS.white, fontFamily: FONTS.semibold, fontSize: 12 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
   dotActive: { backgroundColor: COLORS.primary },

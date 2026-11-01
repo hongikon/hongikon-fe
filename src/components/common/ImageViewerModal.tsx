@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Image,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +14,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
@@ -18,6 +22,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+
+/** 위·아래로 이만큼(px) 끌거나 빠르게 튕기면 닫는다. */
+const DRAG_CLOSE_DISTANCE = 120
+const DRAG_CLOSE_VELOCITY = 1
 
 interface ImageViewerModalProps {
   urls: readonly string[]
@@ -35,26 +43,81 @@ interface ImageViewerModalProps {
 /**
  * 사진을 앱 안에서 화면 가득 보여 준다(10-18 — 전엔 원본 주소를 브라우저로 열어 긴 URL 만 보였다).
  * 여러 장이면 옆으로 넘기고, iOS 는 두 손가락으로 키울 수 있다(ScrollView 확대).
+ * 위나 아래로 끌어 놓으면 닫혀 사진을 열었던 자리(바텀시트·제보 본문)로 돌아간다(11-01). 확대해 보고 있을 땐 끌어도 닫지 않는다.
  */
 export default function ImageViewerModal({ urls, startIndex, onClose, inline = false }: ImageViewerModalProps) {
-  const { width, height } = useWindowDimensions()
+  const window = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const [index, setIndex] = useState(startIndex ?? 0)
+  // 사진 한 장 크기는 실제로 깔린 자리에 맞춘다 — 창 크기로 그리면 부모 창 안(inline)에서 위아래가 잘렸다(11-01).
+  const [frame, setFrame] = useState<{ width: number; height: number } | null>(null)
+  const width = frame?.width ?? window.width
+  const height = frame?.height ?? window.height
   const listRef = useRef<FlatList<string>>(null)
+  const dragY = useRef(new Animated.Value(0)).current
+  const zoomedRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
-    if (startIndex !== null) setIndex(startIndex)
-  }, [startIndex])
+    if (startIndex !== null) {
+      setIndex(startIndex)
+      dragY.setValue(0)
+      zoomedRef.current = false
+    }
+  }, [startIndex, dragY])
 
   const open = startIndex !== null
+
+  const pan = useMemo(() => {
+    const springBack = () =>
+      Animated.spring(dragY, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 260 }).start()
+    const isVerticalDrag = (dx: number, dy: number) =>
+      !zoomedRef.current && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.5
+    return PanResponder.create({
+      // 세로가 확실할 때만 가로챈다 — 옆으로 넘기기와 확대한 사진 움직이기는 그대로 둔다.
+      onMoveShouldSetPanResponderCapture: (_, g) => isVerticalDrag(g.dx, g.dy),
+      onMoveShouldSetPanResponder: (_, g) => isVerticalDrag(g.dx, g.dy),
+      onPanResponderMove: (_, g) => dragY.setValue(g.dy),
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dy) > DRAG_CLOSE_DISTANCE || Math.abs(g.vy) > DRAG_CLOSE_VELOCITY) {
+          const direction = (g.dy || g.vy) < 0 ? -1 : 1
+          Animated.timing(dragY, {
+            toValue: direction * window.height,
+            duration: 180,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }).start(() => onCloseRef.current())
+        } else {
+          springBack()
+        }
+      },
+      onPanResponderTerminate: springBack,
+    })
+  }, [dragY, window.height])
+
+  // 끌수록 뒤 화면(바텀시트·제보 본문)이 비쳐 보이게 배경을 옅게 한다.
+  const backdropOpacity = dragY.interpolate({
+    inputRange: [-window.height / 2, 0, window.height / 2],
+    outputRange: [0.2, 1, 0.2],
+    extrapolate: 'clamp',
+  })
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const next = { width: Math.round(event.nativeEvent.layout.width), height: Math.round(event.nativeEvent.layout.height) }
+    if (next.width > 0 && next.height > 0 && (next.width !== frame?.width || next.height !== frame?.height)) setFrame(next)
+  }
 
   const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     setIndex(Math.round(event.nativeEvent.contentOffset.x / width))
   }
 
   const content = (
-    <View style={[styles.backdrop, inline && StyleSheet.absoluteFill]}>
+    <View style={[styles.root, inline && StyleSheet.absoluteFill]} onLayout={handleLayout} {...pan.panHandlers}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
+      <Animated.View style={[styles.root, { transform: [{ translateY: dragY }] }]}>
       <FlatList
+        key={width}
         ref={listRef}
         data={urls as string[]}
         keyExtractor={(url) => url}
@@ -64,14 +127,19 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
         initialScrollIndex={startIndex ?? 0}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         onMomentumScrollEnd={handleScrollEnd}
-        renderItem={({ item }) => <ViewerPage url={item} width={width} height={height} />}
+        renderItem={({ item }) => (
+          <ViewerPage url={item} width={width} height={height} onZoomChange={(zoomed) => (zoomedRef.current = zoomed)} />
+        )}
       />
+      </Animated.View>
 
       <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
         {urls.length > 1 ? (
-          <Text style={styles.counter}>
-            {index + 1} / {urls.length}
-          </Text>
+          <View style={styles.counter}>
+            <Text style={styles.counterText} accessibilityLabel={`${urls.length}장 중 ${index + 1}번째 사진`}>
+              {index + 1}/{urls.length}
+            </Text>
+          </View>
         ) : (
           <View />
         )}
@@ -104,13 +172,25 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
   )
 }
 
-function ViewerPage({ url, width, height }: { url: string; width: number; height: number }) {
+function ViewerPage({
+  url,
+  width,
+  height,
+  onZoomChange,
+}: {
+  url: string
+  width: number
+  height: number
+  onZoomChange: (zoomed: boolean) => void
+}) {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
 
   return (
     <ScrollView
       style={{ width, height }}
+      onScroll={(event) => onZoomChange((event.nativeEvent.zoomScale ?? 1) > 1.01)}
+      scrollEventThrottle={32}
       contentContainerStyle={styles.page}
       maximumZoomScale={Platform.OS === 'ios' ? 3 : 1}
       minimumZoomScale={1}
@@ -137,7 +217,8 @@ function ViewerPage({ url, width, height }: { url: string; width: number; height
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' },
+  root: { flex: 1 },
+  backdrop: { backgroundColor: 'rgba(0,0,0,0.95)' },
   page: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     position: 'absolute',
@@ -147,7 +228,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  counter: { color: COLORS.white, fontFamily: FONTS.semibold, fontSize: 14 },
+  counter: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)' },
+  counterText: { color: COLORS.white, fontFamily: FONTS.semibold, fontSize: 14 },
   closeBtn: {
     width: 40,
     height: 40,
