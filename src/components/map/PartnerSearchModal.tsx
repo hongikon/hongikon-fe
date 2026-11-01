@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   SectionList,
-  Modal,
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +25,7 @@ import SearchBar from "../news/SearchBar";
 import Button from "../common/Button";
 import { useMapData } from "../../lib/mapData";
 import { RADIUS } from '../../constants/spacing';
+import SwipeBackModal from "../common/SwipeBackModal";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -245,12 +245,7 @@ export default function PartnerSearchModal({
   ) : null;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={handleClose}
-      onShow={() => inputRef.current?.focus()}
-    >
+    <SwipeBackModal visible={visible} onRequestClose={handleClose} onShow={() => inputRef.current?.focus()}>
       <View style={[styles.container, { paddingTop: topInset }]}>
         {/* 폴드를 펼친 화면·넓은 웹 창에선 검색창·목록을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
@@ -347,7 +342,7 @@ export default function PartnerSearchModal({
         </ModalPanel>
         </ContentColumn>
       </View>
-    </Modal>
+    </SwipeBackModal>
   );
 }
 
