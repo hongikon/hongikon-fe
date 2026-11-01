@@ -1103,7 +1103,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                 style={styles.input}
                 value={input}
                 onChangeText={setInput}
-                placeholder="예: 휴학 신청 기간"
+                placeholder={appMode ? "질문을 입력하세요" : "예: 휴학 신청 기간"}
                 placeholderTextColor={COLORS.textPlaceholder}
                 returnKeyType="send"
                 onSubmitEditing={() => ask(input)}

@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react'
-import { ActivityIndicator, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { NavigatorScreenParams } from '@react-navigation/native'
 import { COLORS } from '../constants/colors'
+import { RADIUS } from '../constants/spacing'
 import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
 import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigator'
@@ -91,8 +92,15 @@ export default function TabNavigator() {
         component={AskTabScreen}
         options={{
           tabBarLabel: '물어보기',
+          tabBarAccessibilityLabel: '물어보기, 베타',
+          // 시험 운영 기능이라 아이콘 오른쪽 아래에 작은 BETA 표시를 붙인다.
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={size} color={color} />
+            <View>
+              <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={size} color={color} />
+              <View style={styles.beta}>
+                <Text style={styles.betaText}>BETA</Text>
+              </View>
+            </View>
           ),
         }}
       />
@@ -126,5 +134,17 @@ export default function TabNavigator() {
 }
 
 const styles = StyleSheet.create({
+  beta: {
+    position: 'absolute',
+    right: -14,
+    bottom: -4,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.white,
+  },
+  betaText: { fontSize: 7, lineHeight: 8, fontFamily: FONTS.semibold, color: COLORS.white, letterSpacing: 0.2 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
 })
