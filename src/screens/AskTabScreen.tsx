@@ -127,11 +127,8 @@ export default function AskTabScreen() {
     )
   }
 
-  const note = !askStatus
-    ? null
-    : askStatus.soldOut
-      ? '오늘 준비한 질문이 모두 찼어요. 내일 다시 물어봐 주세요.'
-      : `오늘 ${askStatus.remaining}번 더 물어볼 수 있어요`
+  // 남은 횟수는 보이지 않는다(11-01 사용자). 하루 한도에 닿으면 서버 429 문구가 답 자리에 뜬다.
+  const note = askStatus?.soldOut ? '오늘 준비한 질문이 모두 찼어요. 내일 다시 물어봐 주세요.' : null
 
   return (
     <View style={styles.root}>
