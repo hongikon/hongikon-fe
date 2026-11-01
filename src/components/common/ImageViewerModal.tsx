@@ -27,6 +27,12 @@ import { RADIUS } from '../../constants/spacing'
 /** 위·아래로 이만큼(px) 끌거나 빠르게 튕기면 닫는다. */
 const DRAG_CLOSE_DISTANCE = 80
 const DRAG_CLOSE_VELOCITY = 0.6
+/**
+ * iOS 는 사진 칸(확대용 ScrollView)·옆 넘기기 목록의 네이티브 끌기가 JS 끌기보다 먼저 손가락을 가져가,
+ * PanResponder 로는 끌어 닫기가 되다 말다 했다(11-01). iOS 는 사진 칸을 세로로 당기는 네이티브 튕김으로 재고
+ * (손을 뗄 때 당긴 거리·속도로 닫기), Android 는 PanResponder 로 끈다.
+ */
+const NATIVE_PULL = Platform.OS === 'ios'
 
 interface ImageViewerModalProps {
   urls: readonly string[]
@@ -58,11 +64,15 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
   // 열 때마다 새 값으로 시작한다. 끌어 닫으면 값이 화면 밖(창 높이)에 남는데, 네이티브 드라이버로 움직인 값은
   // 다시 열 때 setValue(0) 이 늦게 닿아 사진이 화면 밖에 그대로 있었다 — 빈 검은 창이 터치까지 막았다(11-01).
   const open = startIndex !== null
-  const dragRef = useRef<Animated.Value | null>(null)
+  const dragRef = useRef<{ drag: Animated.Value; pull: Animated.Value } | null>(null)
   const wasOpenRef = useRef(false)
-  if (!dragRef.current || (open && !wasOpenRef.current)) dragRef.current = new Animated.Value(0)
+  if (!dragRef.current || (open && !wasOpenRef.current)) {
+    dragRef.current = { drag: new Animated.Value(0), pull: new Animated.Value(0) }
+  }
   wasOpenRef.current = open
-  const dragY = dragRef.current
+  const dragY = dragRef.current.drag
+  /** iOS 에서 사진 칸을 당긴 거리(아래로 당기면 +). 배경을 옅게 하는 데만 쓴다 — 사진은 네이티브로 움직인다. */
+  const pullY = dragRef.current.pull
   const zoomedRef = useRef(false)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
@@ -78,8 +88,18 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
     const springBack = () =>
       Animated.spring(dragY, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 260 }).start()
     const isVerticalDrag = (dx: number, dy: number) =>
+      !NATIVE_PULL &&
       !zoomedRef.current && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.5
-    return PanResponder.create({
+    const exit = (direction: number) =>
+      Animated.timing(dragY, {
+        toValue: direction * window.height,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => onCloseRef.current())
+    return {
+      exit,
+      handlers: PanResponder.create({
       // 세로가 확실할 때만 가로챈다 — 옆으로 넘기기와 확대한 사진 움직이기는 그대로 둔다.
       onMoveShouldSetPanResponderCapture: (_, g) => isVerticalDrag(g.dx, g.dy),
       onMoveShouldSetPanResponder: (_, g) => isVerticalDrag(g.dx, g.dy),
@@ -88,23 +108,25 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
       onPanResponderMove: (_, g) => dragY.setValue(g.dy),
       onPanResponderRelease: (_, g) => {
         if (Math.abs(g.dy) > DRAG_CLOSE_DISTANCE || Math.abs(g.vy) > DRAG_CLOSE_VELOCITY) {
-          const direction = (g.dy || g.vy) < 0 ? -1 : 1
-          Animated.timing(dragY, {
-            toValue: direction * window.height,
-            duration: 180,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }).start(() => onCloseRef.current())
+          exit((g.dy || g.vy) < 0 ? -1 : 1)
         } else {
           springBack()
         }
       },
       onPanResponderTerminate: springBack,
-    })
+      }).panHandlers,
+    }
   }, [dragY, window.height])
 
+  /** iOS: 사진 칸을 당겼다 놓았다. 충분히 당겼거나 빠르게 튕겼으면 당긴 쪽으로 내보내며 닫는다. */
+  const handlePullEnd = (pulled: number, velocity: number) => {
+    if (Math.abs(pulled) > DRAG_CLOSE_DISTANCE * 0.75 || (Math.abs(pulled) > 12 && Math.abs(velocity) > DRAG_CLOSE_VELOCITY)) {
+      pan.exit(pulled < 0 ? -1 : 1)
+    }
+  }
+
   // 끌수록 뒤 화면(바텀시트·제보 본문)이 비쳐 보이게 배경을 옅게 한다.
-  const backdropOpacity = dragY.interpolate({
+  const backdropOpacity = Animated.add(dragY, pullY).interpolate({
     inputRange: [-window.height / 2, 0, window.height / 2],
     outputRange: [0.2, 1, 0.2],
     extrapolate: 'clamp',
@@ -120,7 +142,7 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
   }
 
   const content = (
-    <View style={[styles.root, inline && StyleSheet.absoluteFill]} onLayout={handleLayout} {...pan.panHandlers}>
+    <View style={[styles.root, inline && StyleSheet.absoluteFill]} onLayout={handleLayout} {...pan.handlers}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
       <Animated.View style={[styles.root, { transform: [{ translateY: dragY }] }]}>
       <FlatList
@@ -136,7 +158,14 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         onMomentumScrollEnd={handleScrollEnd}
         renderItem={({ item }) => (
-          <ViewerPage url={item} width={width} height={height} onZoomChange={(zoomed) => (zoomedRef.current = zoomed)} />
+          <ViewerPage
+            url={item}
+            width={width}
+            height={height}
+            onZoomChange={(zoomed) => (zoomedRef.current = zoomed)}
+            onPull={(pulled) => pullY.setValue(pulled)}
+            onPullEnd={handlePullEnd}
+          />
         )}
       />
       </Animated.View>
@@ -185,11 +214,16 @@ function ViewerPage({
   width,
   height,
   onZoomChange,
+  onPull,
+  onPullEnd,
 }: {
   url: string
   width: number
   height: number
   onZoomChange: (zoomed: boolean) => void
+  /** iOS: 확대 안 한 채 세로로 당긴 거리(아래로 +). */
+  onPull: (pulled: number) => void
+  onPullEnd: (pulled: number, velocity: number) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -197,12 +231,20 @@ function ViewerPage({
   return (
     <ScrollView
       style={{ width, height }}
-      onScroll={(event) => onZoomChange((event.nativeEvent.zoomScale ?? 1) > 1.01)}
-      scrollEventThrottle={32}
+      onScroll={(event) => {
+        const zoomed = (event.nativeEvent.zoomScale ?? 1) > 1.01
+        onZoomChange(zoomed)
+        if (NATIVE_PULL && !zoomed) onPull(-event.nativeEvent.contentOffset.y)
+      }}
+      onScrollEndDrag={(event) => {
+        if (!NATIVE_PULL || (event.nativeEvent.zoomScale ?? 1) > 1.01) return
+        onPullEnd(-event.nativeEvent.contentOffset.y, event.nativeEvent.velocity?.y ?? 0)
+      }}
+      scrollEventThrottle={16}
       contentContainerStyle={styles.page}
       maximumZoomScale={Platform.OS === 'ios' ? 3 : 1}
-      // 확대 전엔 세로로 튕기지 않게 — 튕기면 iOS 스크롤이 세로 끌기를 먼저 잡아 끌어 닫기가 안 됐다.
-      alwaysBounceVertical={false}
+      // iOS 는 세로로 당겨 닫는다(NATIVE_PULL). 가로 튕김은 옆 넘기기와 겹치지 않게 끈다.
+      alwaysBounceVertical={NATIVE_PULL}
       alwaysBounceHorizontal={false}
       minimumZoomScale={1}
       centerContent
