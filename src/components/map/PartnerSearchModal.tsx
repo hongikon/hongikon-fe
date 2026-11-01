@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   SectionList,
-  Modal,
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +26,7 @@ import Button from "../common/Button";
 import { useMapData } from "../../lib/mapData";
 import NearbyPartners, { INITIAL_NEARBY_STATE, type NearbyState } from "./NearbyPartners";
 import { RADIUS } from '../../constants/spacing';
+import SwipeBackModal from "../common/SwipeBackModal";
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -254,9 +254,8 @@ export default function PartnerSearchModal({
   ) : null;
 
   return (
-    <Modal
+    <SwipeBackModal
       visible={visible}
-      animationType="slide"
       onRequestClose={handleClose}
       onShow={() => {
         if (autoFocus) inputRef.current?.focus();
@@ -359,7 +358,7 @@ export default function PartnerSearchModal({
         </ModalPanel>
         </ContentColumn>
       </View>
-    </Modal>
+    </SwipeBackModal>
   );
 }
 

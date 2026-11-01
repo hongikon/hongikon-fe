@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
-  Modal,
   ActivityIndicator,
   Pressable,
   Animated,
@@ -91,6 +90,7 @@ import ContentColumn from "../components/common/ContentColumn";
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
 import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
+import SwipeBackModal from "../components/common/SwipeBackModal";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -1950,7 +1950,7 @@ export default function MapScreen() {
         )}
       </Animated.View>
 
-      <Modal visible={showRoute} animationType="slide" onRequestClose={handleCloseRoute}>
+      <SwipeBackModal visible={showRoute} onRequestClose={handleCloseRoute}>
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
         <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
@@ -2116,7 +2116,7 @@ export default function MapScreen() {
           </ContentColumn>
         </SafeAreaView>
         </SafeAreaProvider>
-      </Modal>
+      </SwipeBackModal>
 
       <PartnerSearchModal
         visible={showSearch}

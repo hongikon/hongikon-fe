@@ -11,17 +11,22 @@ const CLOSE_RATIO = 0.33
 const CLOSE_VELOCITY = 0.5
 
 /**
- * 설정에서 여는 창(11-01). 일반 화면처럼 오른쪽에서 밀려 들어오고, 왼쪽 가장자리에서 오른쪽으로 밀면 닫힌다
+ * 화면처럼 쓰는 창(11-01 설정 창들, 이어서 제보 본문·제휴 업체 검색·길찾기). 일반 화면처럼 오른쪽에서 밀려 들어오고, 왼쪽 가장자리에서 오른쪽으로 밀면 닫힌다
  * (전엔 아래에서 올라오는 창이라 뒤로 버튼으로만 닫혔다). 뒤로 버튼·Android 뒤로 가기는 `onRequestClose` 그대로.
  * 닫힐 때는 오른쪽으로 빠져나간 뒤 내용을 내린다.
  */
 export default function SwipeBackModal({
   visible,
   onRequestClose,
+  onShow,
+  edgeDisabled = false,
   children,
 }: {
   visible: boolean
   onRequestClose: () => void
+  onShow?: () => void
+  /** 창 안에 덮어 그린 것(사진 크게 보기 등)이 있을 때 가장자리 밀기를 잠시 끈다. */
+  edgeDisabled?: boolean
   children: ReactNode
 }) {
   const { width } = useWindowDimensions()
@@ -66,11 +71,11 @@ export default function SwipeBackModal({
   )
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onRequestClose}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onRequestClose} onShow={onShow}>
       <Animated.View style={[styles.page, { transform: [{ translateX: x }] }]}>
         {children}
         {/* 전엔 창 전체에 끌기를 달아, 본문이 스크롤되는 창(앱 권한 등)에선 스크롤이 먼저 가져가 밀어 닫기가 안 됐다(11-01). */}
-        {Platform.OS !== 'web' && <View style={styles.edge} {...pan.panHandlers} />}
+        {Platform.OS !== 'web' && !edgeDisabled && <View style={styles.edge} {...pan.panHandlers} />}
       </Animated.View>
     </Modal>
   )
