@@ -55,7 +55,14 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
   const width = frame?.width ?? window.width
   const height = frame?.height ?? window.height
   const listRef = useRef<FlatList<string>>(null)
-  const dragY = useRef(new Animated.Value(0)).current
+  // 열 때마다 새 값으로 시작한다. 끌어 닫으면 값이 화면 밖(창 높이)에 남는데, 네이티브 드라이버로 움직인 값은
+  // 다시 열 때 setValue(0) 이 늦게 닿아 사진이 화면 밖에 그대로 있었다 — 빈 검은 창이 터치까지 막았다(11-01).
+  const open = startIndex !== null
+  const dragRef = useRef<Animated.Value | null>(null)
+  const wasOpenRef = useRef(false)
+  if (!dragRef.current || (open && !wasOpenRef.current)) dragRef.current = new Animated.Value(0)
+  wasOpenRef.current = open
+  const dragY = dragRef.current
   const zoomedRef = useRef(false)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
@@ -63,12 +70,9 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
   useEffect(() => {
     if (startIndex !== null) {
       setIndex(startIndex)
-      dragY.setValue(0)
       zoomedRef.current = false
     }
-  }, [startIndex, dragY])
-
-  const open = startIndex !== null
+  }, [startIndex])
 
   const pan = useMemo(() => {
     const springBack = () =>
