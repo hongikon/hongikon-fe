@@ -27,6 +27,7 @@ import {
   pickNearest,
   pickTargets,
   preciselyInside,
+  quietAtNight,
   reselectRadius,
   type DwellMinutes,
 } from './rules'
@@ -712,7 +713,7 @@ export async function getNearbySettings(): Promise<NearbySettings> {
     enabled: state.enabled,
     affiliations: state.affiliations,
     targetCount: state.targets.length,
-    quietNight: state.quietNight === true,
+    quietNight: quietAtNight(state.quietNight),
     dwellMinutes: state.dwellMinutes ?? DEFAULT_DWELL_MINUTES,
     muted: (state.muted ?? []).map((id) => ({ id, name: state.targets.find((t) => t.id === id)?.name ?? id })),
   }

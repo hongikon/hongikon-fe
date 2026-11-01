@@ -71,15 +71,21 @@ export const MAX_ALERTS_PER_DAY = 3
  */
 export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
 /**
- * "밤에는 받지 않기"(설정에서 고름, 기본 꺼짐 — 10-29 에 고정 금지 시간대를 뺀 결정은 그대로 두고 사용자가 고르게 했다).
- * 한국 시간 22시부터 다음 날 8시 전까지.
+ * 밤에는 보내지 않는다(11-01 사용자 결정). 정보통신망법 제50조 제3항 — 광고성 정보를 21시~다음 날 8시에 보내려면 별도 동의가
+ * 필요해, 기본은 이 시간에 보내지 않고 사용자가 설정에서 "밤에도 받기"를 켜(서버에 야간 수신 동의 시각을 남긴 뒤)야 보낸다.
+ * 한국 시간 21시부터 다음 날 8시 전까지.
  */
-export const QUIET_START_HOUR = 22
+export const QUIET_START_HOUR = 21
 export const QUIET_END_HOUR = 8
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-/** 한국 시간으로 밤(22~8시)인지. */
+/** 한국 시간으로 밤(21~8시)인지. */
+/** 저장된 값(`quietNight`)으로 밤에 쉬는지. 값이 없으면(처음·예전 설치) 쉰다 — `false` 는 야간 수신에 동의했을 때만 저장한다. */
+export function quietAtNight(quietNight: boolean | undefined): boolean {
+  return quietNight !== false
+}
+
 export function isQuietHour(ms: number): boolean {
   const hour = new Date(ms + KST_OFFSET_MS).getUTCHours()
   return hour >= QUIET_START_HOUR || hour < QUIET_END_HOUR

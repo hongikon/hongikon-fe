@@ -72,7 +72,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "production",
+        "NEARBY_ALERTS_BUILD": "1"
       }
     }
   },

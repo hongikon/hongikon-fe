@@ -7,6 +7,7 @@ import {
   alertGroup,
   decideOnEnter,
   isQuietHour,
+  quietAtNight,
   formatDistance,
   insideAtRegistration,
   preciselyInside,
@@ -226,14 +227,18 @@ test('여러 곳 알림: 몇 곳인지와 이름 두 개까지, 단정하지 않
   assert.ok(!four.title.includes('계신가요'))
 })
 
-test('설정: 밤에는 받지 않기(테스트 앱에서도 지킴)', () => {
-  assert.equal(isQuietHour(kst(21, 59)), false)
-  assert.equal(isQuietHour(kst(22, 0)), true)
+test('밤 21~8시는 기본으로 받지 않음(야간 수신 동의 때만 받음, 테스트 앱에서도 지킴)', () => {
+  assert.equal(isQuietHour(kst(20, 59)), false)
+  assert.equal(isQuietHour(kst(21, 0)), true)
   assert.equal(isQuietHour(kst(7, 59)), true)
   assert.equal(isQuietHour(kst(8, 0)), false)
-  // 21:57 에 들어와도 알림 시각(22:02)이 밤이면 보내지 않는다. 기본(꺼짐)이면 보낸다.
-  assert.deepEqual(decideOnEnter('a', kst(21, 57), [], kst(21, 57), { quietNight: true }), { schedule: false, reason: 'quiet' })
-  assert.equal(decideOnEnter('a', kst(21, 57), [], kst(21, 57)).schedule, true)
+  // 20:57 에 들어와도 알림 시각(21:02)이 밤이면 보내지 않는다. 야간 수신에 동의(quietNight false)했으면 보낸다.
+  assert.deepEqual(decideOnEnter('a', kst(20, 57), [], kst(20, 57), { quietNight: true }), { schedule: false, reason: 'quiet' })
+  assert.equal(decideOnEnter('a', kst(20, 57), [], kst(20, 57), { quietNight: false }).schedule, true)
+  // 저장값이 없으면(처음 켬·예전 설치) 밤에 쉰다. false 만 야간 수신 동의.
+  assert.equal(quietAtNight(undefined), true)
+  assert.equal(quietAtNight(true), true)
+  assert.equal(quietAtNight(false), false)
   assert.equal(decideOnEnter('a', kst(23, 0), [], kst(23, 0), { quietNight: true, perVisit: true }).schedule, false)
 })
 

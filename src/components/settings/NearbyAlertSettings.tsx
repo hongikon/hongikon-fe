@@ -59,7 +59,9 @@ const TEST_RADIUS_OPTIONS = [20, 30, 50, 100] as const
 /** 위치를 "항상 허용"해야 하는 이유 — 켜기 전 안내와 권한이 모자랄 때 같은 말을 쓴다. */
 const ALWAYS_ALLOW_NOTICE =
   '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
-const QUIET_LABEL = `밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에는 받지 않기`
+const NIGHT_LABEL = `밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에도 받기`
+/** 켜면 야간 수신 별도 동의가 된다(정보통신망법 제50조 제3항) — 기본은 꺼짐이라 이 시간엔 오지 않는다. */
+const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 동의를 거두고 밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
 
 function affiliationLabel(affiliations: readonly PartnerAffiliation[]): string {
   return [...affiliations, '총학생회'].join('·')
@@ -257,6 +259,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
         return
       }
     }
+    // 새로 켤 때는 밤에 쉬는 기본값으로 — 끄면서 서버의 야간 동의 기록도 지워졌다(수신 동의 철회와 함께).
+    if (!alreadyOn) await setNearbyPrefs({ quietNight: true })
     const watching = await onResync(affiliations, true)
     if (!watching) {
       setStep({ kind: 'error', message: '켜 두었어요. 지금은 위치를 확인하지 못해, 앱을 다시 열면 근처 업체를 등록해요.' })
@@ -314,6 +318,33 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
       await onRefresh()
       setStep({ kind: 'form' })
     }
+  }
+
+  /**
+   * 밤에도 받기 = 야간 수신 별도 동의. 켤 때는 서버에 동의 시각을 먼저 남기고(실패하면 켜지 않는다), 끌 때는 기기에서 먼저 끄고
+   * 서버 기록을 지운다. 현장 테스트 빌드는 서버 없이 기기에만.
+   */
+  const toggleNight = async (allow: boolean) => {
+    if (!allow) {
+      await run('저장하는 중이에요', async () => {
+        await setNearbyPrefs({ quietNight: true })
+        if (!NEARBY_FIELD_TEST) await patchNotificationSettings({ partnerAdNightConsent: false }, accessToken).catch(() => {})
+      })
+      return
+    }
+    let saved = NEARBY_FIELD_TEST
+    await run('저장하는 중이에요', async () => {
+      if (!NEARBY_FIELD_TEST) {
+        try {
+          const res = await patchNotificationSettings({ partnerAdNightConsent: true }, accessToken)
+          saved = Boolean(res.partnerAdNightConsentAt)
+        } catch {
+          saved = false
+        }
+      }
+      if (saved) await setNearbyPrefs({ quietNight: false })
+    })
+    if (!saved) setStep({ kind: 'error', message: '야간 수신 동의를 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.' })
   }
 
   /** 소속은 여러 개 고를 수 있다(11-01 — 복수전공·학생회 겸직 등). 누르면 넣고 빼기. */
@@ -446,13 +477,14 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               <View style={styles.divider} />
               <View style={styles.settingRow}>
                 <View style={styles.settingText}>
-                  <Text style={styles.settingLabel}>{QUIET_LABEL}</Text>
+                  <Text style={styles.settingLabel}>{NIGHT_LABEL}</Text>
+                  <Text style={styles.hint}>{NIGHT_HINT}</Text>
                 </View>
                 <ToggleSwitch
-                  value={settings?.quietNight === true}
-                  onToggle={() => void run('저장하는 중이에요', () => setNearbyPrefs({ quietNight: !(settings?.quietNight === true) }))}
+                  value={settings?.quietNight === false}
+                  onToggle={() => void toggleNight(settings?.quietNight !== false)}
                   locked={working}
-                  accessibilityLabel={QUIET_LABEL}
+                  accessibilityLabel={`${NIGHT_LABEL}, 야간 수신 동의`}
                 />
               </View>
             </View>
@@ -529,7 +561,11 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 <Ionicons name={consent ? 'checkbox' : 'square-outline'} size={22} color={COLORS.primary} />
                 <View style={styles.consentBody}>
                   <Text style={styles.consentTitle}>(필수) 근처 제휴 혜택 알림을 받을게요</Text>
-                  <Text style={styles.hint}>이 기능을 켜려면 필요해요. 설정에서 언제든 끌 수 있어요.</Text>
+                  <Text style={styles.hint}>
+                    제휴 가게에 머물 때 그 가게의 학생 혜택을 알려 드려요(제휴 혜택 알림). 동의하면 동의 여부와 시각만 서버에 남기고, 알림을
+                    끄면 바로 지워요. 동의하지 않아도 다른 기능은 그대로 쓸 수 있어요. 밤 {QUIET_START_HOUR}시~아침 {QUIET_END_HOUR}시에는
+                    따로 켜야 받아요.
+                  </Text>
                 </View>
               </Pressable>
             )}

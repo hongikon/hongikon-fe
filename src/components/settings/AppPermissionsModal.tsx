@@ -30,6 +30,7 @@ import {
   type LocationPermissionState,
 } from '../../lib/nearbyPartners/platform'
 import ModalHeader from './ModalHeader'
+import { nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
 import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
 import { RADIUS, SPACING } from '../../constants/spacing'
@@ -45,8 +46,8 @@ interface AppPermissionsModalProps {
  *
  * - 알림: notificationPermission.ts 의 공용 상태를 그대로 쓴다.
  * - 카메라·사진: 제보 작성(ReportComposerModal)에서 [카메라로 찍기]·[앨범에서 고르기]를 누를 때만 쓴다.
- * - 위치(앱 사용 중): 지도 검색의 "내 주변 제휴 보기"를 누를 때만 쓴다(`lib/nearbyPartners/platform.ts`). 위치 모듈이 없는
- *   예전 빌드(OTA)에서는 줄을 그리지 않는다. 백그라운드 위치는 쓰지 않는다. 제보 위치는 여전히 지도에서 직접 고른다.
+ * - 위치: 지도 검색의 "내 주변 제휴 보기"(앱 사용 중, `lib/nearbyPartners/platform.ts`)와, 근처 알림 빌드에서 사용자가 켠
+ *   근처 제휴 알림("항상")에 쓴다. 위치 모듈이 없는 예전 빌드(OTA)에서는 줄을 그리지 않는다. 제보 위치는 여전히 지도에서 직접 고른다.
  * 휴대폰 설정에서 바꾸고 돌아오면(앱이 다시 앞으로 오면) 상태를 다시 읽는다.
  */
 
@@ -250,7 +251,11 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                     <PermissionRow
                       icon="navigate-outline"
                       title="위치"
-                      purpose="(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때만 위치를 한 번 읽어 가까운 제휴 업체를 보여 줘요. 저장하거나 서버로 보내지 않아요"
+                      purpose={
+                        nearbyAlertsAvailable()
+                          ? "(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, 근처 제휴 알림을 켰다면 앱을 닫아 둬도(\"항상\") 제휴 가게에 머무는지 확인해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요"
+                          : "(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때만 위치를 한 번 읽어 가까운 제휴 업체를 보여 줘요. 저장하거나 서버로 보내지 않아요"
+                      }
                       state={location.state}
                       onRequest={() => {
                         void location.request()

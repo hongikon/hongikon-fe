@@ -23,6 +23,8 @@ export interface NotificationSettings {
    * 이 필드를 모르는 서버(배포 전)에서는 undefined.
    */
   partnerAdConsentAt?: string | null
+  /** 야간(21시~다음 날 8시) 수신 별도 동의 시각(정보통신망법 제50조 제3항), 없으면 null. 이 필드를 모르는 서버면 undefined. */
+  partnerAdNightConsentAt?: string | null
 }
 
 export function getNotificationSettings(accessToken: string): Promise<NotificationSettings> {
@@ -34,6 +36,8 @@ export function patchNotificationSettings(
   changes: Partial<Pick<NotificationSettings, 'reportStatus' | 'newReports' | 'newReportsScope' | 'adminAlerts'>> & {
     /** true 면 처음 동의 시각을 남기고(이미 있으면 그대로), false 면 지운다. */
     partnerAdConsent?: boolean
+    /** 야간 수신 동의. true 는 수신 동의가 있어야 한다(없으면 400). 수신 동의를 철회하면 서버가 함께 지운다. */
+    partnerAdNightConsent?: boolean
   },
   accessToken: string,
 ): Promise<NotificationSettings> {

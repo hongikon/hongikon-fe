@@ -109,8 +109,9 @@ test('위치를 알면 묶음에서 가장 가까운 업체 이름으로, 시각
   assert.equal(onExit(s, 'zzz', kst(12, 2)).state.pending?.partnerId, 'b')
 })
 
-test('밤에도 예약한다(시간대 제한 없음, 10-29)', () => {
-  assert.deepEqual(onEnter(base, 'a', kst(20, 57)).actions, [
+test('밤 21~8시: 기본은 예약하지 않고, 야간 수신 동의(quietNight false)면 예약한다(11-01)', () => {
+  assert.deepEqual(onEnter(base, 'a', kst(20, 57)).actions, [])
+  assert.deepEqual(onEnter({ ...base, quietNight: false }, 'a', kst(20, 57)).actions, [
     { kind: 'schedule', alert: { partnerId: 'a', fireAt: kst(21, 2), othersCount: 0 } },
   ])
 })

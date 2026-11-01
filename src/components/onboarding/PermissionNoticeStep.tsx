@@ -7,6 +7,7 @@ import { RADIUS, SPACING } from '../../constants/spacing'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 import { ONBOARDING_TINT } from './OnboardingIllustration'
 import { canLocate } from '../../lib/nearbyPartners/platform'
+import { nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
 
 interface PermissionNoticeStepProps {
   onNext: () => void
@@ -35,7 +36,9 @@ const PERMISSIONS: PermissionItem[] = [
         {
           icon: 'navigate-outline' as const,
           name: '위치',
-          reason: '지도 검색의 "내 주변 제휴 보기"를 누를 때만 물어봐요. 위치는 저장하거나 서버로 보내지 않아요',
+          reason: nearbyAlertsAvailable()
+            ? '지도 검색의 "내 주변 제휴 보기"를 누를 때, 그리고 근처 제휴 알림을 직접 켤 때만 물어봐요(알림을 켜면 "항상"). 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요'
+            : '지도 검색의 "내 주변 제휴 보기"를 누를 때만 물어봐요. 위치는 저장하거나 서버로 보내지 않아요',
         },
       ]
     : []),
@@ -92,7 +95,7 @@ export default function PermissionNoticeStep({ onNext }: PermissionNoticeStepPro
         </View>
 
         <View style={styles.notes}>
-          <Text style={styles.note}>· 필수 접근권한은 없어요. {canLocate() ? '앱을 쓰지 않을 때의 위치(백그라운드 위치)·연락처·마이크' : '위치·연락처·마이크'} 권한은 요청하지 않아요.</Text>
+          <Text style={styles.note}>· 필수 접근권한은 없어요. {nearbyAlertsAvailable() ? '연락처·마이크' : canLocate() ? '앱을 쓰지 않을 때의 위치(백그라운드 위치)·연락처·마이크' : '위치·연락처·마이크'} 권한은 요청하지 않아요.</Text>
           {Platform.OS === 'android' && (
             <Text style={styles.note}>· 제보 사진은 권한 없이 휴대폰의 사진 선택기로 골라요.</Text>
           )}

@@ -5,6 +5,7 @@ import {
   alertGroup,
   decideOnEnter,
   dwellFor,
+  quietAtNight,
   stayStartedAt,
   type DwellMinutes,
   type SentAlert,
@@ -150,7 +151,7 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
       const leadId = chooseLead(state, members, keep, at)
       const decision = decideOnEnter(leadId, stays.get(group.leadId)!.enteredAt, state.sent, now, {
         perVisit: state.perVisit,
-        quietNight: state.quietNight,
+        quietNight: quietAtNight(state.quietNight),
         // 알림 시각은 묶음에서 가장 먼저 들어온 곳 기준이라 머무는 시간도 그곳 분류로 정한다.
         dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category, state.dwellMinutes),
       })

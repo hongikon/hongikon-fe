@@ -21,7 +21,7 @@ export async function requestNearbyPermission(): Promise<NearbyPermission> {
 }
 
 export async function getNearbySettings(): Promise<NearbySettings> {
-  return { enabled: false, affiliations: [], targetCount: 0, quietNight: false, dwellMinutes: { cafe: 2, other: 5 }, muted: [] }
+  return { enabled: false, affiliations: [], targetCount: 0, quietNight: true, dwellMinutes: { cafe: 2, other: 5 }, muted: [] }
 }
 
 export async function getNearbyChecklist(): Promise<NearbyChecklist> {

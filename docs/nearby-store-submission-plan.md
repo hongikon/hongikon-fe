@@ -23,12 +23,12 @@
 
 | # | 내용 | 상태 |
 |---|---|---|
-| C1 | 개인정보 처리방침: "위치(GPS) 수집 안 함·위치 권한 요청 안 함" → 위치 권한(선택, 앱 사용 중·항상), 기기 안 처리, 기기 2일 보관, 서버 동의 시각, 처리 근거(동의). 적용일 = 공지 + 7일 | |
-| C2 | 앱 권한 창·첫 실행 안내: 위치 줄에 "근처 제휴 알림을 켠 경우 항상" 추가, "백그라운드 위치 요청 안 함" 문구 고치기 | |
-| C3 | 운영 빌드 설정(버전 1.1.0, production 에 근처 알림) | |
-| C4 | 밤 시간·광고성 정보 처리(§6 결정) | |
+| C1 | 개인정보 처리방침: "위치(GPS) 수집 안 함·위치 권한 요청 안 함" → 위치 권한(선택, 앱 사용 중·항상), 기기 안 처리, 기기 2일 보관, 서버 동의 시각, 처리 근거(동의). 적용일 = 공지 + 7일 | 완료 — 적용일 2026-11-09(11-02 까지 공지) |
+| C2 | 앱 권한 창·첫 실행 안내: 위치 줄에 "근처 제휴 알림을 켠 경우 항상" 추가, "백그라운드 위치 요청 안 함" 문구 고치기 | 완료(근처 알림 빌드에서만 바뀐 문구) |
+| C3 | 운영 빌드 설정(버전 1.1.0, production 에 근처 알림) | 완료. OTA 는 두 runtime: `update:production`(1.1.0), `update:production:1.0.0` |
+| C4 | 밤 시간·광고성 정보 처리(§6 결정) | 완료 — 21~8시 기본 안 보냄, "밤에도 받기" = 야간 수신 동의(서버 `partnerAdNightConsentAt`), 동의 문구 보강 |
 | C5 | 심사관이 기능을 볼 수 있게: 서버 스위치가 꺼져 있으면 "잠시 멈췄어요"만 보인다 → 심사 기간엔 스위치 켬, 업체는 학교 앞 몇 곳 | |
-| C6 | 업데이트 소식(변경 기록) 1.1.0 항목 | |
+| C6 | 업데이트 소식(변경 기록) 1.1.0 항목 | 완료(날짜는 출시일로 고침) |
 
 ## 4. App Store
 
@@ -46,10 +46,10 @@
 - **데이터 보안**: 위치는 기기 안에서만 처리 → "수집 안 함"(Google 정의상 기기 밖으로 안 나가면 수집 아님). 기존 항목 그대로.
 - 거절되면: Android 만 "내 주변 제휴 보기"(앱 사용 중 위치)까지로 낸다.
 
-## 6. 정할 것
+## 6. 정한 것(11-01)
 
-1. 광고성 정보로 볼지와 밤 시간: 정보통신망법 제50조는 광고성 정보를 밤 9시~아침 8시에 보내려면 따로 동의를 받게 한다. 지금은 "(광고)" 없음(10-29 결정), 밤 설정은 22~8시·기본 꺼짐.
-2. Android 범위: 백그라운드까지 신청 / 앱 사용 중만.
+1. 밤 9시~아침 8시는 기본으로 보내지 않고, 사용자가 켜면 야간 수신 동의로 기록한다. "(광고)" 표기는 10-29 결정대로 없음 — KISA 답에 따라 바꾼다.
+2. Android 도 백그라운드 위치까지 신청한다. 거절되면 "내 주변 제휴 보기"까지로 다시 낸다.
 
 ## 7. 사람이 할 것
 
@@ -60,3 +60,73 @@
 | 시연 영상 2개(iOS·Android, 실제 가게 앞) | 빌드 후 |
 | Play 신고서·App Store 메모 붙여 넣기, 제출 | 빌드 후 |
 | BE 운영 SQL(`nearby_alert`)·배포, 스위치 켜기 | 제출 직전 |
+
+## 8. 붙여 넣을 문구
+
+### 8-1. App Store Connect > App Review Information > Notes (영문)
+
+```
+Nearby partner alerts (new in 1.1.0, optional, off by default)
+
+What it does: Students can opt in at Settings > 알림 (Notifications) > 근처 제휴 (Nearby partners) > 근처 제휴 알림.
+When they stay for a few minutes inside a partner shop near Hongik University (Seoul) that offers a student discount,
+the app shows one local notification with that shop's student benefit.
+
+Why "Always" location: the alert must work while the app is closed. We use region monitoring (geofences, 100 m) to wake
+the app near a partner shop, then briefly use precise location only while inside that region to check the 20 m distance.
+Location stays on the device. It is never sent to our server or stored; we only store the time the user consented
+to receive these alerts. Users can turn the feature or night-time alerts off at any time in the same screen.
+
+Before the system prompt we show an explanation screen with an equal-weight "켜지 않을게요" (Don't turn on) button.
+Users who allow only "While Using" can still use "내 주변 제휴 보기" (nearby partners) in map search.
+
+How to review: sign in with the demo account below, open Settings > 알림 > 근처 제휴 알림, check the consent box,
+and follow the prompts. Partner shops are only in Seoul, so a real alert cannot be triggered from Cupertino;
+a demo video of a real alert is here: <VIDEO_URL>.
+
+Demo account: (기존 심사용 데모 로그인 안내 그대로)
+```
+
+### 8-2. App Privacy
+
+- 위치(Precise/Coarse): **수집하지 않음** 그대로. 기기 밖으로 보내지 않는다.
+- 새 항목 없음. 수신 동의 시각은 기존 "사용자 ID"에 딸린 앱 기능 기록이다(추적·광고 목적 아님).
+
+### 8-3. Play Console > 앱 콘텐츠 > 위치 권한(백그라운드) 신고 (영문)
+
+```
+Core feature: Nearby partner alerts. When the user turns this on, the app notifies them while they are inside a
+partner shop near Hongik University that offers a student discount, including when the app is closed.
+Background location is needed because the alert must fire when the user walks into the shop without opening the app.
+The app registers geofences (100 m) around nearby partner shops and, only while inside one, uses precise location
+briefly (foreground service with a visible notification) to confirm the user is within 20 m.
+Location is processed only on the device and is never sent to our servers, shared, or stored.
+The feature is off by default; the user enables it in Settings > Notifications > Nearby partner alerts after a
+prominent disclosure screen, and can disable it at any time.
+```
+
+- 영상(30초 안팎, YouTube 일부 공개): 설정 → 근처 제휴 알림 → 동의 체크 → 사전 고지 화면("항상 허용" 안내) → 시스템 권한 창(항상 허용) → 가게 앞 알림 → 탭하면 가게 시트.
+
+### 8-4. Play Console > 포그라운드 서비스 신고(location)
+
+```
+Type: Location. Used only while the user is inside a 100 m region around a partner shop (after they enabled
+Nearby partner alerts) to measure whether they are within 20 m. A persistent notification "근처 제휴 가게 확인 중"
+is shown during this time. The service stops when the user leaves the region or after at most 2 hours.
+```
+
+### 8-5. 데이터 보안(Data safety)
+
+- 위치: **수집 안 함**(기기에서만 처리 — Google 정의상 기기 밖으로 전송하지 않으면 수집이 아니다). 그 밖의 항목은 기존과 같다.
+
+### 8-6. 처리방침 변경 공지(앱 공지사항, 11-02 까지)
+
+```
+[개인정보 처리방침 변경 안내] 2026년 11월 9일부터 적용
+새 기능 "근처 제휴 알림"(선택)을 위해 개인정보 처리방침을 바꿉니다.
+- 위치 접근권한(항상, 선택): 근처 제휴 알림을 직접 켠 경우에만 요청해요.
+- 위치는 휴대폰 안에서만 쓰고 운영팀 서버로 보내거나 저장하지 않아요.
+- 서버에는 알림 수신 동의 여부와 시각(밤 9시~아침 8시 수신 동의 포함)만 남고, 알림을 끄면 바로 지워요.
+- 휴대폰에는 같은 알림이 반복되지 않도록 알림을 보낸 가게와 시각만 2일 동안 남아요.
+자세한 내용은 설정 > 약관 및 정책 > 개인정보 처리방침에서 볼 수 있어요.
+```
