@@ -327,7 +327,8 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       {photoUrls.length > 0 && (
-        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 누르면 앱 안 사진 보기(ImageViewerModal)로 크게 연다.
+        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 자르지 않고 칸 안에 사진 전체를 넣는다(11-01).
+        // 누르면 앱 안 사진 보기(ImageViewerModal)로 크게 연다.
         <View style={styles.photoRow}>
           {photoUrls.map((url, index) => (
             <Pressable
@@ -344,7 +345,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
               <Image
                 source={{ uri: url }}
                 style={styles.photo}
-                resizeMode="cover"
+                resizeMode="contain"
                 onError={() => markPhotoFailed(url)}
               />
             </Pressable>
