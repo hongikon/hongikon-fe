@@ -25,8 +25,8 @@ import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
 
 /** 위·아래로 이만큼(px) 끌거나 빠르게 튕기면 닫는다. */
-const DRAG_CLOSE_DISTANCE = 120
-const DRAG_CLOSE_VELOCITY = 1
+const DRAG_CLOSE_DISTANCE = 80
+const DRAG_CLOSE_VELOCITY = 0.6
 
 interface ImageViewerModalProps {
   urls: readonly string[]
@@ -83,6 +83,8 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
       // 세로가 확실할 때만 가로챈다 — 옆으로 넘기기와 확대한 사진 움직이기는 그대로 둔다.
       onMoveShouldSetPanResponderCapture: (_, g) => isVerticalDrag(g.dx, g.dy),
       onMoveShouldSetPanResponder: (_, g) => isVerticalDrag(g.dx, g.dy),
+      // 사진 칸(확대용 ScrollView)·옆 넘기기 목록이 중간에 가져가면 끌던 사진이 제자리로 돌아가 한 번에 안 닫혔다(11-01).
+      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, g) => dragY.setValue(g.dy),
       onPanResponderRelease: (_, g) => {
         if (Math.abs(g.dy) > DRAG_CLOSE_DISTANCE || Math.abs(g.vy) > DRAG_CLOSE_VELOCITY) {
@@ -128,6 +130,7 @@ export default function ImageViewerModal({ urls, startIndex, onClose, inline = f
         keyExtractor={(url) => url}
         horizontal
         pagingEnabled
+        directionalLockEnabled
         showsHorizontalScrollIndicator={false}
         initialScrollIndex={startIndex ?? 0}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
@@ -198,6 +201,9 @@ function ViewerPage({
       scrollEventThrottle={32}
       contentContainerStyle={styles.page}
       maximumZoomScale={Platform.OS === 'ios' ? 3 : 1}
+      // 확대 전엔 세로로 튕기지 않게 — 튕기면 iOS 스크롤이 세로 끌기를 먼저 잡아 끌어 닫기가 안 됐다.
+      alwaysBounceVertical={false}
+      alwaysBounceHorizontal={false}
       minimumZoomScale={1}
       centerContent
       showsHorizontalScrollIndicator={false}
