@@ -15,11 +15,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
+import { FONTS, TYPE } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
-import { routeAsk, sendAskFeedback, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
+import { routeAsk, sendAskFeedback, streamAsk, type AskAuth, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
 import { ApiError, getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
@@ -107,6 +107,16 @@ interface AskChatProps {
    * 없으면(운영 앱) 지금처럼 앱 안의 낱말 찾기만 한다.
    */
   serverKey?: string;
+  /** 앱 '물어보기' 탭(BETA): 로그인 토큰으로 서버에 묻는다. serverKey 가 있으면 그쪽이 먼저다. */
+  accessToken?: string | null;
+  /** 제목 옆 작은 BETA 표시(앱 탭). */
+  beta?: boolean;
+  /** 입력줄 아래 여백. 없으면 안전 영역 아래 값. 탭 화면은 떠 있는 탭 바 높이를 준다. */
+  bottomInset?: number;
+  /** 입력줄 위 한 줄(오늘 남은 질문 수 등). */
+  composerNote?: string | null;
+  /** 서버에 한 번 물은 뒤(성공·실패 모두) — 남은 수를 다시 받는다. */
+  onAsked?: () => void;
 }
 
 /**
@@ -148,10 +158,14 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
 }
 
 /** 서버 답이 실패했을 때 알릴 말. 상태 코드는 routeAsk(ApiError)에서만 알 수 있다 — 흘려받기 도중 끊기면 일반 문구. */
-function askFailureText(error: unknown): string {
+function askFailureText(error: unknown, app: boolean): string {
   const status = error instanceof ApiError ? error.status : null;
+  // 앱 탭: 하루 한도·로그인 안내는 서버 문구를 그대로(계정 한도인지 전체 상한인지 서버만 안다).
+  if (app && (status === 429 || status === 403) && error instanceof ApiError && error.serverMessage) return error.serverMessage;
   if (status === 429) return "질문이 많아 잠시 쉬고 있어요. 조금 뒤에 다시 물어봐 주세요.";
-  if (status === 403) return "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
+  if (status === 403) {
+    return app ? "로그인하면 물어볼 수 있어요." : "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
+  }
   if (status === 404) return "지금은 물어보기 서버가 꺼져 있어 답할 수 없어요.";
   return "지금은 답을 만들 수 없어요. 잠시 뒤에 다시 물어봐 주세요.";
 }
@@ -166,8 +180,10 @@ function askFailureText(error: unknown): string {
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
-export default function AskChat({ onClose, serverKey }: AskChatProps) {
+export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onAsked }: AskChatProps) {
   const insets = useSafeAreaInsets();
+  const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
+  const appMode = !serverKey;
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
@@ -294,9 +310,12 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
-    if (!serverKey) {
+    if (!auth) {
       // 낱말 찾기로 답하지 않는다(10-27 운영진 요청) — 낱말만 겹치는 엉뚱한 안내나 긴 원문이 서버 답처럼 보였다.
-      push({ role: "text", text: "암호키가 없어 답할 수 없어요. /dev 화면에서 암호키를 넣고 다시 열어 주세요." });
+      push({
+        role: "text",
+        text: appMode ? "로그인하면 물어볼 수 있어요." : "암호키가 없어 답할 수 없어요. /dev 화면에서 암호키를 넣고 다시 열어 주세요.",
+      });
       return;
     }
     setPending(true);
@@ -331,7 +350,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         result = await streamAsk(
           question.slice(0, 200),
           history,
-          serverKey,
+          auth,
           hint,
           (event) => {
             heard = true;
@@ -354,7 +373,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       } catch (error) {
         // 흘려받기 자체가 안 되면(이벤트를 하나도 못 받음) 한 번에 받기로. 도중에 끊겼거나 학생이 멈췄으면 다시 묻지 않는다.
         if (heard || abort.signal.aborted) throw error;
-        result = await routeAsk(question.slice(0, 200), history, serverKey, hint, abort.signal, conversationId);
+        result = await routeAsk(question.slice(0, 200), history, auth, hint, abort.signal, conversationId);
       }
       const sources = (result.nodeIds.length > 0 ? result.nodeIds : [result.nodeId])
         .map(findStep)
@@ -412,10 +431,11 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       // 서버가 꺼졌거나(404·503) 한도(429)·키(403)·네트워크 오류. 낱말 찾기로 답하지 않고 실패를 그대로 알린다(10-27 운영진 요청 —
       // 실패할 때마다 낱말만 겹치는 안내·긴 원문이 서버 답처럼 나와, 답이 틀린 건지 서버가 실패한 건지 알 수 없었다).
       removeLive();
-      push({ role: "text", text: askFailureText(error) });
+      push({ role: "text", text: askFailureText(error, appMode) });
     } finally {
       abortRef.current = null;
       setPending(false);
+      onAsked?.();
     }
   };
 
@@ -672,7 +692,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, resolved } : item)));
     // 서버 답이면 그 기록에 응답을 붙인다(무엇이 해결 안 됐는지 알아야 고친다). 실패해도 화면은 그대로.
-    if (message.logId && serverKey) sendAskFeedback(message.logId, conversationId, resolved, serverKey).catch(() => {});
+    if (message.logId && auth) sendAskFeedback(message.logId, conversationId, resolved, auth).catch(() => {});
     if (resolved) {
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
@@ -1022,6 +1042,14 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
               title="물어보기"
               onBack={onClose}
               card
+              children={
+                beta ? (
+                  <View style={styles.titleRow} accessibilityRole="header" accessibilityLabel="물어보기, 베타">
+                    <Text style={styles.titleText}>물어보기</Text>
+                    <Text style={styles.beta}>BETA</Text>
+                  </View>
+                ) : undefined
+              }
               right={
                 messages.length > 0 ? (
                   <TouchableOpacity
@@ -1046,14 +1074,14 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
               ListHeaderComponent={intro}
               ListFooterComponent={
                 <>
-                  {pending && !serverKey ? (
+                  {pending && !auth ? (
                     <View style={[styles.botBubble, styles.pending]}>
                       <Text style={styles.botText}>안내를 찾아 답을 쓰고 있어요…</Text>
                     </View>
                   ) : null}
                   <Text style={styles.footnote}>
                     학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
-                    {serverKey
+                    {auth
                       ? " 질문과 답은 답변 개선을 위해 기록돼요(1년 보관). 학번·연락처 같은 개인정보는 적지 말아 주세요."
                       : ""}
                   </Text>
@@ -1065,7 +1093,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
               onContentSizeChange={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
             />
 
-            <View style={[styles.composer, { paddingBottom: 10 + insets.bottom }]}>
+            {composerNote ? <Text style={styles.composerNote}>{composerNote}</Text> : null}
+            <View style={[styles.composer, { paddingBottom: 10 + (bottomInset ?? insets.bottom) }]}>
               <TextInput
                 ref={inputRef}
                 style={styles.input}
@@ -1078,7 +1107,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
                 submitBehavior="submit"
                 accessibilityLabel="학교 일 물어보기"
               />
-              {pending && serverKey ? (
+              {pending && auth ? (
                 <TouchableOpacity
                   style={styles.send}
                   onPress={stopAsk}
@@ -1155,6 +1184,20 @@ function ThinkingLine({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  titleText: { ...TYPE.headline, color: COLORS.textPrimary },
+  beta: {
+    fontSize: 11,
+    fontFamily: FONTS.semibold,
+    color: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
+  composerNote: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary, textAlign: "center", paddingTop: 6 },
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: COLORS.background },
   clear: { paddingHorizontal: 6, paddingVertical: 4 },

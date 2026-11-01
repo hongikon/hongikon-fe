@@ -1,5 +1,34 @@
 import { API_BASE_URL, apiRequest } from './client'
 
+/**
+ * 물어보기 서버에 묻는 자격. 웹 /dev/ask 는 운영진 암호키(devKey), 앱 '물어보기' 탭(BETA)은 로그인 토큰(accessToken).
+ * 토큰이면 401 에 앱 전역 재발급을 쓰고, 암호키면 쓰지 않는다(키가 틀린 건 로그인 만료가 아니다).
+ */
+export type AskAuth = { devKey: string } | { accessToken: string }
+
+function authOptions(auth: AskAuth): { headers?: Record<string, string>; accessToken?: string; skipTokenRefresh: boolean } {
+  return 'devKey' in auth
+    ? { headers: { 'X-Ask-Dev-Key': auth.devKey }, skipTokenRefresh: true }
+    : { accessToken: auth.accessToken, skipTokenRefresh: false }
+}
+
+function authHeaders(auth: AskAuth): Record<string, string> {
+  return 'devKey' in auth ? { 'X-Ask-Dev-Key': auth.devKey } : { Authorization: `Bearer ${auth.accessToken}` }
+}
+
+/** 앱 탭 상태(GET /ask/status). remaining 은 오늘 이 계정이 더 물을 수 있는 수, soldOut 은 전체 하루 상한이 찼는지. */
+export interface AskStatus {
+  enabled: boolean
+  loggedIn: boolean
+  limit: number
+  remaining: number
+  soldOut: boolean
+}
+
+export function getAskStatus(accessToken: string | null, signal?: AbortSignal): Promise<AskStatus> {
+  return apiRequest<AskStatus>('/ask/status', { accessToken, signal })
+}
+
 /** 직전 대화 한 턴. 질문, 그때 열린 안내(흐름/단계), 서버가 써 준 답(있으면). */
 export interface AskRouteTurn {
   question: string
@@ -35,13 +64,13 @@ export interface AskRouteResult {
 
 /**
  * 물어보기 서버 답(POST /ask/route, 개발 중 — 웹 /dev/ask 에서만). 서버가 질문에 맞는 안내를 고르고 그 안내 원문 안에서만 답을 쓴다.
- * hint 는 앱 낱말 찾기가 고른 안내(참고용). devKey 는 /dev 게이트에 입력한 암호키(서버는 그 SHA-256 만 비교한다).
+ * hint 는 앱 낱말 찾기가 고른 안내(참고용). auth 는 /dev 암호키(서버는 그 SHA-256 만 비교한다) 또는 앱 로그인 토큰.
  * 실패하면 부르는 쪽이 낱말 찾기로 돌아간다. 답 쓰기는 안내를 더 찾아보느라 여러 번 부를 수 있어 넉넉히 기다린다.
  */
 export function routeAsk(
   question: string,
   history: AskRouteTurn[],
-  devKey: string,
+  auth: AskAuth,
   hint?: string,
   signal?: AbortSignal,
   conversationId?: string,
@@ -49,10 +78,9 @@ export function routeAsk(
   return apiRequest<AskRouteResult>('/ask/route', {
     method: 'POST',
     body: { question, hint, history, conversationId },
-    headers: { 'X-Ask-Dev-Key': devKey },
+    ...authOptions(auth),
     timeoutMs: 45_000,
     retries: 0,
-    skipTokenRefresh: true,
     signal,
   })
 }
@@ -77,7 +105,7 @@ export type AskStreamEvent =
 export async function streamAsk(
   question: string,
   history: AskRouteTurn[],
-  devKey: string,
+  auth: AskAuth,
   hint: string | undefined,
   onEvent: (event: AskStreamEvent) => void,
   signal?: AbortSignal,
@@ -91,7 +119,7 @@ export async function streamAsk(
   try {
     const response = await fetch(`${API_BASE_URL}/ask/route/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-Ask-Dev-Key': devKey },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeaders(auth) },
       body: JSON.stringify({ question, hint, history, conversationId }),
       signal: controller.signal,
     })
@@ -129,12 +157,11 @@ export async function streamAsk(
 }
 
 /** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
-export function sendAskFeedback(logId: number, conversationId: string, resolved: boolean, devKey: string): Promise<void> {
+export function sendAskFeedback(logId: number, conversationId: string, resolved: boolean, auth: AskAuth): Promise<void> {
   return apiRequest<void>('/ask/route/feedback', {
     method: 'POST',
     body: { logId, conversationId, resolved },
-    headers: { 'X-Ask-Dev-Key': devKey },
+    ...authOptions(auth),
     retries: 0,
-    skipTokenRefresh: true,
   })
 }
