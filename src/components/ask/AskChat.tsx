@@ -1015,6 +1015,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       <Text style={styles.botText}>
         학교에서 해야 할 일을 물어보세요. 필요한 건 몇 가지 되물어서, 어떻게 하면 되는지와 어디에 연락하면 되는지 알려 드려요.
       </Text>
+      {/* 앱 탭에선 추천 질문 버튼을 두지 않는다(11-01 요청). 웹 /dev/ask(운영진 시험)에만. */}
+      {appMode ? null : (
       <View style={styles.examples}>
         {EXAMPLES.map((example) => (
           <TouchableOpacity
@@ -1029,6 +1031,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
           </TouchableOpacity>
         ))}
       </View>
+      )}
     </View>
   );
 
