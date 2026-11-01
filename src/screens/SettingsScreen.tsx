@@ -902,13 +902,25 @@ const styles = StyleSheet.create({
   },
   // 펼친 묶음의 내용(머리 줄 아래). 옅은 바탕으로 머리 줄과 구분한다.
   groupBody: { backgroundColor: COLORS.background, paddingVertical: SPACING.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
-  subBlockFirst: { backgroundColor: COLORS.white },
+  // 알림 묶음의 소묶음(알림 받기·공지·제보…)은 끝나는 곳의 아래 모서리를 둥글게 해 하나씩 끊어 보이게 한다(11-01).
+  subBlockFirst: {
+    backgroundColor: COLORS.white,
+    borderBottomLeftRadius: RADIUS.md,
+    borderBottomRightRadius: RADIUS.md,
+    overflow: 'hidden',
+  },
   subHeader: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
   categoryHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
   categoryTitle: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, lineHeight: 22, color: COLORS.textPrimary },
   categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
-  subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
+  subBlock: {
+    backgroundColor: COLORS.white,
+    marginTop: SPACING.xs,
+    borderBottomLeftRadius: RADIUS.md,
+    borderBottomRightRadius: RADIUS.md,
+    overflow: 'hidden',
+  },
   groupHeader: {
     minHeight: 58,
     flexDirection: 'row',
