@@ -8,6 +8,7 @@ import CommentAvatar from './CommentAvatar'
 import ThumbIcon from '../../common/ThumbIcon'
 import OfficialBadge from '../../common/OfficialBadge'
 import type { ReportComment } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 export interface CommentItemHandlers {
   onReply: (target: ReportComment) => void
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primarySoft,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
     overflow: 'hidden',
   },
   time: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     gap: 3,
     height: 24,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.fireChipBorder,
   },

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { FONTS } from '../../constants/typography'
 import { checkConnectivity, useConnectivity } from '../../lib/connectivity'
+import { RADIUS } from '../../constants/spacing'
 
 /** 다시 연결됐다는 안내를 잠깐만 보여주는 시간. 계속 떠 있으면 화면만 가린다. */
 const RECOVERED_NOTICE_MS = 2_000
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingRight: 10,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     backgroundColor: '#374151',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     minWidth: 68,
     height: 28,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',

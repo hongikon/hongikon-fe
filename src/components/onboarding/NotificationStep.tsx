@@ -9,6 +9,7 @@ import { requestNotificationPermission } from '../../lib/notificationPermission'
 import { OnboardingPrimaryButton, OnboardingTextButton } from './OnboardingButtons'
 import { ONBOARDING_TINT } from './OnboardingIllustration'
 import BrandSymbol from '../../../assets/brand/symbol.svg'
+import { RADIUS } from '../../constants/spacing'
 
 interface NotificationStepProps {
   /** 허용 창을 띄운 뒤(결과와 무관하게) 또는 "나중에"를 누르면 부른다. */
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     width: 248,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.white,
     shadowColor: '#000',
     shadowOpacity: 0.1,

@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xxs,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.warningSoft,
   },
   badgeText: { ...TYPE.label, color: COLORS.warning },

@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
   groupHeaderPressed: { backgroundColor: COLORS.fill },
   groupLabel: { flex: 1, fontFamily: FONTS.semibold, fontSize: 17, lineHeight: 23, color: COLORS.textPrimary },
   groupValue: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.textTertiary, maxWidth: '45%' },
-  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: 999, backgroundColor: COLORS.warningSoft },
+  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: RADIUS.pill, backgroundColor: COLORS.warningSoft },
   groupBadgeText: { ...TYPE.label, fontSize: 13, color: COLORS.warning },
   categoryGrid: {
     flexDirection: 'row',

@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginHorizontal: -8,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
   },
   rowPressed: { backgroundColor: COLORS.fill },
   rowName: { flex: 1, marginRight: 12, fontSize: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },

@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.sm },
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   pinnedText: { fontSize: 12, fontFamily: FONTS.medium, color: COLORS.textTertiary },
   badgeText: { fontSize: 12, fontFamily: FONTS.semibold },

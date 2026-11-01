@@ -2,6 +2,7 @@ import { StyleSheet, useWindowDimensions } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { useCenteredGutter } from '../../hooks/useCenteredGutter'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 지도 위 필터 칩 줄이 공유하는 모양.
@@ -19,7 +20,7 @@ export const chipStyles = StyleSheet.create({
   chip: {
     height: 32,
     paddingHorizontal: 11,
-    borderRadius: 16,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.chipBorder,
     backgroundColor: COLORS.white,

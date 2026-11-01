@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 9,
     height: 24,
-    borderRadius: 12,
+    borderRadius: RADIUS.pill,
   },
   badgeText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.white },
   title: {
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   contentMore: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start' },
   contentMoreText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  photoTile: { borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
+  photoTile: { borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: COLORS.fill },
   photo: { width: '100%', height: '100%' },
   footer: {
     flexDirection: 'row',

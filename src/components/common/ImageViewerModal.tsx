@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 /** 위·아래로 이만큼(px) 끌거나 빠르게 튕기면 닫는다. */
 const DRAG_CLOSE_DISTANCE = 120
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  counter: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)' },
+  counter: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.pill, backgroundColor: 'rgba(255,255,255,0.15)' },
   counterText: { color: COLORS.white, fontFamily: FONTS.semibold, fontSize: 14 },
   closeBtn: {
     width: 40,

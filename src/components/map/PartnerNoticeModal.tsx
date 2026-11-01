@@ -7,6 +7,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
+import { RADIUS } from '../../constants/spacing'
 
 const STORAGE_KEY = '@hongik_partner_notice_seen'
 
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: DIALOG_MAX_WIDTH,
     backgroundColor: COLORS.white,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 18,

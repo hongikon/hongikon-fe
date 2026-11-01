@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, type Style
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 interface RetryableErrorProps {
   /** 사용자에게 보여줄 문구. client 가 만든 한국어 문구만 넘긴다(서버 원문 금지). */
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: BG_COLOR,
   },
   chip: {
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
     paddingLeft: 11,
     paddingRight: 6,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: RADIUS.pill,
     backgroundColor: BG_COLOR,
   },
   message: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: TEXT_COLOR },
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     minWidth: 72,
     height: 32,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: TEXT_COLOR,
     alignItems: 'center',

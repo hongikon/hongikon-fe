@@ -28,6 +28,7 @@ import { reportImageUrls } from '../../utils/reports'
 import { requestMapIntent } from '../../lib/mapIntents'
 import { formatFloor } from '../../utils/floors'
 import { navigationRef } from '../../navigation/navigationRef'
+import { RADIUS } from '../../constants/spacing'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
 const NOTE_MAX_LENGTH = 200
@@ -663,15 +664,15 @@ const styles = StyleSheet.create({
   cardHighlighted: { borderColor: COLORS.primary, borderWidth: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flexShrink: 1 },
-  categoryChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1 },
+  categoryChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.pill, borderWidth: 1 },
   categoryText: { fontFamily: FONTS.semibold, fontSize: 12 },
   title: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.textPrimary },
   content: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 21, color: COLORS.textPrimary },
   // 웹 콘솔은 원본 비율 그대로(contain) 나란히, 앱은 같은 폭 타일(cover)로 나눈다.
   photoRow: { flexDirection: 'row', gap: 8 },
   // 좁은 화면에서도 한 줄에 나란히(줄어듦), 넓으면 장당 240 까지.
-  photoTile: { flex: 1, minWidth: 0, maxWidth: 240, height: 200, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F2F2F2' },
-  photoAppTile: { flex: 1, height: 140, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F2F2F2' },
+  photoTile: { flex: 1, minWidth: 0, maxWidth: 240, height: 200, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: '#F2F2F2' },
+  photoAppTile: { flex: 1, height: 140, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: '#F2F2F2' },
   photoImage: { width: '100%', height: '100%' },
   photoFailed: { justifyContent: 'center', padding: 8 },
   photoHint: {
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   photoHintText: { fontFamily: FONTS.medium, fontSize: 11, color: COLORS.white },
@@ -695,7 +696,7 @@ const styles = StyleSheet.create({
   factText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.chipText, flexShrink: 1 },
   expiredText: { color: COLORS.danger, textDecorationLine: 'line-through' },
   link: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.primary, textDecorationLine: 'underline' },
-  review: { gap: 2, padding: 10, borderRadius: 8, backgroundColor: ADMIN_COLORS.neutralBg },
+  review: { gap: 2, padding: 10, borderRadius: RADIUS.md, backgroundColor: ADMIN_COLORS.neutralBg },
   reviewText: { fontFamily: FONTS.regular, fontSize: 12, color: ADMIN_COLORS.neutralText },
   flagToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 2 },
   flagToggleText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.danger },
@@ -710,7 +711,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: '#D4D4D8',
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

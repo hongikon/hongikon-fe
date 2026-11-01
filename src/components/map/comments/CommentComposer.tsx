@@ -10,6 +10,7 @@ import { COMMENT_MAX_LENGTH, commentWriteErrorMessage, createReportComment } fro
 import { commentLength } from '../../../utils/comments'
 import { promptLogin } from '../../../utils/reports'
 import type { ReportComment } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 /** 답글 모드: 어느 최상위 댓글에, 누구에게 답하는지(칩에 이름을 보인다). */
 export interface ReplyTarget {
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 8,
     height: 28,
-    borderRadius: 14,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primarySoft,
   },
   replyChipText: { flexShrink: 1, fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.primary },
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 40,
     paddingHorizontal: 12,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.fill,
   },
   pressed: { opacity: 0.7 },
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingRight: 4,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.fill,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,

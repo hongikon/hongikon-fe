@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   facilityChip: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.fill,
   },
   facilityChipText: {
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   actionFrom: {
     flex: 1,
     height: 44,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.successSoft,
     flexDirection: "row",
     alignItems: "center",
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   actionTo: {
     flex: 1,
     height: 44,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.dangerSoft,
     flexDirection: "row",
     alignItems: "center",

@@ -3,6 +3,7 @@ import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -75,7 +76,7 @@ export default function ReportGuidelines() {
 
 const styles = StyleSheet.create({
   box: {
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.fill,
     marginBottom: 10,
     overflow: 'hidden',
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   ruleIcon: { marginTop: 2 },
   ruleText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: COLORS.textSecondary },
-  tip: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: COLORS.primarySoft, borderRadius: 8, padding: 8, marginTop: 4 },
+  tip: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: COLORS.primarySoft, borderRadius: RADIUS.sm, padding: 8, marginTop: 4 },
   tipText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: COLORS.primary },
   foot: { fontFamily: FONTS.regular, fontSize: 11.5, lineHeight: 16, color: COLORS.textTertiary, marginTop: 4 },
 })

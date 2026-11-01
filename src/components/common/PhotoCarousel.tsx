@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 /** 사진 틀이 가장 세로로 길어질 수 있는 비율(가로/세로). 이보다 긴 사진은 틀 안에 줄여 넣는다. */
 const MIN_FRAME_RATIO = 3 / 4
@@ -125,7 +126,7 @@ export default function PhotoCarousel({
 }
 
 const styles = StyleSheet.create({
-  frame: { borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
+  frame: { borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: COLORS.fill },
   photo: { width: '100%', height: '100%' },
   counter: {
     position: 'absolute',
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     right: 10,
     paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: 11,
+    borderRadius: RADIUS.pill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   counterText: { color: COLORS.white, fontFamily: FONTS.semibold, fontSize: 12 },

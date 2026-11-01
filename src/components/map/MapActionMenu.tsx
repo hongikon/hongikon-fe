@@ -10,6 +10,7 @@ import FlameIcon from '../common/FlameIcon'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import type { ReportCategory } from '../../types'
 import * as haptics from '../../lib/haptics'
+import { RADIUS } from '../../constants/spacing'
 
 interface MapActionMenuProps {
   onReport: () => void
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
   labelPill: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     ...glass,
   },
   labelPillPrimary: { backgroundColor: COLORS.primary, borderColor: COLORS.primary, ...shadow },

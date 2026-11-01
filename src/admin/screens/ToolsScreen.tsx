@@ -6,6 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { backfillNewsLocation, isGatewayTimeout, triggerCrawler } from '../api'
 import { formatNumber } from '../format'
 import { ADMIN_COLORS, Button, Card, ConfirmBar, InlineError, ScreenHeader } from '../ui'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 서버 작업을 손으로 돌리는 곳. 둘 다 오래 걸리고 멱등이 아니라서
@@ -134,6 +135,6 @@ const styles = StyleSheet.create({
     color: ADMIN_COLORS.success,
     backgroundColor: ADMIN_COLORS.successBg,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
   },
 })

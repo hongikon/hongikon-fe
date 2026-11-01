@@ -9,6 +9,7 @@ import { fetchReportComments, isAdminCommentsMissing, updateCommentStatus } from
 import { FLAG_REASON_LABEL, formatDateTime, formatMemberRef, formatRelative } from './format'
 import type { AdminComment, AdminCommentStatus, FlagReason } from './types'
 import { Badge, Button, InlineError, useAdminHost, type Tone } from './ui'
+import { RADIUS } from '../constants/spacing'
 
 const STATUS_META: Record<AdminCommentStatus, { label: string; tone: Tone }> = {
   VISIBLE: { label: '공개', tone: 'success' },
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
   list: { gap: 8, marginTop: 4 },
   item: {
     padding: 10,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.background,
     gap: 4,
   },

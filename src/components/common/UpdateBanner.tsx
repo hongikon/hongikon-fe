@@ -5,6 +5,7 @@ import * as Updates from 'expo-updates'
 import { FONTS } from '../../constants/typography'
 import { COLORS } from '../../constants/colors'
 import { notify } from '../../utils/dialog'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * EAS Update(OTA) 새 버전을 내려받아 알려주는 배너. `App.tsx` 에서 한 번만 올린다.
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingRight: 10,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.floating,
     backgroundColor: COLORS.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     minWidth: 68,
     height: 28,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',

@@ -15,6 +15,7 @@ import {
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import * as haptics from '../../lib/haptics'
+import { RADIUS } from '../../constants/spacing'
 
 export interface WheelItem<T> {
   value: T
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     left: 2,
     right: 2,
     height: WHEEL_ITEM_HEIGHT,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primarySoft,
   },
   item: { height: WHEEL_ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },

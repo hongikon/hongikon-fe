@@ -5,6 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
+import { RADIUS } from '../../constants/spacing'
 
 // 처리방침 3항(탈퇴 시 삭제)과 같은 내용만 적는다. 정지·위반 삭제 이력이 있으면 재가입 확인용 기록만 1년 분리 보관(아래 note) — 백엔드 WithdrawRetention.
 const DELETED_ITEMS = [
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: DIALOG_MAX_WIDTH,
     backgroundColor: COLORS.white,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 18,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
   list: {
     alignSelf: 'stretch',
     backgroundColor: COLORS.dangerSoft,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     paddingVertical: 10,
     paddingHorizontal: 14,
     gap: 6,

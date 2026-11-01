@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { useReconnect } from '../../lib/connectivity'
+import { RADIUS } from '../../constants/spacing'
 
 export interface NaverMapViewHandle {
   injectJavaScript: (js: string) => void
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
   },
   buttonText: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.white },

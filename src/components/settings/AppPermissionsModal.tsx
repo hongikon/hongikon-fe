@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, gap: 3 },
   rowTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.textPrimary },
   rowPurpose: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
-  pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+  pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: RADIUS.pill },
   pillText: { fontFamily: FONTS.semibold, fontSize: 12 },
   linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 50, marginTop: -4 },
   linkBtnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   infoIcon: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.fill,
     alignItems: 'center',
     justifyContent: 'center',

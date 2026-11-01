@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.background,
     // 찾아온 줄 테두리가 생겨도 줄 높이가 바뀌지 않게 평소에도 투명 테두리를 둔다.
     borderWidth: 1.5,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   note: { fontSize: 15, lineHeight: 21, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   noteLink: { color: COLORS.primary, fontFamily: FONTS.semibold, textDecorationLine: "underline" },
   noteLine: { fontSize: 13.5, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
-  venue: { borderRadius: 12, backgroundColor: COLORS.background, overflow: "hidden" },
+  venue: { borderRadius: RADIUS.md, backgroundColor: COLORS.background, overflow: "hidden" },
   office: { paddingHorizontal: 14, paddingBottom: 12, gap: 6 },
   officeSummary: { fontSize: 12.5, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   officeMore: { flexDirection: "row", alignItems: "center", gap: 2 },
@@ -532,14 +532,14 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   current: {
     backgroundColor: COLORS.white,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     padding: 12,
     gap: 4,
   },
   currentHeader: { flexDirection: "row", marginBottom: 2 },
   nowBadge: {
     backgroundColor: COLORS.primary,
-    borderRadius: 6,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   dday: {
     minWidth: 44,
     alignItems: "center",
-    borderRadius: 6,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 6,
     paddingVertical: 3,
     backgroundColor: COLORS.primarySoft,
