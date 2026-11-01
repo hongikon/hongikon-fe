@@ -8,6 +8,7 @@ import { FONTS } from '../constants/typography'
 import MapScreen from '../screens/MapScreen'
 import NewsStackNavigator, { type NewsStackParamList } from './NewsStackNavigator'
 import SettingsScreen from '../screens/SettingsScreen'
+import AskTabScreen from '../screens/AskTabScreen'
 import { useAdminOverview, useIsAdmin } from '../admin/AdminAccess'
 import { MAP_TAB_BAR_STYLE, TAB_BAR_BASE_STYLE } from './tabBarStyles'
 import FloatingTabBar from './FloatingTabBar'
@@ -33,6 +34,8 @@ function AdminTab() {
 export type MainTabParamList = {
   Map: undefined
   News: NavigatorScreenParams<NewsStackParamList> | undefined
+  /** 물어보기(BETA, 11-01) — 탭은 모두에게, 질문은 로그인한 사용자만. */
+  Ask: undefined
   Settings: undefined
   /** 관리자 계정에만 붙는다(`useIsAdmin`). */
   Admin: undefined
@@ -80,6 +83,16 @@ export default function TabNavigator() {
           tabBarLabel: '소식',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'newspaper' : 'newspaper-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Ask"
+        component={AskTabScreen}
+        options={{
+          tabBarLabel: '물어보기',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'} size={size} color={color} />
           ),
         }}
       />
