@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  treeParentName: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  treeParentName: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   treeChildren: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.divider },
   treeChild: {
     flexDirection: 'row',
@@ -242,8 +242,8 @@ const styles = StyleSheet.create({
   },
   // 학부 아래 전공 줄. 한 단계 더 들어갔다는 걸 들여쓰기와 배경으로 보여준다.
   treeGrandChild: { paddingLeft: 32, backgroundColor: '#FAFAFA' },
-  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: COLORS.textPrimary },
+  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, color: COLORS.textPrimary },
   treeChildTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.iconMuted, width: 14 },
-  treeChildName: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPrimary, flex: 1 },
+  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.iconMuted, width: 14 },
+  treeChildName: { fontFamily: FONTS.regular, fontSize: 16, color: COLORS.textPrimary, flex: 1 },
 })

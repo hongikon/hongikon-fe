@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeText: { fontSize: 12, fontFamily: FONTS.semibold },
-  date: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  date: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   title: {
     fontSize: 20,
     fontFamily: FONTS.bold,
@@ -349,7 +349,7 @@ function Inline({ text }: { text: string }) {
 const bodyStyles = StyleSheet.create({
   wrap: { gap: 10, marginBottom: 16 },
   paragraph: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 24, color: COLORS.textPrimary },
-  heading: { fontFamily: FONTS.bold, fontSize: 15.5, lineHeight: 23, color: COLORS.textPrimary, marginTop: 8 },
+  heading: { fontFamily: FONTS.bold, fontSize: 16, lineHeight: 23, color: COLORS.textPrimary, marginTop: 8 },
   headingMarker: { color: COLORS.primary },
   bulletRow: { flexDirection: 'row', gap: 8 },
   bulletIndent: { paddingLeft: 14 },
@@ -357,6 +357,6 @@ const bodyStyles = StyleSheet.create({
   bulletText: { flex: 1, fontFamily: FONTS.regular, fontSize: 15, lineHeight: 23, color: COLORS.textPrimary },
   label: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   note: { backgroundColor: COLORS.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  noteText: { fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 20, color: COLORS.textSecondary },
+  noteText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary },
   link: { color: COLORS.primary, textDecorationLine: 'underline' },
 })
