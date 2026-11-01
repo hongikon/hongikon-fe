@@ -52,10 +52,11 @@ import SwipeBackModal from '../common/SwipeBackModal'
 import Button from '../common/Button'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
+import NearbyRadiusExamples from './NearbyRadiusExamples'
 import type { PartnerAffiliation } from '../../types'
 
 /** 테스트 빌드에서 고를 수 있는 업체 반경(m). */
-const TEST_RADIUS_OPTIONS = [20, 30, 50, 100] as const
+const TEST_RADIUS_OPTIONS = [10, 20, 30, 50, 100] as const
 /** 위치를 "항상 허용"해야 하는 이유 — 켜기 전 안내와 권한이 모자랄 때 같은 말을 쓴다. */
 const ALWAYS_ALLOW_NOTICE =
   Platform.OS === 'android'
@@ -597,6 +598,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       )
                     })}
                   </View>
+                  <NearbyRadiusExamples options={TEST_RADIUS_OPTIONS} selected={radius} disabled={working} onSelect={chooseRadius} />
                   {NEARBY_FIELD_TEST && (
                     <>
                       <View style={styles.divider} />
