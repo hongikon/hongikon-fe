@@ -65,6 +65,7 @@ export type AskStreamEvent =
   | { event: 'read'; data: { titles: string[] } }
   | { event: 'noticeRead'; data: { title: string } }
   | { event: 'cafeteria'; data: { date: string } }
+  | { event: 'thinking'; data: { afterTools: boolean } }
   | { event: 'writing' | 'reset'; data: Record<string, never> }
   | { event: 'delta'; data: { text: string } }
 
