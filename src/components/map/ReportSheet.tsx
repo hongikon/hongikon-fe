@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { LayoutChangeEvent } from 'react-native'
 import SheetHandle from './SheetHandle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Animated, View, Text, Image, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
@@ -172,6 +173,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const markPhotoFailed = (url: string) =>
     setFailedPhotoUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+  const photoSizes = usePhotoTileSizes(photoUrls)
   const [error, setError] = useState<{
     message: string
     network: boolean
@@ -291,7 +293,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
       </View>
 
-      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen || scheduleOpen} style={{ height: bodyHeight }} bounces={false}>
+      <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen || scheduleOpen || viewerIndex !== null} style={{ height: bodyHeight }} bounces={false}>
       {/* 장소: 작성자가 고친 장소 설명, 없으면 핀 근처 건물·층. */}
       <View style={styles.placeRow}>
         <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
@@ -327,13 +329,13 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
       )}
 
       {photoUrls.length > 0 && (
-        // 1장이면 넓게, 2~3장이면 같은 폭으로 나란히. 자르지 않고 칸 안에 사진 전체를 넣는다(11-01).
+        // 사진마다 원래 비율 그대로 같은 높이로 나란히 — 자르지도, 칸에 여백을 남기지도 않는다(11-01).
         // 누르면 앱 안 사진 보기(ImageViewerModal)로 크게 연다.
-        <View style={styles.photoRow}>
+        <View style={styles.photoRow} onLayout={photoSizes.onLayout}>
           {photoUrls.map((url, index) => (
             <Pressable
               key={url}
-              style={[styles.photoTile, photoUrls.length > 1 && styles.photoTileSmall]}
+              style={[styles.photoTile, photoSizes.sizeOf(url)]}
               onPress={() => setViewerIndex(index)}
               accessibilityRole="imagebutton"
               accessibilityLabel={
@@ -345,7 +347,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
               <Image
                 source={{ uri: url }}
                 style={styles.photo}
-                resizeMode="contain"
+                resizeMode="cover"
                 onError={() => markPhotoFailed(url)}
               />
             </Pressable>
@@ -506,8 +508,7 @@ const styles = StyleSheet.create({
   contentMore: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start' },
   contentMoreText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  photoTile: { flex: 1, height: 160, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
-  photoTileSmall: { height: 110 },
+  photoTile: { borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.fill },
   photo: { width: '100%', height: '100%' },
   footer: {
     flexDirection: 'row',
@@ -522,3 +523,50 @@ const styles = StyleSheet.create({
   flaggedText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.warningIcon },
   errorBox: { marginTop: 8 },
 })
+
+/** 사진 1장일 때 가장 큰 높이, 여러 장일 때 높이. 줄 폭을 넘으면 그만큼 줄인다. */
+const SINGLE_PHOTO_MAX_HEIGHT = 200
+const MULTI_PHOTO_HEIGHT = 120
+const PHOTO_GAP = 6
+const UNKNOWN_PHOTO_RATIO = 1
+
+/**
+ * 시트 사진 칸 크기 — 사진마다 원래 비율(가로/세로)로 폭을 정하고, 모두 같은 높이로 줄 폭 안에 들어가게 맞춘다.
+ * 비율을 모르는 동안은 정사각형으로 둔다.
+ */
+function usePhotoTileSizes(urls: readonly string[]) {
+  const [rowWidth, setRowWidth] = useState(0)
+  const [ratios, setRatios] = useState<Record<string, number>>({})
+  const urlsKey = urls.join('\n')
+
+  useEffect(() => {
+    let alive = true
+    urls.forEach((url) => {
+      Image.getSize(
+        url,
+        (w, h) => {
+          if (alive && w > 0 && h > 0) setRatios((prev) => (prev[url] ? prev : { ...prev, [url]: w / h }))
+        },
+        () => {},
+      )
+    })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlsKey])
+
+  const ratioOf = (url: string) => ratios[url] ?? UNKNOWN_PHOTO_RATIO
+  const totalRatio = urls.reduce((sum, url) => sum + ratioOf(url), 0)
+  const available = Math.max(0, rowWidth - PHOTO_GAP * (urls.length - 1))
+  const preferred = urls.length > 1 ? MULTI_PHOTO_HEIGHT : SINGLE_PHOTO_MAX_HEIGHT
+  const height = rowWidth && totalRatio ? Math.min(preferred, available / totalRatio) : preferred
+
+  return {
+    onLayout: (event: LayoutChangeEvent) => {
+      const next = Math.floor(event.nativeEvent.layout.width)
+      if (next !== rowWidth) setRowWidth(next)
+    },
+    sizeOf: (url: string) => ({ width: Math.floor(height * ratioOf(url)), height: Math.round(height) }),
+  }
+}
