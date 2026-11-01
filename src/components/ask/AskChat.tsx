@@ -201,6 +201,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
    */
   const stepInfo = (event: AskStreamEvent): { status: string; step: string } | null => {
     switch (event.event) {
+      case "retrieved":
+        // 고르기(LLM)가 1~2초 걸려 '질문 이해'에 오래 머물러 보였다 — 검색이 끝난 순간을 따로 보인다(11-01).
+        return { status: "맞는 안내를 고르고 있어요", step: `안내 후보 ${event.data.count}개 찾음` };
       case "picked":
         return { status: "관련 문서를 읽고 있어요", step: `관련 안내 ${event.data.titles.length}개 확인` };
       case "search":
