@@ -624,6 +624,14 @@ export default function SettingsScreen() {
                   />
                 </View>
 
+                {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
+                {nearbyAlertsAvailable() && !isGuest && (
+                  <View style={styles.subBlock}>
+                    <Text style={styles.subHeader}>근처 제휴</Text>
+                    <NearbyAlertSettings openSignal={nearbyOpenSignal} />
+                  </View>
+                )}
+
                 {/* 제보 알림. 제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
                 <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
                   <Text style={styles.subHeader}>제보 알림</Text>
@@ -670,14 +678,6 @@ export default function SettingsScreen() {
                     />
                   )}
                 </View>
-
-                {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). */}
-                {nearbyAlertsAvailable() && !isGuest && (
-                  <View style={styles.subBlock}>
-                    <Text style={styles.subHeader}>근처 제휴</Text>
-                    <NearbyAlertSettings openSignal={nearbyOpenSignal} />
-                  </View>
-                )}
 
                 {isAdmin && adminAlert.state.status !== 'unsupported' && (
                   <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>

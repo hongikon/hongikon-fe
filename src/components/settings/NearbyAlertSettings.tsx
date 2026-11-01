@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AppState, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -48,6 +48,7 @@ import {
   QUIET_START_HOUR,
 } from '../../lib/nearbyPartners/rules'
 import ListRow from '../common/ListRow'
+import SwipeBackModal from '../common/SwipeBackModal'
 import Button from '../common/Button'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
@@ -357,7 +358,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   const working = step.kind === 'working'
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <SwipeBackModal visible={visible} onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <ModalHeader title="근처 제휴 알림" onClose={onClose} />
@@ -625,7 +626,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
           )}
         </SafeAreaView>
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 
