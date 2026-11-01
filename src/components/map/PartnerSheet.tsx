@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
   },
   badgeText: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.white },
   name: {
@@ -369,13 +369,13 @@ const styles = StyleSheet.create({
   bodyContent: { paddingBottom: 4 },
   benefitCard: {
     borderLeftWidth: 3,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     paddingVertical: 11,
     paddingHorizontal: 13,
     marginBottom: 12,
   },
   benefitLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: FONTS.bold,
     letterSpacing: 0.4,
     marginBottom: 4,
@@ -396,13 +396,13 @@ const styles = StyleSheet.create({
    */
   sharedChip: {
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   sharedChipText: {
     fontFamily: FONTS.semibold,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.2,
   },
   /**
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 11,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.fill,
   },
   // 네이버 지도 쪽으로 넘어간다는 걸 알아보게 하는 작은 'N' 표시(네이버 로고 이미지는 쓰지 않는다).

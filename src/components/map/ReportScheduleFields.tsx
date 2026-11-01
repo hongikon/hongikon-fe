@@ -19,6 +19,7 @@ import {
 import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import ReportTimeSheet from './ReportTimeSheet'
+import { RADIUS } from '../../constants/spacing'
 
 const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingTop: 3,
     paddingBottom: 9,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.primarySoft,
     backgroundColor: COLORS.primarySoft,

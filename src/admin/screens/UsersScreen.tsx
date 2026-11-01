@@ -7,6 +7,7 @@ import { searchUsers } from '../api'
 import type { AdminUser } from '../types'
 import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader, useAdminHost } from '../ui'
 import { UserModerationPanel } from '../UserModeration'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 회원 조회와 이용 정지(약관 제10조, App Store 가이드라인 1.2).
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: '#D4D4D8',
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

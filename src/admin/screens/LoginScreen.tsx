@@ -5,6 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { buildAdminLoginUrl } from '../api'
 import { ADMIN_COLORS, Card, InlineError } from '../ui'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 관리자 로그인. 팝업·fetch 가 아니라 전체 페이지 이동으로 카카오 로그인에 보낸다
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 13,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: ADMIN_COLORS.kakao,
   },
   kakaoPressed: { opacity: 0.7 },
@@ -84,6 +85,6 @@ const styles = StyleSheet.create({
     color: ADMIN_COLORS.warning,
     backgroundColor: ADMIN_COLORS.warningBg,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
   },
 })

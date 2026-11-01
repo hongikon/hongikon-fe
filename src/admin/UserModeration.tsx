@@ -8,6 +8,7 @@ import { clearOfficialName, fetchUser, grantAdmin, revealLoginName, revokeAdmin,
 import { formatDateTime } from './format'
 import type { AdminLoginName, AdminUser } from './types'
 import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
+import { RADIUS } from '../constants/spacing'
 
 /** 정지 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200
@@ -379,16 +380,16 @@ export function ReportAuthorModeration({ authorId }: { authorId: number }) {
 
 const styles = StyleSheet.create({
   panel: { gap: 6 },
-  prior: { gap: 2, padding: 10, borderRadius: 8, backgroundColor: COLORS.warningSoft },
+  prior: { gap: 2, padding: 10, borderRadius: RADIUS.md, backgroundColor: COLORS.warningSoft },
   priorTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.warning },
   priorText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.warning },
   priorNote: { fontFamily: FONTS.regular, fontSize: 11.5, color: COLORS.textTertiary, marginTop: 2 },
-  box: { gap: 6, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E7' },
+  box: { gap: 6, padding: 10, borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#E4E4E7' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
   name: { fontFamily: FONTS.semibold, fontSize: 16, color: COLORS.textPrimary, flexShrink: 1 },
   hint: { fontFamily: FONTS.regular, fontSize: 11.5, color: COLORS.textTertiary },
-  reveal: { gap: 2, padding: 8, borderRadius: 8, backgroundColor: COLORS.background },
+  reveal: { gap: 2, padding: 8, borderRadius: RADIUS.md, backgroundColor: COLORS.background },
   revealRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   revealText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
   revealValue: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: '#D4D4D8',
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

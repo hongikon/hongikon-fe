@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { navigationRef } from '../../navigation/navigationRef'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 화면 아래에 잠깐 떴다 사라지는 안내(토스트). "구독했어요", "북마크에서 뺐어요"처럼
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     paddingRight: 12,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: RADIUS.floating,
     backgroundColor: 'rgba(25, 25, 32, 0.94)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   message: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, lineHeight: 20, color: COLORS.white },
-  action: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  action: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.md },
   actionPressed: { backgroundColor: 'rgba(255,255,255,0.12)' },
   actionText: { fontFamily: FONTS.semibold, fontSize: 14, color: '#A9B8FF' },
 })

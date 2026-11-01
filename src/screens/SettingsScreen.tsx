@@ -410,60 +410,60 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* 묶음(10-31·11-01): 누르면 그 자리에서 아래로 펼친다. 아이콘은 배경 없이 아이콘만. */}
-        <View style={styles.section}>
+        {/* 묶음(10-31·11-01): 묶음마다 따로 둥근 카드(소식 > 전체의 단과대 카드처럼). 누르면 그 자리에서 아래로 펼친다. */}
           {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
           {status === 'authenticated' && (
-            <>
-              <GroupHeader
-                icon="person-outline"
-                label="계정"
-                value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
-                badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-                expanded={expanded.has('account')}
-                onPress={() => toggleGroup('account')}
+          <View style={styles.section}>
+            <GroupHeader
+              icon="person-outline"
+              label="계정"
+              value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
+              badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+              expanded={expanded.has('account')}
+              onPress={() => toggleGroup('account')}
+            />
+            {expanded.has('account') && (
+            <View style={styles.groupBody}>
+              <ListRow
+                icon="person-circle-outline"
+                label={
+                  loginProvider === 'apple'
+                    ? 'Apple 계정으로 로그인됨'
+                    : loginProvider === 'demo'
+                      ? '심사용 데모 계정으로 로그인됨'
+                      : '카카오 계정으로 로그인됨'
+                }
               />
-              {expanded.has('account') && (
-              <View style={styles.groupBody}>
+              {/* 닉네임은 첫 화면 맨 위 프로필 줄에서 바꾼다. */}
+              {memberId !== null && (
                 <ListRow
-                  icon="person-circle-outline"
-                  label={
-                    loginProvider === 'apple'
-                      ? 'Apple 계정으로 로그인됨'
-                      : loginProvider === 'demo'
-                        ? '심사용 데모 계정으로 로그인됨'
-                        : '카카오 계정으로 로그인됨'
-                  }
+                  icon="id-card-outline"
+                  label="회원 번호"
+                  value={memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')}
+                  accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
                 />
-                {/* 닉네임은 첫 화면 맨 위 프로필 줄에서 바꾼다. */}
-                {memberId !== null && (
-                  <ListRow
-                    icon="id-card-outline"
-                    label="회원 번호"
-                    value={memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')}
-                    accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
-                  />
-                )}
-                {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
-                {accountLoaded && !myReportsApiMissing && (
-                  <ListRow
-                    icon="megaphone-outline"
-                    label="내 제보 내역"
-                    badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-                    onPress={() => {
-                      setHighlightReportId(null)
-                      setActiveModal('myReports')
-                    }}
-                    accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
-                  />
-                )}
-                <ListRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
-                {/* 누르면 WithdrawConfirmDialog 가 뜬다. */}
-                <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
-              </View>
               )}
-            </>
+              {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
+              {accountLoaded && !myReportsApiMissing && (
+                <ListRow
+                  icon="megaphone-outline"
+                  label="내 제보 내역"
+                  badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
+                  onPress={() => {
+                    setHighlightReportId(null)
+                    setActiveModal('myReports')
+                  }}
+                  accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
+                />
+              )}
+              <ListRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
+              {/* 누르면 WithdrawConfirmDialog 가 뜬다. */}
+              <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
+            </View>
+            )}
+          </View>
           )}
+        <View style={styles.section}>
           <GroupHeader
             icon="notifications-outline"
             label="알림"
@@ -691,12 +691,13 @@ export default function SettingsScreen() {
                 )}
               </View>
           )}
+        </View>
+        <View style={styles.section}>
           <GroupHeader
             icon="bookmarks-outline"
             label="구독 게시판"
             value={subscribedDepts.length > 0 ? `${subscribedDepts.length}개` : '기관·학과 추가'}
             onPress={() => setSubManagerVisible(true)}
-            last
           />
         </View>
 
@@ -721,6 +722,8 @@ export default function SettingsScreen() {
                 <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
               </View>
           )}
+        </View>
+        <View style={styles.section}>
           <GroupHeader icon="help-buoy-outline" label="고객 지원" expanded={expanded.has('support')} onPress={() => toggleGroup('support')} />
           {expanded.has('support') && (
               <View style={styles.groupBody}>
@@ -736,12 +739,13 @@ export default function SettingsScreen() {
                 />
               </View>
           )}
+        </View>
+        <View style={styles.section}>
           <GroupHeader
             icon="document-text-outline"
             label="약관 및 정책"
             expanded={expanded.has('policies')}
             onPress={() => toggleGroup('policies')}
-            last={!expanded.has('policies')}
           />
           {expanded.has('policies') && (
               <View style={styles.groupBody}>
@@ -897,30 +901,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     marginHorizontal: SPACING.md,
     marginTop: SPACING.sm,
-    borderRadius: RADIUS.floating,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
   },
   // 펼친 묶음의 내용(머리 줄 아래). 옅은 바탕으로 머리 줄과 구분한다.
-  groupBody: { backgroundColor: COLORS.background, paddingVertical: SPACING.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
-  // 알림 묶음의 소묶음(알림 받기·공지·제보…)은 끝나는 곳의 아래 모서리를 둥글게 해 하나씩 끊어 보이게 한다(11-01).
-  subBlockFirst: {
-    backgroundColor: COLORS.white,
-    borderBottomLeftRadius: RADIUS.md,
-    borderBottomRightRadius: RADIUS.md,
-    overflow: 'hidden',
-  },
+  groupBody: { backgroundColor: COLORS.background, paddingVertical: SPACING.xs },
+  subBlockFirst: { backgroundColor: COLORS.white },
   subHeader: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
   categoryHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
   categoryTitle: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, lineHeight: 22, color: COLORS.textPrimary },
   categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
-  subBlock: {
-    backgroundColor: COLORS.white,
-    marginTop: SPACING.xs,
-    borderBottomLeftRadius: RADIUS.md,
-    borderBottomRightRadius: RADIUS.md,
-    overflow: 'hidden',
-  },
+  subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
   groupHeader: {
     minHeight: 58,
     flexDirection: 'row',
@@ -930,11 +922,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     backgroundColor: COLORS.white,
   },
-  groupHeaderDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   groupHeaderPressed: { backgroundColor: COLORS.fill },
   groupLabel: { flex: 1, fontFamily: FONTS.semibold, fontSize: 17, lineHeight: 23, color: COLORS.textPrimary },
   groupValue: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.textTertiary, maxWidth: '45%' },
-  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: 999, backgroundColor: COLORS.warningSoft },
+  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: RADIUS.pill, backgroundColor: COLORS.warningSoft },
   groupBadgeText: { ...TYPE.label, fontSize: 13, color: COLORS.warning },
   categoryGrid: {
     flexDirection: 'row',
@@ -1039,7 +1030,6 @@ function GroupHeader({
   badge,
   expanded,
   onPress,
-  last = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
@@ -1047,13 +1037,12 @@ function GroupHeader({
   badge?: string
   expanded?: boolean
   onPress: () => void
-  last?: boolean
 }) {
   const collapsible = expanded !== undefined
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.groupHeader, !last && !expanded && styles.groupHeaderDivider, pressed && styles.groupHeaderPressed]}
+      style={({ pressed }) => [styles.groupHeader, pressed && styles.groupHeaderPressed]}
       accessibilityRole="button"
       accessibilityState={collapsible ? { expanded } : undefined}
       accessibilityLabel={[label, badge, value].filter(Boolean).join(', ')}

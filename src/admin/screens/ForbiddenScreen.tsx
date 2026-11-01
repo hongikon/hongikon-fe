@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { ADMIN_COLORS, Button, Card } from '../ui'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 로그인은 됐지만 ADMIN 이 아닌 계정(403). 권한은 서버가 요청마다 DB(users.role)에서 확인하므로,
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     backgroundColor: ADMIN_COLORS.neutralBg,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
 })

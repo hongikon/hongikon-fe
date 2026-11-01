@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
       ? ({ boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.08), inset 0 1px 2px rgba(0,0,0,0.06)' } as ViewStyle)
       : null),
   },
-  segment: { flex: 1, height: 40, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, height: 40, borderRadius: RADIUS.pill, alignItems: 'center', justifyContent: 'center' },
   // 고른 칸: 옅은 회색 알약(10-08 — 하단 탭 바 렌즈와 같다). 고른 칸은 글자를 남색으로 바꿔 알리고 바탕은 회색빛만 둔다.
   // 폭을 재기 전 첫 프레임에만 칸을 직접 칠한다(그 뒤로는 GlassLens 가 그린다).
   segmentActive: { backgroundColor: 'rgba(118,118,128,0.14)' },
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     top: SEGMENT_PAD,
     left: SEGMENT_PAD,
     height: 40,
-    borderRadius: 18,
+    borderRadius: RADIUS.pill,
   },
   segmentText: { ...TYPE.body, fontSize: 14, color: COLORS.textSecondary },
   segmentTextActive: { fontFamily: TYPE.screenTitle.fontFamily, color: COLORS.primary },

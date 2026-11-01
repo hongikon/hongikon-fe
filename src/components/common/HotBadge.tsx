@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import FlameIcon from './FlameIcon'
+import { RADIUS } from '../../constants/spacing'
 
 /** HOT 배지(FINAL.md): 바탕 #05014A, 불꽃 #4C63FF + 흰 안쪽, 글자 흰색 800. 최근 60분 🔥 가 몰린 제보에 붙는다. */
 export default function HotBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
@@ -26,10 +27,10 @@ const styles = StyleSheet.create({
     height: 24,
     paddingLeft: 7,
     paddingRight: 10,
-    borderRadius: 12,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primary,
   },
-  badgeSmall: { height: 20, paddingLeft: 5, paddingRight: 8, borderRadius: 10 },
+  badgeSmall: { height: 20, paddingLeft: 5, paddingRight: 8, borderRadius: RADIUS.pill },
   // Pretendard ExtraBold 는 앱에 없다 — bold 가 가장 굵다.
   text: { fontFamily: FONTS.bold, fontSize: 12, color: COLORS.white, letterSpacing: 0.2 },
   textSmall: { fontSize: 11 },

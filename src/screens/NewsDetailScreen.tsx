@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, CATEGORY_COLORS } from '../constants/colors'
-import { SPACING } from '../constants/spacing'
+import { SPACING, RADIUS } from '../constants/spacing'
 import { layoutStyles } from '../constants/layout'
 import type { CategoryKey } from '../constants/colors'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -230,9 +230,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.sm },
   badgeText: { fontSize: 12, fontFamily: FONTS.semibold },
-  date: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  date: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   title: {
     fontSize: 20,
     fontFamily: FONTS.bold,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   },
   attachBox: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     padding: 14,
     gap: 8,
     marginTop: 8,
@@ -349,14 +349,14 @@ function Inline({ text }: { text: string }) {
 const bodyStyles = StyleSheet.create({
   wrap: { gap: 10, marginBottom: 16 },
   paragraph: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 24, color: COLORS.textPrimary },
-  heading: { fontFamily: FONTS.bold, fontSize: 15.5, lineHeight: 23, color: COLORS.textPrimary, marginTop: 8 },
+  heading: { fontFamily: FONTS.bold, fontSize: 16, lineHeight: 23, color: COLORS.textPrimary, marginTop: 8 },
   headingMarker: { color: COLORS.primary },
   bulletRow: { flexDirection: 'row', gap: 8 },
   bulletIndent: { paddingLeft: 14 },
   bulletMark: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 23, color: COLORS.primary, minWidth: 10 },
   bulletText: { flex: 1, fontFamily: FONTS.regular, fontSize: 15, lineHeight: 23, color: COLORS.textPrimary },
   label: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  note: { backgroundColor: COLORS.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  noteText: { fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 20, color: COLORS.textSecondary },
+  note: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 9 },
+  noteText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary },
   link: { color: COLORS.primary, textDecorationLine: 'underline' },
 })

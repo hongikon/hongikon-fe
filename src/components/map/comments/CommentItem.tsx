@@ -8,6 +8,7 @@ import CommentAvatar from './CommentAvatar'
 import ThumbIcon from '../../common/ThumbIcon'
 import OfficialBadge from '../../common/OfficialBadge'
 import type { ReportComment } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 export interface CommentItemHandlers {
   onReply: (target: ReportComment) => void
@@ -133,17 +134,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primarySoft,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
     overflow: 'hidden',
   },
-  time: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  time: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
   flagged: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.warningIcon },
   spacer: { flex: 1 },
   textAction: { minHeight: 24, justifyContent: 'center', paddingHorizontal: 2 },
   textActionLabel: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   more: { width: 28, height: 24, alignItems: 'flex-end', justifyContent: 'center' },
-  body: { fontFamily: FONTS.regular, fontSize: 14.5, lineHeight: 21, color: COLORS.textPrimary, marginTop: 3 },
-  placeholder: { fontFamily: FONTS.regular, fontSize: 13.5, color: COLORS.textTertiary, paddingVertical: 6 },
+  body: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22, color: COLORS.textPrimary, marginTop: 3 },
+  placeholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary, paddingVertical: 6 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 6 },
   replyAction: { alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' },
   like: {
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     gap: 3,
     height: 24,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.fireChipBorder,
   },

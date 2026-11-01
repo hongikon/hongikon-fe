@@ -5,6 +5,7 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { isAdminMapMissing } from './api'
 import { useAdminHost } from './ui'
+import { RADIUS } from '../constants/spacing'
 
 /**
  * 제휴업체·편의시설 관리 화면이 함께 쓰는 입력 부품과 검증 도우미.
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: '#D4D4D8',
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: '#D4D4D8',
     backgroundColor: COLORS.white,

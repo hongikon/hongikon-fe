@@ -17,6 +17,7 @@ import { promptLogin } from '../../../utils/reports'
 import RetryableError from '../../common/RetryableError'
 import CommentAvatar from './CommentAvatar'
 import type { ReportComment, ReportListItem } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 /** 숨긴 사용자·지운 댓글 자리를 빼고도 미리보기를 채우도록 조금 더 받는다. */
 const PREVIEW_FETCH_SIZE = COMMENTS_PREVIEW_SIZE + 3
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     minHeight: 40,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.fill,
   },
   pressed: { opacity: 0.7 },

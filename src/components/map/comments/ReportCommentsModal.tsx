@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -35,6 +34,8 @@ import type { ReportCommunityPatch } from '../ReportActionRow'
 import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 import type { ReportComment, ReportListItem } from '../../../types'
 import EmptyState from '../../common/EmptyState'
+import { RADIUS } from '../../../constants/spacing'
+import SwipeBackModal from '../../common/SwipeBackModal'
 
 interface ReportCommentsModalProps {
   visible: boolean
@@ -364,7 +365,12 @@ export default function ReportCommentsModal({
 
   return (
     // Android 뒤로 가기: 사진을 크게 보고 있으면 사진만 닫는다.
-    <Modal visible={visible} animationType="slide" onRequestClose={viewerIndex !== null ? closeViewer : onClose}>
+    // 왼쪽 가장자리에서 밀면 닫힌다(지도 시트로 돌아감). 사진을 크게 보는 동안은 가장자리 밀기를 끈다.
+    <SwipeBackModal
+      visible={visible}
+      onRequestClose={viewerIndex !== null ? closeViewer : onClose}
+      edgeDisabled={viewerIndex !== null}
+    >
       <SafeAreaProvider>
         <KeyboardFrame>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -471,7 +477,7 @@ export default function ReportCommentsModal({
         {/* 사진 크게 보기는 이 창 위에 덮어 그린다(창 안에 창을 띄우면 iOS 에서 닫을 때 이 창까지 닫혔다, 10-31). */}
         <ImageViewerModal inline urls={reportImageUrls(report)} startIndex={viewerIndex} onClose={closeViewer} />
       </SafeAreaProvider>
-    </Modal>
+    </SwipeBackModal>
   )
 }
 
@@ -521,7 +527,7 @@ const styles = StyleSheet.create({
     marginVertical: 14,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primarySoft,
   },
   moreButtonPressed: { opacity: 0.7 },

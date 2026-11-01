@@ -181,7 +181,7 @@ export const menuStyles = StyleSheet.create({
   cancel: {
     marginTop: 12,
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.fill,

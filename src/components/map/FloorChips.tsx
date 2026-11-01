@@ -5,6 +5,7 @@ import { FONTS } from '../../constants/typography'
 import { buildFloorOptions } from '../../utils/floors'
 import type { Building } from '../../types'
 import * as haptics from '../../lib/haptics'
+import { RADIUS } from '../../constants/spacing'
 
 interface FloorChipsProps {
   label: string
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.chipBorder,
     backgroundColor: COLORS.white,
