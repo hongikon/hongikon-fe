@@ -59,11 +59,13 @@ export function routeAsk(
 
 /** 흘려받기 진행 이벤트(서버가 실제로 한 일만). done 은 routeAsk 응답과 같은 모양. */
 export type AskStreamEvent =
+  | { event: 'retrieved'; data: { count: number } }
   | { event: 'picked'; data: { titles: string[] } }
   | { event: 'search' | 'noticeSearch' | 'facilitySearch'; data: { query: string } }
   | { event: 'read'; data: { titles: string[] } }
   | { event: 'noticeRead'; data: { title: string } }
   | { event: 'cafeteria'; data: { date: string } }
+  | { event: 'thinking'; data: { afterTools: boolean } }
   | { event: 'writing' | 'reset'; data: Record<string, never> }
   | { event: 'delta'; data: { text: string } }
 

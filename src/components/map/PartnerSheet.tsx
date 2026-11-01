@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   benefitLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: FONTS.bold,
     letterSpacing: 0.4,
     marginBottom: 4,
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   },
   sharedChipText: {
     fontFamily: FONTS.semibold,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.2,
   },
   /**

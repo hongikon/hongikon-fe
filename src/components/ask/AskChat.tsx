@@ -199,7 +199,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
    * 흘려받기 진행 이벤트 → 지금 하는 일 한 줄(status)과 '살펴본 과정' 한 줄(step). 쉬운 말만 쓴다 — 안내 id·검색어·안내 첫 문장 조각을
    * 그대로 보였더니 알아보기 힘들었다(10-16 사용자 지적). 사람이 읽을 수 있는 공지 제목·학식 날짜만 과정에 남긴다.
    */
-  const stepInfo = (event: AskStreamEvent): { status: string; step: string } | null => {
+  const stepInfo = (event: AskStreamEvent): { status: string; step: string | null } | null => {
     switch (event.event) {
       case "picked":
         return { status: "관련 문서를 읽고 있어요", step: `관련 안내 ${event.data.titles.length}개 확인` };
@@ -213,6 +213,9 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         return { status: "공지를 읽고 있어요", step: `공지 읽음 · ${event.data.title}` };
       case "cafeteria":
         return { status: "학식 메뉴를 확인하고 있어요", step: `학식 확인 · ${event.data.date}` };
+      case "thinking":
+        // 답 쓰기 호출부터 첫 글자까지 수 초(모델이 원문을 따지는 중) — 문구만 바꾸고 과정 줄은 늘리지 않는다(11-01).
+        return { status: event.data.afterTools ? "찾은 내용으로 답을 준비하고 있어요" : "원문을 따져 보며 답을 준비하고 있어요", step: null };
       case "writing":
         return { status: "답을 정리하고 있어요", step: "답 정리" };
       default:
@@ -340,7 +343,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
                 // 같은 일이 잇따르면(공지를 여러 번 찾기 등) 과정에는 한 번만 남긴다.
                 patchLive((item) => ({
                   status: info.status,
-                  steps: item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
+                  steps: info.step === null || item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
                 }));
               }
             }
@@ -1103,9 +1106,18 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
 }
 
 /** 서버가 지금 하는 일 한 줄. 글이 바뀌면 살짝 떠오르며 바뀌고, 그동안 은은하게 깜빡인다. */
+/** 기다린 지 이만큼 지나면 경과 초를 붙인다 — 짧은 답에는 숫자가 깜빡이지 않게. */
+const ELAPSED_AFTER_SECONDS = 3;
+
 function ThinkingLine({ text }: { text: string }) {
   const pulse = useRef(new Animated.Value(0.45)).current;
   const enter = useRef(new Animated.Value(0)).current;
+  const startedAt = useRef(Date.now()).current;
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [startedAt]);
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -1133,6 +1145,11 @@ function ThinkingLine({ text }: { text: string }) {
       <Animated.Text style={[styles.thinkingText, { opacity: pulse }]} numberOfLines={1}>
         {text}
       </Animated.Text>
+      {seconds >= ELAPSED_AFTER_SECONDS ? (
+        <Text style={styles.thinkingSeconds} accessibilityElementsHidden importantForAccessibility="no">
+          {seconds}초
+        </Text>
+      ) : null}
     </Animated.View>
   );
 }
@@ -1244,6 +1261,7 @@ const styles = StyleSheet.create({
   replyTail: { marginTop: 12 },
   thinkingRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 22 },
   thinkingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
+  thinkingSeconds: { fontSize: 13, lineHeight: 20, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   thinkingText: { flexShrink: 1, fontSize: 14, lineHeight: 20, fontFamily: FONTS.medium, color: COLORS.primary },
   cursor: { color: COLORS.primary },
   handoffTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 4 },
