@@ -6,6 +6,7 @@ import { MAP_PAGE_URL } from '../../constants/map'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { useReconnect } from '../../lib/connectivity'
+import { RADIUS } from '../../constants/spacing'
 
 export interface NaverMapViewHandle {
   injectJavaScript: (js: string) => void
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
   },
   buttonText: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.white },
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.white,
   },
   reloadingText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textSecondary },

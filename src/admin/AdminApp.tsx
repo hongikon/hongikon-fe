@@ -19,6 +19,7 @@ import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
+import { RADIUS } from '../constants/spacing'
 
 /**
  * 웹 관리자 콘솔(`/admin`). App.tsx 가 경로를 보고 앱의 AuthProvider/내비게이션을
@@ -359,21 +360,21 @@ const styles = StyleSheet.create({
   brandTitle: { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.white },
   brandSubtitle: { fontFamily: FONTS.medium, fontSize: 14, color: ADMIN_COLORS.sidebarText },
   sideNav: { gap: 4 },
-  sideItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 8 },
+  sideItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10, borderRadius: RADIUS.md },
   sideItemSelected: { backgroundColor: 'rgba(255,255,255,0.14)' },
   sideItemText: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: ADMIN_COLORS.sidebarText },
   sideItemTextSelected: { color: COLORS.white, fontFamily: FONTS.semibold },
   sidebarSpacer: { flex: 1 },
   sideLogout: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10 },
   sideLogoutText: { fontFamily: FONTS.medium, fontSize: 13, color: ADMIN_COLORS.sidebarText },
-  navBadge: { minWidth: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: COLORS.danger, alignItems: 'center' },
+  navBadge: { minWidth: 20, paddingHorizontal: 6, borderRadius: RADIUS.pill, backgroundColor: COLORS.danger, alignItems: 'center' },
   navBadgeText: { fontFamily: FONTS.bold, fontSize: 11, lineHeight: 20, color: COLORS.white },
   mockBadge: {
     alignSelf: 'flex-start',
     marginHorizontal: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: RADIUS.sm,
     backgroundColor: ADMIN_COLORS.warningBg,
   },
   mockBadgeText: { fontFamily: FONTS.semibold, fontSize: 11, color: ADMIN_COLORS.warning },

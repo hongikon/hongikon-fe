@@ -11,6 +11,7 @@ import {
 import { COLORS } from '../../constants/colors'
 import { useReduceMotion } from '../../hooks/useReduceMotion'
 import { CONTENT_MAX_WIDTH } from '../../constants/layout'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 첫 로딩 동안 실제 화면 모양을 회색 블록으로 미리 보여주는 자리표시자(스켈레톤).
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH - 24,
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: RADIUS.lg,
     padding: 16,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },

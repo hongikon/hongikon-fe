@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 /** 인증 표시(톱니 원 + 체크). 시스템 아이콘·이모지 대신 자체 경로로 그린다. viewBox 24. */
 const SEAL =
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 6,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primary,
     alignSelf: 'center',
   },

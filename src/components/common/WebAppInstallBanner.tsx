@@ -4,6 +4,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { APP_STORE_URL, PLAY_STORE_URL } from '../../constants/storeLinks'
 import IconButton from './IconButton'
+import { RADIUS } from '../../constants/spacing'
 
 const DISMISS_KEY = '@hongikon_install_banner_dismissed_until'
 /** 닫으면 이만큼 다시 띄우지 않는다. */
@@ -98,14 +99,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
-  icon: { width: 36, height: 36, borderRadius: 8 },
+  icon: { width: 36, height: 36, borderRadius: RADIUS.sm },
   texts: { flex: 1, minWidth: 0 },
   title: { fontFamily: FONTS.semibold, fontSize: 13.5, color: COLORS.textPrimary },
   sub: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
   cta: {
     height: 30,
     paddingHorizontal: 14,
-    borderRadius: 15,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',

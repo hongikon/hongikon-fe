@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import AppButton, { type ButtonVariant as AppButtonVariant } from '../components/common/Button'
+import { RADIUS } from '../constants/spacing'
 
 /** 관리자 화면 공통 부품. 앱 화면과 섞이지 않게 이 폴더 안에서만 쓴다. */
 
@@ -368,7 +369,7 @@ export const adminText = StyleSheet.create({
 })
 
 const styles = StyleSheet.create({
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start' },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill, alignSelf: 'flex-start' },
   badgeText: { fontFamily: FONTS.semibold, fontSize: 12 },
   button: {
     flexDirection: 'row',
@@ -377,7 +378,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
   },
   buttonSmall: { paddingHorizontal: 10, paddingVertical: 6 },
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
   buttonTextSmall: { fontSize: 13 },
   card: {
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
@@ -412,7 +413,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     backgroundColor: ADMIN_COLORS.dangerBg,
   },
   errorText: { flex: 1, minWidth: 160, fontFamily: FONTS.medium, fontSize: 13, color: COLORS.danger },
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: '#D4D4D8',
     backgroundColor: COLORS.white,
@@ -437,14 +438,14 @@ const styles = StyleSheet.create({
   tabSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   tabText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
   tabTextSelected: { color: COLORS.white },
-  tabCount: { minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: ADMIN_COLORS.dangerBg, alignItems: 'center' },
+  tabCount: { minWidth: 18, paddingHorizontal: 5, borderRadius: RADIUS.pill, backgroundColor: ADMIN_COLORS.dangerBg, alignItems: 'center' },
   tabCountSelected: { backgroundColor: COLORS.white },
   tabCountText: { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.danger, lineHeight: 18 },
   tabCountTextSelected: { color: COLORS.primary },
   confirm: {
     gap: 10,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     backgroundColor: ADMIN_COLORS.infoBg,
   },
   confirmDanger: { backgroundColor: ADMIN_COLORS.dangerBg },

@@ -25,6 +25,7 @@ import EmptyState from "../common/EmptyState";
 import SearchBar from "../news/SearchBar";
 import Button from "../common/Button";
 import { useMapData } from "../../lib/mapData";
+import { RADIUS } from '../../constants/spacing';
 
 interface PartnerSearchModalProps {
   visible: boolean;
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
   affiliationChip: {
     borderWidth: 1,
     borderColor: COLORS.chipBorder,
-    borderRadius: 6,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },

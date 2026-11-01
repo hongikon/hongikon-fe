@@ -35,6 +35,7 @@ import type { ReportCommunityPatch } from '../ReportActionRow'
 import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 import type { ReportComment, ReportListItem } from '../../../types'
 import EmptyState from '../../common/EmptyState'
+import { RADIUS } from '../../../constants/spacing'
 
 interface ReportCommentsModalProps {
   visible: boolean
@@ -521,7 +522,7 @@ const styles = StyleSheet.create({
     marginVertical: 14,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primarySoft,
   },
   moreButtonPressed: { opacity: 0.7 },

@@ -10,6 +10,7 @@ import { formatCount } from './ReportActionRow'
 import { reportPlaceText } from '../../utils/shareReport'
 import type { ReportListItem } from '../../types'
 import { useMapData } from '../../lib/mapData'
+import { RADIUS } from '../../constants/spacing'
 
 interface HotReportListProps {
   reports: readonly ReportListItem[]
@@ -117,7 +118,7 @@ export default function HotReportList({ reports, selectedId, onSelect }: HotRepo
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 4,
     paddingVertical: 2,
     shadowColor: '#000',
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: 'rgba(255,255,255,0.97)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
   },
   pillPressed: { opacity: 0.7 },
   pillText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: COLORS.textPrimary },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 8, borderRadius: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 8, borderRadius: RADIUS.md },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.divider },
   rowActive: { backgroundColor: COLORS.primarySoft },
   rank: { width: 16, textAlign: 'center', fontFamily: FONTS.bold, fontSize: 14, color: COLORS.fire },

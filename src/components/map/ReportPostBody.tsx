@@ -9,6 +9,7 @@ import OfficialBadge from '../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import { reportAuthorName } from '../../utils/nickname'
 import type { ReportListItem } from '../../types'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 제보 본문(게시글) — 종류 배지, 제목, 시각·장소, 본문 전체, 사진, 작성자, 공감·관심·공유.
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.primary,
   },
   badgeText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.white },

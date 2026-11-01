@@ -8,6 +8,7 @@ import { fetchFlaggedComments, isAdminCommentsMissing, updateCommentStatus } fro
 import { FLAG_REASON_LABEL, REPORT_STATUS_LABEL, formatDateTime, formatMemberRef, formatRelative } from '../format'
 import type { AdminComment, AdminCommentStatus, AdminFlaggedComment, AdminOverview, FlagReason } from '../types'
 import { Badge, Button, Card, ConfirmBar, EmptyState, InlineError, Loading, ScreenHeader, useAdminHost, type Tone } from '../ui'
+import { RADIUS } from '../../constants/spacing'
 
 /**
  * 숨김·삭제 사유 버튼. 작성자 알림에 그대로 들어간다. 서버가 사유를 비웠을 때 쓰는 신고 사유 문구(ReportCommentService.FLAG_REASON_LABELS)와 같다.
@@ -338,7 +339,7 @@ const styles = StyleSheet.create({
   reasonChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

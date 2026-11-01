@@ -7,6 +7,7 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import * as haptics from '../lib/haptics'
 import { GlassLensBase, GlassLensBubble, useGlassLens } from '../components/common/GlassLens'
+import { RADIUS } from '../constants/spacing'
 
 /** 아이콘 크기·칸 너비. 네이버 지도 하단 바처럼 아이콘만 둔 둥근 캡슐. */
 const ICON_SIZE = 26
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     paddingHorizontal: 4,
-    borderRadius: 8,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.danger,
     alignItems: 'center',
     justifyContent: 'center',

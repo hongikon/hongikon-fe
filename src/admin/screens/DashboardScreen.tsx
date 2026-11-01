@@ -5,6 +5,7 @@ import { FONTS } from '../../constants/typography'
 import { formatDateTime, formatDuration, formatNumber, formatRelative } from '../format'
 import type { AdminSection, OverviewState } from '../types'
 import { ADMIN_COLORS, Badge, Button, Card, InlineError, LabelValue, Loading, ScreenHeader } from '../ui'
+import { RADIUS } from '../../constants/spacing'
 
 /** 한눈에 보는 운영 현황. 수치는 AdminApp 이 들고 있는 overview 를 그대로 쓴다. */
 export default function DashboardScreen({
@@ -209,6 +210,6 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     backgroundColor: ADMIN_COLORS.dangerBg,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: RADIUS.md,
   },
 })

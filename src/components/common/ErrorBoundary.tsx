@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
+import { RADIUS } from '../../constants/spacing'
 
 interface Props {
   children: ReactNode
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     height: 46,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',

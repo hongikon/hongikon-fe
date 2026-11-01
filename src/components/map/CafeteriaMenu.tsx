@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   chipDay: { fontSize: 12.5, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   chipDate: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary, fontVariant: ["tabular-nums"] },
   chipTextActive: { color: COLORS.primary },
-  meal: { backgroundColor: COLORS.white, borderRadius: 10, padding: 12, gap: 6, minWidth: 0 },
+  meal: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: 12, gap: 6, minWidth: 0 },
   mealHeader: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
   mealName: { fontSize: 14, fontFamily: FONTS.bold, color: COLORS.primary },
   closedName: { color: COLORS.textTertiary },
