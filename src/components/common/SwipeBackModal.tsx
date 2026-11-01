@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Animated, Easing, Modal, PanResponder, Platform, StyleSheet, useWindowDimensions } from 'react-native'
+import { Animated, Easing, Modal, PanResponder, Platform, StyleSheet, View, useWindowDimensions } from 'react-native'
 import { COLORS } from '../../constants/colors'
 
 /** 왼쪽 가장자리에서 이만큼 안에서 시작한 끌기만 "뒤로"로 본다(본문의 가로 스크롤·칩과 겹치지 않게). */
-const EDGE_WIDTH = 32
+const EDGE_WIDTH = 20
+/** 가장자리 띠가 시작하는 높이. 상태 표시줄 + 머리 카드(뒤로 버튼) 아래. */
+const EDGE_TOP = 140
 /** 화면 폭의 이만큼 넘게 밀거나 빠르게 튕기면 닫는다. */
 const CLOSE_RATIO = 0.33
 const CLOSE_VELOCITY = 0.5
@@ -45,8 +47,9 @@ export default function SwipeBackModal({
   const pan = useMemo(
     () =>
       PanResponder.create({
-        // 가장자리에서 시작해 오른쪽으로(세로보다 가로로 더) 움직일 때만 가로챈다.
-        onMoveShouldSetPanResponderCapture: (_, g) => g.x0 <= EDGE_WIDTH && g.dx > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+        // 가장자리 띠에서 시작한 끌기만 받는다. 띠가 본문 위에 떠 있어 스크롤 창(iOS 네이티브)이 먼저 가져가지 못한다.
+        onStartShouldSetPanResponder: () => true,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_, g) => x.setValue(Math.max(0, g.dx)),
         onPanResponderRelease: (_, g) => {
           if (g.dx > widthRef.current * CLOSE_RATIO || g.vx > CLOSE_VELOCITY) {
@@ -64,8 +67,10 @@ export default function SwipeBackModal({
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onRequestClose}>
-      <Animated.View style={[styles.page, { transform: [{ translateX: x }] }]} {...pan.panHandlers}>
+      <Animated.View style={[styles.page, { transform: [{ translateX: x }] }]}>
         {children}
+        {/* 전엔 창 전체에 끌기를 달아, 본문이 스크롤되는 창(앱 권한 등)에선 스크롤이 먼저 가져가 밀어 닫기가 안 됐다(11-01). */}
+        {Platform.OS !== 'web' && <View style={styles.edge} {...pan.panHandlers} />}
       </Animated.View>
     </Modal>
   )
@@ -85,4 +90,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
   },
+  // 머리줄(뒤로 버튼)은 덮지 않게 그 아래부터.
+  edge: { position: 'absolute', left: 0, top: EDGE_TOP, bottom: 0, width: EDGE_WIDTH },
 })
