@@ -1059,10 +1059,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                     onPress={() => setMessages([])}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="처음으로 — 대화 지우기"
+                    accessibilityLabel="초기화 — 대화 지우기"
                     style={styles.clear}
                   >
-                    <Text style={styles.clearText}>처음으로</Text>
+                    <Text style={styles.clearText}>초기화</Text>
                   </TouchableOpacity>
                 ) : undefined
               }
