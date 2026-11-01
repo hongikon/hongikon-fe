@@ -58,10 +58,14 @@ import type { PartnerAffiliation } from '../../types'
 const TEST_RADIUS_OPTIONS = [20, 30, 50, 100] as const
 /** 위치를 "항상 허용"해야 하는 이유 — 켜기 전 안내와 권한이 모자랄 때 같은 말을 쓴다. */
 const ALWAYS_ALLOW_NOTICE =
-  '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
-const NIGHT_LABEL = `밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에도 받기`
+  Platform.OS === 'android'
+    ? '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
+    : '위치를 "항상 허용"으로 해 두어야 제휴 가게에 머물 때 바로 알림을 받을 수 있어요. "앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
+/** "밤 9시"처럼 12시간제로 읽는다("밤 21시"는 어색하다). */
+const QUIET_START_LABEL = `밤 ${QUIET_START_HOUR > 12 ? QUIET_START_HOUR - 12 : QUIET_START_HOUR}시`
+const NIGHT_LABEL = `${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에도 받기`
 /** 켜면 야간 수신 별도 동의가 된다(정보통신망법 제50조 제3항) — 기본은 꺼짐이라 이 시간엔 오지 않는다. */
-const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 동의를 거두고 밤 ${QUIET_START_HOUR}시~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
+const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 동의를 거두고 ${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
 
 function affiliationLabel(affiliations: readonly PartnerAffiliation[]): string {
   return [...affiliations, '총학생회'].join('·')
@@ -563,7 +567,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                   <Text style={styles.consentTitle}>(필수) 근처 제휴 혜택 알림을 받을게요</Text>
                   <Text style={styles.hint}>
                     제휴 가게에 머물 때 그 가게의 학생 혜택을 알려 드려요(제휴 혜택 알림). 동의하면 동의 여부와 시각만 서버에 남기고, 알림을
-                    끄면 바로 지워요. 동의하지 않아도 다른 기능은 그대로 쓸 수 있어요. 밤 {QUIET_START_HOUR}시~아침 {QUIET_END_HOUR}시에는
+                    끄면 바로 지워요. 동의하지 않아도 다른 기능은 그대로 쓸 수 있어요. {QUIET_START_LABEL}~아침 {QUIET_END_HOUR}시에는
                     따로 켜야 받아요.
                   </Text>
                 </View>
@@ -794,7 +798,7 @@ function permissionSteps(afterSettings: boolean): PermissionStep[] {
   const settingsList: PermissionStep = {
     caption: afterSettings ? '휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치에서' : '이어서 열리는 설정 화면에서',
     title: null,
-    options: ko ? ['항상 허용', '앱 사용 중에만 허용', '매번 확인', '허용 안함'] : ['Allow all the time', 'Allow only while using the app', 'Ask every time', "Don't allow"],
+    options: ko ? ['항상 허용', '앱 사용 중에만 허용', '항상 확인', '허용 안함'] : ['Allow all the time', 'Allow only while using the app', 'Ask every time', "Don't allow"],
     pick: 0,
     list: true,
   }
