@@ -52,7 +52,7 @@ import SwipeBackModal from '../common/SwipeBackModal'
 import Button from '../common/Button'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
-import NearbyRadiusExamples from './NearbyRadiusExamples'
+import NearbyRadiusMap from './NearbyRadiusMap'
 import type { PartnerAffiliation } from '../../types'
 
 /** 테스트 빌드에서 고를 수 있는 업체 반경(m). */
@@ -598,7 +598,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       )
                     })}
                   </View>
-                  <NearbyRadiusExamples options={TEST_RADIUS_OPTIONS} selected={radius} disabled={working} onSelect={chooseRadius} />
+                  <NearbyRadiusMap meters={radius} />
                   {NEARBY_FIELD_TEST && (
                     <>
                       <View style={styles.divider} />
