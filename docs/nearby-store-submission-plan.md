@@ -133,3 +133,23 @@ is shown during this time. The service stops when the user leaves the region or 
 - 휴대폰에는 위치(좌표)를 남기지 않아요. 근처 제휴 가게 목록, 지금 머무는 가게와 들어간·나간 시각(나오고 몇 분 뒤 지움), 알림을 보낸 가게와 시각(2일 뒤 지움)만 휴대폰에 남아요.
 자세한 내용은 설정 > 약관 및 정책 > 개인정보 처리방침에서 볼 수 있어요.
 ```
+
+## 9. 심사용 빌드(11-01)와 제출 순서
+
+FE `feature/nearby-partner-alert` `1acf994`, `production` 프로필(근처 알림 켬, 현장 테스트 끔 — `appVariant=production`, `nearbyFieldTest=false` 확인), API `https://api.hongikon.com`.
+
+| | 파일(`builds/`) | 버전 | 확인한 것 |
+|---|---|---|---|
+| iOS | `hongikon-1.1.0-ios-1101.ipa` | 1.1.0 (24) | `UIBackgroundModes` location, 위치 권한 문구 한국어, `ko.lproj` 있음, 새 처리방침 문구 |
+| Android | `hongikon-1.1.0-android-1101.aab` | 1.1.0 (versionCode 13) | FINE/COARSE/BACKGROUND_LOCATION, FOREGROUND_SERVICE(_LOCATION), POST_NOTIFICATIONS, 새 처리방침 문구 |
+
+순서(위에서부터, 앞 단계가 끝나야 다음):
+
+1. **처리방침 변경 공지**(8-6 문안, 11-02 까지) → 적용일 11-09. 스토어 출시는 11-09 이후로 맞춘다(아래 "수동 출시").
+2. **KISA 118 문의**(광고성 정보 해당 여부) — 답을 6장에 적는다.
+3. **BE 운영 반영**: `be-nearby` 의 `1bf1b34`·`e08552d` → dev → main. 운영 DB 에 `db/alter_partners_nearby_alert_2026_10_26.sql` 먼저 실행 → 배포 → `.env` `NEARBY_ALERTS_ENABLED=true` → 관리자에서 학교 앞 업체 몇 곳 `nearbyAlert` 켬(`docs/deploy-runbook-nearby-alert.md`). 이게 없으면 운영 빌드에선 동의 저장이 안 되고 "잠시 멈췄어요"만 보인다.
+4. **iOS 업로드 → TestFlight 내부 테스트로 실기기 확인**: `npx eas-cli submit -p ios --profile production --path ../../builds/hongikon-1.1.0-ios-1101.ipa`. 아이폰으로 켜기 흐름 + 실제 제휴 가게 앞 알림(실기기 지오펜스는 아직 한 번도 확인 못 함). 이때 시연 영상도 찍는다.
+5. **Android 업로드**: Play 서비스 계정 키(`secrets/play-service-account.json`)가 없으므로 Play Console > 테스트 > 내부 테스트 > 새 버전에 aab 를 직접 올린다. 실기기로 같은 확인 + 영상.
+6. **콘솔 입력**: App Store 심사 메모(8-1), App Privacy 그대로(8-2). Play 위치 권한 신고(8-3)·포그라운드 서비스 신고(8-4)·데이터 보안 그대로(8-5), 영상 링크. 1.1.0 출시 노트.
+7. **심사 제출**: App Store "이 버전을 수동으로 출시", Play "관리형 게시" 켜고 프로덕션 트랙 제출 → 승인돼도 11-09 이후에 출시.
+8. **출시 전 FE 머지**: `feature/nearby-partner-alert` → dev → main. 1.1.0 런타임 OTA(`pnpm update:production`)는 반드시 근처 알림 코드가 든 main 에서 낸다.
