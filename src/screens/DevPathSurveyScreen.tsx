@@ -17,10 +17,13 @@ import {
   hasModuleEdge,
   loadStore,
   moveNode,
+  moveNodeOntoEdge,
   removeEdgeBetween,
+  referenceSpecialNode,
   removeNode,
   reopenModule,
   saveStore,
+  setNodeKind,
   setEdgeMemo,
   setNodeMemo,
   updateModule,
@@ -62,8 +65,8 @@ type Tab = 'edit' | 'modules' | 'legacy' | 'transfer' | 'sync'
 
 const MODES: { key: Mode; label: string; help: string }[] = [
   { key: 'add', label: '지점 찍기', help: '지도를 누르면 편집 중인 모듈에 지점이 생겨요. "이어 찍기"를 켜면 직전 지점과 간선까지 같이 만들어요.' },
-  { key: 'link', label: '간선 잇기', help: '편집 중인 모듈의 지점 두 개를 차례로 누르면 간선이 생겨요. 이어서 누르면 계속 이어지고, 같은 지점을 다시 누르면 끊겨요. 이미 있는 간선을 또 이으면 지워져요.' },
-  { key: 'move', label: '위치 옮기기', help: '편집 중인 모듈의 지점을 끌어서 옮겨요.' },
+  { key: 'link', label: '간선 잇기', help: '지점 두 개를 차례로 누르면 간선이 생겨요. 다른 모듈의 특수 지점(엘리베이터·출입구·교차점)도 눌러 함께 쓸 수 있어요. 이어서 누르면 계속 이어지고, 같은 지점을 다시 누르면 끊겨요. 이미 있는 간선을 또 이으면 지워져요.' },
+  { key: 'move', label: '위치 옮기기', help: '편집 중인 모듈의 지점을 끌어서 옮겨요. 특수 지점은 다른 모듈에서도 옮길 수 있고, 참조한 모든 모듈에 반영돼요. 다른 간선 중간에 놓으면 간선 위로 맞추고 두 간선으로 나눠요. 되돌리기로 복구할 수 있어요.' },
 ]
 
 const TABS: { key: Tab; label: string }[] = [
@@ -93,6 +96,7 @@ function parseMessage(event: unknown): any | null {
  */
 const SETUP_JS = `(function(){
   if (typeof map === 'undefined' || !window.naver) return;
+  window.__surveyMode = true;
   map.setOptions({ minZoom: 10, maxBounds: null });
   function post(m){
     m.src = 'survey';
@@ -118,6 +122,12 @@ const SETUP_JS = `(function(){
       + '<span style="box-sizing:border-box;flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + fill
       + ';border:' + ringWidth + 'px solid ' + ring + ';box-shadow:0 0 3px rgba(0,0,0,.45)"></span>' + (text ? label(text, textColor) : '') + '</div>';
   }
+  function nodeColor(kind, fallback){
+    if (kind === 'elevator') return '#F59E0B';
+    if (kind === 'entrance') return '#E11D48';
+    if (kind === 'intersection') return '#7C3AED';
+    return fallback;
+  }
   window.__surveyRender = function(s){
     window.__surveyObjs.forEach(function(o){ o.setMap(null); });
     window.__surveyObjs = [];
@@ -130,6 +140,7 @@ const SETUP_JS = `(function(){
       objs.push(new naver.maps.Marker({ position: ll(n.lat, n.lng), map: map, zIndex: 400, clickable: false, title: n.id,
         icon: { content: dot(9, '#94A3B8', '#fff', 2, n.label, '#475569') } }));
     });
+    var activeModule = s.modules.find(function(m){ return m.active; });
     s.modules.forEach(function(m){
       var op = m.dim ? 0.3 : 0.9;
       m.edges.forEach(function(e){
@@ -150,23 +161,47 @@ const SETUP_JS = `(function(){
         }
       });
       m.nodes.forEach(function(n){
+        var editable = m.active || (!!activeModule && !!n.kind && (s.mode === 'link' || s.mode === 'move'));
         var ring = '#fff', ringWidth = 2;
         if (m.active && n.id === s.selected) { ring = '#111827'; ringWidth = 3; }
         else if (m.active && n.id === s.pending) { ring = '#F97316'; ringWidth = 3; }
-        var size = m.active ? 18 : 11;
-        var showLabel = m.active && (n.label || n.id === s.selected || n.id === s.pending);
+        var size = editable ? 18 : 11;
+        var showLabel = editable && (n.label || n.id === s.selected || n.id === s.pending);
+        var fill = nodeColor(n.kind, m.dark);
         var text = showLabel ? n.short + (n.memo ? ' \\u270E' : '') : '';
         var mk = new naver.maps.Marker({
-          position: ll(n.lat, n.lng), map: map, zIndex: m.active ? 700 : 500, title: n.id, clickable: m.active,
-          draggable: m.active && s.mode === 'move',
-          icon: { content: '<div style="opacity:' + (m.dim ? 0.4 : 1) + '">' + dot(size, m.dark, ring, ringWidth, text, m.dark) + '</div>' }
+          position: ll(n.lat, n.lng), map: map, zIndex: editable ? 700 : 500, title: n.id, clickable: editable,
+          draggable: editable && s.mode === 'move',
+          icon: { content: '<div style="opacity:' + (m.dim && !editable ? 0.4 : 1) + '">' + dot(size, fill, ring, ringWidth, text, fill) + '</div>' }
         });
-        if (m.active) {
-          naver.maps.Event.addListener(mk, 'click', function(){ hit(); post({ type: 'node', id: n.id }); });
+        if (editable) {
+          naver.maps.Event.addListener(mk, 'click', function(){ hit(); post({ type: 'node', id: n.id, moduleId: m.id }); });
           naver.maps.Event.addListener(mk, 'dragend', function(){
             hit();
             var p = mk.getPosition();
-            post({ type: 'move', id: n.id, lat: p.lat(), lng: p.lng() });
+            var projection = map.getProjection();
+            var point = projection.fromCoordToOffset(p);
+            var best = null, bestDistance = 12 * 12;
+            (activeModule ? activeModule.edges : []).forEach(function(e){
+              if (e.a === n.id || e.b === n.id) return;
+              var a = projection.fromCoordToOffset(ll(e.p[0], e.p[1]));
+              var b = projection.fromCoordToOffset(ll(e.p[2], e.p[3]));
+              var dx = b.x - a.x, dy = b.y - a.y;
+              var length2 = dx * dx + dy * dy;
+              if (!length2) return;
+              var t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / length2;
+              if (t <= 0 || t >= 1) return;
+              var x = a.x + t * dx, y = a.y + t * dy;
+              // 끝 지점과 겹치는 분할은 피한다(지점 반지름 9px).
+              if (Math.min(t, 1 - t) * Math.sqrt(length2) < 9) return;
+              var distance = (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y);
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                best = { id: e.id, coord: projection.fromOffsetToCoord(new naver.maps.Point(x, y)) };
+              }
+            });
+            if (best) p = best.coord;
+            post({ type: 'move', id: n.id, moduleId: m.id, lat: p.lat(), lng: p.lng(), edgeId: best ? best.id : null });
           });
         }
         objs.push(mk);
@@ -279,31 +314,33 @@ export default function DevPathSurveyScreen() {
     setNotice(`${shortId(newId)} 추가${linkFrom ? ` · ${shortId(linkFrom)}와 이었어요` : ''}`)
   }
 
-  const toggleEdge = (a: string, b: string) => {
-    const m = findModule(storeRef.current, storeRef.current.activeModuleId)
-    if (!m) return
-    if (hasModuleEdge(m, a, b)) {
-      editActive((mm) => removeEdgeBetween(mm, a, b))
-      return setNotice(`${shortId(a)} — ${shortId(b)} 간선을 지웠어요`)
-    }
-    editActive((mm) => addEdge(mm, a, b))
-    setNotice(`${shortId(a)} — ${shortId(b)} 간선 추가`)
-  }
-
-  const onNodePress = (id: string) => {
-    setSelected(id)
+  const onNodePress = (id: string, moduleId: string) => {
+    const current = storeRef.current
+    if (!current.activeModuleId) return
+    const referenced = referenceSpecialNode(current, current.activeModuleId, moduleId, id)
+    if (!referenced) return
+    let next = referenced.store
+    const localId = referenced.id
+    setSelected(localId)
     setSelectedEdge(null)
-    if (mode !== 'link') return
-    if (!pending) return setPending(id)
-    if (pending === id) return setPending(null)
-    toggleEdge(pending, id)
-    setPending(id)
+    setTab('edit')
+    if (mode === 'link') {
+      if (pending && pending !== localId) {
+        next = updateModule(next, current.activeModuleId, (m) => {
+          if (!m.nodes.some((n) => n.id === pending)) return m
+          return hasModuleEdge(m, pending, localId) ? removeEdgeBetween(m, pending, localId) : addEdge(m, pending, localId)
+        })
+        setNotice(`${shortId(pending)} — ${shortId(localId)} 간선을 변경했어요`)
+      } else if (next !== current) setNotice('특수 지점을 이 모듈에서 참조해요. 다음 지점을 누르면 간선으로 이어져요.')
+      setPending(pending === localId ? null : localId)
+    }
+    commit(next)
   }
 
   const deleteSelected = () => {
     if (!selected) return
     editActive((m) => removeNode(m, selected))
-    setNotice(`${shortId(selected)} 와 연결된 간선을 지웠어요`)
+    setNotice(`${shortId(selected)}의 지점 또는 참조와 이 모듈의 연결 간선을 지웠어요`)
     setSelected(null)
     setPending(null)
   }
@@ -498,9 +535,29 @@ export default function DevPathSurveyScreen() {
     const msg = parseMessage(event)
     if (!msg) return
     if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
-    else if (msg.type === 'node') onNodePress(msg.id)
+    else if (msg.type === 'node') onNodePress(msg.id, msg.moduleId ?? storeRef.current.activeModuleId)
     else if (msg.type === 'edge') onEdgePress(msg.id)
-    else if (msg.type === 'move') editActive((m) => moveNode(m, msg.id, msg.lat, msg.lng))
+    else if (msg.type === 'move' && mode === 'move' && Number.isFinite(msg.lat) && Number.isFinite(msg.lng)) {
+      const current = storeRef.current
+      if (!current.activeModuleId) return
+      const referenced = referenceSpecialNode(current, current.activeModuleId, msg.moduleId ?? current.activeModuleId, msg.id)
+      if (!referenced) return
+      const id = referenced.id
+      let split = false
+      const next = updateModule(referenced.store, current.activeModuleId, (m) => {
+        if (msg.edgeId) {
+          const result = moveNodeOntoEdge(m, id, msg.edgeId, msg.lat, msg.lng)
+          split = result !== m
+          if (split) return result
+        }
+        return moveNode(m, id, msg.lat, msg.lng)
+      })
+      commit(next)
+      setSelected(id)
+      setSelectedEdge(null)
+      setPending(null)
+      setNotice(split ? `${shortId(id)}를 간선 위로 옮기고 간선을 둘로 나눴어요` : `${shortId(id)}의 위치를 옮겼어요${referenced.store.modules.find((m) => m.id === current.activeModuleId)?.nodes.find((n) => n.id === id)?.sharedId ? ' · 공유 모듈에도 반영했어요' : ''}`)
+    }
   }
 
   const lastRenderRef = useRef('')
@@ -521,11 +578,15 @@ export default function DevPathSurveyScreen() {
             .filter((n) => t.namedFloors[floorKeyOf(n.floor)] !== false)
             .map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, label: `${n.id} (${floorKeyOf(n.floor)}, id 기반 추정)` }))
         : []),
+      ...(t.unconnectedEntrances
+        ? overlay.unconnectedEntrances.map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, label: n.id }))
+        : []),
     ]
     const legacyLines = [
       ...(t.nodeEdges ? overlay.nodeEdges.map((l) => [...l, 0]) : []),
       ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
     ]
+    const shownSpecials = new Set(active?.nodes.filter((n) => n.kind).map((n) => n.sharedId ?? n.id))
     const modules = store.modules
       .filter((m) => !hidden[m.id] || m.id === store.activeModuleId)
       .map((m) => {
@@ -538,11 +599,25 @@ export default function DevPathSurveyScreen() {
           dashed: m.status === 'draft',
           active: isActive,
           dim: !isActive,
-          nodes: m.nodes.map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, short: n.ref ? `${shortId(n.id)}(기존)` : shortId(n.id), memo: !!n.memo, label: isActive })),
+          nodes: m.nodes.filter((n) => {
+            if (isActive || !n.kind) return true
+            const key = n.sharedId ?? n.id
+            if (shownSpecials.has(key)) return false
+            shownSpecials.add(key)
+            return true
+          }).map((n) => ({
+            id: n.id,
+            lat: n.lat,
+            lng: n.lng,
+            short: !isActive && n.kind ? `${shortId(n.id)} (${m.name})` : n.ref ? `${shortId(n.id)}(기존)` : shortId(n.id),
+            memo: !!n.memo,
+            kind: n.kind,
+            label: isActive || !!active,
+          })),
           edges: m.edges.flatMap((e) => {
             const A = byId.get(e.a)
             const B = byId.get(e.b)
-            return A && B ? [{ id: e.id, p: [A.lat, A.lng, B.lat, B.lng], memo: !!e.memo }] : []
+            return A && B ? [{ id: e.id, a: e.a, b: e.b, p: [A.lat, A.lng, B.lat, B.lng], memo: !!e.memo }] : []
           }),
         }
       })
@@ -593,7 +668,33 @@ export default function DevPathSurveyScreen() {
               multiline
               style={ui.memoInput}
             />
-            <Btn label="이 지점과 연결 간선 지우기" kind="danger" onPress={deleteSelected} />
+            {selectedNode.sharedId ? <Text style={ui.hint}>공유 특수 지점이에요. 위치 변경은 모든 참조 모듈에 반영되고, 아래 삭제는 이 모듈의 참조와 연결만 제거해요. 공유를 시작한 지점의 성질은 고정돼요.</Text> : null}
+            <Text style={ui.sectionHelp}>지점 성질</Text>
+            {selectedNode.sharedId ? (
+              <Text style={ui.sectionHelp}>{({ elevator: '엘리베이터', entrance: '출입구', intersection: '교차점' })[selectedNode.kind!]}</Text>
+            ) : (
+              <>
+                <Check
+                  label="엘리베이터"
+                  checked={selectedNode.kind === 'elevator'}
+                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'elevator' ? undefined : 'elevator'))}
+                  color="#F59E0B"
+                />
+                <Check
+                  label="출입구"
+                  checked={selectedNode.kind === 'entrance'}
+                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'entrance' ? undefined : 'entrance'))}
+                  color="#E11D48"
+                />
+                <Check
+                  label="교차점"
+                  checked={selectedNode.kind === 'intersection'}
+                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'intersection' ? undefined : 'intersection'))}
+                  color="#7C3AED"
+                />
+              </>
+            )}
+            <Btn label={selectedNode.sharedId ? '이 모듈의 참조와 연결 간선 지우기' : '이 지점과 연결 간선 지우기'} kind="danger" onPress={deleteSelected} />
           </>
         ) : (
           <Text style={ui.empty}>편집 중인 모듈의 점을 누르면 메모를 달 수 있어요</Text>

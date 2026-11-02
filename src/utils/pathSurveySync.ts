@@ -1,4 +1,4 @@
-import { isHexColor, normalizeModule, type SurveyModule, type SurveyStore } from './pathSurveyStore'
+import { isHexColor, normalizeModule, reconcileSharedNodes, type SurveyModule, type SurveyStore } from './pathSurveyStore'
 
 /**
  * 경로망 조사 모듈 내보내기/가져오기. React Native 를 가져오지 않아 Node 단위 테스트에서 그대로 읽힌다.
@@ -36,7 +36,7 @@ export function parseBundle(text: string): { modules: SurveyModule[]; customColo
   const modules = list.map((m) => normalizeModule(m)).filter((m): m is SurveyModule => !!m)
   if (modules.length === 0) throw new Error('모듈 모양이 맞지 않아 읽지 못했어요.')
   const colors: unknown[] = Array.isArray(raw?.customColors) ? raw.customColors : []
-  return { modules, customColors: colors.filter(isHexColor).map((c) => c.toUpperCase()) }
+  return { modules: reconcileSharedNodes(modules), customColors: colors.filter(isHexColor).map((c) => c.toUpperCase()) }
 }
 
 export interface ImportPlan {
@@ -92,6 +92,13 @@ export function applyImport(store: SurveyStore, plan: ImportPlan, overwrite: boo
   for (const m of plan.added) modules = [...modules, m]
   const touched = new Set([...plan.added, ...replacing].map((m) => m.id))
   modules = modules.map((m) => (touched.has(m.id) ? ensureUniqueNodeIds(m, modules) : m))
+  // 모듈 내부 id 충돌은 정리해도 sharedId 는 유지한다. 위치는 독립된 변경 시각으로 합친다.
+  modules = reconcileSharedNodes(modules, store.modules).map((m) => {
+    const local = store.modules.find((x) => x.id === m.id)
+    return local && m.nodes.some((n) => n.sharedId && local.nodes.some((old) => old.id === n.id &&
+      (old.lat !== n.lat || old.lng !== n.lng || old.sharedUpdatedAt !== n.sharedUpdatedAt)))
+      ? { ...m, updatedAt: Math.max(now, m.updatedAt, local.updatedAt + 1) } : m
+  })
   const active = modules.find((m) => m.id === store.activeModuleId)
   return {
     ...store,
