@@ -15,7 +15,7 @@ import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
 import NoticeDetailModal from '../settings/NoticeDetailModal'
 import Button from './Button'
 
-/** 마지막으로 닫은 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. */
+/** '다시 보지 않기'를 누른 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. '닫기'는 남기지 않는다(다음 실행에 다시 뜬다). */
 const STORAGE_KEY = '@hongikon_launch_notice_seen'
 
 /** 팝업이 사라지는 애니메이션이 끝난 뒤 본문 화면을 연다 — 네이티브 Modal 이 닫히는 중에 다른 Modal 을 열면 안 뜰 수 있다. */
@@ -64,8 +64,9 @@ export function useLaunchNoticePending(): boolean {
 
 /**
  * 앱을 켜고 지도에 들어왔을 때 한 번 뜨는 공지 카드(11-02 처리방침 변경 안내부터). appNotices.ts 에서 popup 을 준 공지만
- * 띄운다. 카드는 옆으로 넘기거나 '다음'으로 넘기고, 마지막 카드의 확인이나 '보러가기'를 누르면 그 id 를 남겨 다시 뜨지 않는다. '보러가기'는 같은 공지 본문(설정 > 공지사항과 같은
- * 화면)을 연다 — 바뀐 처리방침 전문은 적용일부터 앱에 실린다.
+ * 띄운다. 카드는 옆으로 넘기거나 '다음'으로 넘긴다. 닫는 방법은 둘 — '닫기'(X·뒤로 가기·마지막 카드 버튼·'보러가기' 포함)는
+ * 이번 실행에서만 닫아 다음에 앱을 켜면 다시 뜨고, '다시 보지 않기'는 그 id 를 남겨 더는 뜨지 않는다(popup.until 이 지나도 안 뜬다).
+ * '보러가기'는 같은 공지 본문(설정 > 공지사항과 같은 화면)을 연다.
  * 첫 실행 화면(온보딩·학과 고르기)과 제휴 안내가 끝난 뒤에 띄운다.
  */
 export default function LaunchNoticeModal() {
@@ -78,13 +79,17 @@ export default function LaunchNoticeModal() {
   const partnerNoticePending = usePartnerNoticePending()
   const [detailOpen, setDetailOpen] = useState(false)
 
-  const markSeen = () => {
+  /** 이번 실행에서만 닫는다. */
+  const closeForNow = () => setNoticeState('seen')
+
+  /** 이 공지는 다시 띄우지 않는다. */
+  const dontShowAgain = () => {
     setNoticeState('seen')
     if (popupNotice) AsyncStorage.setItem(STORAGE_KEY, popupNotice.id).catch(() => {})
   }
 
   const openDetail = () => {
-    markSeen()
+    closeForNow()
     setTimeout(() => setDetailOpen(true), DETAIL_OPEN_DELAY_MS)
   }
 
@@ -105,7 +110,7 @@ export default function LaunchNoticeModal() {
 
   const goNext = () => {
     if (page >= lastPage) {
-      markSeen()
+      closeForNow()
       return
     }
     pagerRef.current?.scrollTo({ x: (page + 1) * pageWidth, animated: true })
@@ -115,10 +120,10 @@ export default function LaunchNoticeModal() {
   return (
     <>
       {showPopup && (
-        <Modal visible transparent animationType="fade" onRequestClose={markSeen}>
+        <Modal visible transparent animationType="fade" onRequestClose={closeForNow}>
           <View style={styles.backdrop}>
             <View style={styles.card}>
-              <Pressable onPress={markSeen} accessibilityRole="button" accessibilityLabel="공지 닫기" hitSlop={10} style={styles.close}>
+              <Pressable onPress={closeForNow} accessibilityRole="button" accessibilityLabel="공지 닫기" hitSlop={10} style={styles.close}>
                 <Ionicons name="close" size={20} color={COLORS.textTertiary} />
               </Pressable>
               <ScrollView
@@ -160,8 +165,9 @@ export default function LaunchNoticeModal() {
                   <View key={slide.title} style={[styles.dot, index === page && styles.dotActive]} />
                 ))}
               </View>
-              <View style={styles.action}>
-                <Button label={page >= lastPage ? '확인했어요' : '다음'} onPress={goNext} size="md" />
+              <View style={styles.actions}>
+                <Button label="다시 보지 않기" variant="outline" onPress={dontShowAgain} size="md" style={styles.actionButton} />
+                <Button label={page >= lastPage ? '닫기' : '다음'} onPress={goNext} size="md" style={styles.actionButton} />
               </View>
             </View>
           </View>
@@ -235,5 +241,6 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 16, marginBottom: 14 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
   dotActive: { width: 18, backgroundColor: COLORS.primary },
-  action: { paddingHorizontal: 20 },
+  actions: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
+  actionButton: { flex: 1 },
 })
