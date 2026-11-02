@@ -70,7 +70,10 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
         accessibilityRole="image"
         accessibilityLabel={`제휴 가게마다 반경 ${meters}미터 알림 영역 예시 지도`}
       >
-        <Image source={BACKGROUNDS[zoom]} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {/* absoluteFill 만 주면 iOS 에서 그림이 원래 픽셀 크기(1000×700)로 왼쪽 위에 그려졌다(11-02 테스트 앱). 크기를 숫자로 준다. */}
+        {width > 0 && (
+          <Image source={BACKGROUNDS[zoom]} style={{ position: 'absolute', left: 0, top: 0, width, height }} resizeMode="stretch" />
+        )}
         {zones.map((z) => (
           <View
             key={z.id}
