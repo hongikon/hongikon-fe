@@ -18,16 +18,19 @@ import {
   loadStore,
   moveNode,
   moveNodeOntoEdge,
+  NODE_KIND_INFO,
   removeEdgeBetween,
   referenceSpecialNode,
   removeNode,
   reopenModule,
   saveStore,
+  setEdgeKind,
   setNodeKind,
   setEdgeMemo,
   setNodeMemo,
   updateModule,
   type SurveyModule,
+  type SurveyNodeKind,
   type SurveyStore,
 } from '../utils/pathSurveyStore'
 import {
@@ -58,6 +61,7 @@ import ModuleProps from './pathSurvey/ModuleProps'
 import TransferPanel from './pathSurvey/TransferPanel'
 import GistPanel from './pathSurvey/GistPanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
+import Legend from './pathSurvey/Legend'
 import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
 
 type Mode = 'add' | 'link' | 'move'
@@ -65,7 +69,7 @@ type Tab = 'edit' | 'modules' | 'legacy' | 'transfer' | 'sync'
 
 const MODES: { key: Mode; label: string; help: string }[] = [
   { key: 'add', label: '지점 찍기', help: '지도를 누르면 편집 중인 모듈에 지점이 생겨요. "이어 찍기"를 켜면 직전 지점과 간선까지 같이 만들어요.' },
-  { key: 'link', label: '간선 잇기', help: '지점 두 개를 차례로 누르면 간선이 생겨요. 다른 모듈의 특수 지점(엘리베이터·출입구·교차점)도 눌러 함께 쓸 수 있어요. 이어서 누르면 계속 이어지고, 같은 지점을 다시 누르면 끊겨요. 이미 있는 간선을 또 이으면 지워져요.' },
+  { key: 'link', label: '간선 잇기', help: '지점 두 개를 차례로 누르면 간선이 생겨요. 다른 모듈의 특수 지점(엘리베이터, 출입구, 교차점)도 눌러 함께 쓸 수 있어요. 다른 모듈의 일반 지점을 누르면 계단 끝으로 표시해 공유하니, 층이 다른 모듈의 계단 끝끼리 잇고 그 간선을 계단으로 바꾸세요. 이어서 누르면 계속 이어지고, 같은 지점을 다시 누르면 끊겨요. 이미 있는 간선을 또 이으면 지워져요.' },
   { key: 'move', label: '위치 옮기기', help: '편집 중인 모듈의 지점을 끌어서 옮겨요. 특수 지점은 다른 모듈에서도 옮길 수 있고, 참조한 모든 모듈에 반영돼요. 다른 간선 중간에 놓으면 간선 위로 맞추고 두 간선으로 나눠요. 되돌리기로 복구할 수 있어요.' },
 ]
 
@@ -122,10 +126,13 @@ const SETUP_JS = `(function(){
       + '<span style="box-sizing:border-box;flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + fill
       + ';border:' + ringWidth + 'px solid ' + ring + ';box-shadow:0 0 3px rgba(0,0,0,.45)"></span>' + (text ? label(text, textColor) : '') + '</div>';
   }
+  // 색은 pathSurveyStore.ts 의 NODE_KIND_INFO, STAIRS_COLOR 와 같아야 한다(scripts/path-survey/test-map.mjs 가 확인).
+  var STAIRS = '#111827';
   function nodeColor(kind, fallback){
     if (kind === 'elevator') return '#F59E0B';
     if (kind === 'entrance') return '#E11D48';
     if (kind === 'intersection') return '#7C3AED';
+    if (kind === 'stairs') return STAIRS;
     return fallback;
   }
   window.__surveyRender = function(s){
@@ -146,8 +153,13 @@ const SETUP_JS = `(function(){
       m.edges.forEach(function(e){
         var path = [ll(e.p[0], e.p[1]), ll(e.p[2], e.p[3])];
         var sel = m.active && e.id === s.selectedEdge;
-        objs.push(new naver.maps.Polyline({ map: map, zIndex: m.active ? 320 : 300, clickable: false, strokeColor: m.color,
-          strokeWeight: sel ? 8 : (m.active ? 5 : 4), strokeOpacity: op, strokeStyle: m.dashed ? 'shortdash' : 'solid', strokeLineCap: 'round', path: path }));
+        var stairs = e.kind === 'stairs';
+        var weight = sel ? 8 : (m.active ? 5 : 4);
+        // 계단은 모듈 색과 무관하게 STAIRS 색 굵은 선 위에 흰 점선을 얹어, 직접 고른 모듈 색과도 헷갈리지 않게 한다.
+        objs.push(new naver.maps.Polyline({ map: map, zIndex: m.active ? 320 : 300, clickable: false, strokeColor: stairs ? STAIRS : m.color,
+          strokeWeight: stairs ? weight + 2 : weight, strokeOpacity: op, strokeStyle: stairs || !m.dashed ? 'solid' : 'shortdash', strokeLineCap: 'round', path: path }));
+        if (stairs) objs.push(new naver.maps.Polyline({ map: map, zIndex: m.active ? 321 : 301, clickable: false, strokeColor: '#fff',
+          strokeWeight: 2, strokeOpacity: op, strokeStyle: 'shortdash', path: path }));
         if (!m.active) return;
         var hitLine = new naver.maps.Polyline({ map: map, zIndex: 330, clickable: true, strokeColor: m.color, strokeWeight: 22, strokeOpacity: 0.01, path: path });
         naver.maps.Event.addListener(hitLine, 'click', function(){ hit(); post({ type: 'edge', id: e.id }); });
@@ -161,11 +173,12 @@ const SETUP_JS = `(function(){
         }
       });
       m.nodes.forEach(function(n){
-        var editable = m.active || (!!activeModule && !!n.kind && (s.mode === 'link' || s.mode === 'move'));
+        // 간선 잇기에서는 다른 모듈의 일반 지점도 누를 수 있다(누르면 계단 끝으로 공유된다).
+        var editable = m.active || (!!activeModule && ((!!n.kind && (s.mode === 'link' || s.mode === 'move')) || s.mode === 'link'));
         var ring = '#fff', ringWidth = 2;
         if (m.active && n.id === s.selected) { ring = '#111827'; ringWidth = 3; }
         else if (m.active && n.id === s.pending) { ring = '#F97316'; ringWidth = 3; }
-        var size = editable ? 18 : 11;
+        var size = editable ? (m.active || n.kind ? 18 : 14) : 11;
         var showLabel = editable && (n.label || n.id === s.selected || n.id === s.pending);
         var fill = nodeColor(n.kind, m.dark);
         var text = showLabel ? n.short + (n.memo ? ' \\u270E' : '') : '';
@@ -317,7 +330,8 @@ export default function DevPathSurveyScreen() {
   const onNodePress = (id: string, moduleId: string) => {
     const current = storeRef.current
     if (!current.activeModuleId) return
-    const referenced = referenceSpecialNode(current, current.activeModuleId, moduleId, id)
+    const wasPlain = moduleId !== current.activeModuleId && !findModule(current, moduleId)?.nodes.find((n) => n.id === id)?.kind
+    const referenced = referenceSpecialNode(current, current.activeModuleId, moduleId, id, Date.now(), mode === 'link')
     if (!referenced) return
     let next = referenced.store
     const localId = referenced.id
@@ -331,7 +345,8 @@ export default function DevPathSurveyScreen() {
           return hasModuleEdge(m, pending, localId) ? removeEdgeBetween(m, pending, localId) : addEdge(m, pending, localId)
         })
         setNotice(`${shortId(pending)} — ${shortId(localId)} 간선을 변경했어요`)
-      } else if (next !== current) setNotice('특수 지점을 이 모듈에서 참조해요. 다음 지점을 누르면 간선으로 이어져요.')
+      } else if (next !== current && wasPlain) setNotice('다른 모듈의 지점을 계단 끝으로 표시하고 이 모듈에서 참조해요. 다음 지점을 눌러 잇고, 그 간선을 계단으로 바꾸세요.')
+      else if (next !== current) setNotice('특수 지점을 이 모듈에서 참조해요. 다음 지점을 누르면 간선으로 이어져요.')
       setPending(pending === localId ? null : localId)
     }
     commit(next)
@@ -612,12 +627,12 @@ export default function DevPathSurveyScreen() {
             short: !isActive && n.kind ? `${shortId(n.id)} (${m.name})` : n.ref ? `${shortId(n.id)}(기존)` : shortId(n.id),
             memo: !!n.memo,
             kind: n.kind,
-            label: isActive || !!active,
+            label: isActive || (!!active && !!n.kind),
           })),
           edges: m.edges.flatMap((e) => {
             const A = byId.get(e.a)
             const B = byId.get(e.b)
-            return A && B ? [{ id: e.id, a: e.a, b: e.b, p: [A.lat, A.lng, B.lat, B.lng], memo: !!e.memo }] : []
+            return A && B ? [{ id: e.id, a: e.a, b: e.b, p: [A.lat, A.lng, B.lat, B.lng], memo: !!e.memo, kind: e.kind }] : []
           }),
         }
       })
@@ -671,28 +686,17 @@ export default function DevPathSurveyScreen() {
             {selectedNode.sharedId ? <Text style={ui.hint}>공유 특수 지점이에요. 위치 변경은 모든 참조 모듈에 반영되고, 아래 삭제는 이 모듈의 참조와 연결만 제거해요. 공유를 시작한 지점의 성질은 고정돼요.</Text> : null}
             <Text style={ui.sectionHelp}>지점 성질</Text>
             {selectedNode.sharedId ? (
-              <Text style={ui.sectionHelp}>{({ elevator: '엘리베이터', entrance: '출입구', intersection: '교차점' })[selectedNode.kind!]}</Text>
+              <Text style={ui.sectionHelp}>{NODE_KIND_INFO[selectedNode.kind!].label}</Text>
             ) : (
-              <>
+              (Object.keys(NODE_KIND_INFO) as SurveyNodeKind[]).map((kind) => (
                 <Check
-                  label="엘리베이터"
-                  checked={selectedNode.kind === 'elevator'}
-                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'elevator' ? undefined : 'elevator'))}
-                  color="#F59E0B"
+                  key={kind}
+                  label={NODE_KIND_INFO[kind].label}
+                  checked={selectedNode.kind === kind}
+                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === kind ? undefined : kind))}
+                  color={NODE_KIND_INFO[kind].color}
                 />
-                <Check
-                  label="출입구"
-                  checked={selectedNode.kind === 'entrance'}
-                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'entrance' ? undefined : 'entrance'))}
-                  color="#E11D48"
-                />
-                <Check
-                  label="교차점"
-                  checked={selectedNode.kind === 'intersection'}
-                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === 'intersection' ? undefined : 'intersection'))}
-                  color="#7C3AED"
-                />
-              </>
+              ))
             )}
             <Btn label={selectedNode.sharedId ? '이 모듈의 참조와 연결 간선 지우기' : '이 지점과 연결 간선 지우기'} kind="danger" onPress={deleteSelected} />
           </>
@@ -714,9 +718,13 @@ export default function DevPathSurveyScreen() {
             if (id) setSelected(null)
           }}
           onMemo={(id, text) => editActive((m) => setEdgeMemo(m, id, text), false)}
+          onKind={(id, kind) => {
+            if (editActive((m) => setEdgeKind(m, id, kind))) setNotice(kind === 'stairs' ? '계단 간선으로 바꿨어요(되돌리기 가능)' : '일반 간선으로 바꿨어요(되돌리기 가능)')
+          }}
           onDelete={deleteEdge}
         />
       ) : null}
+      <Legend color={active?.color} />
     </>
   )
 

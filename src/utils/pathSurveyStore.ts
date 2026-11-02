@@ -25,13 +25,32 @@ export interface SurveyNode {
   ref?: string
 }
 
-export type SurveyNodeKind = 'elevator' | 'entrance' | 'intersection'
+/** 'stairs' 는 계단 간선의 끝. 간선 잇기에서 다른 모듈의 일반 지점을 누르면 이 성질이 붙어 공유된다. */
+export type SurveyNodeKind = 'elevator' | 'entrance' | 'intersection' | 'stairs'
+
+const NODE_KINDS: readonly SurveyNodeKind[] = ['elevator', 'entrance', 'intersection', 'stairs']
+export const isNodeKind = (v: unknown): v is SurveyNodeKind => NODE_KINDS.includes(v as SurveyNodeKind)
+
+/** 간선 종류. 없으면 일반 간선이다(계단 기능 전의 저장값, 내보낸 파일, Gist 도 그대로 일반으로 읽힌다). */
+export type SurveyEdgeKind = 'stairs'
 
 export interface SurveyEdge {
   id: string
   a: string
   b: string
   memo?: string
+  kind?: SurveyEdgeKind
+}
+
+/** 계단 간선과 계단 끝 지점의 색. 모듈 색과 무관하게 모든 모듈에서 같다(모듈 팔레트, 다른 지점 성질 색과 겹치지 않는다). */
+export const STAIRS_COLOR = '#111827'
+
+/** 지점 성질별 지도 색과 이름. 화면의 체크 상자, 범례, 지도 그리기가 같이 쓴다. */
+export const NODE_KIND_INFO: Record<SurveyNodeKind, { label: string; color: string }> = {
+  elevator: { label: '엘리베이터', color: '#F59E0B' },
+  entrance: { label: '출입구', color: '#E11D48' },
+  intersection: { label: '교차점', color: '#7C3AED' },
+  stairs: { label: '계단 끝', color: STAIRS_COLOR },
 }
 
 export interface SurveyPlace {
@@ -159,7 +178,7 @@ export function normalizeModule(raw: any, fallbackNow = Date.now()): SurveyModul
     const node: SurveyNode = { id: n.id, lat, lng }
     const memo = optStr(n.memo)
     if (memo) node.memo = memo
-    if (n.kind === 'elevator' || n.kind === 'entrance' || n.kind === 'intersection') node.kind = n.kind
+    if (isNodeKind(n.kind)) node.kind = n.kind
     if (node.kind && optStr(n.sharedId)) {
       node.sharedId = n.sharedId
       node.sharedUpdatedAt = num(n.sharedUpdatedAt) ?? num(raw.updatedAt) ?? fallbackNow
@@ -180,6 +199,7 @@ export function normalizeModule(raw: any, fallbackNow = Date.now()): SurveyModul
     const edge: SurveyEdge = { id: e.id, a: e.a, b: e.b }
     const memo = optStr(e.memo)
     if (memo) edge.memo = memo
+    if (e.kind === 'stairs') edge.kind = 'stairs'
     edges.push(edge)
     keys.add(key)
     edgeIds.add(e.id)
@@ -440,20 +460,25 @@ export function reconcileSharedNodes(modules: SurveyModule[], baseline: readonly
   })
 }
 
-/** 다른 모듈의 특수 지점을 참조한다. 좌표 스냅샷을 함께 두므로 원래 모듈 삭제·단독 내보내기에도 연결이 남는다. */
+/**
+ * 다른 모듈의 특수 지점을 참조한다. 좌표 스냅샷을 함께 두므로 원래 모듈 삭제, 단독 내보내기에도 연결이 남는다.
+ * allowPlain 이면(간선 잇기) 일반 지점도 참조하고, 그 지점에 '계단 끝'(stairs) 성질을 붙여 공유한다. 원래 모듈의 지점에도 붙는다.
+ */
 export function referenceSpecialNode(
-  store: SurveyStore, targetId: string, sourceId: string, nodeId: string, now = Date.now(),
+  store: SurveyStore, targetId: string, sourceId: string, nodeId: string, now = Date.now(), allowPlain = false,
 ): { store: SurveyStore; id: string } | null {
   const target = findModule(store, targetId)
   const source = findModule(store, sourceId)
   const node = source?.nodes.find((n) => n.id === nodeId)
   if (!target || target.status !== 'draft' || !node) return null
   if (targetId === sourceId) return { store, id: node.id }
-  if (!node.kind) return null
+  if (!node.kind && !allowPlain) return null
   const sharedId = node.sharedId ?? node.id
   const existing = target.nodes.find((n) => n.sharedId === sharedId)
   if (existing) return { store, id: existing.id }
-  const shared = { ...node, sharedId, sharedUpdatedAt: node.sharedUpdatedAt ?? source!.updatedAt }
+  const shared = node.kind
+    ? { ...node, sharedId, sharedUpdatedAt: node.sharedUpdatedAt ?? source!.updatedAt }
+    : { ...node, kind: 'stairs' as const, sharedId, sharedUpdatedAt: Math.max(now, source!.updatedAt + 1) }
   const id = nextNodeId(target)
   const modules = store.modules.map((m) => {
     if (m.id === sourceId) return { ...m, nodes: m.nodes.map((n) => n.id === nodeId ? shared : n), updatedAt: Math.max(now, m.updatedAt + 1) }
@@ -531,10 +556,13 @@ export function moveNodeOntoEdge(module: SurveyModule, id: string, edgeId: strin
   return {
     ...next,
     edges: next.edges.filter((e) => e.id !== edgeId).map((e) => {
-      if (!edge.memo || !((e.a === id && (e.b === edge.a || e.b === edge.b)) ||
+      if (!((e.a === id && (e.b === edge.a || e.b === edge.b)) ||
         (e.b === id && (e.a === edge.a || e.a === edge.b)))) return e
-      const memo = [...new Set([e.memo, edge.memo].filter(Boolean))].join('\n')
-      return { ...e, memo }
+      // 나눈 두 간선은 원래 간선의 메모와 종류(계단)를 이어받는다.
+      let split = e
+      if (edge.memo) split = { ...split, memo: [...new Set([e.memo, edge.memo].filter(Boolean))].join('\n') }
+      if (edge.kind) split = { ...split, kind: edge.kind }
+      return split
     }),
   }
 }
@@ -569,6 +597,18 @@ export const setNodeKind = (module: SurveyModule, id: string, kind: SurveyNodeKi
 export const setEdgeMemo = (module: SurveyModule, id: string, memo: string): SurveyModule => ({
   ...module,
   edges: module.edges.map((e) => (e.id === id ? withMemo(e, memo) : e)),
+})
+
+/** 간선 종류를 바꾼다. undefined 면 일반 간선(kind 칸을 지운다). */
+export const setEdgeKind = (module: SurveyModule, id: string, kind: SurveyEdgeKind | undefined): SurveyModule => ({
+  ...module,
+  edges: module.edges.map((e) => {
+    if (e.id !== id || e.kind === kind) return e
+    const next = { ...e }
+    if (kind) next.kind = kind
+    else delete next.kind
+    return next
+  }),
 })
 
 // 확정(done)
