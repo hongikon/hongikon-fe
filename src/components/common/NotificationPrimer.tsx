@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
 import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
+import { useLaunchNoticePending } from './LaunchNoticeModal'
 
 /** 최초 실행 때 한 번 물었는지. 한 번 물은 뒤엔 다시 자동으로 띄우지 않는다(설정 화면에서 켤 수 있다). */
 const ASKED_KEY = '@hongikon_notification_permission_asked'
@@ -47,8 +48,10 @@ export default function NotificationPrimer() {
   const deptPickPending = useDeptPickPending()
   // 지도의 제휴 안내(첫 실행 한 번)가 닫힌 뒤에 띄운다 — 두 Modal 이 겹치면 화면이 눌리지 않았다(PartnerNoticeModal 주석).
   const partnerNoticePending = usePartnerNoticePending()
-  /** 첫 실행 화면들(온보딩·학과 고르기·제휴 안내)을 다 지나 메인에 들어왔는지. */
-  const ready = onboardingDone && !deptPickPending && !partnerNoticePending
+  // 앱 공지 팝업(LaunchNoticeModal)도 같은 이유로 닫힌 뒤에.
+  const launchNoticePending = useLaunchNoticePending()
+  /** 첫 실행 화면들(온보딩·학과 고르기·제휴 안내·앱 공지)을 다 지나 메인에 들어왔는지. */
+  const ready = onboardingDone && !deptPickPending && !partnerNoticePending && !launchNoticePending
   // 로그인한 뒤 처음 한 번, 시스템 창 전에 앱이 이유를 먼저 보여 주는 안내 화면(NotificationStep).
   const [showGuide, setShowGuide] = useState(false)
 

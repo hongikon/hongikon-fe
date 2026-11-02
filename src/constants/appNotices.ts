@@ -1,10 +1,32 @@
+import type { ComponentProps } from 'react'
+import type { Ionicons } from '@expo/vector-icons'
 import { PARTNER_NOTICE_TEXT } from '../components/map/PartnerNoticeModal'
+
+export interface AppNoticeSlide {
+  /** 그림 칸에 크게 그리는 아이콘(그림 파일이 생기면 바꾼다). */
+  icon: ComponentProps<typeof Ionicons>['name']
+  /** 그림 칸 위 작은 꼬리표(예: '11월 업데이트'). */
+  badge?: string
+  title: string
+  text: string
+}
+
+export interface AppNoticePopup {
+  /** 이날(KST, 'YYYY-MM-DD')까지 띄운다. */
+  until: string
+  /** 옆으로 넘기는 카드. 마지막 카드 아래에 linkLabel 이 붙는다. */
+  slides: AppNoticeSlide[]
+  /** 누르면 이 공지 본문(설정 > 공지사항과 같은 화면)을 연다. */
+  linkLabel: string
+}
 
 export interface AppNotice {
   id: string
   title: string
   date: string
   body: string
+  /** 앱을 켤 때 한 번 띄우는 요약(LaunchNoticeModal). 없으면 공지사항 목록에만 있다. */
+  popup?: AppNoticePopup
 }
 
 /** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 아직 꺼져 있다 — ROUTE_FINDING_ENABLED). */
@@ -13,8 +35,32 @@ export const APP_NOTICES: AppNotice[] = [
     id: '6',
     title: '개인정보 처리방침 변경 안내(11월 9일 적용)',
     date: '2026.11.02',
+    popup: {
+      until: '2026-11-30',
+      slides: [
+        {
+          icon: 'chatbubble-ellipses',
+          badge: '11월 업데이트',
+          title: "AI 챗봇 '물어보기'(BETA)",
+          text: '학사·장학·시설 같은 학교 생활 질문에 학교 안내를 찾아 답해 드려요. 11월 중 업데이트로 들어와요.',
+        },
+        {
+          icon: 'location',
+          badge: '11월 업데이트',
+          title: '위치 기반 제휴 알림',
+          text: '직접 켜면 제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드려요. 위치는 휴대폰 안에서만 써요. 11월 중 업데이트로 추가돼요.',
+        },
+        {
+          icon: 'shield-checkmark',
+          badge: '11월 9일 적용',
+          title: '개인정보 처리방침 변경',
+          text: '새 기능들로 개인정보 처리방침이 2026년 11월 9일부터 바뀌어요. 무엇이 바뀌는지 미리 확인해 주세요.',
+        },
+      ],
+      linkLabel: '바뀌는 개인정보 처리방침 보러가기',
+    },
     body:
-      '새 기능 "근처 제휴 알림"(선택), 길찾기, "물어보기"(AI 안내, BETA)를 위해 개인정보 처리방침을 바꿉니다. 바뀐 처리방침은 2026년 11월 9일부터 적용돼요.\n\n' +
+      '11월 중 업데이트로 들어올 새 기능 "근처 제휴 알림"(선택)과 "물어보기"(AI 안내, BETA), 앞으로 들어올 길찾기를 위해 개인정보 처리방침을 바꿉니다. 바뀐 처리방침은 2026년 11월 9일부터 적용돼요.\n\n' +
       '· 위치 접근권한(앱 사용 중, 선택): "내 주변 제휴 보기"와 길찾기에서 내 위치를 쓸 때만 요청해요. 길찾기는 그 화면을 보는 동안에만 위치를 읽어요.\n' +
       '· 위치 접근권한(항상, 선택): 근처 제휴 알림을 직접 켠 경우에만 요청해요.\n' +
       '· 위치는 휴대폰 안에서만 쓰고 운영팀 서버로 보내거나 저장하지 않아요.\n' +
