@@ -10,10 +10,10 @@ import { useMapData } from '../../lib/mapData'
 const GPS_ALLOWANCE_METERS = 15
 
 /**
- * 예시 지도 가운데 업체. 11-02 업체 데이터로 반경 50m 안에 다른 제휴업체가 가장 많이 모인 곳을 골랐다.
+ * 예시 지도 가운데 업체(11-02 운영진이 고름). 상수역 앞 제휴업체가 모인 골목이다.
  * 배경 그림이 이 업체를 정가운데에 두고 찍은 것이라, 업체를 바꾸면 그림도 다시 찍어야 한다.
  */
-const CENTER = { name: '크레파스', lat: 37.5489876, lng: 126.9214919 } as const
+const CENTER = { name: '소코아 홍대점', lat: 37.548639, lng: 126.920953 } as const
 
 /**
  * 배경 그림(네이버 지도를 11-02 한 번 찍은 것). 설정을 열 때마다 지도를 불러오지 않는다.
@@ -32,7 +32,7 @@ function metersPerPixel(zoom: number): number {
 }
 
 /**
- * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 제휴업체가 가장 많이 모인 곳을 가운데 두고,
+ * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 예시 업체를 가운데 두고,
  * 고른 반경(실선)과 GPS 오차를 더한 가장 바깥(점선)을 그림 위에 실제 축척으로 그린다.
  */
 export default function NearbyRadiusMap({ meters }: { meters: number }) {
@@ -70,7 +70,7 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
         {CENTER.name} 기준 · 반경 {meters}m 안 제휴업체 {inside}곳
       </Text>
       <Text style={styles.legend}>
-        제휴업체가 가장 많이 모인 곳을 예로 들었어요. 실선 원 안에 머물면 그 가게 알림이 오고, 점선은 GPS 오차를 더해 줄 수 있는 가장
+        제휴업체가 모인 상수역 앞 골목의 한 가게를 예로 들었어요. 실선 원 안에 머물면 그 가게 알림이 오고, 점선은 GPS 오차를 더해 줄 수 있는 가장
         바깥(반경 + {GPS_ALLOWANCE_METERS}m)이에요.
       </Text>
     </View>
