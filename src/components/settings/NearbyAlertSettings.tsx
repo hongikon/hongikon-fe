@@ -572,9 +572,11 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                           style={[styles.chip, selected && styles.chipOn]}
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
-                          accessibilityLabel={`알림 반경 ${meters}미터`}
+                          accessibilityLabel={`알림 반경 ${meters}미터${meters === ALERT_RADIUS_METERS ? ', 권장' : ''}`}
                         >
-                          <Text style={[styles.chipText, selected && styles.chipTextOn]}>{meters}m</Text>
+                          <Text style={[styles.chipText, selected && styles.chipTextOn]}>
+                            {meters}m{meters === ALERT_RADIUS_METERS ? ' 권장' : ''}
+                          </Text>
                         </Pressable>
                       )
                     })}
