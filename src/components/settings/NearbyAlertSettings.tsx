@@ -561,7 +561,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 <Text style={styles.sectionTitle}>[테스트] 테스트 앱에서만 보여요</Text>
                 <View style={styles.card}>
                   <Text style={styles.settingLabel}>알림 반경</Text>
-                  <View style={styles.chips}>
+                  <View style={[styles.chips, styles.radiusChips]}>
                     {TEST_RADIUS_OPTIONS.map((meters) => {
                       const selected = radius === meters
                       return (
@@ -574,9 +574,12 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                           accessibilityState={{ selected }}
                           accessibilityLabel={`알림 반경 ${meters}미터${meters === ALERT_RADIUS_METERS ? ', 권장' : ''}`}
                         >
-                          <Text style={[styles.chipText, selected && styles.chipTextOn]}>
-                            {meters}m{meters === ALERT_RADIUS_METERS ? ' 권장' : ''}
-                          </Text>
+                          <Text style={[styles.chipText, selected && styles.chipTextOn]}>{meters}m</Text>
+                          {meters === ALERT_RADIUS_METERS && (
+                            <View style={styles.recommendWrap} pointerEvents="none">
+                              <Text style={styles.recommend}>권장</Text>
+                            </View>
+                          )}
                         </Pressable>
                       )
                     })}
@@ -906,6 +909,21 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  // 알림 반경 칩: 운영 반경(20m) 칩 윗테두리 가운데에 작은 '권장' 표시. 위로 튀어나오는 만큼 줄 위를 띄운다.
+  radiusChips: { marginTop: 6, rowGap: 12 },
+  recommendWrap: { position: 'absolute', top: -8, left: 0, right: 0, alignItems: 'center' },
+  recommend: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontFamily: FONTS.semibold,
+    color: COLORS.primary,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 5,
+    overflow: 'hidden',
+  },
   chipText: { fontSize: 15, fontFamily: FONTS.medium, color: COLORS.chipText },
   chipTextOn: { color: COLORS.white },
   consentRow: {
