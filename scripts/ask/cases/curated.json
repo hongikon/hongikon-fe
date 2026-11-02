@@ -183,5 +183,8 @@
   {"q": "하이브 공유오피스", "expect": "hive/start"},
   {"q": "밤에 건물 출입", "expect": "student-card/access"},
   {"q": "택배 대리 수령", "expect": "council/start"},
-  {"q": "근로 시간", "expect": "work-wage/start"}
+  {"q": "근로 시간", "expect": "work-wage/start"},
+  {"q": "컴공 멀티미디어실 운영시간", "expect": "ce-multimedia-room"},
+  {"q": "멀티미디어실 몇시까지 열어?", "expect": "ce-multimedia-room"},
+  {"q": "T604 이용 시간", "expect": "ce-multimedia-room"}
 ]
