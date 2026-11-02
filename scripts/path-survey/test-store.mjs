@@ -295,3 +295,49 @@ test('공유 지점의 간선 분할은 활성 모듈에서만, 위치는 모든
   assert.equal(S.findModule(next, 'source').edges.length, 1)
   assert.equal(S.findModule(next, 'source').nodes[0].lat, 37.53)
 })
+
+test('계단 간선: 기본은 일반, 계단으로 바꾸고 되돌리기, kind 없는 기존 데이터는 일반', () => {
+  const m = splitFixture()
+  assert.ok(m.edges.every((e) => !('kind' in e)), 'kind 없는 기존 간선은 일반')
+  const stairs = S.setEdgeKind(m, 'm-e1', 'stairs')
+  assert.equal(stairs.edges[0].kind, 'stairs')
+  assert.deepEqual(m.edges[0], { id: 'm-e1', a: 'm-n2', b: 'm-n3' }, '되돌리기용 원본은 그대로')
+  const plain = S.setEdgeKind(stairs, 'm-e1', undefined)
+  assert.deepEqual(plain.edges[0], m.edges[0])
+  // 모르는 종류 값은 읽을 때 버리고, 계단은 저장 후 불러오기에 남는다.
+  const storage = memoryStorage()
+  const weird = { ...stairs, edges: [...stairs.edges.slice(0, 2), { ...stairs.edges[2], kind: 'escalator' }] }
+  S.saveStore({ ...S.emptyStore(0), modules: [weird] }, storage)
+  const loaded = S.loadStore([], storage).store.modules[0]
+  assert.equal(loaded.edges[0].kind, 'stairs')
+  assert.equal(loaded.edges[1].kind, undefined)
+  assert.equal(loaded.edges[2].kind, undefined)
+})
+
+test('계단 간선: 위로 지점을 옮겨 나누면 두 간선 모두 계단', () => {
+  const m = S.setEdgeKind(splitFixture(), 'm-e3', 'stairs')
+  const next = S.moveNodeOntoEdge(m, 'm-n4', 'm-e3', 37.5, 126.901)
+  for (const end of ['m-n1', 'm-n2']) {
+    assert.equal(next.edges.find((e) => [e.a, e.b].includes(end) && [e.a, e.b].includes('m-n4')).kind, 'stairs')
+  }
+  assert.equal(next.edges.find((e) => e.id === 'm-e2').kind, undefined)
+})
+
+test('계단 잇기: 다른 모듈의 일반 지점은 allowPlain 일 때만 계단 끝으로 공유', () => {
+  const store = sharedFixture()
+  assert.equal(S.referenceSpecialNode(store, 'target', 'source', 'source-n2', 30), null, '기본 동작은 그대로(거절)')
+  const r = S.referenceSpecialNode(store, 'target', 'source', 'source-n2', 30, true)
+  const source = S.findModule(r.store, 'source')
+  const target = S.findModule(r.store, 'target')
+  assert.equal(source.nodes[1].kind, 'stairs')
+  assert.equal(source.nodes[1].sharedId, 'source-n2')
+  assert.equal(target.nodes.at(-1).kind, 'stairs')
+  assert.equal(target.nodes.at(-1).sharedId, 'source-n2')
+  assert.equal(source.status, 'done')
+  const linked = S.updateModule(r.store, 'target', (m) => S.setEdgeKind(S.addEdge(m, 'target-n1', r.id), 'target-e1', 'stairs'), 40)
+  assert.equal(S.findModule(linked, 'target').edges[0].kind, 'stairs')
+  // 다시 눌러도 같은 참조를 쓴다.
+  assert.equal(S.referenceSpecialNode(linked, 'target', 'source', 'source-n2', 50, true).id, r.id)
+  // 이미 특수 지점이면 원래 성질을 유지한다.
+  assert.equal(S.findModule(S.referenceSpecialNode(store, 'target', 'source', 'source-n1', 30, true).store, 'target').nodes.at(-1).kind, 'elevator')
+})
