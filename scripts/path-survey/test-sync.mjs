@@ -233,3 +233,36 @@ test('같은 밀리초의 연속 공유 이동도 모듈 버전이 증가해 가
   const merged = Y.applyImport(first, Y.planImport(first, incoming), true, 60)
   assert.equal(merged.modules[0].nodes[0].lat, 37.7)
 })
+
+test('계단: 내보내기에 kind 포함, kind 없는 구버전 파일은 일반 간선으로 가져오기, 왕복 보존', () => {
+  const m = moduleOf('mA', 1, {
+    nodes: [{ id: 'mA-n1', lat: 37.5, lng: 126.9 }, { id: 'mA-n2', lat: 37.51, lng: 126.91, kind: 'stairs' }],
+    edges: [{ id: 'mA-e1', a: 'mA-n1', b: 'mA-n2', kind: 'stairs', memo: 'up to 2F' }, { id: 'mA-e2', a: 'mA-n2', b: 'mA-n1x' }],
+  })
+  const text = Y.serializeModule(m)
+  assert.match(text, /"kind": "stairs"/)
+  const back = Y.parseBundle(text).modules[0]
+  assert.equal(back.edges[0].kind, 'stairs')
+  assert.equal(back.nodes[1].kind, 'stairs')
+  // 계단 기능 전 내보낸 파일(간선 kind 칸 없음).
+  const old = JSON.stringify({ format: 'hongikon.pathSurvey', version: 2, exportedAt: 1, customColors: [], modules: [
+    { id: 'mOld', name: 'old', status: 'done', color: '#2563EB', places: [], memo: '', createdAt: 0, updatedAt: 1,
+      nodes: [{ id: 'mOld-n1', lat: 37.5, lng: 126.9, kind: 'elevator' }, { id: 'mOld-n2', lat: 37.5, lng: 126.91 }],
+      edges: [{ id: 'mOld-e1', a: 'mOld-n1', b: 'mOld-n2' }] },
+  ] })
+  const parsed = Y.parseBundle(old).modules[0]
+  assert.equal(parsed.edges[0].kind, undefined)
+  assert.equal(parsed.nodes[0].kind, 'elevator')
+  const merged = Y.applyImport(S.emptyStore(0), Y.planImport(S.emptyStore(0), Y.parseBundle(old)), true, 2)
+  assert.equal(merged.modules[0].edges.length, 1)
+})
+
+test('계단: 코드 조각은 계단 간선 줄 끝 주석에 [계단]', () => {
+  const m = moduleOf('mA', 1, {
+    nodes: [{ id: 'mA-n1', lat: 37.5, lng: 126.9 }, { id: 'mA-n2', lat: 37.51, lng: 126.91 }, { id: 'mA-n3', lat: 37.52, lng: 126.92 }],
+    edges: [{ id: 'mA-e1', a: 'mA-n1', b: 'mA-n2', kind: 'stairs', memo: 'up' }, { id: 'mA-e2', a: 'mA-n2', b: 'mA-n3' }],
+  })
+  const code = formatModuleExport(m)
+  assert.match(code, /\['mA-n1', 'mA-n2'\], \/\/ \[계단\] up/)
+  assert.match(code, /\['mA-n2', 'mA-n3'\],\r?\n/)
+})
