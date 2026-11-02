@@ -1211,7 +1211,7 @@ export function buildMapHTML(
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
-          if (pickerActive) return;
+          if (pickerActive || window.__surveyMode) return;
           lastMarkerClickAt = new Date().getTime();
           selectedBuildingName = building.name;
           renderBuildings();
@@ -1330,7 +1330,7 @@ export function buildMapHTML(
     }
 
     naver.maps.Event.addListener(map, 'click', function(e) {
-      if (pickerActive) return;
+      if (pickerActive || window.__surveyMode) return;
       // 관성 스크롤이 남아 있는 채로 탭해도 배너가 바로 돌아오게 한다.
       post({ type: 'mapDragEnd' });
       map.setOptions({ scaleControl: true });
