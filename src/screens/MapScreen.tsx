@@ -47,6 +47,7 @@ import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
+import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
@@ -1404,6 +1405,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <PartnerNoticeModal />
+      <LaunchNoticeModal />
 
       <View style={styles.mapArea}>
         {/*
