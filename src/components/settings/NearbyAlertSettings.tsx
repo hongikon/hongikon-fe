@@ -22,7 +22,6 @@ import {
 import {
   disableNearbyAlerts,
   getNearbyChecklist,
-  getNearbyDebugInfo,
   getNearbyPermission,
   getNearbySettings,
   nearbyAlertsAvailable,
@@ -97,31 +96,13 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
   const [checklist, setChecklist] = useState<NearbyChecklist | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [debugLine, setDebugLine] = useState<string | null>(null)
   const [unsupported, setUnsupported] = useState(false)
 
   const refresh = useCallback(async () => {
     setSettings(await getNearbySettings())
     setChecklist(await getNearbyChecklist())
     setUnsupported(nearbyGeofencingUnsupported())
-    if (SHOW_DEVELOPER_TOOLS) {
-      const info = await getNearbyDebugInfo()
-      if (info) {
-        const { last, lastEvent, state, schedule } = info
-        const pending = state.pending ? ` · 예약 ${state.targets.find((t) => t.id === state.pending?.partnerId)?.name ?? state.pending.partnerId}` : ''
-        setDebugLine(
-          `[개발] 대상 ${state.targets.length}곳 · ${last ? `${last.result} ${last.regions}곳 · 다시 고르기 ${last.reselectMeters}m${last.error ? ` (${last.error})` : ''}` : '등록 전'} · 머묾 ${Object.values(state.stays).filter((s) => s.exitedAt === null).length}곳 · 보냄 ${state.sent.length}${pending}${lastEvent ? ` · 신호 ${lastEvent.kind} ${state.targets.find((t) => t.id === lastEvent.id)?.name ?? lastEvent.id}` : ''} · ${schedule}`,
-        )
-      }
-    }
   }, [])
-
-  // 개발·테스트 빌드: 자동 테스트가 상태를 읽을 수 있게 몇 초마다 갱신한다.
-  useEffect(() => {
-    if (!SHOW_DEVELOPER_TOOLS) return
-    const id = setInterval(() => void refresh(), 3000)
-    return () => clearInterval(id)
-  }, [refresh])
 
   useEffect(() => {
     void refresh()
@@ -171,7 +152,7 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
       <ListRow
         icon="navigate-outline"
         label="근처 제휴 알림"
-        description={debugLine ? `${description}\n${debugLine}` : description}
+        description={description}
         value={enabled && missing.length > 0 ? '확인 필요' : undefined}
         onPress={() => setModalVisible(true)}
         last

@@ -10,7 +10,7 @@
 | 설정 화면 | 설정 > 알림 > "근처 제휴 알림". 로그인한 사람에게만 보인다. 켜기, 소속 선택, 수신 동의, "항상 허용" 안내, 개인정보 안내가 있다 | `NearbyAlertSettings.tsx` |
 | 서버 | 업체별 알림 대상(`nearby_alert`), 긴급 스위치(`nearbyAlertsEnabled`), 수신 동의 시각 | BE `feature/nearby-partner-alert` `1bf1b34`. **dev·운영 모두 미반영**(운영 `/map/data`에 필드 없음 확인) |
 | 빌드 | 근처 알림 코드는 `NEARBY_ALERTS_BUILD=1` 빌드에만 들어간다. 운영 1.0.0에는 없다 | `app.config.ts` |
-| 현장 테스트 | 모든 소속, 횟수 제한 없음, [개발] 상태 줄, 테스트 위치·반경 칩 | `NEARBY_FIELD_TEST=1` 빌드만 |
+| 현장 테스트 | 모든 소속, 횟수 제한 없음, 테스트 위치·반경 칩 | `NEARBY_FIELD_TEST=1` 빌드만 |
 
 ## 2. 설정에서 제공하는 구조
 
