@@ -3,14 +3,13 @@ import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-nat
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
-import { haversineMeters } from '../../utils/geo'
 import { useMapData } from '../../lib/mapData'
 
-/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside, 최대 15m). 점선 원으로 그만큼 바깥을 그린다. */
+/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside, 최대 15m). 설명 글에만 적는다. */
 const GPS_ALLOWANCE_METERS = 15
 
 /**
- * 예시 지도 가운데 업체(11-02 운영진이 고름). 상수역 앞 제휴업체가 모인 골목이다.
+ * 예시 그림의 가운데 지점(11-02 운영진이 고름, 소코아 홍대점 위치). 상수역 앞 제휴업체가 모인 골목이다. 알림 영역은 가게마다 그린다.
  * 배경 그림이 이 업체를 정가운데에 두고 찍은 것이라, 업체를 바꾸면 그림도 다시 찍어야 한다.
  */
 const CENTER = { name: '소코아 홍대점', lat: 37.548639, lng: 126.920953 } as const
@@ -31,24 +30,37 @@ function metersPerPixel(zoom: number): number {
   return (156543.03392 * Math.cos((CENTER.lat * Math.PI) / 180)) / 2 ** zoom
 }
 
+/** 웹 메르카토르에서 확대 단계 zoom 의 화면 좌표(CSS px). 그림 가운데(`CENTER`)와의 차이로 업체 위치를 그림 위에 찍는다. */
+function project(lat: number, lng: number, zoom: number): { x: number; y: number } {
+  const world = 256 * 2 ** zoom
+  const sin = Math.sin((lat * Math.PI) / 180)
+  return { x: ((lng + 180) / 360) * world, y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world }
+}
+
 /**
- * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 예시 업체를 가운데 두고,
- * 고른 반경(실선)과 GPS 오차를 더한 가장 바깥(점선)을 그림 위에 실제 축척으로 그린다.
+ * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 알림은 가게마다 따로 정한 영역(가게 둘레 반경) 안에 들어가 머물 때 온다.
+ * 그래서 그림에 보이는 제휴 가게마다 고른 반경 원을 실제 축척으로 그린다. 원은 앱이 가진 업체 목록에서 그린다.
  */
 export default function NearbyRadiusMap({ meters }: { meters: number }) {
   const { partners } = useMapData()
   const [width, setWidth] = useState(0)
   const zoom = meters <= 30 ? 18 : 17
-  const inside = useMemo(
-    () => partners.filter((p) => haversineMeters(p.lat, p.lng, CENTER.lat, CENTER.lng) <= meters).length,
-    [partners, meters],
-  )
+  const height = width / IMAGE_ASPECT
 
-  const pxPerMeter = width > 0 ? width / IMAGE_CSS_WIDTH / metersPerPixel(zoom) : 0
-  const circle = (radiusMeters: number) => {
-    const r = radiusMeters * pxPerMeter
-    return { width: r * 2, height: r * 2, borderRadius: r, left: width / 2 - r, top: width / IMAGE_ASPECT / 2 - r }
-  }
+  // 그림 안에 들어오는 가게와 그 위치(px). 반경이 그림 밖으로 걸치는 가게도 원 일부가 보이게 넣는다.
+  const zones = useMemo(() => {
+    if (width <= 0) return []
+    const scale = width / IMAGE_CSS_WIDTH
+    const center = project(CENTER.lat, CENTER.lng, zoom)
+    const r = (meters / metersPerPixel(zoom)) * scale
+    return partners
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      .map((p) => {
+        const at = project(p.lat, p.lng, zoom)
+        return { id: p.id, x: width / 2 + (at.x - center.x) * scale, y: height / 2 + (at.y - center.y) * scale, r }
+      })
+      .filter((z) => z.x > -z.r && z.x < width + z.r && z.y > -z.r && z.y < height + z.r)
+  }, [partners, meters, zoom, width, height])
 
   return (
     <View style={styles.wrap}>
@@ -56,22 +68,26 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
         style={styles.map}
         onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
         accessibilityRole="image"
-        accessibilityLabel={`${CENTER.name} 기준 반경 ${meters}미터 예시 지도`}
+        accessibilityLabel={`제휴 가게마다 반경 ${meters}미터 알림 영역 예시 지도`}
       >
         <Image source={BACKGROUNDS[zoom]} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        {width > 0 && (
-          <>
-            <View style={[styles.outer, circle(meters + GPS_ALLOWANCE_METERS)]} />
-            <View style={[styles.inner, circle(meters)]} />
-          </>
-        )}
+        {zones.map((z) => (
+          <View
+            key={z.id}
+            style={[
+              styles.zone,
+              meters > 30 && styles.zoneWide,
+              { width: z.r * 2, height: z.r * 2, borderRadius: z.r, left: z.x - z.r, top: z.y - z.r },
+            ]}
+          />
+        ))}
       </View>
       <Text style={styles.caption}>
-        {CENTER.name} 기준 · 반경 {meters}m 안 제휴업체 {inside}곳
+        가게마다 반경 {meters}m · 이 지도에 {zones.length}곳
       </Text>
       <Text style={styles.legend}>
-        제휴업체가 모인 상수역 앞 골목의 한 가게를 예로 들었어요. 실선 원 안에 머물면 그 가게 알림이 오고, 점선은 GPS 오차를 더해 줄 수 있는 가장
-        바깥(반경 + {GPS_ALLOWANCE_METERS}m)이에요.
+        원 하나가 제휴 가게 하나의 알림 영역이에요. 이 영역 안에 들어가 잠시 머물면 그 가게 알림이 와요. GPS 오차를 생각해 최대{' '}
+        {GPS_ALLOWANCE_METERS}m까지 넉넉하게 봐줘요.
       </Text>
     </View>
   )
@@ -80,8 +96,9 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
   map: { aspectRatio: IMAGE_ASPECT, borderRadius: RADIUS.md, overflow: 'hidden', backgroundColor: COLORS.fill },
-  inner: { position: 'absolute', borderWidth: 2.5, borderColor: COLORS.primary, backgroundColor: 'rgba(5, 1, 74, 0.14)' },
-  outer: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(5, 1, 74, 0.7)', borderStyle: 'dashed' },
+  zone: { position: 'absolute', borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: 'rgba(5, 1, 74, 0.12)' },
+  // 반경이 크면 원이 많이 겹쳐 지도가 덮이므로 옅게.
+  zoneWide: { borderWidth: 1, borderColor: 'rgba(5, 1, 74, 0.45)', backgroundColor: 'rgba(5, 1, 74, 0.04)' },
   caption: { fontSize: 13, lineHeight: 18, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   legend: { fontSize: 13, lineHeight: 19, fontFamily: FONTS.regular, color: COLORS.textTertiary },
 })
