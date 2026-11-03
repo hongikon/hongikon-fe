@@ -2078,11 +2078,13 @@ export default function MapScreen() {
                         도보 약 {route.minutes}분 · {route.distanceMeters}m
                       </Text>
                     </View>
-                    {route.isEstimate && (
+                    {route.isEstimate ? (
                       <Text style={styles.routeAltEstimate}>
-                        실측 경로 준비 중 · 직선 거리 기준
+                        직선 거리로 어림한 시간이에요
                       </Text>
-                    )}
+                    ) : route.hasStairs ? (
+                      <Text style={styles.routeAltEstimate}>계단 있음</Text>
+                    ) : null}
                   </TouchableOpacity>
                 ))}
               </View>

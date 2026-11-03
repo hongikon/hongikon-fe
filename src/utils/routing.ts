@@ -1,7 +1,7 @@
-import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
-import { WALKING_METERS_PER_MINUTE } from '../constants/route'
+import { SURVEY_EDGES, SURVEY_ENTRANCES, SURVEY_WAYPOINTS } from '../constants/surveyPaths'
+import { FLOOR_TRANSIT_SECONDS, WALKING_METERS_PER_MINUTE } from '../constants/route'
 import type { Building } from '../types'
-import { entranceTransitSeconds, matchEntrance, resolveEntrancePoint } from './floors'
+import { entranceTransitSeconds, levelIndex, resolveEntrancePoint } from './floors'
 import type { RoutePoint } from './floors'
 import { haversineMeters } from './geo'
 
@@ -11,6 +11,8 @@ export interface RouteAlternative {
   totalSeconds: number
   minutes: number
   hasIndoorTransit: boolean
+  /** 경로에 계단 구간(경로 조사의 계단 선)이 있다. */
+  hasStairs: boolean
   /** true면 실측 경로망이 아직 이 구간을 덮지 못해 직선 거리로 대신한 값이다. */
   isEstimate: boolean
 }
@@ -19,6 +21,7 @@ interface GraphEdge {
   to: string
   seconds: number
   meters: number
+  stairs?: boolean
 }
 
 interface Graph {
@@ -26,6 +29,8 @@ interface Graph {
   /** 층 이동을 나타내는 합성 노드. 지도에는 그리지 않는다(출입구와 좌표가 같다). */
   floorNodeIds: Set<string>
   adj: Map<string, GraphEdge[]>
+  /** 건물 이름 → 경로망에 이어진 출입구(앵커 id 와 그 출입구 층). */
+  entrancesByBuilding: Map<string, { id: string; floor: number }[]>
 }
 
 interface PathResult {
@@ -39,13 +44,20 @@ function pushAdj(graph: Graph, id: string, edge: GraphEdge): void {
   else graph.adj.set(id, [edge])
 }
 
-function addEdge(graph: Graph, aId: string, aPoint: RoutePoint, bId: string, bPoint: RoutePoint): void {
+function addEdge(
+  graph: Graph,
+  aId: string,
+  aPoint: RoutePoint,
+  bId: string,
+  bPoint: RoutePoint,
+  stairs = false,
+): void {
   graph.nodes.set(aId, aPoint)
   graph.nodes.set(bId, bPoint)
   const meters = haversineMeters(aPoint.lat, aPoint.lng, bPoint.lat, bPoint.lng)
   const seconds = (meters / WALKING_METERS_PER_MINUTE) * 60
-  pushAdj(graph, aId, { to: bId, seconds, meters })
-  pushAdj(graph, bId, { to: aId, seconds, meters })
+  pushAdj(graph, aId, { to: bId, seconds, meters, stairs })
+  pushAdj(graph, bId, { to: aId, seconds, meters, stairs })
 }
 
 /**
@@ -76,21 +88,51 @@ export function resolveRef(
   return { id: ref, point: { lat: entrance.lat, lng: entrance.lng } }
 }
 
-function buildBaseGraph(buildings: readonly Building[]): Graph {
-  const waypointById = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
-  const graph: Graph = { nodes: new Map(), floorNodeIds: new Set(), adj: new Map() }
+/**
+ * 출입구 이름의 건물 코드(HI_R_… 의 'R') → 건물. 서버 지도 데이터의 출입구 이름 앞부분으로 찾는다 —
+ * 경로 조사에서 새로 생긴 출입구 이름(서버에 아직 없는 것)도 같은 건물에 붙일 수 있다.
+ */
+function buildingsByCode(buildings: readonly Building[]): Map<string, Building> {
+  const byCode = new Map<string, Building>()
+  for (const building of buildings) {
+    for (const entrance of building.entrances ?? []) {
+      const code = entrance.label.match(/^HI_([A-Z0-9]+)_/)?.[1]
+      if (code && !byCode.has(code)) byCode.set(code, building)
+    }
+  }
+  return byCode
+}
 
-  for (const [aRef, bRef] of PATH_EDGES) {
-    const a = resolveRef(aRef, waypointById, buildings)
-    const b = resolveRef(bRef, waypointById, buildings)
+/**
+ * 경로 조사 자료(surveyPaths.ts, 11-03)로 만든 경로망. 출입구는 '건물명#출입구이름' 앵커로 그 점에 0m 로 잇는다.
+ * 9월 자료(pathNodes.ts)는 개발용 점검 화면만 쓴다.
+ */
+function buildBaseGraph(buildings: readonly Building[]): Graph {
+  const graph: Graph = { nodes: new Map(), floorNodeIds: new Set(), adj: new Map(), entrancesByBuilding: new Map() }
+  const waypointById = new Map(SURVEY_WAYPOINTS.map((w) => [w.id, w]))
+
+  for (const [aId, bId, stairs] of SURVEY_EDGES) {
+    const a = waypointById.get(aId)
+    const b = waypointById.get(bId)
     if (!a || !b) continue
-    addEdge(graph, a.id, a.point, b.id, b.point)
+    addEdge(graph, a.id, a, b.id, b, stairs === true)
+  }
+
+  const byCode = buildingsByCode(buildings)
+  for (const entrance of SURVEY_ENTRANCES) {
+    const building = byCode.get(entrance.code)
+    const point = graph.nodes.get(entrance.node)
+    if (!building || !point) continue
+    const anchor = `${building.name}#${entrance.label}`
+    addEdge(graph, anchor, point, entrance.node, point)
+    const list = graph.entrancesByBuilding.get(building.name) ?? []
+    list.push({ id: anchor, floor: entrance.floor })
+    graph.entrancesByBuilding.set(building.name, list)
   }
 
   return graph
 }
 
-/** 건물 목록(지도 데이터)이 바뀌면 경로망을 다시 만든다. 같은 배열이면 한 번 만든 걸 쓴다. */
 const baseGraphCache = new WeakMap<readonly Building[], Graph>()
 
 function getBaseGraph(buildings: readonly Building[]): Graph {
@@ -105,32 +147,27 @@ function getBaseGraph(buildings: readonly Building[]): Graph {
 function cloneGraph(graph: Graph): Graph {
   const adj = new Map<string, GraphEdge[]>()
   graph.adj.forEach((edges, id) => adj.set(id, [...edges]))
-  return { nodes: new Map(graph.nodes), floorNodeIds: new Set(graph.floorNodeIds), adj }
-}
-
-function anchorId(building: Building, floor: number | null): string {
-  const entrance = matchEntrance(building, floor)
-  return entrance ? `${building.name}#${entrance.label}` : building.name
+  return { nodes: new Map(graph.nodes), floorNodeIds: new Set(graph.floorNodeIds), adj, entrancesByBuilding: graph.entrancesByBuilding }
 }
 
 /**
- * 고른 층으로 가는 합성 노드를 그래프에 붙인다. 그 건물이 아직 경로망에
- * 없으면(출입구 앵커가 그래프에 없으면) 존재하지 않는 id 를 그대로 돌려줘
- * 호출부가 "이 구간은 아직 못 덮는다"를 감지하게 한다.
+ * 고른 건물·층에서 출발(도착)하는 합성 노드를 붙인다. 그 건물의 경로망에 이어진 출입구 모두와 잇고,
+ * 층 차이만큼 시간을 더한다(건물 안에서 계단·엘리베이터로 오르내려 그 출입구로 나간다고 본다).
+ * 그래서 목적지 쪽으로 가장 빠른 출입구를 길찾기가 고른다. 층을 안 골랐으면 모든 출입구가 0초다.
+ * 그 건물이 아직 경로망에 없으면 그래프에 없는 id 를 돌려줘 호출부가 직선 추정으로 대신하게 한다.
  */
 function attachFloorNode(graph: Graph, building: Building, floor: number | null): string {
-  const anchor = anchorId(building, floor)
-  if (floor === null || !graph.nodes.has(anchor)) return anchor
+  const entrances = graph.entrancesByBuilding.get(building.name)
+  const floorNodeId = `${building.name}::${floor ?? 'any'}`
+  if (!entrances || entrances.length === 0) return floorNodeId
 
-  const floorNodeId = `${building.name}::${floor}`
-  const point = graph.nodes.get(anchor)!
-  graph.nodes.set(floorNodeId, point)
+  graph.nodes.set(floorNodeId, graph.nodes.get(entrances[0].id)!)
   graph.floorNodeIds.add(floorNodeId)
-
-  const seconds = entranceTransitSeconds(building, floor)
-  pushAdj(graph, floorNodeId, { to: anchor, seconds, meters: 0 })
-  pushAdj(graph, anchor, { to: floorNodeId, seconds, meters: 0 })
-
+  for (const entrance of entrances) {
+    const seconds = floor === null ? 0 : Math.abs(levelIndex(floor) - levelIndex(entrance.floor)) * FLOOR_TRANSIT_SECONDS
+    pushAdj(graph, floorNodeId, { to: entrance.id, seconds, meters: 0 })
+    pushAdj(graph, entrance.id, { to: floorNodeId, seconds, meters: 0 })
+  }
   return floorNodeId
 }
 
@@ -284,21 +321,24 @@ function pickDiverseRoutes(
 
 function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
   const points: RoutePoint[] = []
-  let hasIndoorTransit = false
-
   for (const id of path.nodeIds) {
-    if (graph.floorNodeIds.has(id)) {
-      hasIndoorTransit = true
-      continue
-    }
+    if (graph.floorNodeIds.has(id)) continue
     const point = graph.nodes.get(id)
     if (point) points.push(point)
   }
 
   let distanceMeters = 0
+  let hasIndoorTransit = false
+  let hasStairs = false
   for (let i = 0; i < path.nodeIds.length - 1; i++) {
     const edge = (graph.adj.get(path.nodeIds[i]) ?? []).find((e) => e.to === path.nodeIds[i + 1])
-    if (edge) distanceMeters += edge.meters
+    if (!edge) continue
+    distanceMeters += edge.meters
+    if (edge.stairs) hasStairs = true
+    // 건물 안 층 이동(합성 노드와 출입구 사이 시간이 있는 간선).
+    if (edge.meters === 0 && edge.seconds > 0 && (graph.floorNodeIds.has(path.nodeIds[i]) || graph.floorNodeIds.has(edge.to))) {
+      hasIndoorTransit = true
+    }
   }
 
   return {
@@ -307,6 +347,7 @@ function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
     totalSeconds: path.seconds,
     minutes: Math.max(1, Math.round(path.seconds / 60)),
     hasIndoorTransit,
+    hasStairs,
     isEstimate: false,
   }
 }
@@ -357,6 +398,7 @@ export function straightLineFallback(
     totalSeconds,
     minutes: Math.max(1, Math.round(totalSeconds / 60)),
     hasIndoorTransit: fromFloor !== null || toFloor !== null,
+    hasStairs: false,
     isEstimate: true,
   }
 }
