@@ -176,7 +176,7 @@ export async function watchLocation(onUpdate: (position: LivePosition) => void):
     const permission = await Location.getForegroundPermissionsAsync()
     if (!permission.granted) return () => {}
     const subscription = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000, mayShowUserSettingsDialog: false },
+      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 2, timeInterval: 1000, mayShowUserSettingsDialog: false },
       (position) =>
         onUpdate({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy ?? null }),
     )

@@ -54,6 +54,7 @@ import { formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 import { findRoutes, findRoutesFromPoint, straightLineFallback, straightLineFromPoint } from "../utils/routing";
 import { myLocationScript } from "../utils/myLocationScript";
+import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
 import { routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
@@ -907,14 +908,22 @@ export default function MapScreen() {
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
+  /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
+  const locationFilterRef = useRef<FilterState | null>(null);
   useEffect(() => {
     if (!routeActive) {
+      locationFilterRef.current = null;
       setMyLocation(null);
       return;
     }
     let stop: (() => void) | null = null;
     let cancelled = false;
-    void watchLocation((position) => setMyLocation(position)).then((unsubscribe) => {
+    void watchLocation((position) => {
+      const next = filterFix(locationFilterRef.current, { ...position, at: Date.now() });
+      if (!next || next === locationFilterRef.current) return; // 오차가 커서 버린 값
+      locationFilterRef.current = next;
+      setMyLocation({ lat: next.lat, lng: next.lng, accuracy: filterAccuracy(next) });
+    }).then((unsubscribe) => {
       if (cancelled) unsubscribe();
       else stop = unsubscribe;
     });
@@ -924,9 +933,17 @@ export default function MapScreen() {
     };
   }, [routeActive]);
 
+  // 고른 경로에서 20m 안이면 점을 경로선 위에 붙여 보여 준다(길 맞추기). 직선 어림 경로에는 붙이지 않는다.
+  const shownLocation = useMemo(() => {
+    if (!myLocation) return null;
+    const route = routeAlternatives[selectedRouteIndex];
+    const snapped = route && !route.isEstimate ? snapToRoute(myLocation, route.points) : null;
+    return snapped ? { ...myLocation, ...snapped } : myLocation;
+  }, [myLocation, routeAlternatives, selectedRouteIndex]);
+
   useEffect(() => {
-    webViewRef.current?.injectJavaScript(myLocationScript(myLocation));
-  }, [myLocation]);
+    webViewRef.current?.injectJavaScript(myLocationScript(shownLocation));
+  }, [shownLocation]);
 
   useEffect(() => {
     if (!fromMyLocation || !myLocation) return;
