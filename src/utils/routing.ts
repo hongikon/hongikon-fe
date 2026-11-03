@@ -460,3 +460,54 @@ export function straightLineFallback(
     isEstimate: true,
   }
 }
+
+/** 내 위치를 경로망에 이을 때 볼 가까운 점 수와 최대 거리. 더 멀면 직선 어림으로 대신한다. */
+const MY_LOCATION_LINKS = 3
+const MY_LOCATION_MAX_METERS = 150
+export const MY_LOCATION_NODE = 'me'
+
+/**
+ * 내 위치(휴대폰이 읽은 좌표)에서 건물까지(11-03). 좌표는 이 계산에만 쓰고 저장하거나 서버로 보내지 않는다.
+ * 내 위치에서 가까운 경로망 점(150m 안, 최대 3곳)으로 직선으로 걸어간다고 보고 잇는다. 너무 멀거나 그 건물이 망에 없으면 빈 배열.
+ */
+export function findRoutesFromPoint(
+  buildings: readonly Building[],
+  from: RoutePoint,
+  to: { building: Building; floor: number | null },
+  maxAlternatives = 3,
+): RouteAlternative[] {
+  const graph = cloneGraph(getBaseGraph(buildings))
+  const targetId = attachFloorNode(graph, to.building, to.floor)
+  if (!graph.nodes.has(targetId)) return []
+
+  const near: { id: string; point: RoutePoint; meters: number }[] = []
+  graph.nodes.forEach((point, id) => {
+    if (graph.floorNodeIds.has(id) || id.includes('#')) return
+    const meters = haversineMeters(from.lat, from.lng, point.lat, point.lng)
+    if (meters <= MY_LOCATION_MAX_METERS) near.push({ id, point, meters })
+  })
+  if (near.length === 0) return []
+  near.sort((a, b) => a.meters - b.meters)
+  for (const n of near.slice(0, MY_LOCATION_LINKS)) addEdge(graph, MY_LOCATION_NODE, from, n.id, n.point)
+
+  const k = Math.max(6, maxAlternatives * 2)
+  const candidates = yenKShortestPaths(graph, MY_LOCATION_NODE, targetId, k)
+  if (candidates.length === 0) return []
+  return pickDiverseRoutes(candidates, maxAlternatives).map((path) => toRouteAlternative(graph, path))
+}
+
+/** 내 위치에서 건물까지 직선 어림(경로망이 못 덮을 때). */
+export function straightLineFromPoint(from: RoutePoint, toBuilding: Building, toFloor: number | null): RouteAlternative {
+  const toPoint = resolveEntrancePoint(toBuilding, toFloor)
+  const meters = haversineMeters(from.lat, from.lng, toPoint.lat, toPoint.lng)
+  const totalSeconds = (meters / WALKING_METERS_PER_MINUTE) * 60 + entranceTransitSeconds(toBuilding, toFloor)
+  return {
+    points: [from, toPoint],
+    distanceMeters: Math.round(meters),
+    totalSeconds,
+    minutes: Math.max(1, Math.round(totalSeconds / 60)),
+    hasIndoorTransit: toFloor !== null,
+    hasStairs: false,
+    isEstimate: true,
+  }
+}

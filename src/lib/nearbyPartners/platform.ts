@@ -155,3 +155,34 @@ export async function locateOnce(): Promise<LocateResult> {
     return { status: 'failed' }
   }
 }
+
+/** 내 위치 한 점. 좌표는 화면 계산에만 쓰고 저장하거나 서버로 보내지 않는다. */
+export interface LivePosition {
+  lat: number
+  lng: number
+  /** 오차 반경(m). 모르면 null. */
+  accuracy: number | null
+}
+
+/**
+ * 길찾기 화면을 보는 동안 위치를 계속 읽는다(11-03). "앱 사용 중" 권한이 이미 있을 때만 시작하고, 권한 창은 띄우지 않는다
+ * (권한은 사용자가 출발지 "내 위치"를 고를 때 `requestLocationPermission` 으로 묻는다). 돌려준 함수를 부르면 멈춘다.
+ * 위치 모듈이 없는 예전 빌드·권한 없음이면 아무것도 하지 않고 빈 함수를 돌려준다.
+ */
+export async function watchLocation(onUpdate: (position: LivePosition) => void): Promise<() => void> {
+  const Location = getPackage()
+  if (!Location) return () => {}
+  try {
+    const permission = await Location.getForegroundPermissionsAsync()
+    if (!permission.granted) return () => {}
+    const subscription = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 3, timeInterval: 2000, mayShowUserSettingsDialog: false },
+      (position) =>
+        onUpdate({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy ?? null }),
+    )
+    return () => subscription.remove()
+  } catch (error) {
+    logFailure('위치 계속 읽기', error)
+    return () => {}
+  }
+}

@@ -62,3 +62,35 @@ export function locateOnce(): Promise<LocateResult> {
     )
   })
 }
+
+/** 내 위치 한 점. 좌표는 화면 계산에만 쓰고 저장하거나 서버로 보내지 않는다. */
+export interface LivePosition {
+  lat: number
+  lng: number
+  accuracy: number | null
+}
+
+/**
+ * 길찾기 화면을 보는 동안 위치를 계속 읽는다(platform.ts 와 같음). 브라우저가 이미 위치를 허용한 경우에만 시작해 권한 창을 새로 띄우지 않는다.
+ * 허용 여부를 알 수 없는 브라우저(Permissions API 없음)에서는 시작하지 않는다.
+ */
+export async function watchLocation(onUpdate: (position: LivePosition) => void): Promise<() => void> {
+  if (!canLocate()) return () => {}
+  try {
+    const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
+    if (status?.state !== 'granted') return () => {}
+  } catch {
+    return () => {}
+  }
+  const id = navigator.geolocation.watchPosition(
+    (position) =>
+      onUpdate({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
+      }),
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 2000 },
+  )
+  return () => navigator.geolocation.clearWatch(id)
+}

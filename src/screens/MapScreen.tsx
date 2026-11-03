@@ -53,7 +53,10 @@ import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import { formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { findRoutes, straightLineFallback } from "../utils/routing";
+import { findRoutes, findRoutesFromPoint, straightLineFallback, straightLineFromPoint } from "../utils/routing";
+import { myLocationScript } from "../utils/myLocationScript";
+import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
+import { notify } from "../utils/dialog";
 import type { RouteAlternative } from "../utils/routing";
 import { ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
@@ -208,6 +211,14 @@ export default function MapScreen() {
   const [toFloor, setToFloor] = useState<number | null>(null);
   /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
   const [floorDial, setFloorDial] = useState<{ role: "출발" | "도착"; building: Building } | null>(null);
+  /**
+   * 출발지 "내 위치"(11-03). 위치는 길찾기를 보는 동안만 휴대폰에서 읽어 경로 계산과 지도 점에만 쓰고,
+   * 저장하거나 서버로 보내지 않는다(처리방침 11-09판 "길찾기 화면을 보는 동안에만").
+   */
+  const [fromMyLocation, setFromMyLocation] = useState(false);
+  const [myLocation, setMyLocation] = useState<LivePosition | null>(null);
+  /** 경로를 다시 계산하는 기준 위치. 15m 넘게 움직였을 때만 바꿔 경로가 자꾸 바뀌지 않게 한다. */
+  const [routeOrigin, setRouteOrigin] = useState<LivePosition | null>(null);
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
   const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
@@ -375,6 +386,11 @@ export default function MapScreen() {
    * 덮으면(양쪽 다 비어 있으면) 기존 직선거리 추정 하나로 대신한다.
    */
   const routeAlternatives = useMemo<RouteAlternative[]>(() => {
+    if (fromMyLocation && toBuilding) {
+      if (!routeOrigin) return [];
+      const fromMe = findRoutesFromPoint(buildings, routeOrigin, { building: toBuilding, floor: toFloor });
+      return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
+    }
     if (!fromBuilding || !toBuilding) return [];
     const found = findRoutes(
       buildings,
@@ -383,7 +399,7 @@ export default function MapScreen() {
     );
     if (found.length > 0) return found;
     return [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [buildings, fromBuilding, toBuilding, fromFloor, toFloor]);
+  }, [buildings, fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin]);
 
   const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
@@ -867,6 +883,37 @@ export default function MapScreen() {
     [postToMap],
   );
 
+  // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
+  // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
+  const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
+  useEffect(() => {
+    if (!routeActive) {
+      setMyLocation(null);
+      return;
+    }
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void watchLocation((position) => setMyLocation(position)).then((unsubscribe) => {
+      if (cancelled) unsubscribe();
+      else stop = unsubscribe;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [routeActive]);
+
+  useEffect(() => {
+    webViewRef.current?.injectJavaScript(myLocationScript(myLocation));
+  }, [myLocation]);
+
+  useEffect(() => {
+    if (!fromMyLocation || !myLocation) return;
+    setRouteOrigin((prev) =>
+      prev && haversineMeters(prev.lat, prev.lng, myLocation.lat, myLocation.lng) < 15 ? prev : myLocation,
+    );
+  }, [fromMyLocation, myLocation]);
+
   // fromBuilding/toBuilding/fromFloor/toFloor 가 바뀌어 routeAlternatives 가
   // 새로 계산될 때마다(둘 다 골랐을 때만 채워진다) 첫 번째 대안으로 다시 그린다.
   useEffect(() => {
@@ -906,6 +953,7 @@ export default function MapScreen() {
 
   const commitFrom = useCallback(
     (building: Building, floor: number | null) => {
+      setFromMyLocation(false);
       setFromBuilding(building);
       setFromFloor(floor);
       setSelectedBuilding(null);
@@ -919,7 +967,7 @@ export default function MapScreen() {
       setToBuilding(building);
       setToFloor(floor);
       setSelectedBuilding(null);
-      if (fromBuilding) {
+      if (fromBuilding || fromMyLocation) {
         showRouteResult();
         return;
       }
@@ -928,7 +976,7 @@ export default function MapScreen() {
       setRouteTarget("from");
       setShowRoute(true);
     },
-    [fromBuilding, showRouteResult],
+    [fromBuilding, fromMyLocation, showRouteResult],
   );
 
   /** 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다. */
@@ -1484,7 +1532,30 @@ export default function MapScreen() {
     });
   }, [pickerCenter, pickerPurpose, postToMap]);
 
+  /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
+  const handleSelectMyLocation = useCallback(async () => {
+    const located = await locateOnce();
+    if (located.status === "ok") {
+      const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
+      setMyLocation(first);
+      setRouteOrigin(first);
+      setFromMyLocation(true);
+      setFromBuilding(null);
+      setFromFloor(null);
+      advanceToDestination();
+      return;
+    }
+    if (located.status === "denied") {
+      notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 내 위치에서 출발할 수 있어요.");
+    } else if (located.status === "servicesOff") {
+      notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
+    } else {
+      notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보거나 건물을 골라 주세요.");
+    }
+  }, [advanceToDestination]);
+
   const handleClearRoute = useCallback(() => {
+    setFromMyLocation(false);
     setFromBuilding(null);
     setToBuilding(null);
     setFromFloor(null);
@@ -1793,7 +1864,7 @@ export default function MapScreen() {
           </>
         )}
 
-        {!pickingLocation && fromBuilding && toBuilding && (
+        {!pickingLocation && (fromBuilding || fromMyLocation) && toBuilding && (
           <View style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}>
             <View style={styles.routeInfo}>
               <View style={styles.routeRow}>
@@ -1801,7 +1872,7 @@ export default function MapScreen() {
                   style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]}
                 />
                 <Text style={styles.routeLabel} numberOfLines={1}>
-                  {buildingLabel(fromBuilding, fromFloor)}
+                  {fromBuilding ? buildingLabel(fromBuilding, fromFloor) : "내 위치"}
                 </Text>
               </View>
               <Text style={styles.routeArrow}>→</Text>
@@ -2018,12 +2089,14 @@ export default function MapScreen() {
               <View style={[styles.inputDot, { backgroundColor: COLORS.routeFrom }]} />
               <Text
                 style={
-                  fromBuilding ? styles.inputFilled : styles.inputPlaceholder
+                  fromBuilding || fromMyLocation ? styles.inputFilled : styles.inputPlaceholder
                 }
               >
                 {fromBuilding
                   ? buildingLabel(fromBuilding, fromFloor)
-                  : "출발지 입력"}
+                  : fromMyLocation
+                    ? "내 위치"
+                    : "출발지 입력"}
               </Text>
             </TouchableOpacity>
             <View style={styles.inputDivider} />
@@ -2078,26 +2151,45 @@ export default function MapScreen() {
                     <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
                   </TouchableOpacity>
                 )}
+                ListHeaderComponent={
+                  routeTarget === "from" && canLocate() ? (
+                    <TouchableOpacity
+                      style={styles.buildingItem}
+                      onPress={() => void handleSelectMyLocation()}
+                      accessibilityRole="button"
+                      accessibilityLabel="내 위치에서 출발"
+                    >
+                      <Ionicons name="navigate" size={18} color={COLORS.routeFrom} />
+                      <View style={styles.buildingItemInfo}>
+                        <Text style={styles.buildingItemName}>내 위치</Text>
+                        <Text style={styles.buildingItemType}>위치는 휴대폰 안에서만 써요</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
+                    </TouchableOpacity>
+                  ) : null
+                }
                 contentContainerStyle={styles.buildingList}
               />
             </View>
           )}
 
-          {!routeTarget && fromBuilding && toBuilding && (
+          {!routeTarget && (fromBuilding || fromMyLocation) && toBuilding && (
             <View style={styles.routeResultCard}>
               <View style={styles.routeResultRow}>
                 <View
                   style={[styles.routeDot, { backgroundColor: COLORS.routeFrom }]}
                 />
-                <Text style={styles.routeResultName}>{fromBuilding.name}</Text>
+                <Text style={styles.routeResultName}>{fromBuilding ? fromBuilding.name : "내 위치"}</Text>
               </View>
-              <FloorChips
-                label="출발 층"
-                building={fromBuilding}
-                floor={fromFloor}
-                accent={COLORS.routeFrom}
-                onChange={setFromFloor}
-              />
+              {fromBuilding ? (
+                <FloorChips
+                  label="출발 층"
+                  building={fromBuilding}
+                  floor={fromFloor}
+                  accent={COLORS.routeFrom}
+                  onChange={setFromFloor}
+                />
+              ) : null}
               <View style={[styles.routeResultRow, styles.routeResultRowSpaced]}>
                 <View
                   style={[styles.routeDot, { backgroundColor: COLORS.danger }]}
