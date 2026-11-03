@@ -55,6 +55,9 @@ import FloorDialSheet from "../components/map/FloorDialSheet";
 import { findRoutes, findRoutesFromPoint, straightLineFallback, straightLineFromPoint } from "../utils/routing";
 import { myLocationScript } from "../utils/myLocationScript";
 import { routeStyleScript } from "../utils/routeStyleScript";
+
+/** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
+const ROUTE_STYLE_DELAY_MS = 300;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import type { RouteAlternative } from "../utils/routing";
@@ -890,9 +893,15 @@ export default function MapScreen() {
         routes: routes.map((route) => ({ points: route.points })),
         selectedIndex,
       });
-      webViewRef.current?.injectJavaScript(routeStyleScript(selectedIndex));
+      // 그린 뒤 위 경로 막대와 아래 결과 카드 사이에 맞춘다(막대 약 100px, 카드 약 90px).
+      // 지도 페이지는 메시지를 조금 늦게 처리해서, 바로 넣으면 경로가 아직 없다 — 잠깐 뒤에 칠하고 맞춘다.
+      const script = routeStyleScript(selectedIndex, { top: headerHeight + 8 + 100 + 24, bottom: tabBarHeight + 12 + 90 + 24 });
+      // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다.
+      for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
+        setTimeout(() => webViewRef.current?.injectJavaScript(script), delay);
+      }
     },
-    [postToMap],
+    [postToMap, headerHeight, tabBarHeight],
   );
 
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
@@ -938,7 +947,7 @@ export default function MapScreen() {
     (index: number) => {
       setSelectedRouteIndex(index);
       postToMap({ type: "selectRouteAlternative", index });
-      webViewRef.current?.injectJavaScript(routeStyleScript(index));
+      setTimeout(() => webViewRef.current?.injectJavaScript(routeStyleScript(index)), ROUTE_STYLE_DELAY_MS);
     },
     [postToMap],
   );
@@ -2213,7 +2222,9 @@ export default function MapScreen() {
                     <View style={styles.buildingItemDot} />
                     <View style={styles.buildingItemInfo}>
                       <Text style={styles.buildingItemName}>{item.name}</Text>
-                      <Text style={styles.buildingItemType}>{item.type}</Text>
+                      {item.type && item.type !== "확인 필요" ? (
+                        <Text style={styles.buildingItemType}>{item.type}</Text>
+                      ) : null}
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
                   </TouchableOpacity>
