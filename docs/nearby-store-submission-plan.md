@@ -158,3 +158,58 @@ FE `feature/nearby-partner-alert` `1acf994`, `production` 프로필(근처 알�
 6. **콘솔 입력**: App Store 심사 메모(8-1), App Privacy 그대로(8-2). Play 위치 권한 신고(8-3)·포그라운드 서비스 신고(8-4)·데이터 보안 그대로(8-5), 영상 링크. 1.1.0 출시 노트.
 7. **심사 제출**: App Store "이 버전을 수동으로 출시", Play "관리형 게시" 켜고 프로덕션 트랙 제출 → 승인돼도 11-09 이후에 출시.
 8. **출시 전 FE 머지**: `feature/nearby-partner-alert` → dev → main. 1.1.0 런타임 OTA(`pnpm update:production`)는 반드시 근처 알림 코드가 든 main 에서 낸다.
+
+## 10. 1.1.0 심사 다시 내기(11-03): 근처 제휴 알림 + 물어보기 + 길찾기
+
+11-01 빌드(iOS 24, Android 13)는 물어보기 탭·길찾기 권한 문구 전이라 버렸다. 새 빌드는 `feature/nearby-partner-alert` `cdd42d7`
+(`builds/hongikon-1.1.0-ios-1103.ipa`, `builds/hongikon-1.1.0-android-1103.aab`, 빌드 번호는 EAS 원격 자동 증가).
+
+### 10-1. 무엇이 들어가나
+| 기능 | 위치 | 서버에 남는 것 |
+|---|---|---|
+| 근처 제휴 알림(선택) | "항상"(켠 경우만), 기기 안 판단 | 수신 동의 시각·밤 수신 동의 시각 |
+| 길찾기 | "앱 사용 중", 길찾기 화면을 보는 동안만, 기기 안 계산·지도 점 | 없음(서버 경로 검색에 좌표 안 보냄) |
+| 물어보기(BETA, 로그인·첫 사용 동의) | 쓰지 않음 | 질문·답(1년, 계정·IP 와 연결 안 함, 학번 등 가림), Anthropic(미국)으로 질문 전송 |
+
+### 10-2. App Store Connect > App Review Information > Notes (영문, 8-1 대신)
+
+```
+What's new in 1.1.0 (three features)
+
+1) Nearby partner alerts (optional, off by default)
+Settings > 알림 (Notifications) > 근처 제휴 알림. When the user stays a few minutes inside a partner shop near Hongik
+University (Seoul), the app shows one local notification with that shop's student discount. "Always" location is needed
+because the alert must work while the app is closed (region monitoring, 100 m; precise location only briefly inside a region
+to check 20 m). Location stays on the device and is never sent to our server or stored; we only store the consent time.
+An explanation screen with an equal-weight "켜지 않을게요" (Don't turn on) button appears before the system prompt.
+Partner shops are only in Seoul, so a real alert cannot be triggered from Cupertino: demo video <VIDEO_URL>.
+
+2) Campus route finding
+Map > menu > 길찾기 (Route), or tap a building > 출발 (Start) / 도착 (Destination), choose the floor, and the walking
+route is drawn. "내 위치" (My location) as the start uses "While Using" location only while the route screen is open,
+to show the user's dot and route from it. The location is processed on the device only and is never sent or stored.
+
+3) 물어보기 (Ask, BETA) — AI answers about school life
+Bottom tab 물어보기, for signed-in users. On first use we ask for consent: questions (with student ID / phone / email /
+resident-number patterns masked) are sent to Anthropic (USA) to write the answer, and questions/answers are kept for
+one year without linking to the account. Answers cite official school pages.
+
+Demo account: (기존 심사용 데모 로그인 안내 그대로)
+```
+
+### 10-3. App Privacy (8-2 대신)
+- 위치(Precise/Coarse): **수집하지 않음** 그대로(근처 알림·길찾기 모두 기기 밖으로 안 나감).
+- **새로 추가: 사용자 콘텐츠 > 기타 사용자 콘텐츠** — 물어보기 질문·답. 용도: 앱 기능, (답 품질 개선 → "제품 개인화"가 아니라) 앱 기능·분석. **사용자와 연결 안 함**, 추적 안 함.
+- 제3자 공유 여부: Anthropic 은 처리 위탁(답 작성)이라 Apple 정의의 "제3자 광고·데이터 브로커" 공유가 아니다. 콘솔 질문에는 "수집"으로만 표시한다.
+
+### 10-4. Google Play
+- 위치 권한 신고서(8-3)·포그라운드 서비스 신고(8-4) 그대로. 위치 권한 사용 목적에 "길찾기(앱 사용 중, 화면을 보는 동안)"를 한 줄 더한다.
+- 데이터 보안: 위치 "수집 안 함" 그대로. **추가: 앱 활동 > 기타 사용자 생성 콘텐츠**(물어보기 질문) — 수집, 공유 안 함(서비스 제공자 처리는 공유 아님), 전송 중 암호화, 삭제 요청 가능(문의하기), 선택 사항.
+
+### 10-5. 순서
+1. BE #76(근처 알림 서버) → dev → main: 운영 RDS 스냅샷 → `db/alter_partners_nearby_alert_2026_10_26.sql` → Deploy(`sql_applied=true`) → `/map/data` 확인
+2. 심사 동안 `NEARBY_ALERTS_ENABLED=true`, 관리자에서 학교 앞 가게 몇 곳 "근처 알림 대상", `ask.public.enabled` 켜 둠
+3. iOS `npx eas-cli submit -p ios --profile production --path ../../builds/hongikon-1.1.0-ios-1103.ipa` → TestFlight 실기기 확인·영상
+4. Android aab 를 Play Console 내부 테스트에 직접 올림 → 영상
+5. 콘솔 입력(10-2~10-4) → 제출(수동 출시 / 관리형 게시) → 11-09 이후 출시
+6. 출시 전 FE `feature/nearby-partner-alert` → dev → main, 1.1.0 OTA 는 main 에서
