@@ -14,6 +14,8 @@ export interface RouteAlternative {
   hasIndoorTransit: boolean
   /** 경로에 계단 구간(경로 조사의 계단 선)이 있다. */
   hasStairs: boolean
+  /** 경로망에 아직 없는 건물이라 출입구에서 가장 가까운 길까지 직선으로 이은 구간이 있다. */
+  hasLinkSegment: boolean
   /** true면 실측 경로망이 아직 이 구간을 덮지 못해 직선 거리로 대신한 값이다. */
   isEstimate: boolean
 }
@@ -23,6 +25,8 @@ interface GraphEdge {
   seconds: number
   meters: number
   stairs?: boolean
+  /** 경로망 밖 건물을 가까운 길에 직선으로 이은 간선. */
+  link?: boolean
 }
 
 interface Graph {
@@ -215,9 +219,9 @@ function cloneGraph(graph: Graph): Graph {
  * 그 건물이 아직 경로망에 없으면 그래프에 없는 id 를 돌려줘 호출부가 직선 추정으로 대신하게 한다.
  */
 function attachFloorNode(graph: Graph, building: Building, floor: number | null): string {
-  const entrances = graph.entrancesByBuilding.get(building.name)
+  const entrances = graph.entrancesByBuilding.get(building.name) ?? linkToNearestPaths(graph, building)
   const floorNodeId = `${building.name}::${floor ?? 'any'}`
-  if (!entrances || entrances.length === 0) return floorNodeId
+  if (entrances.length === 0) return floorNodeId
 
   graph.nodes.set(floorNodeId, graph.nodes.get(entrances[0].id)!)
   graph.floorNodeIds.add(floorNodeId)
@@ -227,6 +231,44 @@ function attachFloorNode(graph: Graph, building: Building, floor: number | null)
     pushAdj(graph, entrance.id, { to: floorNodeId, seconds, meters: 0 })
   }
   return floorNodeId
+}
+
+/** 경로망 밖 건물의 출입구를 이을 가까운 길 점 수와 최대 거리. */
+const LINK_POINTS = 2
+const LINK_MAX_METERS = 300
+
+/**
+ * 경로망에 아직 출입구가 없는 건물(11-03 조사 전)은 서버 지도 데이터의 출입구(없으면 건물 중심)에서
+ * 가장 가까운 길 점(300m 안, 2곳)까지 직선으로 잇는다 — 운영진 요청: 직선 하나로 대신하지 말고 길을 따라 이어 가게.
+ * 복사한 그래프(findRoutes 의 cloneGraph)에만 붙이고, 공유하는 entrancesByBuilding 은 건드리지 않는다.
+ */
+function linkToNearestPaths(graph: Graph, building: Building): { id: string; floor: number }[] {
+  const pathPoints: { id: string; point: RoutePoint }[] = []
+  graph.nodes.forEach((point, id) => {
+    if (!graph.floorNodeIds.has(id) && !id.includes('#') && !id.includes('::') && id !== 'me') pathPoints.push({ id, point })
+  })
+  const starts =
+    building.entrances && building.entrances.length > 0
+      ? building.entrances.map((e) => ({ id: `${building.name}#${e.label}`, point: { lat: e.lat, lng: e.lng }, floor: e.minFloor }))
+      : [{ id: `${building.name}#center`, point: { lat: building.lat, lng: building.lng }, floor: 1 }]
+
+  const linked: { id: string; floor: number }[] = []
+  for (const start of starts) {
+    const near = pathPoints
+      .map((p) => ({ ...p, meters: haversineMeters(start.point.lat, start.point.lng, p.point.lat, p.point.lng) }))
+      .filter((p) => p.meters <= LINK_MAX_METERS)
+      .sort((a, b) => a.meters - b.meters)
+      .slice(0, LINK_POINTS)
+    if (near.length === 0) continue
+    graph.nodes.set(start.id, start.point)
+    for (const p of near) {
+      const seconds = (p.meters / WALKING_METERS_PER_MINUTE) * 60
+      pushAdj(graph, start.id, { to: p.id, seconds, meters: p.meters, link: true })
+      pushAdj(graph, p.id, { to: start.id, seconds, meters: p.meters, link: true })
+    }
+    linked.push({ id: start.id, floor: start.floor })
+  }
+  return linked
 }
 
 function dijkstra(
@@ -388,11 +430,13 @@ function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
   let distanceMeters = 0
   let hasIndoorTransit = false
   let hasStairs = false
+  let hasLinkSegment = false
   for (let i = 0; i < path.nodeIds.length - 1; i++) {
     const edge = (graph.adj.get(path.nodeIds[i]) ?? []).find((e) => e.to === path.nodeIds[i + 1])
     if (!edge) continue
     distanceMeters += edge.meters
     if (edge.stairs) hasStairs = true
+    if (edge.link) hasLinkSegment = true
     // 건물 안 층 이동(합성 노드와 출입구 사이 시간이 있는 간선).
     if (edge.meters === 0 && edge.seconds > 0 && (graph.floorNodeIds.has(path.nodeIds[i]) || graph.floorNodeIds.has(edge.to))) {
       hasIndoorTransit = true
@@ -406,6 +450,7 @@ function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
     minutes: Math.max(1, Math.round(path.seconds / 60)),
     hasIndoorTransit,
     hasStairs,
+    hasLinkSegment,
     isEstimate: false,
   }
 }
@@ -457,6 +502,7 @@ export function straightLineFallback(
     minutes: Math.max(1, Math.round(totalSeconds / 60)),
     hasIndoorTransit: fromFloor !== null || toFloor !== null,
     hasStairs: false,
+    hasLinkSegment: false,
     isEstimate: true,
   }
 }
@@ -508,6 +554,7 @@ export function straightLineFromPoint(from: RoutePoint, toBuilding: Building, to
     minutes: Math.max(1, Math.round(totalSeconds / 60)),
     hasIndoorTransit: toFloor !== null,
     hasStairs: false,
+    hasLinkSegment: false,
     isEstimate: true,
   }
 }

@@ -35,8 +35,11 @@ test('층을 고르면 층 이동 시간이 더해진다', () => {
   assert.equal(upstairs.hasIndoorTransit, true)
 })
 
-test('경로망에 아직 없는 건물은 빈 배열(호출부가 직선 어림으로 대신)', () => {
-  assert.deepEqual(findRoutes(buildings, { building: R, floor: null }, { building: H, floor: null }), [])
+test('경로망에 아직 없는 건물은 가까운 길까지 직선으로 이어 길을 따라간다', () => {
+  const routes = findRoutes(buildings, { building: R, floor: null }, { building: H, floor: null })
+  assert.ok(routes.length > 0)
+  assert.equal(routes[0].isEstimate, false)
+  assert.equal(routes[0].hasLinkSegment, true)
 })
 
 test('내 위치에서 출발: 경로망 가까이면 실측, 멀면 빈 배열', async () => {

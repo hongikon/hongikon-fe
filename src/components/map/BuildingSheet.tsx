@@ -76,8 +76,10 @@ export default function BuildingSheet({
   routeFindingEnabled,
   onSetFrom,
   onSetTo,
-  routeNext = null,
+  routeNext: routeNextProp = null,
 }: BuildingSheetProps) {
+  // 길찾기를 시작하기 전에는 출발이 먼저다.
+  const routeNext = routeNextProp ?? "from";
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
@@ -123,7 +125,7 @@ export default function BuildingSheet({
             accessibilityRole="button"
             accessibilityLabel={`${building.name}에서 출발`}
           >
-            <Ionicons name="location" size={16} color={routeNext === "from" ? COLORS.white : COLORS.routeFrom} />
+            <View style={[styles.actionDotFrom, routeNext === "from" && styles.actionDotFromStrong]} />
             <Text style={[styles.actionFromText, routeNext === "from" && styles.actionTextStrong]}>출발</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -132,7 +134,7 @@ export default function BuildingSheet({
             accessibilityRole="button"
             accessibilityLabel={`${building.name}로 도착`}
           >
-            <Ionicons name="flag" size={16} color={routeNext === "to" ? COLORS.white : COLORS.danger} />
+            <View style={[styles.actionDotTo, routeNext === "to" && styles.actionDotToStrong]} />
             <Text style={[styles.actionToText, routeNext === "to" && styles.actionTextStrong]}>도착</Text>
           </TouchableOpacity>
         </View>
@@ -329,30 +331,36 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     textDecorationLine: "underline",
   },
+  // 길찾기 버튼은 메인 컬러만(11-03). 지금 고를 차례인 쪽은 남색으로 채우고, 다른 쪽은 옅은 남색 바탕.
   actions: { flexDirection: "row", gap: 10, marginTop: 2, marginBottom: 12 },
-  actionFromStrong: { backgroundColor: COLORS.routeFrom },
-  actionToStrong: { backgroundColor: COLORS.danger },
-  actionTextStrong: { color: COLORS.white },
   actionFrom: {
     flex: 1,
     height: 44,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.primarySoft,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 8,
   },
-  actionFromText: { fontSize: 14, color: COLORS.success, fontFamily: FONTS.semibold },
   actionTo: {
     flex: 1,
     height: 44,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.dangerSoft,
+    backgroundColor: COLORS.primarySoft,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 8,
   },
-  actionToText: { fontSize: 14, color: COLORS.danger, fontFamily: FONTS.semibold },
+  actionFromStrong: { backgroundColor: COLORS.primary },
+  actionToStrong: { backgroundColor: COLORS.primary },
+  actionFromText: { fontSize: 15, color: COLORS.primary, fontFamily: FONTS.semibold },
+  actionToText: { fontSize: 15, color: COLORS.primary, fontFamily: FONTS.semibold },
+  actionTextStrong: { color: COLORS.white },
+  /** 출발: 빈 원, 도착: 채운 원 — 지도 경로 막대·표시와 같은 모양. */
+  actionDotFrom: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: COLORS.primary },
+  actionDotFromStrong: { borderColor: COLORS.white },
+  actionDotTo: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
+  actionDotToStrong: { backgroundColor: COLORS.white },
 });

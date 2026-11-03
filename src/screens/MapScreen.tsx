@@ -1935,14 +1935,13 @@ export default function MapScreen() {
                 <View style={styles.routeCardTop}>
                   <Text style={styles.routeCardTime}>도보 {selectedRoute.minutes}분</Text>
                   <Text style={styles.routeCardMeta}>{selectedRoute.distanceMeters}m</Text>
-                  {selectedRoute.isEstimate ? (
-                    <Text style={styles.routeCardTag}>직선 어림</Text>
-                  ) : selectedRoute.hasStairs ? (
-                    <Text style={styles.routeCardTag}>계단 있음</Text>
-                  ) : null}
+                  {selectedRoute.isEstimate ? <Text style={styles.routeCardTag}>직선 어림</Text> : null}
+                  {selectedRoute.hasStairs ? <Text style={styles.routeCardTag}>계단 있음</Text> : null}
                 </View>
                 {selectedRoute.isEstimate ? (
-                  <Text style={styles.routeCardNote}>아직 실측 경로가 없는 구간이라 직선 거리로 어림했어요</Text>
+                  <Text style={styles.routeCardNote}>캠퍼스 길에서 멀어 직선 거리로 어림했어요</Text>
+                ) : selectedRoute.hasLinkSegment ? (
+                  <Text style={styles.routeCardNote}>건물 앞 일부 구간은 가까운 길까지 직선으로 이었어요</Text>
                 ) : null}
                 {routeAlternatives.length > 1 ? (
                   <View style={styles.routeCardAlts}>
