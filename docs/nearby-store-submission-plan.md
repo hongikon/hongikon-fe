@@ -183,6 +183,9 @@ because the alert must work while the app is closed (region monitoring, 100 m; p
 to check 20 m). Location stays on the device and is never sent to our server or stored; we only store the consent time.
 An explanation screen with an equal-weight "켜지 않을게요" (Don't turn on) button appears before the system prompt.
 Partner shops are only in Seoul, so a real alert cannot be triggered from Cupertino: demo video <VIDEO_URL>.
+The video was recorded with our internal test build, which can place the device at a chosen point ("테스트 위치",
+shown as a red dot and a bar at the bottom) so the alert can be shown without walking into a shop. The store build is
+the same except that these test tools are removed.
 
 2) Campus route finding
 Map > menu > 길찾기 (Route), or tap a building > 출발 (Start) / 도착 (Destination), choose the floor, and the walking
