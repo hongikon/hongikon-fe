@@ -11,6 +11,7 @@ import {
   Animated,
   BackHandler,
   Platform,
+  AppState,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
@@ -910,7 +911,13 @@ export default function MapScreen() {
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
   // 테스트 앱(현장 테스트·개발 빌드)은 근처 알림을 실제 위치로 확인하려고 지도에 내 위치를 늘 보여 준다(11-03 운영진 요청).
   // 운영 앱은 길찾기를 볼 때만 위치를 읽는다(처리방침 11-09판).
-  const locationActive = routeActive || NEARBY_DEBUG_TOOLS;
+  // 앱이 화면에 떠 있을 때만 읽는다 — 내리면 바로 멈춰 위치 표시(다이나믹 아일랜드)가 남지 않게(11-03).
+  const [appForeground, setAppForeground] = useState(AppState.currentState === "active");
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => setAppForeground(state === "active"));
+    return () => subscription.remove();
+  }, []);
+  const locationActive = appForeground && (routeActive || NEARBY_DEBUG_TOOLS);
   /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
   const locationFilterRef = useRef<FilterState | null>(null);
   useEffect(() => {

@@ -330,8 +330,9 @@ async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
       timeInterval: 5_000,
       pausesUpdatesAutomatically: false,
       activityType: pkg.Location.ActivityType.Other,
-      // 위치를 쓰는 동안 상태 막대에 표시한다(가게 근처에 있을 때만 켜지니 숨기지 않는다).
-      showsBackgroundLocationIndicator: true,
+      // 11-03: 상태 막대·다이나믹 아일랜드의 파란 위치 표시를 끈다. 가게 근처에 있을 때마다 계속 떠 거슬렸다(운영진).
+      // "항상" 허용을 받은 앱은 iOS 가 표시 없이 백그라운드 위치를 허용한다. 사용 기록은 iOS 설정 > 위치 서비스에 그대로 남는다.
+      showsBackgroundLocationIndicator: false,
       foregroundService: {
         notificationTitle: '근처 제휴 가게 확인 중',
         notificationBody: '제휴 가게 근처에 있는 동안만 위치를 확인해요. 위치는 휴대폰 밖으로 보내지 않아요.',
