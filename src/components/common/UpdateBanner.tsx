@@ -6,6 +6,11 @@ import { FONTS } from '../../constants/typography'
 import { COLORS } from '../../constants/colors'
 import { notify } from '../../utils/dialog'
 import { RADIUS } from '../../constants/spacing'
+import { useLaunchNoticePending } from './LaunchNoticeModal'
+import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
+
+/** 앞의 안내 창이 닫히는 애니메이션이 끝난 뒤 알림창을 띄운다 — 네이티브 Modal 이 닫히는 중이면 iOS 가 알림창을 무시한다. */
+const AFTER_MODAL_DELAY_MS = 700
 
 /**
  * 앱을 켤 때 새 버전을 받으면 알림창으로 한 번 묻는다(11-03). 배너는 앱을 켜자마자 뜨는 공지 카드(네이티브 Modal)에
@@ -36,6 +41,20 @@ export default function UpdateBanner() {
   const insets = useSafeAreaInsets()
   const [reloading, setReloading] = useState(false)
   const { isUpdatePending } = Updates.useUpdates()
+  // 켤 때 받은 업데이트를 알림창으로 물을 차례인지. 앱을 켜자마자 뜨는 공지 카드·제휴 안내(네이티브 Modal)가 떠 있으면
+  // 그 위의 알림창을 iOS 가 조용히 무시해(11-03 테스트 앱에서 안 떴다) 그 창들이 닫힌 뒤에 묻는다.
+  const [launchUpdateReady, setLaunchUpdateReady] = useState(false)
+  const launchNoticePending = useLaunchNoticePending()
+  const partnerNoticePending = usePartnerNoticePending()
+
+  useEffect(() => {
+    if (!launchUpdateReady || launchNoticePending || partnerNoticePending) return
+    const timer = setTimeout(() => {
+      setLaunchUpdateReady(false)
+      askToApply()
+    }, AFTER_MODAL_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [launchUpdateReady, launchNoticePending, partnerNoticePending])
 
   useEffect(() => {
     if (!Updates.isEnabled || Platform.OS === 'web') return
@@ -46,7 +65,7 @@ export default function UpdateBanner() {
       Updates.checkForUpdateAsync()
         .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : undefined))
         .then((fetched) => {
-          if (atLaunch && fetched?.isNew) askToApply()
+          if (atLaunch && fetched?.isNew) setLaunchUpdateReady(true)
         })
         .catch((error) => {
           if (__DEV__) console.warn('[updates] 확인 실패:', error)
