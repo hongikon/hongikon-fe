@@ -51,7 +51,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
-import { formatFloor } from "../utils/floors";
+import { formatFloor, hasFloorData } from "../utils/floors";
+import FloorDialSheet from "../components/map/FloorDialSheet";
 import { findRoutes, straightLineFallback } from "../utils/routing";
 import type { RouteAlternative } from "../utils/routing";
 import { ROUTE_FINDING_ENABLED } from "../constants/route";
@@ -205,6 +206,8 @@ export default function MapScreen() {
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
   const [toFloor, setToFloor] = useState<number | null>(null);
+  /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
+  const [floorDial, setFloorDial] = useState<{ role: "출발" | "도착"; building: Building } | null>(null);
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
   const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
@@ -901,20 +904,20 @@ export default function MapScreen() {
     setShowRoute(true);
   }, [toBuilding, showRouteResult]);
 
-  const beginFrom = useCallback(
-    (building: Building) => {
+  const commitFrom = useCallback(
+    (building: Building, floor: number | null) => {
       setFromBuilding(building);
-      setFromFloor(null);
+      setFromFloor(floor);
       setSelectedBuilding(null);
       advanceToDestination();
     },
     [advanceToDestination],
   );
 
-  const beginTo = useCallback(
-    (building: Building) => {
+  const commitTo = useCallback(
+    (building: Building, floor: number | null) => {
       setToBuilding(building);
-      setToFloor(null);
+      setToFloor(floor);
       setSelectedBuilding(null);
       if (fromBuilding) {
         showRouteResult();
@@ -926,6 +929,50 @@ export default function MapScreen() {
       setShowRoute(true);
     },
     [fromBuilding, showRouteResult],
+  );
+
+  /** 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다. */
+  const beginFrom = useCallback(
+    (building: Building) => {
+      if (hasFloorData(building)) setFloorDial({ role: "출발", building });
+      else commitFrom(building, null);
+    },
+    [commitFrom],
+  );
+
+  const beginTo = useCallback(
+    (building: Building) => {
+      if (hasFloorData(building)) setFloorDial({ role: "도착", building });
+      else commitTo(building, null);
+    },
+    [commitTo],
+  );
+
+  const handleFloorDialConfirm = useCallback(
+    (floor: number) => {
+      const dial = floorDial;
+      setFloorDial(null);
+      if (!dial) return;
+      const commit = () => (dial.role === "출발" ? commitFrom(dial.building, floor) : commitTo(dial.building, floor));
+      // 지도 위(건물 시트)에서 연 팝업은 닫히는 동안 길찾기 창(네이티브 Modal)을 바로 띄우면 iOS 가 무시할 수 있어 잠깐 기다린다.
+      if (showRoute) commit();
+      else setTimeout(commit, 350);
+    },
+    [floorDial, showRoute, commitFrom, commitTo],
+  );
+
+  const floorDialInitial =
+    floorDial?.role === "출발"
+      ? fromBuilding === floorDial.building ? fromFloor : null
+      : floorDial && toBuilding === floorDial.building ? toFloor : null;
+  const floorDialSheet = (
+    <FloorDialSheet
+      building={floorDial?.building ?? null}
+      role={floorDial?.role ?? "출발"}
+      initialFloor={floorDialInitial}
+      onCancel={() => setFloorDial(null)}
+      onConfirm={handleFloorDialConfirm}
+    />
   );
 
   const handleSetFrom = useCallback(() => {
@@ -1932,7 +1979,10 @@ export default function MapScreen() {
         )}
       </Animated.View>
 
+      {!showRoute && floorDialSheet}
       <SwipeBackModal visible={showRoute} onRequestClose={handleCloseRoute}>
+        {/* 길찾기 창 안에서 고른 건물의 층 팝업은 이 창 위에 떠야 해서 창 안에 둔다. */}
+        {showRoute && floorDialSheet}
         {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
         <SafeAreaProvider>
         <SafeAreaView style={styles.routeModal} edges={["top"]}>
