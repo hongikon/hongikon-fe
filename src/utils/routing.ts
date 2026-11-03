@@ -1,4 +1,5 @@
 import { SURVEY_EDGES, SURVEY_ENTRANCES, SURVEY_WAYPOINTS } from '../constants/surveyPaths'
+import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 import { FLOOR_TRANSIT_SECONDS, WALKING_METERS_PER_MINUTE } from '../constants/route'
 import type { Building } from '../types'
 import { entranceTransitSeconds, levelIndex, resolveEntrancePoint } from './floors'
@@ -130,7 +131,64 @@ function buildBaseGraph(buildings: readonly Building[]): Graph {
     graph.entrancesByBuilding.set(building.name, list)
   }
 
+  addLegacyFill(graph, buildings)
   return graph
+}
+
+/** 9월 경로망 점을 11-03 경로망 점에 이을 최대 거리. 두 자료는 같은 점을 공유하지 않아 가까운 점끼리 잇는다(대략). */
+const LEGACY_BRIDGE_METERS = 20
+
+/**
+ * 11-03 조사 자료에 아직 없는 건물(중앙도서관 H동 등)만 9월 자료(pathNodes.ts)로 채운다(11-03 운영진 요청, 대략적인 임시 방법).
+ * - 11-03 자료에 출입구가 있는 건물에 닿는 9월 선은 넣지 않는다(새 자료를 우선).
+ * - 9월 점 id 는 'old:' 를 붙여 새 점과 겹치지 않게 하고, 새 점과 20m 안이면 이어 붙인다.
+ * 조사를 더 해서 그 건물이 새 자료에 들어오면 저절로 9월 자료 대신 새 자료를 쓴다.
+ */
+function addLegacyFill(graph: Graph, buildings: readonly Building[]): void {
+  const covered = new Set(graph.entrancesByBuilding.keys())
+  const waypointById = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
+  const newPoints = SURVEY_WAYPOINTS.filter((w) => graph.nodes.has(w.id))
+  const legacyPoints = new Set<string>()
+
+  const resolve = (ref: string) => {
+    const resolved = resolveRef(ref, waypointById, buildings)
+    if (!resolved) return null
+    if (waypointById.has(ref)) {
+      legacyPoints.add(`old:${resolved.id}`)
+      return { id: `old:${resolved.id}`, point: resolved.point, building: null as Building | null, label: null as string | null }
+    }
+    const hash = ref.indexOf('#')
+    const name = hash === -1 ? ref : ref.slice(0, hash)
+    const building = buildings.find((b) => b.name === name) ?? null
+    return { id: resolved.id, point: resolved.point, building, label: hash === -1 ? null : ref.slice(hash + 1) }
+  }
+
+  for (const [aRef, bRef] of PATH_EDGES) {
+    const a = resolve(aRef)
+    const b = resolve(bRef)
+    if (!a || !b) continue
+    if ((a.building && covered.has(a.building.name)) || (b.building && covered.has(b.building.name))) continue
+    addEdge(graph, a.id, a.point, b.id, b.point)
+    for (const end of [a, b]) {
+      if (!end.building) continue
+      const list = graph.entrancesByBuilding.get(end.building.name) ?? []
+      if (list.some((e) => e.id === end.id)) continue
+      const entrance = end.label ? end.building.entrances?.find((e) => e.label === end.label) : undefined
+      list.push({ id: end.id, floor: entrance ? entrance.minFloor : 1 })
+      graph.entrancesByBuilding.set(end.building.name, list)
+    }
+  }
+
+  for (const id of legacyPoints) {
+    const point = graph.nodes.get(id)
+    if (!point) continue
+    let best: { id: string; meters: number } | null = null
+    for (const w of newPoints) {
+      const meters = haversineMeters(point.lat, point.lng, w.lat, w.lng)
+      if (meters <= LEGACY_BRIDGE_METERS && (!best || meters < best.meters)) best = { id: w.id, meters }
+    }
+    if (best) addEdge(graph, id, point, best.id, graph.nodes.get(best.id)!)
+  }
 }
 
 const baseGraphCache = new WeakMap<readonly Building[], Graph>()
