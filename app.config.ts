@@ -118,7 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins = withPluginOptions(plugins, 'expo-location', {
       // 기본(app.json) 문구는 "위치를 한 번 사용해요"라 근처 알림 빌드에서는 맞지 않는다(10-31).
       locationWhenInUsePermission:
-        '가까운 제휴 가게와 거리를 보여 주고, 제휴 가게에 머물 때 혜택을 알려 드릴 때 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
+        '지도에서 내 위치와 길을 보여 주고, 가까운 제휴 가게와 거리를 보여 주고, 제휴 가게에 머물 때 혜택을 알려 드릴 때 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysAndWhenInUsePermission:
         '제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드리려고 앱을 쓰지 않는 동안에도 위치를 사용해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요.',
       locationAlwaysPermission:
