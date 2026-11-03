@@ -319,3 +319,37 @@ export function decideOnEnter(
   if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
   return { schedule: true, fireAt }
 }
+
+/**
+ * GPS 로 20m 를 잴 만한 업체(11-03, 배터리). 오늘 이미 알린 곳·하루 한도를 채운 날은 더 잴 게 없어 GPS 를 켜지 않는다 —
+ * 알림을 받은 카페에 두 시간 앉아 있어도 GPS 가 계속 켜져 있던 것을 막는다. 예약해 둔 곳(pendingId)은 그 전에 나가면
+ * 취소해야 해서 계속 잰다. perVisit(현장 테스트)는 이번 방문에 이미 보낸 곳만 뺀다.
+ */
+export function alertableTargetIds(
+  targetIds: readonly string[],
+  sent: readonly SentAlert[],
+  stays: ReadonlyMap<string, StayRecord>,
+  pendingId: string | null,
+  now: number,
+  perVisit = false,
+): Set<string> {
+  const result = new Set<string>()
+  const day = kstTodayYmd(now)
+  const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
+  if (!perVisit && today.length >= MAX_ALERTS_PER_DAY) {
+    if (pendingId) result.add(pendingId)
+    return result
+  }
+  for (const id of targetIds) {
+    if (id === pendingId) {
+      result.add(id)
+      continue
+    }
+    const stay = stays.get(id)
+    const done = perVisit
+      ? !!stay && stay.exitedAt === null && sent.some((alert) => alert.partnerId === id && alert.at >= stay.enteredAt)
+      : today.some((alert) => alert.partnerId === id)
+    if (!done) result.add(id)
+  }
+  return result
+}

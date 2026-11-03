@@ -23,6 +23,7 @@ import {
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
+  alertableTargetIds,
   insideAtRegistration,
   pickNearest,
   pickTargets,
@@ -421,7 +422,20 @@ async function handlePreciseLocations(locations: { coords: { latitude: number; l
       return { state, actions: [] }
     }
     if (!nearAnyTarget(state, at, PRECISE_STOP_MARGIN_METERS)) stop = true
-    const nearest = Math.min(...state.targets.map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng)))
+    // GPS 는 아직 알릴 수 있는 가게(오늘 안 알린 곳·예약 중인 곳) 50m 안에서만 켠다. 알림을 받은 카페에 오래 앉아 있으면
+    // Wi-Fi·기지국으로 내린다(나간 것은 그걸로도 판정한다).
+    const alertable = alertableTargetIds(
+      state.targets.map((t) => t.id),
+      state.sent,
+      new Map(Object.entries(state.stays)),
+      state.pending?.partnerId ?? null,
+      now,
+      state.perVisit,
+    )
+    const distances = state.targets
+      .filter((t) => alertable.has(t.id))
+      .map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
+    const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
     if (nearest <= FINE_ENTER_METERS) nextMode = 'fine'
     else if (nearest > FINE_EXIT_METERS) nextMode = 'coarse'
     preciseNote = `켜짐(${mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국'}) · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m`

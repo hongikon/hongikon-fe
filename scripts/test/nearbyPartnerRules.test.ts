@@ -260,3 +260,22 @@ test('소속 여러 개: 고른 소속들의 제휴가 모두 대상, 혜택은 
   assert.match(nearbyAlertContent(both, ['미술대학', '공과대학'])!.body, /^제휴 혜택: 미대 30%/)
   assert.match(nearbyAlertContent(both, ['공과대학', '미술대학'])!.body, /^제휴 혜택: 공대 20%/)
 })
+
+test('GPS 로 잴 업체: 오늘 알린 곳은 빼고, 예약 중인 곳은 넣고, 하루 한도면 예약 중인 곳만', async () => {
+  const { alertableTargetIds } = await import('../../src/lib/nearbyPartners/rules.ts')
+  const now = kst(14, 0)
+  const ids = ['a', 'b', 'c']
+  const none = new Map<string, StayRecord>()
+  // a 는 오늘 알림, c 는 예약 중
+  const one = alertableTargetIds(ids, [{ partnerId: 'a', at: kst(13, 0) }], none, 'c', now)
+  assert.deepEqual([...one].sort(), ['b', 'c'])
+  // 하루 3번 다 씀 → 예약 중인 곳만
+  const full = alertableTargetIds(ids, [
+    { partnerId: 'x', at: kst(10, 0) }, { partnerId: 'y', at: kst(11, 0) }, { partnerId: 'z', at: kst(12, 0) },
+  ], none, 'c', now)
+  assert.deepEqual([...full], ['c'])
+  // 현장 테스트(방문마다): 이번 방문에 보낸 곳만 빼고, 어제 보낸 곳은 다시
+  const stays = new Map<string, StayRecord>([['a', { enteredAt: kst(13, 50), exitedAt: null }]])
+  const visit = alertableTargetIds(ids, [{ partnerId: 'a', at: kst(13, 55) }, { partnerId: 'b', at: kst(9, 0) }], stays, null, now, true)
+  assert.deepEqual([...visit].sort(), ['b', 'c'])
+})
