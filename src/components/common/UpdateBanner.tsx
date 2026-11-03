@@ -8,6 +8,14 @@ import { notify } from '../../utils/dialog'
 import { RADIUS } from '../../constants/spacing'
 
 /**
+ * 앱을 켠 뒤 이 시간 안에 새 버전을 다 받으면 배너 없이 바로 다시 시작해 적용한다(11-03).
+ * 예전에는 첫 실행에 받아 두고 배너를 눌러야 해서, 배너를 못 보면 앱을 두 번 열어야 바뀌었다.
+ * 그 뒤(사용 중)에 받은 업데이트는 화면이 갑자기 바뀌지 않도록 지금처럼 배너로만 알린다.
+ */
+const AUTO_APPLY_WINDOW_MS = 4000
+const launchedAt = Date.now()
+
+/**
  * EAS Update(OTA) 새 버전을 내려받아 알려주는 배너. `App.tsx` 에서 한 번만 올린다.
  *
  * 스토어 심사 없이 JS 번들만 갱신하는 방식이라, 네이티브 코드가 바뀌는 배포(새 패키지 추가 등)는
@@ -24,18 +32,23 @@ export default function UpdateBanner() {
     if (!Updates.isEnabled || Platform.OS === 'web') return
 
     // 앱을 계속 켜두고 있어도 받을 수 있도록, 포그라운드로 돌아올 때마다 다시 확인한다.
-    // 실제 반영은 사용자가 배너의 "지금 적용"을 눌러야 일어난다(화면이 갑자기 리로드되면 안 되니까).
-    const checkAndDownload = () => {
+    // 켠 직후(AUTO_APPLY_WINDOW_MS 안)에 받은 것만 바로 적용하고, 그 밖에는 배너의 "지금 적용"을 눌러야 한다(사용 중 갑자기 리로드되면 안 되니까).
+    const checkAndDownload = (atLaunch: boolean) => {
       Updates.checkForUpdateAsync()
         .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : undefined))
+        .then((fetched) => {
+          if (atLaunch && fetched?.isNew && Date.now() - launchedAt < AUTO_APPLY_WINDOW_MS) {
+            return Updates.reloadAsync()
+          }
+        })
         .catch((error) => {
           if (__DEV__) console.warn('[updates] 확인 실패:', error)
         })
     }
 
-    checkAndDownload()
+    checkAndDownload(true)
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkAndDownload()
+      if (state === 'active') checkAndDownload(false)
     })
     return () => subscription.remove()
   }, [])
