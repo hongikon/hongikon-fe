@@ -13,8 +13,10 @@ import type { Partner, PartnerAffiliation } from '../../types'
 /**
  * 업체 하나의 운영체제 지오펜스 반경(깨우는 원). iOS 는 이보다 작게 잡아도 사실상 100~200m 로 동작해,
  * 이 원은 "가게 근처에 왔다"는 신호로만 쓰고 실제 알림 반경(`ALERT_RADIUS_METERS`)은 GPS 로 다시 잰다.
+ * 11-03: 100m → 150m. 작은 원은 iOS 가 늦게·들쭉날쭉 깨워 알림이 몇 분씩 늦었다. 넓히면 가게에 닿기 전에 깨어
+ * 정밀 확인이 먼저 시작된다(그만큼 GPS 를 켜 두는 구간이 조금 길어진다).
  */
-export const PARTNER_REGION_RADIUS_METERS = 100
+export const PARTNER_REGION_RADIUS_METERS = 150
 /**
  * 알림 반경: 업체 좌표에서 이만큼 안에 머물러야 알린다(10-29 — 100m 는 옆 가게·길 건너까지 걸려 20m 로).
  * 깨우는 원에 들어오면 GPS 를 켜 이 거리를 잰다(`preciselyInside`).

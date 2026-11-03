@@ -300,8 +300,10 @@ async function startPrecise(): Promise<boolean> {
     if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) return true
     await pkg.Location.startLocationUpdatesAsync(NEARBY_PRECISE_TASK, {
       accuracy: pkg.Location.Accuracy.High,
-      distanceInterval: 5,
-      timeInterval: 10_000,
+      // 11-03: 5m 움직여야 새 위치를 주던 것을 0으로. 가게에 들어가 가만히 있으면 위치가 더 오지 않아, 들어갈 때 실내 오차로
+      // '20m 밖'으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다. 깨우는 원 안에서만 켜지고 멀어지면 끈다.
+      distanceInterval: 0,
+      timeInterval: 5_000,
       pausesUpdatesAutomatically: false,
       activityType: pkg.Location.ActivityType.Other,
       // 위치를 쓰는 동안 상태 막대에 표시한다(가게 근처에 있을 때만 켜지니 숨기지 않는다).

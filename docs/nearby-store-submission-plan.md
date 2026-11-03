@@ -75,7 +75,7 @@ What it does: Students can opt in at Settings > 알림 (Notifications) > 근처 
 When they stay for a few minutes inside a partner shop near Hongik University (Seoul) that offers a student discount,
 the app shows one local notification with that shop's student benefit.
 
-Why "Always" location: the alert must work while the app is closed. We use region monitoring (geofences, 100 m) to wake
+Why "Always" location: the alert must work while the app is closed. We use region monitoring (geofences, 150 m) to wake
 the app near a partner shop, then briefly use precise location only while inside that region to check the 20 m distance.
 Location stays on the device. It is never sent to our server or stored; we only store the time the user consented
 to receive these alerts. Users can turn the feature or night-time alerts off at any time in the same screen.
@@ -101,7 +101,7 @@ Demo account: (기존 심사용 데모 로그인 안내 그대로)
 Core feature: Nearby partner alerts. When the user turns this on, the app notifies them while they are inside a
 partner shop near Hongik University that offers a student discount, including when the app is closed.
 Background location is needed because the alert must fire when the user walks into the shop without opening the app.
-The app registers geofences (100 m) around nearby partner shops and, only while inside one, uses precise location
+The app registers geofences (150 m) around nearby partner shops and, only while inside one, uses precise location
 briefly (foreground service with a visible notification) to confirm the user is within 20 m.
 Location is processed only on the device and is never sent to our servers, shared, or stored.
 The feature is off by default; the user enables it in Settings > Notifications > Nearby partner alerts after a
@@ -113,7 +113,7 @@ prominent disclosure screen, and can disable it at any time.
 ### 8-4. Play Console > 포그라운드 서비스 신고(location)
 
 ```
-Type: Location. Used only while the user is inside a 100 m region around a partner shop (after they enabled
+Type: Location. Used only while the user is inside a 150 m region around a partner shop (after they enabled
 Nearby partner alerts) to measure whether they are within 20 m. A persistent notification "근처 제휴 가게 확인 중"
 is shown during this time. The service stops when the user leaves the region or after at most 2 hours.
 ```
@@ -179,7 +179,7 @@ What's new in 1.1.0 (three features)
 1) Nearby partner alerts (optional, off by default)
 Settings > 알림 (Notifications) > 근처 제휴 알림. When the user stays a few minutes inside a partner shop near Hongik
 University (Seoul), the app shows one local notification with that shop's student discount. "Always" location is needed
-because the alert must work while the app is closed (region monitoring, 100 m; precise location only briefly inside a region
+because the alert must work while the app is closed (region monitoring, 150 m; precise location only briefly inside a region
 to check 20 m). Location stays on the device and is never sent to our server or stored; we only store the consent time.
 An explanation screen with an equal-weight "켜지 않을게요" (Don't turn on) button appears before the system prompt.
 Partner shops are only in Seoul, so a real alert cannot be triggered from Cupertino: demo video <VIDEO_URL>.

@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  PARTNER_REGION_RADIUS_METERS,
   DWELL_MS,
   REENTRY_GRACE_MS,
   alertGroup,
@@ -101,9 +102,9 @@ test('가까운 업체 고르기: 거리순, 같으면 id 순, 개수 제한', (
 })
 
 test('다시 고르기 원: 등록 못 한 첫 업체 반경에 닿기 전, 150m~1km', () => {
-  // 20번째 업체가 400m → 400 - 100 = 300m
+  // 20번째 업체가 400m → 400 - 깨우는 원(PARTNER_REGION_RADIUS_METERS)
   const many = Array.from({ length: 25 }, (_, i) => partner(`p${String(i).padStart(2, '0')}`, i < 19 ? 50 : 400))
-  assert.equal(Math.round(reselectRadius(many, BASE.lat, BASE.lng)), 300)
+  assert.equal(Math.round(reselectRadius(many, BASE.lat, BASE.lng)), 400 - PARTNER_REGION_RADIUS_METERS)
   // 밀집: 20번째가 120m → 150m 로 올림
   const dense = Array.from({ length: 25 }, (_, i) => partner(`d${String(i).padStart(2, '0')}`, 120))
   assert.equal(reselectRadius(dense, BASE.lat, BASE.lng), 150)
@@ -168,8 +169,9 @@ test('진입 판단: 알림 사이 최소 30분', () => {
 })
 
 test('등록할 때 이미 반경 안: 가만히 있어도 진입으로 처리할 업체', () => {
-  // 경계(정확히 100m)는 안으로 친다.
-  const regions = [partner('in', 60), partner('edge', 99.9), partner('out', 140)]
+  // 경계(깨우는 원 반경)는 안으로 친다.
+  const R = PARTNER_REGION_RADIUS_METERS
+  const regions = [partner('in', 60), partner('edge', R - 0.1), partner('out', R + 40)]
   assert.deepEqual(insideAtRegistration(regions, BASE.lat, BASE.lng).map((p) => p.id), ['in', 'edge'])
 })
 
