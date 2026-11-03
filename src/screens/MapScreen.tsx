@@ -908,10 +908,13 @@ export default function MapScreen() {
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
+  // 테스트 앱(현장 테스트·개발 빌드)은 근처 알림을 실제 위치로 확인하려고 지도에 내 위치를 늘 보여 준다(11-03 운영진 요청).
+  // 운영 앱은 길찾기를 볼 때만 위치를 읽는다(처리방침 11-09판).
+  const locationActive = routeActive || NEARBY_DEBUG_TOOLS;
   /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
   const locationFilterRef = useRef<FilterState | null>(null);
   useEffect(() => {
-    if (!routeActive) {
+    if (!locationActive) {
       locationFilterRef.current = null;
       setMyLocation(null);
       return;
@@ -931,7 +934,7 @@ export default function MapScreen() {
       cancelled = true;
       stop?.();
     };
-  }, [routeActive]);
+  }, [locationActive]);
 
   // 고른 경로에서 20m 안이면 점을 경로선 위에 붙여 보여 준다(길 맞추기). 직선 어림 경로에는 붙이지 않는다.
   const shownLocation = useMemo(() => {

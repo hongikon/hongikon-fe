@@ -75,6 +75,15 @@ const PRECISE_SINCE_KEY = 'hongikon_nearby_precise_since'
 const PRECISE_MAX_MS = 2 * 60 * 60 * 1000
 /** 모든 대상 업체에서 깨우는 원 + 이만큼 멀어지면 GPS 를 끈다. */
 const PRECISE_STOP_MARGIN_METERS = 50
+/**
+ * 단계별 정확도(11-03, 배터리): 깨우는 원 안에서는 먼저 Wi-Fi·기지국 위치(GPS 칩 안 씀)로 보다가, 어느 가게 50m 안에 오면
+ * GPS 로 올려 20m 를 잰다. 70m 밖으로 나가면 다시 내린다(경계에서 오락가락하지 않게 20m 틈).
+ * 홍대 앞은 늘 어느 가게 150m 안이라 GPS 를 계속 켜 두면 배터리를 많이 썼다.
+ */
+const FINE_ENTER_METERS = 50
+const FINE_EXIT_METERS = 70
+const PRECISE_MODE_KEY = 'hongikon_nearby_precise_mode'
+type PreciseMode = 'coarse' | 'fine'
 /** 사용자 둘레 큰 원. 벗어나면 가까운 업체를 다시 고른다. 업체 id 와 겹치지 않게. */
 const RESELECT_REGION_ID = '__reselect__'
 const STORAGE_KEY = 'hongikon_nearby_alerts_v1'
@@ -293,13 +302,28 @@ let preciseNote: string = '꺼짐'
 /** 이번 실행에서 위치 갱신을 켜지 못했으면 지오펜스 신호를 그대로 머무름으로 쓴다. */
 let preciseUnavailable = false
 
-async function startPrecise(): Promise<boolean> {
+async function preciseMode(): Promise<PreciseMode | null> {
+  const value = await AsyncStorage.getItem(PRECISE_MODE_KEY).catch(() => null)
+  return value === 'coarse' || value === 'fine' ? value : null
+}
+
+/** 정밀 위치를 켠다. 이미 켜져 있고 같은 단계면 그대로, 단계가 다르면 그 단계로 다시 건다. */
+async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
   const pkg = packages()
   if (!pkg || preciseUnavailable) return false
   try {
-    if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) return true
+    if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) {
+      const current = await preciseMode()
+      if (current === mode) return true
+      if (current === null) {
+        // 단계를 적기 전에 켜진 것(이 수정 전 버전). 그대로 두고 다음 위치에서 맞춘다.
+        await AsyncStorage.setItem(PRECISE_MODE_KEY, mode).catch(() => {})
+        return true
+      }
+      await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
+    }
     await pkg.Location.startLocationUpdatesAsync(NEARBY_PRECISE_TASK, {
-      accuracy: pkg.Location.Accuracy.High,
+      accuracy: mode === 'fine' ? pkg.Location.Accuracy.High : pkg.Location.Accuracy.Balanced,
       // 11-03: 5m 움직여야 새 위치를 주던 것을 0으로. 가게에 들어가 가만히 있으면 위치가 더 오지 않아, 들어갈 때 실내 오차로
       // '20m 밖'으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다. 깨우는 원 안에서만 켜지고 멀어지면 끈다.
       distanceInterval: 0,
@@ -313,8 +337,12 @@ async function startPrecise(): Promise<boolean> {
         notificationBody: '제휴 가게 근처에 있는 동안만 위치를 확인해요. 위치는 휴대폰 밖으로 보내지 않아요.',
       },
     })
-    await AsyncStorage.setItem(PRECISE_SINCE_KEY, String(Date.now())).catch(() => {})
-    preciseNote = '켜짐'
+    // 2시간 상한은 처음 켠 때부터 센다(단계를 바꿔 다시 걸 때는 그대로 둔다).
+    if (!(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null))) {
+      await AsyncStorage.setItem(PRECISE_SINCE_KEY, String(Date.now())).catch(() => {})
+    }
+    await AsyncStorage.setItem(PRECISE_MODE_KEY, mode).catch(() => {})
+    preciseNote = mode === 'fine' ? '켜짐(GPS)' : '켜짐(Wi-Fi·기지국)'
     return true
   } catch (error) {
     preciseUnavailable = true
@@ -330,6 +358,7 @@ async function stopPrecise(): Promise<void> {
   try {
     if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
     await AsyncStorage.removeItem(PRECISE_SINCE_KEY).catch(() => {})
+    await AsyncStorage.removeItem(PRECISE_MODE_KEY).catch(() => {})
     if (!preciseUnavailable) preciseNote = '꺼짐'
   } catch (error) {
     logFailure('GPS 위치 갱신 끄기', error)
@@ -346,7 +375,14 @@ function nearAnyTarget(state: NearbyState, at: { lat: number; lng: number }, mar
  * GPS 위치 하나로 알림 반경 안팎을 다시 맞춘다: 안으로 들어온 업체는 진입, 멀어진 업체는 이탈.
  * 이름을 내세울 업체 고르기(`chooseLead`)에도 이 위치를 쓴다. 위치는 저장하지 않는다.
  */
-function preciseStep(input: NearbyState, now: number, at: { lat: number; lng: number }, accuracy: number | null): Step {
+function preciseStep(
+  input: NearbyState,
+  now: number,
+  at: { lat: number; lng: number },
+  accuracy: number | null,
+  /** false 면 나간 것만 판정한다(Wi-Fi·기지국 위치는 오차가 커 '가게 안'을 정하지 않는다). */
+  allowEnter = true,
+): Step {
   const radius = partnerRadiusMeters()
   let step: Step = { state: input, actions: [] }
   const actions: NearbyAction[] = []
@@ -355,6 +391,7 @@ function preciseStep(input: NearbyState, now: number, at: { lat: number; lng: nu
     const wasInside = !!stay && stay.exitedAt === null
     const inside = preciselyInside(haversineMeters(at.lat, at.lng, target.lat, target.lng), accuracy, wasInside, radius)
     if (inside === wasInside) continue
+    if (inside && !allowEnter) continue
     step = inside ? onEnter(step.state, target.id, now, at) : onExit(step.state, target.id, now, at)
     actions.push(...step.actions)
   }
@@ -375,16 +412,22 @@ async function handlePreciseLocations(locations: { coords: { latitude: number; l
   const accuracy = latest.coords.accuracy ?? null
   const since = Number(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null)) || Date.now()
   let stop = Date.now() - since > PRECISE_MAX_MS
+  const mode = (await preciseMode()) ?? 'fine'
+  let nextMode: PreciseMode = mode
   await mutate((state, now) => {
     if (!state.enabled) {
       stop = true
       return { state, actions: [] }
     }
     if (!nearAnyTarget(state, at, PRECISE_STOP_MARGIN_METERS)) stop = true
-    preciseNote = `켜짐 · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m`
-    return preciseStep(state, now, at, accuracy)
+    const nearest = Math.min(...state.targets.map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng)))
+    if (nearest <= FINE_ENTER_METERS) nextMode = 'fine'
+    else if (nearest > FINE_EXIT_METERS) nextMode = 'coarse'
+    preciseNote = `켜짐(${mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국'}) · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m`
+    return preciseStep(state, now, at, accuracy, mode === 'fine')
   })
   if (stop) await stopPrecise()
+  else if (nextMode !== mode) await startPrecise(nextMode)
 }
 
 /**
