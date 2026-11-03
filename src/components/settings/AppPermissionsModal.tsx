@@ -273,10 +273,17 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
               </View>
               <View style={styles.infoBody}>
                 <Text style={styles.infoTitle}>
-                  {hasLocation ? '백그라운드 위치·마이크·연락처는 사용하지 않아요' : '위치(GPS)·마이크·연락처는 사용하지 않아요'}
+                  {/* 근처 알림 빌드는 알림을 켜면 "항상" 위치를 쓴다 — 그때는 "백그라운드 위치를 안 쓴다"고 하지 않는다(11-03). */}
+                  {hasLocation && nearbyAlertsAvailable()
+                    ? '마이크·연락처는 사용하지 않아요'
+                    : hasLocation
+                      ? '백그라운드 위치·마이크·연락처는 사용하지 않아요'
+                      : '위치(GPS)·마이크·연락처는 사용하지 않아요'}
                 </Text>
                 <Text style={styles.infoText}>
-                  {hasLocation
+                  {hasLocation && nearbyAlertsAvailable()
+                    ? '앱을 쓰지 않을 때의 위치는 근처 제휴 알림을 직접 켠 경우에만 휴대폰 안에서 써요. 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'
+                    : hasLocation
                     ? '앱을 쓰지 않을 때의 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'
                     : '기기 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'}
                 </Text>

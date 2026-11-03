@@ -28,6 +28,8 @@ export interface LegacyAnchorEdge {
 export interface LegacyOverlay {
   plainNodes: LegacyNode[]
   namedNodes: LegacyNode[]
+  /** `/dev/path`에서 보라색으로 표시하는, 아직 간선에 쓰이지 않은 출입구. */
+  unconnectedEntrances: LegacyNode[]
   /** 이름 지점 층 토글 키(formatFloor 순서, 모르는 층은 맨 끝). */
   namedFloorKeys: string[]
   nodeEdges: [number, number, number, number][]
@@ -49,6 +51,7 @@ export const floorKeyOf = (floor: number | null | undefined) => (floor ? formatF
 
 export function buildLegacyOverlay(buildings: readonly Building[]): LegacyOverlay {
   const byId = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
+  const usedRefs = new Set<string>()
   const plainNodes: LegacyNode[] = []
   const namedNodes: LegacyNode[] = []
   for (const w of PATH_WAYPOINTS) {
@@ -71,6 +74,20 @@ export function buildLegacyOverlay(buildings: readonly Building[]): LegacyOverla
     const ra = resolveRef(a, byId, buildings)
     const rb = resolveRef(b, byId, buildings)
     anchorEdges.push({ a, b, line: ra && rb ? [ra.point.lat, ra.point.lng, rb.point.lat, rb.point.lng] : null })
+    if (ra && rb) {
+      usedRefs.add(ra.id)
+      usedRefs.add(rb.id)
+    }
   }
-  return { plainNodes, namedNodes, namedFloorKeys, nodeEdges, anchorEdges }
+  const unconnectedEntrances = buildings.flatMap((building) =>
+    (building.entrances ?? [])
+      .filter((entrance) => !usedRefs.has(`${building.name}#${entrance.label}`))
+      .map((entrance) => ({
+        id: `${building.name}#${entrance.label}`,
+        lat: entrance.lat,
+        lng: entrance.lng,
+        floor: null,
+      })),
+  )
+  return { plainNodes, namedNodes, unconnectedEntrances, namedFloorKeys, nodeEdges, anchorEdges }
 }

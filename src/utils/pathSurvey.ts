@@ -81,14 +81,19 @@ const floorText = (floor: number) => (floor > 0 ? `${floor}F` : `B${Math.abs(flo
  * 모듈 지점 id('모듈id-n3')는 조사용이라, 실제로 합칠 때는 n번호로 바꿔야 한다(합치는 작업은 아직 하지 않는다).
  */
 export function formatModuleExport(module: SurveyModule): string {
-  const idOf = new Map(module.nodes.map((n) => [n.id, n.ref ?? n.id]))
+  const idOf = new Map(module.nodes.map((n) => [n.id, n.ref ?? n.sharedId ?? n.id]))
   const mapId = (id: string) => idOf.get(id) ?? id
   const draft: SurveyDraft = {
-    nodes: module.nodes.filter((n) => !n.ref).map((n) => ({ id: n.id, lat: n.lat, lng: n.lng })),
+    nodes: module.nodes.filter((n) => !n.ref).map((n) => ({ id: mapId(n.id), lat: n.lat, lng: n.lng })),
     edges: module.edges.map((e): PathEdge => [mapId(e.a), mapId(e.b)]),
     memos: Object.fromEntries(module.nodes.filter((n) => n.memo).map((n) => [mapId(n.id), n.memo!])),
   }
-  const edgeMemos = Object.fromEntries(module.edges.filter((e) => e.memo).map((e) => [edgeKey(mapId(e.a), mapId(e.b)), e.memo!]))
+  // pathNodes.ts 간선에는 종류 칸이 없어 계단은 줄 끝 주석으로만 남긴다(routing.ts 는 그대로).
+  const edgeMemos = Object.fromEntries(
+    module.edges
+      .filter((e) => e.memo || e.kind)
+      .map((e) => [edgeKey(mapId(e.a), mapId(e.b)), [e.kind === 'stairs' ? '[계단]' : '', e.memo ?? ''].filter(Boolean).join(' ')]),
+  )
   const places = module.places.map((p) => `${p.buildingName} ${floorText(p.floor)}${p.label ? `(${p.label})` : ''}`).join(', ')
   return formatExport(draft, {
     header: [
@@ -96,6 +101,8 @@ export function formatModuleExport(module: SurveyModule): string {
       `장소: ${places || '없음'}`,
       ...(module.memo.trim() ? [`메모: ${module.memo}`] : []),
       '지점 id 는 조사용이에요. pathNodes.ts 에 합칠 때 n번호로 바꿔 주세요.',
+      ...(module.nodes.some((n) => n.sharedId) ? ['공유 특수 지점은 공통 id 로 내보내요. 여러 모듈을 합칠 때 같은 id 의 지점은 한 번만 추가해 주세요.'] : []),
+      ...(module.edges.some((e) => e.kind === 'stairs') ? ['[계단] 표시가 붙은 간선은 계단이에요(주석으로만 남겨요).'] : []),
     ],
     edgeMemos,
   })

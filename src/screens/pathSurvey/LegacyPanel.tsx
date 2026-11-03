@@ -9,9 +9,17 @@ export interface LegacyToggles {
   namedFloors: Record<string, boolean>
   nodeEdges: boolean
   anchorEdges: boolean
+  unconnectedEntrances: boolean
 }
 
-export const DEFAULT_LEGACY: LegacyToggles = { plainNodes: true, namedNodes: true, namedFloors: {}, nodeEdges: true, anchorEdges: true }
+export const DEFAULT_LEGACY: LegacyToggles = {
+  plainNodes: true,
+  namedNodes: true,
+  namedFloors: {},
+  nodeEdges: true,
+  anchorEdges: true,
+  unconnectedEntrances: true,
+}
 
 /** 기존 자료(pathNodes.ts) 겹쳐 보기 토글. 보기 전용이라 조사 모듈과 잇거나 붙지 않는다. */
 export default function LegacyPanel({
@@ -53,6 +61,20 @@ export default function LegacyPanel({
         onToggle={() => set({ anchorEdges: !toggles.anchorEdges })}
         color="#64748B"
       />
+      <Check
+        label={`연결 안 된 출입구 (${overlay.unconnectedEntrances.length})`}
+        checked={toggles.unconnectedEntrances}
+        onToggle={() => set({ unconnectedEntrances: !toggles.unconnectedEntrances })}
+        color="#7C3AED"
+      />
+      {toggles.unconnectedEntrances ? (
+        <View style={{ paddingLeft: 24, gap: 2 }}>
+          <Text style={ui.sectionHelp}>`/dev/path`에서 보라색으로 표시되는 출입구예요. 아직 PATH_EDGES에 연결되지 않았어요.</Text>
+          {overlay.unconnectedEntrances.map((entrance) => (
+            <Text key={entrance.id} style={ui.hint}>{entrance.id}</Text>
+          ))}
+        </View>
+      ) : null}
       <Section title="출입구 앵커 간선 목록" help="'건물명#라벨'은 지도 데이터의 건물·출입구로 풀어요(routing.ts 와 같은 방법). 못 푼 것은 지도에 그리지 않아요.">
         {overlay.anchorEdges.map((e) => (
           <Text key={`${e.a}|${e.b}`} style={e.line ? ui.hint : ui.warn}>

@@ -1,14 +1,75 @@
+import type { ComponentProps } from 'react'
+import type { Ionicons } from '@expo/vector-icons'
 import { PARTNER_NOTICE_TEXT } from '../components/map/PartnerNoticeModal'
+
+export interface AppNoticeSlide {
+  /** 그림 칸에 크게 그리는 아이콘(그림 파일이 생기면 바꾼다). */
+  icon: ComponentProps<typeof Ionicons>['name']
+  /** 그림 칸 위 작은 꼬리표(예: '11월 업데이트'). */
+  badge?: string
+  title: string
+  text: string
+}
+
+export interface AppNoticePopup {
+  /** 이날(KST, 'YYYY-MM-DD')까지 띄운다. */
+  until: string
+  /** 옆으로 넘기는 카드. 마지막 카드 아래에 linkLabel 이 붙는다. */
+  slides: AppNoticeSlide[]
+  /** 누르면 이 공지 본문(설정 > 공지사항과 같은 화면)을 연다. */
+  linkLabel: string
+}
 
 export interface AppNotice {
   id: string
   title: string
   date: string
   body: string
+  /** 앱을 켤 때 한 번 띄우는 요약(LaunchNoticeModal). 없으면 공지사항 목록에만 있다. */
+  popup?: AppNoticePopup
 }
 
 /** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 아직 꺼져 있다 — ROUTE_FINDING_ENABLED). */
 export const APP_NOTICES: AppNotice[] = [
+  {
+    id: '6',
+    title: '개인정보 처리방침 변경 안내(11월 9일 적용)',
+    date: '2026.11.02',
+    popup: {
+      until: '2026-11-30',
+      slides: [
+        {
+          icon: 'chatbubble-ellipses',
+          badge: '11월 업데이트',
+          title: "AI 챗봇 '물어보기'(BETA)",
+          text: '학사·장학·시설 같은 학교 생활 질문에 학교 안내를 찾아 답해 드려요. 11월 중 업데이트로 들어와요.',
+        },
+        {
+          icon: 'location',
+          badge: '11월 업데이트',
+          title: '위치 기반 제휴 알림',
+          text: '직접 켜면 제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드려요. 위치는 휴대폰 안에서만 써요. 11월 중 업데이트로 추가돼요.',
+        },
+        {
+          icon: 'shield-checkmark',
+          badge: '11월 9일 적용',
+          title: '개인정보 처리방침 변경',
+          text: '새 기능들로 개인정보 처리방침이 2026년 11월 9일부터 바뀌어요. 무엇이 바뀌는지 미리 확인해 주세요.',
+        },
+      ],
+      linkLabel: '바뀌는 개인정보 처리방침 보러가기',
+    },
+    body:
+      '11월 중 업데이트로 들어올 새 기능 "근처 제휴 알림"(선택)과 "물어보기"(AI 안내, BETA), 앞으로 들어올 길찾기를 위해 개인정보 처리방침을 바꿉니다. 바뀐 처리방침은 2026년 11월 9일부터 적용돼요.\n\n' +
+      '· 위치 접근권한(앱 사용 중, 선택): "내 주변 제휴 보기"와 길찾기에서 내 위치를 쓸 때만 요청해요. 길찾기는 그 화면을 보는 동안에만 위치를 읽어요.\n' +
+      '· 위치 접근권한(항상, 선택): 근처 제휴 알림을 직접 켠 경우에만 요청해요.\n' +
+      '· 위치는 휴대폰 안에서만 쓰고 운영팀 서버로 보내거나 저장하지 않아요.\n' +
+      '· 서버에는 근처 제휴 알림 수신 동의 여부와 시각(밤 9시~아침 8시 수신 동의 포함)만 남고, 알림을 끄면 바로 지워요.\n' +
+      '· 휴대폰에는 위치(좌표)를 남기지 않아요. 근처 제휴 가게 목록, 지금 머무는 가게와 들어간·나간 시각(나오고 몇 분 뒤 지움), 알림을 보낸 가게와 시각(2일 뒤 지움)만 휴대폰에 남아요.\n' +
+      '· 물어보기(로그인 회원, 처음 쓸 때 동의): 답을 쓰기 위해 질문과 직전 대화가 Anthropic(미국)의 AI 서버로 전송돼요. 학번·전화번호·이메일 형태는 가린 뒤 보내요.\n' +
+      "· 서비스 개선을 위해 질문·답·'해결됐나요' 응답을 1년 보관해요. 계정과 연결하지 않고, 학번·전화번호·이메일 형태는 가려서 저장해요.\n\n" +
+      '바뀐 처리방침 전문은 지금 설정 > 약관 및 정책 > 개인정보 처리방침에서 미리 볼 수 있어요(11월 8일까지 적용되는 이전 처리방침은 그 맨 아래에 있어요). 궁금한 점은 hongikonsupport@gmail.com 으로 알려 주세요.',
+  },
   {
     id: '5',
     title: '홍익온 v1.0.0 출시',
