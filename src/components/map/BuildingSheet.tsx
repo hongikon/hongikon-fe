@@ -32,6 +32,8 @@ interface BuildingSheetProps {
   routeFindingEnabled: boolean;
   onSetFrom: () => void;
   onSetTo: () => void;
+  /** 길찾기 중 다음에 고를 쪽. 그 버튼을 진하게 강조한다(출발을 정했으면 '도착'). */
+  routeNext?: "from" | "to" | null;
 }
 
 /** 서버가 건물 종류를 아직 모를 때 넣어 둔 값. 사용자에게는 보이지 않게 한다. */
@@ -74,6 +76,7 @@ export default function BuildingSheet({
   routeFindingEnabled,
   onSetFrom,
   onSetTo,
+  routeNext = null,
 }: BuildingSheetProps) {
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
@@ -110,6 +113,30 @@ export default function BuildingSheet({
           style={sheetCloseStyle}
         />
       </View>
+
+      {/* 출발·도착은 제목 바로 아래, 스크롤해도 늘 보이는 자리(11-03). */}
+      {routeFindingEnabled && (
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.actionFrom, routeNext === "from" && styles.actionFromStrong]}
+            onPress={onSetFrom}
+            accessibilityRole="button"
+            accessibilityLabel={`${building.name}에서 출발`}
+          >
+            <Ionicons name="location" size={16} color={routeNext === "from" ? COLORS.white : COLORS.routeFrom} />
+            <Text style={[styles.actionFromText, routeNext === "from" && styles.actionTextStrong]}>출발</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionTo, routeNext === "to" && styles.actionToStrong]}
+            onPress={onSetTo}
+            accessibilityRole="button"
+            accessibilityLabel={`${building.name}로 도착`}
+          >
+            <Ionicons name="flag" size={16} color={routeNext === "to" ? COLORS.white : COLORS.danger} />
+            <Text style={[styles.actionToText, routeNext === "to" && styles.actionTextStrong]}>도착</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       </View>
 
       <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} style={{ height: bodyHeight }} bounces={false}>
@@ -184,18 +211,6 @@ export default function BuildingSheet({
         </TouchableOpacity>
       )}
 
-      {routeFindingEnabled && (
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionFrom} onPress={onSetFrom} accessibilityRole="button">
-            <Ionicons name="location" size={14} color={COLORS.routeFrom} />
-            <Text style={styles.actionFromText}>출발</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionTo} onPress={onSetTo} accessibilityRole="button">
-            <Ionicons name="flag" size={14} color={COLORS.danger} />
-            <Text style={styles.actionToText}>도착</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       </SheetScrollBody>
     </Animated.View>
   );
@@ -314,7 +329,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     textDecorationLine: "underline",
   },
-  actions: { flexDirection: "row", gap: 10 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 2, marginBottom: 12 },
+  actionFromStrong: { backgroundColor: COLORS.routeFrom },
+  actionToStrong: { backgroundColor: COLORS.danger },
+  actionTextStrong: { color: COLORS.white },
   actionFrom: {
     flex: 1,
     height: 44,

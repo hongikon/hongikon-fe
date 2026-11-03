@@ -1261,7 +1261,7 @@
               map: map,
               path: path,
               strokeWeight: i === selected ? 5 : 3,
-              strokeColor: i === selected ? '#1E40AF' : '#9CA3AF',
+              strokeColor: i === selected ? '#05014A' : '#9A9CC4',
               strokeOpacity: i === selected ? 0.9 : 0.55,
               strokeStyle: i === selected ? 'solid' : 'shortdash',
               zIndex: i === selected ? 200 : 100,
@@ -1275,7 +1275,7 @@
             fromOverlay = new naver.maps.Marker({
               position: new naver.maps.LatLng(from.lat, from.lng),
               icon: {
-                content: makeRouteMarkerHTML('#10B981', '출발'),
+                content: makeRouteMarkerHTML('#05014A', '출발'),
                 size: new naver.maps.Size(32, 32),
                 anchor: new naver.maps.Point(16, 16),
               },
@@ -1284,7 +1284,7 @@
             toOverlay = new naver.maps.Marker({
               position: new naver.maps.LatLng(to.lat, to.lng),
               icon: {
-                content: makeRouteMarkerHTML('#EF4444', '도착'),
+                content: makeRouteMarkerHTML('#05014A', '도착'),
                 size: new naver.maps.Size(32, 32),
                 anchor: new naver.maps.Point(16, 16),
               },
@@ -1300,7 +1300,7 @@
             var isSelected = i === msg.index;
             poly.setOptions({
               strokeWeight: isSelected ? 5 : 3,
-              strokeColor: isSelected ? '#1E40AF' : '#9CA3AF',
+              strokeColor: isSelected ? '#05014A' : '#9A9CC4',
               strokeOpacity: isSelected ? 0.9 : 0.55,
               strokeStyle: isSelected ? 'solid' : 'shortdash',
               zIndex: isSelected ? 200 : 100,
