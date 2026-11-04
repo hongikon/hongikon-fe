@@ -9,8 +9,8 @@ import {
   onDisable,
   onEnter,
   onExit,
-  onPosition,
   onPrefs,
+  preciseUpdate,
   onRegister,
   settle,
   type NearbyAction,
@@ -24,13 +24,9 @@ import {
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
-  alertableTargetIds,
-  coarselyOutside,
   insideAtRegistration,
-  nextPreciseMode,
   pickNearest,
   pickTargets,
-  preciseInsideIds,
   quietAtNight,
   reselectRadius,
   type PreciseMode,
@@ -374,45 +370,6 @@ function nearAnyTarget(state: NearbyState, at: { lat: number; lng: number }, mar
   return state.targets.some((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng) <= limit)
 }
 
-/**
- * GPS 위치 하나로 알림 반경 안팎을 다시 맞춘다: 안으로 들어온 업체는 진입, 멀어진 업체는 이탈.
- * 이름을 내세울 업체 고르기(`chooseLead`)에도 이 위치를 쓴다. 위치는 저장하지 않는다.
- */
-function preciseStep(
-  input: NearbyState,
-  now: number,
-  at: { lat: number; lng: number },
-  accuracy: number | null,
-  /** false 면 나간 것만 판정한다(Wi-Fi·기지국 위치는 오차가 커 '가게 안'을 정하지 않는다). */
-  allowEnter = true,
-): Step {
-  const radius = partnerRadiusMeters()
-  let step: Step = { state: input, actions: [] }
-  const actions: NearbyAction[] = []
-  const wasInsideIds = new Set(
-    Object.entries(input.stays)
-      .filter(([, stay]) => stay.exitedAt === null)
-      .map(([id]) => id),
-  )
-  const insideIds = preciseInsideIds(input.targets, at, accuracy, wasInsideIds, radius)
-  for (const target of input.targets) {
-    const wasInside = wasInsideIds.has(target.id)
-    const inside = insideIds.has(target.id)
-    if (inside === wasInside) continue
-    if (inside && !allowEnter) continue
-    // Wi-Fi·기지국 위치로는 오차를 빼고도 밖일 때만 나간 것으로 본다(`coarselyOutside`, 11-04 반복 알림 끊김).
-    if (!inside && !allowEnter && !coarselyOutside(haversineMeters(at.lat, at.lng, target.lat, target.lng), accuracy, radius)) continue
-    step = inside ? onEnter(step.state, target.id, now, at) : onExit(step.state, target.id, now, at)
-    actions.push(...step.actions)
-  }
-  // 안팎이 그대로여도 대표 가게는 지금 가장 가까운 곳으로 다시 맞춘다(오차 큰 위치로는 바꾸지 않는다).
-  if (allowEnter) {
-    step = onPosition(step.state, now, at)
-    actions.push(...step.actions)
-  }
-  return { state: step.state, actions }
-}
-
 /** GPS 위치 갱신 한 번(백그라운드 작업). 근처 업체가 없거나 오래 켜졌으면 끈다. */
 async function handlePreciseLocations(locations: { coords: { latitude: number; longitude: number; accuracy: number | null } }[]): Promise<void> {
   // 앱이 꺼진 채 깨어난 경우 개발 도구 값(테스트 위치)을 아직 안 읽었다 — 먼저 읽어야 테스트 위치 모드에서 실제 GPS 를 쓰지 않는다.
@@ -430,28 +387,15 @@ async function handlePreciseLocations(locations: { coords: { latitude: number; l
   const mode = (await preciseMode()) ?? 'fine'
   let nextMode: PreciseMode = mode
   await mutate((state, now) => {
-    if (!state.enabled) {
-      stop = true
-      return { state, actions: [] }
-    }
-    if (!nearAnyTarget(state, at, PRECISE_STOP_MARGIN_METERS)) stop = true
-    // GPS 는 아직 알릴 수 있는 가게(오늘 안 알린 곳·예약 중인 곳) 50m 안에서만 켠다. 알림을 받은 카페에 오래 앉아 있으면
-    // Wi-Fi·기지국으로 내린다(나간 것은 그걸로도 판정한다).
-    const alertable = alertableTargetIds(
-      state.targets.map((t) => t.id),
-      state.sent,
-      new Map(Object.entries(state.stays)),
-      state.pending?.partnerId ?? null,
-      now,
-      state.perVisit,
-    )
-    const distances = state.targets
-      .filter((t) => alertable.has(t.id))
-      .map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
-    const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
-    nextMode = nextPreciseMode(mode, nearest, accuracy)
+    const outcome = preciseUpdate(state, now, { at, accuracy, mode }, {
+      alert: partnerRadiusMeters(),
+      wake: wakeRadiusMeters(),
+      stopMargin: PRECISE_STOP_MARGIN_METERS,
+    })
+    if (outcome.stop) stop = true
+    nextMode = outcome.nextMode
     preciseNote = `켜짐(${mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국'}) · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m`
-    return preciseStep(state, now, at, accuracy, mode === 'fine')
+    return outcome
   })
   if (stop) await stopPrecise()
   else if (nextMode !== mode) await startPrecise(nextMode)
