@@ -215,6 +215,9 @@ export interface PreciseFix {
   mode: PreciseMode
 }
 
+/** 위치 갱신을 끌지 정할 때 빼 주는 오차의 한계(m). 이보다 더 멀리 찍히면 정말 멀어진 것으로 본다. */
+export const STOP_ACCURACY_CAP_METERS = 300
+
 export interface PreciseRadii {
   /** 알림 반경(기본 20m, 테스트 앱에서 바꿀 수 있음). */
   alert: number
@@ -271,7 +274,10 @@ export function preciseStep(input: NearbyState, now: number, at: Position, accur
 export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, radii: PreciseRadii): PreciseOutcome {
   if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true, nearestMeters: Infinity }
   const { at, accuracy } = fix
-  const stop = !input.targets.some((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng) <= radii.wake + radii.stopMargin)
+  // 끌지도 오차를 빼고 정한다 — Wi-Fi 를 끄거나 핫스팟을 켜면 기지국 위치만 와 수백 m 틀리는데, 그 위치 하나로 '근처에
+  // 가게가 없다'며 위치 갱신을 끄면 가게 안에 있어도 알림이 끊겼다(11-05). 오차는 STOP_ACCURACY_CAP_METERS 까지만 뺀다.
+  const slack = Math.min(Math.max(accuracy ?? 0, 0), STOP_ACCURACY_CAP_METERS)
+  const stop = !input.targets.some((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng) - slack <= radii.wake + radii.stopMargin)
   // GPS 는 아직 알릴 수 있는 가게(오늘 안 알린 곳·예약 중인 곳) 가까이에서만 켠다. 알림을 받은 카페에 오래 앉아 있으면
   // Wi-Fi·기지국으로 내린다(나간 것은 그걸로도 판정한다).
   const alertable = alertableTargetIds(
