@@ -19,6 +19,8 @@ import { useAuth } from '../contexts/AuthContext'
 import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
 import BoardAlertsModal from '../components/settings/BoardAlertsModal'
 import ToggleSwitch from '../components/settings/ToggleSwitch'
+import NearbyAlertSettings from '../components/settings/NearbyAlertSettings'
+import { nearbyAlertsAvailable } from '../lib/nearbyPartners/background'
 import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
@@ -322,11 +324,19 @@ export default function SettingsScreen() {
   const myReportPending = myReportCountResource.data?.pending ?? 0
   /** 반려 알림으로 들어왔을 때 내역에서 강조할 제보 */
   const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
+  /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
+  const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
 
   // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
   const handleSettingsIntent = useCallback(() => {
     const intent = consumeSettingsIntent()
-    if (intent?.type !== 'openMyReports' || isGuest) return
+    if (!intent || isGuest) return
+    if (intent.type === 'openNearbyAlerts') {
+      // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
+      setExpanded((prev) => new Set(prev).add('alerts'))
+      setNearbyOpenSignal((n) => n + 1)
+      return
+    }
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
   }, [isGuest])
@@ -613,6 +623,14 @@ export default function SettingsScreen() {
                     }
                   />
                 </View>
+
+                {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
+                {nearbyAlertsAvailable() && !isGuest && (
+                  <View style={styles.subBlock}>
+                    <Text style={styles.subHeader}>근처 제휴</Text>
+                    <NearbyAlertSettings openSignal={nearbyOpenSignal} />
+                  </View>
+                )}
 
                 {/* 제보 알림. 제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
                 <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>

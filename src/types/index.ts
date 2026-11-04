@@ -252,6 +252,11 @@ export interface Partner {
    * 예: 에버랜드는 학생증이 아니라 "게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매". " / " 로 단계를 나눈다.
    */
   usageNote?: string
+  /**
+   * 관리자가 "근처 알림 대상"으로 켠 업체만 true(아니면 서버가 생략). 근처 제휴 알림(`lib/nearbyPartners/rules.ts`)이
+   * 이 업체를 알릴 수 있는지에 쓴다. 이 필드를 모르는 서버(배포 전)에서는 모든 업체가 대상 밖이다.
+   */
+  nearbyAlert?: boolean
 }
 
 export interface TreeNode {
@@ -497,10 +502,19 @@ export interface ReportFlagResult {
  * - ADMIN_*: `AdminAlertDispatcher` — 관리자에게만. 새 제보 승인 대기·새 문의·신고 누적 자동 숨김.
  *   제목은 "[관리] …", Android 채널 `admin`. 몰리면 서버가 2분에 한 번 묶어 `count` 에 건수를 담는다(id 는 마지막 건).
  *
+ * - NEARBY_PARTNER: 서버 푸시가 아니라 기기가 예약한 로컬 알림(근처 제휴 알림, `lib/nearbyPartners/background.ts`) — `{type, partnerId}`.
+ *
  * 제목·본문은 서버가 채워 보내고, `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
  * (`src/utils/notificationRouting.ts`, `src/lib/pushNotifications.ts`).
  */
 export type PushNotificationData =
+  | {
+      type: 'NEARBY_PARTNER'
+      /** 지도 데이터의 업체 id(code). 여러 곳이면 이름을 앞세운 곳(가장 오래 머문·가까운 곳). */
+      partnerId: string
+      /** 알림을 만든 순간 함께 잡힌 업체들(앞세운 곳부터, 그다음 가까운 순). 2곳 이상이면 탭하면 목록을 띄운다. 좌표는 없다. */
+      partnerIds?: string[]
+    }
   | {
       type: 'NEWS'
       /**

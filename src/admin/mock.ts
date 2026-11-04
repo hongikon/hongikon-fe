@@ -487,6 +487,8 @@ function partnerFromBody(body: Record<string, unknown>, id: string): AdminPartne
     link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
     endsOn: partnerEndsOn(body.endsOn),
     usageNote: optionalText(body.usageNote, '이용 방법', 255),
+    // 서버는 PUT 에서 빠지면 기존 값을 두지만, 화면은 늘 보내므로 목업은 받은 값만 본다.
+    nearbyAlert: body.nearbyAlert === true ? true : undefined,
   }
 }
 

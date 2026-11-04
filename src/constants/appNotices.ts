@@ -29,7 +29,7 @@ export interface AppNotice {
   popup?: AppNoticePopup
 }
 
-/** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 아직 꺼져 있다 — ROUTE_FINDING_ENABLED). */
+/** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 11-03부터 켜짐 — ROUTE_FINDING_ENABLED, 1.1.0 빌드부터 '내 위치' 출발). */
 export const APP_NOTICES: AppNotice[] = [
   {
     id: '6',
@@ -47,8 +47,8 @@ export const APP_NOTICES: AppNotice[] = [
         {
           icon: 'location',
           badge: '11월 업데이트',
-          title: '위치 기반 제휴 알림',
-          text: '직접 켜면 제휴 가게에 머물 때 받을 수 있는 혜택을 알려 드려요. 위치는 휴대폰 안에서만 써요. 11월 중 업데이트로 추가돼요.',
+          title: '위치 기반 제휴 알림과 길찾기',
+          text: '제휴 알림을 직접 켜면 제휴 가게에 머물 때 혜택을 알려 드려요(11월 중 업데이트). 앞으로 길찾기에서도 지도에 내 위치를 보여 드려요. 위치는 휴대폰 안에서만 쓰고 서버로 보내지 않아요.',
         },
         {
           icon: 'shield-checkmark',

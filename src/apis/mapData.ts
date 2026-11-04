@@ -17,6 +17,11 @@ export interface MapData {
    * 전시('행사·전시' 시설). 2026-10 에 늘어난 필드라 예전 서버·기기 저장본에는 없다 — 그럴 땐 빈 배열.
    */
   exhibitions: Exhibition[]
+  /**
+   * 근처 제휴 알림 전체 긴급 끄기(서버 설정 `hongikon.nearby-alerts.enabled`). false 면 앱이 등록한 지오펜스를 모두 내린다.
+   * 이 필드가 없는 서버(배포 전)·기기 저장본은 false 로 본다.
+   */
+  nearbyAlertsEnabled: boolean
 }
 
 export type FetchMapDataResult =
@@ -84,6 +89,7 @@ export function normalizeMapData(raw: unknown): MapData {
     facilities,
     partners,
     exhibitions,
+    nearbyAlertsEnabled: body.nearbyAlertsEnabled === true,
   }
 }
 
