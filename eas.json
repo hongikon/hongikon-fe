@@ -58,8 +58,7 @@
       "env": {
         "APP_VARIANT": "production",
         "NEARBY_ALERTS_BUILD": "1",
-        "NEARBY_FIELD_TEST": "1",
-        "APP_VERSION_OVERRIDE": "1.0.1"
+        "NEARBY_FIELD_TEST": "1"
       }
     },
     "production": {

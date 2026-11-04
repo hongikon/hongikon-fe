@@ -23,7 +23,9 @@ import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ALLOWED = ['production', 'preview']
+const ALLOWED = ['production', 'preview', 'nearby-testflight']
+/** 프로필마다 있어야 하는 APP_VARIANT. 현장 테스트 TestFlight(nearby-testflight)는 운영 서버를 보는 운영 변형에 테스트 도구만 켠다. */
+const EXPECTED_VARIANT = { production: 'production', preview: 'preview', 'nearby-testflight': 'production' }
 // `pnpm run update:preview -- --message ...` 처럼 넘어오는 맨 앞 '--' 는 버린다.
 const [profileName, ...rest] = process.argv.slice(2).filter((a, i) => !(i === 1 && a === '--'))
 
@@ -48,8 +50,8 @@ const profile = resolveProfile(profileName)
 const channel = profile.channel
 const environment = profile.environment ?? profileName
 if (!channel) throw new Error(`build.${profileName}.channel 이 비어 있다`)
-if (profile.env.APP_VARIANT !== profileName) {
-  throw new Error(`build.${profileName}.env.APP_VARIANT 가 '${profileName}' 이 아니다`)
+if (profile.env.APP_VARIANT !== EXPECTED_VARIANT[profileName]) {
+  throw new Error(`build.${profileName}.env.APP_VARIANT 가 '${EXPECTED_VARIANT[profileName]}' 이 아니다`)
 }
 
 if (!rest.some((a) => a === '-m' || a === '--message' || a.startsWith('--message=') || a === '--auto')) {

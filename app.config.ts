@@ -138,8 +138,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return withoutBackgroundFetch({
     ...config,
-    // 현장 테스트 TestFlight 빌드만 버전을 따로 준다(eas.json nearby-testflight). 이미 심사를 통과한 1.0.0 에는
-    // App Store Connect 가 새 빌드를 받지 않는다. 운영 빌드는 app.json 의 version 그대로.
+    // 버전을 따로 줄 때만 쓴다(예: 1.0.0 사용자용 OTA `update:production:1.0.0`). 현장 테스트 TestFlight 빌드도 11-04 부터
+    // 운영과 같은 app.json version(1.1.0)을 쓴다 — 채널(nearby-testflight)이 달라 운영 OTA 와 섞이지 않는다.
     version: process.env.APP_VERSION_OVERRIDE || config.version,
     plugins,
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,

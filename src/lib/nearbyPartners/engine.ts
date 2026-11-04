@@ -3,11 +3,16 @@ import { haversineMeters } from '../../utils/geo'
 import {
   REENTRY_GRACE_MS,
   alertGroup,
+  alertableTargetIds,
+  coarselyOutside,
   decideOnEnter,
   dwellFor,
+  nextPreciseMode,
+  preciseInsideIds,
   quietAtNight,
   stayStartedAt,
   type DwellMinutes,
+  type PreciseMode,
   type SentAlert,
   type StayRecord,
 } from './rules'
@@ -199,6 +204,86 @@ export function onExit(input: NearbyState, partnerId: string, now: number, at?: 
  */
 export function onPosition(input: NearbyState, now: number, at: Position): Step {
   return plan(settle(input, now), now, at)
+}
+
+/** 깨우는 원 안에서 받은 위치 하나(백그라운드 위치 갱신). 위치는 저장하지 않는다. */
+export interface PreciseFix {
+  at: Position
+  /** 운영체제가 알려 준 오차(m). 모르면 null. */
+  accuracy: number | null
+  /** 이 위치를 받은 단계: Wi-Fi·기지국(coarse) 또는 GPS(fine). */
+  mode: PreciseMode
+}
+
+export interface PreciseRadii {
+  /** 알림 반경(기본 20m, 테스트 앱에서 바꿀 수 있음). */
+  alert: number
+  /** 운영체제 지오펜스(깨우는 원) 반경. */
+  wake: number
+  /** 모든 대상에서 깨우는 원 + 이만큼 멀어지면 위치 갱신을 끈다. */
+  stopMargin: number
+}
+
+export interface PreciseOutcome extends Step {
+  /** 다음 위치 갱신 단계. */
+  nextMode: PreciseMode
+  /** 위치 갱신을 끌지(근처 대상이 없거나 알림이 꺼짐). */
+  stop: boolean
+}
+
+/**
+ * 위치 하나로 알림 반경 안팎을 다시 맞춘다: 안으로 들어온 업체는 진입, 멀어진 업체는 이탈.
+ * Wi-Fi·기지국 위치(`allowEnter` false)로는 진입을 정하지 않고, 오차를 빼고도 밖일 때만 이탈로 본다(`coarselyOutside`).
+ * 이름을 내세울 업체 고르기(`chooseLead`)에도 이 위치를 쓴다.
+ */
+export function preciseStep(input: NearbyState, now: number, at: Position, accuracy: number | null, allowEnter: boolean, radius: number): Step {
+  let step: Step = { state: input, actions: [] }
+  const actions: NearbyAction[] = []
+  const wasInsideIds = new Set(
+    Object.entries(input.stays)
+      .filter(([, stay]) => stay.exitedAt === null)
+      .map(([id]) => id),
+  )
+  const insideIds = preciseInsideIds(input.targets, at, accuracy, wasInsideIds, radius)
+  for (const target of input.targets) {
+    const wasInside = wasInsideIds.has(target.id)
+    const inside = insideIds.has(target.id)
+    if (inside === wasInside) continue
+    if (inside && !allowEnter) continue
+    if (!inside && !allowEnter && !coarselyOutside(haversineMeters(at.lat, at.lng, target.lat, target.lng), accuracy, radius)) continue
+    step = inside ? onEnter(step.state, target.id, now, at) : onExit(step.state, target.id, now, at)
+    actions.push(...step.actions)
+  }
+  // 안팎이 그대로여도 대표 가게는 지금 가장 가까운 곳으로 다시 맞춘다(오차 큰 위치로는 바꾸지 않는다).
+  if (allowEnter) {
+    step = onPosition(step.state, now, at)
+    actions.push(...step.actions)
+  }
+  return { state: step.state, actions }
+}
+
+/**
+ * 백그라운드 위치 갱신 한 번에 대한 판단 전부: 안팎 맞추기(`preciseStep`), 다음 단계(`nextPreciseMode` — 아직 알릴 수 있는
+ * 가게 기준), 끌지. `background.ts` 는 이 결과대로 저장·예약하고 위치 갱신을 켜고 끈다.
+ */
+export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, radii: PreciseRadii): PreciseOutcome {
+  if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true }
+  const { at, accuracy } = fix
+  const stop = !input.targets.some((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng) <= radii.wake + radii.stopMargin)
+  // GPS 는 아직 알릴 수 있는 가게(오늘 안 알린 곳·예약 중인 곳) 가까이에서만 켠다. 알림을 받은 카페에 오래 앉아 있으면
+  // Wi-Fi·기지국으로 내린다(나간 것은 그걸로도 판정한다).
+  const alertable = alertableTargetIds(
+    input.targets.map((t) => t.id),
+    input.sent,
+    new Map(Object.entries(input.stays)),
+    input.pending?.partnerId ?? null,
+    now,
+    input.perVisit,
+  )
+  const distances = input.targets.filter((t) => alertable.has(t.id)).map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
+  const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
+  const step = preciseStep(input, now, at, accuracy, fix.mode === 'fine', radii.alert)
+  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop }
 }
 
 /**

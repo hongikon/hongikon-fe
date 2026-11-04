@@ -94,6 +94,34 @@ export function isQuietHour(ms: number): boolean {
 }
 
 /**
+ * 깨우는 원 안의 위치 갱신 단계(11-03 배터리): 'coarse' = Wi-Fi·기지국(GPS 칩 안 씀), 'fine' = GPS.
+ * 어느 가게 50m 안이면 GPS 로 올리고 70m 밖이면 내린다(경계에서 오락가락하지 않게 20m 틈).
+ */
+export type PreciseMode = 'coarse' | 'fine'
+export const FINE_ENTER_METERS = 50
+export const FINE_EXIT_METERS = 70
+
+/**
+ * 다음 위치 갱신 단계. 거리에서 위치 오차를 빼고(가장 가까울 수 있는 거리) 비교한다 — Wi-Fi·기지국 위치는 실내에서 수십~수백 m
+ * 틀려, 가게 안(10m)에 있어도 90m 밖으로 찍히면 GPS 로 올라가지 않아 진입을 못 재고 알림이 오지 않았다(11-04 현장).
+ * 오차는 깨우는 원 크기까지만 빼 준다(이 판단은 깨우는 원 안에서만 쓰인다).
+ */
+export function nextPreciseMode(mode: PreciseMode, nearestMeters: number, accuracy: number | null | undefined): PreciseMode {
+  const closest = nearestMeters - Math.min(Math.max(accuracy ?? 0, 0), PARTNER_REGION_RADIUS_METERS)
+  if (closest <= FINE_ENTER_METERS) return 'fine'
+  if (closest > FINE_EXIT_METERS) return 'coarse'
+  return mode
+}
+
+/**
+ * Wi-Fi·기지국 위치로 '확실히 나갔는지'. 오차를 빼고도 반경 + 나감 여유 밖일 때만 참 — 알림을 받은 가게에 앉아 있는데
+ * 오차 큰 위치 하나로 나간 것으로 처리돼, 테스트 앱의 반복 알림이 끊기고 다시 들어온 것도 잡지 못했다(11-04 현장).
+ */
+export function coarselyOutside(meters: number, accuracy: number | null | undefined, radius: number = ALERT_RADIUS_METERS): boolean {
+  return meters - Math.max(accuracy ?? 0, 0) > radius + EXIT_MARGIN_METERS
+}
+
+/**
  * GPS 로 잰 거리로 알림 반경 안인지. 오차(accuracy)만큼은 반경에 더해 주되 `ACCURACY_ALLOWANCE_METERS` 까지만,
  * 이미 안으로 본 곳(`wasInside`)은 `EXIT_MARGIN_METERS` 더 멀어져야 나간 것으로 본다.
  */
