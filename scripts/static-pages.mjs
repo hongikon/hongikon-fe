@@ -299,6 +299,8 @@ export function appDownloadPage({ appStoreUrl, playStoreUrl, unofficialNotice })
     <span class="notice">${notice}</span>
     <a href="/">웹에서 바로 쓰기</a>
   </footer>
+  <!-- 방문 수(숫자만, 누가 왔는지는 남기지 않음 — hongikon-be PromoVisitController). 자바스크립트 없이 이미지 요청으로 센다. -->
+  <img src="/api/promo/app/seen" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" />
 </main>
 <script>
   // 기기에 맞는 스토어를 위로 크게. 그 밖(PC·태블릿 등)은 두 버튼을 나란히 + QR.
