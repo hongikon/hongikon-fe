@@ -29,7 +29,7 @@ export interface AppNotice {
   popup?: AppNoticePopup
 }
 
-/** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 아직 꺼져 있다 — ROUTE_FINDING_ENABLED). */
+/** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 11-03부터 켜짐 — ROUTE_FINDING_ENABLED, 1.1.0 빌드부터 '내 위치' 출발). */
 export const APP_NOTICES: AppNotice[] = [
   {
     id: '6',
