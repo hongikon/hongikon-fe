@@ -146,7 +146,8 @@ test('현장 테스트: 같은 가게에 16분 머물면 5분마다(5·10·15분
 })
 
 test('600m 떨어진 가게만 남으면 위치 갱신을 끈다(평소에는 GPS 를 쓰지 않음)', () => {
-  const run = walk([{ toX: 400, ms: 6 * MIN }], { startX: 0 })
+  // 위치가 정확할 때(오차 10m) 가게들에서 멀어지면 끈다 — 오차가 크면 그만큼 더 멀어져야 끈다(아래 핫스팟 시나리오).
+  const run = walk([{ toX: 400, ms: 6 * MIN, accuracy: 10 }], { startX: 0 })
   assert.notEqual(run.stoppedAt, null)
 })
 
@@ -235,4 +236,15 @@ test('가게 안에 가만히 있어 Wi-Fi·기지국 위치가 한 번(밖으�
     state = preciseUpdate(state, now, { at: at(40, 8), accuracy: 8, mode: 'fine' }, RADII).state
   }
   assert.deepEqual(settle(state, now + 1).sent.map((s) => s.partnerId), ['B'])
+})
+
+test('Wi-Fi 를 끄거나 핫스팟을 켜 기지국 위치만 수백 m 틀리게 와도 위치 갱신을 끄지 않는다(11-05)', () => {
+  const state = start()
+  // B 안에 있는데 기지국 위치가 길 건너 400m(오차 500m)로 찍힘.
+  const outcome = preciseUpdate(state, T0, { at: at(40, 400), accuracy: 500, mode: 'coarse' }, RADII)
+  assert.equal(outcome.stop, false)
+  // 오차가 작은데 정말 400m 떨어져 있으면 끈다(Z 는 600m 밖).
+  assert.equal(preciseUpdate(state, T0, { at: at(40, 400), accuracy: 20, mode: 'fine' }, RADII).stop, true)
+  // 오차는 300m 까지만 빼 준다 — 1km 떨어진 곳이면 오차가 2km 여도 끈다.
+  assert.equal(preciseUpdate(state, T0, { at: at(40, 1000), accuracy: 2000, mode: 'coarse' }, RADII).stop, true)
 })
