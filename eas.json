@@ -75,6 +75,14 @@
         "APP_VARIANT": "production",
         "NEARBY_ALERTS_BUILD": "1"
       }
+    },
+    "nearby-field-apk": {
+      "extends": "nearby-testflight",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

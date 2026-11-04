@@ -9,6 +9,7 @@ import {
   onDisable,
   onEnter,
   onExit,
+  onPosition,
   onPrefs,
   onRegister,
   settle,
@@ -27,7 +28,7 @@ import {
   insideAtRegistration,
   pickNearest,
   pickTargets,
-  preciselyInside,
+  preciseInsideIds,
   quietAtNight,
   reselectRadius,
   type DwellMinutes,
@@ -388,13 +389,23 @@ function preciseStep(
   const radius = partnerRadiusMeters()
   let step: Step = { state: input, actions: [] }
   const actions: NearbyAction[] = []
+  const wasInsideIds = new Set(
+    Object.entries(input.stays)
+      .filter(([, stay]) => stay.exitedAt === null)
+      .map(([id]) => id),
+  )
+  const insideIds = preciseInsideIds(input.targets, at, accuracy, wasInsideIds, radius)
   for (const target of input.targets) {
-    const stay = step.state.stays[target.id]
-    const wasInside = !!stay && stay.exitedAt === null
-    const inside = preciselyInside(haversineMeters(at.lat, at.lng, target.lat, target.lng), accuracy, wasInside, radius)
+    const wasInside = wasInsideIds.has(target.id)
+    const inside = insideIds.has(target.id)
     if (inside === wasInside) continue
     if (inside && !allowEnter) continue
     step = inside ? onEnter(step.state, target.id, now, at) : onExit(step.state, target.id, now, at)
+    actions.push(...step.actions)
+  }
+  // 안팎이 그대로여도 대표 가게는 지금 가장 가까운 곳으로 다시 맞춘다(오차 큰 위치로는 바꾸지 않는다).
+  if (allowEnter) {
+    step = onPosition(step.state, now, at)
     actions.push(...step.actions)
   }
   return { state: step.state, actions }

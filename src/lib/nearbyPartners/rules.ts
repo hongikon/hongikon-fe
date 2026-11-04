@@ -107,6 +107,26 @@ export function preciselyInside(
   return meters <= radius + allowance + (wasInside ? EXIT_MARGIN_METERS : 0)
 }
 
+/**
+ * GPS 위치 하나로 알림 반경 안에 있는 업체 id. 나감 여유(`EXIT_MARGIN_METERS`)는 지금 가장 가까운 업체에만 준다 —
+ * 지나온 가게(C)가 여유 때문에 "안"으로 남아, 더 가까운 가게(A·B) 앞에 서 있는데도 C 이름으로 알리던 문제(11-03 현장).
+ */
+export function preciseInsideIds<T extends Located>(
+  targets: readonly T[],
+  at: { lat: number; lng: number },
+  accuracy: number | null | undefined,
+  wasInside: ReadonlySet<string>,
+  radius: number = ALERT_RADIUS_METERS,
+): Set<string> {
+  const ranked = byDistance(targets, at.lat, at.lng)
+  const nearestId = ranked[0]?.partner.id
+  return new Set(
+    ranked
+      .filter(({ partner, meters }) => preciselyInside(meters, accuracy, partner.id === nearestId && wasInside.has(partner.id), radius))
+      .map(({ partner }) => partner.id),
+  )
+}
+
 /** 혜택 문구를 정하는 데 필요한 필드만. 기기에 저장해 둔 업체(`engine.SnapshotPartner`)도 쓴다. */
 export type BenefitSource = Pick<Partner, 'benefit' | 'affiliationBenefits'>
 

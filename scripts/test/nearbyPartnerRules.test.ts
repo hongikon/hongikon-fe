@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   PARTNER_REGION_RADIUS_METERS,
+  preciseInsideIds,
   DWELL_MS,
   REENTRY_GRACE_MS,
   alertGroup,
@@ -278,4 +279,21 @@ test('GPS 로 잴 업체: 오늘 알린 곳은 빼고, 예약 중인 곳은 넣�
   const stays = new Map<string, StayRecord>([['a', { enteredAt: kst(13, 50), exitedAt: null }]])
   const visit = alertableTargetIds(ids, [{ partnerId: 'a', at: kst(13, 55) }, { partnerId: 'b', at: kst(9, 0) }], stays, null, now, true)
   assert.deepEqual([...visit].sort(), ['b', 'c'])
+})
+
+test('나감 여유는 가장 가까운 업체에만: 지나온 C 가 더 가까운 A 앞에서 "안"으로 남지 않는다(11-03)', () => {
+  // 위도 0.00001° ≈ 1.11m. 사용자는 원점, A 는 북쪽 40m, C 는 남쪽 50m.
+  const targets = [
+    { id: 'A', lat: 37.55 + 40 / 111_195, lng: 126.92 },
+    { id: 'C', lat: 37.55 - 50 / 111_195, lng: 126.92 },
+  ]
+  const at = { lat: 37.55, lng: 126.92 }
+  // C 에 있다가 걸어왔다(C 는 안으로 기록됨). C 는 가장 가까운 곳이 아니라 여유 없이 판단 → 나감.
+  assert.deepEqual([...preciseInsideIds(targets, at, 10, new Set(['C']))], [])
+  // 가장 가까운 곳이면 여유를 그대로 준다(위치 흔들림으로 들락날락하지 않게).
+  const onlyC = [targets[1]]
+  assert.deepEqual([...preciseInsideIds(onlyC, at, 10, new Set(['C']))], ['C'])
+  // 20m 안이면 안.
+  const near = [{ id: 'A', lat: 37.55 + 15 / 111_195, lng: 126.92 }, targets[1]]
+  assert.deepEqual([...preciseInsideIds(near, at, 0, new Set())], ['A'])
 })

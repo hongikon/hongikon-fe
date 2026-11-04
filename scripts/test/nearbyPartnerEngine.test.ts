@@ -6,6 +6,7 @@ import {
   onDisable,
   onEnter,
   onExit,
+  onPosition,
   onPrefs,
   onRegister,
   settle,
@@ -181,4 +182,26 @@ test('머무는 시간을 바꾸면 그 시간으로, 바꾸면 지금 예약도
   assert.equal(changed.state.pending?.fireAt, kst(12, 3))
   // 범위 밖 값은 1~10분으로
   assert.equal(onEnter({ ...cafe, dwellMinutes: { cafe: 0, other: 30 } }, 'b', kst(12, 0)).state.pending?.fireAt, kst(12, 10))
+})
+
+test('안팎이 그대로여도 위치가 바뀌면 대표 가게를 가장 가까운 곳으로 다시 고른다(11-03)', () => {
+  const spread: NearbyState = {
+    ...base,
+    targets: [
+      { id: 'a', name: '업체a', lat: 37.55, lng: 126.92, benefit: '10%' },
+      { id: 'c', name: '업체c', lat: 37.5502, lng: 126.92, benefit: '10%' },
+    ],
+  }
+  // c 쪽에서 둘 다 들어옴 → c 이름
+  let s = onEnter(spread, 'c', kst(12, 0), { lat: 37.5502, lng: 126.92 }).state
+  s = onEnter(s, 'a', kst(12, 1), { lat: 37.5502, lng: 126.92 }).state
+  assert.equal(s.pending?.partnerId, 'c')
+  // a 앞으로 걸어감(진입·이탈 없음) → a 이름으로 다시 예약, 시각은 그대로
+  const moved = onPosition(s, kst(12, 2), { lat: 37.55, lng: 126.92 })
+  assert.deepEqual(moved.actions, [
+    { kind: 'cancel' },
+    { kind: 'schedule', alert: { partnerId: 'a', fireAt: kst(12, 5), othersCount: 1 } },
+  ])
+  // 같은 자리에서 또 위치가 오면 할 일 없음
+  assert.deepEqual(onPosition(moved.state, kst(12, 3), { lat: 37.55, lng: 126.92 }).actions, [])
 })

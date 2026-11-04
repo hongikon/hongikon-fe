@@ -188,6 +188,14 @@ export function onExit(input: NearbyState, partnerId: string, now: number, at?: 
 }
 
 /**
+ * GPS 위치가 새로 왔다(안팎이 바뀐 업체가 없어도). 예약한 알림의 이름을 지금 가장 가까운 업체로 다시 맞춘다 —
+ * 진입·이탈 때만 고르면 처음 고른 먼 가게가 그대로 남았다(11-03 현장). 대표가 그대로면 할 일이 없다.
+ */
+export function onPosition(input: NearbyState, now: number, at: Position): Step {
+  return plan(settle(input, now), now, at)
+}
+
+/**
  * 지오펜스를 (다시) 등록했다. 더 이상 감시하지 않는 업체는 나간 것으로 보고, 이미 반경 안인 업체(`insideIds`)는
  * 지금 들어온 것으로 본다(운영체제 진입 신호가 늦거나 안 와도 머무름을 셀 수 있게).
  */
