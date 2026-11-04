@@ -25,12 +25,15 @@ import {
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
   alertableTargetIds,
+  coarselyOutside,
   insideAtRegistration,
+  nextPreciseMode,
   pickNearest,
   pickTargets,
   preciseInsideIds,
   quietAtNight,
   reselectRadius,
+  type PreciseMode,
   type DwellMinutes,
 } from './rules'
 import { nearbyAlertContent, nearbyGroupContent } from './copy'
@@ -78,14 +81,11 @@ const PRECISE_MAX_MS = 2 * 60 * 60 * 1000
 /** 모든 대상 업체에서 깨우는 원 + 이만큼 멀어지면 GPS 를 끈다. */
 const PRECISE_STOP_MARGIN_METERS = 50
 /**
- * 단계별 정확도(11-03, 배터리): 깨우는 원 안에서는 먼저 Wi-Fi·기지국 위치(GPS 칩 안 씀)로 보다가, 어느 가게 50m 안에 오면
- * GPS 로 올려 20m 를 잰다. 70m 밖으로 나가면 다시 내린다(경계에서 오락가락하지 않게 20m 틈).
+ * 단계별 정확도(11-03, 배터리): 깨우는 원 안에서는 먼저 Wi-Fi·기지국 위치(GPS 칩 안 씀)로 보다가, 어느 가게 가까이 오면
+ * GPS 로 올려 20m 를 잰다(`nextPreciseMode` — 50m 안이면 올리고 70m 밖이면 내림, 위치 오차를 빼고 잰다).
  * 홍대 앞은 늘 어느 가게 150m 안이라 GPS 를 계속 켜 두면 배터리를 많이 썼다.
  */
-const FINE_ENTER_METERS = 50
-const FINE_EXIT_METERS = 70
 const PRECISE_MODE_KEY = 'hongikon_nearby_precise_mode'
-type PreciseMode = 'coarse' | 'fine'
 /** 사용자 둘레 큰 원. 벗어나면 가까운 업체를 다시 고른다. 업체 id 와 겹치지 않게. */
 const RESELECT_REGION_ID = '__reselect__'
 const STORAGE_KEY = 'hongikon_nearby_alerts_v1'
@@ -400,6 +400,8 @@ function preciseStep(
     const inside = insideIds.has(target.id)
     if (inside === wasInside) continue
     if (inside && !allowEnter) continue
+    // Wi-Fi·기지국 위치로는 오차를 빼고도 밖일 때만 나간 것으로 본다(`coarselyOutside`, 11-04 반복 알림 끊김).
+    if (!inside && !allowEnter && !coarselyOutside(haversineMeters(at.lat, at.lng, target.lat, target.lng), accuracy, radius)) continue
     step = inside ? onEnter(step.state, target.id, now, at) : onExit(step.state, target.id, now, at)
     actions.push(...step.actions)
   }
@@ -447,8 +449,7 @@ async function handlePreciseLocations(locations: { coords: { latitude: number; l
       .filter((t) => alertable.has(t.id))
       .map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
     const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
-    if (nearest <= FINE_ENTER_METERS) nextMode = 'fine'
-    else if (nearest > FINE_EXIT_METERS) nextMode = 'coarse'
+    nextMode = nextPreciseMode(mode, nearest, accuracy)
     preciseNote = `켜짐(${mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국'}) · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m`
     return preciseStep(state, now, at, accuracy, mode === 'fine')
   })

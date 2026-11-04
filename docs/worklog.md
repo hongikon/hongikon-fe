@@ -240,3 +240,7 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 테스트 앱 설정 문구: "횟수 제한 없이(머무는 동안 5분마다)".
 - 확인: `pnpm test` 45/45(새 1·고침 2), `tsc --noEmit` 통과.
 - (11-04, 사용자 요청) 현장 테스트 앱 버전을 운영과 같은 1.1.0 으로: `eas.json` nearby-testflight 의 `APP_VERSION_OVERRIDE=1.0.1` 삭제(Android `nearby-field-apk` 도 이어받음). 1.0.1 은 1.0.0 이 심사를 통과해 App Store Connect 가 1.0.0 빌드를 받지 않던 때의 우회였고, app.json 이 1.1.0 인 지금은 필요 없다. 테스트 앱 OTA 를 손으로 치던 것을 `pnpm update:testflight`(scripts/eas-update.mjs, 채널 nearby-testflight·APP_VARIANT production 확인)로. 확인: `expo config` 로 nearby-testflight·production 모두 version 1.1.0, 다른 것은 nearbyFieldTest 뿐. 1.0.1 테스트 앱(빌드 28 까지)은 runtime 이 달라 앞으로의 테스트 OTA 를 받지 못하므로 1.1.0 테스트 빌드를 새로 올려야 한다. App Store Connect 에서 같은 1.1.0 아래 테스트·운영 빌드가 섞이니 심사에는 production 빌드 번호를 고른다.
+- (11-04, 사용자 제보 "원 안에 있는데 알림이 안 온다") 근처 알림 단계별 정확도(11-03) 버그 두 개 고침:
+  1. Wi-Fi·기지국 위치가 가게 50m 안으로 찍혀야만 GPS 로 올렸다 — 실내에서는 가게 안(10m)이어도 90m 밖(오차 65m)으로 찍혀 GPS 로 올라가지 않았고, Wi-Fi·기지국 위치로는 진입을 판정하지 않아 알림이 오지 않았다. → `rules.nextPreciseMode`: 거리에서 오차(깨우는 원 150m 까지)를 빼고 50m 안이면 GPS, 70m 밖이면 내림.
+  2. 알림을 받은 가게에서 Wi-Fi·기지국으로 내린 뒤 오차 큰 위치 하나로 '나감' 처리 — 테스트 앱 5분 반복 알림이 끊기고 다시 들어온 것도 못 잡았다. → `rules.coarselyOutside`: 오차를 빼고도 반경+25m 밖일 때만 나감.
+  테스트 3개 추가(48/48), tsc 통과. JS 만 바뀌어 테스트 앱 OTA 로 넣을 수 있다.

@@ -13,6 +13,8 @@ import {
   formatDistance,
   insideAtRegistration,
   preciselyInside,
+  nextPreciseMode,
+  coarselyOutside,
   partnersNear,
   pickNearest,
   pickTargets,
@@ -300,4 +302,31 @@ test('나감 여유는 가장 가까운 업체에만: 지나온 C 가 더 가까
   // 20m 안이면 안.
   const near = [{ id: 'A', lat: 37.55 + 15 / 111_195, lng: 126.92 }, targets[1]]
   assert.deepEqual([...preciseInsideIds(near, at, 0, new Set())], ['A'])
+})
+
+test('Wi-Fi·기지국 위치는 오차만큼 가까울 수 있으니 거리 - 오차가 50m 안이면 GPS 로 올린다(11-04 원 안인데 알림 안 옴)', () => {
+  // 가게 안(실제 10m)인데 Wi-Fi 위치가 90m 밖으로 찍히고 오차 65m — 예전에는 50m 밖이라 GPS 를 켜지 않아 진입을 못 쟀다.
+  assert.equal(nextPreciseMode('coarse', 90, 65), 'fine')
+  // 오차가 작고 정말 멀면 그대로 Wi-Fi·기지국.
+  assert.equal(nextPreciseMode('coarse', 120, 10), 'coarse')
+  // 오차를 모르면 거리만 본다.
+  assert.equal(nextPreciseMode('coarse', 40, null), 'fine')
+  // 오차가 터무니없이 커도(1km) 깨우는 원 크기까지만 빼 준다 — 깨우는 원 안에서만 쓰이므로 GPS 로 올린다.
+  assert.equal(nextPreciseMode('coarse', 160, 1000), 'fine')
+})
+
+test('GPS 단계는 거리 - 오차가 70m 밖이어야 내리고, 50~70m 사이는 지금 단계를 둔다', () => {
+  assert.equal(nextPreciseMode('fine', 75, 0), 'coarse')
+  assert.equal(nextPreciseMode('fine', 75, 10), 'fine')
+  assert.equal(nextPreciseMode('fine', 60, 0), 'fine')
+  assert.equal(nextPreciseMode('coarse', 60, 0), 'coarse')
+})
+
+test('Wi-Fi·기지국 위치로는 오차를 빼고도 반경+여유 밖일 때만 나간 것으로 본다(11-04 반복 알림 끊김)', () => {
+  // 가게에 앉아 있는데 Wi-Fi 위치가 80m(오차 65m)로 찍힘 — 확실히 나간 게 아니다.
+  assert.equal(coarselyOutside(80, 65, 20), false)
+  // 오차를 빼도 20 + 25m 밖이면 나감.
+  assert.equal(coarselyOutside(120, 30, 20), true)
+  assert.equal(coarselyOutside(45, 0, 20), false)
+  assert.equal(coarselyOutside(46, null, 20), true)
 })
