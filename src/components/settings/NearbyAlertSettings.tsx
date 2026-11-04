@@ -590,7 +590,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       <View style={styles.divider} />
                       <View style={styles.settingRow}>
                         <View style={styles.settingText}>
-                          <Text style={styles.settingLabel}>횟수 제한 없이(방문마다)</Text>
+                          <Text style={styles.settingLabel}>횟수 제한 없이(머무는 동안 5분마다)</Text>
                           <Text style={styles.hint}>끄면 운영 앱과 같은 규칙(하루 최대·30분 간격)으로 확인할 수 있어요.</Text>
                         </View>
                         <ToggleSwitch value={unlimited} onToggle={toggleUnlimited} locked={working} accessibilityLabel="횟수 제한 없이" />

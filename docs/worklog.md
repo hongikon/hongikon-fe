@@ -232,3 +232,10 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 고침: `engine.onPosition` — 정밀 GPS 위치가 올 때마다 대표를 가장 가까운 곳으로 다시 맞춤(시각은 그대로, 오차 큰 Wi-Fi·기지국 위치로는 안 바꿈). `rules.preciseInsideIds` — 나감 여유는 지금 가장 가까운 업체에만. `background.preciseStep` 이 둘을 씀.
 - `eas.json` 에 `nearby-field-apk`(nearby-testflight 와 같은 값, Android APK) — 빌린 안드로이드 폰 현장 테스트용.
 - 확인: `pnpm test` 44/44(새 2: 여유는 가장 가까운 곳만, 위치만 바뀌어도 대표 다시 고르기), `tsc --noEmit` 통과. iOS 테스트 OTA(nearby-testflight, a4e0bf8b)·Android APK `builds/hongikon-nearby-field-1103b.apk` 로 배포.
+
+## 2026-11-04 · 현장 테스트 빌드: 같은 가게에 머무는 동안 5분마다 다시 알림
+
+- 요청(사용자, 테스트 빌드만): 한 번 알리면 그 영역을 나가기 전까지 다시 안 오던 것을, 머무는 동안 여러 번 오게.
+- 고침(`perVisit` = 현장 테스트 "횟수 제한 없이"일 때만): `alertGroup` 이 보낸 곳을 빼지 않고, `decideOnEnter` 가 이번 머무름의 마지막 알림 + `FIELD_TEST_REPEAT_MS`(5분)로 다음 알림을 예약. 나가면 예약 취소. `alertableTargetIds` 는 보낸 곳도 GPS 로 계속 재게(위치 갱신마다 `onPosition` 이 다음 예약을 잇는다). 운영 규칙(같은 가게 하루 1번·하루 3번·30분 간격)은 그대로.
+- 테스트 앱 설정 문구: "횟수 제한 없이(머무는 동안 5분마다)".
+- 확인: `pnpm test` 45/45(새 1·고침 2), `tsc --noEmit` 통과.

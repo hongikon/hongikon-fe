@@ -186,11 +186,15 @@ test('여러 곳이 겹치면 가장 오래 머문 곳 하나 + 나머지, 오�
   const sent = [{ partnerId: 'done', at: kst(9, 0) }]
   assert.deepEqual(alertGroup(stays, sent, kst(12, 5)), { leadId: 'early', others: ['late'] })
   assert.equal(alertGroup(new Map(), [], NOON), null)
-  // 방문마다(현장 테스트): 이번 방문 전에 보낸 곳은 다시, 이번 방문 중 보낸 곳은 빼기.
+  // 현장 테스트: 보낸 곳도 묶음에 남는다(머무는 동안 5분마다 다시, 11-04).
   const visit = new Map<string, StayRecord>([['a', { enteredAt: kst(12, 0), exitedAt: null }]])
   assert.equal(alertGroup(visit, [{ partnerId: 'a', at: kst(11, 0) }], kst(12, 5)), null)
   assert.deepEqual(alertGroup(visit, [{ partnerId: 'a', at: kst(11, 0) }], kst(12, 5), true), { leadId: 'a', others: [] })
-  assert.equal(alertGroup(visit, [{ partnerId: 'a', at: kst(12, 5) }], kst(12, 6), true), null)
+  assert.deepEqual(alertGroup(visit, [{ partnerId: 'a', at: kst(12, 5) }], kst(12, 6), true), { leadId: 'a', others: [] })
+  // 다음 알림은 마지막 알림 5분 뒤
+  assert.deepEqual(decideOnEnter('a', kst(12, 0), [], kst(12, 6), { perVisit: true, dwellMs: 5 * 60_000, lastAlertAt: kst(12, 5) }), { schedule: true, fireAt: kst(12, 10) })
+  // 운영 규칙은 그대로(같은 가게 하루 1번)
+  assert.equal(decideOnEnter('a', kst(12, 0), [{ partnerId: 'a', at: kst(12, 5) }], kst(12, 6), { lastAlertAt: kst(12, 5) }).schedule, false)
   // 제한 없음
   const many = [1, 2, 3, 4].map((i) => ({ partnerId: `x${i}`, at: kst(11, 50 + i) }))
   assert.equal(decideOnEnter('a', NOON, many, NOON, { perVisit: true }).schedule, true)
@@ -275,10 +279,10 @@ test('GPS 로 잴 업체: 오늘 알린 곳은 빼고, 예약 중인 곳은 넣�
     { partnerId: 'x', at: kst(10, 0) }, { partnerId: 'y', at: kst(11, 0) }, { partnerId: 'z', at: kst(12, 0) },
   ], none, 'c', now)
   assert.deepEqual([...full], ['c'])
-  // 현장 테스트(방문마다): 이번 방문에 보낸 곳만 빼고, 어제 보낸 곳은 다시
+  // 현장 테스트: 머무는 동안 다시 알리므로 보낸 곳도 GPS 로 계속 잰다(11-04)
   const stays = new Map<string, StayRecord>([['a', { enteredAt: kst(13, 50), exitedAt: null }]])
   const visit = alertableTargetIds(ids, [{ partnerId: 'a', at: kst(13, 55) }, { partnerId: 'b', at: kst(9, 0) }], stays, null, now, true)
-  assert.deepEqual([...visit].sort(), ['b', 'c'])
+  assert.deepEqual([...visit].sort(), ['a', 'b', 'c'])
 })
 
 test('나감 여유는 가장 가까운 업체에만: 지나온 C 가 더 가까운 A 앞에서 "안"으로 남지 않는다(11-03)', () => {

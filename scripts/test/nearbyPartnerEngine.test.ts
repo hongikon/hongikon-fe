@@ -205,3 +205,19 @@ test('안팎이 그대로여도 위치가 바뀌면 대표 가게를 가장 가�
   // 같은 자리에서 또 위치가 오면 할 일 없음
   assert.deepEqual(onPosition(moved.state, kst(12, 3), { lat: 37.55, lng: 126.92 }).actions, [])
 })
+
+test('현장 테스트: 같은 가게에 머무는 동안 5분마다 다시 예약, 나가면 멈춤(11-04)', () => {
+  const field: NearbyState = { ...base, perVisit: true }
+  const s = onEnter(field, 'a', kst(12, 0)).state
+  assert.equal(s.pending?.fireAt, kst(12, 5))
+  // 12:05 에 떴다 → 12:06 위치 갱신에서 보냄으로 기록하고 12:10 으로 다시 예약
+  const again = onPosition(s, kst(12, 6), { lat: 37.55, lng: 126.92 })
+  assert.deepEqual(again.state.sent, [{ partnerId: 'a', at: kst(12, 5) }])
+  assert.deepEqual(again.actions, [{ kind: 'schedule', alert: { partnerId: 'a', fireAt: kst(12, 10), othersCount: 0 } }])
+  // 12:08 에 나감 → 예약 취소
+  const left = onExit(again.state, 'a', kst(12, 8))
+  assert.deepEqual(left.actions, [{ kind: 'cancel' }])
+  // 운영(perVisit 아님)은 같은 가게에 머물러도 다시 예약하지 않는다
+  const prod = onPosition(onEnter(base, 'a', kst(12, 0)).state, kst(12, 6), { lat: 37.55, lng: 126.92 })
+  assert.deepEqual(prod.actions, [])
+})

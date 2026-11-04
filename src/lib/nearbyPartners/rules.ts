@@ -289,11 +289,11 @@ export function alertGroup(
 ): { leadId: string; others: string[] } | null {
   const day = kstTodayYmd(now)
   const alertedToday = new Set(sent.filter((alert) => kstTodayYmd(alert.at) === day).map((alert) => alert.partnerId))
-  // perVisit(현장 테스트): 오늘 보낸 곳도 다시 — 이번에 들어온 뒤 이미 보낸 곳만 뺀다(나갔다 다시 들어오면 또 온다).
-  const alerted = (id: string, stay: StayRecord) =>
-    perVisit ? sent.some((alert) => alert.partnerId === id && alert.at >= stay.enteredAt) : alertedToday.has(id)
+  // perVisit(현장 테스트, 11-04): 보낸 곳도 빼지 않는다 — 같은 가게에 머무는 동안 `FIELD_TEST_REPEAT_MS` 마다 다시 알린다
+  // (간격은 decideOnEnter 의 lastAlertAt 이 맞춘다).
+  const alerted = (id: string) => !perVisit && alertedToday.has(id)
   const inside = [...stays.entries()]
-    .filter(([id, stay]) => stay.exitedAt === null && !alerted(id, stay))
+    .filter(([id, stay]) => stay.exitedAt === null && !alerted(id))
     .sort(([idA, a], [idB, b]) => a.enteredAt - b.enteredAt || idA.localeCompare(idB))
   if (inside.length === 0) return null
   return { leadId: inside[0][0], others: inside.slice(1).map(([id]) => id) }
@@ -316,7 +316,12 @@ export interface DecideOptions {
   quietNight?: boolean
   /** 머물러야 하는 시간(`dwellFor`). 기본 `DWELL_MS`. */
   dwellMs?: number
+  /** 현장 테스트: 이번 머무름 중 마지막으로 보낸 알림 시각. 있으면 그 뒤 `FIELD_TEST_REPEAT_MS` 에 다시 알린다. */
+  lastAlertAt?: number | null
 }
+
+/** 현장 테스트 빌드: 같은 가게 영역 안에 머무는 동안 다시 알리는 간격(11-04 사용자 요청, 테스트 빌드만). */
+export const FIELD_TEST_REPEAT_MS = 5 * 60 * 1000
 
 /** 업체 반경에 들어왔을 때 알림을 예약할지. 모든 판단은 알림이 실제로 뜰 시각(`fireAt`) 기준이다(날짜·간격). */
 export function decideOnEnter(
@@ -326,10 +331,11 @@ export function decideOnEnter(
   now: number,
   options: DecideOptions = {},
 ): EnterDecision {
-  const fireAt = Math.max(stayStart + (options.dwellMs ?? DWELL_MS), now)
+  const repeatAt = options.perVisit && options.lastAlertAt != null ? options.lastAlertAt + FIELD_TEST_REPEAT_MS : 0
+  const fireAt = Math.max(stayStart + (options.dwellMs ?? DWELL_MS), repeatAt, now)
   // 밤에는 받지 않기: 테스트 앱에서도 지킨다(설정을 확인할 수 있게). 아침까지 미루지 않고 이번 방문은 넘어간다.
   if (options.quietNight && isQuietHour(fireAt)) return { schedule: false, reason: 'quiet' }
-  // 현장 테스트(10-29 사용자 요청): 횟수·간격 제한 없이 방문마다 한 번(같은 방문 중복은 alertGroup 이 막는다).
+  // 현장 테스트(10-29·11-04 사용자 요청): 횟수·간격 제한 없이, 머무는 동안 5분마다 다시.
   if (options.perVisit) return { schedule: true, fireAt }
 
   const day = kstTodayYmd(fireAt)
@@ -366,9 +372,8 @@ export function alertableTargetIds(
       continue
     }
     const stay = stays.get(id)
-    const done = perVisit
-      ? !!stay && stay.exitedAt === null && sent.some((alert) => alert.partnerId === id && alert.at >= stay.enteredAt)
-      : today.some((alert) => alert.partnerId === id)
+    // 현장 테스트는 머무는 동안 다시 알리므로(FIELD_TEST_REPEAT_MS) 보낸 곳도 GPS 로 계속 잰다.
+    const done = !perVisit && today.some((alert) => alert.partnerId === id)
     if (!done) result.add(id)
   }
   return result

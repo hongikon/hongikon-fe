@@ -52,7 +52,7 @@ export interface NearbyState {
   stays: Record<string, StayRecord>
   sent: SentAlert[]
   pending: PendingAlert | null
-  /** 현장 테스트 빌드: 하루·간격 제한 없이 가게에 들어갈 때마다 한 번씩 알린다. */
+  /** 현장 테스트 빌드: 하루·간격 제한 없이, 가게에 머무는 동안 5분마다(`FIELD_TEST_REPEAT_MS`) 알린다. */
   perVisit?: boolean
   /** 설정: 밤(22~8시)에는 받지 않기. 기본 꺼짐. */
   quietNight?: boolean
@@ -149,8 +149,14 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
       // 위치를 모르는 신호(이탈 등)면 이미 예약해 둔 업체가 아직 묶음에 있을 때 그대로 둔다.
       const keep = !at && state.pending && members.includes(state.pending.partnerId) ? state.pending.partnerId : group.leadId
       const leadId = chooseLead(state, members, keep, at)
-      const decision = decideOnEnter(leadId, stays.get(group.leadId)!.enteredAt, state.sent, now, {
+      const stayStart = stays.get(group.leadId)!.enteredAt
+      // 현장 테스트: 이번 머무름 중(묶음 안 업체) 마지막으로 보낸 알림 — 그 5분 뒤에 다시 예약한다.
+      const sentThisStay = state.perVisit
+        ? state.sent.filter((alert) => members.includes(alert.partnerId) && alert.at >= stayStart).map((alert) => alert.at)
+        : []
+      const decision = decideOnEnter(leadId, stayStart, state.sent, now, {
         perVisit: state.perVisit,
+        lastAlertAt: sentThisStay.length > 0 ? Math.max(...sentThisStay) : null,
         quietNight: quietAtNight(state.quietNight),
         // 알림 시각은 묶음에서 가장 먼저 들어온 곳 기준이라 머무는 시간도 그곳 분류로 정한다.
         dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category, state.dwellMinutes),
