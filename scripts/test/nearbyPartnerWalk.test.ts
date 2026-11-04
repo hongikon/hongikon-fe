@@ -220,3 +220,19 @@ test('두 가게 사이(A·B 에서 20m씩)에 머물면 한 번만 알린다(�
   }
   assert.equal(settle(state, now + 1).sent.length, 1)
 })
+
+test('가게 안에 가만히 있어 Wi-Fi·기지국 위치가 한 번(밖으로 쏠린 채)만 오고 끊겨도, 1분마다 GPS 로 한 번 재면 알린다(11-05 현장)', () => {
+  let state = start()
+  let now = T0
+  // 들어올 때 받은 Wi-Fi·기지국 위치 하나: B 에서 길 건너 100m, 오차 30m — 거리-오차 70m 라 GPS 단계로 안 올라간다.
+  const first = preciseUpdate(state, now, { at: at(40, 100), accuracy: 30, mode: 'coarse' }, RADII)
+  state = first.state
+  assert.equal(first.nextMode, 'coarse')
+  assert.equal(state.pending, null)
+  // 그 뒤로 Wi-Fi·기지국 위치는 오지 않는다(iOS, 가만히 있음). 1분마다 GPS 한 번(B 안 8m, 오차 8m).
+  for (let minute = 1; minute <= 7; minute += 1) {
+    now = T0 + minute * MIN
+    state = preciseUpdate(state, now, { at: at(40, 8), accuracy: 8, mode: 'fine' }, RADII).state
+  }
+  assert.deepEqual(settle(state, now + 1).sent.map((s) => s.partnerId), ['B'])
+})
