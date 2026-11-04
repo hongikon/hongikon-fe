@@ -158,3 +158,65 @@ test('GPS 로 바뀐 뒤 가게에서 70m 넘게 멀어지면 다시 Wi-Fi·기�
   ])
   assert.equal(run.modes.at(-1), 'coarse')
 })
+
+test('알림 반경 20m: B 에서 12m 에 머물면 알린다', () => {
+  const rand = noise(3)
+  let state = start()
+  let mode: PreciseMode = 'fine'
+  let now = T0
+  for (let i = 0; i < 6 * 12 + 2; i += 1) {
+    now += 5 * SEC
+    const outcome = preciseUpdate(state, now, { at: at(40 + rand() * 6, 12 + rand() * 6), accuracy: 5, mode }, RADII)
+    state = outcome.state
+    mode = outcome.nextMode
+  }
+  assert.deepEqual(settle(state, now + 1).sent.map((s) => s.partnerId), ['B'])
+})
+
+test('알림 반경 20m: 오차가 작을 때(5m) B 에서 40m 떨어져 머물면 알리지 않는다', () => {
+  const rand = noise(5)
+  let state = start()
+  let mode: PreciseMode = 'fine'
+  let now = T0
+  for (let i = 0; i < 7 * 12; i += 1) {
+    now += 5 * SEC
+    const outcome = preciseUpdate(state, now, { at: at(40 + rand() * 6, 40 + rand() * 6), accuracy: 5, mode }, RADII)
+    state = outcome.state
+    mode = outcome.nextMode
+  }
+  assert.deepEqual(settle(state, now + 1).sent, [])
+})
+
+test('알림 반경 20m 의 실제 경계: GPS 오차는 15m 까지 반경에 더해 준다(오차 15m 면 35m 까지 안)', () => {
+  const rand = noise(9)
+  const runAt = (y: number, accuracy: number) => {
+    let state = start()
+    let mode: PreciseMode = 'fine'
+    let now = T0
+    for (let i = 0; i < 7 * 12; i += 1) {
+      now += 5 * SEC
+      const outcome = preciseUpdate(state, now, { at: at(40 + rand() * 2, y + rand() * 2), accuracy, mode }, RADII)
+      state = outcome.state
+      mode = outcome.nextMode
+    }
+    return settle(state, now + 1).sent.map((s) => s.partnerId)
+  }
+  assert.deepEqual(runAt(30, 15), ['B'])
+  assert.deepEqual(runAt(30, 5), [])
+  // 오차가 아무리 커도(50m) 15m 까지만 더한다.
+  assert.deepEqual(runAt(40, 50), [])
+})
+
+test('두 가게 사이(A·B 에서 20m씩)에 머물면 한 번만 알린다(두 번 아님)', () => {
+  const rand = noise(11)
+  let state = start()
+  let mode: PreciseMode = 'fine'
+  let now = T0
+  for (let i = 0; i < 7 * 12; i += 1) {
+    now += 5 * SEC
+    const outcome = preciseUpdate(state, now, { at: at(20 + rand() * 4, rand() * 4), accuracy: 5, mode }, RADII)
+    state = outcome.state
+    mode = outcome.nextMode
+  }
+  assert.equal(settle(state, now + 1).sent.length, 1)
+})
