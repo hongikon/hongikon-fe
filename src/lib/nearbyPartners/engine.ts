@@ -229,6 +229,8 @@ export interface PreciseOutcome extends Step {
   nextMode: PreciseMode
   /** 위치 갱신을 끌지(근처 대상이 없거나 알림이 꺼짐). */
   stop: boolean
+  /** 아직 알릴 수 있는 가게 중 가장 가까운 곳까지 거리(m). 없으면 Infinity. */
+  nearestMeters: number
 }
 
 /**
@@ -267,7 +269,7 @@ export function preciseStep(input: NearbyState, now: number, at: Position, accur
  * 가게 기준), 끌지. `background.ts` 는 이 결과대로 저장·예약하고 위치 갱신을 켜고 끈다.
  */
 export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, radii: PreciseRadii): PreciseOutcome {
-  if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true }
+  if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true, nearestMeters: Infinity }
   const { at, accuracy } = fix
   const stop = !input.targets.some((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng) <= radii.wake + radii.stopMargin)
   // GPS 는 아직 알릴 수 있는 가게(오늘 안 알린 곳·예약 중인 곳) 가까이에서만 켠다. 알림을 받은 카페에 오래 앉아 있으면
@@ -283,7 +285,7 @@ export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, 
   const distances = input.targets.filter((t) => alertable.has(t.id)).map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
   const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
   const step = preciseStep(input, now, at, accuracy, fix.mode === 'fine', radii.alert)
-  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop }
+  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop, nearestMeters: nearest }
 }
 
 /**
