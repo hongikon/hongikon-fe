@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
@@ -7,6 +7,7 @@ import { fetchAskFeedback, reviewAskFeedback } from '../api'
 import { formatDateTime, formatRelative } from '../format'
 import type { AdminAskFeedbackItem, AdminAskFeedbackResponse, AskFeedbackFilter, AskFeedbackReasonCode } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader, type Tone } from '../ui'
+import { AskNoteForm, AskNotesView, AskReportView } from './AskInsightViews'
 
 const REASON_LABELS: Record<AskFeedbackReasonCode | 'NONE', string> = {
   WRONG: '틀린 정보',
@@ -34,6 +35,50 @@ type ReasonFilter = AskFeedbackReasonCode | 'NONE' | 'ALL'
  * 함께 본다. 고친 뒤 '확인함'으로 넘긴다. 답장이 필요하면 문의 탭에서 처리한다(연락처·처리 완료는 문의 쪽).
  */
 export default function AskFeedbackScreen() {
+  const [view, setView] = useState<'feedback' | 'report' | 'notes'>('feedback')
+  const [draftQuestion, setDraftQuestion] = useState<string | null>(null)
+  const viewTabs = (
+    <FilterTabs
+      options={[
+        { value: 'feedback' as const, label: '피드백' },
+        { value: 'report' as const, label: '주간 요약' },
+        { value: 'notes' as const, label: '운영진 안내' },
+      ]}
+      value={view}
+      onChange={setView}
+    />
+  )
+  if (view === 'report' || view === 'notes') {
+    return (
+      <View>
+        <ScreenHeader
+          title="물어보기 피드백"
+          subtitle={
+            view === 'report'
+              ? "'해결 안 됨'을 같은 안내·비슷한 질문끼리 묶어 많은 순으로 보여 줘요. 서버 안에서만 센 값이에요."
+              : '운영진이 확인해 적은 답이에요. 물어보기가 비슷한 질문에 이 답을 근거로 함께 읽어요.'
+          }
+        />
+        {viewTabs}
+        <View style={styles.row}>
+          {view === 'report' ? (
+            <AskReportView
+              onWriteNote={(question) => {
+                setDraftQuestion(question)
+                setView('notes')
+              }}
+            />
+          ) : (
+            <AskNotesView draftQuestion={draftQuestion} onDraftDone={() => setDraftQuestion(null)} />
+          )}
+        </View>
+      </View>
+    )
+  }
+  return <FeedbackList tabs={viewTabs} />
+}
+
+function FeedbackList({ tabs }: { tabs: ReactNode }) {
   const [filter, setFilter] = useState<AskFeedbackFilter>('OPEN')
   const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]['value']>('30')
   const [reason, setReason] = useState<ReasonFilter>('ALL')
@@ -93,6 +138,8 @@ export default function AskFeedbackScreen() {
         subtitle="학생이 '해결 안 됨'을 누른 답이에요. 최신순 최대 200건. 고친 뒤 '확인함'을 누르세요."
         right={<Button label="새로고침" icon="refresh" onPress={() => setReloadKey((key) => key + 1)} loading={loading && !!data} small />}
       />
+      {tabs}
+      <View style={styles.row} />
       <FilterTabs
         options={[
           { value: 'OPEN' as const, label: '확인 전' },
@@ -163,6 +210,8 @@ function AskFeedbackCard({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [writing, setWriting] = useState(false)
+  const [noted, setNoted] = useState(false)
   const reviewed = item.reviewedAt !== null
 
   const toggle = () => {
@@ -199,7 +248,7 @@ function AskFeedbackCard({
           <Text selectable style={styles.answer} numberOfLines={open ? undefined : 5}>
             {item.answer}
           </Text>
-          <Text style={styles.more}>{open ? '접기' : '펼치기'}</Text>
+          {item.answer.length > 240 ? <Text style={styles.more}>{open ? '접기' : '펼치기'}</Text> : null}
         </Pressable>
       ) : null}
 
@@ -255,7 +304,20 @@ function AskFeedbackCard({
         </View>
       ))}
 
+      {writing ? (
+        <AskNoteForm
+          initialQuestion={item.question}
+          askRef={item.source === 'ROUTE' ? `route:${item.id}` : null}
+          onSaved={() => {
+            setWriting(false)
+            setNoted(true)
+          }}
+          onCancel={() => setWriting(false)}
+        />
+      ) : null}
+      {noted ? <Text style={styles.fact}>운영진 확인 안내로 등록했어요. '운영진 안내'에서 고치거나 끌 수 있어요.</Text> : null}
       <View style={styles.actions}>
+        {!writing ? <Button label="안내로 등록" icon="add" onPress={() => setWriting(true)} small /> : null}
         <Button
           label={reviewed ? '되돌리기' : '확인함'}
           icon={reviewed ? 'arrow-undo-outline' : 'checkmark'}
@@ -302,5 +364,5 @@ const styles = StyleSheet.create({
   handoffText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textPrimary },
   images: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   image: { width: 88, height: 88, borderRadius: 8, backgroundColor: COLORS.border },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end' },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
 })

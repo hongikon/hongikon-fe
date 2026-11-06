@@ -6,6 +6,7 @@ import { FACILITY_KINDS } from '../constants/facilityKinds'
 import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
 import type {
   AdminAskFeedbackItem,
+  AdminAskNote,
   AdminBuildingOption,
   AdminExhibition,
   AdminFacility,
@@ -292,6 +293,13 @@ function feedbackResponse(item: AdminFeedback): AdminFeedback {
   const name = displayNameOf(item.userId)
   return { ...item, userNickname: name, userDisplayName: name, userMemberCode: memberCodeOf(item.userId) }
 }
+
+const askNotes: AdminAskNote[] = [
+  {
+    id: 1, question: 'T동 강의실 마이크는 어디서 빌려요?', answer: 'T동 강의실에서 쓸 마이크는 T동 3층 경비실에서 빌릴 수 있어요.',
+    askRef: null, active: true, createdBy: 1, createdAt: at(-600), updatedAt: at(-600),
+  },
+]
 
 const askFeedback: AdminAskFeedbackItem[] = [
   {
@@ -804,6 +812,38 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     const reasons: Record<string, number> = { WRONG: 0, OUTDATED: 0, OFF_TOPIC: 0, NOT_ENOUGH: 0, NONE: 0 }
     items.forEach((item) => (reasons[item.reason ?? 'NONE'] += 1))
     return { days: Number(params.get('days') ?? 30), items, reasons }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/feedback/report') {
+    const groups = [
+      { kind: 'GUIDE' as const, key: 'change-major/start', label: '전과 신청 자격·기간', count: 3, open: 2, reasons: { OUTDATED: 2, NONE: 1 }, questions: ['전과하려면 몇 학점 필요해?', '전과 언제 신청해?'] },
+      { kind: 'UNMATCHED' as const, key: '멀미실 와이파이 안 돼요', label: '멀미실 와이파이 안 돼요', count: 2, open: 2, reasons: { NONE: 2 }, questions: ['멀미실 와이파이 안 돼요', '멀미실 와이파이 비번'] },
+    ]
+    return { days: Number(params.get('days') ?? 7), questions: 120, resolvedYes: 41, resolvedNo: 9, reasons: { WRONG: 1, OUTDATED: 3, OFF_TOPIC: 1, NOT_ENOUGH: 1, NONE: 3 }, groups }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/notes') {
+    return { notes: [...askNotes].sort((a, b) => b.id - a.id) }
+  }
+
+  if (method === 'POST' && pathname === '/admin/ask/notes') {
+    const note: AdminAskNote = {
+      id: (askNotes.at(-1)?.id ?? 0) + 1, question: String(body.question), answer: String(body.answer),
+      askRef: (body.askRef as string | undefined) ?? null, active: true, createdBy: 1, createdAt: at(0), updatedAt: at(0),
+    }
+    askNotes.push(note)
+    return note
+  }
+
+  const askNoteMatch = pathname.match(/^\/admin\/ask\/notes\/(\d+)$/)
+  if (method === 'PATCH' && askNoteMatch) {
+    const note = askNotes.find((entry) => entry.id === Number(askNoteMatch[1]))
+    if (!note) throw notFound()
+    if (typeof body.question === 'string') note.question = body.question
+    if (typeof body.answer === 'string') note.answer = body.answer
+    if (typeof body.active === 'boolean') note.active = body.active
+    note.updatedAt = at(0)
+    return note
   }
 
   const askFeedbackMatch = pathname.match(/^\/admin\/ask\/feedback\/(ROUTE|FLOW)\/(\d+)$/)

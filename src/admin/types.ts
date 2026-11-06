@@ -297,3 +297,35 @@ export interface AdminAskFeedbackResponse {
   /** 이유별 개수(NONE=이유 안 고름) */
   reasons: Record<string, number>
 }
+
+/** GET /admin/ask/feedback/report — 주간 요약(11-06). */
+export interface AdminAskReportGroup {
+  kind: 'GUIDE' | 'UNMATCHED'
+  key: string
+  label: string
+  count: number
+  open: number
+  reasons: Record<string, number>
+  questions: string[]
+}
+
+export interface AdminAskReport {
+  days: number
+  questions: number
+  resolvedYes: number
+  resolvedNo: number
+  reasons: Record<string, number>
+  groups: AdminAskReportGroup[]
+}
+
+/** 운영진 확인 안내 — `GET/POST/PATCH /admin/ask/notes`. */
+export interface AdminAskNote {
+  id: number
+  question: string
+  answer: string
+  askRef: string | null
+  active: boolean
+  createdBy: number | null
+  createdAt: string
+  updatedAt: string
+}
