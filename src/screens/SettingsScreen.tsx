@@ -21,7 +21,6 @@ import BoardAlertsModal from '../components/settings/BoardAlertsModal'
 import ToggleSwitch from '../components/settings/ToggleSwitch'
 import NearbyAlertSettings from '../components/settings/NearbyAlertSettings'
 import { nearbyAlertsAvailable } from '../lib/nearbyPartners/background'
-import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
@@ -67,7 +66,7 @@ import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { promptLogin } from '../utils/reports'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
-import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
+import { APP_NOTICES } from '../constants/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS, TYPE } from '../constants/typography'
@@ -83,7 +82,6 @@ type SettingsGroup = 'account' | 'alerts' | 'general' | 'support' | 'policies'
 
 type ModalType =
   | 'notices'
-  | 'noticeDetail'
   | 'sources'
   | 'terms'
   | 'licenses'
@@ -147,7 +145,6 @@ export default function SettingsScreen() {
   }, [])
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
-  const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
 
   const handleLogout = () => {
     confirmAction({
@@ -196,11 +193,6 @@ export default function SettingsScreen() {
         void resetSettings()
       },
     })
-  }
-
-  const openNoticeDetail = (notice: AppNotice) => {
-    setSelectedNotice(notice)
-    setActiveModal('noticeDetail')
   }
 
   const permission = useNotificationPermission()
@@ -782,17 +774,10 @@ export default function SettingsScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <NoticeDetailModal
-        visible={activeModal === 'noticeDetail'}
-        notice={selectedNotice}
-        onClose={() => setActiveModal(null)}
-      />
-
       <NoticeListModal
         visible={activeModal === 'notices'}
         notices={APP_NOTICES}
         onClose={() => setActiveModal(null)}
-        onSelectNotice={openNoticeDetail}
       />
 
       <PartnerSourcesModal

@@ -34,6 +34,15 @@ import { nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
 import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
 import { RADIUS, SPACING } from '../../constants/spacing'
+import { MY_LOCATION_BUTTON_FROM } from '../../constants/route'
+import { kstTodayYmd } from '../../utils/exhibitions'
+
+/** 위치를 지도에 보여 주는 때. 지도 "내 위치 켜기"는 처리방침 11-16판 적용일부터 보인다(MapScreen 과 같은 날짜). */
+function mapLocationUse(): string {
+  return kstTodayYmd() >= MY_LOCATION_BUTTON_FROM
+    ? '길찾기 화면을 보는 동안이나 지도에서 "내 위치 켜기"를 켜 둔 동안 지도에 내 위치(와 경로)를 보여 줘요.'
+    : '길찾기 화면을 보는 동안 지도에 내 위치와 경로를 보여 줘요.'
+}
 
 interface AppPermissionsModalProps {
   visible: boolean
@@ -253,8 +262,8 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                       title="위치"
                       purpose={
                         nearbyAlertsAvailable()
-                          ? "(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, 길찾기 화면을 보는 동안 지도에 내 위치와 경로를 보여 줘요. 근처 제휴 알림을 켰다면 앱을 닫아 둬도(\"항상\") 제휴 가게에 머무는지 확인해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요"
-                          : "(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, 길찾기 화면을 보는 동안 지도에 내 위치와 경로를 보여 줘요. 저장하거나 서버로 보내지 않아요"
+                          ? `(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, ${mapLocationUse()} 근처 제휴 알림을 켰다면 앱을 닫아 둬도("항상") 제휴 가게에 머무는지 확인해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요`
+                          : `(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, ${mapLocationUse()} 저장하거나 서버로 보내지 않아요`
                       }
                       state={location.state}
                       onRequest={() => {
