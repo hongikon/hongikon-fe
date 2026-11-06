@@ -1,20 +1,45 @@
 import { edgeKey } from '../pathSurvey'
 import { haversineMeters, roundMeters } from './geo'
-import { hasLevel, sameLevel, vertexId, type GraphEdge, type GraphVertex, type LevelRef, type SurveyEdgeV3, type SurveyGraph, type SurveyNodeV3 } from './types'
+import { hasLevel, isEdgeKind, isValidFloor, sameLevel, vertexId, type GraphEdge, type GraphVertex, type LevelRef, type SurveyEdgeV3, type SurveyGraph, type SurveyNodeV3 } from './types'
 
 /**
- * Expands the survey into the routing graph. Never throws on bad input: anything it cannot expand is
- * listed in skipped, and the check reports the cause. Export only happens with zero check errors.
+ * Expands the survey into the routing graph. Never throws on bad input: anything it cannot expand stays out
+ * of the graph and is listed with a reason, and the check reports the cause. With zero check errors all the
+ * lists are empty, and the graph may be exported in any state.
  */
 
 export interface SkippedEdge {
   edgeId: string
-  reason: 'missing_node' | 'self' | 'duplicate' | 'needs_entrance' | 'no_levels' | 'needs_pairs'
+  reason: 'missing_node' | 'self' | 'duplicate' | 'bad_kind' | 'needs_entrance' | 'no_levels' | 'needs_pairs'
+}
+
+/** An indoor point that gives no graph point at all. */
+export interface SkippedNode {
+  nodeId: string
+  reason: 'no_levels' | 'no_usable_levels'
+}
+
+/** One level of a point that cannot be a graph point. The other levels of that point still can. */
+export interface SkippedLevel {
+  nodeId: string
+  building: string
+  floor: number
+  reason: 'bad_floor' | 'no_building'
+}
+
+export interface SkippedTie {
+  nodeId: string
+  a: LevelRef
+  b: LevelRef
+  reason: 'missing_level' | 'same_building'
 }
 
 export interface ExpandResult {
   graph: SurveyGraph
   skipped: SkippedEdge[]
+  skippedNodes: SkippedNode[]
+  skippedLevels: SkippedLevel[]
+  skippedTies: SkippedTie[]
 }
 
 const distinctLevels = (node: SurveyNodeV3): LevelRef[] => {
@@ -28,6 +53,9 @@ export const commonLevels = (a: SurveyNodeV3, b: SurveyNodeV3): LevelRef[] => di
 export const validPairs = (edge: SurveyEdgeV3, a: SurveyNodeV3, b: SurveyNodeV3) =>
   (edge.pairs ?? []).filter(([x, y]) => hasLevel(a.levels, x) && hasLevel(b.levels, y))
 
+/** Levels that can become graph points. */
+const usableLevels = (node: SurveyNodeV3): LevelRef[] => distinctLevels(node).filter((l) => !!l.building && isValidFloor(l.floor))
+
 export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly SurveyEdgeV3[]): ExpandResult {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   const vertices: GraphVertex[] = []
@@ -35,6 +63,9 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
   const out: GraphEdge[] = []
   const seenEdges = new Set<string>()
   const skipped: SkippedEdge[] = []
+  const skippedNodes: SkippedNode[] = []
+  const skippedLevels: SkippedLevel[] = []
+  const skippedTies: SkippedTie[] = []
 
   const pushEdge = (edge: GraphEdge) => {
     if (edge.a === edge.b || !known.has(edge.a) || !known.has(edge.b)) return
@@ -50,7 +81,13 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
       known.add(node.id)
       continue
     }
+    const usable = usableLevels(node)
     for (const level of distinctLevels(node)) {
+      if (usable.includes(level)) continue
+      skippedLevels.push({ nodeId: node.id, building: level.building, floor: level.floor, reason: level.building ? 'bad_floor' : 'no_building' })
+    }
+    if (usable.length === 0) skippedNodes.push({ nodeId: node.id, reason: distinctLevels(node).length ? 'no_usable_levels' : 'no_levels' })
+    for (const level of usable) {
       const id = vertexId(node.id, level)
       vertices.push({ id, node: node.id, building: level.building, floor: level.floor, lat: node.lat, lng: node.lng, type: node.type })
       known.add(id)
@@ -76,6 +113,10 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
       continue
     }
     seenSurvey.add(key)
+    if (!isEdgeKind(edge.kind)) {
+      skipped.push({ edgeId: edge.id, reason: 'bad_kind' })
+      continue
+    }
     const meters = roundMeters(haversineMeters(a.lat, a.lng, b.lat, b.lng))
     const link = (x: string, y: string) => pushEdge({ a: x, b: y, kind: edge.kind, meters })
 
@@ -86,7 +127,7 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
     if (a.scope !== 'indoor' || b.scope !== 'indoor') {
       const outdoor = a.scope === 'indoor' ? b : a
       const indoor = a.scope === 'indoor' ? a : b
-      const levels = distinctLevels(indoor)
+      const levels = usableLevels(indoor)
       if (indoor.type !== 'entrance' || levels.length !== 1) {
         skipped.push({ edgeId: edge.id, reason: 'needs_entrance' })
         continue
@@ -94,13 +135,13 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
       link(outdoor.id, vertexId(indoor.id, levels[0]))
       continue
     }
-    const levelsA = distinctLevels(a)
-    const levelsB = distinctLevels(b)
+    const levelsA = usableLevels(a)
+    const levelsB = usableLevels(b)
     if (levelsA.length === 0 || levelsB.length === 0) {
       skipped.push({ edgeId: edge.id, reason: 'no_levels' })
       continue
     }
-    const common = commonLevels(a, b)
+    const common = levelsA.filter((l) => hasLevel(levelsB, l))
     if (common.length > 0) {
       for (const level of common) link(vertexId(a.id, level), vertexId(b.id, level))
       continue
@@ -109,7 +150,7 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
       link(vertexId(a.id, levelsA[0]), vertexId(b.id, levelsB[0]))
       continue
     }
-    const pairs = validPairs(edge, a, b)
+    const pairs = validPairs(edge, a, b).filter(([x, y]) => hasLevel(levelsA, x) && hasLevel(levelsB, y))
     if (pairs.length === 0) {
       skipped.push({ edgeId: edge.id, reason: 'needs_pairs' })
       continue
@@ -121,7 +162,7 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
   for (const node of nodes) {
     if (node.scope !== 'indoor' || (node.type !== 'stairs' && node.type !== 'elevator')) continue
     const byBuilding = new Map<string, LevelRef[]>()
-    for (const level of distinctLevels(node)) byBuilding.set(level.building, [...(byBuilding.get(level.building) ?? []), level])
+    for (const level of usableLevels(node)) byBuilding.set(level.building, [...(byBuilding.get(level.building) ?? []), level])
     for (const levels of byBuilding.values()) {
       const sorted = [...levels].sort((x, y) => x.floor - y.floor)
       if (node.type === 'stairs') {
@@ -137,12 +178,20 @@ export function expandGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surv
       }
     }
     for (const [x, y] of node.ties ?? []) {
-      if (!hasLevel(node.levels, x) || !hasLevel(node.levels, y)) continue
+      const usable = usableLevels(node)
+      if (!hasLevel(usable, x) || !hasLevel(usable, y)) {
+        skippedTies.push({ nodeId: node.id, a: x, b: y, reason: 'missing_level' })
+        continue
+      }
+      if (x.building === y.building) {
+        skippedTies.push({ nodeId: node.id, a: x, b: y, reason: 'same_building' })
+        continue
+      }
       pushEdge({ a: vertexId(node.id, x), b: vertexId(node.id, y), kind: 'tie', meters: 0 })
     }
   }
 
-  return { graph: { vertices, edges: out }, skipped }
+  return { graph: { vertices, edges: out }, skipped, skippedNodes, skippedLevels, skippedTies }
 }
 
 export interface GraphSummary {

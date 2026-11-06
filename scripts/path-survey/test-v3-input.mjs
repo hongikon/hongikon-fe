@@ -159,8 +159,7 @@ test('file names carry date and time', () => {
   assert.equal(X.graphFileName(at), 'path-survey-v3-graph-20261106-0905.json')
 })
 
-test('graph export only with zero errors, and it lists labels missing on the server', () => {
-  assert.equal(X.buildGraphExport(store([indoor('n1', [])]), index), null)
+test('graph export lists labels missing on the server', () => {
   const s = store(
     [
       node('n1'),

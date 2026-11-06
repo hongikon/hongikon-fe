@@ -1,8 +1,8 @@
 import type { BuildingIndex } from './buildings'
-import { checkGraph, ENTRANCE_BOUNDARY_TOLERANCE_M } from './check'
+import { checkGraph, ENTRANCE_BOUNDARY_TOLERANCE_M, type CheckIssue, type CheckOptions } from './check'
 import { expandGraph, summarizeGraph, type GraphSummary } from './expand'
 import { defaultStorage, normalizeStoreV3, type NodeContext, type StorageLike, type StoreV3 } from './store'
-import { EXPORT_FORMAT_V3, type LevelRef, type NodeType, type SurveyFileV3 } from './types'
+import { EXPORT_FORMAT_V3, type ExportIssue, type LevelRef, type NodeType, type SurveyFileV3 } from './types'
 
 /** Backup files, the graph export for routing work, and the small state the save button needs. */
 
@@ -14,7 +14,7 @@ export function fileStamp(now = new Date()): string {
 }
 
 export const backupFileName = (now = new Date()) => `path-survey-v3-backup-${fileStamp(now)}.json`
-export const graphFileName = (now = new Date()) => `path-survey-v3-graph-${fileStamp(now)}.json`
+export const graphFileName = (now = new Date(), complete = true) => `path-survey-v3-graph-${complete ? '' : 'incomplete-'}${fileStamp(now)}.json`
 export const snapshotFileName = (createdAt: number) => `path-survey-v3-snapshot-${fileStamp(new Date(createdAt))}.json`
 
 /** A backup is always allowed, errors or not, and carries no graph. */
@@ -46,23 +46,56 @@ export interface GraphExport {
   text: string
   summary: GraphSummary
   labelsNotOnServer: string[]
+  complete: boolean
+  errorCount: number
+  warningCount: number
+  excludedNodes: number
+  excludedEdges: number
 }
 
-/** The expanded graph. Returns null unless the check has zero errors. */
-export function buildGraphExport(store: StoreV3, index: BuildingIndex, now = Date.now()): GraphExport | null {
-  if (checkGraph(store.nodes, store.edges, index).errors.length > 0) return null
-  const { graph } = expandGraph(store.nodes, store.edges)
+const exportIssue = ({ code, message, nodeId, edgeId }: CheckIssue): ExportIssue => ({ code, message, ...(nodeId ? { nodeId } : {}), ...(edgeId ? { edgeId } : {}) })
+
+/**
+ * The graph for routing work. It can be made at any time. complete says whether it is finished, the file lists
+ * the open errors and warnings, and whatever cannot be expanded is left out of the graph and listed in excluded.
+ */
+export function buildGraphExport(store: StoreV3, index: BuildingIndex, now = Date.now(), options: CheckOptions = {}): GraphExport {
+  const check = checkGraph(store.nodes, store.edges, index, options)
+  const { graph, skipped, skippedNodes, skippedLevels, skippedTies } = expandGraph(store.nodes, store.edges)
   const missing = labelsNotOnServer(store, index)
+  const complete = check.errors.length === 0
   const file: SurveyFileV3 = {
     format: EXPORT_FORMAT_V3,
     version: 3,
     exportedAt: now,
-    nodes: store.nodes,
-    edges: store.edges,
+    complete,
+    check: {
+      errorCount: check.errors.length,
+      warningCount: check.warnings.length,
+      errors: check.errors.map(exportIssue),
+      warnings: check.warnings.map(exportIssue),
+    },
+    excluded: {
+      nodes: skippedNodes.map((s) => ({ id: s.nodeId, reason: s.reason })),
+      levels: skippedLevels.map((s) => ({ id: s.nodeId, building: s.building, floor: s.floor, reason: s.reason })),
+      edges: skipped.map((s) => ({ id: s.edgeId, reason: s.reason })),
+      ties: skippedTies.map((s) => ({ id: s.nodeId, a: s.a, b: s.b, reason: s.reason })),
+    },
     graph,
     report: { labelsNotOnServer: missing },
+    nodes: store.nodes,
+    edges: store.edges,
   }
-  return { text: JSON.stringify(file, null, 2), summary: summarizeGraph(store.nodes, store.edges, graph), labelsNotOnServer: missing }
+  return {
+    text: JSON.stringify(file, null, 2),
+    summary: summarizeGraph(store.nodes, store.edges, graph),
+    labelsNotOnServer: missing,
+    complete,
+    errorCount: check.errors.length,
+    warningCount: check.warnings.length,
+    excludedNodes: skippedNodes.length,
+    excludedEdges: skipped.length,
+  }
 }
 
 function hashText(text: string): string {

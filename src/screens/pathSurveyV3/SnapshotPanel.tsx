@@ -6,8 +6,9 @@ import {
   createSnapshot,
   deleteSnapshot,
   loadSnapshots,
+  KEPT_LIMIT,
   renameSnapshot,
-  SNAPSHOT_LIMIT,
+  ROLLING_LIMIT,
   STORAGE_WARN_CHARS,
   storageUsage,
   storeFromSnapshot,
@@ -22,7 +23,7 @@ import { dateTimeText } from './SaveBar'
 const KIND_TEXT: Record<SnapshotKind, string> = {
   manual: '직접 만듦',
   protected: '자동, 보호됨',
-  rolling: '저장 버튼, 오래되면 지워짐',
+  rolling: `저장 버튼 칸, ${ROLLING_LIMIT}개가 넘으면 오래된 것부터 지워짐`,
 }
 
 /** Save points: list, restore, name, download and delete. tick reloads the list after a save elsewhere on the screen. */
@@ -47,11 +48,12 @@ export default function SnapshotPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const usage = useMemo(() => storageUsage(), [tick])
   const rolling = list.filter((s) => s.kind === 'rolling').length
-  const full = list.length >= SNAPSHOT_LIMIT && rolling === 0
+  const kept = list.length - rolling
+  const full = kept >= KEPT_LIMIT
 
   const create = () => {
     const { error } = createSnapshot(store, name, 'manual')
-    if (error) return onNotice(error === 'limit' ? `저장 지점이 ${SNAPSHOT_LIMIT}개로 가득 찼어요. 필요 없는 것을 지워 주세요.` : '저장 공간이 부족해요. 필요 없는 저장 지점을 지워 주세요.')
+    if (error) return onNotice(error === 'limit' ? `보호 칸 ${KEPT_LIMIT}개가 가득 찼어요. 필요 없는 것을 지워 주세요.` : '저장 공간이 부족해요. 필요 없는 저장 지점을 지워 주세요.')
     setName('')
     onChanged()
     onNotice('저장 지점을 만들었어요.')
@@ -65,9 +67,10 @@ export default function SnapshotPanel({
   }
 
   const applyRename = (snapshot: Snapshot) => {
-    renameSnapshot(snapshot.id, renameText)
+    const after = renameSnapshot(snapshot.id, renameText).find((s) => s.id === snapshot.id)
     setRenaming(null)
     onChanged()
+    if (after?.kind === 'rolling') onNotice(`이름은 바꿨지만 보호 칸 ${KEPT_LIMIT}개가 가득 차 있어 오래되면 지워져요. 보호하려면 다른 것을 지우고 다시 이름을 붙여 주세요.`)
   }
 
   const download = (snapshot: Snapshot) => {
@@ -81,10 +84,10 @@ export default function SnapshotPanel({
         <TextInput value={name} onChangeText={setName} placeholder="이름 (예: K동 끝낸 뒤)" style={ui.input} accessibilityLabel="새 저장 지점 이름" />
         <Btn label="지금 상태로 만들기" kind="primary" onPress={create} />
       </Section>
-      <Section title={`저장 지점 ${list.length} / ${SNAPSHOT_LIMIT}`} help="복원하면 지금 상태를 자동 저장 지점으로 남긴 뒤 바꿔요.">
+      <Section title={`저장 지점: 보호 ${kept} / ${KEPT_LIMIT}, 저장 버튼 ${rolling} / ${ROLLING_LIMIT}`} help="복원하면 지금 상태를 자동 저장 지점으로 남긴 뒤 바꿔요.">
         {usage !== null ? <Text style={ui.hint}>{`브라우저 저장 공간 약 ${(usage / 1_000_000).toFixed(1)}MB 사용 중`}</Text> : null}
         {usage !== null && usage >= STORAGE_WARN_CHARS ? <Text style={ui.warn}>{'저장 공간이 얼마 남지 않았어요. 백업 파일을 내려받고 필요 없는 저장 지점을 지워 주세요.'}</Text> : null}
-        {full ? <Text style={ui.warn}>{`${SNAPSHOT_LIMIT}개가 모두 보호돼 있어 저장 버튼도 실패해요. 필요 없는 것을 지워 주세요.`}</Text> : null}
+        {full ? <Text style={ui.warn}>{`보호 칸 ${KEPT_LIMIT}개가 가득 찼어요. 복원이나 변환 전 자동 저장 지점을 남기려면 필요 없는 것을 지워 주세요.`}</Text> : null}
         {list.length === 0 ? <Text style={ui.empty}>{'아직 저장 지점이 없어요.'}</Text> : null}
         {list.map((snapshot) => (
           <View key={snapshot.id} style={styles.row}>

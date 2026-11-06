@@ -336,7 +336,7 @@ export default function DevPathSurveyV3Screen() {
     // Save button points roll over on their own, so pressing it often never runs into the limit.
     const { error } = createSnapshot(current, `저장 ${clockText(Date.now())}`, 'rolling')
     setSnapshotTick((n) => n + 1)
-    if (error) return setNotice('저장 지점을 만들지 못했어요(개수 또는 용량). 저장 지점 탭에서 필요 없는 것을 지워 주세요. 지금 내용은 이 브라우저에 있어요.')
+    if (error) return setNotice('저장 지점을 만들지 못했어요(저장 공간 부족). 저장 지점 탭에서 필요 없는 것을 지워 주세요. 지금 내용은 이 브라우저에 있어요.')
     const meta = { lastSaveAt: Date.now(), lastSaveFingerprint: storeFingerprint(current) }
     setSaveMeta(meta)
     saveSaveMeta(meta)
@@ -671,7 +671,7 @@ export default function DevPathSurveyV3Screen() {
         <BackupPanel
           store={store}
           index={index}
-          errorCount={check.errors.length}
+          tolerance={settings.entranceToleranceM}
           backupStatus={backupStatus}
           onBackedUp={markBackedUp}
           onRestore={runRestore}
