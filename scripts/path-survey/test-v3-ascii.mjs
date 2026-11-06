@@ -25,15 +25,39 @@ const files = [
     .map((name) => join(root, 'scripts/path-survey', name)),
 ].filter((path) => existsSync(path))
 
-/** Removes string and template contents, keeps comments and code. Good enough for this code base. */
+const BACKSLASH = String.fromCharCode(92)
+const NEWLINE = String.fromCharCode(10)
+const NON_ASCII = new RegExp(`[${String.fromCodePoint(0x80)}-${String.fromCodePoint(0x10ffff)}]`, 'u')
+// General punctuation dashes, arrows, box drawing through dingbats, emoji.
+const DECORATIVE = new RegExp(
+  `[${[[0x2010, 0x2015], [0x2190, 0x21ff], [0x2500, 0x27bf], [0x1f000, 0x1faff]].map(([x, y]) => `${String.fromCodePoint(x)}-${String.fromCodePoint(y)}`).join('')}]`,
+  'u',
+)
+
+/** Removes string and template text, keeps comments and code, including code inside template expressions. */
 function outsideStrings(source) {
   let out = ''
   let i = 0
+  // Each entry is the brace depth of an open template expression.
+  const expressions = []
+  const scanTemplate = () => {
+    while (i < source.length) {
+      if (source[i] === BACKSLASH) i += 2
+      else if (source[i] === '`') {
+        i += 1
+        return
+      } else if (source[i] === '$' && source[i + 1] === '{') {
+        i += 2
+        expressions.push(0)
+        return
+      } else i += 1
+    }
+  }
   while (i < source.length) {
     const c = source[i]
     const next = source[i + 1]
     if (c === '/' && next === '/') {
-      const end = source.indexOf('\n', i)
+      const end = source.indexOf(NEWLINE, i)
       const stop = end < 0 ? source.length : end
       out += source.slice(i, stop)
       i = stop
@@ -42,10 +66,22 @@ function outsideStrings(source) {
       const stop = end < 0 ? source.length : end + 2
       out += source.slice(i, stop)
       i = stop
-    } else if (c === "'" || c === '"' || c === '`') {
+    } else if (c === "'" || c === '"') {
       i += 1
-      while (i < source.length && source[i] !== c) i += source[i] === '\\' ? 2 : 1
+      while (i < source.length && source[i] !== c) i += source[i] === BACKSLASH ? 2 : 1
       i += 1
+    } else if (c === '`') {
+      i += 1
+      scanTemplate()
+    } else if (expressions.length && c === '{') {
+      expressions[expressions.length - 1] += 1
+      i += 1
+    } else if (expressions.length && c === '}') {
+      i += 1
+      if (expressions[expressions.length - 1] === 0) {
+        expressions.pop()
+        scanTemplate()
+      } else expressions[expressions.length - 1] -= 1
     } else {
       out += c
       i += 1
@@ -54,13 +90,23 @@ function outsideStrings(source) {
   return out
 }
 
+test('the scanner itself sees through nested templates and still finds Korean in comments', () => {
+  const korean = String.fromCodePoint(0xd55c)
+  const nested = ['const x = `a${y ? `', korean, '${z}` : `', korean, '`}b`'].join('')
+  assert.ok(!NON_ASCII.test(outsideStrings(nested)))
+  assert.ok(!NON_ASCII.test(outsideStrings(`const s = '${korean}'`)))
+  assert.ok(NON_ASCII.test(outsideStrings(`// ${korean}`)))
+  assert.ok(NON_ASCII.test(outsideStrings(`/* ${korean} */`)))
+  assert.ok(NON_ASCII.test(outsideStrings(`const ${korean} = 1`)))
+})
+
 test('v3 files: code and comments are ASCII, no arrows or dashes anywhere', () => {
   assert.ok(files.length > 5)
   const bad = []
   for (const path of files) {
     const source = readFileSync(path, 'utf8')
-    if (/[^\x00-\x7F]/.test(outsideStrings(source))) bad.push(`${path}: non ASCII outside a string`)
-    if (/[\u2010-\u2015\u2190-\u21FF\u2500-\u27BF\u{1F000}-\u{1FAFF}]/u.test(source)) bad.push(`${path}: decorative character`)
+    if (NON_ASCII.test(outsideStrings(source))) bad.push(`${path}: non ASCII outside a string`)
+    if (DECORATIVE.test(source)) bad.push(`${path}: decorative character`)
   }
   assert.deepEqual(bad, [])
 })

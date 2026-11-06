@@ -186,3 +186,49 @@ export function distanceToBuilding(entry: BuildingEntry, lat: number, lng: numbe
   if (entry.rings.some((ring) => pointInRing(lat, lng, ring))) return 0
   return Math.min(...entry.rings.map((ring) => distanceToRingMeters(lat, lng, ring)))
 }
+
+export const BUILDINGS_CACHE_KEY = 'hongikon.pathSurvey.v3.buildings'
+
+type CacheStorage = { getItem(key: string): string | null; setItem(key: string, value: string): void }
+
+const cacheStorage = (): CacheStorage | null => {
+  try {
+    return (globalThis as any).localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Keeps only the fields used here, so the survey still has its building list when offline. */
+export function saveBuildingCache(raw: readonly RawBuilding[], storage: CacheStorage | null = cacheStorage()): boolean {
+  try {
+    if (!storage) return false
+    const value = JSON.stringify(
+      raw.map((b) => ({
+        id: b.id,
+        code: b.code,
+        name: b.name,
+        lat: b.lat,
+        lng: b.lng,
+        floors: b.floors,
+        basementFloors: b.basementFloors,
+        entrances: (b.entrances ?? []).map((e) => ({ label: e.label, minFloor: e.minFloor, maxFloor: e.maxFloor })),
+        boundary: b.boundary,
+        extraBoundaries: b.extraBoundaries,
+      })),
+    )
+    if (storage.getItem(BUILDINGS_CACHE_KEY) !== value) storage.setItem(BUILDINGS_CACHE_KEY, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function loadBuildingCache(storage: CacheStorage | null = cacheStorage()): RawBuilding[] {
+  try {
+    const parsed = JSON.parse(storage?.getItem(BUILDINGS_CACHE_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
