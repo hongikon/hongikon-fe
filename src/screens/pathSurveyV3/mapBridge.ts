@@ -52,6 +52,7 @@ export const SETUP_JS = `(function(){
     return '<svg data-shape="' + n.shape + '" width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" style="display:block;filter:drop-shadow(0 0 2px rgba(0,0,0,.45))">' + body + '</svg>';
   }
   function labelHtml(n){
+    if (!n.num) return '';
     var parts = '<b>' + esc(n.num) + '</b>';
     if (n.letter) parts += ' <span style="color:' + n.fill + '">' + esc(n.letter) + '</span>';
     if (n.badge) parts += ' <span style="background:#111827;color:#fff;border-radius:3px;padding:0 3px">' + esc(n.badge) + '</span>';
@@ -107,7 +108,7 @@ export const SETUP_JS = `(function(){
   }
   function makeEdge(e){
     var path = [ll(e.p[0], e.p[1]), ll(e.p[2], e.p[3])];
-    var list = [new naver.maps.Polyline({ map: map, zIndex: 300, clickable: false, strokeColor: e.color, strokeWeight: e.weight, strokeOpacity: e.opacity, strokeLineCap: 'round', path: path })];
+    var list = [new naver.maps.Polyline({ map: map, zIndex: 300, clickable: false, strokeColor: e.color, strokeWeight: e.weight, strokeOpacity: e.opacity, strokeStyle: e.dashed ? 'shortdash' : 'solid', strokeLineCap: e.dashed ? 'butt' : 'round', path: path })];
     // Stairs look the same everywhere: dark line with a white dash on top.
     if (e.stairs) list.push(new naver.maps.Polyline({ map: map, zIndex: 301, clickable: false, strokeColor: '#fff', strokeWeight: 2, strokeOpacity: e.opacity, strokeStyle: 'shortdash', path: path }));
     if (e.clickable) {

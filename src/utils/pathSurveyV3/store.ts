@@ -167,6 +167,7 @@ export const hasEdgeBetween = (store: StoreV3, a: string, b: string) => {
 /** What a new point inherits from the work context. */
 export interface NodeContext {
   scope: NodeScope
+  type?: NodeType
   levels?: LevelRef[]
 }
 
@@ -186,8 +187,12 @@ export function addNode(
   now = Date.now(),
 ): { store: StoreV3; id: string } {
   const id = `n${store.nextNode}`
-  const node: SurveyNodeV3 = { id, lat: round7(lat), lng: round7(lng), scope: context.scope, type: 'basic' }
-  if (context.scope === 'indoor' && context.levels?.length) node.levels = context.levels.map((l) => ({ ...l }))
+  const indoor = context.scope === 'indoor'
+  const type = indoor ? (context.type ?? 'basic') : 'basic'
+  const node: SurveyNodeV3 = { id, lat: round7(lat), lng: round7(lng), scope: context.scope, type }
+  // An entrance has exactly one floor.
+  const levels = type === 'entrance' ? context.levels?.slice(0, 1) : context.levels
+  if (indoor && levels?.length) node.levels = levels.map((l) => ({ ...l }))
   let next = touch(store, { nodes: [...store.nodes, node], nextNode: store.nextNode + 1 }, now)
   if (linkFrom) next = addEdge(next, linkFrom, id, 'normal', now)
   return { store: next, id }
@@ -321,6 +326,7 @@ export function setNodeType(store: StoreV3, id: string, type: NodeType, context:
         if (context.length) next.levels = context.map((l) => ({ ...l }))
       }
       if (type !== 'entrance') delete next.entranceLabel
+      else if (next.levels && next.levels.length > 1) next.levels = next.levels.slice(0, 1)
       if (type !== 'stairs' && type !== 'elevator') delete next.ties
       return next
     },
@@ -373,6 +379,32 @@ export function setEntranceLabel(store: StoreV3, id: string, label: string | und
     },
     now,
   )
+}
+
+export interface BulkChange {
+  scope?: NodeScope
+  type?: NodeType
+  levels?: LevelRef[]
+}
+
+/** One undo step for many points. Follows the same rules as the single point edits. */
+export function applyBulkToNodes(store: StoreV3, ids: readonly string[], change: BulkChange, now = Date.now()): StoreV3 {
+  let next = store
+  for (const id of ids) {
+    if (change.scope === 'outdoor') {
+      next = setNodeScope(next, id, 'outdoor', [], now)
+      continue
+    }
+    if (change.scope === 'indoor') next = setNodeScope(next, id, 'indoor', [], now)
+    if (change.type) next = setNodeType(next, id, change.type, [], now)
+    if (change.levels) {
+      const node = findNode(next, id)
+      const levels = node?.type === 'entrance' ? change.levels.slice(0, 1) : change.levels
+      next = setNodeScope(next, id, 'indoor', [], now)
+      next = setNodeLevels(next, id, levels, now)
+    }
+  }
+  return next
 }
 
 /** Bulk assignment used by multi select: all given nodes become indoor with these levels, in one undo step. */

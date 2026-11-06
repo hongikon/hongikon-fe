@@ -59,6 +59,8 @@ export interface ConvertReport {
   crossBuildingPairs: number
   labelsNotOnServer: string[]
   manual: ManualItem[]
+  /** Boundary hints answered with "stay outdoor". */
+  dismissed?: string[]
 }
 
 export interface ConvertResult {
@@ -349,9 +351,9 @@ export function loadConvertReport(storage: StorageLike | null = defaultStorage()
 }
 
 /** Whether a manual item is still open, judged from the node as it is now. */
-export function isManualItemOpen(item: ManualItem, node: SurveyNodeV3 | undefined): boolean {
+export function isManualItemOpen(item: ManualItem, node: SurveyNodeV3 | undefined, dismissed: readonly string[] = []): boolean {
   if (!node) return false
-  if (item.kind === 'boundary') return node.scope === 'outdoor'
+  if (item.kind === 'boundary') return !dismissed.includes(item.nodeId) && (node.scope === 'outdoor' || !node.levels?.length)
   if (item.kind === 'entrance') return node.type === 'entrance' && !(node.levels?.length === 1 && node.entranceLabel)
   return node.type === 'elevator' && (node.levels?.length ?? 0) < 2
 }

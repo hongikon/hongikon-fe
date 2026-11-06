@@ -373,15 +373,22 @@ test('buildings: order follows the server id, not the response order', () => {
   assert.equal(index.byLetter.get('M').code, 'hongik_gym')
 })
 
-test('buildings: floor chips', () => {
+test('buildings: floor chips come from the entrance range, special floors and used floors', () => {
   const index = B.buildBuildingIndex([...FIXTURE_BUILDINGS, { id: 99, code: 'x', name: 'x', lat: 1, lng: 1, floors: 3, basementFloors: 1 }])
   const r = B.floorOptions(index.byCode.get('hongik_r'))
   assert.deepEqual(r.special, [0, 1.5])
-  assert.equal(r.main[0], -5)
-  assert.ok(!r.main.includes(0))
+  assert.deepEqual(r.main, [-2, -1, 0, 1, 1.5])
   assert.equal(r.more.at(-1), 30)
-  assert.deepEqual(B.floorOptions(index.byCode.get('hongik_k')).special, [])
-  assert.deepEqual(B.floorOptions(index.byCode.get('x')), { main: [-1, 1, 2, 3], more: [], special: [] })
+  assert.ok(!r.more.includes(1))
+  assert.deepEqual(B.floorOptions(index.byCode.get('hongik_k')).main, [1])
+  assert.deepEqual(B.floorOptions(index.byCode.get('hongik_k'), [7, 0]).main, [0, 1, 7])
+  assert.deepEqual(B.floorOptions(index.byCode.get('x')).main, [-1, 1, 2, 3])
+  // No entrances and no counts: a compact default, the rest behind more.
+  const none = B.floorOptions(index.byCode.get('hongik_t'))
+  assert.equal(none.main[0], -5)
+  assert.equal(none.main.at(-1), 10)
+  assert.ok(!none.main.includes(0))
+  assert.equal(none.more[0], 11)
 })
 
 test('labels: floor tokens and new label numbering', () => {
