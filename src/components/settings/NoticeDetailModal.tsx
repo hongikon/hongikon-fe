@@ -4,7 +4,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { SPACING } from '../../constants/spacing'
 import { FONTS } from '../../constants/typography'
-import type { AppNotice } from '../../constants/appNotices'
+import type { AppNotice, NoticeComparison } from '../../constants/appNotices'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 
@@ -29,6 +29,7 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
             <Text style={styles.date}>{notice.date}</Text>
             <Text style={styles.title}>{notice.title}</Text>
             <Text style={styles.text}>{notice.body}</Text>
+            {notice.comparison && <Comparison comparison={notice.comparison} />}
           </ScrollView>
         )}
         </ModalPanel>
@@ -36,6 +37,38 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
       </SafeAreaView>
       </SafeAreaProvider>
     </SwipeBackModal>
+  )
+}
+
+/** "이전 → 이후" 비교. 이후 문장의 {{ }} 부분(바뀐 곳)만 메인 컬러로 강조한다. */
+function Comparison({ comparison }: { comparison: NoticeComparison }) {
+  return (
+    <View style={styles.compare}>
+      <Text style={styles.compareTitle}>{comparison.title}</Text>
+      {comparison.rows.map((row) => (
+        <View key={row.label} style={styles.compareRow}>
+          <Text style={styles.compareLabel}>{row.label}</Text>
+          <View style={styles.beforeBox}>
+            <Text style={styles.boxTag}>이전</Text>
+            <Text style={styles.beforeText}>{row.before}</Text>
+          </View>
+          <View style={styles.afterBox}>
+            <Text style={[styles.boxTag, styles.afterTag]}>이후</Text>
+            <Text style={styles.afterText}>
+              {row.after.split(/\{\{|\}\}/).map((part, i) =>
+                i % 2 === 1 ? (
+                  <Text key={i} style={styles.changed}>
+                    {part}
+                  </Text>
+                ) : (
+                  part
+                ),
+              )}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
   )
 }
 
@@ -47,4 +80,15 @@ const styles = StyleSheet.create({
   date: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary, marginBottom: 8 },
   title: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 16 },
   text: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 22 },
+  compare: { marginTop: 24, paddingBottom: 32, gap: 16 },
+  compareTitle: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  compareRow: { gap: 6 },
+  compareLabel: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
+  beforeBox: { borderRadius: 10, padding: 12, backgroundColor: COLORS.background, gap: 4 },
+  afterBox: { borderRadius: 10, padding: 12, backgroundColor: COLORS.primarySoft, gap: 4 },
+  boxTag: { fontFamily: FONTS.semibold, fontSize: 11, color: COLORS.textTertiary },
+  afterTag: { color: COLORS.primary },
+  beforeText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary, lineHeight: 21 },
+  afterText: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary, lineHeight: 21 },
+  changed: { fontFamily: FONTS.semibold, color: COLORS.primary },
 })

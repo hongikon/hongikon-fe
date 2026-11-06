@@ -20,6 +20,15 @@ export interface AppNoticePopup {
   linkLabel: string
 }
 
+/**
+ * 공지 본문 아래 "이전 → 이후" 비교(11-06, 처리방침 변경 공지). after 에서 {{ }} 로 감싼 부분이 바뀐 곳이라
+ * 메인 컬러로 강조한다. 문장은 처리방침(legalText.ts) 원문을 그대로 옮긴다.
+ */
+export interface NoticeComparison {
+  title: string
+  rows: { label: string; before: string; after: string }[]
+}
+
 export interface AppNotice {
   id: string
   title: string
@@ -27,6 +36,7 @@ export interface AppNotice {
   body: string
   /** 앱을 켤 때 한 번 띄우는 요약(LaunchNoticeModal). 없으면 공지사항 목록에만 있다. */
   popup?: AppNoticePopup
+  comparison?: NoticeComparison
 }
 
 /** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 11-03부터 켜짐 — ROUTE_FINDING_ENABLED, 1.1.0 빌드부터 '내 위치' 출발). */
@@ -42,6 +52,27 @@ export const APP_NOTICES: AppNotice[] = [
       '· 위치 접근권한(앱 사용 중, 선택)은 처음 누를 때 요청해요.\n' +
       '· 길찾기와 같이 위치는 휴대폰 안에서만 쓰고 운영팀 서버로 보내거나 저장하지 않아요. 수집하는 항목과 이용 목적은 바뀌지 않아요.\n\n' +
       '바뀐 처리방침 전문은 설정 > 약관 및 정책 > 개인정보 처리방침에서 볼 수 있어요(11월 15일까지 적용되는 이전 처리방침은 그 아래에 있어요). 궁금한 점은 hongikonsupport@gmail.com 으로 알려 주세요.',
+    comparison: {
+      title: '바뀌는 문장(1. 처리하는 개인정보 항목)',
+      rows: [
+        {
+          label: '위치 접근권한을 요청하는 때',
+          before: '지도 검색의 "내 주변 제휴 보기"를 누르거나 길찾기에서 내 위치를 쓸 때만 요청합니다.',
+          after: '지도 검색의 "내 주변 제휴 보기"를 누르거나 길찾기에서 내 위치를 쓰거나 {{지도에서 "내 위치 켜기"를 누를 때}}만 요청합니다.',
+        },
+        {
+          label: '위치를 읽는 동안',
+          before: '길찾기는 길찾기 화면을 보는 동안에만 위치를 계속 읽어 지도에 내 위치와 경로를 보여 주며 화면을 닫으면 멈춥니다.',
+          after:
+            '길찾기는 길찾기 화면을 보는 동안에만 위치를 계속 읽어 지도에 내 위치와 경로를 보여 주며 화면을 닫으면 멈춥니다. {{지도의 "내 위치 켜기"는 켜 둔 동안 지도 화면에서만 내 위치를 보여 주고, 끄거나 지도 화면을 떠나면 멈춥니다.}}',
+        },
+        {
+          label: '위치를 쓰는 곳',
+          before: '위치는 휴대폰 안에서 가까운 제휴 업체를 찾고, 길찾기에서 내 위치와 경로를 보여 주고, 제휴 가게에 머무는지 판단하는 데만 씁니다.',
+          after: '위치는 휴대폰 안에서 가까운 제휴 업체를 찾고, {{지도와}} 길찾기에서 내 위치와 경로를 보여 주고, 제휴 가게에 머무는지 판단하는 데만 씁니다.',
+        },
+      ],
+    },
   },
   {
     id: '6',
