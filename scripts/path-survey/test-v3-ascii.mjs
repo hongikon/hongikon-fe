@@ -1,6 +1,6 @@
 // Project rule for the v3 survey: code and comments are ASCII only. Korean is allowed inside string
 // literals because that is screen text. Arrows and dashes are not allowed anywhere.
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
@@ -8,10 +8,12 @@ import assert from 'node:assert/strict'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const walk = (dir) =>
-  readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name)
-    return statSync(path).isDirectory() ? walk(path) : [path]
-  })
+  !existsSync(dir)
+    ? []
+    : readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name)
+        return statSync(path).isDirectory() ? walk(path) : [path]
+      })
 
 const files = [
   ...walk(join(root, 'src/utils/pathSurveyV3')),
@@ -21,13 +23,7 @@ const files = [
   ...readdirSync(join(root, 'scripts/path-survey'))
     .filter((name) => name.startsWith('test-v3-'))
     .map((name) => join(root, 'scripts/path-survey', name)),
-].filter((path) => {
-  try {
-    return statSync(path).isFile()
-  } catch {
-    return false
-  }
-})
+].filter((path) => existsSync(path))
 
 /** Removes string and template contents, keeps comments and code. Good enough for this code base. */
 function outsideStrings(source) {
@@ -64,7 +60,7 @@ test('v3 files: code and comments are ASCII, no arrows or dashes anywhere', () =
   for (const path of files) {
     const source = readFileSync(path, 'utf8')
     if (/[^\x00-\x7F]/.test(outsideStrings(source))) bad.push(`${path}: non ASCII outside a string`)
-    if (/[‐-―←-⇿─-➿\u{1F000}-\u{1FAFF}]/u.test(source)) bad.push(`${path}: decorative character`)
+    if (/[\u2010-\u2015\u2190-\u21FF\u2500-\u27BF\u{1F000}-\u{1FAFF}]/u.test(source)) bad.push(`${path}: decorative character`)
   }
   assert.deepEqual(bad, [])
 })
