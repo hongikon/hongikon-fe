@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, type FlatList, type ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation, useScrollToTop, type CompositeNavigationProp } from '@react-navigation/native'
+import { useIsFocused, useNavigation, useScrollToTop, type CompositeNavigationProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../constants/colors'
@@ -58,16 +58,38 @@ export default function NewsScreen() {
 
   // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없으면 부르지 않고 빈 화면 안내를
   // 그대로 보여준다. 분야로는 거르지 않는다 — 설정의 '알림 받을 분야'는 푸시 알림에만 쓰이고 피드와는 따로다.
+  //
+  // 피드에 쓰는 구독 목록(feedSourceIds)은 구독 화면을 보는 동안에는 고정한다. '관리'에서 하나 지우거나 더할 때마다
+  // 목록을 비우고 처음부터 다시 받아, 뼈대 화면이 뜨며 '내 구독' 카드까지 사라졌다 나타나고 맨 위로 튀었다(11-06).
+  // 지운 게시판 글은 화면에서 바로 빼고(displayedNews), 새로 받는 건 구독 화면을 벗어날 때(다른 탭·다른 화면) 뒤에서 한다.
+  // 서버 구독(알림)은 이와 따로 SettingsContext 가 바로 맞춘다. 당겨서 새로고침하면 그때도 맞춘다.
+  const screenFocused = useIsFocused()
+  const onSubscribedView = screenFocused && activeTab === '구독'
+  const [feedSourceIds, setFeedSourceIds] = useState<readonly string[]>(settings.subscribedDepts)
+  useEffect(() => {
+    // 구독이 하나도 없던 상태에서 처음 구독하면 비울 목록이 없어 바로 받는다(빈 안내가 남지 않게).
+    if (!onSubscribedView || feedSourceIds.length === 0) setFeedSourceIds(settings.subscribedDepts)
+  }, [onSubscribedView, settings.subscribedDepts, feedSourceIds.length])
   const subscribedFeed = useNewsFeed(
-    { sourceIds: settings.subscribedDepts },
+    { sourceIds: feedSourceIds },
     // 탭을 오갈 때마다 다시 받지 않도록 활성 탭과 무관하게 켜 둔다.
-    { enabled: settings.subscribedDepts.length > 0 },
+    { enabled: feedSourceIds.length > 0 },
   )
+  const subscribedSet = useMemo(() => new Set(settings.subscribedDepts), [settings.subscribedDepts])
+  const subscribedItems = useMemo(
+    () => subscribedFeed.items.filter((item) => subscribedSet.has(item.sourceId)),
+    [subscribedFeed.items, subscribedSet],
+  )
+  const feedPending = feedSourceIds.join('\u0000') !== settings.subscribedDepts.join('\u0000')
+  const refreshSubscribed = useCallback(() => {
+    if (feedPending) setFeedSourceIds(settings.subscribedDepts)
+    else subscribedFeed.refresh()
+  }, [feedPending, settings.subscribedDepts, subscribedFeed])
   // 북마크 탭: 목록에서 골라낼 수 없어 id마다 상세를 받는다.
   const bookmarked = useBookmarkedNews(settings.bookmarkedNews)
 
   const isBookmarkTab = activeTab === '북마크'
-  const displayedNews = isBookmarkTab ? bookmarked.items : subscribedFeed.items
+  const displayedNews = isBookmarkTab ? bookmarked.items : subscribedItems
   const feedState = isBookmarkTab
     ? { ...bookmarked, retrying: bookmarked.refreshing || bookmarked.loading }
     : { ...subscribedFeed, retrying: subscribedFeed.loading || subscribedFeed.loadingMore || subscribedFeed.refreshing }
@@ -137,7 +159,7 @@ export default function NewsScreen() {
           onEndReached={isBookmarkTab ? undefined : subscribedFeed.loadMore}
           loadingMore={!isBookmarkTab && subscribedFeed.loadingMore}
           refreshing={isBookmarkTab ? undefined : subscribedFeed.refreshing}
-          onRefresh={isBookmarkTab ? undefined : subscribedFeed.refresh}
+          onRefresh={isBookmarkTab ? undefined : refreshSubscribed}
           footer={
             feedState.errorMessage ? (
               <RetryableError
@@ -192,7 +214,7 @@ export default function NewsScreen() {
                         accessibilityRole="button"
                       >
                         <Ionicons name="add" size={13} color={COLORS.primary} />
-                        <Text style={styles.chipAddText}>학과 추가</Text>
+                        <Text style={styles.chipAddText}>구독 추가</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -207,7 +229,7 @@ export default function NewsScreen() {
               action={
                 activeTab === '구독' && settings.subscribedDepts.length === 0 ? (
                   <Button
-                    label="학과 구독하기"
+                    label="구독 추가하기"
                     icon="add"
                     size="md"
                     fullWidth={false}
