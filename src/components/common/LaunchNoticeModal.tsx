@@ -12,14 +12,14 @@ import { kstTodayYmd } from '../../utils/exhibitions'
 import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
-import NoticeDetailModal from '../settings/NoticeDetailModal'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { NoticeDetailContent } from '../settings/NoticeDetailModal'
+import ModalHeader from '../settings/ModalHeader'
+import ContentColumn from './ContentColumn'
 import Button from './Button'
 
 /** '다시 보지 않기'를 누른 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. '닫기'는 남기지 않는다(다음 실행에 다시 뜬다). */
 const STORAGE_KEY = '@hongikon_launch_notice_seen'
-
-/** 팝업이 사라지는 애니메이션이 끝난 뒤 본문 화면을 연다 — 네이티브 Modal 이 닫히는 중에 다른 Modal 을 열면 안 뜰 수 있다. */
-const DETAIL_OPEN_DELAY_MS = 350
 
 /** 지금 띄울 공지 — 최신순 목록에서 popup.until(KST, 그날까지)이 지나지 않은 첫 공지. */
 export function currentPopupNotice(notices: AppNotice[] = APP_NOTICES, now: number = Date.now()): AppNotice | null {
@@ -88,9 +88,12 @@ export default function LaunchNoticeModal() {
     if (popupNotice) AsyncStorage.setItem(STORAGE_KEY, popupNotice.id).catch(() => {})
   }
 
-  const openDetail = () => {
+  // '보러가기'는 팝업 창을 닫고 본문 창을 새로 띄우지 않고, 같은 창 안에서 본문으로 바꿔 보여 준다. iOS 에서 창이 닫히는
+  // 중에 다른 창을 띄우면 안 뜨고 화면이 멈출 수 있다(11-06 설정 공지 목록에서 실제로 멈췄다). 본문을 닫으면 이번 실행에서만 닫힌다.
+  const openDetail = () => setDetailOpen(true)
+  const closeDetail = () => {
+    setDetailOpen(false)
     closeForNow()
-    setTimeout(() => setDetailOpen(true), DETAIL_OPEN_DELAY_MS)
   }
 
   const popup = popupNotice?.popup
@@ -120,7 +123,17 @@ export default function LaunchNoticeModal() {
   return (
     <>
       {showPopup && (
-        <Modal visible transparent animationType="fade" onRequestClose={closeForNow}>
+        <Modal visible transparent animationType="fade" onRequestClose={detailOpen ? closeDetail : closeForNow}>
+          {detailOpen && popupNotice ? (
+            <SafeAreaProvider>
+              <SafeAreaView style={styles.detail} edges={['top']}>
+                <ContentColumn>
+                  <ModalHeader title="공지사항" onClose={closeDetail} />
+                  <NoticeDetailContent notice={popupNotice} />
+                </ContentColumn>
+              </SafeAreaView>
+            </SafeAreaProvider>
+          ) : (
           <View style={styles.backdrop}>
             <View style={styles.card}>
               <Pressable onPress={closeForNow} accessibilityRole="button" accessibilityLabel="공지 닫기" hitSlop={10} style={styles.close}>
@@ -171,14 +184,15 @@ export default function LaunchNoticeModal() {
               </View>
             </View>
           </View>
+          )}
         </Modal>
       )}
-      <NoticeDetailModal visible={detailOpen} notice={popupNotice} onClose={() => setDetailOpen(false)} />
     </>
   )
 }
 
 const styles = StyleSheet.create({
+  detail: { flex: 1, backgroundColor: COLORS.background },
   backdrop: {
     flex: 1,
     alignItems: 'center',
