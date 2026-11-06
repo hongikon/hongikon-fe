@@ -11,15 +11,17 @@ import {
   Platform,
   Animated,
   Easing,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
+import { FONTS, TYPE } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
-import { routeAsk, sendAskFeedback, streamAsk, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
+import { routeAsk, sendAskFeedback, streamAsk, type AskAuth, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
 import { ApiError, getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
@@ -107,6 +109,16 @@ interface AskChatProps {
    * 없으면(운영 앱) 지금처럼 앱 안의 낱말 찾기만 한다.
    */
   serverKey?: string;
+  /** 앱 '물어보기' 탭(BETA): 로그인 토큰으로 서버에 묻는다. serverKey 가 있으면 그쪽이 먼저다. */
+  accessToken?: string | null;
+  /** 제목 옆 작은 BETA 표시(앱 탭). */
+  beta?: boolean;
+  /** 입력줄 아래 여백. 없으면 안전 영역 아래 값. 탭 화면은 떠 있는 탭 바 높이를 준다. */
+  bottomInset?: number;
+  /** 입력줄 위 한 줄(오늘 남은 질문 수 등). */
+  composerNote?: string | null;
+  /** 서버에 한 번 물은 뒤(성공·실패 모두) — 남은 수를 다시 받는다. */
+  onAsked?: () => void;
 }
 
 /**
@@ -148,10 +160,14 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
 }
 
 /** 서버 답이 실패했을 때 알릴 말. 상태 코드는 routeAsk(ApiError)에서만 알 수 있다 — 흘려받기 도중 끊기면 일반 문구. */
-function askFailureText(error: unknown): string {
+function askFailureText(error: unknown, app: boolean): string {
   const status = error instanceof ApiError ? error.status : null;
+  // 앱 탭: 하루 한도·로그인 안내는 서버 문구를 그대로(계정 한도인지 전체 상한인지 서버만 안다).
+  if (app && (status === 429 || status === 403) && error instanceof ApiError && error.serverMessage) return error.serverMessage;
   if (status === 429) return "질문이 많아 잠시 쉬고 있어요. 조금 뒤에 다시 물어봐 주세요.";
-  if (status === 403) return "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
+  if (status === 403) {
+    return app ? "로그인하면 물어볼 수 있어요." : "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
+  }
   if (status === 404) return "지금은 물어보기 서버가 꺼져 있어 답할 수 없어요.";
   return "지금은 답을 만들 수 없어요. 잠시 뒤에 다시 물어봐 주세요.";
 }
@@ -166,8 +182,10 @@ function askFailureText(error: unknown): string {
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
-export default function AskChat({ onClose, serverKey }: AskChatProps) {
+export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onAsked }: AskChatProps) {
   const insets = useSafeAreaInsets();
+  const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
+  const appMode = !serverKey;
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
@@ -185,6 +203,13 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   ).current;
   const nextId = useRef(1);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  /** 맨 아래 근처를 보고 있는지(새 글자가 오면 따라 내릴지). */
+  const atBottomRef = useRef(true);
+  // 앱 탭은 Claude·ChatGPT 앱처럼 — 답은 말풍선 없이 화면 폭 그대로, 내 질문만 오른쪽 남색 말풍선(11-01 브랜드색 강조).
+  const botStyle = appMode ? [styles.botBubble, styles.botPlain] : styles.botBubble;
+  const userStyle = appMode ? [styles.userBubble, styles.userApp] : styles.userBubble;
+  const userTextStyle = appMode ? [styles.userText, styles.userTextApp] : styles.userText;
+  const [showJump, setShowJump] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const { facilities } = useMapData();
 
@@ -291,12 +316,16 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     if (!question || pending) return;
     haptics.selection();
     setInput("");
+    atBottomRef.current = true;
     const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
-    if (!serverKey) {
+    if (!auth) {
       // 낱말 찾기로 답하지 않는다(10-27 운영진 요청) — 낱말만 겹치는 엉뚱한 안내나 긴 원문이 서버 답처럼 보였다.
-      push({ role: "text", text: "암호키가 없어 답할 수 없어요. /dev 화면에서 암호키를 넣고 다시 열어 주세요." });
+      push({
+        role: "text",
+        text: appMode ? "로그인하면 물어볼 수 있어요." : "암호키가 없어 답할 수 없어요. /dev 화면에서 암호키를 넣고 다시 열어 주세요.",
+      });
       return;
     }
     setPending(true);
@@ -331,7 +360,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         result = await streamAsk(
           question.slice(0, 200),
           history,
-          serverKey,
+          auth,
           hint,
           (event) => {
             heard = true;
@@ -354,7 +383,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       } catch (error) {
         // 흘려받기 자체가 안 되면(이벤트를 하나도 못 받음) 한 번에 받기로. 도중에 끊겼거나 학생이 멈췄으면 다시 묻지 않는다.
         if (heard || abort.signal.aborted) throw error;
-        result = await routeAsk(question.slice(0, 200), history, serverKey, hint, abort.signal, conversationId);
+        result = await routeAsk(question.slice(0, 200), history, auth, hint, abort.signal, conversationId);
       }
       const sources = (result.nodeIds.length > 0 ? result.nodeIds : [result.nodeId])
         .map(findStep)
@@ -412,10 +441,11 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       // 서버가 꺼졌거나(404·503) 한도(429)·키(403)·네트워크 오류. 낱말 찾기로 답하지 않고 실패를 그대로 알린다(10-27 운영진 요청 —
       // 실패할 때마다 낱말만 겹치는 안내·긴 원문이 서버 답처럼 나와, 답이 틀린 건지 서버가 실패한 건지 알 수 없었다).
       removeLive();
-      push({ role: "text", text: askFailureText(error) });
+      push({ role: "text", text: askFailureText(error, appMode) });
     } finally {
       abortRef.current = null;
       setPending(false);
+      onAsked?.();
     }
   };
 
@@ -467,8 +497,8 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   };
 
   const renderSection = (section: AskSection, key: string) => (
-    <View key={key} style={styles.section}>
-      {section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null}
+    <View key={key} style={appMode ? styles.sectionApp : styles.section}>
+      {section.title ? <Text style={appMode ? styles.sectionTitleApp : styles.sectionTitle}>{section.title}</Text> : null}
       {section.table ? (
         <View style={styles.table}>
           {[section.table.head, ...section.table.rows].map((row, rowIndex) => (
@@ -552,7 +582,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     if (item.streaming && !item.text) {
       // Claude 앱처럼 지금 하는 일 한 줄만 제자리에서 바꿔 가며 깜빡인다(쌓지 않는다).
       return (
-        <View style={styles.botBubble}>
+        <View style={botStyle}>
           <ThinkingLine text={item.status} />
         </View>
       );
@@ -589,7 +619,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       ),
     ];
     return (
-      <View style={styles.botBubble}>
+      <View style={botStyle}>
         {lead ? (
           <Text style={[styles.botText, sections.length > 0 && styles.lead]}>
             {lead}
@@ -672,7 +702,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, resolved } : item)));
     // 서버 답이면 그 기록에 응답을 붙인다(무엇이 해결 안 됐는지 알아야 고친다). 실패해도 화면은 그대로.
-    if (message.logId && serverKey) sendAskFeedback(message.logId, conversationId, resolved, serverKey).catch(() => {});
+    if (message.logId && auth) sendAskFeedback(message.logId, conversationId, resolved, auth).catch(() => {});
     if (resolved) {
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
@@ -781,7 +811,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   const renderLink = (link: AskLink, key: string) => (
     <TouchableOpacity
       key={key}
-      style={styles.linkButton}
+      style={appMode ? [styles.linkButton, styles.linkButtonApp] : styles.linkButton}
       activeOpacity={0.7}
       onPress={() => openLink(link.url)}
       accessibilityRole="link"
@@ -821,19 +851,19 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
     switch (item.role) {
       case "user":
         return (
-          <View style={styles.userBubble}>
-            <Text style={styles.userText}>{item.text}</Text>
+          <View style={userStyle}>
+            <Text style={userTextStyle}>{item.text}</Text>
           </View>
         );
       case "text":
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={styles.botText}>{item.text}</Text>
           </View>
         );
       case "handoff":
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={styles.handoffTitle}>운영진에게 물어보기</Text>
             {item.status === "sent" ? (
               <Text style={styles.botText}>
@@ -893,7 +923,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         return renderReply(item);
       case "question":
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={styles.botText}>{item.node.text}</Text>
             {item.chosen === null ? (
               <View style={styles.options}>
@@ -918,7 +948,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
       case "answer": {
         const brief = briefSections(item.node.sections);
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={[styles.botText, item.node.sections?.length ? styles.lead : null]}>{item.node.text}</Text>
             {brief.shown.map((section, index) => renderSection(section, `${index}`))}
             {brief.cut ? <Text style={styles.checked}>전체 내용은 아래 학교 페이지에서 볼 수 있어요.</Text> : null}
@@ -951,8 +981,39 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         );
       }
       case "feedback":
+        if (appMode) {
+          // Claude·ChatGPT 앱처럼 답 바로 아래 엄지 아이콘 두 개. 아래를 누르면 담당 부서·운영진 문의로 잇는다.
+          return (
+            <View style={styles.feedbackIcons}>
+              {item.resolved !== false ? (
+                <TouchableOpacity
+                  style={styles.feedbackIcon}
+                  disabled={item.resolved !== null}
+                  onPress={() => answerFeedback(item, true)}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.resolved ? "도움이 됐어요(선택됨)" : "도움이 됐어요"}
+                >
+                  <Ionicons name={item.resolved ? "thumbs-up" : "thumbs-up-outline"} size={17} color={COLORS.textTertiary} />
+                </TouchableOpacity>
+              ) : null}
+              {item.resolved !== true ? (
+                <TouchableOpacity
+                  style={styles.feedbackIcon}
+                  disabled={item.resolved !== null}
+                  onPress={() => answerFeedback(item, false)}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.resolved === false ? "해결되지 않았어요(선택됨)" : "해결되지 않았어요"}
+                >
+                  <Ionicons name={item.resolved === false ? "thumbs-down" : "thumbs-down-outline"} size={17} color={COLORS.textTertiary} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          );
+        }
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={styles.botText}>궁금한 점이 해결됐나요?</Text>
             {item.resolved === null ? (
               <View style={styles.feedbackRow}>
@@ -982,7 +1043,7 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
         );
       case "offices":
         return (
-          <View style={styles.botBubble}>
+          <View style={botStyle}>
             <Text style={styles.botText}>{item.intro}</Text>
             {item.offices.map(renderOffice)}
           </View>
@@ -991,10 +1052,12 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
   };
 
   const intro = (
-    <View style={styles.botBubble}>
+    <View style={botStyle}>
       <Text style={styles.botText}>
         학교에서 해야 할 일을 물어보세요. 필요한 건 몇 가지 되물어서, 어떻게 하면 되는지와 어디에 연락하면 되는지 알려 드려요.
       </Text>
+      {/* 앱 탭에선 추천 질문 버튼을 두지 않는다(11-01 요청). 웹 /dev/ask(운영진 시험)에만. */}
+      {appMode ? null : (
       <View style={styles.examples}>
         {EXAMPLES.map((example) => (
           <TouchableOpacity
@@ -1009,96 +1072,204 @@ export default function AskChat({ onClose, serverKey }: AskChatProps) {
           </TouchableOpacity>
         ))}
       </View>
+      )}
     </View>
   );
 
   const canSend = input.trim().length > 0 && !pending;
 
+  /** 화면 맨 아래 근처에 있으면 새 글자가 올 때 따라 내린다. 위로 올려 읽는 중이면 그대로 두고 '맨 아래로' 버튼만 보인다. */
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const fromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    atBottomRef.current = fromBottom < 80;
+    const show = fromBottom > 240;
+    if (show !== showJump) setShowJump(show);
+  };
+  const jumpToBottom = () => {
+    atBottomRef.current = true;
+    setShowJump(false);
+    listRef.current?.scrollToEnd({ animated: true });
+  };
+
+  // 대화가 없을 때 가운데 인사(Claude·ChatGPT 앱처럼). 웹 /dev/ask 는 예전처럼 안내 말풍선과 예시 버튼.
+  const empty = appMode ? (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="chatbubble-ellipses" size={28} color={COLORS.primary} />
+      </View>
+      <Text style={styles.emptyTitle}>무엇이 궁금하세요?</Text>
+      <Text style={styles.emptyDesc}>휴학·수강·장학·시설처럼 학교 일을 물으면{"\n"}학교 공식 안내를 찾아 답해요.</Text>
+    </View>
+  ) : null;
+
   return (
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+        <View style={[styles.container, appMode && styles.containerApp, { paddingTop: insets.top + (appMode ? 0 : 8) }]}>
           <ContentColumn>
             <ScreenHeader
               title="물어보기"
               onBack={onClose}
-              card
+              card={!appMode}
+              border={false}
+              children={
+                beta ? (
+                  <View style={styles.titleRow} accessibilityRole="header" accessibilityLabel="물어보기, 베타">
+                    <Text style={styles.titleText}>물어보기</Text>
+                    <Text style={styles.beta}>BETA</Text>
+                  </View>
+                ) : undefined
+              }
               right={
                 messages.length > 0 ? (
                   <TouchableOpacity
-                    onPress={() => setMessages([])}
+                    onPress={() => {
+                      abortRef.current?.abort();
+                      setMessages([]);
+                    }}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="처음으로 — 대화 지우기"
+                    accessibilityLabel="초기화 — 대화 지우기"
                     style={styles.clear}
                   >
-                    <Text style={styles.clearText}>처음으로</Text>
+                    <Text style={styles.clearText}>초기화</Text>
                   </TouchableOpacity>
+                ) : appMode ? (
+                  <View style={styles.clearSlot} />
                 ) : undefined
               }
             />
 
-            <FlatList
-              ref={listRef}
-              style={styles.flex}
-              data={messages}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderMessage}
-              ListHeaderComponent={intro}
-              ListFooterComponent={
-                <>
-                  {pending && !serverKey ? (
-                    <View style={[styles.botBubble, styles.pending]}>
-                      <Text style={styles.botText}>안내를 찾아 답을 쓰고 있어요…</Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.footnote}>
-                    학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
-                    {serverKey
-                      ? " 질문과 답은 답변 개선을 위해 기록돼요(1년 보관). 학번·연락처 같은 개인정보는 적지 말아 주세요."
-                      : ""}
-                  </Text>
-                </>
-              }
-              contentContainerStyle={styles.list}
-              keyboardShouldPersistTaps="handled"
-              // 새 말풍선이 그려진 뒤에 내려야 끝까지 간다(바로 부르면 늘어나기 전 높이에서 멈춰 답이 아래에 잘렸다).
-              onContentSizeChange={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
-            />
-
-            <View style={[styles.composer, { paddingBottom: 10 + insets.bottom }]}>
-              <TextInput
-                ref={inputRef}
-                style={styles.input}
-                value={input}
-                onChangeText={setInput}
-                placeholder="예: 휴학 신청 기간"
-                placeholderTextColor={COLORS.textPlaceholder}
-                returnKeyType="send"
-                onSubmitEditing={() => ask(input)}
-                submitBehavior="submit"
-                accessibilityLabel="학교 일 물어보기"
+            <View style={styles.flex}>
+              <FlatList
+                ref={listRef}
+                style={styles.flex}
+                data={messages}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderMessage}
+                ListHeaderComponent={appMode ? null : intro}
+                ListEmptyComponent={empty}
+                ListFooterComponent={
+                  <>
+                    {pending && !auth ? (
+                      <View style={[styles.botBubble, styles.pending]}>
+                        <Text style={styles.botText}>안내를 찾아 답을 쓰고 있어요…</Text>
+                      </View>
+                    ) : null}
+                    {appMode ? null : (
+                      <Text style={styles.footnote}>
+                        학교 홈페이지 안내와 운영진이 확인한 내용으로 답해요. 학교 공식 상담이 아니니 정확한 건 담당 부서에 확인해 주세요.
+                        {auth
+                          ? " 질문과 답은 답변 개선을 위해 기록돼요(1년 보관). 학번·연락처 같은 개인정보는 적지 말아 주세요."
+                          : ""}
+                      </Text>
+                    )}
+                  </>
+                }
+                contentContainerStyle={[styles.list, appMode && styles.listApp, messages.length === 0 && styles.listEmpty]}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                onScroll={handleScroll}
+                scrollEventThrottle={64}
+                // 새 말풍선이 그려진 뒤에 내려야 끝까지 간다(바로 부르면 늘어나기 전 높이에서 멈춰 답이 아래에 잘렸다).
+                onContentSizeChange={() => {
+                  if (atBottomRef.current) setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+                }}
               />
-              {pending && serverKey ? (
+              {showJump ? (
                 <TouchableOpacity
-                  style={styles.send}
-                  onPress={stopAsk}
+                  style={styles.jump}
+                  activeOpacity={0.8}
+                  onPress={jumpToBottom}
                   accessibilityRole="button"
-                  accessibilityLabel="답 받기 멈추기"
+                  accessibilityLabel="맨 아래로"
                 >
-                  <Ionicons name="stop" size={16} color={COLORS.white} />
+                  <Ionicons name="arrow-down" size={18} color={COLORS.textPrimary} />
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.send, !canSend && styles.sendOff]}
-                  onPress={() => ask(input)}
-                  disabled={!canSend}
-                  accessibilityRole="button"
-                  accessibilityLabel="보내기"
-                >
-                  <Ionicons name="arrow-up" size={20} color={COLORS.white} />
-                </TouchableOpacity>
-              )}
+              ) : null}
             </View>
+
+            {appMode ? (
+              <View style={[styles.composerWrap, { paddingBottom: 6 + (bottomInset ?? insets.bottom) }]}>
+                <View style={styles.composerBox}>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.composerInput}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="질문을 입력하세요"
+                    placeholderTextColor={COLORS.textPlaceholder}
+                    multiline
+                    maxLength={200}
+                    returnKeyType="send"
+                    onSubmitEditing={() => ask(input)}
+                    submitBehavior="submit"
+                    accessibilityLabel="학교 일 물어보기"
+                  />
+                  {pending && auth ? (
+                    <TouchableOpacity
+                      style={styles.composerSend}
+                      onPress={stopAsk}
+                      accessibilityRole="button"
+                      accessibilityLabel="답 받기 멈추기"
+                    >
+                      <View style={styles.stopIcon} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.composerSend, !canSend && styles.composerSendOff]}
+                      onPress={() => ask(input)}
+                      disabled={!canSend}
+                      accessibilityRole="button"
+                      accessibilityLabel="보내기"
+                    >
+                      <Ionicons name="arrow-up" size={18} color={COLORS.white} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text style={styles.disclaimer} numberOfLines={2}>
+                  {composerNote ? `${composerNote} · ` : ""}AI 답변은 틀릴 수 있어요. 중요한 내용은 원문에서 확인하세요.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {composerNote ? <Text style={styles.composerNote}>{composerNote}</Text> : null}
+                <View style={[styles.composer, { paddingBottom: 10 + (bottomInset ?? insets.bottom) }]}>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.input}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="예: 휴학 신청 기간"
+                    placeholderTextColor={COLORS.textPlaceholder}
+                    returnKeyType="send"
+                    onSubmitEditing={() => ask(input)}
+                    submitBehavior="submit"
+                    accessibilityLabel="학교 일 물어보기"
+                  />
+                  {pending && auth ? (
+                    <TouchableOpacity
+                      style={styles.send}
+                      onPress={stopAsk}
+                      accessibilityRole="button"
+                      accessibilityLabel="답 받기 멈추기"
+                    >
+                      <Ionicons name="stop" size={16} color={COLORS.white} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.send, !canSend && styles.sendOff]}
+                      onPress={() => ask(input)}
+                      disabled={!canSend}
+                      accessibilityRole="button"
+                      accessibilityLabel="보내기"
+                    >
+                      <Ionicons name="arrow-up" size={20} color={COLORS.white} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
           </ContentColumn>
         </View>
       </KeyboardAvoidingView>
@@ -1155,6 +1326,86 @@ function ThinkingLine({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  titleText: { ...TYPE.headline, color: COLORS.textPrimary },
+  beta: {
+    fontSize: 11,
+    fontFamily: FONTS.semibold,
+    color: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
+  composerNote: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary, textAlign: "center", paddingTop: 6 },
+  clearSlot: { width: 44 },
+  containerApp: { backgroundColor: COLORS.white },
+  botPlain: { maxWidth: "100%", alignSelf: "stretch", backgroundColor: "transparent", borderRadius: 0, padding: 0, gap: 12 },
+  userApp: { maxWidth: "82%", backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, paddingHorizontal: 16 },
+  userTextApp: { fontSize: 16, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.white },
+  sectionApp: { gap: 6, paddingTop: 2 },
+  sectionTitleApp: { fontSize: 15, lineHeight: 22, fontFamily: FONTS.bold, color: COLORS.textPrimary },
+  listApp: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24, gap: 18 },
+  listEmpty: { flexGrow: 1 },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 40, gap: 10 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primarySoft, marginBottom: 4 },
+  emptyTitle: { fontSize: 24, lineHeight: 32, fontFamily: FONTS.bold, color: COLORS.textPrimary, textAlign: "center" },
+  emptyDesc: { fontSize: 15, lineHeight: 22, fontFamily: FONTS.regular, color: COLORS.textTertiary, textAlign: "center" },
+  jump: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  composerWrap: { paddingHorizontal: 12, paddingTop: 6, backgroundColor: COLORS.white, gap: 6 },
+  composerBox: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  composerInput: {
+    flex: 1,
+    minHeight: 36,
+    maxHeight: 120,
+    paddingTop: Platform.OS === "ios" ? 9 : 6,
+    paddingBottom: Platform.OS === "ios" ? 9 : 6,
+    fontSize: 16,
+    lineHeight: 21,
+    fontFamily: FONTS.regular,
+    color: COLORS.textPrimary,
+  },
+  composerSend: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary },
+  composerSendOff: { backgroundColor: COLORS.toggleOff },
+  stopIcon: { width: 12, height: 12, borderRadius: 2, backgroundColor: COLORS.white },
+  disclaimer: { fontSize: 11, lineHeight: 15, fontFamily: FONTS.regular, color: COLORS.textTertiary, textAlign: "center" },
+  feedbackIcons: { flexDirection: "row", gap: 4, marginTop: -10 },
+  feedbackIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 16 },
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: COLORS.background },
   clear: { paddingHorizontal: 6, paddingVertical: 4 },
@@ -1251,6 +1502,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
+  /** 앱 탭: 원문 링크도 전화 버튼처럼 옅은 브랜드색 바탕(테두리 없이). */
+  linkButtonApp: { borderColor: COLORS.primarySoft, backgroundColor: COLORS.primarySoft },
   linkText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.primary },
   checked: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   pending: { marginTop: 10 },

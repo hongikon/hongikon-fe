@@ -38,6 +38,29 @@
         "simulator": true
       }
     },
+    "nearby-test": {
+      "extends": "preview",
+      "channel": "nearby-test",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "APP_VARIANT": "preview",
+        "NEARBY_ALERTS_BUILD": "1",
+        "NEARBY_FIELD_TEST": "1",
+        "ALLOW_CLEARTEXT_API": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8091"
+      }
+    },
+    "nearby-testflight": {
+      "extends": "production",
+      "channel": "nearby-testflight",
+      "env": {
+        "APP_VARIANT": "production",
+        "NEARBY_ALERTS_BUILD": "1",
+        "NEARBY_FIELD_TEST": "1"
+      }
+    },
     "production": {
       "extends": "base",
       "distribution": "store",
@@ -48,7 +71,16 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "production",
+        "NEARBY_ALERTS_BUILD": "1"
+      }
+    },
+    "nearby-field-apk": {
+      "extends": "nearby-testflight",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "android": {
+        "buildType": "apk"
       }
     }
   },

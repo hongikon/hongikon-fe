@@ -21,6 +21,13 @@
 | `development` | 개발 클라이언트 | internal | `development` | development | development |
 | `preview` | 내부 테스트(APK / 애드혹) | internal | `preview` | preview | preview |
 | `production` | 스토어 제출(AAB / App Store) | store | `production` | production | production |
+| `nearby-testflight` | 근처 알림 현장 테스트(TestFlight, 테스트 도구 켬) | store | `nearby-testflight` | production | production |
+| `nearby-field-apk` | 근처 알림 현장 테스트(Android APK) | internal | `nearby-testflight` | production | production |
+
+**현장 테스트 앱도 운영과 같은 버전(11-04 부터 1.1.0)이다.** 다른 것은 `NEARBY_FIELD_TEST=1`(테스트 위치·영역 보기·반경 칩·횟수 제한 없음)과
+채널뿐이라, 테스트 앱 OTA(`pnpm update:testflight`)는 운영 앱에, 운영 OTA(`pnpm update:production`)는 테스트 앱에 가지 않는다.
+App Store Connect 에는 같은 1.1.0 아래 테스트 빌드와 운영 빌드가 함께 쌓인다 — **심사에는 `production` 프로필 빌드 번호를 고른다**
+(빌드할 때 번호를 worklog 에 적어 둔다). 예전 테스트 앱은 1.0.0 이 심사를 통과한 뒤라 1.0.1 로 따로 올렸다(10-28 ~ 11-04, `APP_VERSION_OVERRIDE`).
 
 `production` 은 `appVersionSource: remote` + `autoIncrement: true` 라 **빌드 번호(iOS buildNumber, Android versionCode)는 EAS 서버가 올린다.**
 `app.json` 의 `ios.buildNumber`·`android.versionCode` 는 무시된다(처음 원격 값을 잡을 때만 참고).
@@ -144,7 +151,8 @@ eas submit -p android --profile production --latest
 
 ## 5. OTA(EAS Update) 규칙
 
-채널은 빌드 프로필과 1:1 이다: `production` 빌드는 `production` 채널만, `preview` 빌드는 `preview` 채널만 받는다.
+채널은 빌드 프로필과 1:1 이다: `production` 빌드는 `production` 채널만, `preview` 빌드는 `preview` 채널만,
+현장 테스트 빌드(`nearby-testflight`·`nearby-field-apk`)는 `nearby-testflight` 채널만 받는다(`pnpm update:testflight -m "..."`).
 `preview` 에 올린 업데이트는 운영 앱에 절대 가지 않는다.
 
 ### 올리는 법

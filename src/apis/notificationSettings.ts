@@ -18,6 +18,13 @@ export interface NotificationSettings {
   newReports: boolean
   newReportsScope?: NewReportsScope
   adminAlerts?: boolean
+  /**
+   * 근처 제휴 알림(광고성 정보) 수신 동의 시각(KST ISO-8601), 동의 안 했으면 null. 정보통신망법 동의 기록·2년 재확인용.
+   * 이 필드를 모르는 서버(배포 전)에서는 undefined.
+   */
+  partnerAdConsentAt?: string | null
+  /** 야간(21시~다음 날 8시) 수신 별도 동의 시각(정보통신망법 제50조 제3항), 없으면 null. 이 필드를 모르는 서버면 undefined. */
+  partnerAdNightConsentAt?: string | null
 }
 
 export function getNotificationSettings(accessToken: string): Promise<NotificationSettings> {
@@ -26,7 +33,12 @@ export function getNotificationSettings(accessToken: string): Promise<Notificati
 
 /** 보낸 필드만 바꾼다(부분 수정). 절댓값을 덮어쓰는 요청이라 여러 번 보내도 결과가 같아 재시도를 허락한다. */
 export function patchNotificationSettings(
-  changes: Partial<Pick<NotificationSettings, 'reportStatus' | 'newReports' | 'newReportsScope' | 'adminAlerts'>>,
+  changes: Partial<Pick<NotificationSettings, 'reportStatus' | 'newReports' | 'newReportsScope' | 'adminAlerts'>> & {
+    /** true 면 처음 동의 시각을 남기고(이미 있으면 그대로), false 면 지운다. */
+    partnerAdConsent?: boolean
+    /** 야간 수신 동의. true 는 수신 동의가 있어야 한다(없으면 400). 수신 동의를 철회하면 서버가 함께 지운다. */
+    partnerAdNightConsent?: boolean
+  },
   accessToken: string,
 ): Promise<NotificationSettings> {
   return apiRequest<NotificationSettings>('/users/me/notification-settings', {

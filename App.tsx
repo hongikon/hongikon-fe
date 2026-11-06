@@ -12,6 +12,7 @@ import WebAppInstallBanner from './src/components/common/WebAppInstallBanner'
 import { navigationRef } from './src/navigation/navigationRef'
 import { WEB_LINKING, formatDocumentTitle } from './src/navigation/linking'
 import { usePushNotifications } from './src/lib/pushNotifications'
+import { useNearbyPartnerAlerts } from './src/lib/nearbyPartners/useNearbyPartnerAlerts'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
 import UpdateBanner from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
@@ -33,6 +34,7 @@ import LaunchOverlay from './src/components/common/LaunchOverlay'
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
 function PushNotificationsBridge() {
   usePushNotifications()
+  useNearbyPartnerAlerts()
   return null
 }
 

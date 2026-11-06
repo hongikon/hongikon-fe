@@ -1,0 +1,19 @@
+diff --git a/ios/ExpoNotifications/Notifications/Scheduling/SchedulerModule.swift b/ios/ExpoNotifications/Notifications/Scheduling/SchedulerModule.swift
+index bd35ec37b046b0b4a68a4501edf527287c3eba5e..72bee4309230107ea4ddfc3fea084fda2cfbb26c 100644
+--- a/ios/ExpoNotifications/Notifications/Scheduling/SchedulerModule.swift
++++ b/ios/ExpoNotifications/Notifications/Scheduling/SchedulerModule.swift
+@@ -88,6 +88,14 @@ open class SchedulerModule: Module {
+       return nil
+     }
+ 
++    // 홍익온 패치(2026-10-28): Xcode 27 로 빌드한 iOS 27 에서 TriggerRecord 의 @Field 값이 채워지지 않아 seconds 가 0 이 되고
++    // UNTimeIntervalNotificationTrigger 가 예외를 던져 "ERR_NOTIFICATIONS_FAILED_TO_SCHEDULE: undefined reason" 으로 실패했다.
++    // 시간 간격 트리거는 JS 가 보낸 값을 직접 읽어 만든다.
++    if triggerType == timeIntervalNotificationTriggerType, let seconds = (params["seconds"] as? NSNumber)?.doubleValue {
++      let repeats = (params["repeats"] as? NSNumber)?.boolValue ?? false
++      return UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: repeats)
++    }
++
+     let record: TriggerRecord? = switch triggerType {
+     case timeIntervalNotificationTriggerType:
+       try TimeIntervalTriggerRecord(from: params, appContext: appContext)

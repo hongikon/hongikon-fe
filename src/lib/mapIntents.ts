@@ -4,12 +4,16 @@
  * - focusReport: 제보 알림(REPORT_STATUS 승인·REPORT_NEW)이나 내 제보 내역의 "지도에 표시 중" 제보를 누르면 제보 레이어를 켜고 그 제보를 가운데에 띄운다.
  * - previewLocation: 관리 탭 제보 검토의 "지도에서 보기" → 지도 탭으로 옮겨 그 좌표에 임시 핀을 찍고 가운데로(승인 전 제보도 볼 수 있게).
  * - startReport: 내 제보 내역이 비어 있을 때 "지도로 가서 제보하기" → 제보 위치 고르기를 시작한다(게스트면 로그인 안내).
+ * - focusPartner: 근처 제휴 알림을 누르면 그 업체만 지도에 올리고 업체 시트를 연다.
+ * - nearbyGroup: 근처에 제휴가 여러 곳 겹친 알림을 누르면 "지금 계신 곳 근처 제휴" 목록을 띄운다(고른 곳의 시트를 연다).
  * 지도 화면은 포커스될 때 요청을 꺼내(consume) 처리한다 — 두 번 처리되지 않는다.
  */
 export type MapIntent =
   | { type: 'pickPartnerLocation' }
   | { type: 'focusReport'; reportId: number }
   | { type: 'startReport' }
+  | { type: 'focusPartner'; partnerId: string }
+  | { type: 'nearbyGroup'; partnerIds: string[] }
   /** label: 핀 이름표(제보 제목). detail: 지도 위 안내 줄에 덧붙일 작성자·건물·층. */
   | { type: 'previewLocation'; lat: number; lng: number; label?: string; detail?: string }
 
