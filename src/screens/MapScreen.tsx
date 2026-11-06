@@ -27,7 +27,7 @@ import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
 import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
@@ -917,7 +917,16 @@ export default function MapScreen() {
     const subscription = AppState.addEventListener("change", (state) => setAppForeground(state === "active"));
     return () => subscription.remove();
   }, []);
-  const locationActive = appForeground && (routeActive || NEARBY_DEBUG_TOOLS);
+  /**
+   * 지도 메뉴의 "내 위치 켜기"(11-06). 켜 둔 동안 지도 화면에서만 위치를 읽어 점을 보여 주고, 다시 누르거나 지도 탭을 떠나면
+   * 끈다. 길찾기와 같이 휴대폰 안에서만 쓰고 저장하거나 보내지 않는다(처리방침 "지도에서 '내 위치 켜기'를 누를 때").
+   */
+  const [myLocationOn, setMyLocationOn] = useState(false);
+  const mapFocused = useIsFocused();
+  useEffect(() => {
+    if (!mapFocused) setMyLocationOn(false);
+  }, [mapFocused]);
+  const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused) || NEARBY_DEBUG_TOOLS);
   /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
   const locationFilterRef = useRef<FilterState | null>(null);
   useEffect(() => {
@@ -1580,6 +1589,40 @@ export default function MapScreen() {
     }
   }, [closeRouteSearch]);
 
+  /**
+   * 지도 메뉴 "내 위치 켜기". 처음 누를 때 "앱 사용 중" 위치 권한을 묻고, 켜져 있으면 끈다. 지도는 캠퍼스 일대만 움직일 수 있어
+   * 그 밖이면 켜지 않는다. 캠퍼스 안일 때만 지도를 내 위치로 옮긴다(지도 그림 요청으로 드러나는 범위가 처음 화면과 같다).
+   */
+  const handleToggleMyLocation = useCallback(async () => {
+    if (myLocationOn) {
+      setMyLocationOn(false);
+      return;
+    }
+    const located = await locateOnce();
+    if (located.status !== "ok") {
+      if (located.status === "denied") {
+        notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 지도에서 내 위치를 볼 수 있어요.");
+      } else if (located.status === "servicesOff") {
+        notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
+      } else {
+        notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보세요.");
+      }
+      return;
+    }
+    const { south, north, west, east } = CAMPUS_VIEW_BOX;
+    if (located.lat < south || located.lat > north || located.lng < west || located.lng > east) {
+      notify("지도 범위 밖에 있어요", "학교 근처에 오면 지도에서 내 위치를 볼 수 있어요.");
+      return;
+    }
+    setMyLocation({ lat: located.lat, lng: located.lng, accuracy: located.accuracy });
+    setMyLocationOn(true);
+    farViewPartnerIdRef.current = null;
+    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
+    webViewRef.current?.injectJavaScript(
+      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.panTo(new naver.maps.LatLng(${located.lat}, ${located.lng})); } true;`,
+    );
+  }, [myLocationOn]);
+
   /** 출발·도착 바꾸기. 내 위치는 도착이 될 수 없어 그때는 바꾸지 않는다. */
   const handleSwapRoute = useCallback(() => {
     if (fromMyLocation || !fromBuilding || !toBuilding) return;
@@ -1820,6 +1863,8 @@ export default function MapScreen() {
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
+            onMyLocation={canLocate() ? handleToggleMyLocation : undefined}
+            myLocationOn={myLocationOn}
             onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
             onPickNearbyTestLocation={showNearbyOverlayMenu ? () => setPickingNearbyTest(true) : undefined}
             nearbyOverlayOn={nearbyOverlayOn}
