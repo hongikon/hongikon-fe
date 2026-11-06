@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building, Facility, FacilityKind } from "../../types";
-import { FACILITY_KINDS, facilityKindLabel } from "../../constants/facilityKinds";
+import { FACILITY_KINDS, HIDDEN_FACILITY_KINDS, facilityKindLabel } from "../../constants/facilityKinds";
 import { formatFloor } from "../../utils/floors";
 import { KindIcon } from "./ChipIcon";
 import { FONTS } from "../../constants/typography";
@@ -87,6 +87,8 @@ export default function BuildingSheet({
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const kindRows = groupByKind(facilities);
+  // 시설 데이터가 없을 때 대신 보이는 건물 메모 칩에서도 감추는 종류(엘리베이터)는 뺀다.
+  const facilityNotes = (building.facilities ?? []).filter((f) => !HIDDEN_FACILITY_KINDS.has(f));
   const type = building.type && building.type !== UNKNOWN_TYPE ? building.type : null;
   const typeLine = [
     type,
@@ -178,9 +180,9 @@ export default function BuildingSheet({
         </View>
       )}
 
-      {kindRows.length === 0 && building.facilities && building.facilities.length > 0 && (
+      {kindRows.length === 0 && facilityNotes.length > 0 && (
         <View style={styles.facilities}>
-          {building.facilities.map((facility) => (
+          {facilityNotes.map((facility) => (
             <View key={facility} style={styles.facilityChip}>
               <Text style={styles.facilityChipText}>{facility}</Text>
             </View>

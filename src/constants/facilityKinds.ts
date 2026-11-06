@@ -63,6 +63,14 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },
 ]
 
+/**
+ * 사용자 앱에서 아예 감추는 종류. 서버·관리자 화면의 데이터는 그대로 두고, 앱이 지도 데이터를 받을 때 뺀다
+ * (`normalizeMapData`) — 그래야 칩·건물 시트·검색·핀 어디에서도 안 나온다.
+ * 엘리베이터: 위치가 건물 단위로만 확인돼 쓸모가 적다(10-02). 칩만 숨겼더니 건물 시트의 '엘리베이터' 줄을 누르면
+ * 그 종류가 켜지는데 끌 칩이 없어 빠져나올 수 없었다(11-06 핫픽스).
+ */
+export const HIDDEN_FACILITY_KINDS: ReadonlySet<string> = new Set(['엘리베이터'])
+
 const META_BY_KEY = new Map(FACILITY_KINDS.map((meta) => [meta.key, meta]))
 
 export function facilityKindMeta(key: FacilityKind): FacilityKindMeta {
