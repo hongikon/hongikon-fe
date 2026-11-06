@@ -36,6 +36,8 @@ export default function SwipeBackModal({
   widthRef.current = width
   const closeRef = useRef(onRequestClose)
   closeRef.current = onRequestClose
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
 
   useEffect(() => {
     if (visible) {
@@ -58,9 +60,15 @@ export default function SwipeBackModal({
         onPanResponderMove: (_, g) => x.setValue(Math.max(0, g.dx)),
         onPanResponderRelease: (_, g) => {
           if (g.dx > widthRef.current * CLOSE_RATIO || g.vx > CLOSE_VELOCITY) {
-            Animated.timing(x, { toValue: widthRef.current, duration: 180, useNativeDriver: Platform.OS !== 'web' }).start(() =>
-              closeRef.current(),
-            )
+            Animated.timing(x, { toValue: widthRef.current, duration: 180, useNativeDriver: Platform.OS !== 'web' }).start(() => {
+              closeRef.current()
+              // 닫기를 받은 쪽이 창을 닫지 않으면(공지 본문 → 목록으로만 돌아감, 작성 중 확인 등) 내용이 화면 밖에 밀려난 채
+              // 투명한 창이 남아 앱 전체가 눌리지 않았다(11-06 iOS, 공지 본문에서 밀어 나오면 멈춤). 그대로 열려 있으면 다시 들인다.
+              setTimeout(() => {
+                if (!visibleRef.current) return
+                Animated.timing(x, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start()
+              }, 50)
+            })
           } else {
             Animated.spring(x, { toValue: 0, useNativeDriver: Platform.OS !== 'web', bounciness: 0 }).start()
           }
