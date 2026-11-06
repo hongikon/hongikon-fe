@@ -63,7 +63,7 @@ const ROUTE_STYLE_DELAY_MS = 300;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import type { RouteAlternative } from "../utils/routing";
-import { ROUTE_FINDING_ENABLED } from "../constants/route";
+import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
 import {
@@ -74,7 +74,7 @@ import {
 import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
-import { withExhibitionHints } from "../utils/exhibitions";
+import { kstTodayYmd, withExhibitionHints } from "../utils/exhibitions";
 import type {
   Building,
   Facility,
@@ -1863,7 +1863,8 @@ export default function MapScreen() {
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
-            onMyLocation={canLocate() ? handleToggleMyLocation : undefined}
+            // 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다.
+            onMyLocation={canLocate() && (NEARBY_DEBUG_TOOLS || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
             myLocationOn={myLocationOn}
             onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
             onPickNearbyTestLocation={showNearbyOverlayMenu ? () => setPickingNearbyTest(true) : undefined}
