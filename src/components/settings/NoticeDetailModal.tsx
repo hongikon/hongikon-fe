@@ -23,20 +23,28 @@ export default function NoticeDetailModal({ visible, notice, onClose }: NoticeDe
         {/* 폴드를 펼친 화면·넓은 웹 창에선 내용을 가운데 읽기 폭으로 모은다. */}
         <ContentColumn>
         <ModalHeader title="공지사항" onClose={onClose} />
-        <ModalPanel>
-        {notice && (
-          <ScrollView style={styles.body}>
-            <Text style={styles.date}>{notice.date}</Text>
-            <Text style={styles.title}>{notice.title}</Text>
-            <Text style={styles.text}>{notice.body}</Text>
-            {notice.comparison && <Comparison comparison={notice.comparison} />}
-          </ScrollView>
-        )}
-        </ModalPanel>
+        {notice && <NoticeDetailContent notice={notice} />}
         </ContentColumn>
       </SafeAreaView>
       </SafeAreaProvider>
     </SwipeBackModal>
+  )
+}
+
+/**
+ * 공지 본문(날짜·제목·글·비교). 설정의 공지 목록 창은 창을 새로 띄우지 않고 이 본문으로 바꿔 보여 준다 —
+ * iOS 에서 목록 창을 닫으며 본문 창을 띄우면 본문이 안 뜨고 화면이 멈췄다(11-06, 지연을 줘도 됐다 안 됐다).
+ */
+export function NoticeDetailContent({ notice }: { notice: AppNotice }) {
+  return (
+    <ModalPanel>
+      <ScrollView style={styles.body}>
+        <Text style={styles.date}>{notice.date}</Text>
+        <Text style={styles.title}>{notice.title}</Text>
+        <Text style={styles.text}>{notice.body}</Text>
+        {notice.comparison && <Comparison comparison={notice.comparison} />}
+      </ScrollView>
+    </ModalPanel>
   )
 }
 
