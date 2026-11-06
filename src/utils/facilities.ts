@@ -72,7 +72,9 @@ export function facilityMarkers(
   kind: FacilityKind | null,
 ): FacilityMarker[] {
   const byName = buildingsByName(buildings)
-  const color = kind === null ? '' : facilityKindMeta(kind).color
+  const meta = kind === null ? null : facilityKindMeta(kind)
+  const color = meta?.color ?? ''
+  const pinLabel = (name: string, floors: readonly number[]) => (meta?.hideFloorsInPin ? name : buildLabel(name, floors))
   const byBuilding = new Map<string, FacilityMarker>()
 
   const pinned: FacilityMarker[] = []
@@ -92,7 +94,7 @@ export function facilityMarkers(
         lng: facility.lng,
         floors,
         color,
-        label: buildLabel(building.name, floors),
+        label: pinLabel(building.name, floors),
       })
       return
     }
@@ -112,7 +114,7 @@ export function facilityMarkers(
       lng: building.lng,
       floors,
       color,
-      label: buildLabel(building.name, floors),
+      label: pinLabel(building.name, floors),
     })
   })
 
