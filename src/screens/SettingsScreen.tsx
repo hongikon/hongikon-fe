@@ -199,8 +199,11 @@ export default function SettingsScreen() {
   }
 
   const openNoticeDetail = (notice: AppNotice) => {
+    // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
+    // 목록에서 바로 바꾸던 탓에 공지를 누르면 본문이 안 뜨고 화면이 멈춘 듯 아무것도 눌리지 않았다(11-06 테스트 앱).
     setSelectedNotice(notice)
-    setActiveModal('noticeDetail')
+    setActiveModal(null)
+    setTimeout(() => setActiveModal('noticeDetail'), 400)
   }
 
   const permission = useNotificationPermission()
