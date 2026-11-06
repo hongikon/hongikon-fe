@@ -10,8 +10,11 @@ import { hasLevel, type NodeType, type SurveyEdgeV3, type SurveyNodeV3 } from '.
 
 export const OUTDOOR_COLOR = '#64748B'
 export const NEUTRAL_COLOR = '#A8A29E'
+/** Entrance edges and links between buildings: told apart by the dashed style, dark enough to read as dashes. */
+export const NEUTRAL_EDGE_COLOR = '#57534E'
 export const SELECTED_RING = '#111827'
 export const PENDING_RING = '#F97316'
+export const MULTI_RING = '#7C3AED'
 export { STAIRS_COLOR }
 
 /** Twelve colors that stay readable on the map and differ from the outdoor, neutral and stairs colors. */
@@ -41,7 +44,10 @@ export interface MapFilter {
 
 export const NO_FILTER: MapFilter = { building: null, floor: null }
 
-export type MapMode = 'add' | 'link' | 'move'
+export type MapMode = 'add' | 'link' | 'move' | 'select'
+
+/** What the point labels show. */
+export type LabelMode = 'none' | 'number' | 'full'
 
 export interface RenderNode {
   id: string
@@ -52,13 +58,14 @@ export interface RenderNode {
   ring: string
   ringWidth: number
   size: number
-  /** Number part of the id. */
+  /** Number part of the id. Empty when this point has no label. */
   num: string
   letter: string
   badge: string
   dim: boolean
   clickable: boolean
   draggable: boolean
+  /** Selected points: on top and the label does not depend on the zoom. */
   emphasized: boolean
 }
 
@@ -69,6 +76,8 @@ export interface RenderEdge {
   p: [number, number, number, number]
   color: string
   stairs: boolean
+  /** Neutral edge drawn with dashes. Stairs have their own look. */
+  dashed: boolean
   weight: number
   opacity: number
   clickable: boolean
@@ -91,12 +100,19 @@ export function isNodeStrong(node: SurveyNodeV3, filter: MapFilter): boolean {
 
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
 
+/** Entrance edges and links between buildings. */
+export function isNeutralEdge(a: SurveyNodeV3, b: SurveyNodeV3): boolean {
+  if (a.scope !== 'indoor' && b.scope !== 'indoor') return false
+  if (a.scope !== 'indoor' || b.scope !== 'indoor' || a.type === 'entrance' || b.type === 'entrance') return true
+  return !buildingsOf(a).some((code) => buildingsOf(b).includes(code))
+}
+
 /** Outdoor: outdoor color. Indoor: the color of the shared building. Entrance edges and links between buildings: neutral. */
 export function edgeColor(a: SurveyNodeV3, b: SurveyNodeV3, index: BuildingIndex): string {
   if (a.scope !== 'indoor' && b.scope !== 'indoor') return OUTDOOR_COLOR
-  if (a.scope !== 'indoor' || b.scope !== 'indoor' || a.type === 'entrance' || b.type === 'entrance') return NEUTRAL_COLOR
+  if (isNeutralEdge(a, b)) return NEUTRAL_EDGE_COLOR
   const shared = buildingsOf(a).find((code) => buildingsOf(b).includes(code))
-  return shared ? buildingColor(index, shared) : NEUTRAL_COLOR
+  return shared ? buildingColor(index, shared) : NEUTRAL_EDGE_COLOR
 }
 
 /** 1-3 for floors of one building, K/T for several buildings, nothing for a single floor. */
@@ -116,10 +132,13 @@ export interface RenderOptions {
   selected: string | null
   pending: string | null
   selectedEdge: string | null
+  multi?: readonly string[]
+  labelMode?: LabelMode
 }
 
 export function buildRenderState(store: StoreV3, options: RenderOptions): { nodes: RenderNode[]; edges: RenderEdge[] } {
-  const { index, filter, mode, selected, pending, selectedEdge } = options
+  const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full' } = options
+  const multi = new Set(options.multi ?? [])
   const byId = new Map(store.nodes.map((n) => [n.id, n]))
   const filtering = !!filter.building
 
@@ -138,6 +157,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
         p: [a.lat, a.lng, b.lat, b.lng],
         color: stairs ? STAIRS_COLOR : edgeColor(a, b, index),
         stairs,
+        dashed: !stairs && isNeutralEdge(a, b),
         weight: (emphasized ? 8 : 5) + (stairs ? 2 : 0),
         opacity: filtering && !strong ? 0.18 : 0.9,
         // Dim edges cannot be pressed, so overlapping floors are not hit by accident.
@@ -161,7 +181,15 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
     } else if (node.id === pending) {
       ring = PENDING_RING
       ringWidth = 3
+    } else if (multi.has(node.id)) {
+      ring = MULTI_RING
+      ringWidth = 4
     }
+    const emphasized = node.id === selected || node.id === pending || multi.has(node.id)
+    // With a floor filter on, only the points that match it keep a label. Outdoor points are strong but do not match.
+    const labelled = emphasized || (labelMode !== 'none' && !dim && (!filtering || indoor))
+    const withLetter = emphasized || labelMode === 'full'
+    const letter = buildings.length === 1 ? shortBuildingName(index.byCode.get(buildings[0]), buildings[0]) : ''
     return {
       id: node.id,
       lat: node.lat,
@@ -171,13 +199,13 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       ring,
       ringWidth,
       size: node.type === 'basic' ? 18 : 22,
-      num: node.id.replace(/^n/, ''),
-      letter: buildings.length === 1 ? shortBuildingName(index.byCode.get(buildings[0]), buildings[0]) : '',
-      badge: levelBadge(node, index),
+      num: labelled ? node.id.replace(/^n/, '') : '',
+      letter: labelled && withLetter ? letter : '',
+      badge: labelled && withLetter ? levelBadge(node, index) : '',
       dim,
       clickable: !dim,
       draggable: !dim && mode === 'move',
-      emphasized: node.id === selected || node.id === pending,
+      emphasized,
     }
   })
 

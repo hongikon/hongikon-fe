@@ -1,24 +1,10 @@
 import { useMemo } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
-import { TOUCH, ui } from '../pathSurvey/ui'
+import { ui } from '../pathSurvey/ui'
+import { Chip } from './controls'
 import { buildingColor, type MapFilter } from './mapState'
-
-function Chip({ label, on, color, onPress }: { label: string; on: boolean; color?: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, on && { backgroundColor: color ?? '#05014A', borderColor: color ?? '#05014A' }]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
-    >
-      <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
-    </Pressable>
-  )
-}
 
 /**
  * Floor filter. Only offers buildings and floors that are in the data. With a filter on, points on that
@@ -82,17 +68,4 @@ export default function FilterBar({
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
   row: { flexDirection: 'row', gap: 6 },
-  chip: {
-    minHeight: TOUCH,
-    minWidth: TOUCH,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textPrimary },
-  chipTextOn: { color: '#FFFFFF', fontFamily: FONTS.semibold },
 })

@@ -79,6 +79,8 @@ export interface SurveyFileV3 {
   edges: SurveyEdgeV3[]
   /** Derived on export and only present when the check has no errors. Never stored. */
   graph?: SurveyGraph
+  /** Only in the graph export: labels to add to the server list later. */
+  report?: { labelsNotOnServer: string[] }
 }
 
 export const isEdgeKind = (value: unknown): value is EdgeKind => (EDGE_KINDS as readonly unknown[]).includes(value)

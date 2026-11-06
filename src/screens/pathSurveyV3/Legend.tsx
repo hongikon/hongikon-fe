@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import { Section, ui } from '../pathSurvey/ui'
-import { BUILDING_COLORS, NEUTRAL_COLOR, OUTDOOR_COLOR, STAIRS_COLOR } from './mapState'
+import { BUILDING_COLORS, NEUTRAL_COLOR, NEUTRAL_EDGE_COLOR, OUTDOOR_COLOR, STAIRS_COLOR } from './mapState'
 
 const GRAY = '#475569'
 
@@ -37,14 +37,14 @@ export default function Legend({ index }: { index: BuildingIndex }) {
           <Text style={ui.hint}>{'외부'}</Text>
         </View>
         <View style={styles.item}>
-          <View style={[styles.line, { backgroundColor: NEUTRAL_COLOR }]} />
-          <Text style={ui.hint}>{'출입구 간선, 건물 간 통로'}</Text>
+          <View style={styles.dashed} />
+          <Text style={ui.hint}>{'점선: 출입구 간선, 건물 간 통로'}</Text>
         </View>
         <View style={styles.item}>
           <View style={[styles.line, styles.stairs]}>
             <View style={styles.stairsDash} />
           </View>
-          <Text style={ui.hint}>{'계단 간선(어디서나 같은 모양)'}</Text>
+          <Text style={ui.hint}>{'진한 선 + 흰 점선: 계단 간선'}</Text>
         </View>
       </View>
       <Text style={ui.hint}>{'내부 점과 내부 간선은 건물 색이에요.'}</Text>
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
   },
   multi: { backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: NEUTRAL_COLOR },
   line: { width: 26, height: 5, borderRadius: 3 },
+  dashed: { width: 26, height: 0, borderTopWidth: 4, borderStyle: 'dashed', borderColor: NEUTRAL_EDGE_COLOR },
   stairs: { height: 7, backgroundColor: STAIRS_COLOR, justifyContent: 'center', paddingHorizontal: 3 },
   stairsDash: { height: 0, borderTopWidth: 2, borderColor: '#FFFFFF', borderStyle: 'dashed' },
   swatch: { width: 12, height: 12, borderRadius: 3 },

@@ -157,7 +157,10 @@ test('manual items close when the node has been filled in', () => {
   assert.equal(C.isManualItemOpen(entrance, { type: 'entrance', levels: [lvl('A', 1)], entranceLabel: 'L' }), false)
   assert.equal(C.isManualItemOpen(entrance, undefined), false)
   assert.equal(C.isManualItemOpen({ kind: 'elevator' }, { type: 'elevator', levels: [lvl('A', 1)] }), true)
-  assert.equal(C.isManualItemOpen({ kind: 'boundary' }, { scope: 'indoor' }), false)
+  assert.equal(C.isManualItemOpen({ kind: 'boundary', nodeId: 'n1' }, { scope: 'indoor' }), true)
+  assert.equal(C.isManualItemOpen({ kind: 'boundary', nodeId: 'n1' }, { scope: 'indoor', levels: [lvl('A', 1)] }), false)
+  assert.equal(C.isManualItemOpen({ kind: 'boundary', nodeId: 'n1' }, { scope: 'outdoor' }), true)
+  assert.equal(C.isManualItemOpen({ kind: 'boundary', nodeId: 'n1' }, { scope: 'outdoor' }, ['n1']), false)
 })
 
 test('source stays untouched and the same input gives the same result', () => {

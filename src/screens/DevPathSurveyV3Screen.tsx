@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
@@ -6,55 +6,76 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { useMapData } from '../lib/mapData'
 import { buildMapHTML } from '../utils/mapHtml'
-import {
-  buildBuildingIndex,
-  floorChipLabel,
-  loadBuildingCache,
-  saveBuildingCache,
-  type RawBuilding,
-} from '../utils/pathSurveyV3/buildings'
-import { convertV2, loadConvertReport, saveConvertReport, type ConvertReport, type V2Source } from '../utils/pathSurveyV3/convertV2'
+import { buildBuildingIndex, loadBuildingCache, saveBuildingCache, type RawBuilding } from '../utils/pathSurveyV3/buildings'
+import { checkGraph, type CheckIssue } from '../utils/pathSurveyV3/check'
+import { convertV2, isManualItemOpen, loadConvertReport, saveConvertReport, type ConvertReport, type V2Source } from '../utils/pathSurveyV3/convertV2'
+import { usedFloorsByBuilding } from '../utils/pathSurveyV3/levels'
 import { createSnapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
   addNode,
+  applyBulkToNodes,
   findEdge,
   findNode,
   hasEdgeBetween,
   loadStoreV3,
   moveNode,
   moveNodeOntoEdge,
-  OUTDOOR_CONTEXT,
   removeEdge,
   removeEdgeBetween,
   removeNode,
   saveStoreV3,
-  setEdgeKind,
+  setEdgeMemo,
+  setNodeMemo,
+  setNodeScope,
   STORE_KEY_V3,
+  type BulkChange,
   type StoreV3,
 } from '../utils/pathSurveyV3/store'
+import {
+  contextLevels,
+  EMPTY_META,
+  loadSaveMeta,
+  loadWorkContext,
+  saveSaveMeta,
+  saveStateOf,
+  saveWorkContext,
+  storeFingerprint,
+  toNodeContext,
+  type SaveMeta,
+  type WorkContext,
+} from '../utils/pathSurveyV3/transfer'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
-import { Btn, Check, confirmAction, Section, ui } from './pathSurvey/ui'
+import { Btn, Check, confirmAction, ui } from './pathSurvey/ui'
+import BackupPanel from './pathSurveyV3/BackupPanel'
+import CheckPanel from './pathSurveyV3/CheckPanel'
+import ContextBar from './pathSurveyV3/ContextBar'
+import { Chip } from './pathSurveyV3/controls'
 import ConvertPanel from './pathSurveyV3/ConvertPanel'
-import { buildDevSample } from './pathSurveyV3/devSample'
+import { addDevSample, devSampleNodeIds, removeDevSample } from './pathSurveyV3/devSample'
+import EdgeSheet from './pathSurveyV3/EdgeSheet'
 import FilterBar from './pathSurveyV3/FilterBar'
 import Legend from './pathSurveyV3/Legend'
 import { SETUP_JS } from './pathSurveyV3/mapBridge'
-import { buildRenderState, isNodeStrong, NO_FILTER, type MapFilter, type MapMode } from './pathSurveyV3/mapState'
+import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilter, type MapMode } from './pathSurveyV3/mapState'
+import MultiPanel from './pathSurveyV3/MultiPanel'
+import NodeSheet from './pathSurveyV3/NodeSheet'
+import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
 
-type Tab = 'edit' | 'convert' | 'legacy'
+type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'legacy'
 
 const MODES: { key: MapMode; label: string; help: string }[] = [
-  { key: 'add', label: '지점 찍기', help: '지도를 누르면 점이 생겨요. 이어 찍기를 켜면 직전 점과 간선으로 이어요.' },
-  { key: 'link', label: '간선 잇기', help: '점 두 개를 차례로 누르면 간선이 생겨요. 이어서 누르면 계속 이어지고, 같은 점을 다시 누르면 끊겨요. 이미 있는 간선을 다시 이으면 지워져요.' },
-  { key: 'move', label: '위치 옮기기', help: '점을 끌어서 옮겨요. 다른 간선 위에 놓으면 그 간선을 둘로 나눠요.' },
+  { key: 'add', label: '점 찍기', help: '지도를 누르면 위의 설정대로 점이 생겨요. 이어 찍기를 켜면 직전 점과 간선으로 이어요.' },
+  { key: 'link', label: '잇기', help: '점 두 개를 차례로 누르면 간선이 생겨요. 이어서 누르면 계속 이어지고, 같은 점을 다시 누르면 끊겨요. 이미 있는 간선을 다시 이으면 지워져요.' },
+  { key: 'move', label: '옮기기', help: '점을 끌어서 옮겨요. 다른 간선 위에 놓으면 그 간선을 둘로 나눠요.' },
+  { key: 'select', label: '여러 점', help: '점을 눌러 여러 개 고른 뒤 같은 건물, 층, 종류를 한 번에 넣어요.' },
 ]
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'edit', label: '편집' },
-  { key: 'convert', label: 'v2 변환' },
-  { key: 'legacy', label: '기존 자료' },
+const LABEL_MODES: { key: LabelMode; label: string }[] = [
+  { key: 'none', label: '없음' },
+  { key: 'number', label: '번호' },
+  { key: 'full', label: '번호+동' },
 ]
 
 const UNDO_LIMIT = 50
@@ -67,15 +88,6 @@ const LEGACY_OFF: LegacyToggles = {
   nodeEdges: false,
   anchorEdges: false,
   unconnectedEntrances: false,
-}
-
-const SCOPE_TEXT = { outdoor: '외부', indoor: '내부' } as const
-const TYPE_TEXT = { basic: '기본', stairs: '계단', elevator: '엘리베이터', entrance: '출입구' } as const
-
-const timeText = (at: number) => {
-  const d = new Date(at)
-  const two = (n: number) => String(n).padStart(2, '0')
-  return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`
 }
 
 /** Passes only messages sent by this screen's map script. */
@@ -94,10 +106,12 @@ const initialLoad = () => loadStoreV3()
 
 /**
  * Developer screen at /dev/path-survey-v3: survey points and edges in one graph.
- * Saved to localStorage on every change. The v2 screen and its storage are not touched.
+ * Every change is kept in localStorage. The save button adds a save point on top of that.
+ * The v2 screen and its storage are not touched.
  */
 export default function DevPathSurveyV3Screen() {
   const webViewRef = useRef<NaverMapViewHandle>(null)
+  const panelRef = useRef<ScrollView>(null)
   const { buildings, data, status, reload } = useMapData()
   const mapHTML = useMemo(() => buildMapHTML(buildings), [buildings])
   const { width } = useWindowDimensions()
@@ -108,17 +122,22 @@ export default function DevPathSurveyV3Screen() {
   const storeRef = useRef(store)
   const historyRef = useRef<StoreV3[]>([])
   const blockedRef = useRef(boot.corrupt)
-  const [savedAt, setSavedAt] = useState<number | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [saveMeta, setSaveMeta] = useState<SaveMeta>(() => (boot.corrupt ? EMPTY_META : loadSaveMeta()))
+  const [context, setContext] = useState<WorkContext>(() => loadWorkContext())
   const [mode, setMode] = useState<MapMode>('add')
   const [tab, setTab] = useState<Tab>('edit')
   const [chain, setChain] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
+  const [multi, setMulti] = useState<string[]>([])
   const [filter, setFilter] = useState<MapFilter>(NO_FILTER)
+  const [labelMode, setLabelMode] = useState<LabelMode>('full')
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(LEGACY_OFF)
   const [report, setReport] = useState<ConvertReport | null>(() => loadConvertReport())
+  // Bumped by undo so that memo boxes, which keep their own text, show the restored text.
+  const [undoTick, setUndoTick] = useState(0)
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState(() =>
     boot.corrupt ? '저장된 조사 내용(v3)을 읽지 못했어요. 덮어쓰지 않도록 저장을 멈췄어요. 개발자 도구로 값을 확인해 주세요.' : '',
@@ -133,7 +152,20 @@ export default function DevPathSurveyV3Screen() {
     if (buildings.length) saveBuildingCache(buildings as RawBuilding[])
   }, [buildings])
 
+  useEffect(() => saveWorkContext(context), [context])
+
   const overlay = useMemo(() => buildLegacyOverlay(buildings), [buildings])
+
+  // Check and save state run on a deferred copy, so typing a memo is never held up by them.
+  const deferredStore = useDeferredValue(store)
+  const check = useMemo(() => checkGraph(deferredStore.nodes, deferredStore.edges, index), [deferredStore, index])
+  const fingerprint = useMemo(() => storeFingerprint(deferredStore), [deferredStore])
+  const used = useMemo(() => usedFloorsByBuilding(deferredStore.nodes), [deferredStore])
+  const sampleIds = useMemo(() => devSampleNodeIds(store, index), [store, index])
+  const openManual = useMemo(() => {
+    const byId = new Map(store.nodes.map((n) => [n.id, n]))
+    return (report?.manual ?? []).filter((item) => isManualItemOpen(item, byId.get(item.nodeId), report?.dismissed)).length
+  }, [store, report])
 
   /** Another tab writing the same key would be overwritten by this tab, so this tab stops saving. */
   useEffect(() => {
@@ -154,10 +186,10 @@ export default function DevPathSurveyV3Screen() {
     storeRef.current = next
     setStore(next)
     if (blockedRef.current) return
-    const ok = saveStoreV3(next)
-    setSaveFailed(!ok)
-    if (ok) setSavedAt(Date.now())
+    setSaveFailed(!saveStoreV3(next))
   }, [])
+
+  const change = useCallback((fn: (s: StoreV3) => StoreV3) => commit(fn(storeRef.current)), [commit])
 
   const clearSelection = () => {
     setSelected(null)
@@ -169,7 +201,10 @@ export default function DevPathSurveyV3Screen() {
     const prev = historyRef.current.pop()
     if (!prev) return setNotice('되돌릴 게 없어요')
     commit(prev, false)
-    clearSelection()
+    setUndoTick((n) => n + 1)
+    setPending(null)
+    if (selected && !findNode(prev, selected)) setSelected(null)
+    if (selectedEdge && !findEdge(prev, selectedEdge)) setSelectedEdge(null)
     setNotice('되돌렸어요')
   }
 
@@ -185,9 +220,29 @@ export default function DevPathSurveyV3Screen() {
     setSelectedEdge(null)
     setPending(null)
     focusOn(node.lat, node.lng)
+    panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
-  /** Replaces all data after asking, and keeps a snapshot of what was there. */
+  const focusEdge = (id: string) => {
+    const edge = findEdge(storeRef.current, id)
+    const a = findNode(storeRef.current, edge?.a)
+    const b = findNode(storeRef.current, edge?.b)
+    if (!edge || !a || !b) return false
+    if (!isNodeStrong(a, filter) || !isNodeStrong(b, filter)) setFilter(NO_FILTER)
+    setSelectedEdge(id)
+    setSelected(null)
+    setPending(null)
+    focusOn((a.lat + b.lat) / 2, (a.lng + b.lng) / 2)
+    panelRef.current?.scrollTo({ y: 0, animated: false })
+    return true
+  }
+
+  const goToIssue = (issue: CheckIssue) => {
+    if (issue.edgeId && focusEdge(issue.edgeId)) return
+    if (issue.nodeId) focusNode(issue.nodeId)
+  }
+
+  /** Replaces all data after asking, and keeps a save point of what was there. */
   const replaceAll = (next: StoreV3, snapshotName: string, summary: string): boolean => {
     const current = storeRef.current
     if (current.nodes.length || current.edges.length) {
@@ -196,7 +251,9 @@ export default function DevPathSurveyV3Screen() {
       if (error && !confirmAction('저장 지점을 만들지 못했어요(개수 또는 용량). 그래도 덮어쓸까요?')) return false
     }
     commit(next)
+    setUndoTick((n) => n + 1)
     clearSelection()
+    setMulti([])
     setFilter(NO_FILTER)
     return true
   }
@@ -204,8 +261,7 @@ export default function DevPathSurveyV3Screen() {
   const runConvert = (source: V2Source) => {
     if (index.list.length === 0) return setNotice('건물 목록이 아직 없어요. 온라인에서 한 번 연 뒤 다시 해 주세요.')
     const { store: next, report: result } = convertV2(source.modules, index)
-    const summary = `가져올 내용: 지점 ${result.mergedNodes}, 간선 ${result.mergedEdges}`
-    if (!replaceAll(next, 'v2 변환 직전', summary)) return
+    if (!replaceAll(next, 'v2 변환 직전', `가져올 내용: 지점 ${result.mergedNodes}, 간선 ${result.mergedEdges}`)) return
     setReport(result)
     saveConvertReport(result)
     const first = next.nodes[0]
@@ -213,31 +269,88 @@ export default function DevPathSurveyV3Screen() {
     setNotice(`v2 에서 가져왔어요. 지점 ${result.mergedNodes}, 간선 ${result.mergedEdges}. 수동 확인 ${result.manual.length}건`)
   }
 
-  const loadSample = () => {
-    const next = buildDevSample(index)
-    if (!next) return setNotice('예시를 만들 건물 정보가 없어요.')
-    if (!replaceAll(next, '예시 넣기 직전', '가져올 내용: 표시 확인용 예시')) return
-    focusOn(next.nodes[3].lat, next.nodes[3].lng)
-    setNotice('표시 확인용 예시를 넣었어요.')
+  const runRestore = (next: StoreV3) => {
+    if (!replaceAll(next, '불러오기 직전', `불러올 내용: 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)) return
+    const first = next.nodes[0]
+    if (first) focusOn(first.lat, first.lng)
+    setNotice(`불러왔어요. 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)
+  }
+
+  const saveNow = () => {
+    const current = storeRef.current
+    // Save button points roll over on their own, so pressing it often never runs into the limit.
+    const { error } = createSnapshot(current, `저장 ${clockText(Date.now())}`, true)
+    if (error) return setNotice('저장 지점을 만들지 못했어요(용량). 지금 내용은 이 브라우저에 있으니 백업 파일을 내려받아 주세요.')
+    const meta = { lastSaveAt: Date.now(), lastSaveFingerprint: storeFingerprint(current) }
+    setSaveMeta(meta)
+    saveSaveMeta(meta)
+    setNotice('저장했어요.')
+  }
+
+  const updateReport = (fn: (r: ConvertReport) => ConvertReport) => {
+    setReport((old) => {
+      if (!old) return old
+      const next = fn(old)
+      saveConvertReport(next)
+      return next
+    })
+  }
+
+  const keepOutdoor = (ids: string[]) => {
+    updateReport((r) => ({ ...r, dismissed: [...new Set([...(r.dismissed ?? []), ...ids])] }))
+    setMulti((list) => list.filter((id) => !ids.includes(id)))
+    setNotice(`외부 유지 ${ids.length}건 처리했어요`)
+  }
+
+  /** One point opens its sheet with the boundary building ready. Many points go to the bulk panel. */
+  const makeIndoor = (ids: string[]) => {
+    if (ids.length === 1) {
+      change((s) => setNodeScope(s, ids[0], 'indoor'))
+      focusNode(ids[0])
+      setNotice(`${ids[0]} 를 내부로 바꿨어요. 층을 골라 주세요.`)
+      return
+    }
+    setMulti(ids)
+    setMode('select')
+    setSelected(null)
+    setSelectedEdge(null)
+    setPending(null)
+    panelRef.current?.scrollTo({ y: 0, animated: false })
+    setNotice(`${ids.length}개를 골랐어요. 위에서 건물과 층을 골라 적용해 주세요.`)
+  }
+
+  const applyBulk = (bulk: BulkChange) => {
+    const count = multi.length
+    change((s) => applyBulkToNodes(s, multi, bulk))
+    setMulti([])
+    setNotice(`${count}개에 적용했어요. 되돌리기로 한 번에 취소할 수 있어요.`)
   }
 
   const onTap = (lat: number, lng: number) => {
     const current = storeRef.current
     const from = chain ? findNode(current, selected) : undefined
-    const { store: next, id } = addNode(current, lat, lng, OUTDOOR_CONTEXT, from?.id)
+    const { store: next, id } = addNode(current, lat, lng, toNodeContext(context), from?.id)
     commit(next)
     setSelected(id)
     setSelectedEdge(null)
-    if (from && from.scope === 'indoor' && from.type !== 'entrance') {
-      setNotice(`${id} 추가. 외부 점과 내부 점은 출입구로만 이을 수 있어 ${from.id} 와의 간선은 점검에서 오류로 나와요.`)
-    } else {
-      setNotice(`${id} 추가${from ? `, ${from.id} 와 이었어요` : ''}`)
-    }
+    const made = findNode(next, id)!
+    const crossing = from && (from.scope === 'indoor') !== (made.scope === 'indoor') && (from.scope === 'indoor' ? from : made).type !== 'entrance'
+    const notes = [`${id} 추가${from ? `, ${from.id} 와 이었어요` : ''}`]
+    if (crossing) notes.push('외부 점과 내부 점은 출입구로만 이을 수 있어 이 간선은 점검에서 오류로 나와요')
+    if (made.type === 'entrance') notes.push('아래에서 건물, 층, 이름을 고르세요. 비워 두면 점검 오류로 나와요')
+    else if (made.scope === 'indoor' && !made.levels?.length) notes.push('건물과 층이 없어 점검 오류로 나와요')
+    setNotice(notes.join('. '))
+    panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
   const onNodePress = (id: string) => {
+    if (mode === 'select') {
+      setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
+      return
+    }
     setSelected(id)
     setSelectedEdge(null)
+    panelRef.current?.scrollTo({ y: 0, animated: false })
     if (mode !== 'link') return
     if (pending && pending !== id) {
       const current = storeRef.current
@@ -249,10 +362,11 @@ export default function DevPathSurveyV3Screen() {
   }
 
   const onEdgePress = (id: string) => {
+    if (mode === 'select') return
     setSelectedEdge(id)
     setSelected(null)
     setPending(null)
-    setTab('edit')
+    panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
   const onMove = (msg: any) => {
@@ -311,22 +425,33 @@ export default function DevPathSurveyV3Screen() {
         ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
       ],
     }
-    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge })
+    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
     lastRenderRef.current = state
     webViewRef.current?.injectJavaScript(`window.__surveyV3Render && window.__surveyV3Render(${state}); true;`)
-  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, legacyToggles, overlay])
+  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay])
 
   const selectedNode = findNode(store, selected)
   const edge = findEdge(store, selectedEdge)
   const activeMode = MODES.find((m) => m.key === mode)!
+  const allIssues = useMemo(() => [...check.errors, ...check.warnings], [check])
+  const nodeIssues = selectedNode ? allIssues.filter((i) => i.nodeId === selectedNode.id && !i.edgeId) : []
+  const edgeIssues = edge ? allIssues.filter((i) => i.edgeId === edge.id) : []
+  const nodeManual = selectedNode ? (report?.manual ?? []).filter((m) => m.nodeId === selectedNode.id) : []
+  const boundaryOpen = nodeManual.some((m) => m.kind === 'boundary' && isManualItemOpen(m, selectedNode, report?.dismissed))
 
-  const levelText = (node: NonNullable<typeof selectedNode>) =>
-    (node.levels ?? []).map((l) => `${index.byCode.get(l.building)?.name ?? l.building} ${floorChipLabel(l.floor)}`).join(', ')
-
-  const editTab = (
-    <>
+  const topBar = (
+    <View style={styles.topBar}>
+      <SaveBar
+        state={saveStateOf(saveMeta, fingerprint)}
+        lastSaveAt={saveMeta.lastSaveAt}
+        errors={check.errors.length}
+        warnings={check.warnings.length}
+        onSave={saveNow}
+        onUndo={undo}
+        onShowCheck={() => setTab('check')}
+      />
       <View style={styles.modeRow}>
         {MODES.map((m) => (
           <Btn
@@ -336,107 +461,186 @@ export default function DevPathSurveyV3Screen() {
             onPress={() => {
               setMode(m.key)
               setPending(null)
+              if (m.key === 'select') setSelected(null)
             }}
             style={{ flex: 1 }}
           />
         ))}
       </View>
+      <ContextBar index={index} context={context} used={used} closeSignal={selected ?? selectedEdge} onChange={setContext} />
+    </View>
+  )
+
+  const editTab = (
+    <>
       <Text style={ui.hint}>{activeMode.help}</Text>
       {mode === 'add' ? <Check label="이어 찍기 (직전에 고른 점과 간선으로 잇기)" checked={chain} onToggle={() => setChain((v) => !v)} /> : null}
       {mode === 'link' && pending ? <Text style={styles.pending}>{`${pending} 에서 시작, 이을 점을 누르세요`}</Text> : null}
-
       <FilterBar nodes={store.nodes} index={index} filter={filter} onChange={setFilter} />
-
-      {selectedNode ? (
-        <Section title={`선택한 점: ${selectedNode.id}`}>
-          <Text style={ui.sectionHelp}>{`${SCOPE_TEXT[selectedNode.scope]}, ${TYPE_TEXT[selectedNode.type]}, ${selectedNode.lat.toFixed(7)}, ${selectedNode.lng.toFixed(7)}`}</Text>
-          {selectedNode.levels?.length ? <Text style={ui.hint}>{levelText(selectedNode)}</Text> : null}
-          {selectedNode.entranceLabel ? <Text style={ui.hint}>{`라벨 ${selectedNode.entranceLabel}`}</Text> : null}
-          {selectedNode.memo ? <Text style={ui.hint}>{`메모: ${selectedNode.memo}`}</Text> : null}
-          {selectedNode.legacyId ? <Text style={ui.sectionHelp}>{`옛 id ${selectedNode.legacyId}`}</Text> : null}
-          <Btn
-            label="이 점과 연결 간선 지우기"
-            kind="danger"
-            onPress={() => {
-              commit(removeNode(storeRef.current, selectedNode.id))
-              setNotice(`${selectedNode.id} 와 연결 간선을 지웠어요`)
-              clearSelection()
-            }}
-          />
-        </Section>
-      ) : null}
-
-      {edge ? (
-        <Section title={`선택한 간선: ${edge.id} (${edge.a}, ${edge.b})`}>
-          <View style={styles.modeRow}>
-            <Btn label="일반" kind={edge.kind === 'normal' ? 'active' : 'default'} onPress={() => commit(setEdgeKind(storeRef.current, edge.id, 'normal'))} style={styles.bigBtn} />
-            <Btn label="계단" kind={edge.kind === 'stairs' ? 'active' : 'default'} onPress={() => commit(setEdgeKind(storeRef.current, edge.id, 'stairs'))} style={styles.bigBtn} />
-          </View>
-          {edge.memo ? <Text style={ui.hint}>{`메모: ${edge.memo}`}</Text> : null}
-          <Btn
-            label="이 간선 지우기"
-            kind="danger"
-            onPress={() => {
-              commit(removeEdge(storeRef.current, edge.id))
-              clearSelection()
-              setNotice('간선을 지웠어요')
-            }}
-          />
-        </Section>
-      ) : null}
-
-      <Btn label="되돌리기" onPress={undo} />
+      <View style={styles.labelRow}>
+        <Text style={ui.sectionHelp}>{'라벨 보기'}</Text>
+        {LABEL_MODES.map((m) => (
+          <Chip key={m.key} label={m.label} on={labelMode === m.key} onPress={() => setLabelMode(m.key)} />
+        ))}
+      </View>
       <Text style={ui.sectionHelp}>{`되돌리기는 ${UNDO_LIMIT}단계까지이고, 새로고침하면 기록이 사라져요.`}</Text>
       <Legend index={index} />
-      {__DEV__ ? <Btn label="표시 확인용 예시 넣기(개발 전용)" onPress={loadSample} /> : null}
+      {__DEV__ ? (
+        <Btn
+          label="표시 확인용 예시 넣기(개발 전용)"
+          onPress={() => {
+            const next = addDevSample(storeRef.current, index)
+            if (!next) return setNotice('예시를 만들 건물 정보가 없어요.')
+            commit(next)
+            const first = next.nodes[next.nodes.length - 7]
+            focusOn(first.lat, first.lng)
+            setNotice('예시 점을 넣었어요. 지금 데이터는 그대로예요. 아래 "예시 점 제거"로 뺄 수 있어요.')
+          }}
+        />
+      ) : null}
+      {sampleIds.length ? (
+        <Btn
+          label={`예시 점 제거 (${sampleIds.length}개)`}
+          kind="danger"
+          onPress={() => {
+            commit(removeDevSample(storeRef.current, index))
+            clearSelection()
+            setMulti((list) => list.filter((id) => !sampleIds.includes(id)))
+            setNotice('예시 점과 거기 이어진 간선을 지웠어요.')
+          }}
+        />
+      ) : null}
     </>
   )
 
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'edit', label: '편집' },
+    { key: 'check', label: `점검 ${check.errors.length}` },
+    { key: 'convert', label: report ? `v2 변환 ${openManual}` : 'v2 변환' },
+    { key: 'backup', label: '백업' },
+    { key: 'legacy', label: '기존 자료' },
+  ]
+
   const panel = (
-    <ScrollView style={wide ? styles.panelWide : styles.panelNarrow} contentContainerStyle={styles.panelBody} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{'경로망 조사 v3'}</Text>
-      <Text style={styles.summary}>{`지점 ${store.nodes.length}, 간선 ${store.edges.length}${savedAt ? `, 저장됨 ${timeText(savedAt)}` : ''}`}</Text>
-      {saveFailed ? <Text style={ui.error}>{'저장하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있어요.'}</Text> : null}
+    <ScrollView ref={panelRef} style={wide ? styles.panelWide : styles.panelNarrow} contentContainerStyle={styles.panelBody} keyboardShouldPersistTaps="handled">
+      <Text style={styles.summary}>{`경로망 조사 v3, 지점 ${store.nodes.length}, 간선 ${store.edges.length}`}</Text>
+      {saveFailed ? <Text style={ui.error}>{'브라우저에 보관하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있으니 백업 파일을 내려받아 주세요.'}</Text> : null}
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+      {mode === 'select' ? (
+        <MultiPanel
+          nodes={store.nodes}
+          index={index}
+          used={used}
+          selected={multi}
+          onSelect={setMulti}
+          onApply={applyBulk}
+          onExit={() => {
+            setMode('add')
+            setMulti([])
+          }}
+        />
+      ) : null}
+      {selectedNode && mode !== 'select' ? (
+        <NodeSheet
+          key={`${selectedNode.id}:${undoTick}`}
+          node={selectedNode}
+          store={store}
+          index={index}
+          used={used}
+          issues={nodeIssues}
+          candidates={nodeManual.flatMap((m) => m.candidates)}
+          contextLevels={contextLevels(context)}
+          onChange={change}
+          onMemo={(text, first) => commit(setNodeMemo(storeRef.current, selectedNode.id, text), first)}
+          onSelect={focusNode}
+          onDelete={() => {
+            commit(removeNode(storeRef.current, selectedNode.id))
+            setNotice(`${selectedNode.id} 와 연결 간선을 지웠어요`)
+            clearSelection()
+          }}
+          onClose={clearSelection}
+        />
+      ) : null}
+      {selectedNode && boundaryOpen && mode !== 'select' && selectedNode.scope === 'outdoor' ? <Btn label="이 점은 외부 유지" onPress={() => keepOutdoor([selectedNode.id])} /> : null}
+      {edge && mode !== 'select' ? (
+        <EdgeSheet
+          key={`${edge.id}:${undoTick}`}
+          edge={edge}
+          a={findNode(store, edge.a)}
+          b={findNode(store, edge.b)}
+          index={index}
+          issues={edgeIssues}
+          onChange={change}
+          onMemo={(text, first) => commit(setEdgeMemo(storeRef.current, edge.id, text), first)}
+          onDelete={() => {
+            commit(removeEdge(storeRef.current, edge.id))
+            clearSelection()
+            setNotice('간선을 지웠어요')
+          }}
+          onClose={clearSelection}
+        />
+      ) : null}
       <View style={styles.tabRow}>
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Btn key={t.key} label={t.label} kind={tab === t.key ? 'active' : 'default'} onPress={() => setTab(t.key)} style={styles.tab} />
         ))}
       </View>
-      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {tab === 'edit' ? editTab : null}
-      {tab === 'convert' ? <ConvertPanel store={store} index={index} report={report} onConvert={runConvert} onFocus={focusNode} onNotice={setNotice} /> : null}
+      {tab === 'check' ? <CheckPanel check={check} onGo={goToIssue} /> : null}
+      {tab === 'convert' ? (
+        <ConvertPanel
+          store={store}
+          index={index}
+          report={report}
+          multi={multi}
+          selected={selected}
+          onConvert={runConvert}
+          onFocus={focusNode}
+          onNotice={setNotice}
+          onToggleMulti={(id) => setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))}
+          onSelectMany={setMulti}
+          onKeepOutdoor={keepOutdoor}
+          onResetKept={() => updateReport((r) => ({ ...r, dismissed: [] }))}
+          onMakeIndoor={makeIndoor}
+        />
+      ) : null}
+      {tab === 'backup' ? <BackupPanel store={store} index={index} errorCount={check.errors.length} onRestore={runRestore} onNotice={setNotice} /> : null}
       {tab === 'legacy' ? <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} /> : null}
     </ScrollView>
   )
 
   return (
-    <View style={[styles.container, wide && styles.containerWide]}>
-      <View style={styles.mapArea}>
-        {!data ? (
-          <Text style={styles.loading} onPress={status === 'error' ? reload : undefined}>
-            {status === 'error' ? '지도 정보를 불러오지 못했어요. 다시 시도' : '지도 정보를 불러오는 중이에요'}
-          </Text>
-        ) : (
-          <NaverMapView key={data.version} ref={webViewRef} html={mapHTML} onReady={handleReady} onMessage={(event: unknown) => handlerRef.current(event)} />
-        )}
+    <View style={styles.container}>
+      {topBar}
+      <View style={[styles.main, wide && styles.mainWide]}>
+        <View style={styles.mapArea}>
+          {!data ? (
+            <Text style={styles.loading} onPress={status === 'error' ? reload : undefined}>
+              {status === 'error' ? '지도 정보를 불러오지 못했어요. 다시 시도' : '지도 정보를 불러오는 중이에요'}
+            </Text>
+          ) : (
+            <NaverMapView key={data.version} ref={webViewRef} html={mapHTML} onReady={handleReady} onMessage={(event: unknown) => handlerRef.current(event)} />
+          )}
+        </View>
+        {panel}
       </View>
-      {panel}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  containerWide: { flexDirection: 'row' },
-  mapArea: { flex: 1, minHeight: 320 },
+  topBar: { paddingHorizontal: 12, paddingVertical: 8, gap: 6, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.white },
+  main: { flex: 1, minHeight: 0 },
+  mainWide: { flexDirection: 'row' },
+  mapArea: { flex: 1, minHeight: 200 },
   loading: { padding: 20, fontFamily: FONTS.medium, color: COLORS.textSecondary },
-  panelWide: { width: 400, flexGrow: 0, borderLeftWidth: 1, borderLeftColor: COLORS.border },
-  panelNarrow: { maxHeight: '45%', borderTopWidth: 1, borderTopColor: COLORS.border },
-  panelBody: { padding: 16, gap: 12 },
-  title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.textPrimary },
-  summary: { fontFamily: FONTS.medium, fontSize: 12.5, color: COLORS.textSecondary, marginTop: -6 },
+  panelWide: { width: 420, flexGrow: 0, borderLeftWidth: 1, borderLeftColor: COLORS.border },
+  panelNarrow: { maxHeight: '50%', borderTopWidth: 1, borderTopColor: COLORS.border },
+  panelBody: { padding: 12, gap: 10 },
+  summary: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textSecondary },
   modeRow: { flexDirection: 'row', gap: 6 },
-  bigBtn: { flex: 1, minHeight: 52 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   tabRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   tab: { minWidth: '30%' },
   pending: { fontFamily: FONTS.semibold, fontSize: 12.5, color: '#EA580C' },

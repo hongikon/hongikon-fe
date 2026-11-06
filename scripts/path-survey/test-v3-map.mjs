@@ -39,7 +39,7 @@ test('colors cycle after twelve buildings and differ from the fixed colors', () 
   assert.equal(M.buildingColor(many, 'b12'), M.buildingColor(many, 'b0'))
   assert.notEqual(M.buildingColor(many, 'b11'), M.buildingColor(many, 'b0'))
   assert.equal(new Set(M.BUILDING_COLORS).size, 12)
-  for (const fixed of [M.OUTDOOR_COLOR, M.NEUTRAL_COLOR, M.STAIRS_COLOR]) assert.ok(!M.BUILDING_COLORS.includes(fixed))
+  for (const fixed of [M.OUTDOOR_COLOR, M.NEUTRAL_COLOR, M.NEUTRAL_EDGE_COLOR, M.STAIRS_COLOR]) assert.ok(!M.BUILDING_COLORS.includes(fixed))
 })
 
 test('multi building node has a neutral ring and letters, multi floor node has a floor range badge', () => {
@@ -69,7 +69,8 @@ test('edge color: outdoor, indoor building, neutral for entrances and links betw
     edge('e6', 'n1', 'n2', { kind: 'stairs' }),
     edge('e7', 'n4', 'n5', { kind: 'stairs' }),
   ]))
-  assert.deepEqual(edges.slice(0, 5).map((e) => e.color), [M.OUTDOOR_COLOR, M.NEUTRAL_COLOR, M.NEUTRAL_COLOR, M.BUILDING_COLORS[0], M.NEUTRAL_COLOR])
+  assert.deepEqual(edges.slice(0, 5).map((e) => e.color), [M.OUTDOOR_COLOR, M.NEUTRAL_EDGE_COLOR, M.NEUTRAL_EDGE_COLOR, M.BUILDING_COLORS[0], M.NEUTRAL_EDGE_COLOR])
+  assert.deepEqual(edges.map((e) => e.dashed), [false, true, true, false, true, false, false])
   assert.equal(edges[5].color, M.STAIRS_COLOR)
   assert.equal(edges[6].color, M.STAIRS_COLOR)
   assert.equal(edges[5].stairs, true)

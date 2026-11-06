@@ -29,7 +29,7 @@ export interface BuildingEntry {
   aliases: string[]
   floors?: number
   basementFloors?: number
-  entrances: { label: string; floor: number }[]
+  entrances: { label: string; floor: number; maxFloor: number }[]
   rings: [number, number][][]
 }
 
@@ -68,7 +68,7 @@ export function buildBuildingIndex(raw: readonly RawBuilding[]): BuildingIndex {
       aliases: [...new Set([token, ...prefixes, codeSuffix(code)].filter((a): a is string => !!a).map((a) => a.toLowerCase()))],
       floors: b.floors,
       basementFloors: b.basementFloors,
-      entrances: (b.entrances ?? []).map((e) => ({ label: e.label, floor: e.minFloor })),
+      entrances: (b.entrances ?? []).map((e) => ({ label: e.label, floor: e.minFloor, maxFloor: e.maxFloor })),
       rings: [b.boundary, ...(b.extraBoundaries ?? [])].filter((r): r is [number, number][] => Array.isArray(r) && r.length > 2),
     }
     list.push(entry)
@@ -98,27 +98,42 @@ export function searchBuildings(index: BuildingIndex, query: string): BuildingEn
     .map((x) => x.b)
 }
 
-/** Buildings whose chips show L and half floors without asking. Others add them through "special floor". */
+/** Buildings whose chips show L and half floors without asking. Others add them through the floor search. */
 const DEFAULT_SPECIAL_FLOORS: Record<string, number[]> = { hongik_r: [0, 1.5] }
 
 export interface FloorOptions {
+  /** Shown right away: server counts or the entrance range, special floors and floors already used. */
   main: number[]
+  /** The rest of B5..30 behind "more". */
   more: number[]
   special: number[]
 }
 
-/** Floor chips. Uses server counts when present, otherwise B5..10 plus 11..30 behind "more". */
-export function floorOptions(entry: BuildingEntry | undefined): FloorOptions {
+const WIDE_RANGE = { from: -5, to: 30 }
+const NO_DATA_RANGE = { from: -5, to: 10 }
+
+/**
+ * Floor chips. The server has no floor counts today, so the range comes from the entrances minFloor and maxFloor.
+ * Elevators often reach higher than any door, so the rest of the range stays one tap away.
+ */
+export function floorOptions(entry: BuildingEntry | undefined, used: readonly number[] = []): FloorOptions {
   const special = entry ? (DEFAULT_SPECIAL_FLOORS[entry.code] ?? []) : []
   const range = (from: number, to: number) => {
     const out: number[] = []
-    for (let f = from; f <= to; f += 1) if (f !== 0) out.push(f)
+    for (let f = Math.ceil(from); f <= Math.floor(to); f += 1) if (f !== 0) out.push(f)
     return out
   }
-  if (entry?.floors && entry.floors > 0) {
-    return { main: range(-(entry.basementFloors ?? 0), entry.floors), more: [], special }
-  }
-  return { main: range(-5, 10), more: range(11, 30), special }
+  const known = entry?.entrances ?? []
+  let base: number[]
+  if (entry?.floors && entry.floors > 0) base = range(-(entry.basementFloors ?? 0), entry.floors)
+  else if (known.length) {
+    const low = Math.min(...known.map((e) => e.floor))
+    const high = Math.max(...known.map((e) => e.maxFloor))
+    base = [...range(low, high), ...known.flatMap((e) => [e.floor, e.maxFloor])]
+  } else base = range(NO_DATA_RANGE.from, NO_DATA_RANGE.to)
+  const main = [...new Set([...base, ...special, ...used])].sort((x, y) => x - y)
+  const more = range(WIDE_RANGE.from, WIDE_RANGE.to).filter((f) => !main.includes(f))
+  return { main, more, special }
 }
 
 /** LF -> 0, B1 and B1F -> -1, 1F -> 1, 1F5 -> 1.5, B1F5 -> -1.5. null when unreadable. */
