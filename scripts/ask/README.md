@@ -11,9 +11,11 @@ python3 -I scripts/ask/crawl.py     # 학교 홈페이지 → cache/(HTML, git �
 python3 -I scripts/ask/extract.py   # cache/ → data/pages*.json · data/faq.json
 python3 -I scripts/ask/gen.py       # data/ + topics/*.py → src/constants/askPages.ts (fixes.py 를 함께 적용)
 node scripts/ask/test-routing.mjs   # cases/*.json 정답표로 질문 → 답 경로 검사
+node scripts/ask/typo-eval.mjs      # 정답표 질문에 오타(쉬프트 빠뜨림·옆 글쇠·받침 빠뜨림)를 넣어 교정 전후 경로 정답률 비교
 node scripts/ask/export-catalog.mjs # 흐름 → 백엔드 ask/catalog.json·sources.json(서버 LLM 분류 /ask/route 가 고르는 목록). 흐름을 바꾸면 다시 돌린다
 ```
 
+- **오타 교정:** `src/utils/typoFix.ts`(es-hangul 자모 분해). 사전은 흐름의 match 낱말, '맞는 말' 판단은 흐름 답 글의 두 글자. 규칙과 이유는 파일 머리말. `cases/typo.json` 이 실제 오타 예시 정답표. 11-06 측정: 옆 글쇠 53.7→81.6%, 받침 빠뜨림 50.4→77.6%, 쉬프트 77.4→90.2%, 교정이 망친 것 6,239건 중 1건.
 - **어떤 질문에 어떤 답:** `topics/*.py` 주제표. 형식은 `topics/__init__.py` 에 적혀 있다.
 - **최신 공지 기준:** `fixes.py` 가 학교 안내 페이지 문구 중 최신 학사 공지와 어긋나는 곳을 바로잡는다(2026-10-25 운영진 요청). `gen.py` 가 읽는다.
 - **정답표:** `cases/*.json` 에 `{"q": "질문", "expect": "흐름" | "흐름/단계" | "none"}`. 낱말을 바꾸면 꼭 테스트를 돌린다.
