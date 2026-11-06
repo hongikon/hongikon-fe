@@ -1,0 +1,50 @@
+[
+  {
+    "q": "휴핵 신청",
+    "expect": "leave-of-absence"
+  },
+  {
+    "q": "장학끔 신청",
+    "expect": "scholarship"
+  },
+  {
+    "q": "수강신쳥 기간",
+    "expect": "classes"
+  },
+  {
+    "q": "복수전꽁 신청",
+    "expect": "double-major"
+  },
+  {
+    "q": "졸엄요건",
+    "expect": "graduation-credit"
+  },
+  {
+    "q": "기숙서 신청",
+    "expect": "dorm-apply"
+  },
+  {
+    "q": "와이파리 연결",
+    "expect": "wifi"
+  },
+  {
+    "q": "체육관 쓸수잇어?",
+    "expect": "facility-rental"
+  },
+  {
+    "q": "학교에서 다쳣어요",
+    "expect": "injury"
+  },
+  {
+    "q": "게절학기 등록금",
+    "expect": "seasonal"
+  },
+  {
+    "q": "에비군 학생증",
+    "expect": "reserve-forces"
+  },
+  {
+    "q": "gbgkrtlscjd",
+    "expect": "leave-of-absence"
+  }
+]

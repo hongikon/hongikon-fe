@@ -156,12 +156,49 @@ export async function streamAsk(
   }
 }
 
-/** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
-export function sendAskFeedback(logId: number, conversationId: string, resolved: boolean, auth: AskAuth): Promise<void> {
+/** '해결 안 됨'의 이유(한 번 누름, 11-06). 서버 AskFeedbackReason 과 같은 이름. */
+export type AskFeedbackReason = 'WRONG' | 'OUTDATED' | 'OFF_TOPIC' | 'NOT_ENOUGH'
+
+/** 이유 버튼 글자(순서대로 보인다). */
+export const ASK_FEEDBACK_REASONS: { code: AskFeedbackReason; label: string }[] = [
+  { code: 'WRONG', label: '틀린 정보예요' },
+  { code: 'OUTDATED', label: '지난 정보예요' },
+  { code: 'OFF_TOPIC', label: '물어본 것과 달라요' },
+  { code: 'NOT_ENOUGH', label: '내용이 부족해요' },
+]
+
+/** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답(과 이유)을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
+export function sendAskFeedback(
+  logId: number,
+  conversationId: string,
+  resolved: boolean,
+  auth: AskAuth,
+  reason?: AskFeedbackReason,
+): Promise<void> {
   return apiRequest<void>('/ask/route/feedback', {
     method: 'POST',
-    body: { logId, conversationId, resolved },
+    body: { logId, conversationId, resolved, reason },
     ...authOptions(auth),
+    retries: 0,
+  })
+}
+
+/**
+ * 앱 안내 흐름 답의 '해결됐나요' 응답(POST /ask/feedback, 익명 — 사람·계정을 보내지 않는다).
+ * clientId 는 응답 한 번마다 만든 임의 값이라 이유를 고르며 다시 보내면 서버가 같은 행을 고친다. 실패해도 화면에는 영향이 없다.
+ */
+export function sendFlowFeedback(input: {
+  question: string
+  flowId: string
+  nodeId: string
+  resolved: boolean
+  clientId: string
+  reason?: AskFeedbackReason
+}): Promise<void> {
+  return apiRequest<void>('/ask/feedback', {
+    method: 'POST',
+    body: { ...input, question: input.question.slice(0, 200), outcome: 'FLOW' },
+    skipTokenRefresh: true,
     retries: 0,
   })
 }

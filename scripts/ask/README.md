@@ -11,9 +11,11 @@ python3 -I scripts/ask/crawl.py     # 학교 홈페이지 → cache/(HTML, git �
 python3 -I scripts/ask/extract.py   # cache/ → data/pages*.json · data/faq.json
 python3 -I scripts/ask/gen.py       # data/ + topics/*.py → src/constants/askPages.ts (fixes.py 를 함께 적용)
 node scripts/ask/test-routing.mjs   # cases/*.json 정답표로 질문 → 답 경로 검사
+node scripts/ask/typo-eval.mjs      # 정답표 질문에 오타(쉬프트 빠뜨림·옆 글쇠·받침 빠뜨림)를 넣어 교정 전후 경로 정답률 비교
 node scripts/ask/export-catalog.mjs # 흐름 → 백엔드 ask/catalog.json·sources.json(서버 LLM 분류 /ask/route 가 고르는 목록). 흐름을 바꾸면 다시 돌린다
 ```
 
+- **오타 교정:** `src/utils/typoFix.ts`(es-hangul 자모 분해). 사전은 흐름의 match 낱말, '맞는 말' 판단은 흐름 답 글의 두 글자. 규칙과 이유는 파일 머리말. `cases/typo.json` 이 실제 오타 예시 정답표. 11-06 측정: 옆 글쇠 53.7→81.6%, 받침 빠뜨림 50.4→77.6%, 쉬프트 77.4→90.2%, 교정이 망친 것 6,239건 중 1건.
 - **어떤 질문에 어떤 답:** `topics/*.py` 주제표. 형식은 `topics/__init__.py` 에 적혀 있다.
 - **최신 공지 기준:** `fixes.py` 가 학교 안내 페이지 문구 중 최신 학사 공지와 어긋나는 곳을 바로잡는다(2026-10-25 운영진 요청). `gen.py` 가 읽는다.
 - **정답표:** `cases/*.json` 에 `{"q": "질문", "expect": "흐름" | "흐름/단계" | "none"}`. 낱말을 바꾸면 꼭 테스트를 돌린다.
@@ -28,6 +30,11 @@ python3 -I scripts/ask/depthome.py            # 학과 홈페이지 메뉴 → d
 python3 -I scripts/ask/depthome.py --faculty  # 교수진 페이지(헤드리스 Chrome으로 그려서)에서 이름·직위·연구분야만
 ```
 
+```sh
+python3 -I scripts/ask/regs.py                # 규정집 학칙·학사내규 전문 → data/rag-regs.json(장마다 한 쪽, 부칙은 따로)
+```
+
+- 규정 원문은 `page:reg-…` 문단이 된다. 학교가 규정을 고치면(규정집 '개정' 날짜) 다시 돌리고 색인을 다시 만든다.
 - 원문을 그대로 넣고 낱말 목록은 짜지 않는다. 백엔드 `tools/embed-server/build_index.py` 가 `data/rag-*.json` 을 색인에 함께 넣는다. 이 파일이나 `sources.json` 이 바뀌면 색인을 다시 만든다(BE `docs/ask-embedding-plan.md`).
 - **개인정보:** 교수진 페이지는 이름·직위·연구분야만 옮긴다(10-31 운영진 결정, `--faculty`). 학위·출신 학교·연구실·전화·이메일·사진은 읽지도 저장하지도 않는다. 교직원·연구랩·조교 소개는 페이지 위치만 남긴다. 학번 줄과 게시판 목록은 빼고, 휴대전화 번호는 지운다. 새 학과를 넣으면 결과 파일에 학생 실명·연락처가 남지 않았는지 확인한다.
 
