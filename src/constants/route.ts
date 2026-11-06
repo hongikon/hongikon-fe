@@ -16,6 +16,6 @@ export const ROUTE_FINDING_ENABLED = true
 
 /**
  * 지도 메뉴 "내 위치 켜기"를 보이기 시작하는 날(한국 시간, YYYY-MM-DD). 이 기능을 더한 개인정보 처리방침(11-16판)이
- * 적용되는 날이다 — 처리방침은 바꾸면 적용일 7일 전부터 공지한다(11-09 공지). 날짜를 옮기면 legalText.ts 와 공지(id 7)도 같이 옮긴다.
+ * 적용되는 날이다 — 처리방침은 바꾸면 적용일 7일 전부터 공지한다(11-06 공지, 운영 OTA). 날짜를 옮기면 legalText.ts 와 공지(id 7)도 같이 옮긴다.
  */
 export const MY_LOCATION_BUTTON_FROM = '2026-11-16'
