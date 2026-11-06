@@ -2,7 +2,8 @@ import { defaultStorage, normalizeStoreV3, type StorageLike, type StoreV3 } from
 
 /**
  * Named save points. They live under their own key so that a full snapshot list can never break the
- * main save. Manual snapshots are never removed automatically; automatic ones make room first.
+ * main save. Only the rolling points of the save button make room on their own. Manual points and the
+ * protected ones made before a big change (v2 conversion, restore, import) go only when a person deletes them.
  */
 
 export const SNAPSHOTS_KEY = 'hongikon.pathSurvey.v3.snapshots'
@@ -11,11 +12,13 @@ export const SNAPSHOT_LIMIT = 20
 export const STORAGE_WARN_CHARS = 3_000_000
 export const STORAGE_REFUSE_CHARS = 4_200_000
 
+export type SnapshotKind = 'manual' | 'protected' | 'rolling'
+
 export interface Snapshot {
   id: string
   name: string
   createdAt: number
-  auto: boolean
+  kind: SnapshotKind
   nodes: StoreV3['nodes']
   edges: StoreV3['edges']
   nextNode: number
@@ -24,12 +27,22 @@ export interface Snapshot {
 
 export type SnapshotError = 'limit' | 'storage'
 
+/** Older entries only have auto. Those were either save button points or points made before a big change. */
+function kindOf(raw: any): SnapshotKind {
+  if (raw.kind === 'manual' || raw.kind === 'protected' || raw.kind === 'rolling') return raw.kind
+  if (!raw.auto) return 'manual'
+  return typeof raw.name === 'string' && raw.name.startsWith('저장 ') ? 'rolling' : 'protected'
+}
+
 export function loadSnapshots(storage: StorageLike | null = defaultStorage()): Snapshot[] {
   try {
     const raw = storage?.getItem(SNAPSHOTS_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((s) => s && typeof s.id === 'string' && Array.isArray(s.nodes) && Array.isArray(s.edges)) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((s) => s && typeof s.id === 'string' && Array.isArray(s.nodes) && Array.isArray(s.edges))
+      .map(({ auto, ...s }) => ({ ...s, kind: kindOf({ ...s, auto }) }))
   } catch {
     return []
   }
@@ -60,19 +73,19 @@ function write(list: Snapshot[], storage: StorageLike | null): boolean {
   }
 }
 
-const dropOldestAuto = (list: Snapshot[]): Snapshot[] | null => {
-  const oldest = list.filter((s) => s.auto).sort((x, y) => x.createdAt - y.createdAt)[0]
+const dropOldestRolling = (list: Snapshot[]): Snapshot[] | null => {
+  const oldest = list.filter((s) => s.kind === 'rolling').sort((x, y) => x.createdAt - y.createdAt)[0]
   return oldest ? list.filter((s) => s !== oldest) : null
 }
 
 /**
- * Adds a snapshot. At the limit or when the browser refuses the write, the oldest automatic snapshots go
- * first. If only manual ones are left, nothing is removed and the error says why.
+ * Adds a snapshot. At the limit or when the browser refuses the write, the oldest rolling snapshots go
+ * first. If none are left, nothing is removed and the error says why.
  */
 export function createSnapshot(
   store: StoreV3,
   name: string,
-  auto: boolean,
+  kind: SnapshotKind,
   storage: StorageLike | null = defaultStorage(),
   now = Date.now(),
 ): { list: Snapshot[]; snapshot: Snapshot | null; error: SnapshotError | null } {
@@ -81,7 +94,7 @@ export function createSnapshot(
     id: `s${now.toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
     name: name.trim() || '이름 없음',
     createdAt: now,
-    auto,
+    kind,
     nodes: store.nodes,
     edges: store.edges,
     nextNode: store.nextNode,
@@ -89,16 +102,18 @@ export function createSnapshot(
   }
   let list = before
   while (list.length >= SNAPSHOT_LIMIT) {
-    const smaller = dropOldestAuto(list)
+    const smaller = dropOldestRolling(list)
     if (!smaller) return { list: before, snapshot: null, error: 'limit' }
     list = smaller
   }
+  // The usage still counts the list as stored, so this write only adds the difference to it.
+  const usage = storageUsage(storage)
+  const storedLength = storage?.getItem(SNAPSHOTS_KEY)?.length ?? 0
   for (;;) {
     const next = [...list, snapshot]
-    const usage = storageUsage(storage)
-    const size = JSON.stringify(next).length - JSON.stringify(list).length
-    if ((usage === null || usage + size < STORAGE_REFUSE_CHARS) && write(next, storage)) return { list: next, snapshot, error: null }
-    const smaller = dropOldestAuto(list)
+    const usageAfter = usage === null ? null : usage - storedLength + JSON.stringify(next).length
+    if ((usageAfter === null || usageAfter < STORAGE_REFUSE_CHARS) && write(next, storage)) return { list: next, snapshot, error: null }
+    const smaller = dropOldestRolling(list)
     if (!smaller) return { list: before, snapshot: null, error: 'storage' }
     list = smaller
   }
@@ -108,6 +123,15 @@ export function deleteSnapshot(id: string, storage: StorageLike | null = default
   const list = loadSnapshots(storage).filter((s) => s.id !== id)
   write(list, storage)
   return list
+}
+
+/** A name a person gave is worth keeping, so a rolling point stops rolling here. */
+export function renameSnapshot(id: string, name: string, storage: StorageLike | null = defaultStorage()): Snapshot[] {
+  const before = loadSnapshots(storage)
+  const trimmed = name.trim()
+  if (!trimmed) return before
+  const list = before.map((s) => (s.id === id ? { ...s, name: trimmed, kind: s.kind === 'rolling' ? ('manual' as const) : s.kind } : s))
+  return write(list, storage) ? list : before
 }
 
 export function storeFromSnapshot(snapshot: Snapshot, now = Date.now()): StoreV3 {

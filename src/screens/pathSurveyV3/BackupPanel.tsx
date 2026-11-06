@@ -3,21 +3,28 @@ import { Text, TextInput, View } from 'react-native'
 import { copyText, downloadText, pickTextFile } from '../../utils/pathSurveySync'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { backupFileName, buildGraphExport, graphFileName, labelsNotOnServer, parseBackupText, serializeBackup } from '../../utils/pathSurveyV3/transfer'
+import { backupFileName, buildGraphExport, graphFileName, labelsNotOnServer, parseBackupText, serializeBackup, type BackupVia } from '../../utils/pathSurveyV3/transfer'
 import { Btn, Row, Section, ui } from '../pathSurvey/ui'
+import GistPanel from './GistPanel'
 
 /** Backups work at any time. The expanded graph for routing work needs zero check errors. */
 export default function BackupPanel({
   store,
   index,
   errorCount,
+  backupStatus,
+  onBackedUp,
   onRestore,
+  onPulled,
   onNotice,
 }: {
   store: StoreV3
   index: BuildingIndex
   errorCount: number
+  backupStatus: string
+  onBackedUp: (via: BackupVia) => void
   onRestore: (next: StoreV3) => void
+  onPulled: (next: StoreV3) => boolean
   onNotice: (message: string) => void
 }) {
   const [text, setText] = useState('')
@@ -26,14 +33,17 @@ export default function BackupPanel({
   const missing = useMemo(() => labelsNotOnServer(store, index), [store, index])
 
   const saveFile = () => {
-    if (downloadText(backupFileName(), serializeBackup(store))) onNotice('백업 파일을 내려받았어요. 잘 보관해 주세요.')
-    else onNotice('이 브라우저에서는 파일을 내려받지 못해요. 코드 복사를 써 주세요.')
+    if (downloadText(backupFileName(), serializeBackup(store))) {
+      onBackedUp('file')
+      onNotice('백업 파일을 내려받았어요. 잘 보관해 주세요.')
+    } else onNotice('이 브라우저에서는 파일을 내려받지 못해요. 코드 복사를 써 주세요.')
   }
 
   const copyAll = async () => {
     const value = serializeBackup(store)
     if (await copyText(value)) {
       setManualCopy(null)
+      onBackedUp('copy')
       onNotice('백업 내용을 복사했어요. 메모 앱 같은 곳에 붙여 넣어 보관해 주세요.')
     } else {
       setManualCopy(value)
@@ -59,12 +69,14 @@ export default function BackupPanel({
     <View style={{ gap: 14 }}>
       <Text style={ui.warn}>{'브라우저 저장은 사이트 데이터를 지우면 사라져요. 백업 파일을 따로 보관해 주세요.'}</Text>
       <Section title="백업" help="오류가 있어도 언제든 할 수 있어요.">
+        <Text style={ui.hint}>{backupStatus}</Text>
         <Row>
           <Btn label="백업 저장" kind="primary" onPress={saveFile} />
           <Btn label="코드 복사" onPress={copyAll} />
         </Row>
         {manualCopy ? <TextInput value={manualCopy} multiline editable={false} selectTextOnFocus style={[ui.memoInput, { maxHeight: 160 }]} /> : null}
       </Section>
+      <GistPanel store={store} onPulled={onPulled} onPushed={() => onBackedUp('gist')} onNotice={onNotice} />
       <Section title="불러오기" help="지금 데이터를 덮어써요. 확인을 받고 저장 지점을 먼저 남겨요.">
         <Btn label="파일 고르기" onPress={fromFile} />
         <TextInput value={text} onChangeText={setText} placeholder="백업 코드 붙여 넣기" multiline autoCapitalize="none" autoCorrect={false} style={ui.memoInput} />

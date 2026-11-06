@@ -1,5 +1,5 @@
 import type { BuildingIndex } from './buildings'
-import { checkGraph } from './check'
+import { checkGraph, ENTRANCE_BOUNDARY_TOLERANCE_M } from './check'
 import { expandGraph, summarizeGraph, type GraphSummary } from './expand'
 import { defaultStorage, normalizeStoreV3, type NodeContext, type StorageLike, type StoreV3 } from './store'
 import { EXPORT_FORMAT_V3, type LevelRef, type NodeType, type SurveyFileV3 } from './types'
@@ -15,6 +15,7 @@ export function fileStamp(now = new Date()): string {
 
 export const backupFileName = (now = new Date()) => `path-survey-v3-backup-${fileStamp(now)}.json`
 export const graphFileName = (now = new Date()) => `path-survey-v3-graph-${fileStamp(now)}.json`
+export const snapshotFileName = (createdAt: number) => `path-survey-v3-snapshot-${fileStamp(new Date(createdAt))}.json`
 
 /** A backup is always allowed, errors or not, and carries no graph. */
 export function serializeBackup(store: StoreV3, now = Date.now()): string {
@@ -64,15 +65,108 @@ export function buildGraphExport(store: StoreV3, index: BuildingIndex, now = Dat
   return { text: JSON.stringify(file, null, 2), summary: summarizeGraph(store.nodes, store.edges, graph), labelsNotOnServer: missing }
 }
 
-/** Short hash of the survey content. Unlike updatedAt it also notices an undo back past the last save. */
-export function storeFingerprint(store: Pick<StoreV3, 'nodes' | 'edges'>): string {
-  const text = JSON.stringify([store.nodes, store.edges])
+function hashText(text: string): string {
   let hash = 0x811c9dc5
   for (let i = 0; i < text.length; i += 1) {
     hash ^= text.charCodeAt(i)
     hash = Math.imul(hash, 0x01000193)
   }
   return `${text.length}:${(hash >>> 0).toString(36)}`
+}
+
+/** The order of keys is not content: converted data and the same data loaded from a file list them differently. */
+function canonicalText(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalText).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value).filter(([, item]) => item !== undefined)
+    return `{${entries
+      .sort(([x], [y]) => (x < y ? -1 : 1))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalText(item)}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
+/** Short hash of the survey content. Unlike updatedAt it also notices an undo back past the last save. */
+export const storeFingerprint = (store: Pick<StoreV3, 'nodes' | 'edges'>): string => hashText(canonicalText([store.nodes, store.edges]))
+
+export const BACKUP_KEY = 'hongikon.pathSurvey.v3.backup'
+
+export type BackupVia = 'file' | 'copy' | 'gist'
+
+/** When the last backup was made, and one short hash per point and edge so the difference can be counted without a second copy of the data. */
+export interface BackupRecord {
+  at: number
+  via: BackupVia
+  nodes: Record<string, string>
+  edges: Record<string, string>
+}
+
+const itemHash = (item: object): string => hashText(canonicalText(item))
+
+const hashById = (items: readonly { id: string }[]) => Object.fromEntries(items.map((item) => [item.id, itemHash(item)]))
+
+export const makeBackupRecord = (store: Pick<StoreV3, 'nodes' | 'edges'>, via: BackupVia, now = Date.now()): BackupRecord => ({
+  at: now,
+  via,
+  nodes: hashById(store.nodes),
+  edges: hashById(store.edges),
+})
+
+function countChanges(items: readonly { id: string }[], known: Record<string, string>): number {
+  const ids = new Set(items.map((item) => item.id))
+  const changed = items.filter((item) => known[item.id] !== itemHash(item)).length
+  return changed + Object.keys(known).filter((id) => !ids.has(id)).length
+}
+
+/** Points and edges added, removed or changed since the backup. An undo back to the backup counts as zero. */
+export const changesSinceBackup = (store: Pick<StoreV3, 'nodes' | 'edges'>, record: BackupRecord): { nodes: number; edges: number } => ({
+  nodes: countChanges(store.nodes, record.nodes),
+  edges: countChanges(store.edges, record.edges),
+})
+
+export function loadBackupRecord(storage: StorageLike | null = defaultStorage()): BackupRecord | null {
+  try {
+    const raw = JSON.parse(storage?.getItem(BACKUP_KEY) ?? 'null')
+    if (typeof raw?.at !== 'number' || !raw.nodes || !raw.edges) return null
+    return { at: raw.at, via: raw.via === 'copy' || raw.via === 'gist' ? raw.via : 'file', nodes: raw.nodes, edges: raw.edges }
+  } catch {
+    return null
+  }
+}
+
+export function saveBackupRecord(record: BackupRecord, storage: StorageLike | null = defaultStorage()): void {
+  try {
+    storage?.setItem(BACKUP_KEY, JSON.stringify(record))
+  } catch {
+    // Only the status text depends on this.
+  }
+}
+
+export const SETTINGS_KEY = 'hongikon.pathSurvey.v3.settings'
+export const MAX_TOLERANCE_M = 200
+
+export interface SurveySettings {
+  entranceToleranceM: number
+}
+
+export const isValidTolerance = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_TOLERANCE_M
+
+export function loadSurveySettings(storage: StorageLike | null = defaultStorage()): SurveySettings {
+  try {
+    const raw = JSON.parse(storage?.getItem(SETTINGS_KEY) ?? 'null')
+    return { entranceToleranceM: isValidTolerance(raw?.entranceToleranceM) ? raw.entranceToleranceM : ENTRANCE_BOUNDARY_TOLERANCE_M }
+  } catch {
+    return { entranceToleranceM: ENTRANCE_BOUNDARY_TOLERANCE_M }
+  }
+}
+
+export function saveSurveySettings(settings: SurveySettings, storage: StorageLike | null = defaultStorage()): void {
+  try {
+    storage?.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  } catch {
+    // Applies to this tab only then.
+  }
 }
 
 export const META_KEY = 'hongikon.pathSurvey.v3.meta'

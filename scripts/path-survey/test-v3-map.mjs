@@ -69,8 +69,8 @@ test('edge color: outdoor, indoor building, neutral for entrances and links betw
     edge('e6', 'n1', 'n2', { kind: 'stairs' }),
     edge('e7', 'n4', 'n5', { kind: 'stairs' }),
   ]))
-  assert.deepEqual(edges.slice(0, 5).map((e) => e.color), [M.OUTDOOR_COLOR, M.NEUTRAL_EDGE_COLOR, M.NEUTRAL_EDGE_COLOR, M.BUILDING_COLORS[0], M.NEUTRAL_EDGE_COLOR])
-  assert.deepEqual(edges.map((e) => e.dashed), [false, true, true, false, true, false, false])
+  assert.deepEqual(edges.slice(0, 5).map((e) => e.color), [M.OUTDOOR_COLOR, M.NEUTRAL_EDGE_COLOR, M.BUILDING_COLORS[0], M.BUILDING_COLORS[0], M.NEUTRAL_EDGE_COLOR])
+  assert.deepEqual(edges.map((e) => e.dashed), [false, true, false, false, true, false, false])
   assert.equal(edges[5].color, M.STAIRS_COLOR)
   assert.equal(edges[6].color, M.STAIRS_COLOR)
   assert.equal(edges[5].stairs, true)

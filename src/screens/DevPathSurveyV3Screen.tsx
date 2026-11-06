@@ -9,8 +9,8 @@ import { buildMapHTML } from '../utils/mapHtml'
 import { buildBuildingIndex, loadBuildingCache, saveBuildingCache, type RawBuilding } from '../utils/pathSurveyV3/buildings'
 import { checkGraph, type CheckIssue } from '../utils/pathSurveyV3/check'
 import { convertV2, isManualItemOpen, loadConvertReport, saveConvertReport, type ConvertReport, type V2Source } from '../utils/pathSurveyV3/convertV2'
-import { usedFloorsByBuilding } from '../utils/pathSurveyV3/levels'
-import { createSnapshot } from '../utils/pathSurveyV3/snapshots'
+import { selectionBuildings, usedFloorsByBuilding } from '../utils/pathSurveyV3/levels'
+import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
   addNode,
@@ -33,16 +33,25 @@ import {
   type StoreV3,
 } from '../utils/pathSurveyV3/store'
 import {
+  changesSinceBackup,
   contextLevels,
   EMPTY_META,
+  loadBackupRecord,
   loadSaveMeta,
+  loadSurveySettings,
   loadWorkContext,
+  makeBackupRecord,
+  saveBackupRecord,
   saveSaveMeta,
   saveStateOf,
+  saveSurveySettings,
   saveWorkContext,
   storeFingerprint,
   toNodeContext,
+  type BackupRecord,
+  type BackupVia,
   type SaveMeta,
+  type SurveySettings,
   type WorkContext,
 } from '../utils/pathSurveyV3/transfer'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
@@ -62,8 +71,9 @@ import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilt
 import MultiPanel from './pathSurveyV3/MultiPanel'
 import NodeSheet from './pathSurveyV3/NodeSheet'
 import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
+import SnapshotPanel from './pathSurveyV3/SnapshotPanel'
 
-type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'legacy'
+type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'snapshots' | 'legacy'
 
 const MODES: { key: MapMode; label: string; help: string }[] = [
   { key: 'add', label: '점 찍기', help: '지도를 누르면 위의 설정대로 점이 생겨요. 이어 찍기를 켜면 직전 점과 간선으로 이어요.' },
@@ -76,7 +86,10 @@ const LABEL_MODES: { key: LabelMode; label: string }[] = [
   { key: 'none', label: '없음' },
   { key: 'number', label: '번호' },
   { key: 'full', label: '번호+동' },
+  { key: 'selected', label: '선택한 점만' },
 ]
+
+const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
 
 const UNDO_LIMIT = 50
 
@@ -132,6 +145,12 @@ export default function DevPathSurveyV3Screen() {
   const [pending, setPending] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [multi, setMulti] = useState<string[]>([])
+  // A select all button can mix buildings. Selections made point by point or per building never ask.
+  const [multiFromAll, setMultiFromAll] = useState(false)
+  const [undoCount, setUndoCount] = useState(0)
+  const [snapshotTick, setSnapshotTick] = useState(0)
+  const [backupRecord, setBackupRecord] = useState<BackupRecord | null>(() => loadBackupRecord())
+  const [settings, setSettings] = useState<SurveySettings>(() => loadSurveySettings())
   const [filter, setFilter] = useState<MapFilter>(NO_FILTER)
   const [labelMode, setLabelMode] = useState<LabelMode>('full')
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(LEGACY_OFF)
@@ -153,14 +172,20 @@ export default function DevPathSurveyV3Screen() {
   }, [buildings])
 
   useEffect(() => saveWorkContext(context), [context])
+  useEffect(() => saveSurveySettings(settings), [settings])
 
   const overlay = useMemo(() => buildLegacyOverlay(buildings), [buildings])
 
   // Check and save state run on a deferred copy, so typing a memo is never held up by them.
   const deferredStore = useDeferredValue(store)
-  const check = useMemo(() => checkGraph(deferredStore.nodes, deferredStore.edges, index), [deferredStore, index])
+  const check = useMemo(() => checkGraph(deferredStore.nodes, deferredStore.edges, index, settings), [deferredStore, index, settings])
   const fingerprint = useMemo(() => storeFingerprint(deferredStore), [deferredStore])
   const used = useMemo(() => usedFloorsByBuilding(deferredStore.nodes), [deferredStore])
+  const backupStatus = useMemo(() => {
+    if (!backupRecord) return '백업한 적 없어요'
+    const changes = changesSinceBackup(deferredStore, backupRecord)
+    return `마지막 백업 ${clockText(backupRecord.at)}(${BACKUP_VIA[backupRecord.via]}), 이후 바뀐 점 ${changes.nodes}, 간선 ${changes.edges}`
+  }, [deferredStore, backupRecord])
   const sampleIds = useMemo(() => devSampleNodeIds(store, index), [store, index])
   const openManual = useMemo(() => {
     const byId = new Map(store.nodes.map((n) => [n.id, n]))
@@ -183,6 +208,7 @@ export default function DevPathSurveyV3Screen() {
   const commit = useCallback((next: StoreV3, record = true) => {
     if (next === storeRef.current) return
     if (record) historyRef.current = [...historyRef.current.slice(-(UNDO_LIMIT - 1)), storeRef.current]
+    setUndoCount(historyRef.current.length)
     storeRef.current = next
     setStore(next)
     if (blockedRef.current) return
@@ -247,15 +273,21 @@ export default function DevPathSurveyV3Screen() {
     const current = storeRef.current
     if (current.nodes.length || current.edges.length) {
       if (!confirmAction(`지금 v3 데이터(지점 ${current.nodes.length}, 간선 ${current.edges.length})를 덮어쓸까요? 저장 지점을 먼저 만들어요.\n\n${summary}`)) return false
-      const { error } = createSnapshot(current, snapshotName, true)
+      const { error } = createSnapshot(current, snapshotName, 'protected')
+      setSnapshotTick((n) => n + 1)
       if (error && !confirmAction('저장 지점을 만들지 못했어요(개수 또는 용량). 그래도 덮어쓸까요?')) return false
     }
     commit(next)
     setUndoTick((n) => n + 1)
     clearSelection()
-    setMulti([])
+    selectMany([])
     setFilter(NO_FILTER)
     return true
+  }
+
+  const selectMany = (ids: string[], fromAll = false) => {
+    setMulti(ids)
+    setMultiFromAll(fromAll && ids.length > 0)
   }
 
   const runConvert = (source: V2Source) => {
@@ -276,11 +308,35 @@ export default function DevPathSurveyV3Screen() {
     setNotice(`불러왔어요. 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)
   }
 
+  const runSnapshotRestore = (snapshot: Snapshot) => {
+    const next = storeFromSnapshot(snapshot)
+    if (!replaceAll(next, '복원 직전', `복원할 내용: "${snapshot.name}", 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)) return
+    const first = next.nodes[0]
+    if (first) focusOn(first.lat, first.lng)
+    setNotice(`"${snapshot.name}" 으로 복원했어요. 지점 ${next.nodes.length}, 간선 ${next.edges.length}. 되돌리기로 취소할 수 있어요.`)
+  }
+
+  const markBackedUp = (via: BackupVia, content: StoreV3 = storeRef.current) => {
+    const record = makeBackupRecord(content, via)
+    setBackupRecord(record)
+    saveBackupRecord(record)
+  }
+
+  const runGistPull = (next: StoreV3): boolean => {
+    if (!replaceAll(next, 'Gist 불러오기 직전', `Gist 내용: 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)) return false
+    markBackedUp('gist', next)
+    const first = next.nodes[0]
+    if (first) focusOn(first.lat, first.lng)
+    setNotice(`Gist 에서 불러왔어요. 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)
+    return true
+  }
+
   const saveNow = () => {
     const current = storeRef.current
     // Save button points roll over on their own, so pressing it often never runs into the limit.
-    const { error } = createSnapshot(current, `저장 ${clockText(Date.now())}`, true)
-    if (error) return setNotice('저장 지점을 만들지 못했어요(용량). 지금 내용은 이 브라우저에 있으니 백업 파일을 내려받아 주세요.')
+    const { error } = createSnapshot(current, `저장 ${clockText(Date.now())}`, 'rolling')
+    setSnapshotTick((n) => n + 1)
+    if (error) return setNotice('저장 지점을 만들지 못했어요(개수 또는 용량). 저장 지점 탭에서 필요 없는 것을 지워 주세요. 지금 내용은 이 브라우저에 있어요.')
     const meta = { lastSaveAt: Date.now(), lastSaveFingerprint: storeFingerprint(current) }
     setSaveMeta(meta)
     saveSaveMeta(meta)
@@ -298,7 +354,7 @@ export default function DevPathSurveyV3Screen() {
 
   const keepOutdoor = (ids: string[]) => {
     updateReport((r) => ({ ...r, dismissed: [...new Set([...(r.dismissed ?? []), ...ids])] }))
-    setMulti((list) => list.filter((id) => !ids.includes(id)))
+    selectMany(multi.filter((id) => !ids.includes(id)), multiFromAll)
     setNotice(`외부 유지 ${ids.length}건 처리했어요`)
   }
 
@@ -321,8 +377,10 @@ export default function DevPathSurveyV3Screen() {
 
   const applyBulk = (bulk: BulkChange) => {
     const count = multi.length
+    const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, multi, index) : []
+    if (mixed.length > 1 && !confirmAction(`여러 건물의 점이 섞여 있어요. 건물 ${mixed.length}곳, 점 ${count}개에 같은 값을 넣을까요?`)) return
     change((s) => applyBulkToNodes(s, multi, bulk))
-    setMulti([])
+    selectMany([])
     setNotice(`${count}개에 적용했어요. 되돌리기로 한 번에 취소할 수 있어요.`)
   }
 
@@ -449,6 +507,7 @@ export default function DevPathSurveyV3Screen() {
         errors={check.errors.length}
         warnings={check.warnings.length}
         onSave={saveNow}
+        undoCount={undoCount}
         onUndo={undo}
         onShowCheck={() => setTab('check')}
       />
@@ -518,12 +577,14 @@ export default function DevPathSurveyV3Screen() {
     { key: 'check', label: `점검 ${check.errors.length}` },
     { key: 'convert', label: report ? `v2 변환 ${openManual}` : 'v2 변환' },
     { key: 'backup', label: '백업' },
+    { key: 'snapshots', label: '저장 지점' },
     { key: 'legacy', label: '기존 자료' },
   ]
 
   const panel = (
     <ScrollView ref={panelRef} style={wide ? styles.panelWide : styles.panelNarrow} contentContainerStyle={styles.panelBody} keyboardShouldPersistTaps="handled">
       <Text style={styles.summary}>{`경로망 조사 v3, 지점 ${store.nodes.length}, 간선 ${store.edges.length}`}</Text>
+      <Text style={styles.summary}>{backupStatus}</Text>
       {saveFailed ? <Text style={ui.error}>{'브라우저에 보관하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있으니 백업 파일을 내려받아 주세요.'}</Text> : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {mode === 'select' ? (
@@ -532,11 +593,11 @@ export default function DevPathSurveyV3Screen() {
           index={index}
           used={used}
           selected={multi}
-          onSelect={setMulti}
+          onSelect={selectMany}
           onApply={applyBulk}
           onExit={() => {
             setMode('add')
-            setMulti([])
+            selectMany([])
           }}
         />
       ) : null}
@@ -586,7 +647,9 @@ export default function DevPathSurveyV3Screen() {
         ))}
       </View>
       {tab === 'edit' ? editTab : null}
-      {tab === 'check' ? <CheckPanel check={check} onGo={goToIssue} /> : null}
+      {tab === 'check' ? (
+        <CheckPanel check={check} tolerance={settings.entranceToleranceM} onTolerance={(entranceToleranceM) => setSettings({ entranceToleranceM })} onGo={goToIssue} />
+      ) : null}
       {tab === 'convert' ? (
         <ConvertPanel
           store={store}
@@ -598,13 +661,27 @@ export default function DevPathSurveyV3Screen() {
           onFocus={focusNode}
           onNotice={setNotice}
           onToggleMulti={(id) => setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))}
-          onSelectMany={setMulti}
+          onSelectMany={selectMany}
           onKeepOutdoor={keepOutdoor}
           onResetKept={() => updateReport((r) => ({ ...r, dismissed: [] }))}
           onMakeIndoor={makeIndoor}
         />
       ) : null}
-      {tab === 'backup' ? <BackupPanel store={store} index={index} errorCount={check.errors.length} onRestore={runRestore} onNotice={setNotice} /> : null}
+      {tab === 'backup' ? (
+        <BackupPanel
+          store={store}
+          index={index}
+          errorCount={check.errors.length}
+          backupStatus={backupStatus}
+          onBackedUp={markBackedUp}
+          onRestore={runRestore}
+          onPulled={runGistPull}
+          onNotice={setNotice}
+        />
+      ) : null}
+      {tab === 'snapshots' ? (
+        <SnapshotPanel store={store} tick={snapshotTick} onRestore={runSnapshotRestore} onChanged={() => setSnapshotTick((n) => n + 1)} onNotice={setNotice} />
+      ) : null}
       {tab === 'legacy' ? <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} /> : null}
     </ScrollView>
   )

@@ -187,7 +187,7 @@ test('v2 storage is read only, and v2 and v1 keys are never written', () => {
   const out = memoryStorage()
   C.saveConvertReport(C.convertV2(SAMPLE(), index).report, out)
   Store.saveStoreV3(C.convertV2(SAMPLE(), index).store, out)
-  Snap.createSnapshot(Store.emptyStoreV3(1), 'x', true, out)
+  Snap.createSnapshot(Store.emptyStoreV3(1), 'x', 'protected', out)
   assert.ok(out.writes.every((k) => k.startsWith('hongikon.pathSurvey.v3')))
   assert.equal(C.loadConvertReport(out).mergedNodes, 15)
 })
@@ -216,18 +216,18 @@ test('converted data runs through the check and expansion without throwing', () 
   assert.doesNotThrow(() => expandGraph(store.nodes, store.edges))
 })
 
-test('snapshots: create, limit drops automatic ones first, manual ones are protected', () => {
+test('snapshots: create, limit drops rolling ones first, manual ones are protected', () => {
   const storage = memoryStorage()
   const s = Store.addNode(Store.emptyStoreV3(1), 1, 1).store
-  const first = Snap.createSnapshot(s, 'auto one', true, storage, 1)
+  const first = Snap.createSnapshot(s, 'auto one', 'rolling', storage, 1)
   assert.equal(first.error, null)
-  for (let i = 0; i < 19; i += 1) Snap.createSnapshot(s, `m${i}`, false, storage, 10 + i)
+  for (let i = 0; i < 19; i += 1) Snap.createSnapshot(s, `m${i}`, 'manual', storage, 10 + i)
   assert.equal(Snap.loadSnapshots(storage).length, 20)
-  const next = Snap.createSnapshot(s, 'new', false, storage, 100)
+  const next = Snap.createSnapshot(s, 'new', 'manual', storage, 100)
   assert.equal(next.error, null)
   assert.equal(next.list.length, 20)
   assert.ok(!next.list.some((x) => x.name === 'auto one'))
-  const full = Snap.createSnapshot(s, 'more', false, storage, 101)
+  const full = Snap.createSnapshot(s, 'more', 'manual', storage, 101)
   assert.equal(full.error, 'limit')
   assert.equal(full.snapshot, null)
   assert.equal(Snap.loadSnapshots(storage).length, 20)
@@ -238,7 +238,7 @@ test('snapshots: restoring gives the same data, ids keep counting', () => {
   const storage = memoryStorage()
   let s = Store.addNode(Store.emptyStoreV3(1), 1, 1).store
   s = Store.addNode(s, 2, 2, Store.OUTDOOR_CONTEXT, 'n1').store
-  const { snapshot } = Snap.createSnapshot(s, 'x', false, storage)
+  const { snapshot } = Snap.createSnapshot(s, 'x', 'manual', storage)
   const restored = Snap.storeFromSnapshot(snapshot, 500)
   assert.deepEqual(restored.nodes, s.nodes)
   assert.deepEqual(restored.edges, s.edges)
@@ -248,12 +248,12 @@ test('snapshots: restoring gives the same data, ids keep counting', () => {
 test('snapshots: a refused write is reported and the main store key is not involved', () => {
   const data = new Map()
   const storage = { getItem: (k) => data.get(k) ?? null, setItem: () => { throw new Error('quota') } }
-  const r = Snap.createSnapshot(Store.emptyStoreV3(1), 'x', false, storage)
+  const r = Snap.createSnapshot(Store.emptyStoreV3(1), 'x', 'manual', storage)
   assert.equal(r.error, 'storage')
   assert.equal(data.size, 0)
 })
 
-test('snapshots: usage over the budget refuses, automatic ones make room first', () => {
+test('snapshots: usage over the budget refuses', () => {
   const big = 'x'.repeat(Snap.STORAGE_REFUSE_CHARS)
   const data = new Map([['other', big]])
   const storage = {
@@ -263,7 +263,7 @@ test('snapshots: usage over the budget refuses, automatic ones make room first',
     setItem: (k, v) => data.set(k, v),
   }
   assert.equal(Snap.storageUsage(storage) > Snap.STORAGE_REFUSE_CHARS, true)
-  assert.equal(Snap.createSnapshot(Store.emptyStoreV3(1), 'x', false, storage).error, 'storage')
+  assert.equal(Snap.createSnapshot(Store.emptyStoreV3(1), 'x', 'manual', storage).error, 'storage')
   assert.equal(Snap.storageUsage(null), null)
 })
 

@@ -10,7 +10,7 @@ import { hasLevel, type NodeType, type SurveyEdgeV3, type SurveyNodeV3 } from '.
 
 export const OUTDOOR_COLOR = '#64748B'
 export const NEUTRAL_COLOR = '#A8A29E'
-/** Entrance edges and links between buildings: told apart by the dashed style, dark enough to read as dashes. */
+/** Outdoor to entrance edges and links between buildings: told apart by the dashed style, dark enough to read as dashes. */
 export const NEUTRAL_EDGE_COLOR = '#57534E'
 export const SELECTED_RING = '#111827'
 export const PENDING_RING = '#F97316'
@@ -47,7 +47,7 @@ export const NO_FILTER: MapFilter = { building: null, floor: null }
 export type MapMode = 'add' | 'link' | 'move' | 'select'
 
 /** What the point labels show. */
-export type LabelMode = 'none' | 'number' | 'full'
+export type LabelMode = 'none' | 'number' | 'full' | 'selected'
 
 export interface RenderNode {
   id: string
@@ -100,14 +100,14 @@ export function isNodeStrong(node: SurveyNodeV3, filter: MapFilter): boolean {
 
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
 
-/** Entrance edges and links between buildings. */
+/** An edge from outdoors to indoors, or a link between buildings. Display only: the check rules do not use this. */
 export function isNeutralEdge(a: SurveyNodeV3, b: SurveyNodeV3): boolean {
   if (a.scope !== 'indoor' && b.scope !== 'indoor') return false
-  if (a.scope !== 'indoor' || b.scope !== 'indoor' || a.type === 'entrance' || b.type === 'entrance') return true
+  if (a.scope !== 'indoor' || b.scope !== 'indoor') return true
   return !buildingsOf(a).some((code) => buildingsOf(b).includes(code))
 }
 
-/** Outdoor: outdoor color. Indoor: the color of the shared building. Entrance edges and links between buildings: neutral. */
+/** Outdoor: outdoor color. Indoor in one building, entrances included: that building's color. Outdoor to indoor and between buildings: neutral. */
 export function edgeColor(a: SurveyNodeV3, b: SurveyNodeV3, index: BuildingIndex): string {
   if (a.scope !== 'indoor' && b.scope !== 'indoor') return OUTDOOR_COLOR
   if (isNeutralEdge(a, b)) return NEUTRAL_EDGE_COLOR
@@ -187,7 +187,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
     }
     const emphasized = node.id === selected || node.id === pending || multi.has(node.id)
     // With a floor filter on, only the points that match it keep a label. Outdoor points are strong but do not match.
-    const labelled = emphasized || (labelMode !== 'none' && !dim && (!filtering || indoor))
+    const labelled = labelMode === 'none' ? false : labelMode === 'selected' ? emphasized : emphasized || (!dim && (!filtering || indoor))
     const withLetter = emphasized || labelMode === 'full'
     const letter = buildings.length === 1 ? shortBuildingName(index.byCode.get(buildings[0]), buildings[0]) : ''
     return {

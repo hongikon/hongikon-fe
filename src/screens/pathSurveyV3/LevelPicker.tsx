@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { floorChipLabel, floorOptions, searchBuildings, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
-import { fillTiesUpward, filterFloors, groupLevels, parseFloorQuery, removeBuildingLevels, toggleFloor } from '../../utils/pathSurveyV3/levels'
+import { fillTiesUpward, filterFloors, floorsOutsideBuilding, groupLevels, parseFloorInput, removeBuildingLevels, toggleFloor } from '../../utils/pathSurveyV3/levels'
 import { sameLevel, type LevelPair, type LevelRef } from '../../utils/pathSurveyV3/types'
 import { Btn, Row, ui } from '../pathSurvey/ui'
 import { Chip, levelName } from './controls'
@@ -74,9 +74,23 @@ export function FloorPicker({
   const [more, setMore] = useState(false)
   const options = useMemo(() => floorOptions(index.byCode.get(building), used), [index, building, used])
   const all = useMemo(() => [...new Set([...options.main, ...(more ? options.more : []), ...selected])].sort((x, y) => x - y), [options, more, selected])
-  // The search also looks behind "more".
-  const shown = query.trim() ? filterFloors([...new Set([...all, ...options.more])].sort((x, y) => x - y), query) : all
-  const typed = parseFloorQuery(query)
+  const input = useMemo(() => parseFloorInput(query, { includeL: options.main.includes(0) || selected.includes(0) }), [query, options, selected])
+  // One typed floor also searches, including behind "more". A range or a list leaves the chips as they are.
+  const shown = query.trim() && !input.isList ? filterFloors([...new Set([...all, ...options.more])].sort((x, y) => x - y), query) : all
+  const typed = !input.isList && input.floors.length === 1 ? input.floors[0] : null
+  const tooMany = single && input.floors.length > 1
+  const outside = floorsOutsideBuilding(index.byCode.get(building), selected)
+
+  /** Typed floors are added to what is already selected. */
+  const addTyped = () => {
+    if (input.floors.length === 0 || tooMany) return
+    if (single) {
+      if (!selected.includes(input.floors[0])) onToggle(input.floors[0])
+    } else if (onSetMany) onSetMany(input.floors, true)
+    else input.floors.filter((floor) => !selected.includes(floor)).forEach(onToggle)
+    setQuery('')
+  }
+
   return (
     <View style={styles.block}>
       <View style={styles.wrap}>
@@ -88,13 +102,23 @@ export function FloorPicker({
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="층 찾기 (2, -1, 1.5, L)"
-        autoCapitalize="none"
+        onSubmitEditing={addTyped}
+        placeholder="층 찾기 (2, B1, 1.5, L)"
+        autoCapitalize="characters"
         autoCorrect={false}
         style={ui.input}
         accessibilityLabel="층 찾기"
       />
-      {query.trim() && typed === null && shown.length === 0 ? <Text style={ui.warn}>{'층은 0.5 단위 숫자나 L, B1 처럼 적어 주세요.'}</Text> : null}
+      {input.negative.length ? <Text style={ui.warn}>{`지하는 B 표기만 써요. ${input.negative[0]} 대신 B${input.negative[0].replace(/^-+/, '')} 로 적어 주세요.`}</Text> : null}
+      {input.bad.length ? <Text style={ui.warn}>{`읽지 못한 입력: ${input.bad.join(', ')}. 층은 0.5 단위 숫자나 L, B1, 범위는 1-15, B3-5 처럼 적어 주세요.`}</Text> : null}
+      {tooMany ? <Text style={ui.warn}>{'이 점은 층을 하나만 고를 수 있어요.'}</Text> : null}
+      {input.isList && input.floors.length && !tooMany ? (
+        <>
+          <Text style={ui.hint}>{`추가할 층: ${input.floors.map(floorChipLabel).join(', ')}`}</Text>
+          <Btn label={`${input.floors.length}개 층 추가`} kind="primary" onPress={addTyped} />
+        </>
+      ) : null}
+      {outside.length ? <Text style={ui.warn}>{`건물 층 범위를 벗어난 층 ${outside.length}개 (${outside.map(floorChipLabel).join(', ')})`}</Text> : null}
       <Row>
         {options.more.length ? <Btn label={more ? '층 접기' : '층 더 보기'} onPress={() => setMore((v) => !v)} /> : null}
         {!single && onSetMany ? <Btn label="보이는 층 모두 선택" onPress={() => onSetMany(shown, true)} /> : null}
