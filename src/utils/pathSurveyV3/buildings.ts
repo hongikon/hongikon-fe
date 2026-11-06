@@ -41,7 +41,7 @@ export interface BuildingIndex {
   serverLabels: Map<string, string>
 }
 
-const NAME_TOKEN = /([A-Za-z][A-Za-z0-9]*)동\s*$/ // trailing "X-dong" token
+const NAME_TOKEN = /([A-Za-z][A-Za-z0-9]*)\uB3D9\s*$/ // trailing "X-dong" token
 const LABEL_PREFIX = /^HI_([A-Z0-9]+)_/
 
 const codeSuffix = (code: string) => (code.includes('_') ? code.slice(code.lastIndexOf('_') + 1) : code)
