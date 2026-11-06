@@ -26,6 +26,11 @@ export interface FacilityKindMeta {
    * 바꾸지 않고, 보이는 이름만 바꿀 때 쓴다(예: '학생처' → '행정·지원').
    */
   label?: string
+  /**
+   * 지도 핀 이름에 층을 붙이지 않는다. 한 건물에 부서가 많은 종류는 "Q동 1F·2F·3F·9F·10F·11F" 처럼 길기만 해
+   * 건물 이름만 둔다(11-06 요청). 층은 핀을 눌러 여는 시트에 부서마다 나온다.
+   */
+  hideFloorsInPin?: boolean
 }
 
 /**
@@ -39,7 +44,7 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '프린터', icon: 'print', color: '#4F46E5' },
   { key: '증명서 발급', icon: 'ribbon', color: '#0F766E' },
   // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
-  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
+  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C', hideFloorsInPin: true },
   { key: '스터디룸', icon: 'people-circle', color: '#2563EB' },
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
   // 사선 없는 담배(MaterialCommunityIcons 'smoking') — Ionicons 'logo-no-smoking' 은 금연 표시라 뜻이 반대였다(10-27). 칩은 카페 바로 왼쪽(10-27 요청). 지도 핀도 사선 없음.
