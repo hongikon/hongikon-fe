@@ -18,18 +18,19 @@ const index = B.buildBuildingIndex(FIXTURE_BUILDINGS)
 const store = (nodes, edges = []) => ({ version: 3, nodes, edges, nextNode: 99, nextEdge: 99, updatedAt: 1 })
 const draw = (s, extra = {}) => M.buildRenderState(s, { index, filter: M.NO_FILTER, mode: 'add', selected: null, pending: null, selectedEdge: null, ...extra })
 
-test('floor search accepts numbers, negative, half, L and B, refuses the rest', () => {
-  const cases = { 2: 2, '-1': -1, 1.5: 1.5, L: 0, l: 0, B1: -1, b2: -2, 0: 0, '-0': 0, 'B1.5': -1.5 }
+test('floor search accepts numbers, half, L and B, refuses the rest', () => {
+  const cases = { 2: 2, 1.5: 1.5, L: 0, l: 0, B1: -1, b2: -2, 0: 0, 'B1.5': -1.5 }
   for (const [text, floor] of Object.entries(cases)) assert.equal(L.parseFloorQuery(text), floor, text)
-  for (const text of ['', ' ', '1.3', 'x', '2F', '--1']) assert.equal(L.parseFloorQuery(text), null, text)
-  assert.ok(Object.is(L.parseFloorQuery('-0'), 0))
+  for (const text of ['', ' ', '1.3', 'x', '2F', '--1', '-1', '-0', 'B0']) assert.equal(L.parseFloorQuery(text), null, text)
+  assert.ok(Object.is(L.parseFloorQuery('0'), 0))
 })
 
 test('floor chips filter by search', () => {
   const floors = [-2, -1, 0, 1, 1.5, 2, 10]
   assert.deepEqual(L.filterFloors(floors, ''), floors)
   assert.deepEqual(L.filterFloors(floors, '1'), [1, 1.5, 10])
-  assert.deepEqual(L.filterFloors(floors, '-1'), [-1])
+  assert.deepEqual(L.filterFloors(floors, '-1'), [])
+  assert.deepEqual(L.filterFloors(floors, 'B1'), [-1])
   assert.deepEqual(L.filterFloors(floors, 'b'), [-2, -1])
   assert.deepEqual(L.filterFloors(floors, 'L'), [0])
   assert.deepEqual(L.filterFloors(floors, '1.5'), [1.5])
@@ -197,15 +198,22 @@ test('save state: never, saved, needed, also after an undo back past the save', 
   assert.deepEqual(X.loadSaveMeta(memoryStorage({ [X.META_KEY]: '{bad' })), X.EMPTY_META)
 })
 
-test('labels: mode none, number, full; selected points always have one', () => {
+test('labels: mode none, number, full, selected only', () => {
   const s = store([indoor('n1', [lvl('hongik_r', 1), lvl('hongik_r', 2)]), indoor('n2', [lvl('hongik_r', 1)])])
   const full = draw(s, { labelMode: 'full' }).nodes[0]
   assert.deepEqual([full.num, full.letter, full.badge], ['1', 'R', '1-2'])
   const number = draw(s, { labelMode: 'number' }).nodes[0]
   assert.deepEqual([number.num, number.letter, number.badge], ['1', '', ''])
   const none = draw(s, { labelMode: 'none', selected: 'n2' }).nodes
-  assert.equal(none[0].num, '')
-  assert.deepEqual([none[1].num, none[1].letter], ['2', 'R'])
+  assert.deepEqual(none.map((n) => n.num), ['', ''])
+  assert.deepEqual(none.map((n) => n.emphasized), [false, true])
+  const only = draw(s, { labelMode: 'selected', selected: 'n2' }).nodes
+  assert.equal(only[0].num, '')
+  assert.deepEqual([only[1].num, only[1].letter], ['2', 'R'])
+  assert.deepEqual(draw(s, { labelMode: 'selected', multi: ['n1'] }).nodes.map((n) => n.num), ['1', ''])
+  assert.deepEqual(draw(s, { labelMode: 'selected' }).nodes.map((n) => n.num), ['', ''])
+  // The two showing modes still always label the selected point.
+  assert.equal(draw(s, { labelMode: 'number', selected: 'n2', filter: { building: 'hongik_k', floor: null } }).nodes[1].num, '2')
 })
 
 test('labels: with a floor filter only matching points and selected points keep a label', () => {

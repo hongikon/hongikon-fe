@@ -1,7 +1,7 @@
 import { edgeKey } from '../pathSurvey'
-import { buildingsContaining, distanceToBuilding, type BuildingIndex } from './buildings'
+import { buildingsContaining, distanceToBuilding, floorChipLabel, type BuildingIndex } from './buildings'
 import { commonLevels, validPairs } from './expand'
-import { hasLevel, isEdgeKind, isValidFloor, levelKey, type SurveyEdgeV3, type SurveyNodeV3 } from './types'
+import { hasLevel, isEdgeKind, isValidFloor, type LevelRef, type SurveyEdgeV3, type SurveyNodeV3 } from './types'
 
 /** Graph check. Errors block graph export. Warnings and info never do. Korean strings are screen text. */
 
@@ -72,7 +72,15 @@ export function analyzeConnectivity(nodes: readonly SurveyNodeV3[], edges: reado
 
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
 
-export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly SurveyEdgeV3[], index?: BuildingIndex): CheckResult {
+/** Screen text for a level. Stored floors stay numeric, below ground reads as B1. */
+const levelText = (level: LevelRef) => `${level.building} ${floorChipLabel(level.floor)}층`
+
+export interface CheckOptions {
+  /** How far outside the outline an entrance may stand before it gets a warning. Other indoor points get no slack. */
+  entranceToleranceM?: number
+}
+
+export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly SurveyEdgeV3[], index?: BuildingIndex, options: CheckOptions = {}): CheckResult {
   const errors: CheckIssue[] = []
   const warnings: CheckIssue[] = []
   const infos: CheckIssue[] = []
@@ -98,8 +106,8 @@ export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surve
       if (levels.length < 2) nodeError(node, 'vertical_few_levels', `${name}는 층이 2개 이상이어야 해요`)
       const buildings = buildingsOf(node)
       for (const [x, y] of node.ties ?? []) {
-        if (!hasLevel(levels, x) || !hasLevel(levels, y)) nodeError(node, 'tie_bad_level', `층 짝 ${levelKey(x)} = ${levelKey(y)} 이 이 점에 없는 층을 가리켜요`)
-        else if (x.building === y.building) nodeError(node, 'tie_same_building', `층 짝 ${levelKey(x)} = ${levelKey(y)} 은 같은 건물이에요`)
+        if (!hasLevel(levels, x) || !hasLevel(levels, y)) nodeError(node, 'tie_bad_level', `층 짝 ${levelText(x)} = ${levelText(y)} 이 이 점에 없는 층을 가리켜요`)
+        else if (x.building === y.building) nodeError(node, 'tie_same_building', `층 짝 ${levelText(x)} = ${levelText(y)} 은 같은 건물이에요`)
       }
       if (buildings.length >= 2) {
         const ties = (node.ties ?? []).filter(([x, y]) => hasLevel(levels, x) && hasLevel(levels, y))
@@ -166,7 +174,7 @@ export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surve
     const bothSingle = levelsA.length === 1 && levelsB.length === 1
     const usable = validPairs(edge, a, b)
     for (const [x, y] of edge.pairs ?? []) {
-      if (!hasLevel(levelsA, x) || !hasLevel(levelsB, y)) edgeError(edge, 'pair_bad_level', `층 짝 ${levelKey(x)} = ${levelKey(y)} 이 양 끝에 없는 층을 가리켜요`, a.id)
+      if (!hasLevel(levelsA, x) || !hasLevel(levelsB, y)) edgeError(edge, 'pair_bad_level', `층 짝 ${levelText(x)} = ${levelText(y)} 이 양 끝에 없는 층을 가리켜요`, a.id)
     }
     if (common.length === 0 && !bothSingle && usable.length === 0) {
       edgeError(edge, 'edge_needs_pairs', `공통 층이 없어 층 짝이 필요해요(${a.id}, ${b.id})`, a.id)
@@ -225,7 +233,7 @@ export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surve
       }
       const distances = codes.map((code) => (index.byCode.has(code) ? distanceToBuilding(index.byCode.get(code)!, node.lat, node.lng) : null))
       const known = distances.filter((d): d is number => d !== null)
-      const tolerance = node.type === 'entrance' ? ENTRANCE_BOUNDARY_TOLERANCE_M : 0
+      const tolerance = node.type === 'entrance' ? (options.entranceToleranceM ?? ENTRANCE_BOUNDARY_TOLERANCE_M) : 0
       if (known.length > 0 && Math.min(...known) > tolerance) {
         warnings.push({
           severity: 'warning',

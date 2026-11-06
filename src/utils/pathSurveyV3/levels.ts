@@ -1,5 +1,5 @@
 import { haversineMeters } from './geo'
-import { buildingsContaining, floorChipLabel, type BuildingIndex } from './buildings'
+import { buildingsContaining, floorChipLabel, floorOptions, type BuildingEntry, type BuildingIndex } from './buildings'
 import { isValidFloor, sameLevel, type LevelPair, type LevelRef, type SurveyNodeV3 } from './types'
 
 /** Pure helpers behind the building and floor pickers. */
@@ -25,14 +25,78 @@ export function toggleFloor(levels: readonly LevelRef[], building: string, floor
 
 export const removeBuildingLevels = (levels: readonly LevelRef[], building: string): LevelRef[] => levels.filter((l) => l.building !== building)
 
-/** Accepts 2, -1, 1.5, L and B1. null when the text is not a floor (only half steps are floors). */
+/** Largest floor number accepted from typing, and the widest range. They stop a typo from selecting hundreds of floors. */
+export const MAX_TYPED_FLOOR = 99
+export const MAX_TYPED_RANGE = 60
+
+/**
+ * Accepts 2, 1.5, L, B1 and B1.5. Below ground is written with B only: a minus sign is the range separator.
+ * null when the text is not a floor (only half steps are floors).
+ */
 export function parseFloorQuery(text: string): number | null {
   const q = text.trim().toUpperCase()
   if (!q) return null
   if (q === 'L') return 0
-  const basement = /^B(\d+(?:\.\d+)?)$/.exec(q)
-  const value = basement ? -Number(basement[1]) : /^-?\d+(?:\.\d+)?$/.test(q) ? Number(q) : NaN
-  return isValidFloor(value) ? value + 0 : null
+  const m = /^(B?)(\d+(?:\.\d+)?)$/.exec(q)
+  if (!m) return null
+  const size = Number(m[2])
+  if (size > MAX_TYPED_FLOOR || (m[1] && size === 0)) return null
+  const value = m[1] ? -size : size
+  return isValidFloor(value) ? value : null
+}
+
+export interface FloorInput {
+  /** Floors to add, sorted, no repeats. */
+  floors: number[]
+  /** Parts that could not be read. */
+  bad: string[]
+  /** Parts written with a minus sign, which are not accepted. */
+  negative: string[]
+  /** True when a range or a list was typed, as opposed to one floor (which also works as a search). */
+  isList: boolean
+}
+
+/**
+ * Reads floor input such as 1-15, B3-5, B3-B1 or B2-3, 5, 8-10. A range fills whole floors between its two
+ * ends, and the ends count as typed even when they are half floors. The order of the ends does not matter.
+ * Floor 0 is the L floor, which most buildings do not have, so a range only passes through it when asked to.
+ */
+export function parseFloorInput(text: string, options: { includeL?: boolean } = {}): FloorInput {
+  const parts = text
+    .toUpperCase()
+    .replace(/(\S)\s*-\s*(\S)/g, '$1-$2')
+    .split(/[,\s]+/)
+    .filter(Boolean)
+  const floors = new Set<number>()
+  const bad: string[] = []
+  const negative: string[] = []
+  for (const part of parts) {
+    if (part.startsWith('-')) {
+      negative.push(part)
+      continue
+    }
+    const ends = part.split('-')
+    const from = parseFloorQuery(ends[0])
+    const to = ends.length === 2 ? parseFloorQuery(ends[1]) : from
+    if (ends.length > 2 || from === null || to === null || Math.abs(to - from) > MAX_TYPED_RANGE) {
+      bad.push(part)
+      continue
+    }
+    const low = Math.min(from, to)
+    const high = Math.max(from, to)
+    floors.add(from)
+    floors.add(to)
+    for (let floor = Math.ceil(low); floor <= high; floor += 1) {
+      if (floor !== 0 || options.includeL) floors.add(floor + 0)
+    }
+  }
+  return { floors: [...floors].sort((x, y) => x - y), bad, negative, isList: parts.length > 1 || parts.some((p) => p.includes('-') && !p.startsWith('-')) }
+}
+
+/** Floors the building itself does not list. Floors only used in the survey data do not make them listed. */
+export function floorsOutsideBuilding(entry: BuildingEntry | undefined, floors: readonly number[]): number[] {
+  const listed = floorOptions(entry, []).main
+  return floors.filter((floor) => !listed.includes(floor))
 }
 
 /** Chips matching the search: same number, or the chip text starts with what was typed. */
@@ -79,6 +143,17 @@ export function fillTiesUpward(levels: readonly LevelRef[], existing: readonly L
 /** Other points standing on almost the same spot. Stacked floors are hard to press on the map. */
 export function nodesNear(nodes: readonly SurveyNodeV3[], node: SurveyNodeV3, meters = 3): SurveyNodeV3[] {
   return nodes.filter((n) => n.id !== node.id && haversineMeters(n.lat, n.lng, node.lat, node.lng) <= meters)
+}
+
+/** Buildings a selection touches: the levels of a point, otherwise the boundaries it stands in. */
+export function selectionBuildings(nodes: readonly SurveyNodeV3[], ids: readonly string[], index: BuildingIndex): string[] {
+  const targets = new Set(ids)
+  const codes = nodes.flatMap((node) => {
+    if (!targets.has(node.id)) return []
+    const own = (node.levels ?? []).map((l) => l.building)
+    return own.length ? own : buildingsContaining(index, node.lat, node.lng).map((b) => b.code)
+  })
+  return [...new Set(codes)]
 }
 
 /** Points inside one building's boundary, for "select all inside". */

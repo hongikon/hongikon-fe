@@ -29,7 +29,8 @@ export default function MultiPanel({
   index: BuildingIndex
   used: ReadonlyMap<string, number[]>
   selected: readonly string[]
-  onSelect: (ids: string[]) => void
+  /** fromAll marks a selection made with a select all control, which may mix buildings. */
+  onSelect: (ids: string[], fromAll?: boolean) => void
   onApply: (change: BulkChange) => void
   onExit: () => void
 }) {
@@ -59,7 +60,7 @@ export default function MultiPanel({
           selected={insideOf}
           onPick={(code) => {
             setInsideOf(code)
-            onSelect([...new Set([...selected, ...nodesInBuilding(nodes, index, code, outdoorOnly)])])
+            onSelect([...new Set([...selected, ...nodesInBuilding(nodes, index, code, outdoorOnly)])], true)
           }}
         />
       </Collapsible>

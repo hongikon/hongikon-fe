@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { pickTextFile } from '../../utils/pathSurveySync'
-import { shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import {
   isManualItemOpen,
   parseV2Text,
@@ -23,7 +23,7 @@ const KIND_TITLE: Record<ManualKind, string> = {
 
 function floorText(floors: number[] | undefined): string {
   if (!floors?.length) return ''
-  return floors.length === 1 ? ` ${floors[0]}층` : ` ${floors[0]}~${floors[floors.length - 1]}층`
+  return floors.length === 1 ? ` ${floorChipLabel(floors[0])}층` : ` ${floorChipLabel(floors[0])}~${floorChipLabel(floors[floors.length - 1])}층`
 }
 
 /** v2 import and the list of points a person has to look at. The v2 data is only read. */
@@ -51,7 +51,8 @@ export default function ConvertPanel({
   onFocus: (nodeId: string) => void
   onNotice: (message: string) => void
   onToggleMulti: (nodeId: string) => void
-  onSelectMany: (ids: string[]) => void
+  /** fromAll marks a selection made with a select all button, which may mix buildings. */
+  onSelectMany: (ids: string[], fromAll?: boolean) => void
   onKeepOutdoor: (ids: string[]) => void
   onResetKept: () => void
   onMakeIndoor: (ids: string[]) => void
@@ -138,7 +139,7 @@ export default function ConvertPanel({
                 ))}
               </View>
               <Row>
-                <Btn label="모두 선택" onPress={() => onSelectMany(openBoundary)} />
+                <Btn label="모두 선택" onPress={() => onSelectMany(openBoundary, true)} />
                 <Btn label="선택 비우기" disabled={pickedBoundary.length === 0} onPress={() => onSelectMany([])} />
               </Row>
               <Row>

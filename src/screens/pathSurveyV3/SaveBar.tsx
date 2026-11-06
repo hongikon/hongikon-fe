@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import type { SaveState } from '../../utils/pathSurveyV3/transfer'
-import { Btn, TOUCH } from '../pathSurvey/ui'
+import { TOUCH } from '../pathSurvey/ui'
 
 export const clockText = (at: number) => {
   const d = new Date(at)
@@ -12,6 +12,13 @@ export const clockText = (at: number) => {
   return `${sameDay ? '' : `${d.getMonth() + 1}/${d.getDate()} `}${two(d.getHours())}:${two(d.getMinutes())}`
 }
 
+/** Always with the date, for lists that span days. */
+export const dateTimeText = (at: number) => {
+  const d = new Date(at)
+  const two = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`
+}
+
 /** Always visible: save button with its state, error count and undo. */
 export default function SaveBar({
   state,
@@ -19,6 +26,7 @@ export default function SaveBar({
   errors,
   warnings,
   onSave,
+  undoCount,
   onUndo,
   onShowCheck,
 }: {
@@ -27,6 +35,7 @@ export default function SaveBar({
   errors: number
   warnings: number
   onSave: () => void
+  undoCount: number
   onUndo: () => void
   onShowCheck: () => void
 }) {
@@ -44,7 +53,14 @@ export default function SaveBar({
         <Text style={styles.badgeText}>{`오류 ${errors}`}</Text>
         {warnings > 0 ? <Text style={styles.badgeSub}>{`경고 ${warnings}`}</Text> : null}
       </Pressable>
-      <Btn label="되돌리기" onPress={onUndo} style={styles.undo} />
+      <Pressable
+        onPress={onUndo}
+        disabled={undoCount === 0}
+        style={[styles.undo, undoCount > 0 ? styles.undoOn : styles.undoOff]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.undoText, undoCount > 0 ? styles.undoTextOn : styles.undoTextOff]}>{`되돌리기 ${undoCount}`}</Text>
+      </Pressable>
     </View>
   )
 }
@@ -60,5 +76,10 @@ const styles = StyleSheet.create({
   badgeOk: { backgroundColor: '#15803D' },
   badgeText: { fontFamily: FONTS.bold, fontSize: 12, color: '#FFFFFF' },
   badgeSub: { fontFamily: FONTS.regular, fontSize: 10, color: '#FFFFFF' },
-  undo: { flexGrow: 0, backgroundColor: COLORS.fill },
+  undo: { minHeight: TOUCH, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  undoOn: { backgroundColor: '#FEF3C7' },
+  undoOff: { backgroundColor: COLORS.fill },
+  undoText: { fontFamily: FONTS.semibold, fontSize: 13 },
+  undoTextOn: { color: '#B45309' },
+  undoTextOff: { color: COLORS.textSecondary },
 })

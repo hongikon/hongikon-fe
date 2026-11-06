@@ -37,8 +37,12 @@ export default function Legend({ index }: { index: BuildingIndex }) {
           <Text style={ui.hint}>{'외부'}</Text>
         </View>
         <View style={styles.item}>
+          <View style={[styles.line, { backgroundColor: BUILDING_COLORS[0] }]} />
+          <Text style={ui.hint}>{'건물 색 실선: 같은 건물 안(출입구 포함)'}</Text>
+        </View>
+        <View style={styles.item}>
           <View style={styles.dashed} />
-          <Text style={ui.hint}>{'점선: 출입구 간선, 건물 간 통로'}</Text>
+          <Text style={ui.hint}>{'회색 점선: 외부 점과 출입구, 건물 간 통로'}</Text>
         </View>
         <View style={styles.item}>
           <View style={[styles.line, styles.stairs]}>
@@ -47,7 +51,7 @@ export default function Legend({ index }: { index: BuildingIndex }) {
           <Text style={ui.hint}>{'진한 선 + 흰 점선: 계단 간선'}</Text>
         </View>
       </View>
-      <Text style={ui.hint}>{'내부 점과 내부 간선은 건물 색이에요.'}</Text>
+      <Text style={ui.hint}>{'내부 점은 건물 색이에요.'}</Text>
       <View style={styles.grid}>
         {index.list.map((b) => (
           <View key={b.code} style={styles.item}>
