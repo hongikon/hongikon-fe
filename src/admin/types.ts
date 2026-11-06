@@ -206,6 +206,7 @@ export type AdminSection =
   | 'comments'
   | 'users'
   | 'feedback'
+  | 'askFeedback'
   | 'partners'
   | 'facilities'
   | 'exhibitions'
@@ -256,4 +257,43 @@ export interface OverviewState {
   /** 마지막으로 성공한 시각(ms) */
   updatedAt: number | null
   refresh: () => void
+}
+
+// ── 물어보기 피드백 — `GET/PATCH /admin/ask/feedback` (11-06) ──────────────
+
+export type AskFeedbackReasonCode = 'WRONG' | 'OUTDATED' | 'OFF_TOPIC' | 'NOT_ENOUGH'
+export type AskFeedbackFilter = 'OPEN' | 'REVIEWED' | 'ALL'
+
+export interface AdminAskHandoff {
+  feedbackId: number
+  content: string
+  contact: string | null
+  status: FeedbackStatus
+  createdAt: string
+  /** presigned GET(1시간). 문의를 처리 완료하면 사진이 지워져 빈 배열 */
+  imageUrls: string[]
+}
+
+/** '해결 안 됨' 답 한 건. ROUTE=서버 답(answer·references), FLOW=앱 안내 흐름 답(flowId·nodeId). */
+export interface AdminAskFeedbackItem {
+  source: 'ROUTE' | 'FLOW'
+  id: number
+  createdAt: string
+  question: string
+  answer: string | null
+  outcome: string
+  flowId: string | null
+  nodeId: string | null
+  references: string[]
+  nodeIds: string[]
+  reason: AskFeedbackReasonCode | null
+  reviewedAt: string | null
+  handoffs: AdminAskHandoff[]
+}
+
+export interface AdminAskFeedbackResponse {
+  days: number
+  items: AdminAskFeedbackItem[]
+  /** 이유별 개수(NONE=이유 안 고름) */
+  reasons: Record<string, number>
 }

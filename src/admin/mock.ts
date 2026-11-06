@@ -5,6 +5,7 @@ import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { FACILITY_KINDS } from '../constants/facilityKinds'
 import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
 import type {
+  AdminAskFeedbackItem,
   AdminBuildingOption,
   AdminExhibition,
   AdminFacility,
@@ -291,6 +292,25 @@ function feedbackResponse(item: AdminFeedback): AdminFeedback {
   const name = displayNameOf(item.userId)
   return { ...item, userNickname: name, userDisplayName: name, userMemberCode: memberCodeOf(item.userId) }
 }
+
+const askFeedback: AdminAskFeedbackItem[] = [
+  {
+    source: 'ROUTE', id: 101, createdAt: at(-2), question: '전과하려면 몇 학점 필요해?',
+    answer: '2학년 전과는 33학점, 3학년 전과는 66학점 이상이어야 신청할 수 있어요(학사내규 제41조).',
+    outcome: 'ANSWERED', flowId: null, nodeId: null, references: ['학사 FAQ 전과', '학사내규 제7장 전과'],
+    nodeIds: ['change-major/start'], reason: 'OUTDATED', reviewedAt: null,
+    handoffs: [{ feedbackId: 9001, content: '[물어보기에서 넘어온 문의]\n질문: 전과하려면 몇 학점 필요해?\n더 알고 싶은 점: 2025학번도 같나요?',
+      contact: null, status: 'OPEN', createdAt: at(-1), imageUrls: [] }],
+  },
+  {
+    source: 'FLOW', id: 55, createdAt: at(-30), question: 'T동 강의실 마이크', answer: null, outcome: 'FLOW',
+    flowId: 'ctl-equipment', nodeId: 'start', references: [], nodeIds: [], reason: 'OFF_TOPIC', reviewedAt: null, handoffs: [],
+  },
+  {
+    source: 'ROUTE', id: 99, createdAt: at(-300), question: '학식 몇 시까지 해?', answer: '학생회관 학식은 평일 11:00~14:00예요.',
+    outcome: 'ANSWERED', flowId: null, nodeId: null, references: [], nodeIds: ['cafeteria/start'], reason: null, reviewedAt: at(-200), handoffs: [],
+  },
+]
 
 const feedback: AdminFeedback[] = [
   {
@@ -776,6 +796,22 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
       user.role = 'USER'
       return userResponse(user)
     }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/feedback') {
+    const status = params.get('status') ?? 'OPEN'
+    const items = askFeedback.filter((item) => status === 'ALL' || (status === 'REVIEWED') === (item.reviewedAt !== null))
+    const reasons: Record<string, number> = { WRONG: 0, OUTDATED: 0, OFF_TOPIC: 0, NOT_ENOUGH: 0, NONE: 0 }
+    items.forEach((item) => (reasons[item.reason ?? 'NONE'] += 1))
+    return { days: Number(params.get('days') ?? 30), items, reasons }
+  }
+
+  const askFeedbackMatch = pathname.match(/^\/admin\/ask\/feedback\/(ROUTE|FLOW)\/(\d+)$/)
+  if (method === 'PATCH' && askFeedbackMatch) {
+    const item = askFeedback.find((entry) => entry.source === askFeedbackMatch[1] && entry.id === Number(askFeedbackMatch[2]))
+    if (!item) throw notFound()
+    item.reviewedAt = body.reviewed ? at(0) : null
+    return undefined
   }
 
   if (method === 'GET' && pathname === '/admin/feedback') {

@@ -17,6 +17,7 @@ import DashboardScreen from './screens/DashboardScreen'
 import ReportsScreen from './screens/ReportsScreen'
 import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
+import AskFeedbackScreen from './screens/AskFeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
@@ -35,6 +36,7 @@ const SECTIONS: { section: AdminSection; label: string; icon: ComponentProps<typ
   { section: 'reports', label: '제보 검토', icon: 'flag-outline' },
   { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
+  { section: 'askFeedback', label: '물어보기 피드백', icon: 'thumbs-down-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
   { section: 'facilities', label: '편의시설', icon: 'business-outline' },
@@ -170,6 +172,7 @@ export default function AdminTabScreen() {
         focusFeedbackId={feedbackFocus?.feedbackId ?? null}
       />
     )
+  else if (section === 'askFeedback') content = <AskFeedbackScreen />
   else if (section === 'partners') content = <PartnersScreen />
   else if (section === 'facilities') content = <FacilitiesScreen />
   else if (section === 'exhibitions') content = <ExhibitionsScreen />

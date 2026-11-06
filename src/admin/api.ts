@@ -3,6 +3,8 @@ import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenRespo
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import { refreshMapData } from '../lib/mapData'
 import type {
+  AdminAskFeedbackResponse,
+  AskFeedbackFilter,
   AdminBuildingOption,
   AdminExhibition,
   AdminExhibitionInput,
@@ -358,6 +360,19 @@ export function grantAdmin(userId: number): Promise<AdminUser> {
 /** 관리자 권한 해제. 자기 자신은 400(콘솔에서 스스로 쫓겨나거나 관리자가 0명이 되지 않게). */
 export function revokeAdmin(userId: number): Promise<AdminUser> {
   return adminRequest<AdminUser>(`/admin/users/${userId}/revoke-admin`, { method: 'POST', retries: 0 })
+}
+
+// ── 물어보기 피드백 ─────────────────────────────────────────────────────
+
+export function fetchAskFeedback(filter: AskFeedbackFilter, days: number, signal?: AbortSignal): Promise<AdminAskFeedbackResponse> {
+  return adminRequest<AdminAskFeedbackResponse>(
+    `/admin/ask/feedback?status=${encodeURIComponent(filter)}&days=${days}`,
+    { signal },
+  )
+}
+
+export function reviewAskFeedback(source: 'ROUTE' | 'FLOW', id: number, reviewed: boolean): Promise<void> {
+  return adminRequest<void>(`/admin/ask/feedback/${source}/${id}`, { method: 'PATCH', body: { reviewed }, retries: 0 })
 }
 
 // ── 문의 ──────────────────────────────────────────────────────────────
