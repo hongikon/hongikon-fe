@@ -122,6 +122,15 @@ export function coarselyOutside(meters: number, accuracy: number | null | undefi
 }
 
 /**
+ * Wi-Fi·기지국 위치로는 나갔는지 정할 수 없는 경우: 찍힌 자리로는 반경 + 나감 여유 밖인데 오차가 커서 `coarselyOutside` 가 아니다.
+ * 이대로 두면 머무름이 열린 채 남아, 가게에서 150m 떨어져도 "안"으로 남고 테스트 앱은 5분마다 다시 알렸다(11-06).
+ * 이럴 때는 GPS 로 한 번 재서 정한다(`background.fineCheck`).
+ */
+export function coarseExitUncertain(meters: number, accuracy: number | null | undefined, radius: number = ALERT_RADIUS_METERS): boolean {
+  return meters > radius + EXIT_MARGIN_METERS && !coarselyOutside(meters, accuracy, radius)
+}
+
+/**
  * GPS 로 잰 거리로 알림 반경 안인지. 오차(accuracy)만큼은 반경에 더해 주되 `ACCURACY_ALLOWANCE_METERS` 까지만,
  * 이미 안으로 본 곳(`wasInside`)은 `EXIT_MARGIN_METERS` 더 멀어져야 나간 것으로 본다.
  */

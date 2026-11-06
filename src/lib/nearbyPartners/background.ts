@@ -7,7 +7,6 @@ import {
   INITIAL_NEARBY_STATE,
   activeStays,
   onDisable,
-  onEnter,
   onExit,
   onPrefs,
   preciseUpdate,
@@ -297,8 +296,17 @@ function wakeRadiusMeters(): number {
 
 /** 개발 도구 상태 줄용: GPS 갱신 상태. */
 let preciseNote: string = '꺼짐'
-/** 이번 실행에서 위치 갱신을 켜지 못했으면 지오펜스 신호를 그대로 머무름으로 쓴다. */
-let preciseUnavailable = false
+/**
+ * 위치 갱신을 마지막으로 켜지 못한 때. 예전에는 한 번 실패하면 이번 실행 내내 깨우는 원(150m) 신호를 그대로 머무름으로 써,
+ * 가게에서 150m 떨어진 곳에서도 알림이 왔다(11-06). 이제는 실패해도 깨우는 원으로 알리지 않고 GPS 를 한 번 재서(`fineCheck`)
+ * 알림 반경으로만 판단하며, 이 시간이 지나면 위치 갱신을 다시 켜 본다.
+ */
+let preciseFailedAt = 0
+const PRECISE_RETRY_MS = 5 * 60_000
+
+function preciseRecentlyFailed(): boolean {
+  return Date.now() - preciseFailedAt < PRECISE_RETRY_MS
+}
 
 async function preciseMode(): Promise<PreciseMode | null> {
   const value = await AsyncStorage.getItem(PRECISE_MODE_KEY).catch(() => null)
@@ -308,7 +316,7 @@ async function preciseMode(): Promise<PreciseMode | null> {
 /** 정밀 위치를 켠다. 이미 켜져 있고 같은 단계면 그대로, 단계가 다르면 그 단계로 다시 건다. */
 async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
   const pkg = packages()
-  if (!pkg || preciseUnavailable) return false
+  if (!pkg || preciseRecentlyFailed()) return false
   try {
     if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) {
       const current = await preciseMode()
@@ -344,8 +352,8 @@ async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
     preciseNote = mode === 'fine' ? '켜짐(GPS)' : '켜짐(Wi-Fi·기지국)'
     return true
   } catch (error) {
-    preciseUnavailable = true
-    preciseNote = `못 켬(반경 ${PARTNER_REGION_RADIUS_METERS}m 로 판단): ${(error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').slice(-100)}`
+    preciseFailedAt = Date.now()
+    preciseNote = `못 켬(GPS 한 번씩 재서 판단): ${(error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').slice(-100)}`
     logFailure('GPS 위치 갱신', error)
     return false
   }
@@ -358,7 +366,7 @@ async function stopPrecise(): Promise<void> {
     if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
     await AsyncStorage.removeItem(PRECISE_SINCE_KEY).catch(() => {})
     await AsyncStorage.removeItem(PRECISE_MODE_KEY).catch(() => {})
-    if (!preciseUnavailable) preciseNote = '꺼짐'
+    if (!preciseRecentlyFailed()) preciseNote = '꺼짐'
   } catch (error) {
     logFailure('GPS 위치 갱신 끄기', error)
   }
@@ -384,7 +392,10 @@ async function handlePreciseLocations(locations: { coords: { latitude: number; l
   const mode = (await preciseMode()) ?? 'fine'
   const result = await applyFix(at, latest.coords.accuracy ?? null, mode, mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국')
   // Wi-Fi·기지국 단계로 알릴 수 있는 가게 근처에 머무는 동안은 GPS 로도 가끔 잰다(`fineCheck`).
-  if (!result.stop && result.nextMode === 'coarse' && result.nearestMeters <= wakeRadiusMeters()) void fineCheck()
+  // 오차 큰 위치로 머무는 가게에서 나갔는지 못 정할 때도 GPS 로 잰다(11-06: 150m 떨어져도 "안"으로 남던 것).
+  if (!result.stop && (result.needsFineCheck || (result.nextMode === 'coarse' && result.nearestMeters <= wakeRadiusMeters()))) {
+    void fineCheck()
+  }
 }
 
 /**
@@ -418,11 +429,12 @@ async function applyFix(
   accuracy: number | null,
   mode: PreciseMode,
   source: string,
-): Promise<{ stop: boolean; nextMode: PreciseMode; nearestMeters: number }> {
+): Promise<{ stop: boolean; nextMode: PreciseMode; nearestMeters: number; needsFineCheck: boolean }> {
   const since = Number(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null)) || Date.now()
   let stop = Date.now() - since > PRECISE_MAX_MS
   let nextMode: PreciseMode = mode
   let nearestMeters = Infinity
+  let needsFineCheck = false
   await mutate((state, now) => {
     const outcome = preciseUpdate(state, now, { at, accuracy, mode }, {
       alert: partnerRadiusMeters(),
@@ -432,6 +444,7 @@ async function applyFix(
     if (outcome.stop) stop = true
     nextMode = outcome.nextMode
     nearestMeters = outcome.nearestMeters
+    needsFineCheck = outcome.needsFineCheck
     // 테스트 앱 상태 줄: 어떤 위치로 얼마나 떨어져 잡히는지(가게 이름·좌표는 적지 않는다).
     const clock = new Date(now).toTimeString().slice(0, 8)
     const nearest = Number.isFinite(nearestMeters) ? ` · 가장 가까운 가게 ${Math.round(nearestMeters)}m` : ''
@@ -441,7 +454,7 @@ async function applyFix(
   const running = await preciseMode()
   if (stop) await stopPrecise()
   else if (running !== null && nextMode !== running) await startPrecise(nextMode)
-  return { stop, nextMode, nearestMeters }
+  return { stop, nextMode, nearestMeters, needsFineCheck }
 }
 
 /**
@@ -576,12 +589,13 @@ async function registerAround(state: NearbyState, now: number, at: { lat: number
     regionIds: nearest.map((partner) => partner.id),
     radius,
   }
-  // 이미 깨우는 원 안이면 GPS 로 재기 시작한다. 못 켜면 깨우는 원 안을 머무름으로 본다(예전 방식).
+  // 이미 깨우는 원 안이면 GPS 로 재기 시작한다. 못 켜도 깨우는 원(150m)을 머무름으로 보지 않는다 — 그러면 가게에서 150m
+  // 떨어진 곳에서도 알림이 왔다(11-06). 알림 반경 안인지는 아래 GPS 한 번(`fineCheck`)이 정한다.
   const near = nearAnyTarget(state, at)
   const precise = near ? await startPrecise() : (await stopPrecise(), false)
   // 이미 가게 근처면 GPS 로 한 번 바로 잰다(기다리지 않는다 — 이 등록이 끝난 뒤 차례로 판단된다).
-  if (precise) void fineCheck(true)
-  const inside = insideAtRegistration(nearest, at.lat, at.lng, precise || !near ? radius : wake).map((partner) => partner.id)
+  if (near) void fineCheck(true)
+  const inside = precise ? insideAtRegistration(nearest, at.lat, at.lng, radius).map((partner) => partner.id) : []
   return onRegister(state, nearest.map((partner) => partner.id), inside, now, at)
 }
 
@@ -630,15 +644,17 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
     await mutate((state, now) => (state.enabled ? registerAround(state, now, at) : { state, actions: [] }))
     return
   }
-  // 이름을 내세울 업체를 가장 가까운 곳으로 고르려고 위치를 한 번 읽는다(최근 1분 위치 → Wi-Fi·기지국 4초). 못 읽으면 없이 간다.
-  const at = await quickPosition(pkg.Location)
-  // 깨우는 원에 들어왔다 → GPS 를 켜 알림 반경(20m)은 위치 갱신이 판단한다. 못 켜면 이 신호를 머무름으로 쓴다.
-  if (entered && !testLocation() && (await startPrecise())) {
+  // 깨우는 원에 들어왔다 → GPS 를 켜 알림 반경(20m)은 위치 갱신이 판단한다. 못 켜도 이 신호(150m)를 머무름으로 쓰지 않고
+  // GPS 한 번으로 알림 반경 안인지만 본다(11-06: 150m 떨어진 곳에서 알림이 오던 것).
+  if (entered) {
+    await startPrecise()
     void fineCheck(true)
     return
   }
-  // 깨우는 원(100m)을 나갔으면 알림 반경 밖인 것도 확실하다.
-  await mutate((state, now) => (entered ? onEnter(state, id, now, at) : onExit(state, id, now, at)))
+  // 깨우는 원(150m)을 나갔으면 알림 반경 밖인 것도 확실하다. 남은 예약의 이름을 가장 가까운 업체로 고르려고 위치를 한 번
+  // 읽는다(최근 1분 위치 → Wi-Fi·기지국 4초). 못 읽으면 없이 간다.
+  const at = await quickPosition(pkg.Location)
+  await mutate((state, now) => onExit(state, id, now, at))
 }
 
 // 앱 진입점에서 이 파일을 불러올 때 작업을 정의한다(한 번만).
