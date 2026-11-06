@@ -165,11 +165,12 @@ def rendered(url):
     return out.stdout.decode('utf-8', errors='ignore')
 
 
-def professors(html, position=''):
-    """교수진 목록 → [(이름, 직위, 연구분야)]. 그 밖의 칸(학위·학교·연구실·전화·이메일·사진)은 읽지 않는다.
+def professors(html, position='', base=''):
+    """교수진 목록 → [(이름, 직위, 연구분야, 교수 소개 페이지 주소)]. 그 밖의 칸(학위·학교·연구실·전화·이메일·사진)은 읽지 않는다.
+    소개 페이지 주소는 학과 홈페이지의 교수별 상세 페이지 — 연구실·이메일은 우리가 옮기지 않고 그 페이지로 안내한다(11-07 운영진 결정).
     position: 직위 칸이 없는 쪽(기계시스템디자인공학과 'professor-box' — 쪽마다 전임·초빙·겸임)에 쓸 쪽 제목."""
     if 'prof-ul' not in html:
-        return _professor_boxes(html, position)
+        return _professor_boxes(html, position, base)
     out = []
     for block in html.split('class="faculty-intro"')[1:]:
         name = re.search(r'class="faculty-name"[^>]*>\s*([^<]+?)\s*</a>', block)
@@ -180,10 +181,17 @@ def professors(html, position=''):
         field = _clean(info.group(1)) if info else ''
         if NOT_FIELD.search(field):
             field = ''
-        row = (_clean(name.group(1)), _clean(position.group(1)) if position else '', field)
-        if row not in out:
+        # 상세 링크는 이름 앞(사진 링크)과 이름에 같은 주소로 붙어 있다 — 블록 안 이름 링크의 href.
+        href = re.search(r'href="([^"]*mode=view[^"]*)"[^>]*class="faculty-name"', block)
+        row = (_clean(name.group(1)), _clean(position.group(1)) if position else '', field, _link(base, href))
+        if row[:3] not in [r[:3] for r in out]:
             out.append(row)
     return out
+
+
+def _link(base, match):
+    """상세 링크(상대 주소) → 절대 주소. 없으면 ''."""
+    return urljoin(base, _clean(match.group(1))) if match and base else ''
 
 
 def _clean(text):
@@ -191,8 +199,9 @@ def _clean(text):
     return re.sub(r'\s+', ' ', text.replace('&nbsp;', ' ').replace('\xa0', ' ').replace('&amp;', '&')).strip()
 
 
-def _professor_boxes(html, position):
-    """기계시스템디자인공학과 꼴 — 교수마다 'professor-box': 이름(h2), 연구실(랩) 이름(p.lab), 상세 첫 줄(전공 분야이거나 학위)."""
+def _professor_boxes(html, position, base=''):
+    """기계시스템디자인공학과 꼴 — 교수마다 'professor-box': 이름(h2), 연구실(랩) 이름(p.lab), 상세 첫 줄(전공 분야이거나 학위),
+    'view more +'(교수 소개 페이지)."""
     out = []
     for block in html.split('class="professor-box"')[1:]:
         name = re.search(r'<h2>\s*([^<]+?)\s*(?:<|$)', block)
@@ -203,8 +212,9 @@ def _professor_boxes(html, position):
         field = _clean(lab.group(1) if lab else (first.group(1) if first else ''))
         if NOT_FIELD.search(field):
             field = ''
-        row = (_clean(name.group(1)), position, field)
-        if row not in out:
+        href = re.search(r'class="professor-footer">\s*<a href="([^"]*mode=view[^"]*)"', block)
+        row = (_clean(name.group(1)), position, field, _link(base, href))
+        if row[:3] not in [r[:3] for r in out]:
             out.append(row)
     return out
 
@@ -214,17 +224,23 @@ RETIRED_TITLE = re.compile(r'퇴임|명예')
 POSITION_TITLE = re.compile(r'(전임|초빙|겸임|객원|외래)\s*교수|강사')
 
 
+PROF_ID = re.compile(r'(?:S2|articleNo)=(\d+)')
+
+
 def faculty():
-    """이미 만든 data/rag-depthome.json 의 교수진 쪽만 화면을 그려 이름·직위·연구분야로 채운다(다른 쪽은 그대로)."""
+    """이미 만든 data/rag-depthome.json 의 교수진 쪽만 화면을 그려 이름·직위·연구분야로 채운다(다른 쪽은 그대로).
+    11-07: 교수마다 따로 한 쪽(주소 = 학과 홈페이지의 그 교수 소개 페이지)을 더 만든다 — '○○ 교수님 연구실' 질문에 그 쪽이 걸려
+    앱이 교수 소개 페이지 링크를 붙인다. 연구실 호실·이메일·전화는 읽지도 저장하지도 않는다(공개 저장소에 연락처 목록을 두지 않음)."""
     data = json.load(open(OUT, encoding='utf-8'))
     changed = 0
+    profs = {}
     for p in data['pages']:
-        if not p.get('linkOnly') or not PROF_TITLE.search(p['title']) or NOT_PROF_TITLE.search(p['title']) \
-                or RETIRED_TITLE.search(p['title']):
+        if not (p.get('linkOnly') or p.get('faculty')) or not PROF_TITLE.search(p['title']) or NOT_PROF_TITLE.search(p['title']) \
+                or RETIRED_TITLE.search(p['title']) or p.get('professor'):
             continue
         position = POSITION_TITLE.search(p['title'])
         try:
-            rows = professors(rendered(p['url']), position.group(0).replace(' ', '') if position else '')
+            rows = professors(rendered(p['url']), position.group(0).replace(' ', '') if position else '', p['url'])
         except Exception as e:  # noqa: BLE001
             print(f"{p['dept']}: {p['url']} 실패 {e}", file=sys.stderr)
             continue
@@ -233,15 +249,27 @@ def faculty():
             continue
         menu = p['title'].split('|')[-1].strip()
         lines = [f"{p['dept']} 교수진(학과 홈페이지 '{menu}' 메뉴 기준, 이름 · 직위 · 연구분야)"]
-        lines += [' · '.join(c for c in row if c) for row in rows]
-        lines.append(f"연구실·전화·이메일·면담은 홍익온이 안내하지 않고 {p['dept']} 홈페이지 교수진 페이지로 안내해요.")
+        lines += [' · '.join(c for c in row[:3] if c) for row in rows]
+        lines.append(f"교수님 연구실 위치·이메일·면담은 {p['dept']} 홈페이지의 교수님별 소개 페이지에서 볼 수 있어요.")
         p.pop('linkOnly', None)
         p.update(faculty=True, text=EMAIL.sub('', '\n'.join(lines)))
+        for i, (name, pos, field, link) in enumerate(rows):
+            if not link:
+                continue
+            pid = PROF_ID.search(link)
+            key = f"{p['key']}_p{pid.group(1) if pid else i}"
+            title = f"{menu} · {name} {pos or '교수'}"
+            text = (f"{p['dept']} {name} {pos or '교수'}" + (f"(연구분야: {field})" if field else '') + '. '
+                    f"{name} 교수님의 연구실 위치·이메일·면담 시간은 {p['dept']} 홈페이지의 {name} 교수님 소개 페이지에서 볼 수 있어요.")
+            profs[key] = {'key': key, 'dept': p['dept'], 'url': link, 'title': title, 'text': EMAIL.sub('', text), 'professor': True}
         changed += 1
-        print(f"{p['dept']}: 교수 {len(rows)}명", flush=True)
+        print(f"{p['dept']}: 교수 {len(rows)}명(소개 페이지 {sum(1 for r in rows if r[3])})", flush=True)
+    if changed:
+        # 다시 돌리면 교수 쪽은 새로 만든 것으로 바꾼다(그만두신 분은 빠진다).
+        data['pages'] = [p for p in data['pages'] if not p.get('professor')] + list(profs.values())
     data['facultyAt'] = time.strftime('%Y-%m-%d')
     json.dump(data, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    print(f'교수진 채움: {changed}쪽')
+    print(f'교수진 채움: {changed}쪽, 교수 소개 {len(profs)}쪽')
 
 
 if __name__ == '__main__':
