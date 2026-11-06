@@ -216,22 +216,19 @@ test('converted data runs through the check and expansion without throwing', () 
   assert.doesNotThrow(() => expandGraph(store.nodes, store.edges))
 })
 
-test('snapshots: create, limit drops rolling ones first, manual ones are protected', () => {
+test('snapshots: create, full kept slots refuse, deleting by hand makes room', () => {
   const storage = memoryStorage()
   const s = Store.addNode(Store.emptyStoreV3(1), 1, 1).store
-  const first = Snap.createSnapshot(s, 'auto one', 'rolling', storage, 1)
+  const first = Snap.createSnapshot(s, 'first', 'manual', storage, 1)
   assert.equal(first.error, null)
   for (let i = 0; i < 19; i += 1) Snap.createSnapshot(s, `m${i}`, 'manual', storage, 10 + i)
   assert.equal(Snap.loadSnapshots(storage).length, 20)
-  const next = Snap.createSnapshot(s, 'new', 'manual', storage, 100)
-  assert.equal(next.error, null)
-  assert.equal(next.list.length, 20)
-  assert.ok(!next.list.some((x) => x.name === 'auto one'))
   const full = Snap.createSnapshot(s, 'more', 'manual', storage, 101)
   assert.equal(full.error, 'limit')
   assert.equal(full.snapshot, null)
   assert.equal(Snap.loadSnapshots(storage).length, 20)
-  assert.equal(Snap.deleteSnapshot(next.snapshot.id, storage).length, 19)
+  assert.equal(Snap.deleteSnapshot(first.snapshot.id, storage).length, 19)
+  assert.equal(Snap.createSnapshot(s, 'more', 'manual', storage, 102).error, null)
 })
 
 test('snapshots: restoring gives the same data, ids keep counting', () => {

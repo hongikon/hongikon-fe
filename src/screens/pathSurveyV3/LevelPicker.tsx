@@ -118,7 +118,7 @@ export function FloorPicker({
           <Btn label={`${input.floors.length}개 층 추가`} kind="primary" onPress={addTyped} />
         </>
       ) : null}
-      {outside.length ? <Text style={ui.warn}>{`건물 층 범위를 벗어난 층 ${outside.length}개 (${outside.map(floorChipLabel).join(', ')})`}</Text> : null}
+      {outside.length ? <Text style={ui.warn}>{`서버 정보에 없는 층 ${outside.length}개 (${outside.map(floorChipLabel).join(', ')})`}</Text> : null}
       <Row>
         {options.more.length ? <Btn label={more ? '층 접기' : '층 더 보기'} onPress={() => setMore((v) => !v)} /> : null}
         {!single && onSetMany ? <Btn label="보이는 층 모두 선택" onPress={() => onSetMany(shown, true)} /> : null}

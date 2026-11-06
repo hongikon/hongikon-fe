@@ -77,10 +77,35 @@ export interface SurveyFileV3 {
   exportedAt: number
   nodes: SurveyNodeV3[]
   edges: SurveyEdgeV3[]
-  /** Derived on export and only present when the check has no errors. Never stored. */
+  /** Only in the graph export: true when the check has no errors. */
+  complete?: boolean
+  /** Only in the graph export. */
+  check?: {
+    errorCount: number
+    warningCount: number
+    errors: ExportIssue[]
+    warnings: ExportIssue[]
+  }
+  /** Only in the graph export: what could not go in the graph, with the reason. Empty when complete. */
+  excluded?: ExcludedFromGraph
+  /** Derived on export, also from unfinished data. Never stored. */
   graph?: SurveyGraph
   /** Only in the graph export: labels to add to the server list later. */
   report?: { labelsNotOnServer: string[] }
+}
+
+export interface ExportIssue {
+  code: string
+  message: string
+  nodeId?: string
+  edgeId?: string
+}
+
+export interface ExcludedFromGraph {
+  nodes: { id: string; reason: string }[]
+  levels: { id: string; building: string; floor: number; reason: string }[]
+  edges: { id: string; reason: string }[]
+  ties: { id: string; a: LevelRef; b: LevelRef; reason: string }[]
 }
 
 export const isEdgeKind = (value: unknown): value is EdgeKind => (EDGE_KINDS as readonly unknown[]).includes(value)

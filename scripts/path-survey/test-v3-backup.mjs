@@ -36,30 +36,87 @@ function sampleStore() {
 
 // Save points
 
-test('save points: the rolling points of the save button go first, protected and manual ones stay', () => {
+test('save points: the save button reuses its own 10 slots and leaves protected and manual ones alone', () => {
   const storage = memoryStorage()
   const s = sampleStore()
   Snap.createSnapshot(s, 'v2 변환 직전', 'protected', storage, 1)
   Snap.createSnapshot(s, '직접', 'manual', storage, 2)
-  for (let i = 0; i < 18; i += 1) Snap.createSnapshot(s, `저장 ${i}`, 'rolling', storage, 10 + i)
-  for (let i = 0; i < 30; i += 1) assert.equal(Snap.createSnapshot(s, `저장 뒤 ${i}`, 'rolling', storage, 100 + i).error, null)
+  for (let i = 0; i < 40; i += 1) assert.equal(Snap.createSnapshot(s, `저장 ${i}`, 'rolling', storage, 10 + i).error, null)
   const list = Snap.loadSnapshots(storage)
-  assert.equal(list.length, Snap.SNAPSHOT_LIMIT)
-  assert.ok(list.some((x) => x.name === 'v2 변환 직전'))
-  assert.ok(list.some((x) => x.name === '직접'))
-  assert.ok(!list.some((x) => x.name === '저장 0'))
+  assert.equal(list.filter((x) => x.kind === 'rolling').length, Snap.ROLLING_LIMIT)
+  assert.deepEqual(list.filter((x) => x.kind !== 'rolling').map((x) => x.name), ['v2 변환 직전', '직접'])
+  assert.ok(list.some((x) => x.name === '저장 39'))
+  assert.ok(!list.some((x) => x.name === '저장 29'))
 })
 
-test('save points: when all are protected nothing is dropped, and deleting by hand makes room', () => {
+test('save points: full kept slots never stop the save button, and full rolling slots never stop a kept one', () => {
   const storage = memoryStorage()
   const s = sampleStore()
   let first
-  for (let i = 0; i < Snap.SNAPSHOT_LIMIT; i += 1) first ??= Snap.createSnapshot(s, `p${i}`, 'protected', storage, i).snapshot, i > 0 && Snap.createSnapshot(s, `p${i}`, 'protected', storage, i)
-  const refused = Snap.createSnapshot(s, 'more', 'rolling', storage, 99)
-  assert.equal(refused.error, 'limit')
-  assert.equal(Snap.loadSnapshots(storage).length, Snap.SNAPSHOT_LIMIT)
+  for (let i = 0; i < Snap.KEPT_LIMIT; i += 1) {
+    const made = Snap.createSnapshot(s, `p${i}`, 'protected', storage, i).snapshot
+    first ??= made
+  }
+  assert.equal(Snap.createSnapshot(s, 'more', 'protected', storage, 50).error, 'limit')
+  assert.equal(Snap.createSnapshot(s, 'more', 'manual', storage, 50).error, 'limit')
+  for (let i = 0; i < 12; i += 1) assert.equal(Snap.createSnapshot(s, `저장 ${i}`, 'rolling', storage, 100 + i).error, null)
+  assert.equal(Snap.loadSnapshots(storage).length, Snap.KEPT_LIMIT + Snap.ROLLING_LIMIT)
   Snap.deleteSnapshot(first.id, storage)
-  assert.equal(Snap.createSnapshot(s, 'more', 'rolling', storage, 100).error, null)
+  assert.equal(Snap.createSnapshot(s, 'more', 'protected', storage, 200).error, null)
+  assert.equal(Snap.loadSnapshots(storage).filter((x) => x.kind === 'rolling').length, Snap.ROLLING_LIMIT)
+})
+
+test('save points: an older list with more rolling points than slots shrinks on the next save', () => {
+  const old = Array.from({ length: 20 }, (_, i) => ({ id: `r${i}`, name: `저장 ${i}`, createdAt: i, auto: true, nodes: [], edges: [], nextNode: 1, nextEdge: 1 }))
+  const storage = memoryStorage({ [Snap.SNAPSHOTS_KEY]: JSON.stringify(old) })
+  const { list } = Snap.createSnapshot(sampleStore(), '저장 새로', 'rolling', storage, 100)
+  assert.equal(list.length, Snap.ROLLING_LIMIT)
+  assert.ok(list.some((x) => x.name === '저장 19'))
+  assert.ok(!list.some((x) => x.name === '저장 10'))
+})
+
+test('save points: naming a rolling point when the kept slots are full keeps it rolling', () => {
+  const storage = memoryStorage()
+  const s = sampleStore()
+  for (let i = 0; i < Snap.KEPT_LIMIT; i += 1) Snap.createSnapshot(s, `p${i}`, 'manual', storage, i)
+  const made = Snap.createSnapshot(s, '저장 1', 'rolling', storage, 50).snapshot
+  const after = Snap.renameSnapshot(made.id, '이름', storage).find((x) => x.id === made.id)
+  assert.deepEqual([after.name, after.kind], ['이름', 'rolling'])
+})
+
+/** A storage with a length, so the budget check can see how much is used. */
+function countingStorage() {
+  const data = new Map()
+  return {
+    data,
+    get length() {
+      return data.size
+    },
+    key: (i) => [...data.keys()][i],
+    getItem: (k) => data.get(k) ?? null,
+    setItem: (k, v) => data.set(k, v),
+  }
+}
+
+test('save points: all slots full of large data stay inside the budget by giving up rolling points', () => {
+  const storage = countingStorage()
+  // Big enough that 30 of them do not fit: each is a tenth of the budget.
+  const memo = 'x'.repeat(Math.floor(Snap.STORAGE_REFUSE_CHARS / 10))
+  const s = Store.normalizeStoreV3({ nodes: [node('n1', { memo })], edges: [], nextNode: 2, nextEdge: 1, updatedAt: 1 }, 1)
+  for (let i = 0; i < 5; i += 1) assert.equal(Snap.createSnapshot(s, `p${i}`, 'protected', storage, i).error, null)
+  for (let i = 0; i < 20; i += 1) assert.equal(Snap.createSnapshot(s, `저장 ${i}`, 'rolling', storage, 100 + i).error, null)
+  assert.ok(Snap.storageUsage(storage) < Snap.STORAGE_REFUSE_CHARS)
+  let list = Snap.loadSnapshots(storage)
+  assert.equal(list.filter((x) => x.kind !== 'rolling').length, 5)
+  assert.ok(list.some((x) => x.name === '저장 19'))
+  // Kept ones take the space from rolling ones, and once there is nothing left to give up it says so.
+  let refused = null
+  for (let i = 5; i < 20 && !refused; i += 1) refused = Snap.createSnapshot(s, `p${i}`, 'protected', storage, 200 + i).error
+  assert.equal(refused, 'storage')
+  list = Snap.loadSnapshots(storage)
+  assert.equal(list.filter((x) => x.kind === 'rolling').length, 0)
+  assert.ok(list.filter((x) => x.kind !== 'rolling').length >= 5)
+  assert.ok(Snap.storageUsage(storage) < Snap.STORAGE_REFUSE_CHARS)
 })
 
 test('save points: entries from step 3 and 4 keep working and are classified', () => {
@@ -90,15 +147,8 @@ test('save points: naming keeps the data, a named rolling point stops rolling, a
 })
 
 test('save points: dropping rolling points counts as freeing space', () => {
-  const data = new Map()
-  const storage = {
-    get length() {
-      return data.size
-    },
-    key: (i) => [...data.keys()][i],
-    getItem: (k) => data.get(k) ?? null,
-    setItem: (k, v) => data.set(k, v),
-  }
+  const storage = countingStorage()
+  const data = storage.data
   const s = sampleStore()
   const roll = Snap.createSnapshot(s, '저장 1', 'rolling', storage, 1).snapshot
   const keep = Snap.createSnapshot(s, 'v2 변환 직전', 'protected', storage, 2).snapshot

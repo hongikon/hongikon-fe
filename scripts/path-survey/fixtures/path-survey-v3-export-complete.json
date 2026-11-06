@@ -1,0 +1,301 @@
+{
+  "format": "hongikon.pathSurvey",
+  "version": 3,
+  "exportedAt": 1793923200000,
+  "complete": true,
+  "check": {
+    "errorCount": 0,
+    "warningCount": 0,
+    "errors": [],
+    "warnings": []
+  },
+  "excluded": {
+    "nodes": [],
+    "levels": [],
+    "edges": [],
+    "ties": []
+  },
+  "graph": {
+    "vertices": [
+      {
+        "id": "n1",
+        "node": "n1",
+        "lat": 37.4995,
+        "lng": 126.9001,
+        "type": "basic"
+      },
+      {
+        "id": "n2@hongik_r:1.5",
+        "node": "n2",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.50020000000001,
+        "lng": 126.9002,
+        "type": "entrance"
+      },
+      {
+        "id": "n3@hongik_r:1.5",
+        "node": "n3",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.5003,
+        "lng": 126.9003,
+        "type": "basic"
+      },
+      {
+        "id": "n4@hongik_r:1.5",
+        "node": "n4",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.500400000000006,
+        "lng": 126.90039999999999,
+        "type": "stairs"
+      },
+      {
+        "id": "n4@hongik_r:2",
+        "node": "n4",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.500400000000006,
+        "lng": 126.90039999999999,
+        "type": "stairs"
+      },
+      {
+        "id": "n5@hongik_r:2",
+        "node": "n5",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.5005,
+        "lng": 126.9005,
+        "type": "basic"
+      },
+      {
+        "id": "n6@hongik_r:1.5",
+        "node": "n6",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_r:2",
+        "node": "n6",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_k:1",
+        "node": "n6",
+        "building": "hongik_k",
+        "floor": 1,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_k:2",
+        "node": "n6",
+        "building": "hongik_k",
+        "floor": 2,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      }
+    ],
+    "edges": [
+      {
+        "a": "n1",
+        "b": "n2@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 78.3
+      },
+      {
+        "a": "n2@hongik_r:1.5",
+        "b": "n3@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n3@hongik_r:1.5",
+        "b": "n4@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n4@hongik_r:2",
+        "b": "n5@hongik_r:2",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n3@hongik_r:1.5",
+        "b": "n6@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 42.6
+      },
+      {
+        "a": "n4@hongik_r:1.5",
+        "b": "n4@hongik_r:2",
+        "kind": "stairs_vertical"
+      },
+      {
+        "a": "n6@hongik_r:1.5",
+        "b": "n6@hongik_r:2",
+        "kind": "elevator_vertical"
+      },
+      {
+        "a": "n6@hongik_k:1",
+        "b": "n6@hongik_k:2",
+        "kind": "elevator_vertical"
+      },
+      {
+        "a": "n6@hongik_r:1.5",
+        "b": "n6@hongik_k:1",
+        "kind": "tie",
+        "meters": 0
+      }
+    ]
+  },
+  "report": {
+    "labelsNotOnServer": []
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "lat": 37.4995,
+      "lng": 126.9001,
+      "scope": "outdoor",
+      "type": "basic"
+    },
+    {
+      "id": "n2",
+      "lat": 37.50020000000001,
+      "lng": 126.9002,
+      "scope": "indoor",
+      "type": "entrance",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        }
+      ],
+      "entranceLabel": "HI_R_1F5_ENTER"
+    },
+    {
+      "id": "n3",
+      "lat": 37.5003,
+      "lng": 126.9003,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        }
+      ]
+    },
+    {
+      "id": "n4",
+      "lat": 37.500400000000006,
+      "lng": 126.90039999999999,
+      "scope": "indoor",
+      "type": "stairs",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        },
+        {
+          "building": "hongik_r",
+          "floor": 2
+        }
+      ]
+    },
+    {
+      "id": "n5",
+      "lat": 37.5005,
+      "lng": 126.9005,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 2
+        }
+      ]
+    },
+    {
+      "id": "n6",
+      "lat": 37.500600000000006,
+      "lng": 126.9006,
+      "scope": "indoor",
+      "type": "elevator",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        },
+        {
+          "building": "hongik_r",
+          "floor": 2
+        },
+        {
+          "building": "hongik_k",
+          "floor": 1
+        },
+        {
+          "building": "hongik_k",
+          "floor": 2
+        }
+      ],
+      "ties": [
+        [
+          {
+            "building": "hongik_r",
+            "floor": 1.5
+          },
+          {
+            "building": "hongik_k",
+            "floor": 1
+          }
+        ]
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "a": "n1",
+      "b": "n2",
+      "kind": "normal"
+    },
+    {
+      "id": "e2",
+      "a": "n2",
+      "b": "n3",
+      "kind": "normal"
+    },
+    {
+      "id": "e3",
+      "a": "n3",
+      "b": "n4",
+      "kind": "normal"
+    },
+    {
+      "id": "e4",
+      "a": "n4",
+      "b": "n5",
+      "kind": "normal"
+    },
+    {
+      "id": "e5",
+      "a": "n3",
+      "b": "n6",
+      "kind": "normal"
+    }
+  ]
+}
