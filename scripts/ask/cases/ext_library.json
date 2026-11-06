@@ -1470,5 +1470,17 @@
   {
     "q": "방학 도서관 이용교육",
     "expect": "library"
+  },
+  {
+    "q": "T동 강의실 마이크 빌리고 싶어",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "티동 마이크 어디서 빌려요",
+    "expect": "ctl-equipment"
+  },
+  {
+    "q": "강의실 마이크 대여",
+    "expect": "ctl-equipment"
   }
 ]
