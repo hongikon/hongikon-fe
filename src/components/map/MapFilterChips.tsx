@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
-import { FACILITY_KINDS } from '../../constants/facilityKinds'
+import { FACILITY_KINDS, HIDDEN_FACILITY_KINDS } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { useMapData } from '../../lib/mapData'
 import { chipStyles, useChipRowScrollStyle } from './chipStyles'
@@ -21,9 +21,8 @@ const LAYERS: readonly {
 
 // '이벤트' 갈래는 없앴다(10-27). 전시는 학교 시설 종류 칩 하나가 되고, 제보 보기(켜기·종류·HOT)는
 // 지도 오른쪽 아래 메뉴(MapActionMenu)로 옮겼다 — 위쪽 칩은 '어디에 뭐가 있나'만 맡는다.
-// 엘리베이터는 위치가 건물 단위로만 확인돼 쓸모가 적어 칩에서 숨긴다(데이터는 남겨 둔다, 10-02 요청).
+// 엘리베이터는 앱에서 감춘다(HIDDEN_FACILITY_KINDS — 지도 데이터를 받을 때 빼고, 칩에서도 뺀다).
 // 흡연구역은 10-05 에 숨겼다가 운영진이 11곳 좌표를 직접 찍어 정리한 뒤 다시 보인다(10-27).
-const HIDDEN_FACILITY_KINDS = new Set(['엘리베이터'])
 const VISIBLE_FACILITY_KINDS = FACILITY_KINDS.filter((meta) => !HIDDEN_FACILITY_KINDS.has(meta.key))
 /** 칩에는 짧게. 서버 값 '행사·전시'의 행사는 이제 제보로 받는다. */
 const CHIP_LABEL: Partial<Record<FacilityKind, string>> = { '행사·전시': '전시' }
