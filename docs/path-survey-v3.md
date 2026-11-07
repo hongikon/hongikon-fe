@@ -11,6 +11,8 @@
 - **네비게이션 담당:** [1. 내보내기 파일 형식](#1-내보내기-파일-형식)
 - **조사 담당:** [2. 사용 가이드](#2-사용-가이드)
 - **이 도구를 고치는 사람:** [3. 데이터 모델](#3-데이터-모델)부터 끝까지
+- **조사 담당 가이드북:** [path-survey-v3-guide-surveyor.md](path-survey-v3-guide-surveyor.md)
+- **개발 담당 사용 가이드:** [path-survey-v3-guide-dev.md](path-survey-v3-guide-dev.md)
 
 ---
 

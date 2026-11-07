@@ -130,4 +130,6 @@
 
 > **미결**: 실제 폰 터치, 실제 GitHub 통신은 아직 사람이 확인하지 않았다. 이 화면은 PR 미리보기가 없어 dev 에서 main 으로 릴리스되어야 폰에서 열 수 있고, 그때 dev 의 다른 변경도 함께 배포된다.
 
+- (11-07 이어서, 사용자 요청) 조사 담당 가이드북과 개발 담당 사용 가이드(`docs/path-survey-v3-guide-surveyor.md`, `path-survey-v3-guide-dev.md`)를 받은 내용 그대로 추가하고 `path-survey-v3.md` 첫머리에 링크했다. 조사 테스트 208/208(실제 v2 파일 포함), `pnpm test` 65/65, tsc, `pnpm build:web` 통과.
+
 ---
