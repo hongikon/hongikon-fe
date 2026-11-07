@@ -67,6 +67,8 @@ export interface RenderNode {
   draggable: boolean
   /** Selected points: on top and the label does not depend on the zoom. */
   emphasized: boolean
+  /** The next chained point joins this one. */
+  anchor: boolean
 }
 
 export interface RenderEdge {
@@ -134,6 +136,8 @@ export interface RenderOptions {
   selectedEdge: string | null
   multi?: readonly string[]
   labelMode?: LabelMode
+  /** Chain base point. Pass it only while chaining is on. */
+  anchor?: string | null
 }
 
 export function buildRenderState(store: StoreV3, options: RenderOptions): { nodes: RenderNode[]; edges: RenderEdge[] } {
@@ -169,7 +173,9 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
 
   const nodes = store.nodes.map((node): RenderNode => {
     const strong = isNodeStrong(node, filter)
-    const dim = filtering && !strong
+    const isAnchor = node.id === options.anchor
+    // The base point stays readable under a filter, because the next point is about to join it.
+    const dim = filtering && !strong && !isAnchor
     const indoor = node.scope === 'indoor'
     const buildings = indoor ? buildingsOf(node) : []
     const fill = !indoor ? OUTDOOR_COLOR : buildings[0] ? buildingColor(index, buildings[0]) : NEUTRAL_COLOR
@@ -185,7 +191,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       ring = MULTI_RING
       ringWidth = 4
     }
-    const emphasized = node.id === selected || node.id === pending || multi.has(node.id)
+    const emphasized = node.id === selected || node.id === pending || multi.has(node.id) || isAnchor
     // With a floor filter on, only the points that match it keep a label. Outdoor points are strong but do not match.
     const labelled = labelMode === 'none' ? false : labelMode === 'selected' ? emphasized : emphasized || (!dim && (!filtering || indoor))
     const withLetter = emphasized || labelMode === 'full'
@@ -206,6 +212,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       clickable: !dim,
       draggable: !dim && mode === 'move',
       emphasized,
+      anchor: isAnchor,
     }
   })
 

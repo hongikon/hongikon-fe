@@ -182,6 +182,15 @@ export function checkGraph(nodes: readonly SurveyNodeV3[], edges: readonly Surve
     if ((common.length > 0 || bothSingle) && edge.pairs?.length) {
       warnings.push({ severity: 'warning', code: 'pairs_ignored', message: `${edge.id}: 층 대응이 이미 정해져 층 짝을 쓰지 않아요`, edgeId: edge.id, nodeId: a.id })
     }
+    if (common.length === 0 && bothSingle && levelsA[0].building !== levelsB[0].building && edge.kind !== 'stairs') {
+      warnings.push({
+        severity: 'warning',
+        code: 'different_building_direct',
+        message: `${edge.id}: 다른 건물의 점을 바로 이었어요. 실제로 이어진 통로가 맞는지 확인해 주세요(${a.id}, ${b.id})`,
+        edgeId: edge.id,
+        nodeId: a.id,
+      })
+    }
     if (common.length === 0 && bothSingle && levelsA[0].building === levelsB[0].building && edge.kind !== 'stairs') {
       warnings.push({
         severity: 'warning',

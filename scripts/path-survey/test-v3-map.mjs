@@ -151,7 +151,13 @@ function mockMap() {
   }
   const mapListeners = {}
   const map = {
-    setOptions() {},
+    options: {},
+    setOptions(o) {
+      Object.assign(this.options, o)
+    },
+    getCenter() {
+      return this.center
+    },
     getProjection: () => ({
       fromCoordToOffset: (p) => ({ x: p.lng(), y: p.lat() }),
       fromOffsetToCoord: (p) => new LatLng(p.y, p.x),
@@ -307,4 +313,27 @@ test('building cache keeps what the survey needs and survives bad values', () =>
   assert.equal(storage.writes.length, 1)
   assert.deepEqual(B.loadBuildingCache(memoryStorage({ 'hongikon.pathSurvey.v3.buildings': '{bad' })), [])
   assert.deepEqual(B.loadBuildingCache(memoryStorage()), [])
+})
+
+test('map script: reports the world width for arrow keys only when it changes, and locks the map keys on request', () => {
+  const { messages, map, mapListeners, window, LatLng } = mockMap()
+  assert.deepEqual(messages.filter((m) => m.type === 'scale'), [], 'nothing before the map has a center')
+  map.center = new LatLng(0, 0)
+  mapListeners.idle()
+  mapListeners.idle()
+  // The mock projection has one pixel per degree.
+  assert.deepEqual(messages.filter((m) => m.type === 'scale').map((m) => m.worldPx), [360])
+  window.__surveyV3KeyLock(true)
+  assert.equal(map.options.keyboardShortcuts, false)
+  window.__surveyV3KeyLock(false)
+  assert.equal(map.options.keyboardShortcuts, true)
+})
+
+test('map script: only the chain base point gets the ring', () => {
+  const { window, markers } = mockMap()
+  const base = { shape: 'circle', fill: '#000', ring: '#fff', ringWidth: 2, size: 18, num: '', letter: '', badge: '', dim: false, clickable: true, draggable: false, emphasized: false, lat: 1, lng: 1 }
+  window.__surveyV3Render({ legacy: LEGACY, edges: [], nodes: [{ ...base, id: 'n1', anchor: true }, { ...base, id: 'n2', anchor: false }] })
+  const html = (id) => live(markers).find((m) => m.title === id || m.options?.title === id)
+  assert.ok(JSON.stringify(html('n1')).includes('data-anchor'))
+  assert.ok(!JSON.stringify(html('n2')).includes('data-anchor'))
 })

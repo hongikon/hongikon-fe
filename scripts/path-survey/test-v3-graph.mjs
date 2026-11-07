@@ -113,12 +113,13 @@ test('S5 extra: garbage shapes do not throw in expand or check', () => {
   assert.deepEqual(skipped.map((s) => s.reason).sort(), ['missing_node', 'no_levels', 'self'])
 })
 
-test('S6 one floor each without a common floor: connected directly', () => {
+test('S6 one floor each without a common floor: connected directly, warned so a mistaken chain is seen', () => {
   const nodes = [indoor('n1', [lvl('Z3', -1)]), indoor('n2', [lvl('T', 1)])]
   const edges = [edge('e1', 'n1', 'n2')]
   const result = checkGraph(nodes, edges)
   assert.deepEqual(result.errors, [])
-  assert.deepEqual(codes(result.warnings), [])
+  assert.deepEqual(codes(result.warnings), ['different_building_direct'])
+  assert.deepEqual(codes(checkGraph(nodes, [edge('e1', 'n1', 'n2', { kind: 'stairs' })]).warnings), [])
   assert.ok(hasPath(expandGraph(nodes, edges).graph, 'n1@Z3:-1', 'n2@T:1'))
 })
 
