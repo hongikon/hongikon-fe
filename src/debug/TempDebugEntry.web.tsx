@@ -16,6 +16,10 @@ export const DevPathAuditEntry: ComponentType | null = lazy(() =>
 export const DevPathSurveyEntry: ComponentType | null = lazy(() =>
   import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="survey" /> })),
 )
+/** Developer /dev/path-survey-v3: new one-graph path survey behind the same key gate. */
+export const DevPathSurveyV3Entry: ComponentType | null = lazy(() =>
+  import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="surveyV3" /> })),
+)
 /** 개발용 `/dev/ask` — 암호키 입력 후 '물어보기' 챗봇 미리보기(완성 전까지 운영 앱에 넣지 않는다). */
 export const DevAskEntry: ComponentType | null = lazy(() =>
   import('../screens/DevPathGate').then(({ default: Gate }) => ({ default: () => <Gate mode="ask" /> })),
