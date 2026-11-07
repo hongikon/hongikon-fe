@@ -16,6 +16,16 @@ function authHeaders(auth: AskAuth): Record<string, string> {
   return 'devKey' in auth ? { 'X-Ask-Dev-Key': auth.devKey } : { Authorization: `Bearer ${auth.accessToken}` }
 }
 
+/** 요즘 많이 찾는 안내 id(GET /ask/popular, 11-07) — 인사에 칩으로 보인다. 건수·질문은 오지 않는다. 실패하면 빈 목록. */
+export async function getPopularGuides(signal?: AbortSignal): Promise<string[]> {
+  try {
+    const result = await apiRequest<{ ids?: string[] }>('/ask/popular', { signal, timeoutMs: 4000, retries: 0, skipTokenRefresh: true })
+    return Array.isArray(result?.ids) ? result.ids.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 /** 앱 탭 상태(GET /ask/status). remaining 은 오늘 이 계정이 더 물을 수 있는 수, soldOut 은 전체 하루 상한이 찼는지. */
 export interface AskStatus {
   enabled: boolean

@@ -24,6 +24,7 @@ import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from ".
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
 import {
   ASK_FEEDBACK_REASONS,
+  getPopularGuides,
   routeAsk,
   sendAskFeedback,
   sendFlowFeedback,
@@ -44,6 +45,7 @@ import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
+import { defaultGuides, guidesFromIds, isGreeting, type GreetingGuide } from "../../utils/askGreeting";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
 const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
@@ -112,6 +114,8 @@ type ChatMessage =
       moreOpen: boolean;
     }
   | { id: number; role: "text"; text: string }
+  /** 인사(하이·ㅎㅇ)에 앱이 바로 하는 답 — 요즘 많이 찾는 안내(없으면 기본 안내) 칩. 누르면 앱 안 안내를 연다(서버·한도 안 씀). */
+  | { id: number; role: "greeting"; guides: GreetingGuide[]; popular: boolean; chosen: string | null }
   /**
    * 해결이 안 됐을 때 운영진에게 넘기기(기존 문의하기 /feedback, 게스트). 보낼 내용(질문·홍익온 답·근거)을 미리 보여 주고,
    * 학생이 더 알고 싶은 점·답 받을 이메일(선택)을 적어 직접 보내기를 눌러야만 보낸다.
@@ -264,6 +268,15 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const [showJump, setShowJump] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const { facilities, buildings, partners } = useMapData();
+  /** 요즘 많이 찾는 안내 — 탭을 열 때 한 번 받아 둔다(인사할 때 기다리지 않게). 못 받으면 빈 목록 → 기본 안내. */
+  const popularRef = useRef<GreetingGuide[]>([]);
+  useEffect(() => {
+    const abort = new AbortController();
+    getPopularGuides(abort.signal).then((ids) => {
+      if (!abort.signal.aborted) popularRef.current = guidesFromIds(ids);
+    });
+    return () => abort.abort();
+  }, []);
 
   /** 말풍선을 잇고 붙인 id 를 돌려준다. id 는 상태 갱신 함수 밖에서 매긴다(개발 모드에서 갱신 함수가 두 번 돌아도 겹치지 않게). */
   const push = (...items: NewMessage[]) => {
@@ -369,6 +382,15 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     haptics.selection();
     setInput("");
     atBottomRef.current = true;
+    if (isGreeting(question)) {
+      // 인사만 왔으면 서버에 묻지 않는다(학교 안내에 걸릴 말이 없어 '못 찾았어요'가 나왔다, 11-07).
+      const popular = popularRef.current;
+      push(
+        { role: "user", text: question },
+        { role: "greeting", guides: popular.length > 0 ? popular : defaultGuides(), popular: popular.length > 0, chosen: null },
+      );
+      return;
+    }
     const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
@@ -527,6 +549,14 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
+  };
+
+  const chooseGuide = (message: Extract<ChatMessage, { role: "greeting" }>, guide: GreetingGuide) => {
+    if (message.chosen !== null || pending) return;
+    haptics.selection();
+    atBottomRef.current = true;
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: guide.label } : item)));
+    push({ role: "user", text: guide.label }, ...stepMessages(guide.flowId, guide.nodeId, guide.label));
   };
 
   /**
@@ -1140,6 +1170,31 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         );
       case "reply":
         return renderReply(item);
+      case "greeting":
+        return (
+          <View style={botStyle}>
+            <Text style={styles.botText}>안녕하세요! 학교에서 궁금한 걸 편하게 물어보세요.</Text>
+            {item.chosen === null && item.guides.length > 0 ? (
+              <>
+                <Text style={styles.followTitle}>{item.popular ? "요즘 많이 찾는 안내" : "이런 걸 물어볼 수 있어요"}</Text>
+                <View style={styles.examples}>
+                  {item.guides.map((guide) => (
+                    <TouchableOpacity
+                      key={`${guide.flowId}/${guide.nodeId}`}
+                      style={styles.example}
+                      activeOpacity={0.7}
+                      onPress={() => chooseGuide(item, guide)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${guide.label} 안내 보기`}
+                    >
+                      <Text style={styles.exampleText}>{guide.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </View>
+        );
       case "question":
         return (
           <View style={botStyle}>
