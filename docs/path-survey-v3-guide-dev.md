@@ -120,19 +120,21 @@ for (const e of file.graph.edges) {
 
 ## 6. 서버에 반영할 때 확인할 것
 
-아래는 현재까지 확인한 상태이고, 작업 전에 최신 코드를 다시 확인한다.
+아래는 현재까지 확인한 상태이고, 작업 전에 최신 코드를 다시 확인한다. 백엔드 저장소(hongikon-be)의 경로는 2026-11-07 에 `main`, `dev` 브랜치에서 확인했다.
 
-1. **서버 경로망 가져오기는 v2 형식 기준이다.** 기존 가져오기 스크립트(`scripts/path/import-survey.mjs`)와 서버의 가져오기는 v2 조사 파일(format 1)만 읽는다. v3 파일을 그대로 넣을 수 없다.
+1. **v3 파일을 그대로 넣을 수 있는 가져오기는 아직 없다.** 기존 가져오기는 두 가지이고, 읽는 형식이 서로 다르다.
+   - 프론트 저장소(hongikon-fe)의 `scripts/path/import-survey.mjs`: v2 조사 파일(`format: "hongikon.pathSurvey"`, `modules` 있음)을 읽어 앱 번들 `src/constants/surveyPaths.ts` 를 만든다. 서버로 보내지는 않는다.
+   - 백엔드 저장소(hongikon-be)의 `POST /admin/map/path-network/import`: `format: 1` 의 점, 간선, 출입구 참조 JSON 을 읽는다. 조사 파일 형식이 아니다. 코드는 `src/main/java/com/hongmap/hongmapbackend/mapdata/` 의 `AdminMapPathController.java`, `PathNetworkImportService.java`, `dto/PathImportRequest.java` 이다.
 2. **서버 점 종류:** `WAYPOINT`, `ENTRANCE`. v3 의 `basic`, `stairs`, `elevator`, `entrance` 와 층 정보를 어떻게 매핑할지 정해야 한다.
-3. **출입구 좌표:** 서버는 출입구 좌표를 `buildings.entrances` 에서 읽는다. v3 파일의 출입구와 서버 `entrances` 를 라벨로 대조한다. 서버에 없는 라벨(`labelsNotOnServer`)은 건물 정보 동기화 SQL(`db/sync_map_data_*.sql`)로 먼저 추가한다. 건물 정보 변경은 관리자 API가 아니라 SQL 반영이다.
+3. **출입구 좌표:** 서버는 출입구 좌표를 `buildings.entrances` 에서 읽는다. v3 파일의 출입구와 서버 `entrances` 를 라벨로 대조한다. 서버에 없는 라벨(`labelsNotOnServer`)은 백엔드 저장소(hongikon-be)의 건물 정보 동기화 SQL(`db/sync_map_data_*.sql`)로 먼저 추가한다. 건물 정보 변경은 관리자 API가 아니라 SQL 반영이다.
 4. **층:** 서버 건물의 `floors` 는 현재 비어 있다. v3 의 층(숫자)이 서버 표기와 맞는지 정한다.
-5. **현재 서버의 경로망은 비어 있다.** 처음 반영하는 것이므로 기존 데이터 충돌은 없지만, 운영 배포 런북(`docs/deploy-runbook-path-network.md`)을 따른다.
+5. **현재 서버의 경로망은 비어 있다.** 처음 반영하는 것이므로 기존 데이터 충돌은 없지만, 백엔드 저장소(hongikon-be)의 운영 배포 런북(`docs/deploy-runbook-path-network.md`)을 따른다.
 
 ---
 
 ## 7. 기존 앱 길찾기와의 관계
 
-- 현재 앱의 길찾기(`utils/routing.ts`, `pathNodes.ts`)는 이전 조사 자료를 기반으로 동작한다. **v3 파일과는 아직 연결되어 있지 않다.**
+- 현재 앱의 길찾기(프론트 저장소 hongikon-fe 의 `src/utils/routing.ts`)는 이전 조사 자료(`src/constants/surveyPaths.ts`, `src/constants/pathNodes.ts`)를 기반으로 동작한다. **v3 파일과는 아직 연결되어 있지 않다.**
 - v3 그래프를 앱에 쓰려면 다음 중 하나를 정한다.
   - A. 앱에 v3 그래프를 내려받아 새 길찾기에 쓴다.
   - B. v3 를 기존 `pathNodes` 형식으로 변환하는 스크립트를 만든다.
