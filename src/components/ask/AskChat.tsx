@@ -29,6 +29,7 @@ import {
   sendFlowFeedback,
   streamAsk,
   type AskAuth,
+  type AskAction,
   type AskFeedbackReason,
   type AskRouteResult,
   type AskRouteTurn,
@@ -91,6 +92,8 @@ type ChatMessage =
       links: { title: string; url: string | null; date: string | null }[];
       /** 서버가 정해 보낸 버튼(학교 페이지·전화·위치). null 이면 옛 서버 — 앱의 안내 데이터에서 찾는다. */
       buttons: { pages: { title: string; url: string }[]; phones: { label: string; phone: string }[]; facilityId: string | null } | null;
+      /** 서버가 보낸 앱 조작 버튼(11-07, 지금은 'map'). 옛 서버면 빈 목록 — 위치는 buttons.facilityId·안내 데이터에서. */
+      appActions: AskAction[];
       question: string;
       /** 서버가 아직 답을 만들고 있다(진행 단계와 답 글자가 실시간으로 바뀐다). */
       streaming: boolean;
@@ -129,6 +132,15 @@ type ChatMessage =
       askRef?: string | null;
     };
 
+/** 지도 위 설명 카드에 쓸 첫 문장(마크다운 굵게 표시는 뗀다, 90자까지). */
+function firstSentence(text: string | undefined): string | undefined {
+  if (!text) return undefined;
+  const plain = text.replace(/\*\*/g, "").trim();
+  const match = plain.match(/^[\s\S]*?(?:[.?!](?=\s|$)|\n)/);
+  const first = (match ? match[0] : plain).trim();
+  return first.length > 90 ? `${first.slice(0, 89).trimEnd()}…` : first || undefined;
+}
+
 type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
 
 interface AskChatProps {
@@ -147,6 +159,11 @@ interface AskChatProps {
   bottomInset?: number;
   /** 입력줄 위 한 줄(오늘 남은 질문 수 등). */
   composerNote?: string | null;
+  /**
+   * "지도에서 보기"(11-07, docs/ask-app-actions-plan.md). 있으면 위치가 있는 답에 버튼을 단다 — 앱 탭이 지도 탭으로 옮긴다.
+   * 없으면(웹 /dev/ask, 지도와 떨어진 화면) 위치를 글로만 보인다.
+   */
+  onShowOnMap?: (place: { target: string; title?: string; summary?: string }) => void;
   /** 서버에 한 번 물은 뒤(성공·실패 모두) — 남은 수를 다시 받는다. */
   onAsked?: () => void;
 }
@@ -212,7 +229,7 @@ function askFailureText(error: unknown, app: boolean): string {
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
-export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onAsked }: AskChatProps) {
+export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onShowOnMap, onAsked }: AskChatProps) {
   const insets = useSafeAreaInsets();
   const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
   const appMode = !serverKey;
@@ -246,7 +263,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const userTextStyle = appMode ? [styles.userText, styles.userTextApp] : styles.userText;
   const [showJump, setShowJump] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { facilities } = useMapData();
+  const { facilities, buildings, partners } = useMapData();
 
   /** 말풍선을 잇고 붙인 id 를 돌려준다. id 는 상태 갱신 함수 밖에서 매긴다(개발 모드에서 갱신 함수가 두 번 돌아도 겹치지 않게). */
   const push = (...items: NewMessage[]) => {
@@ -372,6 +389,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       sources: [],
       links: [],
       buttons: null,
+      appActions: [],
       question,
       streaming: true,
       stopped: false,
@@ -433,6 +451,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
           buttons: result.pages
             ? { pages: result.pages, phones: result.phones ?? [], facilityId: result.facilityId ?? null }
             : null,
+          appActions: result.actions ?? [],
           streaming: false,
           logId: result.logId ?? null,
           sections: result.sections
@@ -676,6 +695,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         {tail ? <Text style={[styles.botText, styles.replyTail]}>{tail}</Text> : null}
         {sections.length > 0 ? cursor : null}
         {place ? renderPlace(place) : null}
+        {item.streaming ? null : mapButtonFor(item, place ?? null)}
         {actions.slice(0, VISIBLE_ACTIONS)}
         {actions.length > VISIBLE_ACTIONS ? (
           <>
@@ -957,6 +977,48 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     );
   };
 
+  /** 지도 대상 이름 — 앱 지도 데이터에 있는 곳만(없으면 버튼을 그리지 않는다). */
+  const placeName = (target: string): string | null => {
+    const split = target.indexOf(":");
+    const kind = target.slice(0, split);
+    const id = target.slice(split + 1);
+    if (kind === "building") return buildings.find((b) => b.code === id)?.name ?? null;
+    if (kind === "partner") return partners.find((p) => p.id === id)?.name ?? null;
+    if (kind === "facility") {
+      const facility = facilities.find((f) => f.id === id);
+      return facility ? [facility.note, facility.buildingName].filter(Boolean).join(" · ") : null;
+    }
+    return null;
+  };
+
+  /** 답의 지도 버튼 — 서버가 보낸 'map' 조작이 먼저, 없으면(옛 서버·앱 안내) 근거 안내의 위치. */
+  const mapButtonFor = (item: Extract<ChatMessage, { role: "reply" }>, place: string | null) => {
+    const action = item.appActions.find((candidate) => candidate.type === "map");
+    if (action) return renderMapButton(action, `map-${item.id}`);
+    return place ? renderMapButton({ target: `facility:${place}`, summary: firstSentence(item.text) }, `map-${item.id}`) : null;
+  };
+
+  /** "지도에서 보기" 버튼(11-07). 누르면 지도 탭으로 옮겨 그 곳에 핀·시트, 위에 summary 카드. */
+  const renderMapButton = (action: { target: string; label?: string | null; summary?: string | null }, key: string) => {
+    if (!onShowOnMap) return null;
+    const name = placeName(action.target);
+    if (!name) return null;
+    const title = action.label || name;
+    return (
+      <TouchableOpacity
+        key={key}
+        style={styles.mapButton}
+        activeOpacity={0.7}
+        onPress={() => onShowOnMap({ target: action.target, title, summary: action.summary ?? undefined })}
+        accessibilityRole="button"
+        accessibilityLabel={`${title} 지도에서 보기`}
+      >
+        <Ionicons name="map-outline" size={15} color={COLORS.white} />
+        <Text style={styles.mapButtonText} numberOfLines={1}>지도에서 보기 · {title}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const renderOffice = (office: OfficeAskResult) => (
     <View key={office.facility.id} style={styles.card}>
       <View style={styles.cardTitle}>
@@ -1110,6 +1172,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
             {brief.shown.map((section, index) => renderSection(section, `${index}`))}
             {brief.cut ? <Text style={styles.checked}>전체 내용은 아래 학교 페이지에서 볼 수 있어요.</Text> : null}
             {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
+            {item.node.facilityId ? renderMapButton({ target: `facility:${item.node.facilityId}`, summary: firstSentence(item.node.text) }, `map-${item.id}`) : null}
             {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
             {item.node.followUps && !item.followed ? (
               <View style={styles.options}>
@@ -1637,6 +1700,19 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   place: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   placeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginTop: 2,
+    maxWidth: "100%",
+  },
+  mapButtonText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.white },
   placeText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.medium, color: COLORS.textPrimary },
   contact: { flexDirection: "row", alignItems: "center", gap: 10 },
   duty: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },

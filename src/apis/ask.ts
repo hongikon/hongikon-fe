@@ -60,6 +60,19 @@ export interface AskRouteResult {
   sections?: { title: string; items: string[]; ordered: boolean; table: { head: string[]; rows: string[][] } | null }[]
   /** 이 답의 서버 기록 id — '해결됐나요' 응답을 붙일 때 쓴다(기록이 꺼졌으면 없음). */
   logId?: number | null
+  /** 답 아래 앱 조작 버튼(11-07). 모르는 type 은 그리지 않는다. 옛 서버면 없음. */
+  actions?: AskAction[]
+}
+
+/**
+ * 물어보기로 앱 움직이기(docs/ask-app-actions-plan.md). 지금은 'map' — 지도 탭으로 옮겨 그 곳에 핀·시트를 띄우고 위에 summary 카드.
+ * target: 'building:{건물 code}' | 'facility:{편의시설 id}' | 'partner:{제휴 id}'. label 이 없으면 앱이 지도 데이터 이름을 쓴다.
+ */
+export interface AskAction {
+  type: string
+  target: string
+  label?: string | null
+  summary?: string | null
 }
 
 /**
