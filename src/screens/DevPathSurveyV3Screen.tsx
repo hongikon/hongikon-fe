@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { COLORS } from '../constants/colors'
@@ -13,7 +13,6 @@ import { selectionBuildings, usedFloorsByBuilding } from '../utils/pathSurveyV3/
 import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
-  addNode,
   applyBulkToNodes,
   findEdge,
   findNode,
@@ -56,15 +55,17 @@ import {
 } from '../utils/pathSurveyV3/transfer'
 import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
-import { Btn, Check, confirmAction, ui } from './pathSurvey/ui'
+import { Btn, confirmAction, ui } from './pathSurvey/ui'
 import BackupPanel from './pathSurveyV3/BackupPanel'
 import CheckPanel from './pathSurveyV3/CheckPanel'
 import ContextBar from './pathSurveyV3/ContextBar'
-import { Chip } from './pathSurveyV3/controls'
+import { ChainToggle, Chip } from './pathSurveyV3/controls'
 import ConvertPanel from './pathSurveyV3/ConvertPanel'
 import { addDevSample, devSampleNodeIds, removeDevSample } from './pathSurveyV3/devSample'
+import { anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT } from './pathSurveyV3/editHistory'
 import EdgeSheet from './pathSurveyV3/EdgeSheet'
 import FilterBar from './pathSurveyV3/FilterBar'
+import { hasOpenDialog, isShortcutTab, isTypingElement, keyboardTarget, NUDGE_HINT, nudgeCoord, resolveShortcut, type ShortcutAction } from './pathSurveyV3/keyboard'
 import Legend from './pathSurveyV3/Legend'
 import { SETUP_JS } from './pathSurveyV3/mapBridge'
 import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilter, type MapMode } from './pathSurveyV3/mapState'
@@ -90,8 +91,6 @@ const LABEL_MODES: { key: LabelMode; label: string }[] = [
 ]
 
 const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
-
-const UNDO_LIMIT = 50
 
 /** The overlay starts hidden here: the new graph is the main thing on this screen. */
 const LEGACY_OFF: LegacyToggles = {
@@ -133,14 +132,19 @@ export default function DevPathSurveyV3Screen() {
   const [boot] = useState(initialLoad)
   const [store, setStore] = useState<StoreV3>(boot.store)
   const storeRef = useRef(store)
-  const historyRef = useRef<StoreV3[]>([])
+  const historyRef = useRef(createEditHistory())
+  // World width in pixels at the current zoom, reported by the map. Arrow keys wait for it.
+  const worldPxRef = useRef(0)
   const blockedRef = useRef(boot.corrupt)
   const [saveFailed, setSaveFailed] = useState(false)
   const [saveMeta, setSaveMeta] = useState<SaveMeta>(() => (boot.corrupt ? EMPTY_META : loadSaveMeta()))
   const [context, setContext] = useState<WorkContext>(() => loadWorkContext())
   const [mode, setMode] = useState<MapMode>('add')
   const [tab, setTab] = useState<Tab>('edit')
-  const [chain, setChain] = useState(true)
+  const [chain, setChain] = useState(false)
+  // The point placed or picked last. It outlives the sheet, so closing the sheet does not cut the chain.
+  const [anchor, setAnchorState] = useState<string | null>(null)
+  const anchorRef = useRef<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
@@ -207,8 +211,8 @@ export default function DevPathSurveyV3Screen() {
 
   const commit = useCallback((next: StoreV3, record = true) => {
     if (next === storeRef.current) return
-    if (record) historyRef.current = [...historyRef.current.slice(-(UNDO_LIMIT - 1)), storeRef.current]
-    setUndoCount(historyRef.current.length)
+    if (record) historyRef.current.record({ store: storeRef.current, anchor: anchorRef.current })
+    setUndoCount(historyRef.current.size())
     storeRef.current = next
     setStore(next)
     if (blockedRef.current) return
@@ -217,6 +221,17 @@ export default function DevPathSurveyV3Screen() {
 
   const change = useCallback((fn: (s: StoreV3) => StoreV3) => commit(fn(storeRef.current)), [commit])
 
+  const setAnchor = (id: string | null) => {
+    anchorRef.current = id
+    setAnchorState(id)
+  }
+
+  /** Selects a point and makes it the chain base point. */
+  const pickNode = (id: string) => {
+    setSelected(id)
+    setAnchor(id)
+  }
+
   const clearSelection = () => {
     setSelected(null)
     setSelectedEdge(null)
@@ -224,8 +239,10 @@ export default function DevPathSurveyV3Screen() {
   }
 
   const undo = () => {
-    const prev = historyRef.current.pop()
-    if (!prev) return setNotice('되돌릴 게 없어요')
+    const entry = historyRef.current.pop()
+    if (!entry) return setNotice('되돌릴 게 없어요')
+    const prev = entry.store
+    setAnchor(anchorAfterUndo(anchorRef.current, entry))
     commit(prev, false)
     setUndoTick((n) => n + 1)
     setPending(null)
@@ -242,7 +259,7 @@ export default function DevPathSurveyV3Screen() {
     const node = findNode(storeRef.current, id)
     if (!node) return
     if (!isNodeStrong(node, filter)) setFilter(NO_FILTER)
-    setSelected(id)
+    pickNode(id)
     setSelectedEdge(null)
     setPending(null)
     focusOn(node.lat, node.lng)
@@ -280,6 +297,7 @@ export default function DevPathSurveyV3Screen() {
     commit(next)
     setUndoTick((n) => n + 1)
     clearSelection()
+    setAnchor(null)
     selectMany([])
     setFilter(NO_FILTER)
     return true
@@ -385,11 +403,9 @@ export default function DevPathSurveyV3Screen() {
   }
 
   const onTap = (lat: number, lng: number) => {
-    const current = storeRef.current
-    const from = chain ? findNode(current, selected) : undefined
-    const { store: next, id } = addNode(current, lat, lng, toNodeContext(context), from?.id)
+    const { store: next, id, from } = placeChained(storeRef.current, lat, lng, toNodeContext(context), chain, anchorRef.current)
     commit(next)
-    setSelected(id)
+    pickNode(id)
     setSelectedEdge(null)
     const made = findNode(next, id)!
     const crossing = from && (from.scope === 'indoor') !== (made.scope === 'indoor') && (from.scope === 'indoor' ? from : made).type !== 'entrance'
@@ -406,7 +422,7 @@ export default function DevPathSurveyV3Screen() {
       setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
       return
     }
-    setSelected(id)
+    pickNode(id)
     setSelectedEdge(null)
     panelRef.current?.scrollTo({ y: 0, animated: false })
     if (mode !== 'link') return
@@ -434,24 +450,82 @@ export default function DevPathSurveyV3Screen() {
       const result = moveNodeOntoEdge(current, msg.id, msg.edgeId, msg.lat, msg.lng)
       if (result.split) {
         commit(result.store)
-        setSelected(msg.id)
+        pickNode(msg.id)
         setSelectedEdge(null)
         setNotice(`${msg.id} 를 간선 위로 옮기고 간선을 둘로 나눴어요${result.pairsDropped ? '. 층 짝은 지웠으니 다시 지정해 주세요' : ''}`)
         return
       }
     }
     commit(moveNode(current, msg.id, msg.lat, msg.lng))
-    setSelected(msg.id)
+    pickNode(msg.id)
     setSelectedEdge(null)
     setNotice(`${msg.id} 의 위치를 옮겼어요`)
   }
+
+  /** Same result as the delete button of the sheet. */
+  const deleteNode = (id: string) => {
+    commit(removeNode(storeRef.current, id))
+    setNotice(`${id} 와 연결 간선을 지웠어요`)
+    clearSelection()
+    setMulti((list) => list.filter((x) => x !== id))
+  }
+
+  /** Same edit as dragging a point, without splitting edges. Presses in a row share one undo step. */
+  const nudgeNode = (action: Extract<ShortcutAction, { kind: 'nudge' }>) => {
+    const current = storeRef.current
+    const node = findNode(current, action.id)
+    if (!node) return
+    const to = nudgeCoord(node.lat, node.lng, action.dx, action.dy, worldPxRef.current)
+    const next = moveNode(current, action.id, to.lat, to.lng)
+    if (next === current) return
+    historyRef.current.recordNudge({ store: current, anchor: anchorRef.current }, action.id, Date.now())
+    commit(next, false)
+    setNotice(`${action.id} 를 방향키로 옮기는 중이에요`)
+  }
+
+  const keyHandlerRef = useRef<(event: any) => void>(() => {})
+  keyHandlerRef.current = (event) => {
+    const doc = (globalThis as any).document
+    const action = resolveShortcut(event, {
+      typing: isTypingElement(event.target) || isTypingElement(doc?.activeElement),
+      otherScreen: !isShortcutTab(tab) || hasOpenDialog(doc),
+      selected,
+      multi,
+      canUndo: historyRef.current.size() > 0,
+    })
+    if (!action || (action.kind === 'nudge' && !worldPxRef.current)) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (action.kind === 'undo') undo()
+    else if (action.kind === 'delete') deleteNode(action.id)
+    else nudgeNode(action)
+  }
+
+  // Registered only while the map is up, in the capture phase so that the map does not also act on the key.
+  useEffect(() => {
+    const w = globalThis as any
+    if (!ready || Platform.OS !== 'web' || typeof w.addEventListener !== 'function') return
+    const onKey = (event: any) => keyHandlerRef.current(event)
+    w.addEventListener('keydown', onKey, true)
+    return () => w.removeEventListener('keydown', onKey, true)
+  }, [ready])
+
+  // The map's own arrow key panning is off only while the arrow keys move a point.
+  const keysLocked = ready && isShortcutTab(tab) && !!findNode(store, keyboardTarget(selected, multi))
+  const keysLockedRef = useRef(keysLocked)
+  keysLockedRef.current = keysLocked
+  useEffect(() => {
+    if (ready) webViewRef.current?.injectJavaScript(`window.__surveyV3KeyLock && window.__surveyV3KeyLock(${keysLocked}); true;`)
+  }, [ready, keysLocked])
 
   // Events from the map. The ref always sees the latest state.
   const handlerRef = useRef<(event: unknown) => void>(() => {})
   handlerRef.current = (event) => {
     const msg = parseMessage(event)
     if (!msg) return
-    if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
+    if (msg.type === 'scale') {
+      if (Number.isFinite(msg.worldPx) && msg.worldPx > 0) worldPxRef.current = msg.worldPx
+    } else if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
     else if (msg.type === 'node') onNodePress(msg.id)
     else if (msg.type === 'edge') onEdgePress(msg.id)
     else if (msg.type === 'move' && mode === 'move') onMove(msg)
@@ -460,6 +534,7 @@ export default function DevPathSurveyV3Screen() {
   const lastRenderRef = useRef('')
   const handleReady = useCallback(() => {
     webViewRef.current?.injectJavaScript(SETUP_JS)
+    webViewRef.current?.injectJavaScript(`window.__surveyV3KeyLock && window.__surveyV3KeyLock(${keysLockedRef.current}); true;`)
     lastRenderRef.current = ''
     setReady(true)
   }, [])
@@ -483,12 +558,12 @@ export default function DevPathSurveyV3Screen() {
         ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
       ],
     }
-    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode })
+    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
     lastRenderRef.current = state
     webViewRef.current?.injectJavaScript(`window.__surveyV3Render && window.__surveyV3Render(${state}); true;`)
-  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay])
+  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor])
 
   const selectedNode = findNode(store, selected)
   const edge = findEdge(store, selectedEdge)
@@ -526,6 +601,7 @@ export default function DevPathSurveyV3Screen() {
           />
         ))}
       </View>
+      <ChainToggle visible={mode === 'add'} on={chain} onToggle={() => setChain((v) => !v)} />
       <ContextBar index={index} context={context} used={used} closeSignal={selected ?? selectedEdge} onChange={setContext} />
     </View>
   )
@@ -533,7 +609,6 @@ export default function DevPathSurveyV3Screen() {
   const editTab = (
     <>
       <Text style={ui.hint}>{activeMode.help}</Text>
-      {mode === 'add' ? <Check label="이어 찍기 (직전에 고른 점과 간선으로 잇기)" checked={chain} onToggle={() => setChain((v) => !v)} /> : null}
       {mode === 'link' && pending ? <Text style={styles.pending}>{`${pending} 에서 시작, 이을 점을 누르세요`}</Text> : null}
       <FilterBar nodes={store.nodes} index={index} filter={filter} onChange={setFilter} />
       <View style={styles.labelRow}>
@@ -585,6 +660,7 @@ export default function DevPathSurveyV3Screen() {
     <ScrollView ref={panelRef} style={wide ? styles.panelWide : styles.panelNarrow} contentContainerStyle={styles.panelBody} keyboardShouldPersistTaps="handled">
       <Text style={styles.summary}>{`경로망 조사 v3, 지점 ${store.nodes.length}, 간선 ${store.edges.length}`}</Text>
       <Text style={styles.summary}>{backupStatus}</Text>
+      {Platform.OS === 'web' ? <Text style={ui.sectionHelp}>{NUDGE_HINT}</Text> : null}
       {saveFailed ? <Text style={ui.error}>{'브라우저에 보관하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있으니 백업 파일을 내려받아 주세요.'}</Text> : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {mode === 'select' ? (
@@ -614,11 +690,7 @@ export default function DevPathSurveyV3Screen() {
           onChange={change}
           onMemo={(text, first) => commit(setNodeMemo(storeRef.current, selectedNode.id, text), first)}
           onSelect={focusNode}
-          onDelete={() => {
-            commit(removeNode(storeRef.current, selectedNode.id))
-            setNotice(`${selectedNode.id} 와 연결 간선을 지웠어요`)
-            clearSelection()
-          }}
+          onDelete={() => deleteNode(selectedNode.id)}
           onClose={clearSelection}
         />
       ) : null}

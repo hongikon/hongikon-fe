@@ -41,6 +41,26 @@ export const SETUP_JS = `(function(){
   window.__surveyV3Zoom = naver.maps.Event.addListener(map, 'zoom_changed', applyZoom);
   applyZoom();
 
+  // Arrow keys move a point by screen pixels, so the screen needs the world size at the current zoom.
+  var lastWorld = 0;
+  function reportScale(){
+    var projection = map.getProjection && map.getProjection();
+    var center = map.getCenter && map.getCenter();
+    if (!projection || !center) return;
+    var a = projection.fromCoordToOffset(center);
+    var b = projection.fromOffsetToCoord(new naver.maps.Point(a.x + 256, a.y));
+    var degrees = b.lng() - center.lng();
+    if (!(degrees > 0)) return;
+    var world = Math.round(256 * 360 / degrees);
+    if (world === lastWorld) return;
+    lastWorld = world;
+    post({ type: 'scale', worldPx: world });
+  }
+  (window.__surveyV3Scale || []).forEach(function(h){ naver.maps.Event.removeListener(h); });
+  window.__surveyV3Scale = [naver.maps.Event.addListener(map, 'zoom_changed', reportScale), naver.maps.Event.addListener(map, 'idle', reportScale)];
+  reportScale();
+  window.__surveyV3KeyLock = function(locked){ map.setOptions({ keyboardShortcuts: !locked }); };
+
   function shapeSvg(n){
     var s = n.size, w = n.ringWidth, m = w / 2, e = s - m;
     var attrs = 'fill="' + n.fill + '" stroke="' + n.ring + '" stroke-width="' + w + '" stroke-linejoin="round"';
@@ -60,9 +80,12 @@ export const SETUP_JS = `(function(){
     return '<span' + cls + ' style="position:absolute;left:29px;top:9px;font:600 11px sans-serif;color:#111827;background:rgba(255,255,255,.92);padding:0 3px;border-radius:4px;white-space:nowrap">' + parts + '</span>';
   }
   // The 34px box is the touch target. The visible shape is centered in it.
+  function anchorHtml(n){
+    return n.anchor ? '<span data-anchor="1" style="position:absolute;left:0;top:0;box-sizing:border-box;width:34px;height:34px;border:4px solid #2563EB;border-radius:50%;pointer-events:none"></span>' : '';
+  }
   function nodeHtml(n){
     return '<div style="position:relative;transform:translate(-17px,-17px);width:34px;height:34px;display:flex;align-items:center;justify-content:center;opacity:' + (n.dim ? 0.25 : 1) + (n.clickable ? '' : ';pointer-events:none') + '">'
-      + shapeSvg(n) + labelHtml(n) + '</div>';
+      + anchorHtml(n) + shapeSvg(n) + labelHtml(n) + '</div>';
   }
 
   var current = { edges: [] };
