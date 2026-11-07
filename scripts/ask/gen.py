@@ -187,7 +187,9 @@ def build(t):
             nodes[node_id] = answer(f"{PAGES[k2].get('source', '학교 홈페이지')} '{page_title(k2)}' 안내예요.", sections_of(PAGES[k2]['sections']),
                                     [{'label': source_label(k2), 'url': url_of(k2)}], t)
             follow.append({'label': page_title(k2), 'next': node_id})
-        a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + contacts_links(key), t)
+        # links: 학교 페이지 밖의 출처(백과사전·학교 공식 영상 등)를 ('라벨', 'url') 로 덧붙인다.
+        extra = [{'label': label, 'url': url} for label, url in t.get('links', [])]
+        a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + extra + contacts_links(key), t)
         if follow:
             a = {**a, 'followUps': follow}
         nodes['start'] = a
