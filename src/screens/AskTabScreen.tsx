@@ -10,6 +10,7 @@ import Button from '../components/common/Button'
 import ContentColumn from '../components/common/ContentColumn'
 import { getAskStatus, type AskStatus } from '../apis/ask'
 import { useAuth } from '../contexts/AuthContext'
+import { requestMapIntent } from '../lib/mapIntents'
 import { COLORS } from '../constants/colors'
 import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
@@ -26,6 +27,15 @@ const CONSENT_KEY = 'ask.consent.v1'
 export default function AskTabScreen() {
   const { status, accessToken, logout } = useAuth()
   const navigation = useNavigation()
+  // 답의 "지도에서 보기"(11-07): 지도 탭에 요청을 넘기고 옮긴다 — 지도 탭이 포커스될 때 꺼내 핀·시트·설명 카드를 띄운다.
+  const showOnMap = useCallback(
+    (place: { target: string; title?: string; summary?: string }) => {
+      Keyboard.dismiss()
+      requestMapIntent({ type: 'focusPlace', ...place })
+      navigation.navigate('Map' as never)
+    },
+    [navigation],
+  )
   const insets = useSafeAreaInsets()
   const tabBarHeight = useBottomTabBarHeight()
   const loggedIn = status === 'authenticated' && !!accessToken
@@ -138,6 +148,7 @@ export default function AskTabScreen() {
         bottomInset={keyboardShown ? insets.bottom : tabBarHeight}
         composerNote={note}
         onAsked={refreshStatus}
+        onShowOnMap={showOnMap}
       />
     </View>
   )

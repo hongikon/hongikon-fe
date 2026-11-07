@@ -197,6 +197,8 @@ export default function MapScreen() {
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  /** 물어보기 "지도에서 보기"로 온 곳의 짧은 설명 카드(지도 위). 닫거나 그 곳 시트를 닫으면 사라진다(11-07). */
+  const [askCard, setAskCard] = useState<{ title: string; summary: string } | null>(null);
   const previewTargetRef = useRef(previewTarget);
   previewTargetRef.current = previewTarget;
   const selectedPartnerRef = useRef(selectedPartner);
@@ -1455,6 +1457,43 @@ export default function MapScreen() {
       if (partner) handleSearchSelect(partner);
       return;
     }
+    if (intent?.type === "focusPlace") {
+      // 물어보기 답의 "지도에서 보기"(11-07). 앱 지도 데이터에 있는 곳만 — 없으면 지도만 연다(카드도 없음).
+      stopPicker();
+      clearPreview();
+      const split = intent.target.indexOf(":");
+      const kind = intent.target.slice(0, split);
+      const id = intent.target.slice(split + 1);
+      let title: string | null = null;
+      if (kind === "partner") {
+        const partner = allPartners.find((p) => p.id === id);
+        if (partner) {
+          handleSearchSelect(partner);
+          title = partner.name;
+        }
+      } else if (kind === "facility") {
+        const facility = facilities.find((f) => f.id === id);
+        if (facility) {
+          openFacilitySheet(facility.kind, facility.buildingName, facility);
+          title = [facility.note, facility.buildingName].filter(Boolean).join(" · ");
+        }
+      } else if (kind === "building") {
+        const building = buildings.find((b) => b.code === id);
+        if (building) {
+          // 지도에서 건물을 누를 때와 같은 정리(다른 시트를 닫고 건물 배너), 그 건물로 옮겨 확대.
+          setShowSearch(false);
+          setSelectedPartner(null);
+          setSelectedFacilityBuilding(null);
+          setSelectedReport(null);
+          setSelectedBuilding(building);
+          postToMap({ type: "selectBuilding", name: building.name });
+          postToMap({ type: "focusReport", lat: building.lat, lng: building.lng, zoom: FOCUS_ZOOM });
+          title = building.name;
+        }
+      }
+      setAskCard(title ? { title: intent.title || title, summary: intent.summary ?? "" } : null);
+      return;
+    }
     if (intent?.type === "previewLocation") {
       stopPicker();
       setSelectedBuilding(null);
@@ -1466,7 +1505,13 @@ export default function MapScreen() {
       // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
       showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect]);
+  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect,
+    clearPreview, facilities, buildings, openFacilitySheet, postToMap]);
+
+  // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
+  useEffect(() => {
+    if (askCard && !selectedBuilding && !selectedPartner && !selectedFacilityBuilding) setAskCard(null);
+  }, [askCard, selectedBuilding, selectedPartner, selectedFacilityBuilding]);
 
   useFocusEffect(handleMapIntent);
   // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
@@ -1761,6 +1806,32 @@ export default function MapScreen() {
                 postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
               }}
             />
+          )}
+
+          {!pickingLocation && askCard && (
+            <View style={styles.askCard} accessibilityLiveRegion="polite">
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.primary} style={styles.askCardIcon} />
+              <View style={styles.previewTextWrap}>
+                <Text style={styles.askCardTitle} numberOfLines={1}>{askCard.title}</Text>
+                {askCard.summary ? (
+                  <Text style={styles.askCardSummary} numberOfLines={3}>{askCard.summary}</Text>
+                ) : null}
+                <TouchableOpacity
+                  onPress={() => {
+                    setAskCard(null);
+                    navigation.navigate("Ask" as never);
+                  }}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="물어보기로 돌아가기"
+                >
+                  <Text style={styles.askCardBack}>물어보기로 돌아가기</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity onPress={() => setAskCard(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="설명 닫기">
+                <Ionicons name="close" size={18} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
           )}
 
           {!pickingLocation && previewTarget && (
@@ -2674,6 +2745,26 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
+  askCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.floating,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    alignSelf: "stretch",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  askCardIcon: { marginTop: 1 },
+  askCardTitle: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
+  askCardSummary: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular, marginTop: 2, lineHeight: 18 },
+  askCardBack: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.semibold, marginTop: 6 },
   previewTextWrap: { flex: 1 },
   previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
   previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
