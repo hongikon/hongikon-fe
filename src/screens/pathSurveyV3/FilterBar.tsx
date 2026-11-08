@@ -1,14 +1,15 @@
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
-import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import { StyleSheet, Text, View } from 'react-native'
+import type { BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
-import { buildingColor, type MapFilter } from './mapState'
+import { BuildingSearch, FloorPicker } from './LevelPicker'
+import { buildingColor, NO_FILTER, type MapFilter } from './mapState'
 
 /**
- * Floor filter. Only offers buildings and floors that are in the data. With a filter on, points on that
- * building and floor and all outdoor points stay strong, everything else is dimmed and cannot be pressed.
+ * Search all buildings, selecting all floors or one floor per building. Matching indoor points and
+ * all outdoor points stay strong; everything else is dimmed and cannot be pressed.
  */
 export default function FilterBar({
   nodes,
@@ -33,39 +34,62 @@ export default function FilterBar({
     return map
   }, [nodes])
 
-  const buildings = [...levelsByBuilding.keys()].sort((x, y) => (index.byCode.get(x)?.order ?? 999) - (index.byCode.get(y)?.order ?? 999))
-  const floors = filter.building ? [...(levelsByBuilding.get(filter.building) ?? [])].sort((x, y) => y - x) : []
+  const selected = filter.selections.map((selection) => selection.building)
+  // Keep codes from older survey data accessible even if absent from the current server list.
+  const unknownBuildings = [...levelsByBuilding.keys()].filter((code) => !index.byCode.has(code))
 
-  if (buildings.length === 0) return <Text style={ui.hint}>{'층 필터: 아직 내부 점이 없어요.'}</Text>
+  const toggleBuilding = (building: string) => {
+    onChange({
+      selections: selected.includes(building)
+        ? filter.selections.filter((selection) => selection.building !== building)
+        : [...filter.selections, { building, floor: null }],
+    })
+  }
+
+  const setFloor = (building: string, floor: number | null) => {
+    onChange({ selections: filter.selections.map((selection) => (selection.building === building ? { building, floor } : selection)) })
+  }
 
   return (
     <View style={styles.wrap}>
       <Text style={ui.sectionHelp}>{'층 필터'}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} keyboardShouldPersistTaps="handled">
-        <Chip label="전체" on={!filter.building} onPress={() => onChange({ building: null, floor: null })} />
-        {buildings.map((code) => (
-          <Chip
-            key={code}
-            label={shortBuildingName(index.byCode.get(code), code)}
-            on={filter.building === code}
-            color={buildingColor(index, code)}
-            onPress={() => onChange({ building: code, floor: null })}
-          />
-        ))}
-      </ScrollView>
-      {filter.building ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} keyboardShouldPersistTaps="handled">
-          <Chip label="모든 층" on={filter.floor === null} onPress={() => onChange({ building: filter.building, floor: null })} />
-          {floors.map((floor) => (
-            <Chip key={floor} label={floorChipLabel(floor)} on={filter.floor === floor} onPress={() => onChange({ building: filter.building, floor })} />
+      <Text style={ui.hint}>{'건물은 여러 개 선택할 수 있고, 건물마다 모든 층 또는 한 층을 볼 수 있어요. 선택한 건물을 다시 누르면 해제돼요.'}</Text>
+      <View style={styles.row}>
+        <Chip label="전체" on={selected.length === 0} onPress={() => onChange(NO_FILTER)} />
+      </View>
+      <BuildingSearch index={index} selected={selected} onPick={toggleBuilding} />
+      {unknownBuildings.length ? (
+        <View style={styles.row}>
+          {unknownBuildings.map((code) => (
+            <Chip key={code} label={code} on={selected.includes(code)} color={buildingColor(index, code)} onPress={() => toggleBuilding(code)} />
           ))}
-        </ScrollView>
+        </View>
       ) : null}
+      {filter.selections.map(({ building, floor }) => (
+        <View key={building} style={styles.group}>
+          <View style={styles.row}>
+            <Text style={ui.rowText}>{index.byCode.get(building)?.name ?? building}</Text>
+            <Chip label="이 건물 빼기" onPress={() => toggleBuilding(building)} />
+          </View>
+          <View style={styles.row}>
+            <Chip label="모든 층" on={floor === null} color={buildingColor(index, building)} onPress={() => setFloor(building, null)} />
+          </View>
+          <FloorPicker
+            index={index}
+            building={building}
+            selected={floor === null ? [] : [floor]}
+            used={[...(levelsByBuilding.get(building) ?? [])]}
+            single
+            onToggle={(next) => setFloor(building, floor === next ? null : next)}
+          />
+        </View>
+      ))}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
-  row: { flexDirection: 'row', gap: 6 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  group: { gap: 8, padding: 10, borderRadius: 8, backgroundColor: '#F8FAFC' },
 })
