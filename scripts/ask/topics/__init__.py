@@ -13,6 +13,7 @@
   facility    contacts.F 키, 또는 지도 시설 id('hi-…', src/constants/adminOffices.ts 의 키)
   faq         답 아래 '자주 묻는 질문' 버튼으로 붙일 FAQ 제목 / faqpage  함께 붙일 다른 페이지 키(여러 개면 목록 — 답 아래 버튼마다 하나)
   max_sections 페이지가 길 때 앞에서 몇 덩어리만 옮길지
+  links       page 답에 덧붙일 바깥 출처 [('라벨', 'url')] — 학교 페이지에 없는 사실을 lead 에 쓸 때 그 출처
 """
 import importlib, pkgutil
 

@@ -2,6 +2,7 @@ import { ASK_FLOWS, type AskFlow } from '../constants/askAnswers'
 import { ASK_PAGE_FLOWS } from '../constants/askPages'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
 import { formatFloor } from './floors'
+import { askVocabulary, fixQuestionTypos, fixTypos, qwertyToHangul } from './typoFix'
 import type { Facility } from '../types'
 
 /** 운영진이 다듬은 흐름(`ASK_FLOWS`) 먼저, 그 뒤에 학교 홈페이지 원문을 옮긴 흐름(`ASK_PAGE_FLOWS`). */
@@ -248,9 +249,29 @@ export function askOffices(
 export function matchAskFlow(
   question: string,
   flows: readonly AskFlow[] = ALL_ASK_FLOWS,
+  /** typos=false 면 오타 교정 없이(평가 스크립트가 교정 전후를 비교할 때). */
+  options: { typos?: boolean } = {},
 ): { flow: AskFlow; nodeId: string } | null {
   const text = squash(question).replace(/\|/g, '')
   if (!text) return null
+  const original = scoreFlows(text, flows)
+  if (options.typos === false) return original ? { flow: original.flow, nodeId: original.nodeId } : null
+  // 오타 교정(typoFix): 고친 글이 더 높은 점수로 걸릴 때만 쓴다 — 맞게 쓴 질문은 그대로 간다.
+  const fixed = fixQuestionTypos(question, askVocabulary(flows))
+  let best = original
+  if (fixed) {
+    const retry = scoreFlows(squash(fixed).replace(/\|/g, ''), flows)
+    if (retry && (!best || retry.score > best.score)) best = retry
+  }
+  if (!best) {
+    const hangul = qwertyToHangul(text)
+    if (hangul) best = scoreFlows(hangul, flows) ?? scoreFlows(fixTypos(hangul, askVocabulary(flows)).text, flows)
+  }
+  return best ? { flow: best.flow, nodeId: best.nodeId } : null
+}
+
+/** 걸린 낱말 길이를 더한 점수가 가장 큰 길(같으면 앞 흐름). 아무것도 안 걸리면 null. */
+function scoreFlows(text: string, flows: readonly AskFlow[]): { flow: AskFlow; nodeId: string; score: number } | null {
   // 걸린 낱말 길이를 더한 점수가 가장 큰 길로 간다('휴학 등록금'은 등록금 안내보다 휴학 흐름의 등록금 답). 같으면 앞 흐름.
   let best: { flow: AskFlow; nodeId: string; score: number } | null = null
   for (const flow of flows) {
@@ -266,5 +287,5 @@ export function matchAskFlow(
       if (hit && (!best || score > best.score)) best = { flow, nodeId: entry.node, score }
     }
   }
-  return best ? { flow: best.flow, nodeId: best.nodeId } : null
+  return best
 }

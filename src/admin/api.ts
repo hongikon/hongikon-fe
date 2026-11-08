@@ -3,6 +3,10 @@ import { buildWebKakaoLoginUrl, exchangeAuthCode, logoutRequest, type TokenRespo
 import { clearTokens, getTokens, saveTokens, type MockMode } from './session'
 import { refreshMapData } from '../lib/mapData'
 import type {
+  AdminAskFeedbackResponse,
+  AdminAskNote,
+  AdminAskReport,
+  AskFeedbackFilter,
   AdminBuildingOption,
   AdminExhibition,
   AdminExhibitionInput,
@@ -358,6 +362,40 @@ export function grantAdmin(userId: number): Promise<AdminUser> {
 /** 관리자 권한 해제. 자기 자신은 400(콘솔에서 스스로 쫓겨나거나 관리자가 0명이 되지 않게). */
 export function revokeAdmin(userId: number): Promise<AdminUser> {
   return adminRequest<AdminUser>(`/admin/users/${userId}/revoke-admin`, { method: 'POST', retries: 0 })
+}
+
+// ── 물어보기 피드백 ─────────────────────────────────────────────────────
+
+export function fetchAskFeedback(filter: AskFeedbackFilter, days: number, signal?: AbortSignal): Promise<AdminAskFeedbackResponse> {
+  return adminRequest<AdminAskFeedbackResponse>(
+    `/admin/ask/feedback?status=${encodeURIComponent(filter)}&days=${days}`,
+    { signal },
+  )
+}
+
+export function fetchAskReport(days: number, signal?: AbortSignal): Promise<AdminAskReport> {
+  return adminRequest<AdminAskReport>(`/admin/ask/feedback/report?days=${days}`, { signal })
+}
+
+export async function fetchAskNotes(signal?: AbortSignal): Promise<AdminAskNote[]> {
+  const response = await adminRequest<{ notes: AdminAskNote[] }>('/admin/ask/notes', { signal })
+  return response?.notes ?? []
+}
+
+export function createAskNote(input: { question: string; answer: string; askRef?: string | null }): Promise<AdminAskNote> {
+  return adminRequest<AdminAskNote>('/admin/ask/notes', {
+    method: 'POST',
+    body: { question: input.question, answer: input.answer, askRef: input.askRef ?? undefined },
+    retries: 0,
+  })
+}
+
+export function updateAskNote(id: number, patch: { question?: string; answer?: string; active?: boolean }): Promise<AdminAskNote> {
+  return adminRequest<AdminAskNote>(`/admin/ask/notes/${id}`, { method: 'PATCH', body: patch, retries: 0 })
+}
+
+export function reviewAskFeedback(source: 'ROUTE' | 'FLOW', id: number, reviewed: boolean): Promise<void> {
+  return adminRequest<void>(`/admin/ask/feedback/${source}/${id}`, { method: 'PATCH', body: { reviewed }, retries: 0 })
 }
 
 // ── 문의 ──────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import {
   Linking,
   KeyboardAvoidingView,
   Platform,
+  Image,
   Animated,
   Easing,
   type NativeScrollEvent,
@@ -21,14 +22,30 @@ import { FONTS, TYPE } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
 import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
 import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
-import { routeAsk, sendAskFeedback, streamAsk, type AskAuth, type AskRouteResult, type AskRouteTurn, type AskStreamEvent } from "../../apis/ask";
+import {
+  ASK_FEEDBACK_REASONS,
+  getPopularGuides,
+  routeAsk,
+  sendAskFeedback,
+  sendFlowFeedback,
+  streamAsk,
+  type AskAuth,
+  type AskAction,
+  type AskFeedbackReason,
+  type AskRouteResult,
+  type AskRouteTurn,
+  type AskStreamEvent,
+} from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
+import { pickAttachImages, ATTACH_MAX_IMAGES } from "../../utils/attachImages";
+import { uploadReportImage, type PickedReportImage } from "../../apis/reports";
 import { ApiError, getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
 import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
+import { defaultGuides, guidesFromIds, isGreeting, type GreetingGuide } from "../../utils/askGreeting";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
 const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
@@ -52,7 +69,19 @@ type ChatMessage =
       followed: boolean;
       viaServer: boolean;
     }
-  | { id: number; role: "feedback"; question: string; resolved: boolean | null; logId?: number | null }
+  | {
+      id: number;
+      role: "feedback";
+      question: string;
+      resolved: boolean | null;
+      logId?: number | null;
+      /** 앱 안내 흐름 답이면 그 흐름(서버 기록 logId 가 없을 때 /ask/feedback 으로 남긴다). */
+      flowRef?: { flowId: string; nodeId: string } | null;
+      /** 이 응답 한 번의 임의 값 — 이유를 고르며 다시 보내면 서버가 같은 행을 고친다. */
+      clientId?: string;
+      /** '해결 안 됨'의 이유(한 번 누름). */
+      reason?: AskFeedbackReason | null;
+    }
   | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
   /** 서버가 안내 원문 안에서만 쓴 답. sources 는 근거 안내('근거 안내 보기'로 원문을 펼친다). */
   | {
@@ -65,6 +94,8 @@ type ChatMessage =
       links: { title: string; url: string | null; date: string | null }[];
       /** 서버가 정해 보낸 버튼(학교 페이지·전화·위치). null 이면 옛 서버 — 앱의 안내 데이터에서 찾는다. */
       buttons: { pages: { title: string; url: string }[]; phones: { label: string; phone: string }[]; facilityId: string | null } | null;
+      /** 서버가 보낸 앱 조작 버튼(11-07, 지금은 'map'). 옛 서버면 빈 목록 — 위치는 buttons.facilityId·안내 데이터에서. */
+      appActions: AskAction[];
       question: string;
       /** 서버가 아직 답을 만들고 있다(진행 단계와 답 글자가 실시간으로 바뀐다). */
       streaming: boolean;
@@ -83,6 +114,8 @@ type ChatMessage =
       moreOpen: boolean;
     }
   | { id: number; role: "text"; text: string }
+  /** 인사(하이·ㅎㅇ)에 앱이 바로 하는 답 — 요즘 많이 찾는 안내(없으면 기본 안내) 칩. 누르면 앱 안 안내를 연다(서버·한도 안 씀). */
+  | { id: number; role: "greeting"; guides: GreetingGuide[]; popular: boolean; chosen: string | null }
   /**
    * 해결이 안 됐을 때 운영진에게 넘기기(기존 문의하기 /feedback, 게스트). 보낼 내용(질문·홍익온 답·근거)을 미리 보여 주고,
    * 학생이 더 알고 싶은 점·답 받을 이메일(선택)을 적어 직접 보내기를 눌러야만 보낸다.
@@ -97,7 +130,20 @@ type ChatMessage =
       contact: string;
       status: "editing" | "sending" | "sent";
       error: string | null;
+      /** 참고 사진(선택, 최대 3장, 로그인 필요). 보낼 때 올린다. */
+      images?: PickedReportImage[];
+      /** 이 문의가 나온 답 기록('route:123' / 'flow:{clientId}'). 관리자 '물어보기 피드백'에 붙는다. */
+      askRef?: string | null;
     };
+
+/** 지도 위 설명 카드에 쓸 첫 문장(마크다운 굵게 표시는 뗀다, 90자까지). */
+function firstSentence(text: string | undefined): string | undefined {
+  if (!text) return undefined;
+  const plain = text.replace(/\*\*/g, "").trim();
+  const match = plain.match(/^[\s\S]*?(?:[.?!](?=\s|$)|\n)/);
+  const first = (match ? match[0] : plain).trim();
+  return first.length > 90 ? `${first.slice(0, 89).trimEnd()}…` : first || undefined;
+}
 
 type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
 
@@ -117,6 +163,11 @@ interface AskChatProps {
   bottomInset?: number;
   /** 입력줄 위 한 줄(오늘 남은 질문 수 등). */
   composerNote?: string | null;
+  /**
+   * "지도에서 보기"(11-07, docs/ask-app-actions-plan.md). 있으면 위치가 있는 답에 버튼을 단다 — 앱 탭이 지도 탭으로 옮긴다.
+   * 없으면(웹 /dev/ask, 지도와 떨어진 화면) 위치를 글로만 보인다.
+   */
+  onShowOnMap?: (place: { target: string; title?: string; summary?: string }) => void;
   /** 서버에 한 번 물은 뒤(성공·실패 모두) — 남은 수를 다시 받는다. */
   onAsked?: () => void;
 }
@@ -182,7 +233,7 @@ function askFailureText(error: unknown, app: boolean): string {
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
-export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onAsked }: AskChatProps) {
+export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onShowOnMap, onAsked }: AskChatProps) {
   const insets = useSafeAreaInsets();
   const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
   const appMode = !serverKey;
@@ -202,6 +253,11 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       : `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
   ).current;
   const nextId = useRef(1);
+  /** '해결됐나요' 응답 한 번의 임의 값(사람·기기와 잇지 않는다). */
+  const newClientId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const listRef = useRef<FlatList<ChatMessage>>(null);
   /** 맨 아래 근처를 보고 있는지(새 글자가 오면 따라 내릴지). */
   const atBottomRef = useRef(true);
@@ -211,7 +267,16 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const userTextStyle = appMode ? [styles.userText, styles.userTextApp] : styles.userText;
   const [showJump, setShowJump] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { facilities } = useMapData();
+  const { facilities, buildings, partners } = useMapData();
+  /** 요즘 많이 찾는 안내 — 탭을 열 때 한 번 받아 둔다(인사할 때 기다리지 않게). 못 받으면 빈 목록 → 기본 안내. */
+  const popularRef = useRef<GreetingGuide[]>([]);
+  useEffect(() => {
+    const abort = new AbortController();
+    getPopularGuides(abort.signal).then((ids) => {
+      if (!abort.signal.aborted) popularRef.current = guidesFromIds(ids);
+    });
+    return () => abort.abort();
+  }, []);
 
   /** 말풍선을 잇고 붙인 id 를 돌려준다. id 는 상태 갱신 함수 밖에서 매긴다(개발 모드에서 갱신 함수가 두 번 돌아도 겹치지 않게). */
   const push = (...items: NewMessage[]) => {
@@ -249,14 +314,14 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   };
 
   /** 흐름의 한 단계를 대화에 잇는다. 끝 답이면 '해결됐나요?'를 붙인다. */
-  const stepMessages = (flowId: string, nodeId: string, question: string, viaServer = false): NewMessage[] => {
+  const stepMessages = (flowId: string, nodeId: string, question: string, viaServer = false, logId: number | null = null): NewMessage[] => {
     const flow = ALL_ASK_FLOWS.find((item) => item.id === flowId);
     const node = flow?.nodes[nodeId];
     if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
     if (node.kind === "question") return [{ role: "question", node, flowId, nodeId, chosen: null, viaServer }];
     return [
       { role: "answer", node, flowId, nodeId, checkedAt: flow.checkedAt, question, followed: false, viaServer },
-      { role: "feedback", question, resolved: null },
+      { role: "feedback", question, resolved: null, logId, flowRef: { flowId, nodeId }, clientId: newClientId() },
     ];
   };
 
@@ -317,6 +382,15 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     haptics.selection();
     setInput("");
     atBottomRef.current = true;
+    if (isGreeting(question)) {
+      // 인사만 왔으면 서버에 묻지 않는다(학교 안내에 걸릴 말이 없어 '못 찾았어요'가 나왔다, 11-07).
+      const popular = popularRef.current;
+      push(
+        { role: "user", text: question },
+        { role: "greeting", guides: popular.length > 0 ? popular : defaultGuides(), popular: popular.length > 0, chosen: null },
+      );
+      return;
+    }
     const matched = matchAskFlow(question) ?? followUpMatch(question);
     const history = recentTurns();
     push({ role: "user", text: question });
@@ -337,6 +411,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       sources: [],
       links: [],
       buttons: null,
+      appActions: [],
       question,
       streaming: true,
       stopped: false,
@@ -398,6 +473,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
           buttons: result.pages
             ? { pages: result.pages, phones: result.phones ?? [], facilityId: result.facilityId ?? null }
             : null,
+          appActions: result.actions ?? [],
           streaming: false,
           logId: result.logId ?? null,
           sections: result.sections
@@ -415,14 +491,25 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       removeLive();
       const step = findStep(result.nodeId);
       if (step) {
-        push(...stepMessages(step.flowId, step.nodeId, question, true));
+        push(...stepMessages(step.flowId, step.nodeId, question, true, result.logId ?? null));
         return;
       }
       // 서버가 맞는 안내를 못 찾았다(none). 여기서 앱 낱말 찾기로 돌아가면 낱말만 겹치는 엉뚱한 안내가 나온다
       // ('K동 공동학습실' → '공동학습실' 낱말이 도서관 안내에 걸림, 10-16) — 못 찾았다고 하고 운영진에게 물어볼 길을 준다.
       push(
         { role: "text", text: "홍익온 안내에서 맞는 내용을 찾지 못했어요. 다른 말로 물어보거나 운영진에게 물어봐 주세요." },
-        { role: "handoff", question, answer: "", sources: [], note: "", contact: "", status: "editing", error: null },
+        {
+          role: "handoff",
+          question,
+          answer: "",
+          sources: [],
+          note: "",
+          contact: "",
+          status: "editing",
+          error: null,
+          images: [],
+          askRef: result.logId ? `route:${result.logId}` : null,
+        },
       );
       return;
     } catch (error) {
@@ -462,6 +549,14 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
+  };
+
+  const chooseGuide = (message: Extract<ChatMessage, { role: "greeting" }>, guide: GreetingGuide) => {
+    if (message.chosen !== null || pending) return;
+    haptics.selection();
+    atBottomRef.current = true;
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: guide.label } : item)));
+    push({ role: "user", text: guide.label }, ...stepMessages(guide.flowId, guide.nodeId, guide.label));
   };
 
   /**
@@ -630,6 +725,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         {tail ? <Text style={[styles.botText, styles.replyTail]}>{tail}</Text> : null}
         {sections.length > 0 ? cursor : null}
         {place ? renderPlace(place) : null}
+        {item.streaming ? null : mapButtonFor(item, place ?? null)}
         {actions.slice(0, VISIBLE_ACTIONS)}
         {actions.length > VISIBLE_ACTIONS ? (
           <>
@@ -701,8 +797,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     if (message.resolved !== null) return;
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, resolved } : item)));
-    // 서버 답이면 그 기록에 응답을 붙인다(무엇이 해결 안 됐는지 알아야 고친다). 실패해도 화면은 그대로.
-    if (message.logId && auth) sendAskFeedback(message.logId, conversationId, resolved, auth).catch(() => {});
+    // 서버 답이면 그 기록에, 앱 안내 흐름 답이면 익명 기록에 응답을 남긴다(무엇이 해결 안 됐는지 알아야 고친다). 실패해도 화면은 그대로.
+    reportFeedback(message, resolved);
     if (resolved) {
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
@@ -732,6 +828,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       contact: "",
       status: "editing",
       error: null,
+      images: [],
+      askRef: feedbackRef(message),
     };
     if (phone) {
       push({ role: "text", text: `위 안내의 담당 부서(${phone.label} ${phone.phone})에 물어보면 가장 정확해요.` }, handoff);
@@ -744,6 +842,61 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         : { role: "text", text: "더 도와드리지 못해 아쉬워요. 위 학교 안내 페이지의 담당 부서로 문의해 보세요." },
       handoff,
     );
+  };
+
+  /** 이 응답이 어느 답 기록인지 — 운영진 문의를 그 답에 잇는다. */
+  const feedbackRef = (message: Extract<ChatMessage, { role: "feedback" }>): string | null =>
+    message.logId ? `route:${message.logId}` : message.flowRef && message.clientId ? `flow:${message.clientId}` : null;
+
+  const reportFeedback = (message: Extract<ChatMessage, { role: "feedback" }>, resolved: boolean, reason?: AskFeedbackReason) => {
+    if (message.logId && auth) {
+      sendAskFeedback(message.logId, conversationId, resolved, auth, reason).catch(() => {});
+    } else if (message.flowRef && message.clientId) {
+      sendFlowFeedback({ question: message.question, ...message.flowRef, resolved, clientId: message.clientId, reason }).catch(() => {});
+    }
+  };
+
+  /** '해결 안 됨' 뒤 이유 한 번 누르기. 한 번 고르면 바꾸지 않는다(버튼이 사라진다). */
+  const chooseReason = (message: Extract<ChatMessage, { role: "feedback" }>, reason: AskFeedbackReason) => {
+    if (message.resolved !== false || message.reason) return;
+    haptics.selection();
+    setMessages((prev) => prev.map((item) => (item.id === message.id && item.role === "feedback" ? { ...item, reason } : item)));
+    reportFeedback(message, false, reason);
+  };
+
+  const renderReasons = (item: Extract<ChatMessage, { role: "feedback" }>) => {
+    if (item.resolved !== false || (!item.logId && !item.flowRef)) return null;
+    if (item.reason) {
+      const label = ASK_FEEDBACK_REASONS.find((r) => r.code === item.reason)?.label;
+      return <Text style={styles.reasonDone}>{label ? `'${label}' 알려 주셔서 고마워요. 운영진이 확인하고 고칠게요.` : null}</Text>;
+    }
+    return (
+      <View style={styles.reasonBox}>
+        <Text style={styles.reasonTitle}>어떤 점이 아쉬웠나요?</Text>
+        <View style={styles.reasonRow}>
+          {ASK_FEEDBACK_REASONS.map((r) => (
+            <TouchableOpacity
+              key={r.code}
+              style={styles.reasonChip}
+              activeOpacity={0.7}
+              onPress={() => chooseReason(item, r.code)}
+              accessibilityRole="button"
+              accessibilityLabel={r.label}
+            >
+              <Text style={styles.reasonChipText}>{r.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const addHandoffImages = async (message: Extract<ChatMessage, { role: "handoff" }>) => {
+    const current = message.images ?? [];
+    const result = await pickAttachImages(current);
+    if (result.images.length !== current.length || result.error) {
+      updateHandoff(message.id, { images: result.images, error: result.error });
+    }
   };
 
   const updateHandoff = (id: number, patch: Partial<Extract<ChatMessage, { role: "handoff" }>>) =>
@@ -772,8 +925,27 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     haptics.selection();
     updateHandoff(message.id, { status: "sending", error: null });
     try {
+      // 사진은 로그인한 문의만 붙는다(서버 규칙). 하나라도 못 올리면 보내지 않고 알린다 — 학생이 사진을 빼거나 다시 보낸다.
+      const token = auth && "accessToken" in auth ? auth.accessToken : null;
+      const images = message.images ?? [];
+      const imageKeys: string[] = [];
+      if (images.length > 0) {
+        if (!token) {
+          updateHandoff(message.id, { status: "editing", error: "사진을 붙이려면 로그인해 주세요." });
+          return;
+        }
+        for (const image of images) imageKeys.push(await uploadReportImage(image, token));
+      }
       // POST 라 자동으로 다시 보내지 않는다(중복 접수 방지). 실패하면 학생이 다시 누른다.
-      await submitFeedback({ content: handoffContent(message), contact: contact || undefined });
+      await submitFeedback(
+        {
+          content: handoffContent(message),
+          contact: contact || undefined,
+          imageKeys: imageKeys.length > 0 ? imageKeys : undefined,
+          askRef: message.askRef ?? undefined,
+        },
+        token,
+      );
       updateHandoff(message.id, { status: "sent" });
       haptics.success();
     } catch (error) {
@@ -832,6 +1004,48 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         <Ionicons name="location" size={14} color={COLORS.primary} />
         <Text style={styles.placeText}>{[facility.note, place].filter(Boolean).join(" · ")}</Text>
       </View>
+    );
+  };
+
+  /** 지도 대상 이름 — 앱 지도 데이터에 있는 곳만(없으면 버튼을 그리지 않는다). */
+  const placeName = (target: string): string | null => {
+    const split = target.indexOf(":");
+    const kind = target.slice(0, split);
+    const id = target.slice(split + 1);
+    if (kind === "building") return buildings.find((b) => b.code === id)?.name ?? null;
+    if (kind === "partner") return partners.find((p) => p.id === id)?.name ?? null;
+    if (kind === "facility") {
+      const facility = facilities.find((f) => f.id === id);
+      return facility ? [facility.note, facility.buildingName].filter(Boolean).join(" · ") : null;
+    }
+    return null;
+  };
+
+  /** 답의 지도 버튼 — 서버가 보낸 'map' 조작이 먼저, 없으면(옛 서버·앱 안내) 근거 안내의 위치. */
+  const mapButtonFor = (item: Extract<ChatMessage, { role: "reply" }>, place: string | null) => {
+    const action = item.appActions.find((candidate) => candidate.type === "map");
+    if (action) return renderMapButton(action, `map-${item.id}`);
+    return place ? renderMapButton({ target: `facility:${place}`, summary: firstSentence(item.text) }, `map-${item.id}`) : null;
+  };
+
+  /** "지도에서 보기" 버튼(11-07). 누르면 지도 탭으로 옮겨 그 곳에 핀·시트, 위에 summary 카드. */
+  const renderMapButton = (action: { target: string; label?: string | null; summary?: string | null }, key: string) => {
+    if (!onShowOnMap) return null;
+    const name = placeName(action.target);
+    if (!name) return null;
+    const title = action.label || name;
+    return (
+      <TouchableOpacity
+        key={key}
+        style={styles.mapButton}
+        activeOpacity={0.7}
+        onPress={() => onShowOnMap({ target: action.target, title, summary: action.summary ?? undefined })}
+        accessibilityRole="button"
+        accessibilityLabel={`${title} 지도에서 보기`}
+      >
+        <Ionicons name="map-outline" size={15} color={COLORS.white} />
+        <Text style={styles.mapButtonText} numberOfLines={1}>지도에서 보기 · {title}</Text>
+      </TouchableOpacity>
     );
   };
 
@@ -904,6 +1118,41 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                   editable={item.status === "editing"}
                   accessibilityLabel="답 받을 이메일"
                 />
+                {auth && "accessToken" in auth ? (
+                  <View style={styles.attachRow}>
+                    {(item.images ?? []).map((image) => (
+                      <View key={image.uri} style={styles.attachThumbWrap}>
+                        <Image source={{ uri: image.uri }} style={styles.attachThumb} accessibilityLabel="붙인 사진" />
+                        {item.status === "editing" ? (
+                          <TouchableOpacity
+                            style={styles.attachRemove}
+                            onPress={() => updateHandoff(item.id, { images: (item.images ?? []).filter((x) => x.uri !== image.uri), error: null })}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            accessibilityLabel="사진 빼기"
+                          >
+                            <Ionicons name="close" size={12} color={COLORS.white} />
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    ))}
+                    {(item.images ?? []).length < ATTACH_MAX_IMAGES && item.status === "editing" ? (
+                      <TouchableOpacity
+                        style={styles.attachAdd}
+                        activeOpacity={0.7}
+                        onPress={() => addHandoffImages(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`사진 붙이기, ${(item.images ?? []).length}장 붙임, 최대 ${ATTACH_MAX_IMAGES}장`}
+                      >
+                        <Ionicons name="image-outline" size={18} color={COLORS.textSecondary} />
+                        <Text style={styles.attachAddText}>사진 {(item.images ?? []).length}/{ATTACH_MAX_IMAGES}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : null}
+                {(item.images ?? []).length > 0 ? (
+                  <Text style={styles.attachHint}>학번·전화번호처럼 개인정보가 보이면 가리고 붙여 주세요. 사진은 확인이 끝나면 지워요.</Text>
+                ) : null}
                 {item.error ? <Text style={styles.handoffError}>{item.error}</Text> : null}
                 <TouchableOpacity
                   style={[styles.handoffSend, item.status === "sending" && styles.sendOff]}
@@ -921,6 +1170,31 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         );
       case "reply":
         return renderReply(item);
+      case "greeting":
+        return (
+          <View style={botStyle}>
+            <Text style={styles.botText}>안녕하세요! 학교에서 궁금한 걸 편하게 물어보세요.</Text>
+            {item.chosen === null && item.guides.length > 0 ? (
+              <>
+                <Text style={styles.followTitle}>{item.popular ? "요즘 많이 찾는 안내" : "이런 걸 물어볼 수 있어요"}</Text>
+                <View style={styles.examples}>
+                  {item.guides.map((guide) => (
+                    <TouchableOpacity
+                      key={`${guide.flowId}/${guide.nodeId}`}
+                      style={styles.example}
+                      activeOpacity={0.7}
+                      onPress={() => chooseGuide(item, guide)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${guide.label} 안내 보기`}
+                    >
+                      <Text style={styles.exampleText}>{guide.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </View>
+        );
       case "question":
         return (
           <View style={botStyle}>
@@ -953,6 +1227,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
             {brief.shown.map((section, index) => renderSection(section, `${index}`))}
             {brief.cut ? <Text style={styles.checked}>전체 내용은 아래 학교 페이지에서 볼 수 있어요.</Text> : null}
             {item.node.facilityId ? renderPlace(item.node.facilityId) : null}
+            {item.node.facilityId ? renderMapButton({ target: `facility:${item.node.facilityId}`, summary: firstSentence(item.node.text) }, `map-${item.id}`) : null}
             {item.node.phones?.map((p) => renderPhone(p.label, p.phone, p.phone))}
             {item.node.followUps && !item.followed ? (
               <View style={styles.options}>
@@ -984,6 +1259,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         if (appMode) {
           // Claude·ChatGPT 앱처럼 답 바로 아래 엄지 아이콘 두 개. 아래를 누르면 담당 부서·운영진 문의로 잇는다.
           return (
+            <View>
             <View style={styles.feedbackIcons}>
               {item.resolved !== false ? (
                 <TouchableOpacity
@@ -1009,6 +1285,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                   <Ionicons name={item.resolved === false ? "thumbs-down" : "thumbs-down-outline"} size={17} color={COLORS.textTertiary} />
                 </TouchableOpacity>
               ) : null}
+            </View>
+            {renderReasons(item)}
             </View>
           );
         }
@@ -1039,6 +1317,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
             ) : (
               <Text style={styles.feedbackDone}>{item.resolved ? "네, 해결됐어요" : "아니요, 더 알고 싶어요"}</Text>
             )}
+            {renderReasons(item)}
           </View>
         );
       case "offices":
@@ -1476,6 +1755,19 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontFamily: FONTS.bold, color: COLORS.textPrimary },
   place: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   placeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginTop: 2,
+    maxWidth: "100%",
+  },
+  mapButtonText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.white },
   placeText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.medium, color: COLORS.textPrimary },
   contact: { flexDirection: "row", alignItems: "center", gap: 10 },
   duty: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.regular, color: COLORS.textSecondary },
@@ -1533,6 +1825,47 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   handoffNote: { minHeight: 72, textAlignVertical: "top" },
+  reasonBox: { marginTop: 6 },
+  reasonTitle: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary, marginBottom: 6 },
+  reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  reasonChip: {
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: COLORS.white,
+  },
+  reasonChipText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.textPrimary },
+  reasonDone: { marginTop: 6, fontSize: 13, lineHeight: 19, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  attachRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  attachThumbWrap: { width: 56, height: 56 },
+  attachThumb: { width: 56, height: 56, borderRadius: RADIUS.md, backgroundColor: COLORS.background },
+  attachRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.textPrimary,
+  },
+  attachAdd: {
+    height: 56,
+    minWidth: 56,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  attachAddText: { fontSize: 11, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  attachHint: { marginTop: 6, fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textTertiary },
   handoffError: { marginTop: 6, fontSize: 12, fontFamily: FONTS.regular, color: COLORS.danger },
   handoffSend: { marginTop: 10, borderRadius: RADIUS.md, paddingVertical: 11, alignItems: "center", backgroundColor: COLORS.primary },
   handoffSendText: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.white },
