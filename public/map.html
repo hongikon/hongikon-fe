@@ -6,6 +6,9 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; }
+    /* 길찾기 경로가 그려진 동안 칩 핀(편의시설·제휴)을 흐리게 해 경로가 묻히지 않게 한다(11-08, setRouteFocus). */
+    .hk-pin { transition: opacity .2s; }
+    #map.route-focus .hk-pin { opacity: .5; }
   </style>
 </head>
 <body>
@@ -539,7 +542,8 @@
       var nameLine = (selected ? 12 : 11) + 6;
       var boxH = PARTNER_PAD_TOP + badge + PARTNER_GAP + nameLine;
       return {
-        content: '<div style="width:' + PARTNER_BOX_W + 'px;padding-top:' + PARTNER_PAD_TOP + 'px;pointer-events:none;">'
+        // 고른 업체 핀은 길찾기 중에도 흐리게 하지 않는다.
+        content: '<div class="' + (selected ? '' : 'hk-pin') + '" style="width:' + PARTNER_BOX_W + 'px;padding-top:' + PARTNER_PAD_TOP + 'px;pointer-events:none;">'
           + partnerLabelHTML(partner, selected) + '</div>',
         size: new naver.maps.Size(PARTNER_BOX_W, boxH),
         anchor: new naver.maps.Point(PARTNER_BOX_W / 2, PARTNER_PAD_TOP + badge / 2),
@@ -802,7 +806,7 @@
           map: map,
           zIndex: 150,
           icon: {
-            content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
+            content: '<div class="hk-pin" style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
               + facilityLabelHTML(item) + '</div>',
             size: new naver.maps.Size(boxW, boxH),
             anchor: new naver.maps.Point(boxW / 2, padTop + badge / 2),
@@ -887,7 +891,7 @@
           },
         });
         naver.maps.Event.addListener(marker, 'click', function() {
-          if (pickerActive) return;
+          if (pickerActive || window.__surveyMode) return;
           lastMarkerClickAt = new Date().getTime();
           selectedBuildingName = building.name;
           renderBuildings();
@@ -1006,7 +1010,7 @@
     }
 
     naver.maps.Event.addListener(map, 'click', function(e) {
-      if (pickerActive) return;
+      if (pickerActive || window.__surveyMode) return;
       // 관성 스크롤이 남아 있는 채로 탭해도 배너가 바로 돌아오게 한다.
       post({ type: 'mapDragEnd' });
       map.setOptions({ scaleControl: true });
@@ -1306,6 +1310,10 @@
               zIndex: isSelected ? 200 : 100,
             });
           });
+        }
+
+        if (msg.type === 'setRouteFocus') {
+          container.classList.toggle('route-focus', !!msg.on);
         }
 
         if (msg.type === 'sheetOpen') {

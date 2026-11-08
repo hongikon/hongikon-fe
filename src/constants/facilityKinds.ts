@@ -82,3 +82,22 @@ export function isFacilityKind(key: string): key is FacilityKind {
 export function facilityKindLabel(key: FacilityKind): string {
   return META_BY_KEY.get(key)?.label ?? key
 }
+
+/**
+ * 지도 칩·시트에서 숨기는 종류. 엘리베이터는 위치가 건물 단위로만 확인돼 쓸모가 적어 숨긴다(데이터는 남겨 둔다, 10-02 요청).
+ * 칩 줄과 건물 시트의 '건물 안 시설'이 같은 목록을 쓰도록 여기 둔다(11-08 — 시트가 칩과 어긋나 엘리베이터가 보였다).
+ */
+const HIDDEN_FACILITY_KINDS: ReadonlySet<FacilityKind> = new Set<FacilityKind>(['엘리베이터'])
+
+/** 지도 칩 줄·건물 시트에 보이는 종류(칩 순서). */
+export const VISIBLE_FACILITY_KINDS: readonly FacilityKindMeta[] = FACILITY_KINDS.filter(
+  (meta) => !HIDDEN_FACILITY_KINDS.has(meta.key),
+)
+
+/** 칩에는 짧게. 서버 값 '행사·전시'의 행사는 이제 제보로 받는다. 검색어로는 `facilityKindLabel`(긴 이름)을 그대로 쓴다. */
+const CHIP_LABEL: Partial<Record<FacilityKind, string>> = { '행사·전시': '전시' }
+
+/** 지도 칩·건물 시트·시설 시트 머리에 보이는 이름. */
+export function facilityChipLabel(key: FacilityKind): string {
+  return CHIP_LABEL[key] ?? facilityKindLabel(key)
+}

@@ -4,10 +4,9 @@ import { KindIcon } from "./ChipIcon";
 import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, Linking, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { facilityKindLabel } from '../../constants/facilityKinds'
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
-import { FACILITY_KINDS } from "../../constants/facilityKinds";
+import { FACILITY_KINDS, facilityChipLabel } from "../../constants/facilityKinds";
 import type { Exhibition, Facility, FacilityKind } from "../../types";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
@@ -27,6 +26,7 @@ import CafeteriaMenu from "./CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeDetail } from "../../constants/adminOffices";
 import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
+import RouteEndpointButtons, { type RouteNext } from "./RouteEndpointButtons";
 
 interface FacilitySheetProps {
   kind: FacilityKind;
@@ -43,6 +43,13 @@ interface FacilitySheetProps {
   officeDetails?: Record<string, AdminOfficeDetail>;
   /** 검색으로 찾아온 시설 id. 그 줄을 메인 색 테두리로 표시하고 보이게 스크롤한다(10-12 요청). */
   highlightId?: string | null;
+  /**
+   * 이 시설이 있는 건물을 길찾기 출발·도착으로 정하는 버튼(11-08). 셋 다 있을 때만 그린다 — 지도 데이터에 그 건물이 없거나
+   * 길찾기가 꺼져 있으면 넘기지 않는다.
+   */
+  onSetFrom?: () => void;
+  onSetTo?: () => void;
+  routeNext?: RouteNext;
 }
 
 /**
@@ -51,7 +58,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null }: FacilitySheetProps) {
+export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null, onSetFrom, onSetTo, routeNext = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -101,7 +108,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
       <View style={styles.header}>
         {openOffice && officeDetail ? (
           <View style={styles.titleRow}>
-            <IconButton icon="chevron-back" size={22} color={COLORS.textPrimary} onPress={() => showOffice(null)} accessibilityLabel={`${facilityKindLabel(kind)} 목록으로`} />
+            <IconButton icon="chevron-back" size={22} color={COLORS.textPrimary} onPress={() => showOffice(null)} accessibilityLabel={`${facilityChipLabel(kind)} 목록으로`} />
             <View style={styles.titleText}>
               <Text style={styles.name} numberOfLines={1}>{splitFacilityNote(openOffice.note ?? kind).title}</Text>
               <Text style={styles.building}>
@@ -118,7 +125,7 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
             <KindIcon name={meta?.icon ?? "location"} size={15} color={COLORS.white} />
           </View>
           <View>
-            <Text style={styles.name}>{facilityKindLabel(kind)}</Text>
+            <Text style={styles.name}>{facilityChipLabel(kind)}</Text>
             <Text style={styles.building}>{buildingName}</Text>
           </View>
         </View>
@@ -133,6 +140,10 @@ export default function FacilitySheet({ kind, buildingName, items, exhibitions, 
         />
       </View>
 
+      {/* 부서 안내를 펼친 동안에는 숨긴다. 출발·도착은 이 시설이 있는 건물로 정한다. */}
+      {onSetFrom && onSetTo && !(openOffice && officeDetail) && (
+        <RouteEndpointButtons name={buildingName} routeNext={routeNext} onSetFrom={onSetFrom} onSetTo={onSetTo} />
+      )}
       </View>
 
       <SheetScrollBody
