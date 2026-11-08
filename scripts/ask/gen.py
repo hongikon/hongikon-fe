@@ -216,12 +216,16 @@ def build(t):
             nodes['start'] = {'kind': 'question', 'text': t['question'], 'options': opts}
     else:
         opts = []
+        # pages_text·pages_label: 쪽마다 붙는 첫 줄·출처 이름({title} 자리). 없으면 그 페이지 출처대로(11-09: 동아리 문구가 교양 규칙에도 붙던 것을 고침).
         for i, key in enumerate(t['pages']):
             title = page_title(key)
-            nodes[f'p{i}'] = answer(f"총동아리연합회 '{title}' 분과 동아리예요.", sections_of(PAGES[key]['sections']),
-                                    [{'label': f'학교 홈페이지 · 동아리({title})', 'url': url_of(key)}], t)
+            text = t.get('pages_text', "{source} '{title}' 안내예요.").format(title=title, source=PAGES[key].get('source', '학교 홈페이지'))
+            label = t['pages_label'].format(title=title) if 'pages_label' in t else source_label(key)
+            nodes[f'p{i}'] = answer(text, sections_of(PAGES[key]['sections']), [{'label': label, 'url': url_of(key)}], t)
             opts.append({'label': title, 'next': f'p{i}'})
-        nodes['start'] = {'kind': 'question', 'text': t['question'], 'options': opts}
+        # lead 가 있으면 고르기 전에 먼저 답한다.
+        question = f"{t['lead']}\n\n{t['question']}" if t.get('lead') else t['question']
+        nodes['start'] = {'kind': 'question', 'text': question, 'options': opts}
     for n in nodes.values():
         if n['kind'] == 'answer' and not n['sections']:
             raise SystemExit(f"{t['id']}: 빈 답")

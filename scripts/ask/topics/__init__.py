@@ -8,7 +8,8 @@
   match       들어오는 길 목록. 길 하나 = 낱말 묶음 목록(묶음끼리 AND, 묶음 안 OR). 공백 없이, 소문자로 쓴다
   exclude     이 낱말이 질문에 있으면 이 주제로 오지 않는다(다른 주제와 겹칠 때)
   lead        답 맨 위 요약. 페이지 원문에 있는 사실만 줄여 쓴다. 없으면 본문 첫 문장을 쓴다
-  question    pages/faqs 여러 개일 때 되묻는 말
+  question    pages/faqs 여러 개일 때 되묻는 말(pages 주제에 lead 가 있으면 되묻기 앞에 먼저 쓴다)
+  pages_text / pages_label  pages 쪽마다 붙는 첫 줄·출처 이름('{title}' 자리). 없으면 페이지 출처대로
   phones      contacts.P 키, 또는 ('라벨', '번호') 튜플(adminOffices 담당정보 표에 있는 번호만)
   facility    contacts.F 키, 또는 지도 시설 id('hi-…', src/constants/adminOffices.ts 의 키)
   faq         답 아래 '자주 묻는 질문' 버튼으로 붙일 FAQ 제목 / faqpage  함께 붙일 다른 페이지 키(여러 개면 목록 — 답 아래 버튼마다 하나)

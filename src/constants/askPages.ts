@@ -52052,7 +52052,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "p0": {
     "kind": "answer",
-    "text": "총동아리연합회 '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52109,7 +52109,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황)",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
      }
     ],
@@ -52117,7 +52117,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "p1": {
     "kind": "answer",
-    "text": "총동아리연합회 '미술대학(예술학과 제외) 졸업학점 현황' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52166,7 +52166,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(미술대학(예술학과 제외) 졸업학점 현황)",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
      }
     ],
@@ -52174,7 +52174,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "p2": {
     "kind": "answer",
-    "text": "총동아리연합회 '경영대학 졸업학점 현황' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '경영대학 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52231,7 +52231,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(경영대학 졸업학점 현황)",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경영대학 졸업학점 현황",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p21"
      }
     ],
@@ -52239,7 +52239,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "p3": {
     "kind": "answer",
-    "text": "총동아리연합회 '공연예술학부 졸업학점 현황' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공연예술학부 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52274,7 +52274,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(공연예술학부 졸업학점 현황)",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공연예술학부 졸업학점 현황",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p25"
      }
     ],
@@ -52282,7 +52282,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "p4": {
     "kind": "answer",
-    "text": "총동아리연합회 '공과대학 졸업학점 현황(공학교육인증과정)' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -52361,7 +52361,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(공과대학 졸업학점 현황(공학교육인증과정))",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
      }
     ],
@@ -52369,7 +52369,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "p5": {
     "kind": "answer",
-    "text": "총동아리연합회 '공과대학·도시공학과 졸업학점 현황(비인증과정)' 분과 동아리예요.",
+    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -52404,7 +52404,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "학교 홈페이지 · 동아리(공과대학·도시공학과 졸업학점 현황(비인증과정))",
+      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
       "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
      }
     ],
@@ -52412,7 +52412,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "start": {
     "kind": "question",
-    "text": "교양 이수 규칙은 단과대학과 입학연도마다 달라요. 어느 쪽이 궁금하세요?",
+    "text": "교과과정책자 기준으로 2016학년도 이후 입학생은 공통교양 7개 영역 중 '예술과 디자인'·'제2외국어와 한문'을 포함한 6개 영역에서 각 1과목 이상 들어야 하고, 전공기초영어(Ⅰ/Ⅱ) 중 한 과목도 필수예요. 교양 인정 한도는 문과·미술·경영·공연예술 등은 50학점, 공학교육인증과정은 40학점이에요. 2022학년도 입학생부터는 SW/데이터활용역량인증과목 9학점이 더해져요.\n\n교양 이수 규칙은 단과대학과 입학연도마다 달라요. 어느 쪽이 궁금하세요?",
     "options": [
      {
       "label": "문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",

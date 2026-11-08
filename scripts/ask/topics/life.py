@@ -302,5 +302,6 @@ TOPICS = [
     dict(id='clubs', pages=['life_seoul-performance', 'life_seoul-sports', 'life_seoul-leisure', 'life_seoul-scholarship',
                             'life_seoul-religion', 'life_seoul-society', 'life_seoul-exhibition'],
          match=[[['동아리', '총동아리', '총동연', '중앙동아리', '동방', '동아리방']]], question='어떤 분야 동아리가 궁금하세요? (총동아리연합회 중앙동아리)',
+         pages_text="총동아리연합회 '{title}' 분과 동아리예요.", pages_label='학교 홈페이지 · 동아리({title})',
          phones=['club', CLUB_UNION], facility='studentteam'),
 ]
