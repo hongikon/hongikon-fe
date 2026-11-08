@@ -494,5 +494,29 @@
  {
   "q": "인원 꽉 찬 과목 정정 받는 방법",
   "expect": "course-change"
+ },
+ {
+  "q": "수업계획서 읽는 법",
+  "expect": "syllabus"
+ },
+ {
+  "q": "강의계획서 어디서 봐?",
+  "expect": "syllabus"
+ },
+ {
+  "q": "수업계획서에 학점분포가 뭐야",
+  "expect": "syllabus"
+ },
+ {
+  "q": "학점/시수 3/1 뜻",
+  "expect": "syllabus"
+ },
+ {
+  "q": "수업계획서에서 뭐 봐야 돼",
+  "expect": "syllabus"
+ },
+ {
+  "q": "전기영 1 2 기준이 뭐야",
+  "expect": "first-year-courses"
  }
 ]
