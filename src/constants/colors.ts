@@ -57,6 +57,11 @@ export const COLORS = {
 
   toggleOff: '#D4D4D4',
   /**
+   * 수강신청 차례 색(물어보기 '수강신청 화면 읽는 법' 예시 표). 칸 둘레 선과 숫자에 쓰여 흰 바탕 4.5:1 을 넘게 잡았다.
+   * 운영진 시안(11-09): 4학년 검정 · 3학년 주황 · 2학년 파랑 · 1학년 분홍 · 추가 갈색.
+   */
+  gradeTurn: { g4: '#111111', g3: '#C2410C', g2: '#1D4ED8', g1: '#BE185D', extra: '#78350F' },
+  /**
    * 🔥(불) 공감 — ui-shots/fire-icon/FINAL.md. 불꽃 바깥 #0B1A8C, 아래 그림자 #05014A(.45), 안쪽 흰색.
    * 버튼: 안 누름은 회색 테두리 1.5px(fireChipBorder), 누름은 fire 2px. HOT 배지 바탕은 primary, 불꽃은 hotFlame.
    */

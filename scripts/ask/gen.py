@@ -52,6 +52,10 @@ def check(t):
     for q in list(t.get('faqs', [])) + list(t.get('faq', [])):
         if q not in FAQ:
             errs.append(f'FAQ 없음 {q!r}')
+    if t.get('only') and t.get('page') in PAGES:
+        titles = {s['title'] for s in PAGES[t['page']]['sections']}
+        errs += [f'only 덩어리 없음 {o!r}' for o in t['only'] if o not in titles]
+    errs += [f'see 흐름 없음 {f}' for _, f in t.get('see', []) if f not in TOPIC_IDS]
     errs += [f'전화 키 없음 {p}' for p in t.get('phones', []) if isinstance(p, str) and p not in P]
     if t.get('facility') and t['facility'] not in F and not t['facility'].startswith('hi-'):
         errs.append(f"위치 키 없음 {t['facility']}")
@@ -161,9 +165,20 @@ def answer(text, sections, links, t):
 
 def build(t):
     nodes = {}
-    if 'page' in t:
+    if 'page' not in t and 'pages' not in t and 'faqs' not in t:
+        # 학교 페이지에 없는 운영진 정리(tips)만으로 답한다. lead·tips 가 꼭 있어야 한다.
+        tips = [{**(tip if isinstance(tip, dict) else {'title': tip[0], 'items': list(tip[1])}), 'full': True} for tip in t['tips']]
+        a = answer(t['lead'], tips, [{'label': label, 'url': url} for label, url in t.get('links', [])], t)
+        follow = [{'label': label, 'next': f'{flow_id}/start'} for label, flow_id in t.get('see', [])]
+        nodes['start'] = {**a, 'followUps': follow} if follow else a
+    elif 'page' in t:
         key = t['page']
-        secs = sections_of(PAGES[key]['sections'])[: t.get('max_sections')]
+        # only: 한 페이지에 주제가 여럿일 때 이 주제 덩어리(제목)만 원문으로 붙인다.
+        raw = [s for s in PAGES[key]['sections'] if not t.get('only') or s['title'] in t['only']]
+        secs = sections_of(raw)[: t.get('max_sections')]
+        # tips: 학교 원문보다 먼저 보일 정리 덩어리 [('제목', ['줄', …])]. 학교 공식 문구가 아니면 제목에 '홍익온 정리'를 단다.
+        # 표가 필요한 덩어리는 dict({'title', 'table': {'head','rows','colors'}, 'items'}) 그대로 넣는다.
+        tips = [{**(tip if isinstance(tip, dict) else {'title': tip[0], 'items': list(tip[1])}), 'full': True} for tip in t.get('tips', [])]
         title = page_title(key)
         lead = t.get('lead')
         if not lead:
@@ -187,7 +202,11 @@ def build(t):
             nodes[node_id] = answer(f"{PAGES[k2].get('source', '학교 홈페이지')} '{page_title(k2)}' 안내예요.", sections_of(PAGES[k2]['sections']),
                                     [{'label': source_label(k2), 'url': url_of(k2)}], t)
             follow.append({'label': page_title(k2), 'next': node_id})
-        a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + contacts_links(key), t)
+        # links: 학교 페이지 밖의 출처(백과사전·학교 공식 영상 등)를 ('라벨', 'url') 로 덧붙인다.
+        extra = [{'label': label, 'url': url} for label, url in t.get('links', [])]
+        # see: 다른 안내로 넘어가는 버튼 [('라벨', '흐름id')] — 그 흐름의 첫 단계를 연다.
+        follow += [{'label': label, 'next': f'{flow_id}/start'} for label, flow_id in t.get('see', [])]
+        a = answer(lead, tips + secs, [{'label': source_label(key), 'url': url_of(key)}] + extra + contacts_links(key), t)
         if follow:
             a = {**a, 'followUps': follow}
         nodes['start'] = a
@@ -203,12 +222,16 @@ def build(t):
             nodes['start'] = {'kind': 'question', 'text': t['question'], 'options': opts}
     else:
         opts = []
+        # pages_text·pages_label: 쪽마다 붙는 첫 줄·출처 이름({title} 자리). 없으면 그 페이지 출처대로(11-09: 동아리 문구가 교양 규칙에도 붙던 것을 고침).
         for i, key in enumerate(t['pages']):
             title = page_title(key)
-            nodes[f'p{i}'] = answer(f"총동아리연합회 '{title}' 분과 동아리예요.", sections_of(PAGES[key]['sections']),
-                                    [{'label': f'학교 홈페이지 · 동아리({title})', 'url': url_of(key)}], t)
+            text = t.get('pages_text', "{source} '{title}' 안내예요.").format(title=title, source=PAGES[key].get('source', '학교 홈페이지'))
+            label = t['pages_label'].format(title=title) if 'pages_label' in t else source_label(key)
+            nodes[f'p{i}'] = answer(text, sections_of(PAGES[key]['sections']), [{'label': label, 'url': url_of(key)}], t)
             opts.append({'label': title, 'next': f'p{i}'})
-        nodes['start'] = {'kind': 'question', 'text': t['question'], 'options': opts}
+        # lead 가 있으면 고르기 전에 먼저 답한다.
+        question = f"{t['lead']}\n\n{t['question']}" if t.get('lead') else t['question']
+        nodes['start'] = {'kind': 'question', 'text': question, 'options': opts}
     for n in nodes.values():
         if n['kind'] == 'answer' and not n['sections']:
             raise SystemExit(f"{t['id']}: 빈 답")
@@ -217,6 +240,7 @@ def build(t):
 
 
 if __name__ == '__main__':
+    TOPIC_IDS = {t['id'] for t in TOPICS}
     errors = [e for t in TOPICS for e in check(t)]
     ids = [t['id'] for t in TOPICS]
     errors += [f'id 겹침 {i}' for i in set(ids) if ids.count(i) > 1]
