@@ -134,11 +134,13 @@ for (const e of file.graph.edges) {
 
 ## 7. 기존 앱 길찾기와의 관계
 
-- 현재 앱의 길찾기(프론트 저장소 hongikon-fe 의 `src/utils/routing.ts`)는 이전 조사 자료(`src/constants/surveyPaths.ts`, `src/constants/pathNodes.ts`)를 기반으로 동작한다. **v3 파일과는 아직 연결되어 있지 않다.**
-- v3 그래프를 앱에 쓰려면 다음 중 하나를 정한다.
-  - A. 앱에 v3 그래프를 내려받아 새 길찾기에 쓴다.
-  - B. v3 를 기존 `pathNodes` 형식으로 변환하는 스크립트를 만든다.
-- 이 선택은 서버 형식 결정(6장)과 함께 정한다.
+- (11-08) 앱 길찾기(`src/utils/routing.ts`)는 **v3 펼친 그래프**를 쓴다. 파일을 앱에 넣는 방식이다(서버 형식은 아직 미정, 6장).
+  - 만들기: `node --import ./scripts/test/register.mjs scripts/path/import-survey-v3.mjs <백업 또는 그래프 내보내기 .json>` → `src/constants/surveyGraphV3.ts`. 백업이면 `expandGraph` 로 펼친다.
+  - 비용: `normal`·`stairs` 는 미터/도보 속도, `stairs_vertical` 은 층마다 `FLOOR_TRANSIT_SECONDS`(20초), `elevator_vertical` 은 `ELEVATOR_WAIT_SECONDS`(30초) + 층마다 `ELEVATOR_SECONDS_PER_FLOOR`(4초), `tie` 는 0. 엘리베이터 값은 실측 전 자리표시자(`src/constants/route.ts`).
+  - 건물 연결: 서버 건물 `code` = v3 건물 코드. code 가 없으면 출입구 이름 앞부분(HI_R_)으로.
+  - 고른 층에 조사된 정점이 있으면 그 정점에서 출발·도착하고, 출입구에서 층 차이로 어림한 길과 비교해 빠른 쪽을 쓴다.
+  - 가장 큰 덩어리에 이어지지 않은 정점(조사 중인 조각)은 출입구·층 정점·연결 후보로 쓰지 않는다. v3 에 이어진 출입구가 없는 건물은 9월 자료(`pathNodes.ts`)나 가까운 길까지 직선으로 대신한다.
+  - 이전 자료 `src/constants/surveyPaths.ts`(11-03, v2)는 더 이상 길찾기에 쓰지 않는다.
 
 ---
 
