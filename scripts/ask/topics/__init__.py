@@ -2,6 +2,7 @@
 
 주제 하나(dict)의 키:
   id          흐름 id(앱 ASK 흐름 id 와 겹치면 안 된다)
+  (page·pages·faqs 가 모두 없으면 lead + tips 만으로 답한다 — 학교 페이지에 없는 운영진 정리)
   page        답 본문으로 옮길 안내 페이지 키(data/pages.json, sources.key_of 규칙). 또는
   pages       여러 페이지를 버튼으로 고르게 할 때(question 필요). 또는
   faqs        학사·장학 FAQ 질문 제목 목록(data/faq.json 의 q). 둘 이상이면 question 필요

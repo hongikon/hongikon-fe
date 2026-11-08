@@ -165,7 +165,13 @@ def answer(text, sections, links, t):
 
 def build(t):
     nodes = {}
-    if 'page' in t:
+    if 'page' not in t and 'pages' not in t and 'faqs' not in t:
+        # 학교 페이지에 없는 운영진 정리(tips)만으로 답한다. lead·tips 가 꼭 있어야 한다.
+        tips = [{**(tip if isinstance(tip, dict) else {'title': tip[0], 'items': list(tip[1])}), 'full': True} for tip in t['tips']]
+        a = answer(t['lead'], tips, [{'label': label, 'url': url} for label, url in t.get('links', [])], t)
+        follow = [{'label': label, 'next': f'{flow_id}/start'} for label, flow_id in t.get('see', [])]
+        nodes['start'] = {**a, 'followUps': follow} if follow else a
+    elif 'page' in t:
         key = t['page']
         # only: 한 페이지에 주제가 여럿일 때 이 주제 덩어리(제목)만 원문으로 붙인다.
         raw = [s for s in PAGES[key]['sections'] if not t.get('only') or s['title'] in t['only']]

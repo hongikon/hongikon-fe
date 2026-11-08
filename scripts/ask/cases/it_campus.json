@@ -334,5 +334,33 @@
  {
   "q": "비밀번호 찾기",
   "expect": "none"
+ },
+ {
+  "q": "강의실 번호 읽는 법",
+  "expect": "room-number"
+ },
+ {
+  "q": "강의실 호수 어떻게 읽어?",
+  "expect": "room-number"
+ },
+ {
+  "q": "UB201처럼 B가 붙으면 뭐야",
+  "expect": "room-number"
+ },
+ {
+  "q": "R동 로비층이 뭐야",
+  "expect": "room-number"
+ },
+ {
+  "q": "강의실 번호 뜻",
+  "expect": "room-number"
+ },
+ {
+  "q": "T동 계단형 강의실 앞문 뒷문",
+  "expect": "room-number"
+ },
+ {
+  "q": "강의실 대관",
+  "expect": "facility-rental"
  }
 ]
