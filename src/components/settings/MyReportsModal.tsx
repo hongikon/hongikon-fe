@@ -27,7 +27,7 @@ import {
   type MyReport,
 } from '../../apis/myReports'
 import { formatDateTime } from '../../admin/format'
-import { formatServerSchedule, isUpcomingReport } from '../../utils/reportSchedule'
+import { formatReportSchedule, isUpcomingReport } from '../../utils/reportSchedule'
 import { formatFloor } from '../../utils/floors'
 import { reportImageUrls } from '../../utils/reports'
 import { mergeReportPages, resolveDisplayStatus, STATUS_META } from '../../utils/myReports'
@@ -360,7 +360,7 @@ const MyReportCard = memo(function MyReportCard({ report, highlighted, deleting,
         {/* 지도·시트와 같은 형식(여러 날이면 끝 날짜도). 시작 전이면 '예정'을 붙인다. */}
         <Text style={styles.metaText}>
           {upcoming ? '예정 · ' : ''}
-          {formatServerSchedule(report.startsAt, report.endsAt)}
+          {formatReportSchedule(report)}
         </Text>
       </View>
 

@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import type { CategoryKey } from '../constants/colors'
 
 export type BuildingCategory = '강의' | '식당' | '편의' | '주차'
@@ -365,6 +366,11 @@ export interface Report {
   /** 시작 시각(UTC). 미리 올린 예정 제보는 미래일 수 있다 — `include=upcoming` 목록에서만 시작 전 제보가 온다. */
   startsAt: string
   endsAt: string
+  /**
+   * 여러 날 제보의 날짜별 운영 시간(한국 시간, 날마다 다를 수 있음, 쉬는 날은 없음, 11-08). 없으면 한 번짜리.
+   * 이때 startsAt 은 첫날 시작, endsAt 은 마지막 날 끝이고 지도에는 기간 내내 있다(`reportPhase`). 이 기능 전 서버는 없음.
+   */
+  days?: ReportDayHours[] | null
   status: ReportStatus
   createdAt: string
 }
@@ -478,6 +484,8 @@ export interface CreateReportInput {
   startsAt: string
   /** UTC ISO. 시작보다 뒤, 최대 7일(여러 날 행사). */
   endsAt: string
+  /** 여러 날 제보의 날짜별 운영 시간(한국 시간). 첫날 start·마지막 날 end 가 startsAt·endsAt 과 같아야 한다. 구버전 서버는 무시한다. */
+  days?: ReportDayHours[]
 }
 
 /** `POST /reports/{id}/flags` 요청 바디. */

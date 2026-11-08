@@ -1293,14 +1293,31 @@ export default function MapScreen() {
     return () => clearTimeout(timer);
   }, [reportsOn, nextUpcomingStart, retryReports]);
 
-  /** 제보를 새로 받을 때마다 지도에 올린다. */
+  /**
+   * 제보 핀 둘째 줄('오늘 14:00 시작'·'운영 중'·'곧 종료', 11-08)은 시간이 흐르며 바뀐다. 1분마다 다시 만들어 보고
+   * 달라졌을 때만 다시 그린다(같으면 핀을 다시 그리지 않아 깜빡이지 않는다).
+   */
+  const [reportClock, setReportClock] = useState(() => Date.now());
   useEffect(() => {
-    if (!reportsOn || shownReportData === undefined) return;
-    postToMap({
-      type: "setReports",
-      markers: toReportMarkers(shownReportData),
-    });
-  }, [reportsOn, shownReportData, postToMap]);
+    if (!reportsOn) return;
+    const timer = setInterval(() => setReportClock(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, [reportsOn]);
+  const lastReportMarkersRef = useRef<string | null>(null);
+
+  /** 제보를 새로 받을 때마다(그리고 핀 글이 바뀔 때) 지도에 올린다. */
+  useEffect(() => {
+    if (!reportsOn || shownReportData === undefined) {
+      // 다시 켰을 때 같은 목록이어도 그리도록 잊는다.
+      lastReportMarkersRef.current = null;
+      return;
+    }
+    const markers = toReportMarkers(shownReportData, reportClock);
+    const key = JSON.stringify(markers);
+    if (key === lastReportMarkersRef.current) return;
+    lastReportMarkersRef.current = key;
+    postToMap({ type: "setReports", markers });
+  }, [reportsOn, shownReportData, reportClock, postToMap]);
 
   /**
    * 'HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 전체 제보 보기로 돌아간다('제보' 칩이 켜진 상태).

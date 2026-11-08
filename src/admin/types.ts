@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import type { Exhibition, Facility, FacilityKind, Partner, ReportCategory } from '../types'
 
 /**
@@ -59,6 +60,8 @@ export interface AdminReport {
   lng: number | null
   startsAt: string
   endsAt: string
+  /** 여러 날 제보의 날짜별 운영 시간(한국 시간). 한 번짜리·이전 서버는 없음. */
+  days?: ReportDayHours[] | null
   createdAt: string
   authorId: number | null
   /**
