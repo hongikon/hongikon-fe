@@ -296,3 +296,9 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - (11-07 이어서, 사용자 요청) 조사 담당 가이드북과 개발 담당 사용 가이드(`docs/path-survey-v3-guide-surveyor.md`, `path-survey-v3-guide-dev.md`)를 받은 내용 그대로 추가하고 `path-survey-v3.md` 첫머리에 링크했다. 조사 테스트 208/208(실제 v2 파일 포함), `pnpm test` 65/65, tsc, `pnpm build:web` 통과.
 
 ---
+
+## 2026-11-08 · 소식 '내 구독' 게시판 고르기 칩
+
+- `src/screens/NewsScreen.tsx`: 구독이 2개 이상이고 관리를 닫았을 때 '내 구독' 카드 아래에 가로 칩(전체·게시판별). 게시판을 고르면 그 게시판만 따로 받아(`useNewsFeed` sourceIds 하나) 끝까지 넘기기·당겨 새로고침이 그 게시판 기준으로 동작한다. 받는 동안은 이미 받은 전체 목록에서 그 게시판 글만 먼저 보여 빈 화면을 막고, 뼈대 화면은 처음 들어올 때만. 고른 게시판을 구독 해제하면 '전체'로 돌아간다.
+- 확인: 웹판(402×874, 구독 3개) — 칩 4개, '국제교류실 공지' 18개 → 끝까지 넘겨 40개, '전체'로 돌아가 세 게시판 섞임·맨 위로, 고른 게시판 구독 해제 시 '전체'. 시뮬레이터(iPhone 18 Pro, Debug)는 시작 화면까지 뜨는 것만 확인(화면 조작 도구 없음). tsc 이 파일 오류 없음.
+- 참고: 이 Xcode(27)에서는 `expo run:ios --device <시뮬레이터>` 가 실제 기기로 잘못 인식해 서명 오류. `xcodebuild -sdk iphonesimulator ... CODE_SIGNING_ALLOWED=NO` 후 `simctl install` 로 우회.
