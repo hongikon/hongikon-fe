@@ -614,6 +614,12 @@ export default function MapScreen() {
     );
   }, []);
 
+  /**
+   * 건물 시트 → '건물 안 시설'로 연 시설 시트를 정리한다(11-08). 아래 handleLeaveBuildingFacility 가 채운다 —
+   * 지도 메시지 처리기가 그보다 위에 있어 ref 로 부른다. 그렇게 연 시트가 아니면 false.
+   */
+  const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
+
   const handleWebViewMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       try {
@@ -693,6 +699,8 @@ export default function MapScreen() {
 
         // 제휴·편의시설·제보 시트가 열린 채 건물을 눌렀다. 그 탭은 시트 닫기로만 쓴다(페이지는 건물 선택·이동을 하지 않았다).
         if (msg.type === "sheetDismiss") {
+          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
+          leaveBuildingFacilityRef.current();
           setSelectedReport(null);
           setSelectedPartner(null);
           setSelectedFacilityBuilding(null);
@@ -702,6 +710,8 @@ export default function MapScreen() {
         // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
         if (msg.type === "buildingDismiss") {
           // 지도 빈 곳을 누르면 열린 시트를 모두 내린다(제보 시트 포함).
+          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
+          leaveBuildingFacilityRef.current();
           setSelectedBuilding(null);
           setSelectedFacilityBuilding(null);
           setSelectedReport(null);
@@ -1145,6 +1155,24 @@ export default function MapScreen() {
     postToMap({ type: "selectBuilding", name: from.building.name });
   }, [facilityFrom, facilityKind, applyFacilityKind, postToMap]);
 
+  /**
+   * 건물 시트에서 '건물 안 시설'(예: 스터디룸)로 들어간 시설 시트를 지도 빈 곳이나 X 로 닫았다(11-08 요청).
+   * 사용자는 그 건물을 보던 중이었지 캠퍼스 전체의 스터디룸을 보려던 게 아니므로, 그 때문에 켜진 칩·핀을 거두고
+   * 들어오기 전 지도(보통 아무것도 고르지 않은 지도)로 돌아간다. 칩을 직접 눌러 켠 핀은 지금처럼 남는다.
+   */
+  const handleLeaveBuildingFacility = useCallback((): boolean => {
+    const from = facilityFrom;
+    if (!from) return false;
+    setFacilityFrom(null);
+    setSearchedFacility(null);
+    // 같은 종류 칩을 이미 켜 두고 들어왔으면 그 핀은 남기고 시트만 닫는다.
+    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
+    else setSelectedFacilityBuilding(null);
+    setLayer(from.layer);
+    return true;
+  }, [facilityFrom, facilityKind, applyFacilityKind]);
+  leaveBuildingFacilityRef.current = handleLeaveBuildingFacility;
+
   /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
   const handleSelectFacilityKind = useCallback(
     (kind: FacilityKind) => {
@@ -1567,7 +1595,9 @@ export default function MapScreen() {
       return true;
     }
     if (selectedFacilityBuilding !== null && facilityKind !== null) {
-      setSelectedFacilityBuilding(null);
+      // 건물에서 들어간 시설 시트면 '뒤로'는 그 건물 시트로(시트의 '<'와 같다, 11-08).
+      if (facilityFrom) handleBackToBuilding();
+      else setSelectedFacilityBuilding(null);
       return true;
     }
     if (selectedBuilding) {
@@ -1585,6 +1615,8 @@ export default function MapScreen() {
     selectedPartner,
     selectedFacilityBuilding,
     facilityKind,
+    facilityFrom,
+    handleBackToBuilding,
     selectedBuilding,
     handleCancelReportPicker,
     handleClosePartner,
@@ -2190,7 +2222,9 @@ export default function MapScreen() {
                   ? searchedFacility.id
                   : null
               }
-              onClose={() => setSelectedFacilityBuilding(null)}
+              onClose={() => {
+                if (!handleLeaveBuildingFacility()) setSelectedFacilityBuilding(null);
+              }}
               onBack={facilityFrom ? handleBackToBuilding : undefined}
               backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
               onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
