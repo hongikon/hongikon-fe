@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, type FlatList, type ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, type FlatList } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useIsFocused, useNavigation, useScrollToTop, type CompositeNavigationProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -80,21 +80,51 @@ export default function NewsScreen() {
     () => subscribedFeed.items.filter((item) => subscribedSet.has(item.sourceId)),
     [subscribedFeed.items, subscribedSet],
   )
+  // '내 구독' 칩으로 고른 게시판(null = 전체). 고르면 그 게시판만 따로 받아 끝까지 넘겨 볼 수 있게 하고,
+  // 받는 동안은 이미 받아 둔 전체 목록에서 그 게시판 글만 먼저 보여 줘 빈 화면이 끼지 않게 한다.
+  const [selectedSource, setSelectedSource] = useState<string | null>(null)
+  useEffect(() => {
+    if (selectedSource !== null && !subscribedSet.has(selectedSource)) setSelectedSource(null)
+  }, [selectedSource, subscribedSet])
+  const boardFeed = useNewsFeed(
+    { sourceIds: selectedSource !== null ? [selectedSource] : [] },
+    { enabled: selectedSource !== null },
+  )
+  const selectSource = useCallback((id: string | null) => {
+    setSelectedSource(id)
+    listRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [])
+  const activeFeed = selectedSource !== null ? boardFeed : subscribedFeed
+  const boardItems = useMemo(() => {
+    if (selectedSource === null) return subscribedItems
+    if (boardFeed.items.length > 0 || !boardFeed.loading) return boardFeed.items
+    return subscribedItems.filter((item) => item.sourceId === selectedSource)
+  }, [selectedSource, subscribedItems, boardFeed.items, boardFeed.loading])
   const feedPending = feedSourceIds.join('\u0000') !== settings.subscribedDepts.join('\u0000')
   const refreshSubscribed = useCallback(() => {
-    if (feedPending) setFeedSourceIds(settings.subscribedDepts)
+    if (selectedSource !== null) boardFeed.refresh()
+    else if (feedPending) setFeedSourceIds(settings.subscribedDepts)
     else subscribedFeed.refresh()
-  }, [feedPending, settings.subscribedDepts, subscribedFeed])
+  }, [selectedSource, boardFeed, feedPending, settings.subscribedDepts, subscribedFeed])
   // 북마크 탭: 목록에서 골라낼 수 없어 id마다 상세를 받는다.
   const bookmarked = useBookmarkedNews(settings.bookmarkedNews)
 
   const isBookmarkTab = activeTab === '북마크'
-  const displayedNews = isBookmarkTab ? bookmarked.items : subscribedItems
+  const displayedNews = isBookmarkTab ? bookmarked.items : boardItems
   const feedState = isBookmarkTab
     ? { ...bookmarked, retrying: bookmarked.refreshing || bookmarked.loading }
-    : { ...subscribedFeed, retrying: subscribedFeed.loading || subscribedFeed.loadingMore || subscribedFeed.refreshing }
+    : {
+        ...activeFeed,
+        // 게시판을 바꾸는 동안 받는 중 표시(뼈대 화면)로 '내 구독' 카드까지 가리지 않는다 — 처음 들어올 때만.
+        loading: subscribedFeed.loading,
+        retrying: activeFeed.loading || activeFeed.loadingMore || activeFeed.refreshing,
+      }
   const emptyMessage =
-    activeTab === '북마크' ? '북마크한 소식이 없어요' : '구독한 기관·학과의 소식이 없어요'
+    activeTab === '북마크'
+      ? '북마크한 소식이 없어요'
+      : selectedSource !== null
+        ? '이 게시판의 소식이 아직 없어요'
+        : '구독한 기관·학과의 소식이 없어요'
 
   // NewsList 로 넘기는 콜백은 렌더마다 새로 만들면 안 된다.
   // 새로 만들면 목록의 모든 카드가 memo 를 통과해 다시 그려진다.
@@ -156,9 +186,9 @@ export default function NewsScreen() {
           isBookmarked={isBookmarked}
           onPressItem={handlePressItem}
           onToggleBookmark={toggleBookmark}
-          onEndReached={isBookmarkTab ? undefined : subscribedFeed.loadMore}
-          loadingMore={!isBookmarkTab && subscribedFeed.loadingMore}
-          refreshing={isBookmarkTab ? undefined : subscribedFeed.refreshing}
+          onEndReached={isBookmarkTab ? undefined : activeFeed.loadMore}
+          loadingMore={!isBookmarkTab && activeFeed.loadingMore}
+          refreshing={isBookmarkTab ? undefined : activeFeed.refreshing}
           onRefresh={isBookmarkTab ? undefined : refreshSubscribed}
           footer={
             feedState.errorMessage ? (
@@ -191,6 +221,32 @@ export default function NewsScreen() {
                       <Text style={styles.hubManageText}>관리</Text>
                     </TouchableOpacity>
                   </View>
+
+                  {!manageChipsOpen && settings.subscribedDepts.length > 1 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.filterRow}
+                      style={styles.filterScroll}
+                    >
+                      {[null, ...settings.subscribedDepts].map((id) => {
+                        const selected = selectedSource === id
+                        const label = id === null ? '전체' : (DEPT_NAME_BY_ID.get(id) ?? id)
+                        return (
+                          <TouchableOpacity
+                            key={id ?? '__all'}
+                            style={[styles.filterChip, selected && styles.filterChipOn]}
+                            onPress={() => selectSource(id)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected }}
+                            accessibilityLabel={id === null ? '구독 전체 보기' : `${label}만 보기`}
+                          >
+                            <Text style={[styles.filterChipText, selected && styles.filterChipTextOn]}>{label}</Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </ScrollView>
+                  )}
 
                   {manageChipsOpen && (
                     <View style={styles.chips}>
@@ -300,4 +356,18 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   chipAddText: { color: COLORS.primary, fontSize: 12, fontFamily: FONTS.semibold },
+  // 관리를 닫았을 때의 고르기 칩(전체·게시판). 카드 안쪽 여백(lg)을 넘어 끝까지 넘기게 좌우로 늘린다.
+  filterScroll: { marginTop: 12, marginHorizontal: -SPACING.lg },
+  filterRow: { gap: SPACING.sm, paddingHorizontal: SPACING.lg },
+  filterChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.2,
+    borderColor: COLORS.chipBorder,
+    backgroundColor: COLORS.white,
+  },
+  filterChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  filterChipText: { color: COLORS.textSecondary, fontSize: 12, fontFamily: FONTS.semibold },
+  filterChipTextOn: { color: COLORS.white },
 })
