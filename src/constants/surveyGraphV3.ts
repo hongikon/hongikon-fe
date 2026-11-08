@@ -4,7 +4,8 @@
  * 정점 478개, 간선 1188개, 출입구 84개, 건물 23곳.
  */
 
-import type { GraphEdgeKind } from '../utils/pathSurveyV3/types'
+/** 간선 종류(pathSurveyV3/types 의 GraphEdgeKind 와 같다). 조사 도구 코드 없이도 읽히도록 여기 적는다. */
+export type SurveyV3EdgeKind = 'normal' | 'stairs' | 'stairs_vertical' | 'elevator_vertical' | 'tie'
 
 /** 0 기본, 1 출입구, 2 엘리베이터, 3 계단. */
 export type SurveyV3VertexType = 0 | 1 | 2 | 3
@@ -13,7 +14,7 @@ export type SurveyV3VertexType = 0 | 1 | 2 | 3
 export type SurveyV3Vertex = [string, number, number, string | null, number | null, SurveyV3VertexType, string | null]
 
 /** [정점 a, 정점 b, 종류, 미터(수직 간선은 없음)]. 양방향. */
-export type SurveyV3Edge = [string, string, GraphEdgeKind, number?]
+export type SurveyV3Edge = [string, string, SurveyV3EdgeKind, number?]
 
 export const SURVEY_V3_EXPORTED_AT = "2026-11-08T07:17:45.583Z"
 
