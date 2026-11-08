@@ -90,6 +90,9 @@ export function buildMapHTML(
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; }
+    /* 길찾기 경로가 그려진 동안 칩 핀(편의시설·제휴)을 흐리게 해 경로가 묻히지 않게 한다(11-08, setRouteFocus). */
+    .hk-pin { transition: opacity .2s; }
+    #map.route-focus .hk-pin { opacity: .5; }
   </style>
 </head>
 <body>
@@ -863,7 +866,8 @@ export function buildMapHTML(
       var nameLine = (selected ? 12 : 11) + 6;
       var boxH = PARTNER_PAD_TOP + badge + PARTNER_GAP + nameLine;
       return {
-        content: '<div style="width:' + PARTNER_BOX_W + 'px;padding-top:' + PARTNER_PAD_TOP + 'px;pointer-events:none;">'
+        // 고른 업체 핀은 길찾기 중에도 흐리게 하지 않는다.
+        content: '<div class="' + (selected ? '' : 'hk-pin') + '" style="width:' + PARTNER_BOX_W + 'px;padding-top:' + PARTNER_PAD_TOP + 'px;pointer-events:none;">'
           + partnerLabelHTML(partner, selected) + '</div>',
         size: new naver.maps.Size(PARTNER_BOX_W, boxH),
         anchor: new naver.maps.Point(PARTNER_BOX_W / 2, PARTNER_PAD_TOP + badge / 2),
@@ -1126,7 +1130,7 @@ export function buildMapHTML(
           map: map,
           zIndex: 150,
           icon: {
-            content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
+            content: '<div class="hk-pin" style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
               + facilityLabelHTML(item) + '</div>',
             size: new naver.maps.Size(boxW, boxH),
             anchor: new naver.maps.Point(boxW / 2, padTop + badge / 2),
@@ -1585,7 +1589,7 @@ export function buildMapHTML(
               map: map,
               path: path,
               strokeWeight: i === selected ? 5 : 3,
-              strokeColor: i === selected ? '${COLORS.routeLine}' : '#9CA3AF',
+              strokeColor: i === selected ? '${COLORS.primary}' : '#9A9CC4',
               strokeOpacity: i === selected ? 0.9 : 0.55,
               strokeStyle: i === selected ? 'solid' : 'shortdash',
               zIndex: i === selected ? 200 : 100,
@@ -1599,7 +1603,7 @@ export function buildMapHTML(
             fromOverlay = new naver.maps.Marker({
               position: new naver.maps.LatLng(from.lat, from.lng),
               icon: {
-                content: makeRouteMarkerHTML('#10B981', '출발'),
+                content: makeRouteMarkerHTML('#05014A', '출발'),
                 size: new naver.maps.Size(32, 32),
                 anchor: new naver.maps.Point(16, 16),
               },
@@ -1608,7 +1612,7 @@ export function buildMapHTML(
             toOverlay = new naver.maps.Marker({
               position: new naver.maps.LatLng(to.lat, to.lng),
               icon: {
-                content: makeRouteMarkerHTML('#EF4444', '도착'),
+                content: makeRouteMarkerHTML('#05014A', '도착'),
                 size: new naver.maps.Size(32, 32),
                 anchor: new naver.maps.Point(16, 16),
               },
@@ -1624,12 +1628,16 @@ export function buildMapHTML(
             var isSelected = i === msg.index;
             poly.setOptions({
               strokeWeight: isSelected ? 5 : 3,
-              strokeColor: isSelected ? '${COLORS.routeLine}' : '#9CA3AF',
+              strokeColor: isSelected ? '${COLORS.primary}' : '#9A9CC4',
               strokeOpacity: isSelected ? 0.9 : 0.55,
               strokeStyle: isSelected ? 'solid' : 'shortdash',
               zIndex: isSelected ? 200 : 100,
             });
           });
+        }
+
+        if (msg.type === 'setRouteFocus') {
+          container.classList.toggle('route-focus', !!msg.on);
         }
 
         if (msg.type === 'sheetOpen') {

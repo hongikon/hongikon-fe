@@ -19,6 +19,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import BuildingSheet from "../components/map/BuildingSheet";
+import { nextRouteEndpoint } from "../components/map/RouteEndpointButtons";
 import FacilitySheet from "../components/map/FacilitySheet";
 import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
@@ -228,6 +229,22 @@ export default function MapScreen() {
   const fromBuildingRef = useRef<Building | null>(null);
   fromBuildingRef.current = fromBuilding;
   const [routeCardHeight, setRouteCardHeight] = useState(0);
+  /**
+   * 경로를 화면에 맞출 때 쓰는 실측 높이(11-08). 전에는 막대 100px·카드 90px 어림값이라 기기·글자 크기에 따라 경로가 카드나
+   * 막대에 가렸다. 맞추는 스크립트를 넣는 순간 값을 읽도록 ref 에 둔다(높이가 바뀔 때마다 경로를 다시 그리지 않게).
+   */
+  const routeStripHeightRef = useRef(0);
+  const routeCardHeightRef = useRef(0);
+  routeCardHeightRef.current = routeCardHeight;
+  /**
+   * 길찾기 한쪽 끝만 정한 채 나머지를 고르는 중. 이때 칩을 눌러도 건물 시트를 닫지 않는다(11-08 — 도착을 고르러 연 건물 시트가
+   * 칩 때문에 사라져 처음부터 다시 찾아야 했다).
+   */
+  const routePicking = (fromBuilding !== null || fromMyLocation) !== (toBuilding !== null);
+  /** 두 끝이 다 정해져 경로가 지도에 그려진 상태. 칩 핀을 흐리게 해 경로가 묻히지 않게 한다. */
+  const routeDrawn = (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
+  const routeDrawnRef = useRef(false);
+  routeDrawnRef.current = routeDrawn;
   const fromMyLocationRef = useRef(false);
   fromMyLocationRef.current = fromMyLocation;
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
@@ -735,7 +752,7 @@ export default function MapScreen() {
         return;
       }
 
-      setSelectedBuilding(null);
+      if (!routePicking) setSelectedBuilding(null);
       // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에 갇혀 칩 결과를 둘러볼 수 없고,
       // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮긴다. 칩만으로는 카메라를 옮기지 않는다(10-09 요청).
       if (farViewPartnerIdRef.current !== null) {
@@ -749,7 +766,7 @@ export default function MapScreen() {
         bounds: null,
       });
     },
-    [allPartners, postToMap],
+    [allPartners, postToMap, routePicking],
   );
 
   /** 같은 칩을 다시 누르면 그 단계만 해제한다. */
@@ -895,12 +912,16 @@ export default function MapScreen() {
         routes: routes.map((route) => ({ points: route.points })),
         selectedIndex,
       });
-      // 그린 뒤 위 경로 막대와 아래 결과 카드 사이에 맞춘다(막대 약 100px, 카드 약 90px).
+      // 그린 뒤 위 경로 막대와 아래 결과 카드 사이에 맞춘다. 높이는 실측값이고, 아직 재지 못했으면 어림값(막대 100·카드 90)을 쓴다.
       // 지도 페이지는 메시지를 조금 늦게 처리해서, 바로 넣으면 경로가 아직 없다 — 잠깐 뒤에 칠하고 맞춘다.
-      const script = routeStyleScript(selectedIndex, { top: headerHeight + 8 + 100 + 24, bottom: tabBarHeight + 12 + 90 + 24 });
-      // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다.
+      // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다. 두 번째에는 카드 높이가 잡혀 있다.
+      const fitScript = () =>
+        routeStyleScript(selectedIndex, {
+          top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
+          bottom: tabBarHeight + 12 + (routeCardHeightRef.current || 90) + 24,
+        });
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
-        setTimeout(() => webViewRef.current?.injectJavaScript(script), delay);
+        setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
       }
     },
     [postToMap, headerHeight, tabBarHeight],
@@ -1001,6 +1022,8 @@ export default function MapScreen() {
       setFromBuilding(building);
       setFromFloor(floor);
       setSelectedBuilding(null);
+      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
+      setSelectedFacilityBuilding(null);
       closeRouteSearch();
     },
     [closeRouteSearch],
@@ -1011,6 +1034,8 @@ export default function MapScreen() {
       setToBuilding(building);
       setToFloor(floor);
       setSelectedBuilding(null);
+      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
+      setSelectedFacilityBuilding(null);
       closeRouteSearch();
     },
     [closeRouteSearch],
@@ -1066,6 +1091,23 @@ export default function MapScreen() {
     if (selectedBuilding) beginTo(selectedBuilding);
   }, [selectedBuilding, beginTo]);
 
+  /** 시설 시트의 출발·도착. 그 시설이 있는 건물로 정한다(11-08). 지도 데이터에 그 건물이 없으면 버튼을 그리지 않는다. */
+  const facilitySheetBuilding = useMemo(
+    () => (selectedFacilityBuilding ? (buildings.find((b) => b.name === selectedFacilityBuilding) ?? null) : null),
+    [buildings, selectedFacilityBuilding],
+  );
+
+  const handleFacilitySetFrom = useCallback(() => {
+    if (facilitySheetBuilding) beginFrom(facilitySheetBuilding);
+  }, [facilitySheetBuilding, beginFrom]);
+
+  const handleFacilitySetTo = useCallback(() => {
+    if (facilitySheetBuilding) beginTo(facilitySheetBuilding);
+  }, [facilitySheetBuilding, beginTo]);
+
+  /** 시트의 출발·도착 버튼 중 다음에 고를 쪽(건물 시트·시설 시트가 함께 쓴다). */
+  const routeNext = nextRouteEndpoint(Boolean(fromBuilding || fromMyLocation), Boolean(toBuilding));
+
   const handleCloseBuilding = useCallback(() => {
     setSelectedBuilding(null);
     // 배너만 닫고 핀은 그대로 둔다. 켜 둔 핀이 배너를 닫을 때마다 사라지면
@@ -1119,7 +1161,7 @@ export default function MapScreen() {
     (next: MapLayer) => {
       setLayer(layer === next ? null : next);
       setSelectedPartner(null);
-      setSelectedBuilding(null);
+      if (!routePicking) setSelectedBuilding(null);
       setSelectedAffiliation(null);
       setSelectedCategory(null);
       postToMap({ type: "clearPartners" });
@@ -1127,7 +1169,7 @@ export default function MapScreen() {
       // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
       setSelectedReport(null);
     },
-    [layer, postToMap, applyFacilityKind],
+    [layer, postToMap, applyFacilityKind, routePicking],
   );
 
   /**
@@ -1179,6 +1221,8 @@ export default function MapScreen() {
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
+    // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
+    if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
     // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
     if (previewTargetRef.current) showPreviewPin(previewTargetRef.current);
     // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
@@ -1191,6 +1235,11 @@ export default function MapScreen() {
       postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
     }
   }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
+
+  // 경로가 그려진 동안 칩 핀을 흐리게, 길찾기를 끝내면 되돌린다(11-08).
+  useEffect(() => {
+    postToMap({ type: "setRouteFocus", on: routeDrawn });
+  }, [routeDrawn, postToMap]);
 
   /**
    * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
@@ -1950,7 +1999,12 @@ export default function MapScreen() {
         )}
 
         {!pickingLocation && (fromBuilding || fromMyLocation || toBuilding) && (
-          <View style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}>
+          <View
+            style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}
+            onLayout={(e) => {
+              routeStripHeightRef.current = e.nativeEvent.layout.height;
+            }}
+          >
             <View style={styles.routeStripRows}>
               <TouchableOpacity
                 style={styles.routeStripRow}
@@ -2076,9 +2130,7 @@ export default function MapScreen() {
               routeFindingEnabled={ROUTE_FINDING_ENABLED}
               onSetFrom={handleSetFrom}
               onSetTo={handleSetTo}
-              routeNext={
-                (fromBuilding || fromMyLocation) && !toBuilding ? "to" : toBuilding && !fromBuilding && !fromMyLocation ? "from" : null
-              }
+              routeNext={routeNext}
             />
           )}
 
@@ -2124,6 +2176,9 @@ export default function MapScreen() {
               onClose={() => setSelectedFacilityBuilding(null)}
               onBack={facilityFrom ? handleBackToBuilding : undefined}
               backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
+              onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
+              onSetTo={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetTo : undefined}
+              routeNext={routeNext}
             />
           )}
 
