@@ -245,7 +245,7 @@ test('chain base point on the map: marked and kept readable under a filter, off 
   const marked = M.buildRenderState(made.store, { ...base, anchor: made.id }).nodes[0]
   assert.equal(marked.anchor, true)
   assert.equal(marked.emphasized, true)
-  const filter = { building: 'hongik_k', floor: null }
+  const filter = { selections: [{ building: 'hongik_k', floor: null }] }
   assert.equal(M.buildRenderState(made.store, { ...base, filter }).nodes[0].dim, true)
   assert.equal(M.buildRenderState(made.store, { ...base, filter, anchor: made.id }).nodes[0].dim, false)
 })

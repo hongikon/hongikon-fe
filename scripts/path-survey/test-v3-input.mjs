@@ -212,12 +212,12 @@ test('labels: mode none, number, full, selected only', () => {
   assert.deepEqual(draw(s, { labelMode: 'selected', multi: ['n1'] }).nodes.map((n) => n.num), ['1', ''])
   assert.deepEqual(draw(s, { labelMode: 'selected' }).nodes.map((n) => n.num), ['', ''])
   // The two showing modes still always label the selected point.
-  assert.equal(draw(s, { labelMode: 'number', selected: 'n2', filter: { building: 'hongik_k', floor: null } }).nodes[1].num, '2')
+  assert.equal(draw(s, { labelMode: 'number', selected: 'n2', filter: { selections: [{ building: 'hongik_k', floor: null }] } }).nodes[1].num, '2')
 })
 
 test('labels: with a floor filter only matching points and selected points keep a label', () => {
   const s = store([node('n1'), node('n2'), indoor('n3', [lvl('hongik_r', 1)]), indoor('n4', [lvl('hongik_r', 2)]), indoor('n5', [lvl('hongik_k', 1)])])
-  const { nodes } = draw(s, { filter: { building: 'hongik_r', floor: 1 }, selected: 'n2' })
+  const { nodes } = draw(s, { filter: { selections: [{ building: 'hongik_r', floor: 1 }] }, selected: 'n2' })
   assert.deepEqual(nodes.map((n) => n.num), ['', '2', '3', '', ''])
   assert.deepEqual(nodes.map((n) => n.emphasized), [false, true, false, false, false])
 })

@@ -1,7 +1,7 @@
 import { STAIRS_COLOR } from '../../utils/pathSurveyStore'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { hasLevel, type NodeType, type SurveyEdgeV3, type SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
+import type { NodeType, SurveyEdgeV3, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 
 /**
  * Turns the store into what the map draws. Pure so that the rules can be tested without a map.
@@ -38,11 +38,11 @@ export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle'
 export const SHAPE_OF: Record<NodeType, NodeShape> = { basic: 'circle', entrance: 'square', elevator: 'diamond', stairs: 'triangle' }
 
 export interface MapFilter {
-  building: string | null
-  floor: number | null
+  /** Empty means all buildings. Each selected building has all floors (null) or one floor. */
+  selections: readonly { building: string; floor: number | null }[]
 }
 
-export const NO_FILTER: MapFilter = { building: null, floor: null }
+export const NO_FILTER: MapFilter = { selections: [] }
 
 export type MapMode = 'add' | 'link' | 'move' | 'select'
 
@@ -94,10 +94,9 @@ export function buildingColor(index: BuildingIndex, code: string): string {
 
 /** Strong means drawn at full color. Outdoor points always are. Without a building filter everything is. */
 export function isNodeStrong(node: SurveyNodeV3, filter: MapFilter): boolean {
-  if (!filter.building || node.scope !== 'indoor') return true
+  if (filter.selections.length === 0 || node.scope !== 'indoor') return true
   const levels = node.levels ?? []
-  if (filter.floor === null) return levels.some((l) => l.building === filter.building)
-  return hasLevel(levels, { building: filter.building, floor: filter.floor })
+  return filter.selections.some(({ building, floor }) => levels.some((l) => l.building === building && (floor === null || l.floor === floor)))
 }
 
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
@@ -144,7 +143,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
   const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full' } = options
   const multi = new Set(options.multi ?? [])
   const byId = new Map(store.nodes.map((n) => [n.id, n]))
-  const filtering = !!filter.building
+  const filtering = filter.selections.length > 0
 
   const edges = store.edges.flatMap((edge: SurveyEdgeV3): RenderEdge[] => {
     const a = byId.get(edge.a)
