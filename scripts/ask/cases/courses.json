@@ -402,5 +402,49 @@
  {
   "q": "F 학점 받으면 어떻게 돼",
   "expect": "grades"
+ },
+ {
+  "q": "제한인원 4/3/2/1/추가 이게 무슨 뜻이야",
+  "expect": "course-table"
+ },
+ {
+  "q": "사전선택인원 보고 경쟁률 어떻게 계산해?",
+  "expect": "course-table"
+ },
+ {
+  "q": "수강신청 경쟁률 보는 법",
+  "expect": "course-table"
+ },
+ {
+  "q": "강의시간표 숫자 뜻",
+  "expect": "course-table"
+ },
+ {
+  "q": "신청인원이 제한인원보다 많은데 왜 그래?",
+  "expect": "course-table"
+ },
+ {
+  "q": "폐강인원 10명이 뭐야",
+  "expect": "course-table"
+ },
+ {
+  "q": "ABEEK 이수구분이 뭐예요",
+  "expect": "course-table"
+ },
+ {
+  "q": "이수구분 뜻",
+  "expect": "course-table"
+ },
+ {
+  "q": "개설학년 2학년인데 1학년이 들어도 돼?",
+  "expect": "course-table"
+ },
+ {
+  "q": "수강신청 화면 보는법",
+  "expect": "course-table"
+ },
+ {
+  "q": "폐강 기준이 뭐야",
+  "expect": "course-cancelled"
  }
 ]

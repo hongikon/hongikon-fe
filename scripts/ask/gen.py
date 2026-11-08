@@ -52,6 +52,7 @@ def check(t):
     for q in list(t.get('faqs', [])) + list(t.get('faq', [])):
         if q not in FAQ:
             errs.append(f'FAQ 없음 {q!r}')
+    errs += [f'see 흐름 없음 {f}' for _, f in t.get('see', []) if f not in TOPIC_IDS]
     errs += [f'전화 키 없음 {p}' for p in t.get('phones', []) if isinstance(p, str) and p not in P]
     if t.get('facility') and t['facility'] not in F and not t['facility'].startswith('hi-'):
         errs.append(f"위치 키 없음 {t['facility']}")
@@ -164,6 +165,8 @@ def build(t):
     if 'page' in t:
         key = t['page']
         secs = sections_of(PAGES[key]['sections'])[: t.get('max_sections')]
+        # tips: 학교 원문보다 먼저 보일 정리 덩어리 [('제목', ['줄', …])]. 학교 공식 문구가 아니면 제목에 '홍익온 정리'를 단다.
+        tips = [{'title': title, 'items': list(items)} for title, items in t.get('tips', [])]
         title = page_title(key)
         lead = t.get('lead')
         if not lead:
@@ -189,7 +192,9 @@ def build(t):
             follow.append({'label': page_title(k2), 'next': node_id})
         # links: 학교 페이지 밖의 출처(백과사전·학교 공식 영상 등)를 ('라벨', 'url') 로 덧붙인다.
         extra = [{'label': label, 'url': url} for label, url in t.get('links', [])]
-        a = answer(lead, secs, [{'label': source_label(key), 'url': url_of(key)}] + extra + contacts_links(key), t)
+        # see: 다른 안내로 넘어가는 버튼 [('라벨', '흐름id')] — 그 흐름의 첫 단계를 연다.
+        follow += [{'label': label, 'next': f'{flow_id}/start'} for label, flow_id in t.get('see', [])]
+        a = answer(lead, tips + secs, [{'label': source_label(key), 'url': url_of(key)}] + extra + contacts_links(key), t)
         if follow:
             a = {**a, 'followUps': follow}
         nodes['start'] = a
@@ -219,6 +224,7 @@ def build(t):
 
 
 if __name__ == '__main__':
+    TOPIC_IDS = {t['id'] for t in TOPICS}
     errors = [e for t in TOPICS for e in check(t)]
     ids = [t['id'] for t in TOPICS]
     errors += [f'id 겹침 {i}' for i in set(ids) if ids.count(i) > 1]

@@ -588,7 +588,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     if (message.followed) return;
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, followed: true } : item)));
-    push({ role: "user", text: label }, ...stepMessages(message.flowId, next, message.question));
+    // 'course-table/start' 처럼 흐름 id 가 붙은 버튼은 다른 안내로 넘어간다(주제표 see).
+    const slash = next.indexOf("/");
+    const [flowId, nodeId] = slash < 0 ? [message.flowId, next] : [next.slice(0, slash), next.slice(slash + 1)];
+    push({ role: "user", text: label }, ...stepMessages(flowId, nodeId, message.question));
   };
 
   const renderSection = (section: AskSection, key: string) => (
