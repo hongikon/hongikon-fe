@@ -518,5 +518,37 @@
  {
   "q": "전기영 1 2 기준이 뭐야",
   "expect": "first-year-courses"
+ },
+ {
+  "q": "최대 수강신청 학점",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "평점 B+ 넘으면 추가학점",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "직전학기 성적 3.5 이상이면 3학점 더 들을 수 있어?",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "창실법 뭐야",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "공대는 디씽 창실법 중에 들어야 해?",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "컴프 들어야 돼?",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "F 받은 과목 재수강 제한 있어?",
+  "expect": "course-retake"
+ },
+ {
+  "q": "계절학기에 안 열리는 과목 있어?",
+  "expect": "seasonal"
  }
 ]
