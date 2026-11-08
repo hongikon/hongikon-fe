@@ -1,0 +1,480 @@
+{
+  "format": "hongikon.pathSurvey",
+  "version": 3,
+  "exportedAt": 1793923200000,
+  "complete": false,
+  "check": {
+    "errorCount": 6,
+    "warningCount": 0,
+    "errors": [
+      {
+        "code": "indoor_no_levels",
+        "message": "n7: 내부 점인데 층이 없어요",
+        "nodeId": "n7"
+      },
+      {
+        "code": "bad_floor",
+        "message": "n8: 층 값 1.3 이 0.5 단위가 아니에요",
+        "nodeId": "n8"
+      },
+      {
+        "code": "bad_floor",
+        "message": "n9: 층 값 2.3 이 0.5 단위가 아니에요",
+        "nodeId": "n9"
+      },
+      {
+        "code": "entrance_no_label",
+        "message": "n10: 출입구 라벨이 없어요",
+        "nodeId": "n10"
+      },
+      {
+        "code": "edge_outdoor_indoor",
+        "message": "e7: 외부 점과 내부 점은 출입구로만 이어요(n1, n5)",
+        "nodeId": "n5",
+        "edgeId": "e7"
+      },
+      {
+        "code": "edge_missing_node",
+        "message": "e8: 없는 점을 가리켜요(n99)",
+        "nodeId": "n1",
+        "edgeId": "e8"
+      }
+    ],
+    "warnings": []
+  },
+  "excluded": {
+    "nodes": [
+      {
+        "id": "n7",
+        "reason": "no_levels"
+      },
+      {
+        "id": "n8",
+        "reason": "no_usable_levels"
+      }
+    ],
+    "levels": [
+      {
+        "id": "n8",
+        "building": "hongik_r",
+        "floor": 1.3,
+        "reason": "bad_floor"
+      },
+      {
+        "id": "n9",
+        "building": "hongik_r",
+        "floor": 2.3,
+        "reason": "bad_floor"
+      }
+    ],
+    "edges": [
+      {
+        "id": "e6",
+        "reason": "no_levels"
+      },
+      {
+        "id": "e7",
+        "reason": "needs_entrance"
+      },
+      {
+        "id": "e8",
+        "reason": "missing_node"
+      }
+    ],
+    "ties": []
+  },
+  "graph": {
+    "vertices": [
+      {
+        "id": "n1",
+        "node": "n1",
+        "lat": 37.4995,
+        "lng": 126.9001,
+        "type": "basic"
+      },
+      {
+        "id": "n2@hongik_r:1.5",
+        "node": "n2",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.50020000000001,
+        "lng": 126.9002,
+        "type": "entrance"
+      },
+      {
+        "id": "n3@hongik_r:1.5",
+        "node": "n3",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.5003,
+        "lng": 126.9003,
+        "type": "basic"
+      },
+      {
+        "id": "n4@hongik_r:1.5",
+        "node": "n4",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.500400000000006,
+        "lng": 126.90039999999999,
+        "type": "stairs"
+      },
+      {
+        "id": "n4@hongik_r:2",
+        "node": "n4",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.500400000000006,
+        "lng": 126.90039999999999,
+        "type": "stairs"
+      },
+      {
+        "id": "n5@hongik_r:2",
+        "node": "n5",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.5005,
+        "lng": 126.9005,
+        "type": "basic"
+      },
+      {
+        "id": "n6@hongik_r:1.5",
+        "node": "n6",
+        "building": "hongik_r",
+        "floor": 1.5,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_r:2",
+        "node": "n6",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_k:1",
+        "node": "n6",
+        "building": "hongik_k",
+        "floor": 1,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n6@hongik_k:2",
+        "node": "n6",
+        "building": "hongik_k",
+        "floor": 2,
+        "lat": 37.500600000000006,
+        "lng": 126.9006,
+        "type": "elevator"
+      },
+      {
+        "id": "n9@hongik_r:2",
+        "node": "n9",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.5009,
+        "lng": 126.9009,
+        "type": "basic"
+      },
+      {
+        "id": "n10@hongik_r:2",
+        "node": "n10",
+        "building": "hongik_r",
+        "floor": 2,
+        "lat": 37.501000000000005,
+        "lng": 126.901,
+        "type": "entrance"
+      }
+    ],
+    "edges": [
+      {
+        "a": "n1",
+        "b": "n2@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 78.3
+      },
+      {
+        "a": "n2@hongik_r:1.5",
+        "b": "n3@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n3@hongik_r:1.5",
+        "b": "n4@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n4@hongik_r:2",
+        "b": "n5@hongik_r:2",
+        "kind": "normal",
+        "meters": 14.2
+      },
+      {
+        "a": "n3@hongik_r:1.5",
+        "b": "n6@hongik_r:1.5",
+        "kind": "normal",
+        "meters": 42.6
+      },
+      {
+        "a": "n5@hongik_r:2",
+        "b": "n9@hongik_r:2",
+        "kind": "normal",
+        "meters": 56.8
+      },
+      {
+        "a": "n5@hongik_r:2",
+        "b": "n10@hongik_r:2",
+        "kind": "normal",
+        "meters": 71
+      },
+      {
+        "a": "n4@hongik_r:1.5",
+        "b": "n4@hongik_r:2",
+        "kind": "stairs_vertical"
+      },
+      {
+        "a": "n6@hongik_r:1.5",
+        "b": "n6@hongik_r:2",
+        "kind": "elevator_vertical"
+      },
+      {
+        "a": "n6@hongik_k:1",
+        "b": "n6@hongik_k:2",
+        "kind": "elevator_vertical"
+      },
+      {
+        "a": "n6@hongik_r:1.5",
+        "b": "n6@hongik_k:1",
+        "kind": "tie",
+        "meters": 0
+      }
+    ]
+  },
+  "report": {
+    "labelsNotOnServer": []
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "lat": 37.4995,
+      "lng": 126.9001,
+      "scope": "outdoor",
+      "type": "basic"
+    },
+    {
+      "id": "n2",
+      "lat": 37.50020000000001,
+      "lng": 126.9002,
+      "scope": "indoor",
+      "type": "entrance",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        }
+      ],
+      "entranceLabel": "HI_R_1F5_ENTER"
+    },
+    {
+      "id": "n3",
+      "lat": 37.5003,
+      "lng": 126.9003,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        }
+      ]
+    },
+    {
+      "id": "n4",
+      "lat": 37.500400000000006,
+      "lng": 126.90039999999999,
+      "scope": "indoor",
+      "type": "stairs",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        },
+        {
+          "building": "hongik_r",
+          "floor": 2
+        }
+      ]
+    },
+    {
+      "id": "n5",
+      "lat": 37.5005,
+      "lng": 126.9005,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 2
+        }
+      ]
+    },
+    {
+      "id": "n6",
+      "lat": 37.500600000000006,
+      "lng": 126.9006,
+      "scope": "indoor",
+      "type": "elevator",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.5
+        },
+        {
+          "building": "hongik_r",
+          "floor": 2
+        },
+        {
+          "building": "hongik_k",
+          "floor": 1
+        },
+        {
+          "building": "hongik_k",
+          "floor": 2
+        }
+      ],
+      "ties": [
+        [
+          {
+            "building": "hongik_r",
+            "floor": 1.5
+          },
+          {
+            "building": "hongik_k",
+            "floor": 1
+          }
+        ]
+      ]
+    },
+    {
+      "id": "n7",
+      "lat": 37.5007,
+      "lng": 126.9007,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": []
+    },
+    {
+      "id": "n8",
+      "lat": 37.500800000000005,
+      "lng": 126.90079999999999,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 1.3
+        }
+      ]
+    },
+    {
+      "id": "n9",
+      "lat": 37.5009,
+      "lng": 126.9009,
+      "scope": "indoor",
+      "type": "basic",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 2
+        },
+        {
+          "building": "hongik_r",
+          "floor": 2.3
+        }
+      ]
+    },
+    {
+      "id": "n10",
+      "lat": 37.501000000000005,
+      "lng": 126.901,
+      "scope": "indoor",
+      "type": "entrance",
+      "levels": [
+        {
+          "building": "hongik_r",
+          "floor": 2
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "a": "n1",
+      "b": "n2",
+      "kind": "normal"
+    },
+    {
+      "id": "e2",
+      "a": "n2",
+      "b": "n3",
+      "kind": "normal"
+    },
+    {
+      "id": "e3",
+      "a": "n3",
+      "b": "n4",
+      "kind": "normal"
+    },
+    {
+      "id": "e4",
+      "a": "n4",
+      "b": "n5",
+      "kind": "normal"
+    },
+    {
+      "id": "e5",
+      "a": "n3",
+      "b": "n6",
+      "kind": "normal"
+    },
+    {
+      "id": "e6",
+      "a": "n5",
+      "b": "n7",
+      "kind": "normal"
+    },
+    {
+      "id": "e7",
+      "a": "n1",
+      "b": "n5",
+      "kind": "normal"
+    },
+    {
+      "id": "e8",
+      "a": "n1",
+      "b": "n99",
+      "kind": "normal"
+    },
+    {
+      "id": "e9",
+      "a": "n5",
+      "b": "n9",
+      "kind": "normal"
+    },
+    {
+      "id": "e10",
+      "a": "n5",
+      "b": "n10",
+      "kind": "normal"
+    }
+  ]
+}

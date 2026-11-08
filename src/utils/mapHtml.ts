@@ -1014,8 +1014,17 @@ export function buildMapHTML(
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
         + escapeHTML(item.label) + '</div>';
 
+      // 둘째 줄(11-08): 여러 날 제보의 오늘 상태('오늘 14:00 시작'·'운영 중 · 18:00까지'), 끝나기 30분 안이면 '곧 종료 · 18:00'.
+      var subEl = item.sub
+        ? '<div style="margin-top:1px;white-space:nowrap;max-width:150px;overflow:hidden;pointer-events:auto;'
+          + 'text-overflow:ellipsis;font-family:' + PARTNER_FONT + ';font-size:10.5px;font-weight:'
+          + (item.ending ? '700' : '600') + ';color:' + (item.ending ? color : '#4b5563') + ';letter-spacing:-0.2px;'
+          + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
+          + escapeHTML(item.sub) + '</div>'
+        : '';
+
       return '<div style="display:flex;flex-direction:column;align-items:center;width:100%;pointer-events:none;">'
-        + badgeEl + nameEl + '</div>';
+        + badgeEl + nameEl + subEl + '</div>';
     }
 
     function removeReportOverlays() {
@@ -1031,6 +1040,7 @@ export function buildMapHTML(
       var boxH = padTop + badge + 5 + 18;
 
       items.forEach(function(item) {
+        var itemH = item.sub ? boxH + 15 : boxH;
         var marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(item.lat, item.lng),
           map: map,
@@ -1040,7 +1050,7 @@ export function buildMapHTML(
           icon: {
             content: '<div style="width:' + boxW + 'px;padding-top:' + padTop + 'px;pointer-events:none;">'
               + reportLabelHTML(item) + '</div>',
-            size: new naver.maps.Size(boxW, boxH),
+            size: new naver.maps.Size(boxW, itemH),
             anchor: new naver.maps.Point(boxW / 2, padTop + badge / 2),
           },
         });

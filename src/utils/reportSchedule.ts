@@ -142,3 +142,178 @@ export function formatStartShort(startMs: number, now: number = Date.now()): str
   if (diff === 1) return `내일 ${clock}`
   return `${formatDay(startMs)} ${clock}`
 }
+
+// ── 여러 날 제보의 날짜별 운영 시간(11-08) ──────────────────────────────
+// 지도에는 기간(startsAt~endsAt = 첫날 시작 ~ 마지막 날 끝) 내내 올라가 있고, 핀·시트가 오늘 상태를 알려 준다.
+// 서버 `days: [{date:"2026-11-14", start:"14:00", end:"18:00"}]`(한국 시간, 날마다 다를 수 있음, 쉬는 날은 없음).
+// 규칙은 ReportService.validateDays 와 같다.
+
+/** 끝나기 이만큼(분) 전부터 '곧 종료'로 보여 준다. 한 번짜리 제보에도 같다. */
+export const REPORT_ENDING_SOON_MINUTES = 30
+
+/** 서버와 주고받는 하루 운영 시간(한국 시간). */
+export interface ReportDayHours {
+  date: string
+  start: string
+  end: string
+}
+
+/** 하루 운영 시간을 epoch ms 로 푼 것. */
+export interface ReportDaySpan {
+  date: string
+  startMs: number
+  endMs: number
+}
+
+function parseClockMinutes(value: string | null | undefined): number | null {
+  if (!value) return null
+  const [h, m] = value.split(':').map((part) => Number(part))
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return null
+  return h * 60 + m
+}
+
+/** `2026-11-14`(한국 날짜) → 그날 한국 자정의 epoch ms. */
+function kstDateMidnight(date: string): number | null {
+  const [y, mo, d] = date.split('-').map((part) => Number(part))
+  if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return null
+  return Date.UTC(y, mo - 1, d) - KST_OFFSET_MS
+}
+
+/** epoch ms → 한국 날짜 `2026-11-14`. */
+export function kstDateKey(ms: number): string {
+  const shifted = new Date(ms + KST_OFFSET_MS)
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
+}
+
+/** 서버 값 → 날짜별 운영 시간(날짜 순). 이틀이 안 되거나 값이 이상하면 null(한 번짜리로 본다). */
+export function parseReportDays(report: { days?: readonly ReportDayHours[] | null }): ReportDaySpan[] | null {
+  if (!report.days || report.days.length < 2) return null
+  const spans: ReportDaySpan[] = []
+  for (const day of report.days) {
+    const midnight = kstDateMidnight(day.date)
+    const start = parseClockMinutes(day.start)
+    const end = parseClockMinutes(day.end)
+    if (midnight === null || start === null || end === null || end <= start) return null
+    spans.push({ date: day.date, startMs: midnight + start * MINUTE_MS, endMs: midnight + end * MINUTE_MS })
+  }
+  spans.sort((a, b) => a.startMs - b.startMs)
+  return spans
+}
+
+/** 날짜별 운영 시간 → 서버로 보낼 값. */
+export function toReportDayHours(spans: readonly ReportDaySpan[]): ReportDayHours[] {
+  return spans.map((span) => ({ date: span.date, start: formatClock(span.startMs), end: formatClock(span.endMs) }))
+}
+
+function kstMinutesOfDay(ms: number): number {
+  const parts = kstParts(ms)
+  return parts.hours * 60 + parts.minutes
+}
+
+/**
+ * 고른 시작·종료로 '날짜별 운영 시간'을 켤 수 있는지: 이틀 이상에 걸치면 된다
+ * (예: 11/14 14:00 ~ 11/17 18:00 → 날마다 14:00~18:00로 시작, 날마다 고칠 수 있다).
+ * 마지막 날 끝이 첫날 시작 시각보다 이르더라도(11/14 14:00 ~ 11/16 13:00) 날마다 맞춰 준다(`defaultReportDays`).
+ */
+export function canRunDaily(startMs: number, endMs: number): boolean {
+  return endMs > startMs && !isSameKstDay(startMs, endMs)
+}
+
+/** 시작 날부터 끝 날까지 날마다 시작 시각~끝 시각으로 채운 운영 시간. `keep` 에 같은 날이 있으면 그 시간을 남긴다(첫날 시작·마지막 날 끝은 고른 값). */
+export function defaultReportDays(startMs: number, endMs: number, keep: readonly ReportDaySpan[] = []): ReportDaySpan[] {
+  const startMinutes = kstMinutesOfDay(startMs)
+  const endMinutes = kstMinutesOfDay(endMs)
+  const firstMidnight = kstMidnight(startMs)
+  const lastMidnight = kstMidnight(endMs)
+  const kept = new Map(keep.map((span) => [span.date, span]))
+  const days: ReportDaySpan[] = []
+  for (let midnight = firstMidnight; midnight <= lastMidnight; midnight += DAY_MS) {
+    const date = kstDateKey(midnight)
+    const previous = kept.get(date)
+    let dayStart = previous ? previous.startMs : midnight + startMinutes * MINUTE_MS
+    let dayEnd = previous ? previous.endMs : midnight + endMinutes * MINUTE_MS
+    if (midnight === firstMidnight) dayStart = startMs
+    if (midnight === lastMidnight) dayEnd = endMs
+    // 시작이 끝보다 늦어진 날(예: 마지막 날 13:00에 끝나는데 기본 시작이 14:00)은 한 시간짜리로 맞춘다. 고정된 쪽은 그대로 둔다.
+    if (dayEnd <= dayStart) {
+      if (midnight === lastMidnight && midnight !== firstMidnight) {
+        dayStart = Math.max(midnight, dayEnd - HOUR_MS)
+      } else {
+        dayEnd = Math.min(midnight + DAY_MS - REPORT_TIME_STEP_MINUTES * MINUTE_MS, dayStart + HOUR_MS)
+      }
+    }
+    days.push({ date, startMs: dayStart, endMs: dayEnd })
+  }
+  return days
+}
+
+function sameHoursEveryDay(spans: readonly ReportDaySpan[]): boolean {
+  const first = spans[0]
+  return spans.every(
+    (span, index) =>
+      kstMinutesOfDay(span.startMs) === kstMinutesOfDay(first.startMs) &&
+      kstMinutesOfDay(span.endMs) === kstMinutesOfDay(first.endMs) &&
+      kstMidnight(span.startMs) === kstMidnight(first.startMs) + index * DAY_MS,
+  )
+}
+
+/** 날짜별 운영 시간 한 줄: `11/14(토) ~ 11/17(화) · 매일 14:00~18:00`, 날마다 다르면 `… · 날마다 시간 다름`. */
+export function formatDaysRange(spans: readonly ReportDaySpan[]): string {
+  const first = spans[0]
+  const last = spans[spans.length - 1]
+  const range = `${formatDay(first.startMs)} ~ ${formatDay(last.startMs)}`
+  return sameHoursEveryDay(spans)
+    ? `${range} · 매일 ${formatClock(first.startMs)}~${formatClock(first.endMs)}`
+    : `${range} · 날마다 시간 다름`
+}
+
+/** 서버 시각·운영 시간 → 시트에 적을 일정 한 줄. 날짜별 운영 시간이 없으면 지금의 `10/3(토) 11:00 ~ 15:00`. */
+export function formatReportSchedule(report: { startsAt: string; endsAt: string; days?: readonly ReportDayHours[] | null }): string {
+  const spans = parseReportDays(report)
+  if (!spans) return formatScheduleRange(parseServerTime(report.startsAt), parseServerTime(report.endsAt))
+  return formatDaysRange(spans)
+}
+
+/** 날짜 하나의 줄: `11/14(토) 14:00~18:00` */
+export function formatDaySpan(span: ReportDaySpan): string {
+  return `${formatDay(span.startMs)} ${formatClock(span.startMs)}~${formatClock(span.endMs)}`
+}
+
+/**
+ * 지금 이 제보의 상태와 핀·시트에 붙일 짧은 글.
+ * - upcoming: 기간이 아직 시작 전(예정). text 는 `11:00` · `내일 11:00` · `11/14(금) 14:00`.
+ * - later: 날짜별 운영 제보인데 지금은 운영 시간 밖. `오늘 14:00 시작` · `내일 13:00 시작` · `11/16(월) 13:00 시작`.
+ * - live: 운영 중. 날짜별 운영 제보는 `운영 중 · 18:00까지`, 한 번짜리는 text 없음(지금처럼 이름만).
+ * - ending: 끝나기 30분 안. `곧 종료 · 18:00`(날짜별 운영 제보는 그날 끝, 한 번짜리는 종료 시각).
+ */
+export type ReportPhaseKind = 'upcoming' | 'later' | 'live' | 'ending'
+
+export interface ReportPhase {
+  kind: ReportPhaseKind
+  text: string | null
+}
+
+export function reportPhase(
+  report: { startsAt: string; endsAt: string; days?: readonly ReportDayHours[] | null },
+  now: number = Date.now(),
+): ReportPhase {
+  const startMs = parseServerTime(report.startsAt)
+  const endMs = parseServerTime(report.endsAt)
+  if (startMs > now) return { kind: 'upcoming', text: formatStartShort(startMs, now) }
+
+  const soonMs = REPORT_ENDING_SOON_MINUTES * MINUTE_MS
+  const spans = parseReportDays(report)
+  const current = spans?.find((span) => span.endMs > now)
+  if (!spans || !current) {
+    return endMs - now <= soonMs ? { kind: 'ending', text: `곧 종료 · ${formatClock(endMs)}` } : { kind: 'live', text: null }
+  }
+  if (now < current.startMs) {
+    const diff = kstParts(current.startMs).dayIndex - kstParts(now).dayIndex
+    const day = diff === 0 ? '오늘' : diff === 1 ? '내일' : formatDay(current.startMs)
+    return { kind: 'later', text: `${day} ${formatClock(current.startMs)} 시작` }
+  }
+  const endClock = formatClock(current.endMs)
+  return current.endMs - now <= soonMs
+    ? { kind: 'ending', text: `곧 종료 · ${endClock}` }
+    : { kind: 'live', text: `운영 중 · ${endClock}까지` }
+}
