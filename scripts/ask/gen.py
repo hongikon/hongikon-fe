@@ -52,6 +52,9 @@ def check(t):
     for q in list(t.get('faqs', [])) + list(t.get('faq', [])):
         if q not in FAQ:
             errs.append(f'FAQ 없음 {q!r}')
+    if t.get('only') and t.get('page') in PAGES:
+        titles = {s['title'] for s in PAGES[t['page']]['sections']}
+        errs += [f'only 덩어리 없음 {o!r}' for o in t['only'] if o not in titles]
     errs += [f'see 흐름 없음 {f}' for _, f in t.get('see', []) if f not in TOPIC_IDS]
     errs += [f'전화 키 없음 {p}' for p in t.get('phones', []) if isinstance(p, str) and p not in P]
     if t.get('facility') and t['facility'] not in F and not t['facility'].startswith('hi-'):
@@ -164,9 +167,12 @@ def build(t):
     nodes = {}
     if 'page' in t:
         key = t['page']
-        secs = sections_of(PAGES[key]['sections'])[: t.get('max_sections')]
+        # only: 한 페이지에 주제가 여럿일 때 이 주제 덩어리(제목)만 원문으로 붙인다.
+        raw = [s for s in PAGES[key]['sections'] if not t.get('only') or s['title'] in t['only']]
+        secs = sections_of(raw)[: t.get('max_sections')]
         # tips: 학교 원문보다 먼저 보일 정리 덩어리 [('제목', ['줄', …])]. 학교 공식 문구가 아니면 제목에 '홍익온 정리'를 단다.
-        tips = [{'title': title, 'items': list(items)} for title, items in t.get('tips', [])]
+        # 표가 필요한 덩어리는 dict({'title', 'table': {'head','rows','colors'}, 'items'}) 그대로 넣는다.
+        tips = [{**(tip if isinstance(tip, dict) else {'title': tip[0], 'items': list(tip[1])}), 'full': True} for tip in t.get('tips', [])]
         title = page_title(key)
         lead = t.get('lead')
         if not lead:

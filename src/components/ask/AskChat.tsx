@@ -191,17 +191,22 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
   let total = 0;
   let cut = false;
   for (const section of sections ?? []) {
+    // 운영진 정리(tips)는 이미 짧게 쓴 것이라 통째로 보이고, 학교 원문 줄 수에 세지 않는다.
+    if (section.full) {
+      shown.push(section);
+      continue;
+    }
     if (section.title && titles.has(section.title)) {
       cut = true;
       continue;
     }
-    if (shown.length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
+    if (shown.filter((item) => !item.full).length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
       cut = true;
       break;
     }
     const room = Math.min(BRIEF_ITEMS, BRIEF_TOTAL_ITEMS - total);
     const items = section.items?.slice(0, room);
-    const table = section.table ? { head: section.table.head, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
+    const table = section.table ? { ...section.table, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
     if ((section.items?.length ?? 0) > room || (section.table?.rows.length ?? 0) > BRIEF_TABLE_ROWS) cut = true;
     total += items?.length ?? 0;
     titles.add(section.title);
@@ -601,14 +606,27 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         <View style={styles.table}>
           {[section.table.head, ...section.table.rows].map((row, rowIndex) => (
             <View key={rowIndex} style={[styles.tableRow, rowIndex === 0 && styles.tableHead]}>
-              {row.map((cell, cellIndex) => (
-                <Text
-                  key={cellIndex}
-                  style={[styles.tableCell, rowIndex === 0 && styles.tableHeadText, cellIndex === 0 && styles.tableFirst]}
-                >
-                  {cell}
-                </Text>
-              ))}
+              {row.map((cell, cellIndex) => {
+                const ring = section.table?.colors?.[cellIndex];
+                if (ring && cell) {
+                  const color = COLORS.gradeTurn[ring];
+                  return (
+                    <View key={cellIndex} style={[styles.tableRingCell, cellIndex === 0 && styles.tableFirst]}>
+                      <View style={[styles.tableRing, { borderColor: color }]}>
+                        <Text style={[styles.tableRingText, { color }]}>{cell}</Text>
+                      </View>
+                    </View>
+                  );
+                }
+                return (
+                  <Text
+                    key={cellIndex}
+                    style={[styles.tableCell, rowIndex === 0 && styles.tableHeadText, cellIndex === 0 && styles.tableFirst]}
+                  >
+                    {cell}
+                  </Text>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -1752,6 +1770,9 @@ const styles = StyleSheet.create({
   tableCell: { flex: 1, paddingHorizontal: 6, paddingVertical: 7, fontSize: 12, lineHeight: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   tableFirst: { flex: 1.3 },
   tableHeadText: { fontFamily: FONTS.semibold, color: COLORS.textSecondary },
+  tableRingCell: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 5, paddingHorizontal: 2 },
+  tableRing: { minWidth: 26, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 999, borderWidth: 1.5, alignItems: "center" },
+  tableRingText: { fontSize: 12, lineHeight: 16, fontFamily: FONTS.semibold },
   followTitle: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textTertiary, marginTop: 2 },
   card: { borderRadius: RADIUS.lg, backgroundColor: COLORS.fill, padding: 12, gap: 8 },
   cardTitle: { gap: 2 },

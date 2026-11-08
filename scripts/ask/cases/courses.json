@@ -446,5 +446,53 @@
  {
   "q": "폐강 기준이 뭐야",
   "expect": "course-cancelled"
+ },
+ {
+  "q": "논사글 언제 들어야 돼?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "대학영어 몇학년 때 들어?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "전기영 1학년 때 꼭 들어야 해?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "전공기초영어 고학년 되면 못 들어?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "수강신청 꿀팁",
+  "expect": "classes"
+ },
+ {
+  "q": "수강신청 어디서 해?",
+  "expect": "classes"
+ },
+ {
+  "q": "담아두기 어디서 해",
+  "expect": "classes"
+ },
+ {
+  "q": "수강신청 연습할 수 있는 곳",
+  "expect": "classes"
+ },
+ {
+  "q": "전기영 1이랑 2 차이가 뭐야",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "정정서 쓰는 법",
+  "expect": "course-change"
+ },
+ {
+  "q": "교수님께 정정 메일 어떻게 써?",
+  "expect": "course-change"
+ },
+ {
+  "q": "인원 꽉 찬 과목 정정 받는 방법",
+  "expect": "course-change"
  }
 ]
