@@ -23,7 +23,8 @@ export type RootStackParamList = {
    * 어느 쪽이든 상세 화면이 `GET /news/{id}`로 본문을 받아 채운다.
    */
   NewsDetail: { item: NewsItem } | { newsId: string }
-  NewsSearch: undefined
+  /** query: 물어보기 '○○ 공지 찾아줘'(11-09)에서 넘긴 검색어 — 그 말로 게시글 검색을 바로 띄운다. */
+  NewsSearch: { query?: string } | undefined
   AppStatus: undefined
 }
 

@@ -351,6 +351,14 @@ export default function SettingsScreen() {
   const handleSettingsIntent = useCallback(() => {
     const intent = consumeSettingsIntent()
     if (!intent) return
+    if (intent.type === 'openAlerts') {
+      setExpanded((prev) => new Set(prev).add('alerts'))
+      return
+    }
+    if (intent.type === 'openSubscriptions') {
+      setSubManagerVisible(true)
+      return
+    }
     if (intent.type === 'openNearbyAlerts') {
       // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
       setExpanded((prev) => new Set(prev).add('alerts'))

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   View,
   Text,
@@ -47,6 +47,8 @@ import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
 import { defaultGuides, guidesFromIds, isGreeting, type GreetingGuide } from "../../utils/askGreeting";
+import { newsSearchQuery, parseAskAppCommand, type AskAppCommand } from "../../utils/askAppCommand";
+import { useOptionalSettings } from "../../contexts/SettingsContext";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
 const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
@@ -118,6 +120,11 @@ type ChatMessage =
   /** 인사(하이·ㅎㅇ)에 앱이 바로 하는 답 — 요즘 많이 찾는 안내(없으면 기본 안내) 칩. 누르면 앱 안 안내를 연다(서버·한도 안 씀). */
   | { id: number; role: "greeting"; guides: GreetingGuide[]; popular: boolean; chosen: string | null }
   /**
+   * 앱 설정 바꾸기·화면 열기(11-09 — '화학공학과 구독해줘', '알림 설정 어떻게 해'). 앱이 알아듣고(서버·한도 안 씀) 확인 버튼을 띄운다 —
+   * 학생이 눌러야만 바뀐다. done: 누른 뒤 결과 한 줄.
+   */
+  | { id: number; role: "command"; command: AskAppCommand; done: string | null }
+  /**
    * 해결이 안 됐을 때 운영진에게 넘기기(기존 문의하기 /feedback, 게스트). 보낼 내용(질문·홍익온 답·근거)을 미리 보여 주고,
    * 학생이 더 알고 싶은 점·답 받을 이메일(선택)을 적어 직접 보내기를 눌러야만 보낸다.
    */
@@ -169,6 +176,12 @@ interface AskChatProps {
    * 없으면(웹 /dev/ask, 지도와 떨어진 화면) 위치를 글로만 보인다.
    */
   onShowOnMap?: (place: { target: string; title?: string; summary?: string }) => void;
+  /** 답의 "여기서 가는 길"(11-09, 서버 'route' 조작). 없으면(길찾기 꺼짐·웹 미리보기) 버튼을 그리지 않는다. */
+  onRouteTo?: (place: { target: string }) => void;
+  /** 설정 화면 열기(11-09 — '알림 설정 어떻게 해'). 없으면 열기 버튼 없이 안내만. */
+  onOpenSettings?: (screen: "alerts" | "subscriptions") => void;
+  /** 소식 탭 게시글 검색을 그 말로 열기(11-09 — '○○ 공지 찾아줘'). 없으면 버튼 없음. */
+  onSearchNews?: (query: string) => void;
   /** 서버에 한 번 물은 뒤(성공·실패 모두) — 남은 수를 다시 받는다. */
   onAsked?: () => void;
 }
@@ -239,7 +252,7 @@ function askFailureText(error: unknown, app: boolean): string {
  *    짧게 답한다(모르면 모른다고 하고 담당 부서를 안내). 답 아래 '근거 안내 보기'로 ①의 원문 안내를 펼친다.
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
-export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onShowOnMap, onAsked }: AskChatProps) {
+export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onShowOnMap, onRouteTo, onOpenSettings, onSearchNews, onAsked }: AskChatProps) {
   const insets = useSafeAreaInsets();
   const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
   const appMode = !serverKey;
@@ -249,6 +262,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   latestInputRef.current = input;
   const [composerFocused, setComposerFocused] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // 설정 공급자 밖(웹 /dev/ask 미리보기)이면 설정 카드를 띄우지 않는다.
+  const appSettings = useOptionalSettings();
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
   const [pending, setPending] = useState(false);
   /** 지금 받고 있는 서버 답을 끊는 손잡이(멈춤 버튼). */
@@ -399,6 +414,12 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         { role: "user", text: question },
         { role: "greeting", guides: popular.length > 0 ? popular : defaultGuides(), popular: popular.length > 0, chosen: null },
       );
+      return;
+    }
+    const command = appSettings ? parseAskAppCommand(question) : null;
+    if (command) {
+      // 설정 바꾸기·화면 열기는 앱이 받는다 — 확인 버튼을 눌러야 바뀐다(docs/ask-app-actions-plan.md 2장).
+      push({ role: "user", text: question }, { role: "command", command, done: null });
       return;
     }
     const matched = matchAskFlow(question) ?? followUpMatch(question);
@@ -559,6 +580,91 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
+  };
+
+  /** 설정 확인 카드의 버튼. 지금 값이 이미 원하는 값이면 바꾸지 않는다(토글이라 두 번 누르면 되돌아가지 않게). */
+  const applyCommand = (message: Extract<ChatMessage, { role: "command" }>, boardId?: string) => {
+    if (message.done !== null || !appSettings) return;
+    const { settings, toggleSubscribedDept, toggleDeptAlert, isDeptAlertOn, toggleSubscriptionAlert, toggleAlertCategory } = appSettings;
+    const { command } = message;
+    let done: string;
+    if (command.kind === "subscribe" && boardId) {
+      const name = command.boards.find((b) => b.id === boardId)?.name ?? boardId;
+      const subscribed = settings.subscribedDepts.includes(boardId);
+      if (subscribed !== command.on) toggleSubscribedDept(boardId);
+      done = command.on ? `${name} 게시판을 구독했어요. 소식 탭에서 볼 수 있어요.` : `${name} 게시판 구독을 해제했어요.`;
+    } else if (command.kind === "boardAlert" && boardId) {
+      const name = command.boards.find((b) => b.id === boardId)?.name ?? boardId;
+      if (!settings.subscribedDepts.includes(boardId)) {
+        toggleSubscribedDept(boardId);
+        done = `${name} 게시판을 구독했어요. 구독한 게시판은 알림이 켜져 있어요.`;
+      } else {
+        if (isDeptAlertOn(boardId) !== command.on) toggleDeptAlert(boardId);
+        done = `${name} 게시판 알림을 ${command.on ? "켰어요" : "껐어요"}.`;
+      }
+    } else if (command.kind === "alertAll") {
+      if (settings.subscriptionAlert !== command.on) toggleSubscriptionAlert();
+      done = `알림을 ${command.on ? "켰어요" : "껐어요"}. 설정 탭 > 알림에서 언제든 바꿀 수 있어요.`;
+    } else if (command.kind === "alertCategory") {
+      if (settings.alertCategories.includes(command.category) !== command.on) toggleAlertCategory(command.category);
+      done = `${command.category} 알림을 ${command.on ? "켰어요" : "껐어요"}.`;
+    } else {
+      return;
+    }
+    haptics.selection();
+    setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, done } : item)));
+  };
+
+  const commandText = (command: AskAppCommand): string => {
+    switch (command.kind) {
+      case "subscribe":
+        if (command.on) {
+          return command.boards.length > 1
+            ? "어느 게시판을 구독할까요? 구독하면 소식 탭에 그 게시판 공지가 모이고 알림을 받을 수 있어요."
+            : `${command.boards[0].name} 게시판을 구독할까요? 구독하면 소식 탭에 공지가 모이고 알림을 받을 수 있어요.`;
+        }
+        return command.boards.length > 1 ? "어느 게시판 구독을 해제할까요?" : `${command.boards[0].name} 게시판 구독을 해제할까요?`;
+      case "boardAlert":
+        return `${command.boards.map((b) => b.name).join(", ")} 게시판 알림을 ${command.on ? "켤" : "끌"}까요?`;
+      case "alertAll":
+        return command.on ? "앱 알림을 다시 켤까요?" : "앱 알림을 모두 끌까요? 끄면 구독한 게시판·분야 소식 알림이 오지 않아요.";
+      case "alertCategory":
+        return `${command.category} 분야 알림을 ${command.on ? "켤" : "끌"}까요?`;
+      case "open":
+        return command.screen === "alerts"
+          ? "알림은 설정 탭 > 알림에서 바꿔요. 전체 알림, 분야별 알림(공지·장학·행사·수강·시설·취업·상담), 게시판별 알림, 제보 알림을 켜고 끌 수 있어요. 여기서 '장학 알림 꺼 줘'처럼 말해도 돼요."
+          : "게시판 구독은 소식 탭이나 설정 탭 > 구독 관리에서 해요. 여기서 '화학공학과 구독해 줘'처럼 말해도 돼요.";
+    }
+  };
+
+  const renderCommand = (item: Extract<ChatMessage, { role: "command" }>) => {
+    const { command } = item;
+    const button = (key: string, label: string, onPress: () => void) => (
+      <TouchableOpacity key={key} style={styles.option} activeOpacity={0.7} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+        <Text style={styles.optionText}>{label}</Text>
+      </TouchableOpacity>
+    );
+    let buttons: ReactNode[] = [];
+    if (item.done === null) {
+      if (command.kind === "subscribe" || command.kind === "boardAlert") {
+        buttons = command.boards.map((board) => {
+          const verb = command.kind === "subscribe" ? (command.on ? "구독하기" : "구독 해제") : command.on ? "알림 켜기" : "알림 끄기";
+          return button(board.id, `${verb} · ${board.name}`, () => applyCommand(item, board.id));
+        });
+      } else if (command.kind === "alertAll" || command.kind === "alertCategory") {
+        buttons = [button("apply", command.on ? "알림 켜기" : "알림 끄기", () => applyCommand(item))];
+      }
+    }
+    if (command.kind === "open" && onOpenSettings) {
+      const label = command.screen === "alerts" ? "알림 설정 열기" : "구독 관리 열기";
+      buttons = [button("open", label, () => onOpenSettings(command.screen))];
+    }
+    return (
+      <View style={botStyle}>
+        <Text style={styles.botText}>{item.done ?? commandText(command)}</Text>
+        {buttons.length > 0 ? <View style={styles.options}>{buttons}</View> : null}
+      </View>
+    );
   };
 
   const chooseGuide = (message: Extract<ChatMessage, { role: "greeting" }>, guide: GreetingGuide) => {
@@ -752,6 +858,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         {sections.length > 0 ? cursor : null}
         {place ? renderPlace(place) : null}
         {item.streaming ? null : mapButtonFor(item, place ?? null)}
+        {item.streaming ? null : routeButtonFor(item)}
+        {item.streaming ? null : newsSearchButtonFor(item)}
         {actions.slice(0, VISIBLE_ACTIONS)}
         {actions.length > VISIBLE_ACTIONS ? (
           <>
@@ -1054,6 +1162,47 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     return place ? renderMapButton({ target: `facility:${place}`, summary: firstSentence(item.text) }, `map-${item.id}`) : null;
   };
 
+  /** "여기서 가는 길" 버튼(11-09) — 서버가 'route' 조작을 보냈을 때만(가는 길을 물은 질문). 건물·시설만. */
+  const routeButtonFor = (item: Extract<ChatMessage, { role: "reply" }>) => {
+    const action = item.appActions.find((candidate) => candidate.type === "route");
+    if (!action || !onRouteTo || !/^(building|facility):./.test(action.target)) return null;
+    const name = placeName(action.target);
+    if (!name) return null;
+    const title = action.label || name;
+    return (
+      <TouchableOpacity
+        key={`route-${item.id}`}
+        style={styles.mapButton}
+        activeOpacity={0.7}
+        onPress={() => onRouteTo({ target: action.target })}
+        accessibilityRole="button"
+        accessibilityLabel={`내 위치에서 ${title} 가는 길`}
+      >
+        <Ionicons name="navigate-outline" size={15} color={COLORS.white} />
+        <Text style={styles.mapButtonText} numberOfLines={1}>여기서 가는 길 · {title}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  /** '○○ 공지 찾아줘'(11-09)면 답 아래 "소식에서 검색" — 서버 답(공지 링크)에 더해 소식 탭에서 더 찾아볼 수 있게. */
+  const newsSearchButtonFor = (item: Extract<ChatMessage, { role: "reply" }>) => {
+    const query = onSearchNews ? newsSearchQuery(item.question) : null;
+    if (!query || !onSearchNews) return null;
+    return (
+      <TouchableOpacity
+        key={`news-${item.id}`}
+        style={styles.mapButton}
+        activeOpacity={0.7}
+        onPress={() => onSearchNews(query)}
+        accessibilityRole="button"
+        accessibilityLabel={`소식에서 ${query} 검색`}
+      >
+        <Ionicons name="search-outline" size={15} color={COLORS.white} />
+        <Text style={styles.mapButtonText} numberOfLines={1}>소식에서 검색 · {query}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   /** "지도에서 보기" 버튼(11-07). 누르면 지도 탭으로 옮겨 그 곳에 핀·시트, 위에 summary 카드. */
   const renderMapButton = (action: { target: string; label?: string | null; summary?: string | null }, key: string) => {
     if (!onShowOnMap) return null;
@@ -1196,6 +1345,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         );
       case "reply":
         return renderReply(item);
+      case "command":
+        return renderCommand(item);
       case "greeting":
         return (
           <View style={botStyle}>

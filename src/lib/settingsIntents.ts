@@ -7,6 +7,10 @@ export type SettingsIntent =
   | { type: 'openMyReports'; reportId: number | null }
   /** 제휴 시트의 "근처에 있을 때 알려 드릴까요?" → 설정 > 근처 제휴 알림 창. */
   | { type: 'openNearbyAlerts' }
+  /** 물어보기 '알림 설정 어떻게 해'(11-09) → 설정 > 알림 묶음을 펼친다. */
+  | { type: 'openAlerts' }
+  /** 물어보기 '구독 어떻게 해'(11-09) → 구독 관리 창. */
+  | { type: 'openSubscriptions' }
 
 let pending: SettingsIntent | null = null
 const listeners = new Set<() => void>()
