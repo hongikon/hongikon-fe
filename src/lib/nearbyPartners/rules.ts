@@ -27,6 +27,12 @@ const ACCURACY_ALLOWANCE_METERS = 15
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
+ * 캠퍼스 건물(강의동·기숙사) 중심에서 이만큼 안의 업체는 대상에서 뺀다 — 건물 안에 있는데 알림이 가지 않게.
+ * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 60m)로 잰다. 11-09: 깨우는 원(150m)으로 재던 것을 바꿈 —
+ * 깨우는 원은 위치를 다시 재기 시작할 뿐 알리지 않는데, 150m 로 재 기숙사 앞 가게(레이브 에스프레소 바 상수 103m 등) 24곳이 빠졌다.
+ */
+export const CAMPUS_CLEARANCE_METERS = ALERT_RADIUS_METERS + ACCURACY_ALLOWANCE_METERS + EXIT_MARGIN_METERS
+/**
  * 사용자 둘레 "다시 고르기" 원의 한계. 실제 반경은 `reselectRadius` 가 업체 밀도에 맞춰 정한다.
  * 홍대 앞은 500m 안에 제휴 업체가 중앙값 86곳이라(10-28 운영 데이터) 고정 500m 원이면 19곳 밖 업체 반경에
  * 원을 벗어나기 전에 닿는다. 최소값은 운영체제가 이탈을 믿을 만하게 알려 주는 크기(Android 권장 100~150m).
@@ -192,7 +198,7 @@ function endedBefore(endsOn: string | undefined, today: string): boolean {
 export interface PickTargetsOptions {
   /** 사용자가 고른 소속(여러 개 가능). 비어 있으면 총학생회 제휴만. */
   affiliations: readonly PartnerAffiliation[]
-  /** 캠퍼스 건물 좌표. 업체 반경이 건물에 걸치면(강의실에서 알림이 가는 경우) 뺀다. */
+  /** 캠퍼스 건물 좌표. 건물에서 `CAMPUS_CLEARANCE_METERS` 안의 업체는 뺀다(강의실·기숙사 방에서 알림이 가지 않게). */
   campusPoints: readonly { lat: number; lng: number }[]
   now: number
   /** 소속을 보지 않고 모든 제휴를 대상으로(현장 테스트 빌드만, 10-29). 제휴가 끝났는지는 그대로 본다. */
@@ -221,7 +227,7 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
     if (eligible.length === 0) return false
 
     return !options.campusPoints.some(
-      (point) => haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < PARTNER_REGION_RADIUS_METERS,
+      (point) => haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
     )
   })
 }

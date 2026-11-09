@@ -21,6 +21,7 @@ import {
   reselectRadius,
   stayStartedAt,
   type StayRecord,
+  CAMPUS_CLEARANCE_METERS,
 } from '../../src/lib/nearbyPartners/rules.ts'
 import { nearbyAlertContent, nearbyGroupContent } from '../../src/lib/nearbyPartners/copy.ts'
 import type { Partner } from '../../src/types/index.ts'
@@ -83,6 +84,15 @@ test('대상 업체: 혜택·기한·소속·캠퍼스 겹침으로 거른다(�
 
   const art = pickTargets(partners, { affiliations: ['미술대학'], campusPoints, now: NOON }).map((p) => p.id)
   assert.deepEqual(art, ['ok', 'notFlagged', 'endsToday', 'collegeOnly'])
+})
+
+test('대상 업체: 캠퍼스 건물과는 알림이 닿는 거리(60m)로 겹침을 본다 — 깨우는 원(150m)이 아니라(11-09)', () => {
+  const dorm = [north(0)]
+  const ids = (m: number) => pickTargets([partner('p', m)], { affiliations: [], campusPoints: dorm, now: NOON }).length
+  assert.equal(CAMPUS_CLEARANCE_METERS, 60)
+  assert.equal(ids(56), 0)
+  assert.equal(ids(61), 1)
+  assert.equal(ids(103), 1)
 })
 
 test('대상 업체: 소속 전용 혜택만 있어도 그 소속에는 대상', () => {
