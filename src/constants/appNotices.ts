@@ -14,6 +14,8 @@ export interface AppNoticeSlide {
 export interface AppNoticePopup {
   /** 이날(KST, 'YYYY-MM-DD')까지 띄운다. */
   until: string
+  /** 서버 공지(관리자 페이지에서 쓴 것)는 시각까지 정해져 있어 이 시각(epoch ms) 전까지만 띄운다. 있으면 until 대신 쓴다. */
+  untilMs?: number
   /** 옆으로 넘기는 카드. 마지막 카드 아래에 linkLabel 이 붙는다. */
   slides: AppNoticeSlide[]
   /** 누르면 이 공지 본문(설정 > 공지사항과 같은 화면)을 연다. */
@@ -37,6 +39,8 @@ export interface AppNotice {
   /** 앱을 켤 때 한 번 띄우는 요약(LaunchNoticeModal). 없으면 공지사항 목록에만 있다. */
   popup?: AppNoticePopup
   comparison?: NoticeComparison
+  /** 서버 공지의 게시 시각(epoch ms). 앱에 적힌 공지와 섞어 최신순으로 줄 세울 때 쓴다(없으면 date 의 KST 자정). */
+  publishedMs?: number
 }
 
 /** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 11-03부터 켜짐 — ROUTE_FINDING_ENABLED, 1.1.0 빌드부터 '내 위치' 출발). */

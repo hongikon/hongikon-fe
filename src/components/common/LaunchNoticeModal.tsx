@@ -7,8 +7,9 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import { RADIUS } from '../../constants/spacing'
-import { APP_NOTICES, type AppNotice } from '../../constants/appNotices'
-import { kstTodayYmd } from '../../utils/exhibitions'
+import type { AppNotice } from '../../constants/appNotices'
+import { loadAppNotices } from '../../lib/appNotices'
+import { currentPopupNotice } from '../../utils/noticeMerge'
 import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
@@ -21,20 +22,15 @@ import Button from './Button'
 /** '다시 보지 않기'를 누른 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. '닫기'는 남기지 않는다(다음 실행에 다시 뜬다). */
 const STORAGE_KEY = '@hongikon_launch_notice_seen'
 
-/** 지금 띄울 공지 — 최신순 목록에서 popup.until(KST, 그날까지)이 지나지 않은 첫 공지. */
-export function currentPopupNotice(notices: AppNotice[] = APP_NOTICES, now: number = Date.now()): AppNotice | null {
-  const today = kstTodayYmd(now)
-  return notices.find((notice) => notice.popup !== undefined && today <= notice.popup.until) ?? null
-}
-
 /**
  * 띄울 차례인지. PartnerNoticeModal 과 같은 방식으로 앱 전체가 함께 본다 — 알림 안내(NotificationPrimer)가 이 창이
  * 닫힐 때까지 기다린다(네이티브 Modal 두 개가 겹치면 화면이 눌리지 않았다, PartnerNoticeModal 주석).
  * 'unknown' = 저장소를 아직 안 읽음, 'pending' = 띄울 차례, 'seen' = 봤음·띄울 공지 없음·못 읽어 건너뜀.
  */
 type LaunchNoticeState = 'unknown' | 'pending' | 'seen'
-const popupNotice = currentPopupNotice()
-let noticeState: LaunchNoticeState = popupNotice ? 'unknown' : 'seen'
+/** 서버 공지(11-09)를 받은 뒤 정한다 — 받기 전엔 'unknown' 이라 다른 첫 실행 안내도 기다린다(받기는 최대 4초). */
+let popupNotice: AppNotice | null = null
+let noticeState: LaunchNoticeState = 'unknown'
 let loading = false
 const listeners = new Set<() => void>()
 
@@ -46,10 +42,16 @@ function setNoticeState(next: LaunchNoticeState): void {
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener)
-  if (!loading && popupNotice) {
+  if (!loading) {
     loading = true
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((seenId) => setNoticeState(seenId === popupNotice.id ? 'seen' : 'pending'))
+    loadAppNotices()
+      .then(async (notices) => {
+        const notice = currentPopupNotice(notices)
+        if (!notice) return setNoticeState('seen')
+        const seenId = await AsyncStorage.getItem(STORAGE_KEY)
+        popupNotice = notice
+        setNoticeState(seenId === notice.id ? 'seen' : 'pending')
+      })
       .catch(() => setNoticeState('seen'))
   }
   return () => {

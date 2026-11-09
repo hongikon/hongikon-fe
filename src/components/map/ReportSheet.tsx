@@ -13,7 +13,7 @@ import * as haptics from '../../lib/haptics'
 import { useToast } from '../common/Toast'
 import { reportCategoryMeta } from '../../constants/reportCategories'
 import { useAuth } from '../../contexts/AuthContext'
-import { flagReport, updateReportSchedule } from '../../apis/reports'
+import { deleteReport, flagReport, updateReportSchedule } from '../../apis/reports'
 import { ApiError, getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
@@ -37,6 +37,7 @@ import ModerationMenu from './ModerationMenu'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
 import ReportOwnerMenu from './ReportOwnerMenu'
 import ReportScheduleEditModal from './ReportScheduleEditModal'
+import ReportEditModal from './ReportEditModal'
 import HotBadge from '../common/HotBadge'
 import OfficialBadge from '../common/OfficialBadge'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -49,6 +50,8 @@ import SheetScrollBody from './SheetScrollBody'
 interface ReportSheetProps {
   report: ReportListItem
   onClose: () => void
+  /** 내 제보를 고치거나 지운 뒤 — 지도 목록을 다시 받는다. */
+  onChanged?: () => void
 }
 
 /**
@@ -72,14 +75,15 @@ function contentNeedsMore(content: string): boolean {
 }
 
 /** 시트에서 바로 바뀌는 값(🔥·관심·조회·알림·공식 계정 시간 수정). 지도 목록을 다시 받기 전까지 덮어 둔다. */
-type SheetPatch = ReportCommunityPatch & {
+type SheetPatch = ReportCommunityPatch & Partial<Pick<ReportListItem,
+  'category' | 'customCategoryLabel' | 'placeLabel' | 'title' | 'content' | 'floor' | 'imageUrl' | 'imageUrls' | 'editedAt'>> & {
   notifyEnabled?: boolean | null
   startsAt?: string
   endsAt?: string
   days?: ReportDayHours[] | null
 }
 
-export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
+export default function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
@@ -136,7 +140,30 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const canToggleNotify = report.isMine && typeof report.notifyEnabled === 'boolean' && !!accessToken
   // 공식 계정이 올린 제보는 작성자가 시간을 고칠 수 있다(서버도 공식 계정 작성자만 받는다).
   const canEditSchedule = report.isMine && !!report.authorOfficial && !!accessToken
-  const hasOwnerMenu = canToggleNotify || canEditSchedule
+  // 내 제보는 ⋯ 에서 고치고 지운다(11-09 요청). 로그인해 있어야 한다(게스트 화면엔 내 제보가 없다).
+  const canManage = report.isMine && !!accessToken
+  const hasOwnerMenu = canToggleNotify || canEditSchedule || canManage
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const handleDelete = async () => {
+    if (!accessToken || deleting) return
+    setDeleting(true)
+    try {
+      await deleteReport(report.id, accessToken)
+      haptics.success()
+      setOwnerMenuOpen(false)
+      toast.show({ message: '제보를 지웠어요' })
+      onChanged?.()
+      onClose()
+    } catch (caught) {
+      toast.show({
+        message: caught instanceof ApiError && caught.serverMessage ? caught.serverMessage : '제보를 지우지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+        tone: 'warning',
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [scheduleSaving, setScheduleSaving] = useState(false)
   const handleSaveSchedule = async (next: { startsAt: string; endsAt: string; days?: ReportDayHours[] }) => {
@@ -432,6 +459,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         <View style={styles.authorRow}>
           <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
           {report.authorOfficial ? <OfficialBadge /> : null}
+          {report.editedAt ? <Text style={styles.edited}>수정됨</Text> : null}
         </View>
         <View style={styles.actions}>
           {flagging ? (
@@ -447,9 +475,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={
-                canToggleNotify
-                  ? `내 제보 메뉴(${canEditSchedule ? '시간 수정, ' : ''}이 제보 알림 ${report.notifyEnabled ? '끄기' : '켜기'})`
-                  : '내 제보 메뉴(시간 수정)'
+                `내 제보 메뉴(${canManage ? '수정, 삭제' : '시간 수정'}${canToggleNotify ? `, 이 제보 알림 ${report.notifyEnabled ? '끄기' : '켜기'}` : ''})`
               }
             >
               <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textTertiary} />
@@ -479,6 +505,34 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           globalOff={!settings.reportStatusAlert}
           onToggleNotify={canToggleNotify ? () => void handleToggleNotify() : undefined}
           onEditSchedule={canEditSchedule ? () => setScheduleOpen(true) : undefined}
+          onEdit={canManage ? () => setEditOpen(true) : undefined}
+          onDelete={canManage ? () => void handleDelete() : undefined}
+          deleting={deleting}
+        />
+      )}
+      {canManage && (
+        <ReportEditModal
+          report={editOpen ? report : null}
+          onClose={() => setEditOpen(false)}
+          onSaved={(saved) => {
+            applyPatch({
+              category: saved.category,
+              customCategoryLabel: saved.customCategoryLabel,
+              placeLabel: saved.placeLabel ?? null,
+              title: saved.title,
+              content: saved.content,
+              floor: saved.floor,
+              imageUrl: saved.imageUrl ?? null,
+              imageUrls: saved.imageUrls,
+              startsAt: saved.startsAt,
+              endsAt: saved.endsAt,
+              days: saved.days ?? null,
+              editedAt: saved.editedAt ?? new Date().toISOString(),
+            })
+            setEditOpen(false)
+            toast.show({ message: '제보를 고쳤어요' })
+            onChanged?.()
+          }}
         />
       )}
       {canEditSchedule && (
@@ -603,6 +657,7 @@ const styles = StyleSheet.create({
   },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   author: { flexShrink: 1, fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
+  edited: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary, marginLeft: 4 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 },
   moreBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   flaggedText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.warningIcon },

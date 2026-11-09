@@ -10,6 +10,8 @@ import type {
   AdminBuildingOption,
   AdminExhibition,
   AdminExhibitionInput,
+  AdminNotice,
+  AdminNoticeInput,
   AdminFacility,
   AdminFacilityInput,
   AdminPartner,
@@ -528,4 +530,22 @@ export function isGatewayTimeout(error: unknown): boolean {
     (error instanceof NetworkError && error.kind === 'timeout') ||
     (error instanceof ApiError && (error.status === 504 || error.status === 502))
   )
+}
+
+/** 앱 공지 전체(예약 포함), 게시 시각 늦은 순. 앱은 게시 시각이 지난 것만 받는다(GET /notices). */
+export async function fetchAdminNotices(signal?: AbortSignal): Promise<AdminNotice[]> {
+  const response = await adminRequest<{ notices: AdminNotice[] }>('/admin/notices', { signal })
+  return response?.notices ?? []
+}
+
+export async function createAdminNotice(input: AdminNoticeInput): Promise<AdminNotice> {
+  return adminRequest<AdminNotice>('/admin/notices', { method: 'POST', body: input, retries: 0 })
+}
+
+export async function updateAdminNotice(id: number, input: AdminNoticeInput): Promise<AdminNotice> {
+  return adminRequest<AdminNotice>(`/admin/notices/${id}`, { method: 'PUT', body: input, retries: 0 })
+}
+
+export async function deleteAdminNotice(id: number): Promise<void> {
+  await adminRequest<void>(`/admin/notices/${id}`, { method: 'DELETE', retries: 0 })
 }

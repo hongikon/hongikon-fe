@@ -213,6 +213,7 @@ export type AdminSection =
   | 'partners'
   | 'facilities'
   | 'exhibitions'
+  | 'notices'
   | 'tools'
 
 // ── 지도 데이터(제휴업체·편의시설) 관리 — `GET/POST/PUT/DELETE /admin/map/*` ──────────────
@@ -331,4 +332,29 @@ export interface AdminAskNote {
   createdBy: number | null
   createdAt: string
   updatedAt: string
+}
+
+// ── 앱 공지사항 — `GET/POST/PUT/DELETE /admin/notices` (11-09) ──────────────
+
+/** 관리자 공지 한 건. 시각은 서버 그대로(UTC, 존 없음) — parseServerTime 으로 읽는다. */
+export interface AdminNotice {
+  id: number
+  title: string
+  body: string
+  publishAt: string
+  popupUntil: string | null
+  popupText: string | null
+  /** SCHEDULED = 게시 전(예약), PUBLISHED = 앱에 보이는 중. */
+  status: 'SCHEDULED' | 'PUBLISHED'
+  createdAt: string
+  updatedAt: string
+}
+
+/** 공지 추가·수정 본문. 시각은 toISOString()(UTC). popupUntil 이 없으면 팝업 없이 목록에만. */
+export interface AdminNoticeInput {
+  title: string
+  body: string
+  publishAt: string
+  popupUntil?: string
+  popupText?: string
 }
