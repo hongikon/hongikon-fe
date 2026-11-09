@@ -62,7 +62,7 @@ test('알림 반경(20m): GPS 오차는 15m 까지만 더하고, 안에 있던 �
   assert.equal(preciselyInside(28, null, false, 30), true)
 })
 
-test('대상 업체: 관리자 표시·혜택·기한·소속·캠퍼스 겹침으로 거른다', () => {
+test('대상 업체: 혜택·기한·소속·캠퍼스 겹침으로 거른다(관리자 표시는 보지 않음, 11-09)', () => {
   const partners = [
     partner('ok', 300),
     partner('notFlagged', 300, { nearbyAlert: undefined }),
@@ -79,10 +79,10 @@ test('대상 업체: 관리자 표시·혜택·기한·소속·캠퍼스 겹침�
   const campusPoints = [north(-50)]
 
   const noAffiliation = pickTargets(partners, { affiliations: [], campusPoints, now: NOON }).map((p) => p.id)
-  assert.deepEqual(noAffiliation, ['ok', 'endsToday'])
+  assert.deepEqual(noAffiliation, ['ok', 'notFlagged', 'endsToday'])
 
   const art = pickTargets(partners, { affiliations: ['미술대학'], campusPoints, now: NOON }).map((p) => p.id)
-  assert.deepEqual(art, ['ok', 'endsToday', 'collegeOnly'])
+  assert.deepEqual(art, ['ok', 'notFlagged', 'endsToday', 'collegeOnly'])
 })
 
 test('대상 업체: 소속 전용 혜택만 있어도 그 소속에는 대상', () => {

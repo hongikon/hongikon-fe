@@ -200,15 +200,15 @@ export interface PickTargetsOptions {
 }
 
 /**
- * 근처 알림 대상 업체. 관리자가 "근처 알림 대상"으로 켠 업체 중
- * 혜택 문구가 있고, 제휴가 끝나지 않았고, 사용자 소속(또는 총학생회) 제휴이며, 캠퍼스 건물과 겹치지 않는 곳.
+ * 근처 알림 대상 업체. 혜택 문구가 있고, 제휴가 끝나지 않았고, 사용자가 고른 소속(공과대학·기숙사 등, 또는 총학생회) 제휴이며,
+ * 캠퍼스 건물과 겹치지 않는 곳. 11-09 운영진 요청: 관리자가 업체마다 켜는 "근처 알림 대상" 표시(`nearbyAlert`)는 더 보지 않고
+ * 소속 필터로만 정한다(표시가 켜진 곳이 1곳뿐이라 거의 울리지 않았다).
  * 서버도 끝난 제휴를 빼서 내려주지만, 백그라운드에서는 기기에 저장해 둔 목록을 쓰므로 날짜를 다시 본다.
  */
 export function pickTargets(partners: readonly Partner[], options: PickTargetsOptions): Partner[] {
   const today = kstTodayYmd(options.now)
   const mine = options.affiliations
   return partners.filter((partner) => {
-    if (partner.nearbyAlert !== true) return false
     if (benefitFor(partner, mine) === null) return false
     if (endedBefore(partner.endsOn, today)) return false
 

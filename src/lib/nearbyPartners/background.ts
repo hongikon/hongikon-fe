@@ -762,10 +762,9 @@ export interface NearbySource {
 }
 
 function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
-  // 현장 테스트 빌드: 서버에 업체별 대상 표시가 없어도, 소속과 상관없이 혜택 있는 업체를 모두 대상으로 본다
+  // 현장 테스트 빌드: 소속과 상관없이 혜택 있는 업체를 모두 대상으로 본다
   // (10-29 — 문과대학 전용 제휴 앞에서 알림이 안 와 헷갈렸다). 알림 문구에 어느 소속 제휴인지 붙는다(copy.ts).
-  const source = NEARBY_FIELD_TEST ? partners.map((p) => ({ ...p, nearbyAlert: true })) : partners
-  return pickTargets(source, { affiliations, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
+  return pickTargets(partners, { affiliations, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
