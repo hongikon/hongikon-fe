@@ -54,7 +54,7 @@ import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import { formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoute, type RouteAlternative, type WalkApproach } from "../apis/routes";
+import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlternative, type WalkApproach } from "../apis/routes";
 import { isCancelledError } from "../apis/client";
 import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
 import { myLocationScript } from "../utils/myLocationScript";
@@ -459,8 +459,8 @@ export default function MapScreen() {
   const routeAlternatives = useMemo<RouteAlternative[]>(() => {
     if (fromMyLocation && toBuilding) {
       if (!routeOrigin || approach?.key !== approachKey) return [];
-      const fromMe = approach.data ? pickApproachRoute(approach.data, routeOrigin) : null;
-      return [fromMe ?? straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
+      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin) : [];
+      return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
     }
     if (!fromBuilding || !toBuilding || serverRoutes?.key !== routesKey) return [];
     return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];

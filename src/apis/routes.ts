@@ -37,10 +37,13 @@ export interface RouteAlternative {
   indoorSegments?: RoutePoint[][]
 }
 
-/** 내 위치 출발용: 길 점(next 를 따라가면 도착, 도착이면 null)과 각 실외 길 점에서 도착까지의 길(points 없음). */
+/**
+ * 내 위치 출발용: 길 점 목록과, 실외 길 점(nodes 의 번호)마다 도착까지의 후보(최대 3개, 가장 빠른 길이 맨 앞).
+ * 후보의 path 는 지나는 길 점 번호, route 에는 points 가 없다.
+ */
 export interface WalkApproach {
-  nodes: { id: string; lat: number; lng: number; next: string | null }[]
-  starts: { node: string; route: Omit<RouteAlternative, 'points'> }[]
+  nodes: { id: string; lat: number; lng: number }[]
+  starts: { node: number; routes: { path: number[]; route: Omit<RouteAlternative, 'points'> }[] }[]
 }
 
 const ROUTE_TIMEOUT_MS = 8000
@@ -95,12 +98,16 @@ export async function fetchWalkApproach({
     timeoutMs: ROUTE_TIMEOUT_MS,
     skipTokenRefresh: true,
   })
-  return {
-    nodes: Array.isArray(body.nodes) ? body.nodes.filter((n) => !!n && typeof n.id === 'string' && isPoint(n)) : [],
-    starts: Array.isArray(body.starts)
-      ? body.starts.filter((s) => !!s && typeof s.node === 'string' && !!s.route && Number.isFinite(s.route.totalSeconds))
-      : [],
-  }
+  // 길 점 번호로 서로 가리키므로 길 점은 거르지 않고(번호가 밀린다) 모양만 확인한다. 잘못된 번호는 고를 때 건너뛴다.
+  const nodes = Array.isArray(body.nodes) && body.nodes.every((n) => !!n && typeof n.id === 'string' && isPoint(n)) ? body.nodes : []
+  const starts = Array.isArray(body.starts)
+    ? body.starts.filter(
+        (s) =>
+          !!s && Number.isInteger(s.node) && Array.isArray(s.routes) && s.routes.length > 0 &&
+          s.routes.every((r) => !!r && Array.isArray(r.path) && !!r.route && Number.isFinite(r.route.totalSeconds)),
+      )
+    : []
+  return { nodes, starts: nodes.length > 0 ? starts : [] }
 }
 
 /** 내 위치를 이을 가까운 길 점 수와 최대 거리. 더 멀면 직선 어림으로 대신한다(서버 WalkRouterApproachParityTest 와 같은 값). */
@@ -108,14 +115,14 @@ const MY_LOCATION_LINKS = 3
 const MY_LOCATION_MAX_METERS = 150
 
 /**
- * 내 위치에서 가까운 길 점(150m 안, 가까운 3곳)까지 걷는 시간 + 그 점에서 도착까지의 시간이 가장 작은 길. 좌표는 이 계산에만 쓴다.
- * 예전 앱 계산(내 위치를 그 3곳에 잇고 최단 경로)과 같은 길이 나온다. 이을 곳이 없으면 null.
+ * 내 위치에서 가까운 길 점(150m 안, 가까운 3곳) 중 걷는 시간 + 그 점의 가장 빠른 길이 가장 작은 점을 골라 그 점의 후보(최대 3개,
+ * 가장 빠른 길이 맨 앞)를 낸다. 좌표는 이 계산에만 쓴다. 가장 빠른 길은 예전 앱 계산(내 위치를 그 3곳에 잇고 최단 경로)과 같다.
+ * 이을 곳이 없으면 빈 배열.
  */
-export function pickApproachRoute(approach: WalkApproach, me: RoutePoint): RouteAlternative | null {
-  const nodes = new Map(approach.nodes.map((n) => [n.id, n]))
+export function pickApproachRoutes(approach: WalkApproach, me: RoutePoint): RouteAlternative[] {
   const near: { start: WalkApproach['starts'][number]; meters: number }[] = []
   for (const start of approach.starts) {
-    const node = nodes.get(start.node)
+    const node = approach.nodes[start.node]
     if (!node) continue
     const meters = haversineMeters(me.lat, me.lng, node.lat, node.lng)
     if (meters <= MY_LOCATION_MAX_METERS) near.push({ start, meters })
@@ -124,31 +131,33 @@ export function pickApproachRoute(approach: WalkApproach, me: RoutePoint): Route
   let best: (typeof near)[number] | null = null
   let bestSeconds = Infinity
   for (const n of near.slice(0, MY_LOCATION_LINKS)) {
-    const seconds = (n.meters / WALKING_METERS_PER_MINUTE) * 60 + n.start.route.totalSeconds
+    const seconds = (n.meters / WALKING_METERS_PER_MINUTE) * 60 + n.start.routes[0].route.totalSeconds
     if (seconds < bestSeconds) {
       best = n
       bestSeconds = seconds
     }
   }
-  if (!best) return null
+  if (!best) return []
 
-  const points: RoutePoint[] = [{ lat: me.lat, lng: me.lng }]
-  const seen = new Set<string>()
-  for (let id: string | null = best.start.node; id !== null && !seen.has(id); ) {
-    seen.add(id)
-    const node = nodes.get(id)
-    if (!node) break
-    const last = points[points.length - 1]
-    if (last.lat !== node.lat || last.lng !== node.lng) points.push({ lat: node.lat, lng: node.lng })
-    id = node.next
+  const walkSeconds = (best.meters / WALKING_METERS_PER_MINUTE) * 60
+  const out: RouteAlternative[] = []
+  for (const candidate of best.start.routes) {
+    const points: RoutePoint[] = [{ lat: me.lat, lng: me.lng }]
+    for (const index of candidate.path) {
+      const node = approach.nodes[index]
+      if (!node) continue
+      const last = points[points.length - 1]
+      if (last.lat !== node.lat || last.lng !== node.lng) points.push({ lat: node.lat, lng: node.lng })
+    }
+    const totalSeconds = walkSeconds + candidate.route.totalSeconds
+    out.push({
+      ...candidate.route,
+      points,
+      distanceMeters: Math.round(best.meters + candidate.route.distanceMeters),
+      totalSeconds,
+      minutes: Math.max(1, Math.round(totalSeconds / 60)),
+      isEstimate: false,
+    })
   }
-  const route = best.start.route
-  return {
-    ...route,
-    points,
-    distanceMeters: Math.round(best.meters + route.distanceMeters),
-    totalSeconds: bestSeconds,
-    minutes: Math.max(1, Math.round(bestSeconds / 60)),
-    isEstimate: false,
-  }
+  return out
 }
