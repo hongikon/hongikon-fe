@@ -22,7 +22,7 @@ import {
 import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import ReportTimeSheet from './ReportTimeSheet'
-import ReportDaysEditor, { effectiveDays, reportDaysFor, type EditableDay } from './ReportDaysEditor'
+import ReportDaysEditor, { effectiveDays, pinDailyHours, reportDaysFor, type EditableDay } from './ReportDaysEditor'
 import { RADIUS } from '../../constants/spacing'
 
 const MINUTE_MS = 60 * 1000
@@ -45,8 +45,8 @@ export interface ReportSchedule {
   /** endMode 가 custom 일 때의 종료(10분 단위). */
   customEndMs: number
   /**
-   * '매일 정해진 시간에만 운영'(11-08). 켜도 `scheduleDaysFor` 가 쓸 수 있다고 볼 때(시작을 직접 골랐고 이틀 이상, 끝 시각이
-   * 시작 시각보다 늦음)만 보낸다 — 시각을 바꿔 조건이 깨지면 체크는 남아도 한 번짜리로 올라간다(체크 줄도 사라진다).
+   * '매일 정해진 시간에만 운영'(11-08). 켜도 `scheduleDaysFor` 가 쓸 수 있다고 볼 때(이틀 이상에 걸침)만 보낸다 —
+   * 시각을 바꿔 조건이 깨지면 체크는 남아도 한 번짜리로 올라간다(체크 줄도 사라진다). 시작이 '지금'이어도 된다(11-09).
    */
   daily: boolean
   /** 날짜별로 고친 운영 시간·쉬는 날(`ReportDaysEditor`). 고르지 않은 날은 시작 시각~끝 시각이다. */
@@ -58,7 +58,7 @@ export function scheduleDaysFor(
   schedule: ReportSchedule,
   resolved: { startMs: number; endMs: number },
 ): ReportDayHours[] | null {
-  return reportDaysFor(schedule.daily && schedule.startMode === 'scheduled', resolved.startMs, resolved.endMs, schedule.editedDays)
+  return reportDaysFor(schedule.daily, resolved.startMs, resolved.endMs, schedule.editedDays)
 }
 
 export function initialReportSchedule(defaultDurationHours: number, now: number = Date.now()): ReportSchedule {
@@ -191,11 +191,11 @@ export default function ReportScheduleFields({
       : defaultScheduledStart(now)
 
   const durationMinutes = Math.max(Math.round((endMs - startMs) / MINUTE_MS), 0)
-  // '매일 이 시간에만'은 시작을 직접 골랐고 여러 날에 걸칠 때만 고를 수 있다('지금'은 시각이 정해지지 않아서).
-  const dailyAvailable = scheduled && canRunDaily(startMs, endMs)
+  // '매일 정해진 시간에만'은 여러 날에 걸치면 고를 수 있다. 시작이 '지금'이면 첫날은 지금부터다(11-09 요청).
+  const dailyAvailable = canRunDaily(startMs, endMs)
   const daily = dailyAvailable && value.daily
   const summary = daily
-    ? formatDaysRange(effectiveDays(startMs, endMs, value.editedDays).filter((day) => !day.off))
+    ? formatDaysRange(effectiveDays(startMs, endMs, value.editedDays).filter((day) => !day.off), { firstFromNow: !scheduled })
     : `${formatScheduleRange(startMs, endMs, scheduled ? undefined : '지금')} · ${formatDurationMinutes(durationMinutes)}`
 
   return (
@@ -216,7 +216,17 @@ export default function ReportScheduleFields({
           active={!scheduled}
           disabled={disabled}
           // 직접 고른 종료는 시작을 옮길 때(setStart)처럼 그대로 두고, 지금 기준으로 쓸 수 없을 때만 자동으로 맞춘다.
-          onPress={() => changeStart({ startMode: 'now', scheduledStartMs: value.scheduledStartMs }, now)}
+          onPress={() => {
+            if (scheduled && value.daily && canRunDaily(now, endMs)) {
+              // 매일 운영 시간은 그대로 두고 첫날만 지금부터로(가운데 날이 지금 시각을 따라 바뀌지 않게).
+              const editedDays = pinDailyHours(startMs, endMs, value.editedDays, now, endMs)
+              const end = endFor(now)
+              setEndAutoFit(value.endMode === 'custom' && end.customEndMs !== value.customEndMs)
+              onChange({ ...value, startMode: 'now', ...end, editedDays })
+              return
+            }
+            changeStart({ startMode: 'now', scheduledStartMs: value.scheduledStartMs }, now)
+          }}
           accessibilityLabel="지금 시작"
         />
       </View>
@@ -272,15 +282,19 @@ export default function ReportScheduleFields({
           startMs={startMs}
           endMs={endMs}
           enabled={value.daily}
-          onToggle={(next) => onChange({ ...value, daily: next })}
           edited={value.editedDays}
-          onChangeEdited={(next) => onChange({ ...value, editedDays: next })}
-          onChangeStart={setStart}
-          onChangeEnd={(ms) => {
-            setEndAutoFit(false)
-            onChange({ ...value, endMode: 'custom', customEndMs: ms })
+          onChange={(patch) => {
+            if (patch.endMs !== undefined) setEndAutoFit(false)
+            onChange({
+              ...value,
+              ...(patch.daily !== undefined ? { daily: patch.daily } : {}),
+              ...(patch.edited ? { editedDays: patch.edited } : {}),
+              ...(patch.startMs !== undefined ? { startMode: 'scheduled' as const, scheduledStartMs: patch.startMs } : {}),
+              ...(patch.endMs !== undefined ? { endMode: 'custom' as const, customEndMs: patch.endMs } : {}),
+            })
           }}
           earliestStart={firstValidStart}
+          startIsNow={!scheduled}
           disabled={disabled}
         />
       ) : null}

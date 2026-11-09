@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   canRunDaily,
   defaultReportDays,
+  formatDaysRange,
   formatReportSchedule,
   parseReportDays,
   reportPhase,
@@ -41,6 +42,17 @@ test('운영 시간은 이틀 이상이고 날마다 끝이 시작보다 늦을 
 test('일정 한 줄: 날마다 같으면 매일, 다르면 날마다 시간 다름', () => {
   assert.equal(formatReportSchedule(SAME), '11/14(토) ~ 11/16(월) · 매일 14:00~18:00')
   assert.equal(formatReportSchedule(VARIED), '11/14(토) ~ 11/17(화) · 날마다 시간 다름')
+})
+
+test('일정 한 줄: 시간이 같고 가운데 쉬는 날이 있으면 쉬는 날 수를 붙인다', () => {
+  const gap = { days: [SAME.days[0], SAME.days[2]] }
+  assert.equal(formatReportSchedule(gap), '11/14(토) ~ 11/16(월) · 매일 14:00~18:00 · 쉬는 날 1일')
+})
+
+test('일정 한 줄: 첫날이 지금부터면 첫날 시작 시각은 보지 않는다', () => {
+  const spans = parseReportDays({ days: [{ date: '2026-11-14', start: '09:30', end: '18:00' }, ...SAME.days.slice(1)] })!
+  assert.equal(formatDaysRange(spans, { firstFromNow: true }), '지금 ~ 11/16(월) · 매일 14:00~18:00')
+  assert.equal(formatDaysRange(spans), '11/14(토) ~ 11/16(월) · 날마다 시간 다름')
 })
 
 test('기간 시작 전은 예정', () => {

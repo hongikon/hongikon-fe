@@ -144,11 +144,13 @@ export default function ReportScheduleEditModal({
               startMs={startMs}
               endMs={endMs}
               enabled={daily}
-              onToggle={setDaily}
               edited={editedDays}
-              onChangeEdited={setEditedDays}
-              onChangeStart={setStartMs}
-              onChangeEnd={setEndMs}
+              onChange={(patch) => {
+                if (patch.daily !== undefined) setDaily(patch.daily)
+                if (patch.edited) setEditedDays(patch.edited)
+                if (patch.startMs !== undefined) setStartMs(patch.startMs)
+                if (patch.endMs !== undefined) setEndMs(patch.endMs)
+              }}
               earliestStart={firstValidStart}
               startLocked={started}
               disabled={saving}

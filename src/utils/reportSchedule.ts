@@ -205,7 +205,7 @@ export function toReportDayHours(spans: readonly ReportDaySpan[]): ReportDayHour
   return spans.map((span) => ({ date: span.date, start: formatClock(span.startMs), end: formatClock(span.endMs) }))
 }
 
-function kstMinutesOfDay(ms: number): number {
+export function kstMinutesOfDay(ms: number): number {
   const parts = kstParts(ms)
   return parts.hours * 60 + parts.minutes
 }
@@ -247,24 +247,24 @@ export function defaultReportDays(startMs: number, endMs: number, keep: readonly
   return days
 }
 
-function sameHoursEveryDay(spans: readonly ReportDaySpan[]): boolean {
-  const first = spans[0]
-  return spans.every(
-    (span, index) =>
-      kstMinutesOfDay(span.startMs) === kstMinutesOfDay(first.startMs) &&
-      kstMinutesOfDay(span.endMs) === kstMinutesOfDay(first.endMs) &&
-      kstMidnight(span.startMs) === kstMidnight(first.startMs) + index * DAY_MS,
-  )
-}
-
-/** 날짜별 운영 시간 한 줄: `11/14(토) ~ 11/17(화) · 매일 14:00~18:00`, 날마다 다르면 `… · 날마다 시간 다름`. */
-export function formatDaysRange(spans: readonly ReportDaySpan[]): string {
+/**
+ * 날짜별 운영 시간 한 줄: `11/14(토) ~ 11/17(화) · 매일 14:00~18:00`. 가운데 쉬는 날이 있으면 `… · 쉬는 날 1일`을 붙이고,
+ * 날마다 시각이 다르면 `… · 날마다 시간 다름`. `firstFromNow` 면 첫날은 '지금'부터라 첫날 시작 시각은 보지 않는다.
+ */
+export function formatDaysRange(spans: readonly ReportDaySpan[], options: { firstFromNow?: boolean } = {}): string {
   const first = spans[0]
   const last = spans[spans.length - 1]
-  const range = `${formatDay(first.startMs)} ~ ${formatDay(last.startMs)}`
-  return sameHoursEveryDay(spans)
-    ? `${range} · 매일 ${formatClock(first.startMs)}~${formatClock(first.endMs)}`
-    : `${range} · 날마다 시간 다름`
+  const range = `${options.firstFromNow ? '지금' : formatDay(first.startMs)} ~ ${formatDay(last.startMs)}`
+  const refStart = kstMinutesOfDay(last.startMs)
+  const refEnd = kstMinutesOfDay(last.endMs)
+  const same = spans.every(
+    (span, index) =>
+      (index === 0 && options.firstFromNow ? true : kstMinutesOfDay(span.startMs) === refStart) &&
+      kstMinutesOfDay(span.endMs) === refEnd,
+  )
+  if (!same) return `${range} · 날마다 시간 다름`
+  const offDays = Math.round((kstMidnight(last.startMs) - kstMidnight(first.startMs)) / DAY_MS) + 1 - spans.length
+  return `${range} · 매일 ${formatClock(last.startMs)}~${formatClock(last.endMs)}${offDays > 0 ? ` · 쉬는 날 ${offDays}일` : ''}`
 }
 
 /** 서버 시각·운영 시간 → 시트에 적을 일정 한 줄. 날짜별 운영 시간이 없으면 지금의 `10/3(토) 11:00 ~ 15:00`. */
