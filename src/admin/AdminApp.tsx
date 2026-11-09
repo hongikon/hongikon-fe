@@ -20,6 +20,7 @@ import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
+import NoticesScreen from './screens/NoticesScreen'
 import { RADIUS } from '../constants/spacing'
 
 /**
@@ -50,6 +51,7 @@ const SECTION_PATHS: Record<AdminSection, string> = {
   partners: '/admin/partners',
   facilities: '/admin/facilities',
   exhibitions: '/admin/exhibitions',
+  notices: '/admin/notices',
   tools: '/admin/tools',
 }
 
@@ -63,6 +65,7 @@ const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<ty
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
   { section: 'facilities', label: '편의시설', icon: 'business-outline' },
   { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
+  { section: 'notices', label: '앱 공지', icon: 'megaphone-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
@@ -312,6 +315,7 @@ export default function AdminApp() {
   else if (section === 'partners') content = <PartnersScreen />
   else if (section === 'facilities') content = <FacilitiesScreen />
   else if (section === 'exhibitions') content = <ExhibitionsScreen />
+  else if (section === 'notices') content = <NoticesScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />
   else content = <DashboardScreen overview={overviewState} onNavigate={navigate} />
 

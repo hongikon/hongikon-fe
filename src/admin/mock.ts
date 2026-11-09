@@ -9,6 +9,7 @@ import type {
   AdminAskNote,
   AdminBuildingOption,
   AdminExhibition,
+  AdminNotice,
   AdminFacility,
   AdminPartner,
   AdminComment,
@@ -648,6 +649,72 @@ function notFound(): ApiError {
 
 type MockOptions = Pick<ApiRequestOptions, 'method' | 'body'>
 
+// ── 앱 공지(11-09) ── 시각은 서버처럼 UTC(존 없음).
+const utcNoZone = (ms: number) => new Date(ms).toISOString().slice(0, 19)
+const mockNotices: AdminNotice[] = [
+  {
+    id: 2,
+    title: '축제 기간 지도 안내',
+    body: '축제 3일 동안 부스 위치를 지도에서 볼 수 있어요.\n부스는 매일 정해진 시간에만 열어요.',
+    publishAt: utcNoZone(Date.now() + 2 * 86400000),
+    popupUntil: utcNoZone(Date.now() + 5 * 86400000),
+    popupText: '축제 부스 위치를 지도에서 확인하세요.',
+    status: 'SCHEDULED',
+    createdAt: utcNoZone(Date.now()),
+    updatedAt: utcNoZone(Date.now()),
+  },
+  {
+    id: 1,
+    title: '서버 점검 안내',
+    body: '11월 8일 새벽 2시부터 30분 동안 서버를 점검했어요.',
+    publishAt: utcNoZone(Date.now() - 2 * 86400000),
+    popupUntil: null,
+    popupText: null,
+    status: 'PUBLISHED',
+    createdAt: utcNoZone(Date.now()),
+    updatedAt: utcNoZone(Date.now()),
+  },
+]
+let nextNoticeId = 3
+
+function noticeFromBody(body: Record<string, unknown>, id: number): AdminNotice {
+  const publishMs = Date.parse(String(body.publishAt))
+  const untilMs = body.popupUntil ? Date.parse(String(body.popupUntil)) : NaN
+  return {
+    id,
+    title: String(body.title ?? ''),
+    body: String(body.body ?? ''),
+    publishAt: utcNoZone(publishMs),
+    popupUntil: Number.isFinite(untilMs) ? utcNoZone(untilMs) : null,
+    popupText: Number.isFinite(untilMs) ? String(body.popupText ?? '') : null,
+    status: publishMs > Date.now() ? 'SCHEDULED' : 'PUBLISHED',
+    createdAt: utcNoZone(Date.now()),
+    updatedAt: utcNoZone(Date.now()),
+  }
+}
+
+function handleNoticeRequest(method: string, pathname: string, body: Record<string, unknown>): unknown | undefined {
+  if (method === 'GET' && pathname === '/admin/notices') return { notices: JSON.parse(JSON.stringify(mockNotices)) }
+  if (method === 'POST' && pathname === '/admin/notices') {
+    const created = noticeFromBody(body, nextNoticeId)
+    nextNoticeId += 1
+    mockNotices.unshift(created)
+    return created
+  }
+  const match = /^\/admin\/notices\/(\d+)$/.exec(pathname)
+  const index = match ? mockNotices.findIndex((item) => item.id === Number(match[1])) : -1
+  if (index < 0) return undefined
+  if (method === 'PUT') {
+    mockNotices[index] = noticeFromBody(body, mockNotices[index].id)
+    return mockNotices[index]
+  }
+  if (method === 'DELETE') {
+    mockNotices.splice(index, 1)
+    return null
+  }
+  return undefined
+}
+
 export async function handleMockRequest(path: string, options: MockOptions, mode: MockMode): Promise<unknown> {
   const method = options.method ?? 'GET'
   const [pathname, query = ''] = path.split('?')
@@ -658,6 +725,12 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
 
   if (mode === 'forbidden') {
     throw new ApiError(403, '이 작업을 할 권한이 없습니다.')
+  }
+
+  if (pathname.startsWith('/admin/notices')) {
+    const result = handleNoticeRequest(method, pathname, body)
+    if (result !== undefined) return result
+    throw notFound()
   }
 
   if (pathname.startsWith('/admin/map/')) {

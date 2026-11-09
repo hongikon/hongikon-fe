@@ -66,7 +66,7 @@ import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { promptLogin } from '../utils/reports'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
-import { APP_NOTICES } from '../constants/appNotices'
+import { useAppNotices } from '../lib/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS, TYPE } from '../constants/typography'
@@ -99,6 +99,7 @@ type ModalType =
 
 export default function SettingsScreen() {
   const tabInset = useTabBarInset()
+  const appNotices = useAppNotices()
   // 이미 설정 탭에 있을 때 하단 '설정' 탭을 다시 누르면 맨 위로 올린다(10-08 요청).
   const scrollRef = useRef<ScrollView>(null)
   useScrollToTop(scrollRef)
@@ -814,7 +815,7 @@ export default function SettingsScreen() {
 
       <NoticeListModal
         visible={activeModal === 'notices'}
-        notices={APP_NOTICES}
+        notices={appNotices}
         onClose={() => setActiveModal(null)}
       />
 
