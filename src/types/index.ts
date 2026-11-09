@@ -373,6 +373,8 @@ export interface Report {
   days?: ReportDayHours[] | null
   status: ReportStatus
   createdAt: string
+  /** 작성자가 마지막으로 고친 시각(서버 UTC, 11-09). 고친 적 없으면 null·없음 — 시트에 '수정됨'. */
+  editedAt?: string | null
 }
 
 /**

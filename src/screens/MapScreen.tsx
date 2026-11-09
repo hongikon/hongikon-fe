@@ -2354,6 +2354,7 @@ export default function MapScreen() {
               key={selectedReport.id}
               report={selectedReport}
               onClose={() => setSelectedReport(null)}
+              onChanged={refetchReports}
             />
           )}
         </View>
