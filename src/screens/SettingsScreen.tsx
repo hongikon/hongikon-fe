@@ -318,17 +318,36 @@ export default function SettingsScreen() {
   const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
   /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
   const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
+  /**
+   * 지도(근처 알림 영역·제휴 시트)에서 넘어왔을 때 '근처 제휴' 칸을 잠깐 강조한다(11-09). 창이 떠 있는 동안은 기다렸다가
+   * 창을 닫으면 그 칸으로 스크롤해 2.5초 남색 테두리로 보여 준다 — 어디서 다시 켜고 끄는지 알 수 있게.
+   */
+  const [nearbyHighlight, setNearbyHighlight] = useState<'pending' | 'on' | null>(null)
+  const alertsSectionYRef = useRef(0)
+  useEffect(() => {
+    if (nearbyHighlight !== 'on') return
+    scrollRef.current?.scrollTo({ y: Math.max(0, alertsSectionYRef.current - 8), animated: true })
+    const timer = setTimeout(() => setNearbyHighlight(null), 2500)
+    return () => clearTimeout(timer)
+  }, [nearbyHighlight])
 
   // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
   const handleSettingsIntent = useCallback(() => {
     const intent = consumeSettingsIntent()
-    if (!intent || isGuest) return
+    if (!intent) return
     if (intent.type === 'openNearbyAlerts') {
       // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
       setExpanded((prev) => new Set(prev).add('alerts'))
+      if (isGuest) {
+        // 게스트는 근처 알림 줄이 없다. 그냥 설정 탭만 보이면 왜 왔는지 몰라 한 줄 알린다.
+        notify('근처 제휴 알림', '근처 제휴 알림은 로그인한 뒤 알림 > 근처 제휴에서 켤 수 있어요.')
+        return
+      }
+      setNearbyHighlight('pending')
       setNearbyOpenSignal((n) => n + 1)
       return
     }
+    if (isGuest) return
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
   }, [isGuest])
@@ -465,7 +484,7 @@ export default function SettingsScreen() {
             )}
           </View>
           )}
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => (alertsSectionYRef.current = e.nativeEvent.layout.y)}>
           <GroupHeader
             icon="notifications-outline"
             label="알림"
@@ -618,9 +637,12 @@ export default function SettingsScreen() {
 
                 {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
                 {nearbyAlertsAvailable() && !isGuest && (
-                  <View style={styles.subBlock}>
+                  <View style={[styles.subBlock, nearbyHighlight === 'on' && styles.subBlockHighlight]}>
                     <Text style={styles.subHeader}>근처 제휴</Text>
-                    <NearbyAlertSettings openSignal={nearbyOpenSignal} />
+                    <NearbyAlertSettings
+                      openSignal={nearbyOpenSignal}
+                      onModalClose={() => setNearbyHighlight((prev) => (prev === 'pending' ? 'on' : prev))}
+                    />
                   </View>
                 )}
 
@@ -918,6 +940,8 @@ const styles = StyleSheet.create({
   categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
   subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
+  // 지도에서 근처 알림을 켜러 왔을 때 잠깐 강조(11-09).
+  subBlockHighlight: { backgroundColor: COLORS.primarySoft, borderLeftWidth: 3, borderLeftColor: COLORS.primary },
   groupHeader: {
     minHeight: 58,
     flexDirection: 'row',

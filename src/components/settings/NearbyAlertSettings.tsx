@@ -89,7 +89,14 @@ function missingItems(checklist: NearbyChecklist | null): string[] {
  *   내 소속, 알림 안 받는 가게, (테스트 앱) 반경·횟수 제한·시험 알림. 바꾸면 바로 저장된다.
  * 끄기: 감시·예약을 멈추고 서버 동의 시각을 지운다(수신 거부). 설계: `docs/nearby-partner-alert-release-plan.md`.
  */
-export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: number }) {
+export default function NearbyAlertSettings({
+  openSignal = 0,
+  onModalClose,
+}: {
+  openSignal?: number
+  /** 창을 닫았을 때(설정 화면이 이 줄을 잠깐 강조하는 데 쓴다, 11-09). */
+  onModalClose?: () => void
+}) {
   const { status, accessToken } = useAuth()
   const { data, partners, buildings } = useMapData()
   const [settings, setSettings] = useState<NearbySettings | null>(null)
@@ -170,7 +177,10 @@ export default function NearbyAlertSettings({ openSignal = 0 }: { openSignal?: n
         settings={settings}
         checklist={checklist}
         serverPaused={serverPaused}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false)
+          onModalClose?.()
+        }}
         onResync={async (affiliations, enable) => {
           const watching = await syncNearbyAlerts(source, { enable, affiliations })
           await refresh()
