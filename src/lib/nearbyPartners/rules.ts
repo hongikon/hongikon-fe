@@ -215,21 +215,60 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
   const today = kstTodayYmd(options.now)
   const mine = options.affiliations
   return partners.filter((partner) => {
-    if (benefitFor(partner, mine) === null) return false
+    if (benefitFor(liveBenefits(partner, today), mine) === null) return false
     if (endedBefore(partner.endsOn, today)) return false
-
-    const affiliations = partner.affiliations ?? []
-    const eligible = affiliations.filter((item) => {
-      if (!options.anyAffiliation && item !== '총학생회' && !mine.includes(item)) return false
-      const end = partner.affiliationEnds?.find((e) => e.affiliation === item)?.endsOn
-      return !endedBefore(end, today)
-    })
-    if (eligible.length === 0) return false
+    if (liveAffiliations(partner, mine, today, options.anyAffiliation).length === 0) return false
 
     return !options.campusPoints.some(
       (point) => haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
     )
   })
+}
+
+type DatedPartner = Pick<Partner, 'affiliations' | 'affiliationEnds' | 'endsOn'>
+
+/** 이 사용자에게 오늘 살아 있는 제휴 소속: 고른 소속·총학생회(현장 테스트는 모두) 중 그 소속 제휴가 끝나지 않은 것. */
+export function liveAffiliations(
+  partner: DatedPartner,
+  mine: readonly PartnerAffiliation[],
+  today: string,
+  anyAffiliation = false,
+): PartnerAffiliation[] {
+  return (partner.affiliations ?? []).filter((item) => {
+    if (!anyAffiliation && item !== '총학생회' && !mine.includes(item)) return false
+    return !endedBefore(affiliationEnd(partner, item), today)
+  })
+}
+
+function affiliationEnd(partner: DatedPartner, affiliation: PartnerAffiliation): string | undefined {
+  return partner.affiliationEnds?.find((e) => e.affiliation === affiliation)?.endsOn
+}
+
+/**
+ * 끝난 소속의 전용 혜택을 뺀 업체(11-09). `benefitFor` 는 날짜를 보지 않아, 경영대학(12-14 끝)·미술대학을 함께 고른 사람에게
+ * 12-14 뒤에도 경영대학 전용 혜택을 알렸다.
+ */
+export function liveBenefits<T extends BenefitSource & DatedPartner>(partner: T, today: string): T {
+  if (!partner.affiliationBenefits?.length) return partner
+  const affiliationBenefits = partner.affiliationBenefits.filter(
+    (item) => !endedBefore(affiliationEnd(partner, item.affiliation), today),
+  )
+  return { ...partner, affiliationBenefits }
+}
+
+/**
+ * 이 사용자에게 마지막으로 대상인 날(한국 날짜). 끝이 없으면 undefined. 기기에 저장한 대상 목록은 앱을 열 때만 새로 고르므로
+ * 백그라운드에서 이 날이 지나면 뺀다(`engine.settle`) — 저장본에 날짜가 없어 끝난 제휴로도 알릴 수 있었다(11-09).
+ */
+export function targetUntil(
+  partner: DatedPartner,
+  mine: readonly PartnerAffiliation[],
+  today: string,
+  anyAffiliation = false,
+): string | undefined {
+  const ends = liveAffiliations(partner, mine, today, anyAffiliation).map((item) => affiliationEnd(partner, item))
+  const affiliationsUntil = ends.some((end) => end === undefined) ? undefined : (ends as string[]).sort().reverse()[0]
+  return [partner.endsOn, affiliationsUntil].filter((d): d is string => d !== undefined).sort()[0]
 }
 
 export interface Distanced<T extends Located> {

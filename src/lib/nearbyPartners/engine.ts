@@ -40,6 +40,8 @@ export interface SnapshotPartner {
   benefit?: string
   affiliations?: PartnerAffiliation[]
   affiliationBenefits?: { affiliation: PartnerAffiliation; benefit: string }[]
+  /** 이 사용자에게 마지막으로 대상인 날(YYYY-MM-DD, 한국). 지나면 `settle` 이 뺀다. 없으면 끝 없음. */
+  until?: string
 }
 
 export interface PendingAlert {
@@ -107,7 +109,11 @@ export function settle(state: NearbyState, now: number): NearbyState {
   for (const [id, stay] of Object.entries(state.stays)) {
     if (stay.exitedAt === null || now - stay.exitedAt <= REENTRY_GRACE_MS) stays[id] = stay
   }
-  return { ...state, sent, pending, stays }
+  const today = kstTodayYmd(now)
+  const targets = state.targets.some((t) => t.until !== undefined && t.until < today)
+    ? state.targets.filter((t) => t.until === undefined || t.until >= today)
+    : state.targets
+  return { ...state, sent, pending, stays, targets }
 }
 
 function sameAlert(a: PendingAlert | null, b: PendingAlert | null): boolean {

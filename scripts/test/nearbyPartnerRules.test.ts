@@ -22,6 +22,9 @@ import {
   stayStartedAt,
   type StayRecord,
   CAMPUS_CLEARANCE_METERS,
+  benefitFor,
+  liveBenefits,
+  targetUntil,
 } from '../../src/lib/nearbyPartners/rules.ts'
 import { nearbyAlertContent, nearbyGroupContent } from '../../src/lib/nearbyPartners/copy.ts'
 import type { Partner } from '../../src/types/index.ts'
@@ -339,4 +342,23 @@ test('Wi-Fi·기지국 위치로는 오차를 빼고도 반경+여유 밖일 때
   assert.equal(coarselyOutside(120, 30, 20), true)
   assert.equal(coarselyOutside(45, 0, 20), false)
   assert.equal(coarselyOutside(46, null, 20), true)
+})
+
+test('끝난 소속의 전용 혜택은 알리지 않고, 저장한 대상은 마지막 날이 지나면 빠진다(11-09)', () => {
+  const p = partner('both', 300, {
+    benefit: '기본 10% 할인',
+    affiliations: ['경영대학', '미술대학'],
+    affiliationBenefits: [{ affiliation: '경영대학', benefit: '경영 전용' }],
+    affiliationEnds: [
+      { affiliation: '경영대학', endsOn: '2026-12-14' },
+      { affiliation: '미술대학', endsOn: '2026-12-31' },
+    ],
+  })
+  const mine = ['경영대학', '미술대학'] as const
+  assert.equal(benefitFor(liveBenefits(p, '2026-12-14'), mine), '경영 전용')
+  assert.equal(benefitFor(liveBenefits(p, '2026-12-15'), mine), '기본 10% 할인')
+  assert.equal(targetUntil(p, mine, '2026-12-01'), '2026-12-31')
+  assert.equal(targetUntil(p, ['경영대학'], '2026-12-01'), '2026-12-14')
+  assert.equal(targetUntil({ ...p, affiliations: ['총학생회', '경영대학'] }, ['경영대학'], '2026-12-01'), undefined)
+  assert.equal(targetUntil({ ...p, endsOn: '2026-11-30' }, mine, '2026-11-09'), '2026-11-30')
 })

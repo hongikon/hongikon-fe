@@ -150,6 +150,14 @@ test('오래된 기록 정리: 보낸 지 2일, 나간 지 3분이 넘으면 지
   assert.deepEqual(Object.keys(s.stays), ['b'])
 })
 
+test('저장한 대상은 마지막 날(until)이 지나면 빠지고, 그 가게에 들어가도 알리지 않는다(11-09)', () => {
+  const dated: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, until: '2026-10-27' } : t)) }
+  assert.deepEqual(settle(dated, kst(12, 0)).targets.map((t) => t.id), ['b', 'c'])
+  assert.deepEqual(onEnter(dated, 'a', kst(12, 0)).state.stays, {})
+  const today: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, until: '2026-10-28' } : t)) }
+  assert.equal(settle(today, kst(12, 0)).targets.length, 3)
+})
+
 test('끈 가게는 머물러도 알리지 않고, 예약해 둔 가게를 끄면 예약을 취소한다', () => {
   const muted: NearbyState = { ...base, muted: ['a'] }
   assert.deepEqual(onEnter(muted, 'a', kst(12, 0)).actions, [])
