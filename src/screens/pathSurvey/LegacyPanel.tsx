@@ -75,7 +75,7 @@ export default function LegacyPanel({
           ))}
         </View>
       ) : null}
-      <Section title="출입구 앵커 간선 목록" help="'건물명#라벨'은 지도 데이터의 건물·출입구로 풀어요(routing.ts 와 같은 방법). 못 푼 것은 지도에 그리지 않아요.">
+      <Section title="출입구 앵커 간선 목록" help="'건물명#라벨'은 지도 데이터의 건물·출입구로 풀어요(pathAudit.ts 의 resolveRef). 못 푼 것은 지도에 그리지 않아요.">
         {overlay.anchorEdges.map((e) => (
           <Text key={`${e.a}|${e.b}`} style={e.line ? ui.hint : ui.warn}>
             {`${e.line ? '' : '[위치 모름] '}${e.a} — ${e.b}`}

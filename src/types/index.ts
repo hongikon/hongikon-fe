@@ -69,7 +69,7 @@ export interface PathWaypoint {
  * 실외 간선(양방향). 각 값은 `PathWaypoint.id` 이거나 건물 출입구를 가리키는
  * '건물명' 또는 '건물명#출입구라벨'(라벨은 `BuildingEntrance.label` 과 정확히
  * 일치) 문자열이다. 건물 쪽 좌표는 지도 데이터(서버 `GET /map/data`)의 건물을 그대로 참조하며 여기 다시
- * 적지 않는다 — `src/utils/routing.ts` 가 해석한다.
+ * 적지 않는다 — `src/utils/pathAudit.ts` 의 resolveRef 가 해석한다(9월 경로망, 개발 화면용).
  */
 export type PathEdge = [string, string]
 
