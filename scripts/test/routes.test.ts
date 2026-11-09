@@ -76,3 +76,11 @@ test('서버를 못 받을 때 직선 어림(층 이동 시간 더함)', () => {
   assert.equal(up.totalSeconds - flat.totalSeconds, 60)
   assert.equal(straightLineFromPoint({ lat: 37.55, lng: 126.92 }, b, null).points.length, 2)
 })
+
+test('층 다이얼: 서버 층 목록(floorLevels)이 있으면 그대로 — 홍문관은 B1 없이 L(0)', async () => {
+  const { buildFloorOptions } = await import('../../src/utils/floors')
+  const r = { name: '홍문관 R동', lat: 37.55, lng: 126.92, floors: 16, basementFloors: 6, floorLevels: [-6, -2, 0, 1, 16] } as Building
+  assert.deepEqual(buildFloorOptions(r).map((o) => o.label), ['B6', 'B2', 'L', '1F', '16F'])
+  const ranged = { name: 'X', lat: 37.55, lng: 126.92, floors: 3, basementFloors: 1 } as Building
+  assert.deepEqual(buildFloorOptions(ranged).map((o) => o.value), [-1, 1, 2, 3])
+})
