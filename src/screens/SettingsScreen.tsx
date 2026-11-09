@@ -319,17 +319,32 @@ export default function SettingsScreen() {
   /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
   const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
   /**
-   * 지도(근처 알림 영역·제휴 시트)에서 넘어왔을 때 '근처 제휴' 칸을 잠깐 강조한다(11-09). 창이 떠 있는 동안은 기다렸다가
-   * 창을 닫으면 그 칸으로 스크롤해 2.5초 남색 테두리로 보여 준다 — 어디서 다시 켜고 끄는지 알 수 있게.
+   * 지도(근처 알림 영역·제휴 시트)에서 '근처 제휴 알림 켜러 가기'로 넘어왔을 때(11-09).
+   * ① 알림 묶음을 펼치고 '근처 제휴' 칸으로 바로 스크롤해 남색으로 강조한다 — 어디 있는지 먼저 보이게.
+   * ② 탭 전환이 끝난 뒤(0.7초) 그 설정 창을 연다. 전에는 화면이 붙는 순간 창을 열어 iOS 에서 창이 안 뜨는 때가 있었고,
+   *    강조도 창을 닫은 뒤에만 해 아무 표시 없이 설정 탭만 보였다.
+   * 강조는 창을 닫고 3초 뒤(창이 안 떴으면 8초 뒤) 사라진다.
    */
-  const [nearbyHighlight, setNearbyHighlight] = useState<'pending' | 'on' | null>(null)
-  const alertsSectionYRef = useRef(0)
-  useEffect(() => {
-    if (nearbyHighlight !== 'on') return
-    scrollRef.current?.scrollTo({ y: Math.max(0, alertsSectionYRef.current - 8), animated: true })
-    const timer = setTimeout(() => setNearbyHighlight(null), 2500)
-    return () => clearTimeout(timer)
-  }, [nearbyHighlight])
+  const [nearbyHighlight, setNearbyHighlight] = useState(false)
+  /** '근처 제휴' 칸 위치 = 알림 묶음 y + 펼친 내용 y + 칸 y(각각 부모 기준 onLayout). */
+  const nearbyYRef = useRef({ section: 0, body: 0, block: 0 })
+  const nearbyTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => nearbyTimersRef.current.forEach(clearTimeout), [])
+  const showNearbySetting = useCallback(() => {
+    nearbyTimersRef.current.forEach(clearTimeout)
+    setNearbyHighlight(true)
+    const scroll = setTimeout(() => {
+      const { section, body, block } = nearbyYRef.current
+      scrollRef.current?.scrollTo({ y: Math.max(0, section + body + block - 120), animated: true })
+    }, 250)
+    const open = setTimeout(() => setNearbyOpenSignal((n) => n + 1), 700)
+    const off = setTimeout(() => setNearbyHighlight(false), 8000)
+    nearbyTimersRef.current = [scroll, open, off]
+  }, [])
+  const handleNearbyModalClose = useCallback(() => {
+    nearbyTimersRef.current.forEach(clearTimeout)
+    nearbyTimersRef.current = [setTimeout(() => setNearbyHighlight(false), 3000)]
+  }, [])
 
   // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
   const handleSettingsIntent = useCallback(() => {
@@ -343,14 +358,13 @@ export default function SettingsScreen() {
         notify('근처 제휴 알림', '근처 제휴 알림은 로그인한 뒤 알림 > 근처 제휴에서 켤 수 있어요.')
         return
       }
-      setNearbyHighlight('pending')
-      setNearbyOpenSignal((n) => n + 1)
+      showNearbySetting()
       return
     }
     if (isGuest) return
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
-  }, [isGuest])
+  }, [isGuest, showNearbySetting])
   useFocusEffect(handleSettingsIntent)
   useEffect(() => subscribeSettingsIntent(handleSettingsIntent), [handleSettingsIntent])
 
@@ -484,7 +498,7 @@ export default function SettingsScreen() {
             )}
           </View>
           )}
-        <View style={styles.section} onLayout={(e) => (alertsSectionYRef.current = e.nativeEvent.layout.y)}>
+        <View style={styles.section} onLayout={(e) => (nearbyYRef.current.section = e.nativeEvent.layout.y)}>
           <GroupHeader
             icon="notifications-outline"
             label="알림"
@@ -494,7 +508,7 @@ export default function SettingsScreen() {
             onPress={() => toggleGroup('alerts')}
           />
           {expanded.has('alerts') && (
-              <View style={styles.groupBody}>
+              <View style={styles.groupBody} onLayout={(e) => (nearbyYRef.current.body = e.nativeEvent.layout.y)}>
                 <View style={styles.subBlockFirst}>
                   {isGuest && (
                     <View style={styles.guestNotice}>
@@ -637,12 +651,14 @@ export default function SettingsScreen() {
 
                 {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
                 {nearbyAlertsAvailable() && !isGuest && (
-                  <View style={[styles.subBlock, nearbyHighlight === 'on' && styles.subBlockHighlight]}>
-                    <Text style={styles.subHeader}>근처 제휴</Text>
-                    <NearbyAlertSettings
-                      openSignal={nearbyOpenSignal}
-                      onModalClose={() => setNearbyHighlight((prev) => (prev === 'pending' ? 'on' : prev))}
-                    />
+                  <View
+                    style={[styles.subBlock, nearbyHighlight && styles.subBlockHighlight]}
+                    onLayout={(e) => (nearbyYRef.current.block = e.nativeEvent.layout.y)}
+                  >
+                    <Text style={[styles.subHeader, nearbyHighlight && styles.subHeaderHighlight]}>
+                      {nearbyHighlight ? '근처 제휴 · 여기서 켜고 꺼요' : '근처 제휴'}
+                    </Text>
+                    <NearbyAlertSettings openSignal={nearbyOpenSignal} onModalClose={handleNearbyModalClose} />
                   </View>
                 )}
 
@@ -941,7 +957,8 @@ const styles = StyleSheet.create({
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
   subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
   // 지도에서 근처 알림을 켜러 왔을 때 잠깐 강조(11-09).
-  subBlockHighlight: { backgroundColor: COLORS.primarySoft, borderLeftWidth: 3, borderLeftColor: COLORS.primary },
+  subBlockHighlight: { backgroundColor: COLORS.primarySoft, borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+  subHeaderHighlight: { color: COLORS.primary },
   groupHeader: {
     minHeight: 58,
     flexDirection: 'row',
