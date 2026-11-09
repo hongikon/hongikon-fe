@@ -72,13 +72,24 @@ export function dwellFor(category: string | undefined, custom?: DwellMinutes | n
 }
 /** 나갔다가 이 안에 다시 들어오면(위치 흔들림) 이어서 머문 것으로 본다. */
 export const REENTRY_GRACE_MS = 3 * 60 * 1000
-/** 하루(한국 날짜) 전체 알림 수. 같은 가게는 하루 1번(`partnerToday`)이라, 가게를 옮겨 다닐 때만 더 온다. */
+/** 하루(한국 날짜) 전체 알림 수. 같은 가게는 `SAME_PARTNER_COOLDOWN_MS` 규칙을 따로 지킨다. */
 export const MAX_ALERTS_PER_DAY = 3
 /**
  * 알림 사이 최소 간격. 20m 반경이면 실제로 그 가게에 있을 때만 오므라 2시간(10-28)은 길었다 — 밥 먹고 카페로 옮기면
  * 카페 알림이 오게 30분(10-29). 시간대 제한(밤 9시~아침 8시, 점심·저녁 우선)은 10-29 사용자 요청으로 없앴다.
  */
 export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
+/**
+ * 같은 가게를 다시 알리기까지의 간격(11-09 사용자 결정, 이전에는 하루 1번). 머무는 동안에는 다시 알리지 않고,
+ * 나갔다가 다시 들어온 방문이 지난 알림에서 이만큼 지났을 때만 다시 알린다 — 점심·저녁에 같은 가게를 찾은 사람은 두 번 받고,
+ * 가게 바로 옆에 오래 있는 사람(위층 자취방 등)은 시간이 지나도 다시 받지 않는다.
+ */
+export const SAME_PARTNER_COOLDOWN_MS = 3 * 60 * 60 * 1000
+
+/** 같은 가게를 이번 방문(`stayStart` 부터)에 다시 알리면 안 되는지 — 이번 방문 중이나 들어오기 전 3시간 안에 그 가게를 알렸으면. */
+export function alertedRecently(partnerId: string, stayStart: number, sent: readonly SentAlert[]): boolean {
+  return sent.some((alert) => alert.partnerId === partnerId && stayStart - alert.at < SAME_PARTNER_COOLDOWN_MS)
+}
 /**
  * 밤에는 보내지 않는다(11-01 사용자 결정). 정보통신망법 제50조 제3항 — 광고성 정보를 21시~다음 날 8시에 보내려면 별도 동의가
  * 필요해, 기본은 이 시간에 보내지 않고 사용자가 설정에서 "밤에도 받기"를 켜(서버에 야간 수신 동의 시각을 남긴 뒤)야 보낸다.
@@ -392,7 +403,7 @@ export function insideAtRegistration<T extends Located>(
 
 /**
  * 알림 한 번에 담을 업체. 가게가 몰린 곳에서는 반경 안에 여러 곳이 겹친다 — 업체마다 따로 알리지 않고
- * 가장 오래 머문 곳(같으면 id 순) 하나를 이름으로 내세우고 나머지는 "외 N곳"으로 묶는다. 오늘 이미 알린 업체는 뺀다.
+ * 가장 오래 머문 곳(같으면 id 순) 하나를 이름으로 내세우고 나머지는 "외 N곳"으로 묶는다. 최근에 알린 업체(`alertedRecently`)는 뺀다.
  */
 export function alertGroup(
   stays: ReadonlyMap<string, StayRecord>,
@@ -400,13 +411,10 @@ export function alertGroup(
   now: number,
   perVisit = false,
 ): { leadId: string; others: string[] } | null {
-  const day = kstTodayYmd(now)
-  const alertedToday = new Set(sent.filter((alert) => kstTodayYmd(alert.at) === day).map((alert) => alert.partnerId))
   // perVisit(현장 테스트, 11-04): 보낸 곳도 빼지 않는다 — 같은 가게에 머무는 동안 `FIELD_TEST_REPEAT_MS` 마다 다시 알린다
   // (간격은 decideOnEnter 의 lastAlertAt 이 맞춘다).
-  const alerted = (id: string) => !perVisit && alertedToday.has(id)
   const inside = [...stays.entries()]
-    .filter(([id, stay]) => stay.exitedAt === null && !alerted(id))
+    .filter(([id, stay]) => stay.exitedAt === null && (perVisit || !alertedRecently(id, stay.enteredAt, sent)))
     .sort(([idA, a], [idB, b]) => a.enteredAt - b.enteredAt || idA.localeCompare(idB))
   if (inside.length === 0) return null
   return { leadId: inside[0][0], others: inside.slice(1).map(([id]) => id) }
@@ -420,7 +428,7 @@ export interface SentAlert {
 
 export type EnterDecision =
   | { schedule: true; fireAt: number }
-  | { schedule: false; reason: 'partnerToday' | 'dailyLimit' | 'tooSoon' | 'quiet' }
+  | { schedule: false; reason: 'partnerRecent' | 'dailyLimit' | 'tooSoon' | 'quiet' }
 
 export interface DecideOptions {
   /** 현장 테스트: 횟수·간격 제한 없이 방문마다 한 번. */
@@ -451,16 +459,16 @@ export function decideOnEnter(
   // 현장 테스트(10-29·11-04 사용자 요청): 횟수·간격 제한 없이, 머무는 동안 5분마다 다시.
   if (options.perVisit) return { schedule: true, fireAt }
 
+  if (alertedRecently(partnerId, stayStart, sent)) return { schedule: false, reason: 'partnerRecent' }
   const day = kstTodayYmd(fireAt)
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
-  if (today.some((alert) => alert.partnerId === partnerId)) return { schedule: false, reason: 'partnerToday' }
   if (today.length >= MAX_ALERTS_PER_DAY) return { schedule: false, reason: 'dailyLimit' }
   if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
   return { schedule: true, fireAt }
 }
 
 /**
- * GPS 로 20m 를 잴 만한 업체(11-03, 배터리). 오늘 이미 알린 곳·하루 한도를 채운 날은 더 잴 게 없어 GPS 를 켜지 않는다 —
+ * GPS 로 20m 를 잴 만한 업체(11-03, 배터리). 최근에 알린 곳(`alertedRecently`)·하루 한도를 채운 날은 더 잴 게 없어 GPS 를 켜지 않는다 —
  * 알림을 받은 카페에 두 시간 앉아 있어도 GPS 가 계속 켜져 있던 것을 막는다. 예약해 둔 곳(pendingId)은 그 전에 나가면
  * 취소해야 해서 계속 잰다. perVisit(현장 테스트)는 이번 방문에 이미 보낸 곳만 뺀다.
  */
@@ -484,9 +492,11 @@ export function alertableTargetIds(
       result.add(id)
       continue
     }
-    const stay = stays.get(id)
+    const stay = stays.get(id) ?? null
+    // 지금 들어오면 시작될 방문(안에 있으면 그 방문)이 최근 알림 간격에 걸리면 잴 필요가 없다.
+    const stayStart = stay && stay.exitedAt === null ? stay.enteredAt : stayStartedAt(stay, now)
     // 현장 테스트는 머무는 동안 다시 알리므로(FIELD_TEST_REPEAT_MS) 보낸 곳도 GPS 로 계속 잰다.
-    const done = !perVisit && today.some((alert) => alert.partnerId === id)
+    const done = !perVisit && alertedRecently(id, stayStart, sent)
     if (!done) result.add(id)
   }
   return result

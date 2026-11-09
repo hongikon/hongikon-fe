@@ -441,7 +441,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               <Text style={styles.hint}>
                 {SHOW_DEVELOPER_TOOLS && unlimited
                   ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
-                  : `같은 가게는 하루 1번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
+                  : `같은 가게는 다시 찾았을 때 3시간에 한 번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
               </Text>
               <View style={styles.divider} />
               <Text style={styles.settingLabel}>알림까지 머무는 시간</Text>
