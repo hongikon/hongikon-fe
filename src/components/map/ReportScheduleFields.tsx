@@ -191,7 +191,7 @@ export default function ReportScheduleFields({
       : defaultScheduledStart(now)
 
   const durationMinutes = Math.max(Math.round((endMs - startMs) / MINUTE_MS), 0)
-  // '매일 정해진 시간에만'은 여러 날에 걸치면 고를 수 있다. 시작이 '지금'이면 첫날은 지금부터다(11-09 요청).
+  // '매일 정해진 시간에만'은 여러 날에 걸칠 때 쓰인다. 하루짜리여도 체크는 보이고, 켜면 내일까지로 늘어난다(11-09 요청).
   const dailyAvailable = canRunDaily(startMs, endMs)
   const daily = dailyAvailable && value.daily
   const summary = daily
@@ -277,7 +277,7 @@ export default function ReportScheduleFields({
           {summary}
         </Text>
       </Animated.View>
-      {dailyAvailable ? (
+      {endMs > startMs ? (
         <ReportDaysEditor
           startMs={startMs}
           endMs={endMs}

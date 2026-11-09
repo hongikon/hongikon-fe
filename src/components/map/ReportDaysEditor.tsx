@@ -5,6 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
 import {
+  REPORT_MAX_DURATION_DAYS,
   REPORT_TIME_STEP_MINUTES,
   canRunDaily,
   defaultReportDays,
@@ -22,6 +23,7 @@ import ReportTimeSheet from './ReportTimeSheet'
 const DAY_MS = 24 * 60 * 60 * 1000
 const MINUTE_MS = 60 * 1000
 const STEP_MS = REPORT_TIME_STEP_MINUTES * MINUTE_MS
+const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
 
 /** 고칠 수 있는 하루. off 면 그날은 쉰다(첫날·마지막 날은 쉴 수 없다 — 기간을 줄이면 된다). */
 export interface EditableDay extends ReportDaySpan {
@@ -131,7 +133,7 @@ function allSameHours(days: readonly EditableDay[], startIsNow: boolean): boolea
  * 켜면 '매일 같은 시간'(시각 한 줄을 고치면 모든 날이 같이 바뀌고, 날짜 목록에서는 쉬는 날만 고른다)과
  * '날마다 다르게'(날마다 시각을 따로 고른다) 중에 고른다. 시작이 '지금'이어도 켤 수 있다 — 첫날은 지금부터다.
  * 지도에는 기간 내내 핀이 있고, 핀·시트가 '오늘 14:00 시작'·'운영 중'·'곧 종료'를 보여 준다.
- * 부모가 `canRunDaily(startMs, endMs)` 일 때만 그린다.
+ * 하루 안에서 끝나는 시간을 골랐어도 체크는 보인다 — 켜면 마지막 날을 내일로 늘린다(11-09 요청). 켠 뒤에는 '마지막 날'을 하루씩 늘이거나 줄인다.
  */
 export default function ReportDaysEditor({
   startMs,
@@ -144,6 +146,9 @@ export default function ReportDaysEditor({
   startLocked = false,
   disabled,
 }: ReportDaysEditorProps) {
+  // 체크는 켜 있어도 시각을 바꿔 하루짜리가 되면 꺼진 것으로 보인다(부모도 그때는 한 번짜리로 올린다).
+  const multiDay = canRunDaily(startMs, endMs)
+  const on = enabled && multiDay
   const days = effectiveDays(startMs, endMs, edited)
   const [mode, setMode] = useState<DaysMode>(() => (allSameHours(days, startIsNow) ? 'same' : 'each'))
   const [picker, setPicker] = useState<{ index: number; side: 'start' | 'end' } | null>(null)
@@ -180,11 +185,32 @@ export default function ReportDaysEditor({
   }
 
   const toggle = () => {
-    if (enabled) return onChange({ daily: false })
+    if (on) return onChange({ daily: false })
     const hours = initialHours(startMs, endMs, startIsNow)
     setMode('same')
-    applySame(hours.open, hours.close, { daily: true })
+    if (multiDay) return applySame(hours.open, hours.close, { daily: true })
+    // 하루 안에서 끝나는 시간이면 내일까지 같은 시간으로 늘린다(첫날은 고른 시작부터).
+    const firstMidnight = kstMidnight(startMs)
+    const nextMidnight = firstMidnight + DAY_MS
+    const firstEnd = Math.max(firstMidnight + hours.close * MINUTE_MS, startMs + STEP_MS)
+    const nextEnd = nextMidnight + hours.close * MINUTE_MS
+    onChange({
+      daily: true,
+      endMs: nextEnd,
+      edited: [
+        { date: kstDateKey(firstMidnight), startMs, endMs: firstEnd },
+        { date: kstDateKey(nextMidnight), startMs: nextMidnight + hours.open * MINUTE_MS, endMs: nextEnd },
+      ],
+    })
   }
+
+  /** 마지막 날을 하루 늘이거나 줄인다. 고친 날·쉬는 날은 그대로, 새 날은 '매일' 시각으로. */
+  const moveLastDay = (delta: 1 | -1) => {
+    const nextEnd = endMs + delta * DAY_MS
+    onChange({ endMs: nextEnd, edited: pinDailyHours(startMs, endMs, edited, startMs, nextEnd) })
+  }
+  const canShorten = days.length > 2
+  const canExtend = endMs + DAY_MS - startMs <= MAX_DURATION_MS
 
   const chooseMode = (next: DaysMode) => {
     if (next === mode) return
@@ -241,20 +267,22 @@ export default function ReportDaysEditor({
   return (
     <View>
       <TouchableOpacity
-        style={[styles.toggle, enabled && styles.toggleOn, disabled && styles.disabled]}
+        style={[styles.toggle, on && styles.toggleOn, disabled && styles.disabled]}
         onPress={toggle}
         disabled={disabled}
         activeOpacity={0.75}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: enabled, disabled: !!disabled }}
+        accessibilityState={{ checked: on, disabled: !!disabled }}
         accessibilityLabel="매일 정해진 시간에만 운영"
       >
-        <Ionicons name={enabled ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
+        <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         <View style={styles.toggleText}>
           <Text style={styles.toggleLabel}>매일 정해진 시간에만 운영</Text>
           <Text style={styles.toggleNote}>
-            {enabled
+            {on
               ? '기간 내내 지도에 있고, 핀에 그날 운영 시간이 함께 보여요.'
+              : !multiDay
+                ? '여러 날 같은 시간대에 여는 부스·행사라면 켜 주세요. 켜면 내일까지로 늘어나고, 마지막 날은 바꿀 수 있어요.'
               : startIsNow
                 ? '여러 날 정해진 시간에만 여는 부스·행사라면 켜 주세요. 오늘은 지금부터예요.'
                 : `여러 날 ${firstRange}처럼 정해진 시간에만 여는 부스·행사라면 켜 주세요.`}
@@ -262,8 +290,28 @@ export default function ReportDaysEditor({
         </View>
       </TouchableOpacity>
 
-      {enabled ? (
+      {on ? (
         <View style={styles.body}>
+          <View style={styles.lastDayRow}>
+            <Text style={styles.hoursLabel}>마지막 날</Text>
+            <View style={styles.times}>
+              <StepButton
+                icon="remove"
+                disabled={disabled || !canShorten}
+                onPress={() => moveLastDay(-1)}
+                accessibilityLabel="마지막 날 하루 앞당기기"
+              />
+              <Text style={styles.lastDayText} accessibilityLiveRegion="polite">
+                {formatDay(endMs)} · {days.length}일
+              </Text>
+              <StepButton
+                icon="add"
+                disabled={disabled || !canExtend}
+                onPress={() => moveLastDay(1)}
+                accessibilityLabel="마지막 날 하루 늘리기"
+              />
+            </View>
+          </View>
           <View style={styles.segment} accessibilityRole="radiogroup">
             {(
               [
@@ -403,6 +451,32 @@ export default function ReportDaysEditor({
   )
 }
 
+function StepButton({
+  icon,
+  disabled,
+  onPress,
+  accessibilityLabel,
+}: {
+  icon: 'add' | 'remove'
+  disabled?: boolean
+  onPress: () => void
+  accessibilityLabel: string
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.stepButton, disabled && styles.disabled]}
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Ionicons name={icon} size={18} color={COLORS.primary} />
+    </TouchableOpacity>
+  )
+}
+
 function OffButton({ day, disabled, onPress }: { day: EditableDay; disabled?: boolean; onPress: () => void }) {
   return (
     <TouchableOpacity
@@ -472,6 +546,23 @@ const styles = StyleSheet.create({
   segmentText: { fontFamily: FONTS.semibold, fontSize: 13.5, color: COLORS.primary },
   segmentTextOn: { color: COLORS.white },
   hoursRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, marginTop: 10 },
+  lastDayRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, marginBottom: 8 },
+  lastDayText: {
+    minWidth: 112,
+    textAlign: 'center',
+    fontFamily: FONTS.semibold,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  stepButton: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hoursLabel: { width: 72, fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },
   sectionNote: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 8 },
   compactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 },
