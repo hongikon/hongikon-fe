@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { findRoutes } from '../../src/utils/routing'
+import { findRoutes, readableMemo } from '../../src/utils/routing'
+import { describeRoutes, shortBuildingName } from '../../src/utils/routeLabels'
 import type { Building } from '../../src/types'
 
 /**
@@ -83,4 +84,48 @@ test('경로 점에 같은 자리가 연달아 나오지 않는다(층 이동은
       assert.ok(p.lat !== q.lat || p.lng !== q.lng)
     }
   }
+})
+
+test('길찾기 후보: 실제로 다른 길만 최대 3개, 가장 빠른 길이 맨 앞, 1.25배·+1분 넘는 우회는 빼기(11-09)', () => {
+  const routes = findRoutes(buildings, { building: R, floor: null }, { building: T, floor: null })
+  // 억지로 다른 길을 만들지 않는다(11-09) — 실제로 다른 길이 없으면 하나만.
+  assert.ok(routes.length >= 1 && routes.length <= 3, `후보 ${routes.length}개`)
+  const best = routes[0]
+  for (const route of routes.slice(1)) {
+    assert.ok(route.totalSeconds >= best.totalSeconds)
+    assert.ok(route.totalSeconds <= Math.max(best.totalSeconds * 1.25, best.totalSeconds + 60))
+  }
+  const keys = new Set(routes.map((route) => route.points.map((p) => `${p.lat},${p.lng}`).join('>')))
+  assert.equal(keys.size, routes.length)
+})
+
+test('길찾기 후보 이름: 가장 빠른 길 기준으로 무엇이 다른지', () => {
+  const base = { points: [], distanceMeters: 250, totalSeconds: 180, minutes: 3, hasIndoorTransit: false, hasLinkSegment: false, isEstimate: false }
+  const texts = describeRoutes([
+    { ...base, hasStairs: true },
+    { ...base, totalSeconds: 290, minutes: 5, hasStairs: false },
+    { ...base, totalSeconds: 200, hasStairs: true, viaBuildings: ['제4공학관 T동'] },
+    { ...base, totalSeconds: 230, hasStairs: true, indoorMeters: 90 },
+  ])
+  assert.deepEqual(texts.map((t) => t.label), ['가장 빠른 길', '다른 길', 'T동 거쳐', '실내로 가는 길'])
+  assert.deepEqual(texts.map((t) => t.delta), [null, '+2분', '비슷해요', '+1분'])
+  assert.deepEqual(texts[0].tags, ['계단 있음'])
+  assert.deepEqual(describeRoutes([{ ...base, hasStairs: false }, { ...base, hasStairs: false }, { ...base, hasStairs: false }]).map((t) => t.label), ['가장 빠른 길', '다른 길', '다른 길'])
+  assert.equal(shortBuildingName('학생회관'), '학생회관')
+})
+
+test('조사 메모를 길 안내 말로: 이름표는 읽는 말로, 조사 경로 이름·대수 줄은 뺀다(11-09)', () => {
+  assert.equal(readableMemo('HI_T_3F_ENTER 앞 교차점'), 'T동 3층 출입구 앞 교차점')
+  assert.equal(readableMemo('HI_C_3_ELEVATOR\n3F~8F\n2대\n주말 사용 불가'), 'C동 엘리베이터 · 3F~8F · 주말 사용 불가')
+  assert.equal(readableMemo('상수역 -> 제4공학관 T동'), null)
+  assert.equal(readableMemo('HI_R_2F_1_ENTER로 가는 계단 및 경사로'), 'R동 2층 출입구로 가는 계단 및 경사로')
+  assert.equal(readableMemo('주말 폐문'), '주말 폐문')
+})
+
+test('길 흐름: 나가는 출입구 → 들어가는 출입구(+ 고른 층)', () => {
+  const routes = findRoutes(buildings, { building: R, floor: null }, { building: T, floor: null })
+  const steps = routes[0].steps ?? []
+  assert.ok(steps.length >= 2, steps.join(' / '))
+  assert.match(steps[0], /^R동 .*출구$/)
+  assert.match(steps[steps.length - 1], /^T동 .*출입구$/)
 })

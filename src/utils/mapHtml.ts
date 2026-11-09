@@ -1598,10 +1598,11 @@ export function buildMapHTML(
             routePolylines.push(new naver.maps.Polyline({
               map: map,
               path: path,
-              strokeWeight: i === selected ? 5 : 3,
-              strokeColor: i === selected ? '${COLORS.primary}' : '#9A9CC4',
-              strokeOpacity: i === selected ? 0.9 : 0.55,
-              strokeStyle: i === selected ? 'solid' : 'shortdash',
+              // 다른 경로는 회색 실선(11-09). 누르는 자리는 앱이 routeStyleScript 로 겹친다.
+              strokeWeight: 5,
+              strokeColor: i === selected ? '${COLORS.primary}' : '#A3A7B3',
+              strokeOpacity: 0.9,
+              strokeStyle: 'solid',
               zIndex: i === selected ? 200 : 100,
             }));
           });
@@ -1637,10 +1638,10 @@ export function buildMapHTML(
           routePolylines.forEach(function(poly, i) {
             var isSelected = i === msg.index;
             poly.setOptions({
-              strokeWeight: isSelected ? 5 : 3,
-              strokeColor: isSelected ? '${COLORS.primary}' : '#9A9CC4',
-              strokeOpacity: isSelected ? 0.9 : 0.55,
-              strokeStyle: isSelected ? 'solid' : 'shortdash',
+              strokeWeight: 5,
+              strokeColor: isSelected ? '${COLORS.primary}' : '#A3A7B3',
+              strokeOpacity: 0.9,
+              strokeStyle: 'solid',
               zIndex: isSelected ? 200 : 100,
             });
           });

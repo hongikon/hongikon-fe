@@ -57,13 +57,14 @@ import FloorDialSheet from "../components/map/FloorDialSheet";
 import { findRoutes, findRoutesFromPoint, straightLineFallback, straightLineFromPoint } from "../utils/routing";
 import { myLocationScript } from "../utils/myLocationScript";
 import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
-import { routeStyleScript } from "../utils/routeStyleScript";
+import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import type { RouteAlternative } from "../utils/routing";
+import RouteOptions from "../components/map/RouteOptions";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
@@ -576,10 +577,20 @@ export default function MapScreen() {
     selectedPartner !== null ||
     selectedReport !== null ||
     (selectedFacilityBuilding !== null && facilityKind !== null);
+  /**
+   * 길찾기 중(출발·도착 막대가 떠 있는 동안, 11-09 사용자 요청): 다른 탭으로 갈 일이 없고 제휴 검색·칩도 쓸 일이 없어
+   * 아래 탭 막대와 위 검색바·칩을 숨긴다. 그 자리를 출발·도착 막대(오른쪽 위 X 로 끝내기)와 아래 경로 카드가 쓴다.
+   */
+  const routeMode = !pickingLocation && (fromBuilding !== null || fromMyLocation || toBuilding !== null);
+  const tabBarHidden = sheetOpen || routeMode;
   // 화면을 그리기 전에(useLayoutEffect) 탭바를 바꾼다. useEffect 면 시트와 탭바가 한 프레임 겹쳐 보여 반짝였다.
   useLayoutEffect(() => {
-    navigation.setOptions({ tabBarStyle: sheetOpen ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
-  }, [navigation, sheetOpen]);
+    navigation.setOptions({ tabBarStyle: tabBarHidden ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
+  }, [navigation, tabBarHidden]);
+  /** 지도 위 아래쪽 버튼·카드의 기준선. 탭바가 숨으면 홈 인디케이터 여백만. */
+  const bottomInset = tabBarHidden ? insets.bottom : tabBarHeight;
+  const bottomInsetRef = useRef(bottomInset);
+  bottomInsetRef.current = bottomInset;
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
   const sheetBottom = sheetOpen ? 0 : tabBarHeight;
@@ -626,11 +637,29 @@ export default function MapScreen() {
    * 지도 메시지 처리기가 그보다 위에 있어 ref 로 부른다. 그렇게 연 시트가 아니면 false.
    */
   const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
+  /** 지도에서 경로를 누른 시각과, 메시지 처리기(위)에서 부를 경로 고르기(아래에서 채운다). */
+  const routeTapAtRef = useRef(0);
+  const routeAlternativesRef = useRef<RouteAlternative[]>([]);
+  const handleSelectRouteAlternativeRef = useRef<(index: number) => void>(() => {});
 
   const handleWebViewMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       try {
         const msg = JSON.parse(event.nativeEvent.data);
+
+        // 지도에서 회색(다른) 경로를 눌렀다(11-09) — 그 길로 바꾼다. 같은 손동작이 지도 탭으로도 들어와 건물 시트가 열렸으면 닫는다.
+        if (msg.type === "routeTap" && typeof msg.index === "number") {
+          routeTapAtRef.current = Date.now();
+          if (msg.index >= 0 && msg.index < routeAlternativesRef.current.length) handleSelectRouteAlternativeRef.current(msg.index);
+          setSelectedBuilding(null);
+          postToMap({ type: "selectBuilding", name: null });
+          return;
+        }
+        // 경로를 누른 바로 그 손동작의 지도 탭은 무시한다.
+        if ((msg.type === "buildingTap" || msg.type === "buildingDismiss") && Date.now() - routeTapAtRef.current < 500) {
+          postToMap({ type: "selectBuilding", name: null });
+          return;
+        }
 
         if (msg.type === "buildingTap") {
           // 제보를 연 바로 그 손동작이 건물 탭으로도 들어온 것 — 제보 시트는 두고 건물 핀만 거둔다.
@@ -933,15 +962,19 @@ export default function MapScreen() {
       // 지도 페이지는 메시지를 조금 늦게 처리해서, 바로 넣으면 경로가 아직 없다 — 잠깐 뒤에 칠하고 맞춘다.
       // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다. 두 번째에는 카드 높이가 잡혀 있다.
       const fitScript = () =>
-        routeStyleScript(selectedIndex, {
-          top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
-          bottom: tabBarHeight + 12 + (routeCardHeightRef.current || 90) + 24,
-        });
+        routeStyleScript(
+          selectedIndex,
+          {
+            top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
+            bottom: bottomInsetRef.current + 12 + (routeCardHeightRef.current || 90) + 24,
+          },
+          routes[selectedIndex]?.indoorSegments ?? [],
+        );
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
         setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
       }
     },
-    [postToMap, headerHeight, tabBarHeight],
+    [postToMap, headerHeight],
   );
 
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
@@ -1025,10 +1058,18 @@ export default function MapScreen() {
     (index: number) => {
       setSelectedRouteIndex(index);
       postToMap({ type: "selectRouteAlternative", index });
-      setTimeout(() => webViewRef.current?.injectJavaScript(routeStyleScript(index)), ROUTE_STYLE_DELAY_MS);
+      setTimeout(
+        () =>
+          webViewRef.current?.injectJavaScript(
+            routeStyleScript(index, undefined, routeAlternativesRef.current[index]?.indoorSegments ?? []),
+          ),
+        ROUTE_STYLE_DELAY_MS,
+      );
     },
     [postToMap],
   );
+  handleSelectRouteAlternativeRef.current = handleSelectRouteAlternative;
+  routeAlternativesRef.current = routeAlternatives;
 
   /** 길찾기 창(검색)을 닫는다. 출발·도착을 고르면 지도로 돌아가 경로 막대·결과 카드로 이어 간다(11-03). */
   const closeRouteSearch = useCallback(() => {
@@ -1793,6 +1834,7 @@ export default function MapScreen() {
     setFromFloor(null);
     setToFloor(null);
     postToMap({ type: "clearRoute" });
+    webViewRef.current?.injectJavaScript(ROUTE_HITS_CLEAR_SCRIPT);
   }, [postToMap]);
 
   const handleSelectRouteBuilding = useCallback(
@@ -1993,7 +2035,7 @@ export default function MapScreen() {
               <View style={[styles.pickerCrosshairV, styles.nearbyTestCross]} />
               <View style={[styles.pickerCrosshairH, styles.nearbyTestCross]} />
             </View>
-            <View style={[styles.nearbyTestBar, { bottom: 16 + tabBarHeight }]}>
+            <View style={[styles.nearbyTestBar, { bottom: 16 + bottomInset }]}>
               <Text style={styles.nearbyOverlayNoteText}>
                 지도를 움직여 십자를 테스트할 자리에 맞추세요. 근처 알림만 이 자리를 내 위치로 보고, 실제 GPS 는 쓰지 않아요.
               </Text>
@@ -2028,7 +2070,7 @@ export default function MapScreen() {
           </>
         )}
         {nearbyOverlayOn && nearbyOverlayNote && !sheetOpen && !pickingNearbyTest && (
-          <View pointerEvents={nearbyUnregistered ? "box-none" : "none"} style={[styles.nearbyOverlayNote, { bottom: 84 + tabBarHeight }]}>
+          <View pointerEvents={nearbyUnregistered ? "box-none" : "none"} style={[styles.nearbyOverlayNote, { bottom: 84 + bottomInset }]}>
             <Text style={styles.nearbyOverlayNoteText}>{nearbyTestLabel ? `${nearbyTestLabel} (빨간 점)\n${nearbyOverlayNote}` : nearbyOverlayNote}</Text>
             {/* 등록 전이면 바로 설정 > 근처 제휴 알림 창으로(제휴 시트의 안내와 같은 길, 11-09). */}
             {nearbyUnregistered && (
@@ -2053,7 +2095,7 @@ export default function MapScreen() {
             style={[
               styles.mapControls,
               // 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다.
-              { bottom: 20 + tabBarHeight + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0) },
+              { bottom: 20 + bottomInset + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0) },
             ]}
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
@@ -2108,7 +2150,7 @@ export default function MapScreen() {
             </View>
 
             {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
-            <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + tabBarHeight }]}>
+            <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + bottomInset }]}>
               <View style={styles.pickerLocationRow}>
                 <Ionicons name="location" size={16} color={COLORS.primary} />
                 <Text style={styles.pickerLocationText} numberOfLines={1}>
@@ -2197,11 +2239,12 @@ export default function MapScreen() {
               ) : null}
               <TouchableOpacity
                 onPress={handleClearRoute}
-                style={styles.routeStripIcon}
+                style={[styles.routeStripIcon, styles.routeStripClose]}
+                hitSlop={6}
                 accessibilityRole="button"
                 accessibilityLabel="길찾기 끝내기"
               >
-                <Ionicons name="close" size={18} color={COLORS.textTertiary} />
+                <Ionicons name="close" size={20} color={COLORS.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -2209,46 +2252,20 @@ export default function MapScreen() {
 
         {!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding && (
           <View
-            style={[styles.routeCard, overlayInset, { bottom: 12 + tabBarHeight }]}
+            style={[styles.routeCardWrap, overlayInset, { bottom: 8 + bottomInset }]}
             onLayout={(e) => setRouteCardHeight(e.nativeEvent.layout.height)}
           >
             {selectedRoute ? (
-              <>
-                <View style={styles.routeCardTop}>
-                  <Text style={styles.routeCardTime}>도보 {selectedRoute.minutes}분</Text>
-                  <Text style={styles.routeCardMeta}>{selectedRoute.distanceMeters}m</Text>
-                  {selectedRoute.isEstimate ? <Text style={styles.routeCardTag}>직선 어림</Text> : null}
-                  {selectedRoute.hasStairs ? <Text style={styles.routeCardTag}>계단 있음</Text> : null}
-                </View>
-                {selectedRoute.isEstimate ? (
-                  <Text style={styles.routeCardNote}>캠퍼스 길에서 멀어 직선 거리로 어림했어요</Text>
-                ) : selectedRoute.hasLinkSegment ? (
-                  <Text style={styles.routeCardNote}>건물 앞 일부 구간은 가까운 길까지 직선으로 이었어요</Text>
-                ) : null}
-                {routeAlternatives.length > 1 ? (
-                  <View style={styles.routeCardAlts}>
-                    {routeAlternatives.map((route, index) => {
-                      const on = index === selectedRouteIndex;
-                      return (
-                        <TouchableOpacity
-                          key={index}
-                          style={[styles.routeAltChip, on && styles.routeAltChipOn]}
-                          onPress={() => handleSelectRouteAlternative(index)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: on }}
-                          accessibilityLabel={`경로 ${index + 1}, 도보 ${route.minutes}분`}
-                        >
-                          <Text style={[styles.routeAltChipText, on && styles.routeAltChipTextOn]}>
-                            경로 {index + 1} · {route.minutes}분
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </>
+              <RouteOptions
+                routes={routeAlternatives}
+                selectedIndex={selectedRouteIndex}
+                onSelect={handleSelectRouteAlternative}
+                onClose={handleClearRoute}
+              />
             ) : (
-              <Text style={styles.routeCardNote}>내 위치를 찾고 있어요</Text>
+              <View style={styles.routeCard}>
+                <Text style={styles.routeCardNote}>내 위치를 찾고 있어요</Text>
+              </View>
             )}
           </View>
         )}
@@ -2360,7 +2377,8 @@ export default function MapScreen() {
         pointerEvents={headerCovered ? "none" : "box-none"}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
-        {!pickingLocation && (
+        {/* 길찾기 중에는 검색바·칩을 숨긴다(routeMode) — 출발·도착 막대가 그 자리로 올라간다. */}
+        {!pickingLocation && !routeMode && (
           <>
             {/* 넓은 창(웹·태블릿)에선 아래 시트와 같은 너비로 맞춘다(10-07 요청). 좁으면 시트가 화면을 꽉 채우니 16 만 띄운다. */}
             <View style={[styles.searchBarWrap, sideGutter > 0 && { paddingHorizontal: sideGutter }]}>
@@ -2939,11 +2957,12 @@ const styles = StyleSheet.create({
   routeStripPlaceholder: { flex: 1, fontSize: 14, color: COLORS.textTertiary, fontFamily: FONTS.regular },
   routeStripActions: { flexDirection: "row", alignItems: "center" },
   routeStripIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19 },
+  /** 길찾기 끝내기(오른쪽 위 X, 11-09) — 눈에 띄게 남색 옅은 바탕. */
+  routeStripClose: { backgroundColor: COLORS.primarySoft, marginLeft: 2 },
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */
   routeDotFrom: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: COLORS.primary, backgroundColor: COLORS.white },
   routeDotTo: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
   routeCard: {
-    position: "absolute",
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.floating,
     paddingHorizontal: 16,
@@ -2955,32 +2974,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  routeCardTop: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  routeCardTime: { fontSize: 20, color: COLORS.primary, fontFamily: FONTS.bold },
-  routeCardMeta: { fontSize: 14, color: COLORS.textSecondary, fontFamily: FONTS.medium },
-  routeCardTag: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontFamily: FONTS.semibold,
-    backgroundColor: COLORS.primarySoft,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    overflow: "hidden",
-  },
+  /** 경로 카드 자리(카드는 RouteOptions 가 그린다). 높이를 재 지도 맞춤·오른쪽 아래 메뉴 위치에 쓴다. */
+  routeCardWrap: { position: "absolute" },
   routeCardNote: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular },
-  routeCardAlts: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  routeAltChip: {
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.white,
-  },
-  routeAltChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  routeAltChipText: { fontSize: 13, color: COLORS.chipText, fontFamily: FONTS.medium },
-  routeAltChipTextOn: { color: COLORS.white },
   routeModal: { flex: 1, backgroundColor: COLORS.white },
   routeModalHeader: {
     flexDirection: "row",
@@ -3062,36 +3058,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FONTS.medium,
     color: COLORS.textPrimary,
-  },
-  routeAltList: { marginTop: 12, gap: 8 },
-  routeAltRow: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: COLORS.white,
-  },
-  routeAltRowSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primarySoft,
-  },
-  routeAltHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  routeAltLabel: {
-    fontSize: 13,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-  routeAltTime: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.medium },
-  routeAltEstimate: {
-    marginTop: 4,
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontFamily: FONTS.regular,
   },
   routeStartBtn: {
     marginTop: 14,
