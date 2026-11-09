@@ -13,7 +13,7 @@ import type { AdminIntent } from '../lib/adminIntents'
  */
 export type NotificationTarget =
   | { kind: 'news'; newsId: string }
-  | { kind: 'map'; focusReportId: number | null }
+  | { kind: 'map'; focusReportId: number | null; focusPartnerId?: string; nearbyPartnerIds?: string[] }
   | { kind: 'myReports'; reportId: number | null }
   | { kind: 'admin'; intent: AdminIntent }
   | { kind: 'settings' }
@@ -42,6 +42,19 @@ export function notificationTarget(data: Partial<PushNotificationData> | null | 
   if (!data || typeof data !== 'object') return { kind: 'none' }
 
   switch (data.type) {
+    // 근처 제휴 알림(기기에서 예약한 로컬 알림, `lib/nearbyPartners/background.ts`) — 지도에서 그 업체 시트를 연다.
+    case 'NEARBY_PARTNER': {
+      const partnerId = String((data as { partnerId?: unknown }).partnerId ?? '').trim()
+      if (!partnerId) return { kind: 'none' }
+      // 함께 잡힌 곳이 2곳 이상이면 지도에서 그 목록을 띄운다(한 곳이면 그 업체 시트).
+      const raw = (data as { partnerIds?: unknown }).partnerIds
+      const ids = Array.isArray(raw)
+        ? [...new Set(raw.map((id) => String(id ?? '').trim()).filter(Boolean))].slice(0, 20)
+        : []
+      return ids.length > 1
+        ? { kind: 'map', focusReportId: null, focusPartnerId: partnerId, nearbyPartnerIds: ids }
+        : { kind: 'map', focusReportId: null, focusPartnerId: partnerId }
+    }
     case 'NEWS': {
       // 목록(`GET /news`)이 페이지 단위라 id로 항목을 찾을 수 없다 — id만 넘기면 상세 화면이
       // `GET /news/{id}`로 받아 그린다. 백엔드(NewsPushDispatcher)는 newsId 를 숫자로 보낸다.

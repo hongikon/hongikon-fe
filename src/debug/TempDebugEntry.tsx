@@ -14,4 +14,5 @@ export const DevPathSurveyV3Entry: ComponentType | null = null
 /** 개발용 `/dev/ask` — 물어보기 챗봇 미리보기. 웹 전용이라 네이티브에서는 null. */
 export const DevAskEntry: ComponentType | null = null
 export const DevCampusEntry: ComponentType<{ campus: CampusPreviewKey }> | null = null
+export const TempChangesPreviewEntry: ComponentType | null = null
 export const TempNotificationPreviewEntry: ComponentType | null = null

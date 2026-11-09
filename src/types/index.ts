@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import type { CategoryKey } from '../constants/colors'
 
 export type BuildingCategory = '강의' | '식당' | '편의' | '주차'
@@ -252,6 +253,11 @@ export interface Partner {
    * 예: 에버랜드는 학생증이 아니라 "게시물 QR코드 스캔 / 인증코드 입력 / 이용권 구매". " / " 로 단계를 나눈다.
    */
   usageNote?: string
+  /**
+   * 관리자가 "근처 알림 대상"으로 켠 업체만 true(아니면 서버가 생략). 근처 제휴 알림(`lib/nearbyPartners/rules.ts`)이
+   * 이 업체를 알릴 수 있는지에 쓴다. 이 필드를 모르는 서버(배포 전)에서는 모든 업체가 대상 밖이다.
+   */
+  nearbyAlert?: boolean
 }
 
 export interface TreeNode {
@@ -360,6 +366,11 @@ export interface Report {
   /** 시작 시각(UTC). 미리 올린 예정 제보는 미래일 수 있다 — `include=upcoming` 목록에서만 시작 전 제보가 온다. */
   startsAt: string
   endsAt: string
+  /**
+   * 여러 날 제보의 날짜별 운영 시간(한국 시간, 날마다 다를 수 있음, 쉬는 날은 없음, 11-08). 없으면 한 번짜리.
+   * 이때 startsAt 은 첫날 시작, endsAt 은 마지막 날 끝이고 지도에는 기간 내내 있다(`reportPhase`). 이 기능 전 서버는 없음.
+   */
+  days?: ReportDayHours[] | null
   status: ReportStatus
   createdAt: string
 }
@@ -473,6 +484,8 @@ export interface CreateReportInput {
   startsAt: string
   /** UTC ISO. 시작보다 뒤, 최대 7일(여러 날 행사). */
   endsAt: string
+  /** 여러 날 제보의 날짜별 운영 시간(한국 시간). 첫날 start·마지막 날 end 가 startsAt·endsAt 과 같아야 한다. 구버전 서버는 무시한다. */
+  days?: ReportDayHours[]
 }
 
 /** `POST /reports/{id}/flags` 요청 바디. */
@@ -497,10 +510,19 @@ export interface ReportFlagResult {
  * - ADMIN_*: `AdminAlertDispatcher` — 관리자에게만. 새 제보 승인 대기·새 문의·신고 누적 자동 숨김.
  *   제목은 "[관리] …", Android 채널 `admin`. 몰리면 서버가 2분에 한 번 묶어 `count` 에 건수를 담는다(id 는 마지막 건).
  *
+ * - NEARBY_PARTNER: 서버 푸시가 아니라 기기가 예약한 로컬 알림(근처 제휴 알림, `lib/nearbyPartners/background.ts`) — `{type, partnerId}`.
+ *
  * 제목·본문은 서버가 채워 보내고, `type`으로 알림을 구분해 탭했을 때 다른 화면으로 라우팅한다
  * (`src/utils/notificationRouting.ts`, `src/lib/pushNotifications.ts`).
  */
 export type PushNotificationData =
+  | {
+      type: 'NEARBY_PARTNER'
+      /** 지도 데이터의 업체 id(code). 여러 곳이면 이름을 앞세운 곳(가장 오래 머문·가까운 곳). */
+      partnerId: string
+      /** 알림을 만든 순간 함께 잡힌 업체들(앞세운 곳부터, 그다음 가까운 순). 2곳 이상이면 탭하면 목록을 띄운다. 좌표는 없다. */
+      partnerIds?: string[]
+    }
   | {
       type: 'NEWS'
       /**

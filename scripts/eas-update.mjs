@@ -13,13 +13,19 @@
  * 그래서 eas.json 의 같은 이름 빌드 프로필 env(extends 포함)를 그대로 process.env 에 넣고
  * `eas update --channel <프로필> --environment <프로필>` 을 실행한다. 빌드와 OTA 가 같은 값을 쓴다.
  * 나머지 인자(-m, --platform 등)는 그대로 넘긴다.
+ *
+ * 운영 앱이 두 버전(runtime)일 때(1.0.0 과 근처 알림이 든 1.1.0, 11-01): 같은 JS 를 두 번 올린다.
+ *   pnpm update:production -m "..."        # app.json 버전(1.1.0)
+ *   pnpm update:production:1.0.0 -m "..."  # APP_VERSION_OVERRIDE=1.0.0 — 위치 모듈이 없는 1.0.0 은 근처 알림이 스스로 숨는다
  */
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ALLOWED = ['production', 'preview']
+const ALLOWED = ['production', 'preview', 'nearby-testflight']
+/** 프로필마다 있어야 하는 APP_VARIANT. 현장 테스트 TestFlight(nearby-testflight)는 운영 서버를 보는 운영 변형에 테스트 도구만 켠다. */
+const EXPECTED_VARIANT = { production: 'production', preview: 'preview', 'nearby-testflight': 'production' }
 // `pnpm run update:preview -- --message ...` 처럼 넘어오는 맨 앞 '--' 는 버린다.
 const [profileName, ...rest] = process.argv.slice(2).filter((a, i) => !(i === 1 && a === '--'))
 
@@ -44,8 +50,8 @@ const profile = resolveProfile(profileName)
 const channel = profile.channel
 const environment = profile.environment ?? profileName
 if (!channel) throw new Error(`build.${profileName}.channel 이 비어 있다`)
-if (profile.env.APP_VARIANT !== profileName) {
-  throw new Error(`build.${profileName}.env.APP_VARIANT 가 '${profileName}' 이 아니다`)
+if (profile.env.APP_VARIANT !== EXPECTED_VARIANT[profileName]) {
+  throw new Error(`build.${profileName}.env.APP_VARIANT 가 '${EXPECTED_VARIANT[profileName]}' 이 아니다`)
 }
 
 if (!rest.some((a) => a === '-m' || a === '--message' || a.startsWith('--message=') || a === '--auto')) {
@@ -53,7 +59,7 @@ if (!rest.some((a) => a === '-m' || a === '--message' || a.startsWith('--message
   process.exit(1)
 }
 
-console.log(`[eas-update] channel=${channel} environment=${environment}`)
+console.log(`[eas-update] channel=${channel} environment=${environment}${process.env.APP_VERSION_OVERRIDE ? ` runtime=${process.env.APP_VERSION_OVERRIDE}` : ''}`)
 for (const [k, v] of Object.entries(profile.env)) console.log(`[eas-update]   ${k}=${v}`)
 
 const args = ['update', '--channel', channel, '--environment', environment, ...rest]

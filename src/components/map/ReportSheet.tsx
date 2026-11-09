@@ -19,7 +19,14 @@ import RetryableError from '../common/RetryableError'
 import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/reports'
 import ImageViewerModal from '../common/ImageViewerModal'
 import { reportPlaceText } from '../../utils/shareReport'
-import { isUpcomingReport } from '../../utils/reportSchedule'
+import {
+  formatDaySpan,
+  isSameKstDay,
+  isUpcomingReport,
+  parseReportDays,
+  reportPhase,
+  type ReportDayHours,
+} from '../../utils/reportSchedule'
 import { reportAuthorName } from '../../utils/nickname'
 import { confirmAction } from '../../utils/dialog'
 import { hideAuthor } from '../../lib/hiddenAuthors'
@@ -64,7 +71,12 @@ function contentNeedsMore(content: string): boolean {
 }
 
 /** 시트에서 바로 바뀌는 값(🔥·관심·조회·알림·공식 계정 시간 수정). 지도 목록을 다시 받기 전까지 덮어 둔다. */
-type SheetPatch = ReportCommunityPatch & { notifyEnabled?: boolean | null; startsAt?: string; endsAt?: string }
+type SheetPatch = ReportCommunityPatch & {
+  notifyEnabled?: boolean | null
+  startsAt?: string
+  endsAt?: string
+  days?: ReportDayHours[] | null
+}
 
 export default function ReportSheet({ report: reportProp, onClose }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
@@ -81,6 +93,14 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const [patch, setPatch] = useState<SheetPatch>({})
   useEffect(() => setPatch({}), [reportProp.id])
   const report: ReportListItem = { ...reportProp, ...patch }
+  // 오늘 운영 상태('운영 중 · 18:00까지'·'곧 종료')는 시간이 흐르며 바뀌어 1분마다 다시 본다(11-08).
+  const [clock, setClock] = useState(Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  const phase = reportPhase(report, clock)
+  const daySpans = parseReportDays(report)
   const applyPatch = (next: SheetPatch) =>
     setPatch((prev) => ({ ...prev, ...next }))
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
@@ -116,12 +136,12 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   const hasOwnerMenu = canToggleNotify || canEditSchedule
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [scheduleSaving, setScheduleSaving] = useState(false)
-  const handleSaveSchedule = async (next: { startsAt: string; endsAt: string }) => {
+  const handleSaveSchedule = async (next: { startsAt: string; endsAt: string; days?: ReportDayHours[] }) => {
     if (!accessToken) return
     setScheduleSaving(true)
     try {
       const saved = await updateReportSchedule(report.id, next, accessToken)
-      applyPatch({ startsAt: saved.startsAt, endsAt: saved.endsAt })
+      applyPatch({ startsAt: saved.startsAt, endsAt: saved.endsAt, days: saved.days ?? null })
       setScheduleOpen(false)
       haptics.success()
       toast.show({ message: '제보 시간을 고쳤어요' })
@@ -291,6 +311,11 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         <Text style={styles.title}>{report.title}</Text>
       </Pressable>
       <Text style={styles.freshness}>{formatFreshness(report)}</Text>
+      {phase.text && phase.kind !== 'upcoming' ? (
+        <View style={[styles.phase, phase.kind === 'ending' && styles.phaseEnding, phase.kind === 'later' && styles.phaseLater]}>
+          <Text style={[styles.phaseText, phase.kind === 'ending' && styles.phaseTextEnding]}>{phase.text}</Text>
+        </View>
+      ) : null}
       </View>
 
       <SheetScrollBody sheetGesture={bodyGesture} onContentSizeChange={onContentSizeChange} sheetGestureDisabled={menuOpen || ownerMenuOpen || scheduleOpen || viewerIndex !== null} style={{ height: bodyHeight }} bounces={false}>
@@ -301,6 +326,22 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           {reportPlaceText(report, buildings)}
         </Text>
       </View>
+
+      {/* 날짜별 운영 시간(여러 날 제보). 오늘은 진하게, 지난 날은 옅게. */}
+      {daySpans ? (
+        <View style={styles.dayList} accessibilityLabel="날짜별 운영 시간">
+          {daySpans.map((span) => {
+            const today = isSameKstDay(span.startMs, clock)
+            const past = span.endMs <= clock
+            return (
+              <Text key={span.date} style={[styles.dayRow, past && styles.dayRowPast, today && styles.dayRowToday]}>
+                {formatDaySpan(span)}
+                {today ? ' · 오늘' : ''}
+              </Text>
+            )
+          })}
+        </View>
+      ) : null}
 
       {!!report.content?.trim() && (
         <View style={styles.contentBox}>
@@ -416,6 +457,7 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           visible={scheduleOpen}
           startsAt={report.startsAt}
           endsAt={report.endsAt}
+          days={report.days}
           saving={scheduleSaving}
           onClose={() => setScheduleOpen(false)}
           onSave={(next) => void handleSaveSchedule(next)}
@@ -501,6 +543,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
+  // 오늘 운영 상태(11-08). 운영 중은 옅은 남색, 곧 종료는 남색으로 채움, 운영 시간 밖은 테두리만.
+  phase: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: COLORS.primarySoft },
+  phaseEnding: { backgroundColor: COLORS.primary },
+  phaseLater: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.chipBorder },
+  phaseText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.primary },
+  phaseTextEnding: { color: COLORS.white },
+  dayList: { marginTop: 10, gap: 3 },
+  dayRow: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, fontVariant: ['tabular-nums'] },
+  dayRowToday: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  dayRowPast: { color: COLORS.textTertiary },
   placeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   contentBox: { marginTop: 10, gap: 6 },

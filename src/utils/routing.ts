@@ -1,7 +1,13 @@
+import { SURVEY_V3_EDGES, SURVEY_V3_VERTICES } from '../constants/surveyGraphV3'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
-import { WALKING_METERS_PER_MINUTE } from '../constants/route'
+import {
+  ELEVATOR_SECONDS_PER_FLOOR,
+  ELEVATOR_WAIT_SECONDS,
+  FLOOR_TRANSIT_SECONDS,
+  WALKING_METERS_PER_MINUTE,
+} from '../constants/route'
 import type { Building } from '../types'
-import { entranceTransitSeconds, matchEntrance, resolveEntrancePoint } from './floors'
+import { entranceTransitSeconds, levelIndex, resolveEntrancePoint } from './floors'
 import type { RoutePoint } from './floors'
 import { haversineMeters } from './geo'
 
@@ -11,6 +17,10 @@ export interface RouteAlternative {
   totalSeconds: number
   minutes: number
   hasIndoorTransit: boolean
+  /** 경로에 계단 구간(경로 조사의 계단 선)이 있다. */
+  hasStairs: boolean
+  /** 경로망에 아직 없는 건물이라 출입구에서 가장 가까운 길까지 직선으로 이은 구간이 있다. */
+  hasLinkSegment: boolean
   /** true면 실측 경로망이 아직 이 구간을 덮지 못해 직선 거리로 대신한 값이다. */
   isEstimate: boolean
 }
@@ -19,6 +29,11 @@ interface GraphEdge {
   to: string
   seconds: number
   meters: number
+  stairs?: boolean
+  /** 경로망 밖 건물을 가까운 길에 직선으로 이은 간선. */
+  link?: boolean
+  /** 건물 안 층 이동(경로망 조사 v3 의 계단·엘리베이터 수직 간선). */
+  vertical?: boolean
 }
 
 interface Graph {
@@ -26,6 +41,38 @@ interface Graph {
   /** 층 이동을 나타내는 합성 노드. 지도에는 그리지 않는다(출입구와 좌표가 같다). */
   floorNodeIds: Set<string>
   adj: Map<string, GraphEdge[]>
+  /** 건물 이름 → 경로망에 이어진 출입구(정점 id 와 그 출입구 층). */
+  entrancesByBuilding: Map<string, { id: string; floor: number }[]>
+  /** 건물 이름 → 층 → 그 층에서 조사된 실내 정점 id(경로망 조사 v3). 고른 층에서 실제 실내 길로 출발·도착한다. */
+  levelVertices: Map<string, Map<number, string[]>>
+  /**
+   * 가장 큰 덩어리(서로 이어진 정점 무리)의 정점. 조사가 덜 끝나 큰 길망과 떨어진 조각(출입구 + 점 하나 등)은
+   * 출입구·층 정점·연결 후보로 쓰지 않는다 — 그 건물로 가는 길이 아예 안 나오는 대신 예전 자료나 직선 연결로 대신한다.
+   */
+  mainComponent: Set<string>
+}
+
+/** 가장 큰 덩어리의 정점들(간선 방향 무시, BFS). */
+function largestComponent(graph: Graph): Set<string> {
+  const seen = new Set<string>()
+  let best = new Set<string>()
+  for (const start of graph.nodes.keys()) {
+    if (seen.has(start)) continue
+    const component = new Set<string>([start])
+    seen.add(start)
+    const queue = [start]
+    while (queue.length > 0) {
+      const id = queue.pop()!
+      for (const edge of graph.adj.get(id) ?? []) {
+        if (seen.has(edge.to)) continue
+        seen.add(edge.to)
+        component.add(edge.to)
+        queue.push(edge.to)
+      }
+    }
+    if (component.size > best.size) best = component
+  }
+  return best
 }
 
 interface PathResult {
@@ -39,13 +86,20 @@ function pushAdj(graph: Graph, id: string, edge: GraphEdge): void {
   else graph.adj.set(id, [edge])
 }
 
-function addEdge(graph: Graph, aId: string, aPoint: RoutePoint, bId: string, bPoint: RoutePoint): void {
+function addEdge(
+  graph: Graph,
+  aId: string,
+  aPoint: RoutePoint,
+  bId: string,
+  bPoint: RoutePoint,
+  stairs = false,
+): void {
   graph.nodes.set(aId, aPoint)
   graph.nodes.set(bId, bPoint)
   const meters = haversineMeters(aPoint.lat, aPoint.lng, bPoint.lat, bPoint.lng)
   const seconds = (meters / WALKING_METERS_PER_MINUTE) * 60
-  pushAdj(graph, aId, { to: bId, seconds, meters })
-  pushAdj(graph, bId, { to: aId, seconds, meters })
+  pushAdj(graph, aId, { to: bId, seconds, meters, stairs })
+  pushAdj(graph, bId, { to: aId, seconds, meters, stairs })
 }
 
 /**
@@ -76,21 +130,178 @@ export function resolveRef(
   return { id: ref, point: { lat: entrance.lat, lng: entrance.lng } }
 }
 
-function buildBaseGraph(buildings: readonly Building[]): Graph {
-  const waypointById = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
-  const graph: Graph = { nodes: new Map(), floorNodeIds: new Set(), adj: new Map() }
+/**
+ * 출입구 이름의 건물 코드(HI_R_… 의 'R') → 건물. 서버 지도 데이터의 출입구 이름 앞부분으로 찾는다 —
+ * 경로 조사에서 새로 생긴 출입구 이름(서버에 아직 없는 것)도 같은 건물에 붙일 수 있다.
+ */
+function buildingsByCode(buildings: readonly Building[]): Map<string, Building> {
+  const byCode = new Map<string, Building>()
+  for (const building of buildings) {
+    for (const entrance of building.entrances ?? []) {
+      const code = entrance.label.match(/^HI_([A-Z0-9]+)_/)?.[1]
+      if (code && !byCode.has(code)) byCode.set(code, building)
+    }
+  }
+  return byCode
+}
 
-  for (const [aRef, bRef] of PATH_EDGES) {
-    const a = resolveRef(aRef, waypointById, buildings)
-    const b = resolveRef(bRef, waypointById, buildings)
+/**
+ * 경로망 조사 v3 의 건물 code(`hongik_r`) → 앱 건물. 서버 지도 데이터의 건물 code 로 찾고, code 가 없으면
+ * 그 건물의 v3 출입구 이름 앞부분(HI_R_ → 'R')을 서버 출입구 이름과 맞춰 찾는다.
+ */
+function v3BuildingResolver(buildings: readonly Building[]): (code: string) => Building | undefined {
+  const byServerCode = new Map<string, Building>()
+  for (const building of buildings) if (building.code) byServerCode.set(building.code, building)
+  const byLabelCode = buildingsByCode(buildings)
+  const viaLabel = new Map<string, Building>()
+  for (const [, , , code, , , label] of SURVEY_V3_VERTICES) {
+    if (!code || !label || viaLabel.has(code)) continue
+    const labelCode = label.match(/^HI_([A-Z0-9]+)_/)?.[1]
+    const building = labelCode ? byLabelCode.get(labelCode) : undefined
+    if (building) viaLabel.set(code, building)
+  }
+  return (code) => byServerCode.get(code) ?? viaLabel.get(code)
+}
+
+/** 계단 한 칸(인접 층) 또는 엘리베이터 한 번 타기의 시간(초). 층 눈금은 levelIndex(L층·0층 없음 반영). */
+function verticalSeconds(kind: 'stairs_vertical' | 'elevator_vertical', fromFloor: number, toFloor: number): number {
+  const floors = Math.abs(levelIndex(fromFloor) - levelIndex(toFloor))
+  return kind === 'stairs_vertical'
+    ? floors * FLOOR_TRANSIT_SECONDS
+    : ELEVATOR_WAIT_SECONDS + floors * ELEVATOR_SECONDS_PER_FLOOR
+}
+
+/**
+ * 경로망 조사 v3(surveyGraphV3.ts, 11-08)로 만든 경로망. 실외 길, 건물 안 층마다의 정점, 계단·엘리베이터 수직 간선,
+ * 건물끼리 높이가 같은 층을 잇는 tie 까지 그대로 쓴다. 출입구는 v3 출입구 정점 그 자체다.
+ * v3 에 아직 없는 건물만 9월 자료(pathNodes.ts)로 채운다(addLegacyFill).
+ */
+function buildBaseGraph(buildings: readonly Building[]): Graph {
+  const graph: Graph = {
+    nodes: new Map(),
+    floorNodeIds: new Set(),
+    adj: new Map(),
+    entrancesByBuilding: new Map(),
+    levelVertices: new Map(),
+    mainComponent: new Set(),
+  }
+  const vertexById = new Map(SURVEY_V3_VERTICES.map((v) => [v[0], v]))
+
+  for (const [aId, bId, kind] of SURVEY_V3_EDGES) {
+    const a = vertexById.get(aId)
+    const b = vertexById.get(bId)
     if (!a || !b) continue
-    addEdge(graph, a.id, a.point, b.id, b.point)
+    const aPoint = { lat: a[1], lng: a[2] }
+    const bPoint = { lat: b[1], lng: b[2] }
+    if (kind === 'normal' || kind === 'stairs') {
+      addEdge(graph, aId, aPoint, bId, bPoint, kind === 'stairs')
+      continue
+    }
+    graph.nodes.set(aId, aPoint)
+    graph.nodes.set(bId, bPoint)
+    let seconds = 0
+    if (kind === 'stairs_vertical' || kind === 'elevator_vertical') {
+      if (a[4] === null || b[4] === null) continue
+      seconds = verticalSeconds(kind, a[4], b[4])
+    }
+    const stairs = kind === 'stairs_vertical'
+    const vertical = kind !== 'tie'
+    pushAdj(graph, aId, { to: bId, seconds, meters: 0, stairs, vertical })
+    pushAdj(graph, bId, { to: aId, seconds, meters: 0, stairs, vertical })
   }
 
+  graph.mainComponent = largestComponent(graph)
+  const resolveBuilding = v3BuildingResolver(buildings)
+  for (const [id, , , code, floor, type] of SURVEY_V3_VERTICES) {
+    if (!code || floor === null || !graph.mainComponent.has(id)) continue
+    const building = resolveBuilding(code)
+    if (!building) continue
+    const byFloor = graph.levelVertices.get(building.name) ?? new Map<number, string[]>()
+    byFloor.set(floor, [...(byFloor.get(floor) ?? []), id])
+    graph.levelVertices.set(building.name, byFloor)
+    if (type !== 1) continue
+    const list = graph.entrancesByBuilding.get(building.name) ?? []
+    list.push({ id, floor })
+    graph.entrancesByBuilding.set(building.name, list)
+  }
+
+  addLegacyFill(graph, buildings)
+  // 9월 자료로 채운 점도 큰 길망에 이어졌으면 연결 후보가 되도록 다시 센다.
+  graph.mainComponent = largestComponent(graph)
   return graph
 }
 
-/** 건물 목록(지도 데이터)이 바뀌면 경로망을 다시 만든다. 같은 배열이면 한 번 만든 걸 쓴다. */
+/**
+ * 큰 길망 위의 실외 정점인지(실내 정점 `n12@건물:층`, 출입구 앵커 `건물#…`, 합성 노드 `건물::층`, 내 위치, 떨어진 조각이 아님).
+ * 경로망 밖 건물과 내 위치를 이을 후보다.
+ */
+function isOutdoorPathPoint(graph: Graph, id: string): boolean {
+  return (
+    graph.mainComponent.has(id) &&
+    !graph.floorNodeIds.has(id) &&
+    !id.includes('@') &&
+    !id.includes('#') &&
+    !id.includes('::') &&
+    id !== MY_LOCATION_NODE
+  )
+}
+
+/** 9월 경로망 점을 11-03 경로망 점에 이을 최대 거리. 두 자료는 같은 점을 공유하지 않아 가까운 점끼리 잇는다(대략). */
+const LEGACY_BRIDGE_METERS = 20
+
+/**
+ * 11-03 조사 자료에 아직 없는 건물(중앙도서관 H동 등)만 9월 자료(pathNodes.ts)로 채운다(11-03 운영진 요청, 대략적인 임시 방법).
+ * - 11-03 자료에 출입구가 있는 건물에 닿는 9월 선은 넣지 않는다(새 자료를 우선).
+ * - 9월 점 id 는 'old:' 를 붙여 새 점과 겹치지 않게 하고, 새 점과 20m 안이면 이어 붙인다.
+ * 조사를 더 해서 그 건물이 새 자료에 들어오면 저절로 9월 자료 대신 새 자료를 쓴다.
+ */
+function addLegacyFill(graph: Graph, buildings: readonly Building[]): void {
+  const covered = new Set(graph.entrancesByBuilding.keys())
+  const waypointById = new Map(PATH_WAYPOINTS.map((w) => [w.id, w]))
+  const newPoints = SURVEY_V3_VERTICES.filter((v) => v[3] === null && graph.nodes.has(v[0])).map((v) => ({ id: v[0], lat: v[1], lng: v[2] }))
+  const legacyPoints = new Set<string>()
+
+  const resolve = (ref: string) => {
+    const resolved = resolveRef(ref, waypointById, buildings)
+    if (!resolved) return null
+    if (waypointById.has(ref)) {
+      legacyPoints.add(`old:${resolved.id}`)
+      return { id: `old:${resolved.id}`, point: resolved.point, building: null as Building | null, label: null as string | null }
+    }
+    const hash = ref.indexOf('#')
+    const name = hash === -1 ? ref : ref.slice(0, hash)
+    const building = buildings.find((b) => b.name === name) ?? null
+    return { id: resolved.id, point: resolved.point, building, label: hash === -1 ? null : ref.slice(hash + 1) }
+  }
+
+  for (const [aRef, bRef] of PATH_EDGES) {
+    const a = resolve(aRef)
+    const b = resolve(bRef)
+    if (!a || !b) continue
+    if ((a.building && covered.has(a.building.name)) || (b.building && covered.has(b.building.name))) continue
+    addEdge(graph, a.id, a.point, b.id, b.point)
+    for (const end of [a, b]) {
+      if (!end.building) continue
+      const list = graph.entrancesByBuilding.get(end.building.name) ?? []
+      if (list.some((e) => e.id === end.id)) continue
+      const entrance = end.label ? end.building.entrances?.find((e) => e.label === end.label) : undefined
+      list.push({ id: end.id, floor: entrance ? entrance.minFloor : 1 })
+      graph.entrancesByBuilding.set(end.building.name, list)
+    }
+  }
+
+  for (const id of legacyPoints) {
+    const point = graph.nodes.get(id)
+    if (!point) continue
+    let best: { id: string; meters: number } | null = null
+    for (const w of newPoints) {
+      const meters = haversineMeters(point.lat, point.lng, w.lat, w.lng)
+      if (meters <= LEGACY_BRIDGE_METERS && (!best || meters < best.meters)) best = { id: w.id, meters }
+    }
+    if (best) addEdge(graph, id, point, best.id, graph.nodes.get(best.id)!)
+  }
+}
+
 const baseGraphCache = new WeakMap<readonly Building[], Graph>()
 
 function getBaseGraph(buildings: readonly Building[]): Graph {
@@ -105,33 +316,81 @@ function getBaseGraph(buildings: readonly Building[]): Graph {
 function cloneGraph(graph: Graph): Graph {
   const adj = new Map<string, GraphEdge[]>()
   graph.adj.forEach((edges, id) => adj.set(id, [...edges]))
-  return { nodes: new Map(graph.nodes), floorNodeIds: new Set(graph.floorNodeIds), adj }
-}
-
-function anchorId(building: Building, floor: number | null): string {
-  const entrance = matchEntrance(building, floor)
-  return entrance ? `${building.name}#${entrance.label}` : building.name
+  return {
+    nodes: new Map(graph.nodes),
+    floorNodeIds: new Set(graph.floorNodeIds),
+    adj,
+    entrancesByBuilding: graph.entrancesByBuilding,
+    levelVertices: graph.levelVertices,
+    mainComponent: graph.mainComponent,
+  }
 }
 
 /**
- * 고른 층으로 가는 합성 노드를 그래프에 붙인다. 그 건물이 아직 경로망에
- * 없으면(출입구 앵커가 그래프에 없으면) 존재하지 않는 id 를 그대로 돌려줘
- * 호출부가 "이 구간은 아직 못 덮는다"를 감지하게 한다.
+ * 고른 건물·층에서 출발(도착)하는 합성 노드를 붙인다.
+ * - 그 건물의 경로망에 이어진 출입구 모두와 잇고, 층 차이만큼 시간을 더한다(조사되지 않은 실내는 계단으로 오르내린다고 어림).
+ * - 그 층에 경로망 조사 v3 로 찍은 실내 정점(엘리베이터·계단·복도 점)이 있으면 그 정점들과 0초로도 잇는다 —
+ *   실제 실내 길(엘리베이터·계단·건물끼리 이어진 층)이 더 빠르면 길찾기가 그쪽을 고른다.
+ * 층을 안 골랐으면 모든 출입구가 0초다. 그 건물이 아직 경로망에 없으면 그래프에 없는 id 를 돌려줘
+ * 호출부가 직선 추정으로 대신하게 한다.
  */
 function attachFloorNode(graph: Graph, building: Building, floor: number | null): string {
-  const anchor = anchorId(building, floor)
-  if (floor === null || !graph.nodes.has(anchor)) return anchor
+  const entrances = graph.entrancesByBuilding.get(building.name) ?? linkToNearestPaths(graph, building)
+  const surveyed = floor === null ? [] : graph.levelVertices.get(building.name)?.get(floor) ?? []
+  const floorNodeId = `${building.name}::${floor ?? 'any'}`
+  const first = surveyed[0] ?? entrances[0]?.id
+  if (first === undefined) return floorNodeId
 
-  const floorNodeId = `${building.name}::${floor}`
-  const point = graph.nodes.get(anchor)!
-  graph.nodes.set(floorNodeId, point)
+  graph.nodes.set(floorNodeId, graph.nodes.get(first)!)
   graph.floorNodeIds.add(floorNodeId)
-
-  const seconds = entranceTransitSeconds(building, floor)
-  pushAdj(graph, floorNodeId, { to: anchor, seconds, meters: 0 })
-  pushAdj(graph, anchor, { to: floorNodeId, seconds, meters: 0 })
-
+  const link = (id: string, seconds: number) => {
+    pushAdj(graph, floorNodeId, { to: id, seconds, meters: 0 })
+    pushAdj(graph, id, { to: floorNodeId, seconds, meters: 0 })
+  }
+  for (const id of surveyed) link(id, 0)
+  for (const entrance of entrances) {
+    if (surveyed.includes(entrance.id)) continue
+    link(entrance.id, floor === null ? 0 : Math.abs(levelIndex(floor) - levelIndex(entrance.floor)) * FLOOR_TRANSIT_SECONDS)
+  }
   return floorNodeId
+}
+
+/** 경로망 밖 건물의 출입구를 이을 가까운 길 점 수와 최대 거리. */
+const LINK_POINTS = 2
+const LINK_MAX_METERS = 300
+
+/**
+ * 경로망에 아직 출입구가 없는 건물(11-03 조사 전)은 서버 지도 데이터의 출입구(없으면 건물 중심)에서
+ * 가장 가까운 길 점(300m 안, 2곳)까지 직선으로 잇는다 — 운영진 요청: 직선 하나로 대신하지 말고 길을 따라 이어 가게.
+ * 복사한 그래프(findRoutes 의 cloneGraph)에만 붙이고, 공유하는 entrancesByBuilding 은 건드리지 않는다.
+ */
+function linkToNearestPaths(graph: Graph, building: Building): { id: string; floor: number }[] {
+  const pathPoints: { id: string; point: RoutePoint }[] = []
+  graph.nodes.forEach((point, id) => {
+    if (isOutdoorPathPoint(graph, id)) pathPoints.push({ id, point })
+  })
+  const starts =
+    building.entrances && building.entrances.length > 0
+      ? building.entrances.map((e) => ({ id: `${building.name}#${e.label}`, point: { lat: e.lat, lng: e.lng }, floor: e.minFloor }))
+      : [{ id: `${building.name}#center`, point: { lat: building.lat, lng: building.lng }, floor: 1 }]
+
+  const linked: { id: string; floor: number }[] = []
+  for (const start of starts) {
+    const near = pathPoints
+      .map((p) => ({ ...p, meters: haversineMeters(start.point.lat, start.point.lng, p.point.lat, p.point.lng) }))
+      .filter((p) => p.meters <= LINK_MAX_METERS)
+      .sort((a, b) => a.meters - b.meters)
+      .slice(0, LINK_POINTS)
+    if (near.length === 0) continue
+    graph.nodes.set(start.id, start.point)
+    for (const p of near) {
+      const seconds = (p.meters / WALKING_METERS_PER_MINUTE) * 60
+      pushAdj(graph, start.id, { to: p.id, seconds, meters: p.meters, link: true })
+      pushAdj(graph, p.id, { to: start.id, seconds, meters: p.meters, link: true })
+    }
+    linked.push({ id: start.id, floor: start.floor })
+  }
+  return linked
 }
 
 function dijkstra(
@@ -284,21 +543,29 @@ function pickDiverseRoutes(
 
 function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
   const points: RoutePoint[] = []
-  let hasIndoorTransit = false
-
   for (const id of path.nodeIds) {
-    if (graph.floorNodeIds.has(id)) {
-      hasIndoorTransit = true
-      continue
-    }
+    if (graph.floorNodeIds.has(id)) continue
     const point = graph.nodes.get(id)
-    if (point) points.push(point)
+    // 층 이동(같은 자리의 다른 층 정점)은 지도에서 한 점이다.
+    const last = points[points.length - 1]
+    if (point && !(last && last.lat === point.lat && last.lng === point.lng)) points.push(point)
   }
 
   let distanceMeters = 0
+  let hasIndoorTransit = false
+  let hasStairs = false
+  let hasLinkSegment = false
   for (let i = 0; i < path.nodeIds.length - 1; i++) {
     const edge = (graph.adj.get(path.nodeIds[i]) ?? []).find((e) => e.to === path.nodeIds[i + 1])
-    if (edge) distanceMeters += edge.meters
+    if (!edge) continue
+    distanceMeters += edge.meters
+    if (edge.stairs) hasStairs = true
+    if (edge.link) hasLinkSegment = true
+    // 건물 안 층 이동: v3 수직 간선, 또는 합성 노드와 출입구 사이 시간이 있는 간선(층 차이 어림).
+    if (edge.vertical && edge.seconds > 0) hasIndoorTransit = true
+    if (edge.meters === 0 && edge.seconds > 0 && (graph.floorNodeIds.has(path.nodeIds[i]) || graph.floorNodeIds.has(edge.to))) {
+      hasIndoorTransit = true
+    }
   }
 
   return {
@@ -307,6 +574,8 @@ function toRouteAlternative(graph: Graph, path: PathResult): RouteAlternative {
     totalSeconds: path.seconds,
     minutes: Math.max(1, Math.round(path.seconds / 60)),
     hasIndoorTransit,
+    hasStairs,
+    hasLinkSegment,
     isEstimate: false,
   }
 }
@@ -357,6 +626,60 @@ export function straightLineFallback(
     totalSeconds,
     minutes: Math.max(1, Math.round(totalSeconds / 60)),
     hasIndoorTransit: fromFloor !== null || toFloor !== null,
+    hasStairs: false,
+    hasLinkSegment: false,
+    isEstimate: true,
+  }
+}
+
+/** 내 위치를 경로망에 이을 때 볼 가까운 점 수와 최대 거리. 더 멀면 직선 어림으로 대신한다. */
+const MY_LOCATION_LINKS = 3
+const MY_LOCATION_MAX_METERS = 150
+export const MY_LOCATION_NODE = 'me'
+
+/**
+ * 내 위치(휴대폰이 읽은 좌표)에서 건물까지(11-03). 좌표는 이 계산에만 쓰고 저장하거나 서버로 보내지 않는다.
+ * 내 위치에서 가까운 경로망 점(150m 안, 최대 3곳)으로 직선으로 걸어간다고 보고 잇는다. 너무 멀거나 그 건물이 망에 없으면 빈 배열.
+ */
+export function findRoutesFromPoint(
+  buildings: readonly Building[],
+  from: RoutePoint,
+  to: { building: Building; floor: number | null },
+  maxAlternatives = 3,
+): RouteAlternative[] {
+  const graph = cloneGraph(getBaseGraph(buildings))
+  const targetId = attachFloorNode(graph, to.building, to.floor)
+  if (!graph.nodes.has(targetId)) return []
+
+  const near: { id: string; point: RoutePoint; meters: number }[] = []
+  graph.nodes.forEach((point, id) => {
+    if (!isOutdoorPathPoint(graph, id)) return
+    const meters = haversineMeters(from.lat, from.lng, point.lat, point.lng)
+    if (meters <= MY_LOCATION_MAX_METERS) near.push({ id, point, meters })
+  })
+  if (near.length === 0) return []
+  near.sort((a, b) => a.meters - b.meters)
+  for (const n of near.slice(0, MY_LOCATION_LINKS)) addEdge(graph, MY_LOCATION_NODE, from, n.id, n.point)
+
+  const k = Math.max(6, maxAlternatives * 2)
+  const candidates = yenKShortestPaths(graph, MY_LOCATION_NODE, targetId, k)
+  if (candidates.length === 0) return []
+  return pickDiverseRoutes(candidates, maxAlternatives).map((path) => toRouteAlternative(graph, path))
+}
+
+/** 내 위치에서 건물까지 직선 어림(경로망이 못 덮을 때). */
+export function straightLineFromPoint(from: RoutePoint, toBuilding: Building, toFloor: number | null): RouteAlternative {
+  const toPoint = resolveEntrancePoint(toBuilding, toFloor)
+  const meters = haversineMeters(from.lat, from.lng, toPoint.lat, toPoint.lng)
+  const totalSeconds = (meters / WALKING_METERS_PER_MINUTE) * 60 + entranceTransitSeconds(toBuilding, toFloor)
+  return {
+    points: [from, toPoint],
+    distanceMeters: Math.round(meters),
+    totalSeconds,
+    minutes: Math.max(1, Math.round(totalSeconds / 60)),
+    hasIndoorTransit: toFloor !== null,
+    hasStairs: false,
+    hasLinkSegment: false,
     isEstimate: true,
   }
 }

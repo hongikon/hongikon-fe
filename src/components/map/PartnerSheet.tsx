@@ -23,6 +23,7 @@ import { openNaverMapPlace } from "../../utils/openNaverMap";
 import { RADIUS } from "../../constants/spacing";
 import { formatUntilYmd } from "../../utils/exhibitions";
 import SheetScrollBody from "./SheetScrollBody";
+import NearbyAlertPromo from "./NearbyAlertPromo";
 
 interface PartnerSheetProps {
   partner: Partner;
@@ -310,6 +311,7 @@ export default function PartnerSheet({ partner, onClose, onSuggestEdit }: Partne
           </TouchableOpacity>
         )}
 
+        <NearbyAlertPromo />
         {/* 혜택·시간이 바뀌었거나 틀렸으면 바로 운영진에게(11-01). 정보 제보 창이 '정보 수정'으로 열린다. */}
         {onSuggestEdit && (
           <TouchableOpacity

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
-import { FACILITY_KINDS, HIDDEN_FACILITY_KINDS } from '../../constants/facilityKinds'
+import { VISIBLE_FACILITY_KINDS, facilityChipLabel } from '../../constants/facilityKinds'
 import { facilityCount } from '../../utils/facilities'
 import { useMapData } from '../../lib/mapData'
 import { chipStyles, useChipRowScrollStyle } from './chipStyles'
@@ -21,11 +21,8 @@ const LAYERS: readonly {
 
 // '이벤트' 갈래는 없앴다(10-27). 전시는 학교 시설 종류 칩 하나가 되고, 제보 보기(켜기·종류·HOT)는
 // 지도 오른쪽 아래 메뉴(MapActionMenu)로 옮겼다 — 위쪽 칩은 '어디에 뭐가 있나'만 맡는다.
-// 엘리베이터는 앱에서 감춘다(HIDDEN_FACILITY_KINDS — 지도 데이터를 받을 때 빼고, 칩에서도 뺀다).
+// 숨기는 종류(엘리베이터)와 짧은 칩 이름은 facilityKinds.ts 에 둔다 — 건물 시트의 '건물 안 시설'과 같은 목록을 쓴다(11-08).
 // 흡연구역은 10-05 에 숨겼다가 운영진이 11곳 좌표를 직접 찍어 정리한 뒤 다시 보인다(10-27).
-const VISIBLE_FACILITY_KINDS = FACILITY_KINDS.filter((meta) => !HIDDEN_FACILITY_KINDS.has(meta.key))
-/** 칩에는 짧게. 서버 값 '행사·전시'의 행사는 이제 제보로 받는다. */
-const CHIP_LABEL: Partial<Record<FacilityKind, string>> = { '행사·전시': '전시' }
 
 interface MapFilterChipsProps {
   /** 최상단 갈래. 고르지 않았으면 null 이고, 아래 칩 줄은 나오지 않는다. */
@@ -121,7 +118,7 @@ export default function MapFilterChips({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`${CHIP_LABEL[meta.key] ?? meta.label ?? meta.key} ${count}곳`}
+                accessibilityLabel={`${facilityChipLabel(meta.key)} ${count}곳`}
                 style={[
                   chipStyles.chip,
                   isActive && { backgroundColor: meta.color, borderColor: meta.color },
@@ -129,7 +126,7 @@ export default function MapFilterChips({
               >
                 <ChipIcon name={meta.icon} color={meta.color} active={isActive} />
                 <Text style={[chipStyles.label, isActive && chipStyles.labelActive]}>
-                  {CHIP_LABEL[meta.key] ?? meta.label ?? meta.key}
+                  {facilityChipLabel(meta.key)}
                 </Text>
               </TouchableOpacity>
             )

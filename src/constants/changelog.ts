@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    // 날짜는 출시(스토어 승인·서버 스위치 켬)에 맞춰 고친다 — docs/nearby-store-submission-plan.md
+    version: '1.1.0',
+    date: '2026-11-09',
+    title: '근처 제휴 알림',
+    kind: 'app',
+    items: [
+      '설정 > 알림 > 근처 제휴 알림을 켜 두면, 제휴 가게에 잠시 머물 때 그 가게의 학생 혜택을 알려 드려요. 직접 켠 사람에게만 가요.',
+      '위치는 휴대폰 안에서만 써요. 서버로 보내거나 저장하지 않고, 운영진도 볼 수 없어요.',
+      '같은 가게는 하루 한 번, 하루 세 번까지만 와요. 밤 9시~아침 8시에는 따로 켠 경우에만 와요. 가게별로 알림을 끌 수도 있어요.',
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-10-15',
     title: '행정실 담당 업무·연락처 안내',

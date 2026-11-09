@@ -17,6 +17,9 @@ interface MapActionMenuProps {
   /** 넘기지 않으면(길찾기 꺼짐) 항목을 그리지 않는다. */
   onRoute?: () => void
   onRecenter: () => void
+  /** 지도에 내 위치 보기 켜고 끄기(11-06). 위치를 못 쓰는 환경이면 넘기지 않아 항목을 그리지 않는다. */
+  onMyLocation?: () => void
+  myLocationOn?: boolean
   /** 제보 보기(종류·HOT). 위쪽 칩 줄에서 옮겨 왔다(10-27). */
   reportFilter: ReportFilterProps
   /**
@@ -24,6 +27,11 @@ interface MapActionMenuProps {
    * 작은 화면에서 제보 종류까지 펼치면 위 항목이 검색바 밑으로 잘렸다(10-27).
    */
   maxItemsHeight?: number
+  /** 근처 알림 영역 보기(개발·현장 테스트 빌드만). 넘기지 않으면 항목을 그리지 않는다. */
+  onToggleNearbyOverlay?: () => void
+  nearbyOverlayOn?: boolean
+  /** 근처 알림 테스트 위치 정하기(개발·현장 테스트 빌드만). */
+  onPickNearbyTestLocation?: () => void
   style?: StyleProp<ViewStyle>
 }
 
@@ -58,7 +66,19 @@ interface MenuItem {
  * 이름표와 함께 펼쳐 보인다. 접기 버튼과 나머지 항목은 하단 탭 바와 같은 맑은 유리(FloatingTabBar pill)이고,
  * 제보하기만 앱의 주 기능이라 메인 컬러로 채워 맨 아래(손에 가까운 쪽)에 둔다(10-18 요청). 항목을 누르면 접힌다.
  */
-export default function MapActionMenu({ onReport, onRoute, onRecenter, reportFilter, maxItemsHeight, style }: MapActionMenuProps) {
+export default function MapActionMenu({
+  onReport,
+  onRoute,
+  onRecenter,
+  onMyLocation,
+  myLocationOn,
+  reportFilter,
+  maxItemsHeight,
+  onToggleNearbyOverlay,
+  nearbyOverlayOn,
+  onPickNearbyTestLocation,
+  style,
+}: MapActionMenuProps) {
   const [open, setOpen] = useState(false)
   /** '제보 보기'를 눌러 종류 줄을 펼쳤는지. 메뉴를 닫으면 다시 접는다. */
   const [filterOpen, setFilterOpen] = useState(false)
@@ -80,6 +100,36 @@ export default function MapActionMenu({ onReport, onRoute, onRecenter, reportFil
   }, [])
 
   const items: MenuItem[] = [
+    ...(onPickNearbyTestLocation
+      ? [
+          {
+            key: 'nearbyTestLocation',
+            label: '테스트 위치 정하기',
+            icon: <Ionicons name="locate-outline" size={17} color={COLORS.primary} />,
+            onPress: onPickNearbyTestLocation,
+          },
+        ]
+      : []),
+    ...(onToggleNearbyOverlay
+      ? [
+          {
+            key: 'nearby',
+            label: nearbyOverlayOn ? '근처 알림 영역 끄기' : '근처 알림 영역 보기',
+            icon: <Ionicons name="radio-outline" size={17} color={COLORS.primary} />,
+            onPress: onToggleNearbyOverlay,
+          },
+        ]
+      : []),
+    ...(onMyLocation
+      ? [
+          {
+            key: 'myLocation',
+            label: myLocationOn ? '내 위치 끄기' : '내 위치 켜기',
+            icon: <Ionicons name={myLocationOn ? 'locate' : 'locate-outline'} size={17} color={COLORS.primary} />,
+            onPress: onMyLocation,
+          },
+        ]
+      : []),
     {
       key: 'recenter',
       label: '캠퍼스로',

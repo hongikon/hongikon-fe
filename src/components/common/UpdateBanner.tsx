@@ -6,6 +6,8 @@ import { FONTS } from '../../constants/typography'
 import { COLORS } from '../../constants/colors'
 import { notify } from '../../utils/dialog'
 import { RADIUS } from '../../constants/spacing'
+/** 하단 탭 바(FloatingTabBar: 알약 60 + 아래 여백) 위로 띄운다. 예전에는 탭 바와 같은 높이라 겹쳐 가렸다(11-03). */
+const TAB_BAR_PILL_HEIGHT = 60
 
 /**
  * EAS Update(OTA) 새 버전을 내려받아 알려주는 배너. `App.tsx` 에서 한 번만 올린다.
@@ -19,12 +21,11 @@ export default function UpdateBanner() {
   const insets = useSafeAreaInsets()
   const [reloading, setReloading] = useState(false)
   const { isUpdatePending } = Updates.useUpdates()
-
   useEffect(() => {
     if (!Updates.isEnabled || Platform.OS === 'web') return
 
     // 앱을 계속 켜두고 있어도 받을 수 있도록, 포그라운드로 돌아올 때마다 다시 확인한다.
-    // 실제 반영은 사용자가 배너의 "지금 적용"을 눌러야 일어난다(화면이 갑자기 리로드되면 안 되니까).
+    // 받은 업데이트는 배너의 "지금 적용"을 눌러야 적용된다(갑자기 리로드되면 안 되니까). 시스템 알림창은 띄우지 않는다(11-03 운영진).
     const checkAndDownload = () => {
       Updates.checkForUpdateAsync()
         .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : undefined))
@@ -43,7 +44,7 @@ export default function UpdateBanner() {
   if (!isUpdatePending) return null
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 8 }]}>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 4 + TAB_BAR_PILL_HEIGHT + 10 }]}>
       <View style={styles.banner} accessibilityRole="alert" accessibilityLiveRegion="polite">
         <Text style={styles.text} numberOfLines={2}>
           새로운 버전이 있어요

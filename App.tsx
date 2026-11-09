@@ -12,13 +12,14 @@ import WebAppInstallBanner from './src/components/common/WebAppInstallBanner'
 import { navigationRef } from './src/navigation/navigationRef'
 import { WEB_LINKING, formatDocumentTitle } from './src/navigation/linking'
 import { usePushNotifications } from './src/lib/pushNotifications'
+import { useNearbyPartnerAlerts } from './src/lib/nearbyPartners/useNearbyPartnerAlerts'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
 import UpdateBanner from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
-import { DevPathAuditEntry, DevPathSurveyEntry, DevPathSurveyV3Entry, DevAskEntry, DevCampusEntry, TempEntranceDebugEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
+import { DevPathAuditEntry, DevPathSurveyEntry, DevPathSurveyV3Entry, DevAskEntry, DevCampusEntry, TempEntranceDebugEntry, TempChangesPreviewEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
 import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
@@ -33,6 +34,7 @@ import LaunchOverlay from './src/components/common/LaunchOverlay'
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
 function PushNotificationsBridge() {
   usePushNotifications()
+  useNearbyPartnerAlerts()
   return null
 }
 
@@ -74,7 +76,7 @@ function WebDocumentTitleBridge() {
  * `/temp/*` 는 운영 웹(hongikon.com)에서는 열리지 않는다 — 개발 서버나 개발·테스트 빌드에서만 분기한다
  * (`SHOW_DEVELOPER_TOOLS`). `/dev/path`(경로망 점검)만 운영 웹에서도 연다. 화면 코드는 `TempDebugEntry.web.tsx` 가 지연 로드한다.
  */
-type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'pathAudit' | 'pathSurvey' | 'pathSurveyV3' | 'ask' | 'sogang' | 'yonsei' | 'ewha'
+type TempDebugMode = 'dots' | 'paths' | 'nodes' | 'notifications' | 'changes' | 'pathAudit' | 'pathSurvey' | 'pathSurveyV3' | 'ask' | 'sogang' | 'yonsei' | 'ewha'
 
 const tempDebugMode: TempDebugMode | null =
   Platform.OS === 'web' && typeof window !== 'undefined'
@@ -99,6 +101,7 @@ const tempDebugMode: TempDebugMode | null =
         if (path === '/temp/path') return 'paths'
         if (path === '/temp/path-nodes') return 'nodes'
         if (path === '/temp/notifications') return 'notifications'
+        if (path === '/temp/changes') return 'changes'
         return null
       })()
     : null
@@ -189,6 +192,14 @@ export default function App() {
     )
   }
 
+  if (tempDebugMode === 'changes' && TempChangesPreviewEntry) {
+    return (
+      <Suspense fallback={null}>
+        <TempChangesPreviewEntry />
+      </Suspense>
+    )
+  }
+
   if (tempDebugMode === 'notifications' && TempNotificationPreviewEntry) {
     return (
       <Suspense fallback={null}>
@@ -237,7 +248,7 @@ export default function App() {
     )
   }
 
-  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'pathAudit' && tempDebugMode !== 'pathSurvey' && tempDebugMode !== 'pathSurveyV3' && tempDebugMode !== 'ask' && tempDebugMode !== 'sogang' && tempDebugMode !== 'yonsei' && tempDebugMode !== 'ewha' && TempEntranceDebugEntry) {
+  if (tempDebugMode && tempDebugMode !== 'notifications' && tempDebugMode !== 'changes' && tempDebugMode !== 'pathAudit' && tempDebugMode !== 'pathSurvey' && tempDebugMode !== 'pathSurveyV3' && tempDebugMode !== 'ask' && tempDebugMode !== 'sogang' && tempDebugMode !== 'yonsei' && tempDebugMode !== 'ewha' && TempEntranceDebugEntry) {
     return (
       <Suspense fallback={null}>
         <TempEntranceDebugEntry mode={tempDebugMode} />

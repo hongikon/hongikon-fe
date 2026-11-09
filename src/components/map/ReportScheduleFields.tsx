@@ -8,8 +8,11 @@ import {
   REPORT_MAX_DURATION_DAYS,
   REPORT_START_MAX_DAYS,
   REPORT_TIME_STEP_MINUTES,
+  canRunDaily,
   dayChipLabel,
   formatClock,
+  formatDaysRange,
+  type ReportDayHours,
   formatDay,
   formatDurationMinutes,
   formatScheduleRange,
@@ -19,6 +22,7 @@ import {
 import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import ReportTimeSheet from './ReportTimeSheet'
+import ReportDaysEditor, { effectiveDays, pinDailyHours, reportDaysFor, type EditableDay } from './ReportDaysEditor'
 import { RADIUS } from '../../constants/spacing'
 
 const MINUTE_MS = 60 * 1000
@@ -40,6 +44,21 @@ export interface ReportSchedule {
   durationHours: number
   /** endMode 가 custom 일 때의 종료(10분 단위). */
   customEndMs: number
+  /**
+   * '매일 정해진 시간에만 운영'(11-08). 켜도 `scheduleDaysFor` 가 쓸 수 있다고 볼 때(이틀 이상에 걸침)만 보낸다 —
+   * 시각을 바꿔 조건이 깨지면 체크는 남아도 한 번짜리로 올라간다(체크 줄도 사라진다). 시작이 '지금'이어도 된다(11-09).
+   */
+  daily: boolean
+  /** 날짜별로 고친 운영 시간·쉬는 날(`ReportDaysEditor`). 고르지 않은 날은 시작 시각~끝 시각이다. */
+  editedDays: EditableDay[]
+}
+
+/** 지금 고른 값으로 보낼 날짜별 운영 시간. 쓸 수 없으면 null(한 번짜리). */
+export function scheduleDaysFor(
+  schedule: ReportSchedule,
+  resolved: { startMs: number; endMs: number },
+): ReportDayHours[] | null {
+  return reportDaysFor(schedule.daily, resolved.startMs, resolved.endMs, schedule.editedDays)
 }
 
 export function initialReportSchedule(defaultDurationHours: number, now: number = Date.now()): ReportSchedule {
@@ -50,6 +69,8 @@ export function initialReportSchedule(defaultDurationHours: number, now: number 
     endMode: 'duration',
     durationHours: defaultDurationHours,
     customEndMs: start + defaultDurationHours * HOUR_MS,
+    daily: false,
+    editedDays: [],
   }
 }
 
@@ -170,7 +191,12 @@ export default function ReportScheduleFields({
       : defaultScheduledStart(now)
 
   const durationMinutes = Math.max(Math.round((endMs - startMs) / MINUTE_MS), 0)
-  const summary = `${formatScheduleRange(startMs, endMs, scheduled ? undefined : '지금')} · ${formatDurationMinutes(durationMinutes)}`
+  // '매일 정해진 시간에만'은 여러 날에 걸치면 고를 수 있다. 시작이 '지금'이면 첫날은 지금부터다(11-09 요청).
+  const dailyAvailable = canRunDaily(startMs, endMs)
+  const daily = dailyAvailable && value.daily
+  const summary = daily
+    ? formatDaysRange(effectiveDays(startMs, endMs, value.editedDays).filter((day) => !day.off), { firstFromNow: !scheduled })
+    : `${formatScheduleRange(startMs, endMs, scheduled ? undefined : '지금')} · ${formatDurationMinutes(durationMinutes)}`
 
   return (
     <View>
@@ -190,7 +216,17 @@ export default function ReportScheduleFields({
           active={!scheduled}
           disabled={disabled}
           // 직접 고른 종료는 시작을 옮길 때(setStart)처럼 그대로 두고, 지금 기준으로 쓸 수 없을 때만 자동으로 맞춘다.
-          onPress={() => changeStart({ startMode: 'now', scheduledStartMs: value.scheduledStartMs }, now)}
+          onPress={() => {
+            if (scheduled && value.daily && canRunDaily(now, endMs)) {
+              // 매일 운영 시간은 그대로 두고 첫날만 지금부터로(가운데 날이 지금 시각을 따라 바뀌지 않게).
+              const editedDays = pinDailyHours(startMs, endMs, value.editedDays, now, endMs)
+              const end = endFor(now)
+              setEndAutoFit(value.endMode === 'custom' && end.customEndMs !== value.customEndMs)
+              onChange({ ...value, startMode: 'now', ...end, editedDays })
+              return
+            }
+            changeStart({ startMode: 'now', scheduledStartMs: value.scheduledStartMs }, now)
+          }}
           accessibilityLabel="지금 시작"
         />
       </View>
@@ -241,13 +277,36 @@ export default function ReportScheduleFields({
           {summary}
         </Text>
       </Animated.View>
+      {dailyAvailable ? (
+        <ReportDaysEditor
+          startMs={startMs}
+          endMs={endMs}
+          enabled={value.daily}
+          edited={value.editedDays}
+          onChange={(patch) => {
+            if (patch.endMs !== undefined) setEndAutoFit(false)
+            onChange({
+              ...value,
+              ...(patch.daily !== undefined ? { daily: patch.daily } : {}),
+              ...(patch.edited ? { editedDays: patch.edited } : {}),
+              ...(patch.startMs !== undefined ? { startMode: 'scheduled' as const, scheduledStartMs: patch.startMs } : {}),
+              ...(patch.endMs !== undefined ? { endMode: 'custom' as const, customEndMs: patch.endMs } : {}),
+            })
+          }}
+          earliestStart={firstValidStart}
+          startIsNow={!scheduled}
+          disabled={disabled}
+        />
+      ) : null}
       {endAutoFit && value.endMode === 'custom' ? (
         <Text style={styles.autoFit} accessibilityLiveRegion="polite">
           시작 시각이 바뀌어 종료 시각을 원래 진행 시간에 맞춰 옮겼어요. 다르면 다시 골라 주세요.
         </Text>
       ) : null}
       <Text style={styles.hint}>
-        {scheduled
+        {daily
+          ? '운영진이 확인한 뒤, 첫날 시작부터 마지막 날 끝까지 지도에 있어요. 핀에 오늘 운영 시간이 함께 보여요.'
+          : scheduled
           ? '운영진이 확인한 뒤, 시작 시각이 되면 지도에 올라가요. 끝나는 시각에 자동으로 내려가요.'
           : '운영진이 확인한 뒤 지도에 올라가고, 끝나는 시각에 자동으로 내려가요.'}
       </Text>

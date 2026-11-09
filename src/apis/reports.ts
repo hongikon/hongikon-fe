@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import { ApiError, apiRequest } from './client'
 import { stripJpegLocation, stripPngMetadata } from '../utils/jpegPrivacy'
 import type {
@@ -198,7 +199,7 @@ export async function getLiveReports(
  */
 export async function updateReportSchedule(
   id: number,
-  input: { startsAt: string; endsAt: string },
+  input: { startsAt: string; endsAt: string; days?: ReportDayHours[] },
   accessToken: string,
 ): Promise<Report> {
   return apiRequest<Report>(`/reports/${id}/schedule`, { method: 'PUT', body: input, accessToken })

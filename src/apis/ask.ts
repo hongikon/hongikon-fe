@@ -1,5 +1,44 @@
 import { API_BASE_URL, apiRequest } from './client'
 
+/**
+ * 물어보기 서버에 묻는 자격. 웹 /dev/ask 는 운영진 암호키(devKey), 앱 '물어보기' 탭(BETA)은 로그인 토큰(accessToken).
+ * 토큰이면 401 에 앱 전역 재발급을 쓰고, 암호키면 쓰지 않는다(키가 틀린 건 로그인 만료가 아니다).
+ */
+export type AskAuth = { devKey: string } | { accessToken: string }
+
+function authOptions(auth: AskAuth): { headers?: Record<string, string>; accessToken?: string; skipTokenRefresh: boolean } {
+  return 'devKey' in auth
+    ? { headers: { 'X-Ask-Dev-Key': auth.devKey }, skipTokenRefresh: true }
+    : { accessToken: auth.accessToken, skipTokenRefresh: false }
+}
+
+function authHeaders(auth: AskAuth): Record<string, string> {
+  return 'devKey' in auth ? { 'X-Ask-Dev-Key': auth.devKey } : { Authorization: `Bearer ${auth.accessToken}` }
+}
+
+/** 요즘 많이 찾는 안내 id(GET /ask/popular, 11-07) — 인사에 칩으로 보인다. 건수·질문은 오지 않는다. 실패하면 빈 목록. */
+export async function getPopularGuides(signal?: AbortSignal): Promise<string[]> {
+  try {
+    const result = await apiRequest<{ ids?: string[] }>('/ask/popular', { signal, timeoutMs: 4000, retries: 0, skipTokenRefresh: true })
+    return Array.isArray(result?.ids) ? result.ids.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** 앱 탭 상태(GET /ask/status). remaining 은 오늘 이 계정이 더 물을 수 있는 수, soldOut 은 전체 하루 상한이 찼는지. */
+export interface AskStatus {
+  enabled: boolean
+  loggedIn: boolean
+  limit: number
+  remaining: number
+  soldOut: boolean
+}
+
+export function getAskStatus(accessToken: string | null, signal?: AbortSignal): Promise<AskStatus> {
+  return apiRequest<AskStatus>('/ask/status', { accessToken, signal })
+}
+
 /** 직전 대화 한 턴. 질문, 그때 열린 안내(흐름/단계), 서버가 써 준 답(있으면). */
 export interface AskRouteTurn {
   question: string
@@ -31,17 +70,30 @@ export interface AskRouteResult {
   sections?: { title: string; items: string[]; ordered: boolean; table: { head: string[]; rows: string[][] } | null }[]
   /** 이 답의 서버 기록 id — '해결됐나요' 응답을 붙일 때 쓴다(기록이 꺼졌으면 없음). */
   logId?: number | null
+  /** 답 아래 앱 조작 버튼(11-07). 모르는 type 은 그리지 않는다. 옛 서버면 없음. */
+  actions?: AskAction[]
+}
+
+/**
+ * 물어보기로 앱 움직이기(docs/ask-app-actions-plan.md). 지금은 'map' — 지도 탭으로 옮겨 그 곳에 핀·시트를 띄우고 위에 summary 카드.
+ * target: 'building:{건물 code}' | 'facility:{편의시설 id}' | 'partner:{제휴 id}'. label 이 없으면 앱이 지도 데이터 이름을 쓴다.
+ */
+export interface AskAction {
+  type: string
+  target: string
+  label?: string | null
+  summary?: string | null
 }
 
 /**
  * 물어보기 서버 답(POST /ask/route, 개발 중 — 웹 /dev/ask 에서만). 서버가 질문에 맞는 안내를 고르고 그 안내 원문 안에서만 답을 쓴다.
- * hint 는 앱 낱말 찾기가 고른 안내(참고용). devKey 는 /dev 게이트에 입력한 암호키(서버는 그 SHA-256 만 비교한다).
+ * hint 는 앱 낱말 찾기가 고른 안내(참고용). auth 는 /dev 암호키(서버는 그 SHA-256 만 비교한다) 또는 앱 로그인 토큰.
  * 실패하면 부르는 쪽이 낱말 찾기로 돌아간다. 답 쓰기는 안내를 더 찾아보느라 여러 번 부를 수 있어 넉넉히 기다린다.
  */
 export function routeAsk(
   question: string,
   history: AskRouteTurn[],
-  devKey: string,
+  auth: AskAuth,
   hint?: string,
   signal?: AbortSignal,
   conversationId?: string,
@@ -49,10 +101,9 @@ export function routeAsk(
   return apiRequest<AskRouteResult>('/ask/route', {
     method: 'POST',
     body: { question, hint, history, conversationId },
-    headers: { 'X-Ask-Dev-Key': devKey },
+    ...authOptions(auth),
     timeoutMs: 45_000,
     retries: 0,
-    skipTokenRefresh: true,
     signal,
   })
 }
@@ -77,7 +128,7 @@ export type AskStreamEvent =
 export async function streamAsk(
   question: string,
   history: AskRouteTurn[],
-  devKey: string,
+  auth: AskAuth,
   hint: string | undefined,
   onEvent: (event: AskStreamEvent) => void,
   signal?: AbortSignal,
@@ -91,7 +142,7 @@ export async function streamAsk(
   try {
     const response = await fetch(`${API_BASE_URL}/ask/route/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-Ask-Dev-Key': devKey },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeaders(auth) },
       body: JSON.stringify({ question, hint, history, conversationId }),
       signal: controller.signal,
     })
@@ -128,13 +179,49 @@ export async function streamAsk(
   }
 }
 
-/** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
-export function sendAskFeedback(logId: number, conversationId: string, resolved: boolean, devKey: string): Promise<void> {
+/** '해결 안 됨'의 이유(한 번 누름, 11-06). 서버 AskFeedbackReason 과 같은 이름. */
+export type AskFeedbackReason = 'WRONG' | 'OUTDATED' | 'OFF_TOPIC' | 'NOT_ENOUGH'
+
+/** 이유 버튼 글자(순서대로 보인다). */
+export const ASK_FEEDBACK_REASONS: { code: AskFeedbackReason; label: string }[] = [
+  { code: 'WRONG', label: '틀린 정보예요' },
+  { code: 'OUTDATED', label: '지난 정보예요' },
+  { code: 'OFF_TOPIC', label: '물어본 것과 달라요' },
+  { code: 'NOT_ENOUGH', label: '내용이 부족해요' },
+]
+
+/** 서버 답 기록에 '궁금한 점이 해결됐나요?' 응답(과 이유)을 붙인다(POST /ask/route/feedback). 실패해도 화면에는 영향이 없다. */
+export function sendAskFeedback(
+  logId: number,
+  conversationId: string,
+  resolved: boolean,
+  auth: AskAuth,
+  reason?: AskFeedbackReason,
+): Promise<void> {
   return apiRequest<void>('/ask/route/feedback', {
     method: 'POST',
-    body: { logId, conversationId, resolved },
-    headers: { 'X-Ask-Dev-Key': devKey },
+    body: { logId, conversationId, resolved, reason },
+    ...authOptions(auth),
     retries: 0,
+  })
+}
+
+/**
+ * 앱 안내 흐름 답의 '해결됐나요' 응답(POST /ask/feedback, 익명 — 사람·계정을 보내지 않는다).
+ * clientId 는 응답 한 번마다 만든 임의 값이라 이유를 고르며 다시 보내면 서버가 같은 행을 고친다. 실패해도 화면에는 영향이 없다.
+ */
+export function sendFlowFeedback(input: {
+  question: string
+  flowId: string
+  nodeId: string
+  resolved: boolean
+  clientId: string
+  reason?: AskFeedbackReason
+}): Promise<void> {
+  return apiRequest<void>('/ask/feedback', {
+    method: 'POST',
+    body: { ...input, question: input.question.slice(0, 200), outcome: 'FLOW' },
     skipTokenRefresh: true,
+    retries: 0,
   })
 }

@@ -26,6 +26,8 @@ export const DevAskEntry: ComponentType | null = lazy(() =>
 )
 /** 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 시설 조사 결과 미리보기. 인증키를 맞혀야 화면·데이터를 받는다(`DevCampusGate`). */
 export const DevCampusEntry: ComponentType<{ campus: CampusPreviewKey }> | null = lazy(() => import('../screens/DevCampusGate'))
+/** 개발용 `/temp/changes` — 11-08 바뀐 화면 미리보기(개발 서버·테스트 빌드 웹에서만). */
+export const TempChangesPreviewEntry: ComponentType | null = lazy(() => import('../screens/TempChangesPreviewScreen'))
 export const TempNotificationPreviewEntry: ComponentType | null = lazy(
   () => import('../screens/TempNotificationPreviewScreen'),
 )

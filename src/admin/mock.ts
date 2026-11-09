@@ -5,6 +5,8 @@ import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { FACILITY_KINDS } from '../constants/facilityKinds'
 import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
 import type {
+  AdminAskFeedbackItem,
+  AdminAskNote,
   AdminBuildingOption,
   AdminExhibition,
   AdminFacility,
@@ -292,6 +294,32 @@ function feedbackResponse(item: AdminFeedback): AdminFeedback {
   return { ...item, userNickname: name, userDisplayName: name, userMemberCode: memberCodeOf(item.userId) }
 }
 
+const askNotes: AdminAskNote[] = [
+  {
+    id: 1, question: 'T동 강의실 마이크는 어디서 빌려요?', answer: 'T동 강의실에서 쓸 마이크는 T동 3층 경비실에서 빌릴 수 있어요.',
+    askRef: null, active: true, createdBy: 1, createdAt: at(-600), updatedAt: at(-600),
+  },
+]
+
+const askFeedback: AdminAskFeedbackItem[] = [
+  {
+    source: 'ROUTE', id: 101, createdAt: at(-2), question: '전과하려면 몇 학점 필요해?',
+    answer: '2학년 전과는 33학점, 3학년 전과는 66학점 이상이어야 신청할 수 있어요(학사내규 제41조).',
+    outcome: 'ANSWERED', flowId: null, nodeId: null, references: ['학사 FAQ 전과', '학사내규 제7장 전과'],
+    nodeIds: ['change-major/start'], reason: 'OUTDATED', reviewedAt: null,
+    handoffs: [{ feedbackId: 9001, content: '[물어보기에서 넘어온 문의]\n질문: 전과하려면 몇 학점 필요해?\n더 알고 싶은 점: 2025학번도 같나요?',
+      contact: null, status: 'OPEN', createdAt: at(-1), imageUrls: [] }],
+  },
+  {
+    source: 'FLOW', id: 55, createdAt: at(-30), question: 'T동 강의실 마이크', answer: null, outcome: 'FLOW',
+    flowId: 'ctl-equipment', nodeId: 'start', references: [], nodeIds: [], reason: 'OFF_TOPIC', reviewedAt: null, handoffs: [],
+  },
+  {
+    source: 'ROUTE', id: 99, createdAt: at(-300), question: '학식 몇 시까지 해?', answer: '학생회관 학식은 평일 11:00~14:00예요.',
+    outcome: 'ANSWERED', flowId: null, nodeId: null, references: [], nodeIds: ['cafeteria/start'], reason: null, reviewedAt: at(-200), handoffs: [],
+  },
+]
+
 const feedback: AdminFeedback[] = [
   {
     id: 14, status: 'OPEN', createdAt: at(-15), resolvedAt: null, userId: 7,
@@ -487,6 +515,8 @@ function partnerFromBody(body: Record<string, unknown>, id: string): AdminPartne
     link: link ? { label: optionalText(link.label, '링크 이름', 50) ?? '', url: link.url as string } : undefined,
     endsOn: partnerEndsOn(body.endsOn),
     usageNote: optionalText(body.usageNote, '이용 방법', 255),
+    // 서버는 PUT 에서 빠지면 기존 값을 두지만, 화면은 늘 보내므로 목업은 받은 값만 본다.
+    nearbyAlert: body.nearbyAlert === true ? true : undefined,
   }
 }
 
@@ -774,6 +804,54 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
       user.role = 'USER'
       return userResponse(user)
     }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/feedback') {
+    const status = params.get('status') ?? 'OPEN'
+    const items = askFeedback.filter((item) => status === 'ALL' || (status === 'REVIEWED') === (item.reviewedAt !== null))
+    const reasons: Record<string, number> = { WRONG: 0, OUTDATED: 0, OFF_TOPIC: 0, NOT_ENOUGH: 0, NONE: 0 }
+    items.forEach((item) => (reasons[item.reason ?? 'NONE'] += 1))
+    return { days: Number(params.get('days') ?? 30), items, reasons }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/feedback/report') {
+    const groups = [
+      { kind: 'GUIDE' as const, key: 'change-major/start', label: '전과 신청 자격·기간', count: 3, open: 2, reasons: { OUTDATED: 2, NONE: 1 }, questions: ['전과하려면 몇 학점 필요해?', '전과 언제 신청해?'] },
+      { kind: 'UNMATCHED' as const, key: '멀미실 와이파이 안 돼요', label: '멀미실 와이파이 안 돼요', count: 2, open: 2, reasons: { NONE: 2 }, questions: ['멀미실 와이파이 안 돼요', '멀미실 와이파이 비번'] },
+    ]
+    return { days: Number(params.get('days') ?? 7), questions: 120, resolvedYes: 41, resolvedNo: 9, reasons: { WRONG: 1, OUTDATED: 3, OFF_TOPIC: 1, NOT_ENOUGH: 1, NONE: 3 }, groups }
+  }
+
+  if (method === 'GET' && pathname === '/admin/ask/notes') {
+    return { notes: [...askNotes].sort((a, b) => b.id - a.id) }
+  }
+
+  if (method === 'POST' && pathname === '/admin/ask/notes') {
+    const note: AdminAskNote = {
+      id: (askNotes.at(-1)?.id ?? 0) + 1, question: String(body.question), answer: String(body.answer),
+      askRef: (body.askRef as string | undefined) ?? null, active: true, createdBy: 1, createdAt: at(0), updatedAt: at(0),
+    }
+    askNotes.push(note)
+    return note
+  }
+
+  const askNoteMatch = pathname.match(/^\/admin\/ask\/notes\/(\d+)$/)
+  if (method === 'PATCH' && askNoteMatch) {
+    const note = askNotes.find((entry) => entry.id === Number(askNoteMatch[1]))
+    if (!note) throw notFound()
+    if (typeof body.question === 'string') note.question = body.question
+    if (typeof body.answer === 'string') note.answer = body.answer
+    if (typeof body.active === 'boolean') note.active = body.active
+    note.updatedAt = at(0)
+    return note
+  }
+
+  const askFeedbackMatch = pathname.match(/^\/admin\/ask\/feedback\/(ROUTE|FLOW)\/(\d+)$/)
+  if (method === 'PATCH' && askFeedbackMatch) {
+    const item = askFeedback.find((entry) => entry.source === askFeedbackMatch[1] && entry.id === Number(askFeedbackMatch[2]))
+    if (!item) throw notFound()
+    item.reviewedAt = body.reviewed ? at(0) : null
+    return undefined
   }
 
   if (method === 'GET' && pathname === '/admin/feedback') {

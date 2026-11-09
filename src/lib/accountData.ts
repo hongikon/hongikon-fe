@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { restoreSettings, toSignedOutSettings, type StoredSettings } from '../utils/settingsStorage'
 import { clearTermsConsent } from './termsConsent'
 import { deleteAccountHiddenAuthors } from './hiddenAuthors'
+import { wipeNearbyAlerts } from './nearbyPartners/background'
 
 /** `SettingsContext` 의 저장 키. 로그아웃 정리가 같은 값을 고쳐 써야 해서 여기 둔다. */
 export const SETTINGS_STORAGE_KEY = '@hongik_settings'
@@ -18,6 +19,8 @@ export const SETTINGS_STORAGE_KEY = '@hongik_settings'
 export async function clearAccountLinkedDeviceData(): Promise<void> {
   await clearAccountLinkedSettings()
   await clearTermsConsent()
+  // 근처 제휴 알림: 감시·예약을 멈추고 기기 기록(대상 업체·머무름·보낸 시각·소속)을 지운다. 동의는 계정에 묶여 있다.
+  await wipeNearbyAlerts()
 }
 
 /**

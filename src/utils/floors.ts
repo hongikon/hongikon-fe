@@ -27,7 +27,7 @@ export function formatFloor(floor: number): string {
  * 0층이 없어 B1(-1)과 1F(1) 사이가 한 개 층이 되도록 지상층을 하나씩 내린다.
  * 로비층 L(0)은 그 사이 반 층으로 본다.
  */
-function levelIndex(floor: number): number {
+export function levelIndex(floor: number): number {
   if (floor === 0) return -0.5
   return floor > 0 ? floor - 1 : floor
 }

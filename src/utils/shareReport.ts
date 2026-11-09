@@ -2,7 +2,7 @@ import { shareLink, type ShareResult } from './share'
 import type { Building, ReportListItem } from '../types'
 import { formatFloor } from './floors'
 import { haversineMeters } from './geo'
-import { formatServerSchedule } from './reportSchedule'
+import { formatReportSchedule } from './reportSchedule'
 
 /** 공유 링크. 웹판(hongikon.com)의 `/r/{id}` 가 지도를 열고 그 제보 시트를 띄운다(App.tsx `sharedReportIdFromPath`). */
 export const SHARE_ORIGIN = 'https://hongikon.com'
@@ -40,7 +40,7 @@ export function reportPlaceText(
 export function reportShareMessage(report: ReportListItem, buildings: readonly Building[]): string {
   return [
     `[홍익온] ${report.title}`,
-    `일시: ${formatServerSchedule(report.startsAt, report.endsAt)}`,
+    `일시: ${formatReportSchedule(report)}`,
     `장소: ${reportPlaceText(report, buildings)}`,
     reportShareUrl(report.id),
   ].join('\n')

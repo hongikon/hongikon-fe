@@ -3,7 +3,10 @@
  * - openMyReports: 반려 알림을 탭하면 내 제보 내역을 열고 그 제보를 맨 위로 강조한다(반려된 제보는 지도에 없다).
  * 설정 화면은 포커스될 때(또는 이미 떠 있으면 즉시) 요청을 꺼내 처리한다 — 두 번 처리되지 않는다.
  */
-export type SettingsIntent = { type: 'openMyReports'; reportId: number | null }
+export type SettingsIntent =
+  | { type: 'openMyReports'; reportId: number | null }
+  /** 제휴 시트의 "근처에 있을 때 알려 드릴까요?" → 설정 > 근처 제휴 알림 창. */
+  | { type: 'openNearbyAlerts' }
 
 let pending: SettingsIntent | null = null
 const listeners = new Set<() => void>()
