@@ -51,7 +51,6 @@ import { newsSearchQuery, parseAskAppCommand, type AskAppCommand } from "../../u
 import { useOptionalSettings } from "../../contexts/SettingsContext";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
-const EXAMPLES = ["자퇴하려면", "와이파이 연결 방법", "학교 메일 계정", "다쳤어요", "휴학 신청 기간", "학생증 재발급"] as const;
 
 
 /**
@@ -1512,23 +1511,6 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       <Text style={styles.botText}>
         학교에서 해야 할 일을 물어보세요. 필요한 건 몇 가지 되물어서, 어떻게 하면 되는지와 어디에 연락하면 되는지 알려 드려요.
       </Text>
-      {/* 앱 탭에선 추천 질문 버튼을 두지 않는다(11-01 요청). 웹 /dev/ask(운영진 시험)에만. */}
-      {appMode ? null : (
-      <View style={styles.examples}>
-        {EXAMPLES.map((example) => (
-          <TouchableOpacity
-            key={example}
-            style={styles.example}
-            activeOpacity={0.7}
-            onPress={() => ask(example)}
-            accessibilityRole="button"
-            accessibilityLabel={`${example} 물어보기`}
-          >
-            <Text style={styles.exampleText}>{example}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      )}
     </View>
   );
 
