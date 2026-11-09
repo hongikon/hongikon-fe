@@ -362,5 +362,21 @@
  {
   "q": "강의실 대관",
   "expect": "facility-rental"
+ },
+ {
+  "q": "학생 할인 뭐 있어",
+  "expect": "student-perks"
+ },
+ {
+  "q": "학교에서 카공할 곳",
+  "expect": "student-perks"
+ },
+ {
+  "q": "학교에서 무료로 쓸 수 있는 거 뭐 있어",
+  "expect": "student-perks"
+ },
+ {
+  "q": "카공하기 좋은 곳 있어?",
+  "expect": "student-perks"
  }
 ]
