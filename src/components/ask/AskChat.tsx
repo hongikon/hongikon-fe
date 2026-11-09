@@ -14,6 +14,7 @@ import {
   Easing,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type TextStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -243,6 +244,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
   const appMode = !serverKey;
   const [input, setInput] = useState("");
+  // 웹 한글 입력 중 Enter 는 글자를 확정하는 키라 그 순간의 값이 아직 덜 들어와 있다 — 확정된 뒤 최신 값으로 보낸다.
+  const latestInputRef = useRef("");
+  latestInputRef.current = input;
+  const [composerFocused, setComposerFocused] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
   const [pending, setPending] = useState(false);
@@ -1491,19 +1496,38 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
 
             {appMode ? (
               <View style={[styles.composerWrap, { paddingBottom: 6 + (bottomInset ?? insets.bottom) }]}>
-                <View style={styles.composerBox}>
+                <View style={[styles.composerBox, composerFocused && styles.composerBoxFocused]}>
                   <TextInput
                     ref={inputRef}
-                    style={styles.composerInput}
+                    style={[styles.composerInput, WEB_NO_OUTLINE]}
                     value={input}
                     onChangeText={setInput}
                     placeholder="질문을 입력하세요"
                     placeholderTextColor={COLORS.textPlaceholder}
                     multiline
+                    // 웹 여러 줄 칸은 기본 2줄 높이라 한 줄로 시작한다(앱은 minHeight 로 맞춤).
+                    {...WEB_ONE_ROW}
                     maxLength={200}
                     returnKeyType="send"
                     onSubmitEditing={() => ask(input)}
                     submitBehavior="submit"
+                    onFocus={() => setComposerFocused(true)}
+                    onBlur={() => setComposerFocused(false)}
+                    // 웹(react-native-web)은 여러 줄 칸에서 submitBehavior 를 보지 않아 Enter 가 줄바꿈이 됐다(11-09).
+                    // Enter 는 보내기, Shift+Enter 는 줄바꿈. 한글 조합 중 Enter 는 글자가 확정된 뒤 보낸다.
+                    onKeyPress={
+                      Platform.OS === "web"
+                        ? (event) => {
+                            const native = event.nativeEvent as unknown as { key?: string; shiftKey?: boolean; isComposing?: boolean; keyCode?: number };
+                            if (native.key !== "Enter" || native.shiftKey) return;
+                            event.preventDefault();
+                            // 조합 중이면 글자가 확정돼 칸에 들어간 뒤(다음 차례) 칸의 실제 값으로 보낸다.
+                            const field = (event as unknown as { target?: { value?: string } }).target;
+                            if (native.isComposing || native.keyCode === 229) setTimeout(() => ask(field?.value ?? latestInputRef.current), 0);
+                            else ask(input);
+                          }
+                        : undefined
+                    }
                     accessibilityLabel="학교 일 물어보기"
                   />
                   {pending && auth ? (
@@ -1537,7 +1561,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                 <View style={[styles.composer, { paddingBottom: 10 + (bottomInset ?? insets.bottom) }]}>
                   <TextInput
                     ref={inputRef}
-                    style={styles.input}
+                    style={[styles.input, WEB_NO_OUTLINE]}
                     value={input}
                     onChangeText={setInput}
                     placeholder="예: 휴학 신청 기간"
@@ -1625,6 +1649,12 @@ function ThinkingLine({ text }: { text: string }) {
   );
 }
 
+/** 웹 입력칸의 브라우저 기본 포커스 테두리(분홍·파랑 바깥선)를 없앤다. 포커스는 입력 상자 테두리 색으로 보인다. */
+/** react-native-web 여러 줄 칸(textarea)의 줄 수(rows). RN 타입에는 없어 따로 넘긴다. */
+const WEB_ONE_ROW: object = Platform.OS === "web" ? { rows: 1 } : {};
+
+const WEB_NO_OUTLINE = Platform.OS === "web" ? ({ outlineStyle: "none", outlineWidth: 0 } as unknown as TextStyle) : null;
+
 const styles = StyleSheet.create({
   titleRow: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   titleText: { ...TYPE.headline, color: COLORS.textPrimary },
@@ -1689,6 +1719,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  composerBoxFocused: { borderColor: COLORS.primary },
   composerInput: {
     flex: 1,
     minHeight: 36,

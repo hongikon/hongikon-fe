@@ -957,7 +957,15 @@ const styles = StyleSheet.create({
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
   subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
   // 지도에서 근처 알림을 켜러 왔을 때 잠깐 강조(11-09).
-  subBlockHighlight: { backgroundColor: COLORS.primarySoft, borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+  // 칸 전체를 남색 테두리로 감싼다(11-09 — 왼쪽 막대만으로는 어느 칸인지 덜 보였다). 테두리만큼 안쪽 여백을 줄여
+  // 내용이 옆으로 밀리지 않게 하고, 둥근 모서리가 보이게 양옆을 조금 띄운다.
+  subBlockHighlight: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    marginHorizontal: SPACING.xs,
+    overflow: 'hidden',
+  },
   subHeaderHighlight: { color: COLORS.primary },
   groupHeader: {
     minHeight: 58,
