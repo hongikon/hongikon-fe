@@ -35,6 +35,7 @@ export function levelIndex(floor: number): number {
 /**
  * 고를 수 있는 층 목록(지하 최하층 → 지상 최상층).
  *
+ * 서버가 층 목록(`floorLevels`)을 주면 그대로 쓴다(서버 길찾기 walkroute/Floors.floorOptions 와 같은 규칙 — 서버는 이 목록에 없는 층을 받지 않는다).
  * `floors`/`basementFloors` 가 확인된 건물은 그 값을 쓴다. 아직 층수가 확인되지
  * 않은 건물도 `entrances` 에 층별 출입구가 있으면, 그 출입구들이 걸친 가장 낮은
  * 층부터 가장 높은 층까지를 선택지로 삼는다 — 출입구가 없는 사이 층(예: 1F·4F
@@ -42,7 +43,12 @@ export function levelIndex(floor: number): number {
  * 포함한다. 1.5F 같은 중간층 출입구는 그 층 그대로 끼워 넣는다.
  */
 export function buildFloorOptions(building: Building): FloorOption[] {
-  const { floors, basementFloors, entrances } = building
+  const { floors, basementFloors, entrances, floorLevels } = building
+
+  const listed = Array.isArray(floorLevels) ? floorLevels.filter((value) => Number.isFinite(value)) : []
+  if (listed.length > 0) {
+    return [...new Set(listed)].sort((a, b) => a - b).map((value) => ({ label: formatFloor(value), value }))
+  }
 
   let lowest: number
   let highest: number

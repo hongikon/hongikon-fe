@@ -378,3 +378,10 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 경로 조사 v3: `scripts/path/import-survey-v3.mjs` 가 이제 서버 파일(hongikon-be `src/main/resources/walkroute/survey-graph-v3.json`)을 만든다. v2 가져오기(`import-survey.mjs`)는 지움.
 - 테스트: `routing.test.ts` 를 지우고 `routes.test.ts`(후보 이름, 내 위치 고르기·후보, 직선 어림). tsc, 테스트 85/85, 웹 내보내기에 경로망이 안 들어간 것 확인.
 - 배포 순서: 서버(`/map/routes`)가 운영에 먼저 나가야 이 앱 코드를 OTA 로 낼 수 있다. 이미 깔린 앱은 앱 안 계산을 계속 쓴다.
+
+## 2026-11-10 · 층 다이얼을 서버 층 목록(floorLevels)으로
+
+- (사용자 요청) 건물 층 정보를 엑셀(홍익대학교_건물_정보_amenity_locations_1109.xlsx)대로 서버에 넣음(hongikon-be `db/sync_building_floors_2026_11_10.sql`, 새 열 `floor_levels`). 그 전엔 서버 건물에 층수가 비어 출입구 층으로만 다이얼을 만들어 T동은 1~5층만 골랐다.
+- `buildFloorOptions` 가 `floorLevels` 를 먼저 쓴다(서버 길찾기 층 검사와 같은 규칙). 홍문관은 B6~B2·L·1~16층(B1 없음, 엑셀대로).
+- 인문사회관 A동 n층 = B동 (n-2)층(사용자 확인): A동 다이얼 1~7층, A동 3층 이상·B동 지하층은 서버 길찾기가 이어진 건물의 같은 층으로 안내('B동 3층(A동 5층)').
+- 확인: tsc, 테스트 86/86.
