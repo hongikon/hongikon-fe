@@ -28,8 +28,10 @@ MATRIX[haiku-graph]="--ask.graph.enabled=true"
 MATRIX[haiku-graph-medium]="--ask.graph.enabled=true --ask.llm.answer-effort=medium --ask.llm.answer-max-tokens=12000 --ask.llm.answer-extra-file=$EXTRA_V2"
 MATRIX[haiku-graph-reason]="--ask.graph.enabled=true --ask.llm.answer-effort=high --ask.llm.answer-max-tokens=16000 --ask.llm.answer-extra-file=$EXTRA_V2"
 MATRIX[haiku-graph-v2]="--ask.graph.enabled=true --ask.llm.answer-extra-file=$EXTRA_V2"
+MATRIX[haiku-graph-wide-low]="--ask.graph.enabled=true --ask.graph.max-edges=8 --ask.graph.max-guides=2"
 MATRIX[haiku-graph-wide]="--ask.graph.enabled=true --ask.graph.max-edges=8 --ask.graph.max-guides=2 --ask.llm.answer-effort=medium --ask.llm.answer-max-tokens=12000 --ask.llm.answer-extra-file=$EXTRA_V2"
-NAMES=(${@:-haiku-base haiku-graph haiku-graph-v2 haiku-graph-medium haiku-graph-reason haiku-graph-wide})
+NAMES=(haiku-base haiku-graph haiku-graph-v2 haiku-graph-medium haiku-graph-reason haiku-graph-wide)
+(( $# > 0 )) && NAMES=("$@")
 
 RAG=false; [[ -n "${ASK_EMBED_KEY:-}" ]] && RAG=true
 
@@ -53,7 +55,7 @@ pkill -f "hongmap-backend.*--server.port=$PORT" 2>/dev/null || true
   echo "# 물어보기 설정 비교 $(date '+%Y-%m-%d %H:%M') · runs=$RUNS · RAG=$RAG"
   for set in reason place; do
     echo "\n## $set"
-    node check.mjs $set "$OUT"/answers-*-$set*.json | sed -n '/^| 파일/,$p'
+    node check.mjs $set "$OUT"/answers-*-$set.json(N) "$OUT"/answers-*-$set-r*.json(N) | sed -n '/^| 파일/,$p'
   done
 } | tee "$OUT/summary.md"
 echo "\n문항별: node check.mjs reason $OUT/answers-<설정>-reason*.json"
