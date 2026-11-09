@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * 경로망 조사 v3(/dev/path-survey-v3)의 백업 또는 그래프 내보내기 JSON 을 길찾기 경로망(src/constants/surveyGraphV3.ts)으로 바꾼다.
+ * 경로망 조사 v3(/dev/path-survey-v3)의 백업 또는 그래프 내보내기 JSON 을 서버 길찾기 경로망
+ * (hongikon-be/src/main/resources/walkroute/survey-graph-v3.json)으로 바꾼다. 길찾기 계산은 서버(GET /map/routes)가 한다.
  *
- *   node --import ./scripts/test/register.mjs scripts/path/import-survey-v3.mjs ~/Downloads/path-survey-v3-backup-YYYYMMDD-HHMM.json
+ *   node --import ./scripts/test/register.mjs scripts/path/import-survey-v3.mjs ~/Downloads/path-survey-v3-backup-YYYYMMDD-HHMM.json [출력 파일]
  *
  * - 파일에 `graph` 가 있으면(그래프 내보내기) 그대로, 없으면(백업) 조사 도구와 같은 `expandGraph` 로 펼친다.
  * - 간선에 이어진 정점만 넣는다(이어지지 않은 점은 길찾기에 못 쓴다).
  * - 실내 정점 id 는 `n12@hongik_k:-1`(점@건물코드:층). 건물 코드는 서버 지도 데이터의 건물 code 와 같다.
- * - 수직 간선(stairs_vertical·elevator_vertical)과 tie 의 시간은 routing.ts 가 정한다.
+ * - 수직 간선(stairs_vertical·elevator_vertical)과 tie 의 시간은 서버(WalkRouter)가 정한다.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -68,48 +69,8 @@ const buildings = new Set(vertices.filter((v) => v[3]).map((v) => v[3]))
 const entranceCount = vertices.filter((v) => v[5] === 1).length
 const exportedAt = new Date(data.exportedAt).toISOString()
 
-const json = (value) => JSON.stringify(value)
-const lines = [
-  '/**',
-  ' * 길찾기 경로망(경로망 조사 v3) — `scripts/path/import-survey-v3.mjs` 가 만든 파일이다. 손으로 고치지 말고 조사 도구에서 고친 뒤 다시 만든다.',
-  ` * 원본: ${basename(input)} (내보낸 시각 ${exportedAt}${data.graph ? ', 그래프 내보내기' : ', 백업을 expandGraph 로 펼침'})`,
-  ` * 정점 ${vertices.length}개, 간선 ${edges.length}개, 출입구 ${entranceCount}개, 건물 ${buildings.size}곳.${skippedCount ? ` 펼치지 못한 항목 ${skippedCount}개(가져올 때 경고로 출력).` : ''}`,
-  ' */',
-  '',
-  '/** 간선 종류(pathSurveyV3/types 의 GraphEdgeKind 와 같다). 조사 도구 코드 없이도 읽히도록 여기 적는다. */',
-  "export type SurveyV3EdgeKind = 'normal' | 'stairs' | 'stairs_vertical' | 'elevator_vertical' | 'tie'",
-  '',
-  '/** 0 기본, 1 출입구, 2 엘리베이터, 3 계단. */',
-  'export type SurveyV3VertexType = 0 | 1 | 2 | 3',
-  '',
-  '/** [id, 위도, 경도, 건물 code(실외 null), 층(실외 null), 종류, 출입구 이름(출입구만)]. */',
-  'export type SurveyV3Vertex = [string, number, number, string | null, number | null, SurveyV3VertexType, string | null]',
-  '',
-  '/** [정점 a, 정점 b, 종류, 미터(수직 간선은 없음)]. 양방향. */',
-  'export type SurveyV3Edge = [string, string, SurveyV3EdgeKind, number?]',
-  '',
-  `export const SURVEY_V3_EXPORTED_AT = ${json(exportedAt)}`,
-  '',
-  'export const SURVEY_V3_VERTICES: SurveyV3Vertex[] = [',
-  ...vertices.map((v) => `  ${json(v)},`),
-  ']',
-  '',
-  'export const SURVEY_V3_EDGES: SurveyV3Edge[] = [',
-  ...edges.map((e) => `  ${json(e)},`),
-  ']',
-  '',
-  '/** 조사 메모: 원래 점 id(정점 id 의 @ 앞) → 메모. 길찾기 카드에 지나는 곳 안내로 쓴다. */',
-  'export const SURVEY_V3_NODE_MEMOS: Record<string, string> = {',
-  ...Object.entries(nodeMemos).map(([id, memo]) => `  ${json(id)}: ${json(memo)},`),
-  '}',
-  '',
-  "/** 조사 메모: 'a|b'(원래 점 id, 작은 쪽 먼저) → 그 선의 메모. */",
-  'export const SURVEY_V3_EDGE_MEMOS: Record<string, string> = {',
-  ...Object.entries(edgeMemos).map(([id, memo]) => `  ${json(id)}: ${json(memo)},`),
-  '}',
-  '',
-]
-
-const out = join(dirname(fileURLToPath(import.meta.url)), '../../src/constants/surveyGraphV3.ts')
-writeFileSync(out, lines.join('\n'))
-console.log(`${out}: 정점 ${vertices.length}, 간선 ${edges.length}, 출입구 ${entranceCount}, 건물 ${buildings.size}, 제외 ${skippedCount}, 메모 점 ${Object.keys(nodeMemos).length}·선 ${Object.keys(edgeMemos).length}`)
+// 서버(hongikon-be)가 길찾기에 쓰는 파일로 쓴다(11-09: 길찾기 계산은 서버, 앱에는 경로망을 두지 않는다).
+const out = process.argv[3] ?? join(dirname(fileURLToPath(import.meta.url)), '../../../hongikon-be/src/main/resources/walkroute/survey-graph-v3.json')
+writeFileSync(out, JSON.stringify({ exportedAt, vertices, edges, nodeMemos, edgeMemos }))
+console.log(`${out} (${basename(input)}${data.graph ? ', 그래프 내보내기' : ', 백업을 expandGraph 로 펼침'}): 정점 ${vertices.length}, 간선 ${edges.length}, 출입구 ${entranceCount}, 건물 ${buildings.size}, 제외 ${skippedCount}, 메모 점 ${Object.keys(nodeMemos).length}·선 ${Object.keys(edgeMemos).length}`)
+console.log('서버 저장소에서 길찾기 비교 자료(src/test/resources/walkroute)도 새 경로망으로 다시 만들고 WalkRouterParityTest 를 돌린다.')

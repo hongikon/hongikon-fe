@@ -17,7 +17,8 @@ export const ELEVATOR_SECONDS_PER_FLOOR = 4
  * 길찾기 기능 공개 여부. 꺼져 있으면 지도 길찾기 버튼과 건물 시트의 출발/도착을 아예 그리지 않는다
  * ("다음 업데이트" 같은 미완성 안내는 심사 2.1 거절 사유라 띄우지 않는다).
  * 11-03 켬: 경로 조사 자료(surveyPaths.ts)로 17개 건물 사이는 실측 경로, 나머지는 직선 거리 어림으로 보여 준다.
- * 11-08: 경로망 조사 v3(surveyGraphV3.ts, 건물 23곳·실내 층·엘리베이터·계단)로 바꿈.
+ * 11-08: 경로망 조사 v3(건물 23곳·실내 층·엘리베이터·계단)로 바꿈.
+ * 11-09: 길찾기 계산을 서버로 옮김(GET /map/routes, hongikon-be walkroute). 앱에는 경로망을 두지 않는다.
  */
 export const ROUTE_FINDING_ENABLED = true
 
