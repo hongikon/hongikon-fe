@@ -6,6 +6,7 @@ import { FONTS } from '../constants/typography'
 import { RADIUS } from '../constants/spacing'
 import BuildingSheet from '../components/map/BuildingSheet'
 import FacilitySheet from '../components/map/FacilitySheet'
+import AskChat from '../components/ask/AskChat'
 import ReportScheduleFields, { initialReportSchedule, resolveSchedule, scheduleDaysFor, type ReportSchedule } from '../components/map/ReportScheduleFields'
 import { toReportMarkers } from '../utils/reports'
 import {
@@ -114,8 +115,27 @@ export default function TempChangesPreviewScreen() {
         <ReportPinsSection />
         <ReportComposerSection />
         <SettingsSection />
+        <AskComposerSection />
       </ScrollView>
     </SafeAreaProvider>
+  )
+}
+
+/** 물어보기 입력창(앱 모드). 로그인 없이 인사(하이·hi)만 답한다 — 웹 Enter 보내기·포커스 테두리 확인용(11-09). */
+function AskComposerSection() {
+  return (
+    <Section title="6. 물어보기 입력창 — 웹 Enter 보내기" commit="FE 11-09">
+      <Changes
+        items={[
+          'Enter 는 보내기, Shift+Enter 는 줄바꿈이에요(한글 조합 중 Enter 도 글자가 확정된 뒤 보내요).',
+          '입력칸의 브라우저 기본 분홍·파랑 테두리를 없애고, 포커스는 입력 상자 테두리 색(남색)으로 보여요.',
+          "로그인 없이 '하이'·'hi' 같은 인사만 답해요(그 밖의 질문은 로그인 안내).",
+        ]}
+      />
+      <View style={{ height: 360, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border }}>
+        <AskChat accessToken={null} beta bottomInset={0} />
+      </View>
+    </Section>
   )
 }
 
@@ -323,8 +343,8 @@ function ReportComposerSection() {
     <Section title="4. 제보 작성 — 매일 정해진 시간에만 운영" commit="FE 93ac23e · BE 9aae427">
       <Changes
         items={[
-          "시작을 직접 고르고 기간이 이틀 이상이면 '매일 정해진 시간에만 운영' 체크가 나와요.",
-          "켜면 날마다 한 줄씩(처음엔 모두 같은 시간). 시각을 누르면 그날만 바꾸고, 가운데 날은 '쉬는 날'로 뺄 수 있어요.",
+          "'매일 정해진 시간에만 운영' 체크는 늘 보여요. 오늘 안에서 끝나는 시간이면 켜는 순간 내일까지로 늘고, '마지막 날 −/+'로 하루씩 바꿔요. 시작이 '지금'이어도 돼요(첫날은 지금부터, 11-09).",
+          "켜면 '매일 같은 시간'(시각 한 줄만 고르면 모든 날에 적용, 목록에서는 쉬는 날만 빼기)과 '날마다 다르게'(날마다 시각을 따로) 중에 골라요.",
           '첫날 시작·마지막 날 끝은 위의 시작·종료 시각과 같이 움직여요. 공식 계정의 시간 수정 창에도 같은 목록이 있어요.',
           '서버에는 날짜별 운영 시간(days)으로 보내요. 아래는 실제로 보낼 값이에요.',
         ]}

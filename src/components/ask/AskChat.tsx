@@ -14,6 +14,7 @@ import {
   Easing,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type TextStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -191,17 +192,22 @@ function briefSections(sections: readonly AskSection[] | undefined): { shown: As
   let total = 0;
   let cut = false;
   for (const section of sections ?? []) {
+    // 운영진 정리(tips)는 이미 짧게 쓴 것이라 통째로 보이고, 학교 원문 줄 수에 세지 않는다.
+    if (section.full) {
+      shown.push(section);
+      continue;
+    }
     if (section.title && titles.has(section.title)) {
       cut = true;
       continue;
     }
-    if (shown.length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
+    if (shown.filter((item) => !item.full).length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
       cut = true;
       break;
     }
     const room = Math.min(BRIEF_ITEMS, BRIEF_TOTAL_ITEMS - total);
     const items = section.items?.slice(0, room);
-    const table = section.table ? { head: section.table.head, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
+    const table = section.table ? { ...section.table, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
     if ((section.items?.length ?? 0) > room || (section.table?.rows.length ?? 0) > BRIEF_TABLE_ROWS) cut = true;
     total += items?.length ?? 0;
     titles.add(section.title);
@@ -238,6 +244,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
   const appMode = !serverKey;
   const [input, setInput] = useState("");
+  // 웹 한글 입력 중 Enter 는 글자를 확정하는 키라 그 순간의 값이 아직 덜 들어와 있다 — 확정된 뒤 최신 값으로 보낸다.
+  const latestInputRef = useRef("");
+  latestInputRef.current = input;
+  const [composerFocused, setComposerFocused] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */
   const [pending, setPending] = useState(false);
@@ -588,7 +598,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     if (message.followed) return;
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, followed: true } : item)));
-    push({ role: "user", text: label }, ...stepMessages(message.flowId, next, message.question));
+    // 'course-table/start' 처럼 흐름 id 가 붙은 버튼은 다른 안내로 넘어간다(주제표 see).
+    const slash = next.indexOf("/");
+    const [flowId, nodeId] = slash < 0 ? [message.flowId, next] : [next.slice(0, slash), next.slice(slash + 1)];
+    push({ role: "user", text: label }, ...stepMessages(flowId, nodeId, message.question));
   };
 
   const renderSection = (section: AskSection, key: string) => (
@@ -598,14 +611,27 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
         <View style={styles.table}>
           {[section.table.head, ...section.table.rows].map((row, rowIndex) => (
             <View key={rowIndex} style={[styles.tableRow, rowIndex === 0 && styles.tableHead]}>
-              {row.map((cell, cellIndex) => (
-                <Text
-                  key={cellIndex}
-                  style={[styles.tableCell, rowIndex === 0 && styles.tableHeadText, cellIndex === 0 && styles.tableFirst]}
-                >
-                  {cell}
-                </Text>
-              ))}
+              {row.map((cell, cellIndex) => {
+                const ring = section.table?.colors?.[cellIndex];
+                if (ring && cell) {
+                  const color = COLORS.gradeTurn[ring];
+                  return (
+                    <View key={cellIndex} style={[styles.tableRingCell, cellIndex === 0 && styles.tableFirst]}>
+                      <View style={[styles.tableRing, { borderColor: color }]}>
+                        <Text style={[styles.tableRingText, { color }]}>{cell}</Text>
+                      </View>
+                    </View>
+                  );
+                }
+                return (
+                  <Text
+                    key={cellIndex}
+                    style={[styles.tableCell, rowIndex === 0 && styles.tableHeadText, cellIndex === 0 && styles.tableFirst]}
+                  >
+                    {cell}
+                  </Text>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -1470,19 +1496,38 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
 
             {appMode ? (
               <View style={[styles.composerWrap, { paddingBottom: 6 + (bottomInset ?? insets.bottom) }]}>
-                <View style={styles.composerBox}>
+                <View style={[styles.composerBox, composerFocused && styles.composerBoxFocused]}>
                   <TextInput
                     ref={inputRef}
-                    style={styles.composerInput}
+                    style={[styles.composerInput, WEB_NO_OUTLINE]}
                     value={input}
                     onChangeText={setInput}
                     placeholder="질문을 입력하세요"
                     placeholderTextColor={COLORS.textPlaceholder}
                     multiline
+                    // 웹 여러 줄 칸은 기본 2줄 높이라 한 줄로 시작한다(앱은 minHeight 로 맞춤).
+                    {...WEB_ONE_ROW}
                     maxLength={200}
                     returnKeyType="send"
                     onSubmitEditing={() => ask(input)}
                     submitBehavior="submit"
+                    onFocus={() => setComposerFocused(true)}
+                    onBlur={() => setComposerFocused(false)}
+                    // 웹(react-native-web)은 여러 줄 칸에서 submitBehavior 를 보지 않아 Enter 가 줄바꿈이 됐다(11-09).
+                    // Enter 는 보내기, Shift+Enter 는 줄바꿈. 한글 조합 중 Enter 는 글자가 확정된 뒤 보낸다.
+                    onKeyPress={
+                      Platform.OS === "web"
+                        ? (event) => {
+                            const native = event.nativeEvent as unknown as { key?: string; shiftKey?: boolean; isComposing?: boolean; keyCode?: number };
+                            if (native.key !== "Enter" || native.shiftKey) return;
+                            event.preventDefault();
+                            // 조합 중이면 글자가 확정돼 칸에 들어간 뒤(다음 차례) 칸의 실제 값으로 보낸다.
+                            const field = (event as unknown as { target?: { value?: string } }).target;
+                            if (native.isComposing || native.keyCode === 229) setTimeout(() => ask(field?.value ?? latestInputRef.current), 0);
+                            else ask(input);
+                          }
+                        : undefined
+                    }
                     accessibilityLabel="학교 일 물어보기"
                   />
                   {pending && auth ? (
@@ -1516,7 +1561,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                 <View style={[styles.composer, { paddingBottom: 10 + (bottomInset ?? insets.bottom) }]}>
                   <TextInput
                     ref={inputRef}
-                    style={styles.input}
+                    style={[styles.input, WEB_NO_OUTLINE]}
                     value={input}
                     onChangeText={setInput}
                     placeholder="예: 휴학 신청 기간"
@@ -1604,6 +1649,12 @@ function ThinkingLine({ text }: { text: string }) {
   );
 }
 
+/** 웹 입력칸의 브라우저 기본 포커스 테두리(분홍·파랑 바깥선)를 없앤다. 포커스는 입력 상자 테두리 색으로 보인다. */
+/** react-native-web 여러 줄 칸(textarea)의 줄 수(rows). RN 타입에는 없어 따로 넘긴다. */
+const WEB_ONE_ROW: object = Platform.OS === "web" ? { rows: 1 } : {};
+
+const WEB_NO_OUTLINE = Platform.OS === "web" ? ({ outlineStyle: "none", outlineWidth: 0 } as unknown as TextStyle) : null;
+
 const styles = StyleSheet.create({
   titleRow: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   titleText: { ...TYPE.headline, color: COLORS.textPrimary },
@@ -1668,6 +1719,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  composerBoxFocused: { borderColor: COLORS.primary },
   composerInput: {
     flex: 1,
     minHeight: 36,
@@ -1749,6 +1801,9 @@ const styles = StyleSheet.create({
   tableCell: { flex: 1, paddingHorizontal: 6, paddingVertical: 7, fontSize: 12, lineHeight: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },
   tableFirst: { flex: 1.3 },
   tableHeadText: { fontFamily: FONTS.semibold, color: COLORS.textSecondary },
+  tableRingCell: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 5, paddingHorizontal: 2 },
+  tableRing: { minWidth: 26, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 999, borderWidth: 1.5, alignItems: "center" },
+  tableRingText: { fontSize: 12, lineHeight: 16, fontFamily: FONTS.semibold },
   followTitle: { fontSize: 12, fontFamily: FONTS.semibold, color: COLORS.textTertiary, marginTop: 2 },
   card: { borderRadius: RADIUS.lg, backgroundColor: COLORS.fill, padding: 12, gap: 8 },
   cardTitle: { gap: 2 },
