@@ -772,10 +772,10 @@ function blockedField(rings: [number, number][][]): { blocked?: [number, number]
 }
 
 function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
-  // 현장 테스트 빌드: 소속과 상관없이 혜택 있는 업체를 모두 대상으로 본다
-  // (10-29 — 문과대학 전용 제휴 앞에서 알림이 안 와 헷갈렸다). 알림 문구에 어느 소속 제휴인지 붙는다(copy.ts).
+  // 테스트 앱도 고른 소속(+총학생회)만 대상으로 본다(11-09 사용자 요청 — 소속과 상관없이 모두 잡던 10-29 현장 테스트 규칙을 없앰:
+  // 기숙사를 골랐는데 지도 '근처 알림 영역'에 다른 소속 가게가 섞여 헷갈렸다).
   const today = kstTodayYmd(now)
-  return pickTargets(partners, { affiliations, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
+  return pickTargets(partners, { affiliations, campusPoints, now }).map((p) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
@@ -784,7 +784,7 @@ function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAf
     benefit: p.benefit,
     affiliations: p.affiliations,
     affiliationBenefits: liveBenefits(p, today).affiliationBenefits,
-    until: targetUntil(p, affiliations, today, NEARBY_FIELD_TEST),
+    until: targetUntil(p, affiliations, today),
     ...blockedField(blockedRingsFor(p, campusPoints)),
   }))
 }
