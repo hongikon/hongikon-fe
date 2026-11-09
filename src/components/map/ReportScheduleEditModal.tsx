@@ -139,7 +139,7 @@ export default function ReportScheduleEditModal({
             disabled={saving}
             onPress={() => setPicker('end')}
           />
-          {dailyAvailable ? (
+          {endMs > startMs ? (
             <ReportDaysEditor
               startMs={startMs}
               endMs={endMs}

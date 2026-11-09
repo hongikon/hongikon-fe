@@ -20,6 +20,7 @@ import { formatFreshness, promptLogin, reportImageUrls } from '../../utils/repor
 import ImageViewerModal from '../common/ImageViewerModal'
 import { reportPlaceText } from '../../utils/shareReport'
 import {
+  formatClock,
   formatDaySpan,
   isSameKstDay,
   isUpcomingReport,
@@ -101,6 +102,8 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
   }, [])
   const phase = reportPhase(report, clock)
   const daySpans = parseReportDays(report)
+  // 날짜별 시간은 한 줄만(11-09 — 7줄이 맨 위를 차지했다): 오늘 운영하면 오늘, 아니면(예정·쉬는 날) 가장 가까운 날. 전체는 접어 둔다.
+  const [daysOpen, setDaysOpen] = useState(false)
   const applyPatch = (next: SheetPatch) =>
     setPatch((prev) => ({ ...prev, ...next }))
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
@@ -327,22 +330,6 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
         </Text>
       </View>
 
-      {/* 날짜별 운영 시간(여러 날 제보). 오늘은 진하게, 지난 날은 옅게. */}
-      {daySpans ? (
-        <View style={styles.dayList} accessibilityLabel="날짜별 운영 시간">
-          {daySpans.map((span) => {
-            const today = isSameKstDay(span.startMs, clock)
-            const past = span.endMs <= clock
-            return (
-              <Text key={span.date} style={[styles.dayRow, past && styles.dayRowPast, today && styles.dayRowToday]}>
-                {formatDaySpan(span)}
-                {today ? ' · 오늘' : ''}
-              </Text>
-            )
-          })}
-        </View>
-      ) : null}
-
       {!!report.content?.trim() && (
         <View style={styles.contentBox}>
           <Text
@@ -368,6 +355,48 @@ export default function ReportSheet({ report: reportProp, onClose }: ReportSheet
           )}
         </View>
       )}
+
+      {/* 날짜별 운영 시간: 오늘(또는 가장 가까운 날) 한 줄, 누르면 날짜별로 펼친다. 오늘은 진하게, 지난 날은 옅게. */}
+      {daySpans ? (() => {
+        const next = daySpans.find((span) => span.endMs > clock)
+        const summary = next
+          ? isSameKstDay(next.startMs, clock)
+            ? `오늘 ${formatClock(next.startMs)}~${formatClock(next.endMs)}`
+            : formatDaySpan(next)
+          : '운영이 끝났어요'
+        return (
+          <View style={styles.daysBox}>
+            <Pressable
+              onPress={() => setDaysOpen((open) => !open)}
+              style={({ pressed }) => [styles.daysHeader, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: daysOpen }}
+              accessibilityLabel={`${summary}. 날짜별 운영 시간 ${daysOpen ? '접기' : '펼치기'}`}
+            >
+              <Ionicons name="time-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.daysSummary} numberOfLines={1}>
+                {summary}
+              </Text>
+              <Text style={styles.daysToggle}>날짜별 시간</Text>
+              <Ionicons name={daysOpen ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.textSecondary} />
+            </Pressable>
+            {daysOpen ? (
+              <View style={styles.dayList} accessibilityLabel="날짜별 운영 시간">
+                {daySpans.map((span) => {
+                  const today = isSameKstDay(span.startMs, clock)
+                  const past = span.endMs <= clock
+                  return (
+                    <Text key={span.date} style={[styles.dayRow, past && styles.dayRowPast, today && styles.dayRowToday]}>
+                      {formatDaySpan(span)}
+                      {today ? ' · 오늘' : ''}
+                    </Text>
+                  )
+                })}
+              </View>
+            ) : null}
+          </View>
+        )
+      })() : null}
 
       {photoUrls.length > 0 && (
         // 사진마다 원래 비율 그대로 같은 높이로 나란히 — 자르지도, 칸에 여백을 남기지도 않는다(11-01).
@@ -549,7 +578,11 @@ const styles = StyleSheet.create({
   phaseLater: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.chipBorder },
   phaseText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.primary },
   phaseTextEnding: { color: COLORS.white },
-  dayList: { marginTop: 10, gap: 3 },
+  daysBox: { marginTop: 12, borderRadius: 10, backgroundColor: COLORS.primarySoft, paddingHorizontal: 12, paddingVertical: 10 },
+  daysHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24 },
+  daysSummary: { flex: 1, fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary, fontVariant: ['tabular-nums'] },
+  daysToggle: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary },
+  dayList: { marginTop: 8, gap: 3 },
   dayRow: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, fontVariant: ['tabular-nums'] },
   dayRowToday: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   dayRowPast: { color: COLORS.textTertiary },

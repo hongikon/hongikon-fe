@@ -53,6 +53,17 @@ const vertices = graph.vertices
   })
 const edges = graph.edges.map((e) => (e.meters === undefined ? [e.a, e.b, e.kind] : [e.a, e.b, e.kind, e.meters]))
 
+// 조사 때 적은 메모(11-09): 점 메모는 원래 점 id, 선 메모는 두 점 id('a|b', 작은 쪽 먼저)로. 길찾기 카드의 안내 줄이 된다.
+const usedNodes = new Set(vertices.map((v) => graph.vertices.find((g) => g.id === v[0])?.node).filter(Boolean))
+const nodeMemos = Object.fromEntries(
+  data.nodes.filter((n) => usedNodes.has(n.id) && typeof n.memo === 'string' && n.memo.trim()).map((n) => [n.id, n.memo.trim()]),
+)
+const edgeMemos = Object.fromEntries(
+  data.edges
+    .filter((e) => usedNodes.has(e.a) && usedNodes.has(e.b) && typeof e.memo === 'string' && e.memo.trim())
+    .map((e) => [[e.a, e.b].sort().join('|'), e.memo.trim()]),
+)
+
 const buildings = new Set(vertices.filter((v) => v[3]).map((v) => v[3]))
 const entranceCount = vertices.filter((v) => v[5] === 1).length
 const exportedAt = new Date(data.exportedAt).toISOString()
@@ -87,8 +98,18 @@ const lines = [
   ...edges.map((e) => `  ${json(e)},`),
   ']',
   '',
+  '/** 조사 메모: 원래 점 id(정점 id 의 @ 앞) → 메모. 길찾기 카드에 지나는 곳 안내로 쓴다. */',
+  'export const SURVEY_V3_NODE_MEMOS: Record<string, string> = {',
+  ...Object.entries(nodeMemos).map(([id, memo]) => `  ${json(id)}: ${json(memo)},`),
+  '}',
+  '',
+  "/** 조사 메모: 'a|b'(원래 점 id, 작은 쪽 먼저) → 그 선의 메모. */",
+  'export const SURVEY_V3_EDGE_MEMOS: Record<string, string> = {',
+  ...Object.entries(edgeMemos).map(([id, memo]) => `  ${json(id)}: ${json(memo)},`),
+  '}',
+  '',
 ]
 
 const out = join(dirname(fileURLToPath(import.meta.url)), '../../src/constants/surveyGraphV3.ts')
 writeFileSync(out, lines.join('\n'))
-console.log(`${out}: 정점 ${vertices.length}, 간선 ${edges.length}, 출입구 ${entranceCount}, 건물 ${buildings.size}, 제외 ${skippedCount}`)
+console.log(`${out}: 정점 ${vertices.length}, 간선 ${edges.length}, 출입구 ${entranceCount}, 건물 ${buildings.size}, 제외 ${skippedCount}, 메모 점 ${Object.keys(nodeMemos).length}·선 ${Object.keys(edgeMemos).length}`)

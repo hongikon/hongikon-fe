@@ -26,6 +26,10 @@ import {
   insideAtRegistration,
   pickNearest,
   pickTargets,
+  liveBenefits,
+  targetUntil,
+  blockedRingsFor,
+  type CampusPoint,
   quietAtNight,
   reselectRadius,
   type PreciseMode,
@@ -44,6 +48,7 @@ import {
   toRealTime,
 } from './debug'
 import { haversineMeters } from '../../utils/geo'
+import { kstTodayYmd } from '../../utils/exhibitions'
 import type { Partner, PartnerAffiliation } from '../../types'
 
 /**
@@ -756,16 +761,21 @@ export async function requestNearbyPermission(): Promise<NearbyPermission> {
 export interface NearbySource {
   partners: readonly Partner[]
   /** 캠퍼스 건물 좌표(업체 반경이 걸치면 대상에서 뺀다). */
-  campusPoints: readonly { lat: number; lng: number }[]
+  campusPoints: readonly CampusPoint[]
   /** 서버 긴급 스위치(`/map/data` nearbyAlertsEnabled). */
   serverEnabled: boolean
 }
 
+/** 겹치는 건물이 없으면 저장본에 칸을 만들지 않는다. */
+function blockedField(rings: [number, number][][]): { blocked?: [number, number][][] } {
+  return rings.length > 0 ? { blocked: rings } : {}
+}
+
 function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
-  // 현장 테스트 빌드: 서버에 업체별 대상 표시가 없어도, 소속과 상관없이 혜택 있는 업체를 모두 대상으로 본다
-  // (10-29 — 문과대학 전용 제휴 앞에서 알림이 안 와 헷갈렸다). 알림 문구에 어느 소속 제휴인지 붙는다(copy.ts).
-  const source = NEARBY_FIELD_TEST ? partners.map((p) => ({ ...p, nearbyAlert: true })) : partners
-  return pickTargets(source, { affiliations, campusPoints, now, anyAffiliation: NEARBY_FIELD_TEST }).map((p) => ({
+  // 테스트 앱도 고른 소속(+총학생회)만 대상으로 본다(11-09 사용자 요청 — 소속과 상관없이 모두 잡던 10-29 현장 테스트 규칙을 없앰:
+  // 기숙사를 골랐는데 지도 '근처 알림 영역'에 다른 소속 가게가 섞여 헷갈렸다).
+  const today = kstTodayYmd(now)
+  return pickTargets(partners, { affiliations, campusPoints, now }).map((p) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
@@ -773,7 +783,9 @@ function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAf
     category: p.category,
     benefit: p.benefit,
     affiliations: p.affiliations,
-    affiliationBenefits: p.affiliationBenefits,
+    affiliationBenefits: liveBenefits(p, today).affiliationBenefits,
+    until: targetUntil(p, affiliations, today),
+    ...blockedField(blockedRingsFor(p, campusPoints)),
   }))
 }
 
