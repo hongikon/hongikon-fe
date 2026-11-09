@@ -2039,10 +2039,10 @@ export default function MapScreen() {
                   if (navigationRef.isReady()) navigationRef.navigate("Main", { screen: "Settings" });
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="설정에서 근처 제휴 알림 켜기"
+                accessibilityLabel="근처 제휴 알림 켜러 가기, 설정의 근처 제휴 알림 창이 열려요"
               >
-                <Text style={styles.nearbyOverlayNoteButtonText}>설정에서 근처 제휴 알림 켜기</Text>
-                <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+                <Ionicons name="navigate" size={15} color={COLORS.white} />
+                <Text style={styles.nearbyOverlayNoteButtonText}>근처 제휴 알림 켜러 가기</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -2632,18 +2632,19 @@ function DismissibleNotice({
 }
 
 const styles = StyleSheet.create({
+  // 등록 전 안내의 바로가기. 안내 칸 너비를 꽉 채운 남색 버튼(11-09 — 왼쪽 작은 칩이라 눈에 안 띄었다).
   nearbyOverlayNoteButton: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 2,
-    marginTop: 6,
-    minHeight: 32,
-    paddingHorizontal: 10,
+    justifyContent: "center",
+    alignSelf: "stretch",
+    gap: 6,
+    marginTop: 8,
+    minHeight: 44,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
+    backgroundColor: COLORS.primary,
   },
-  nearbyOverlayNoteButtonText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
+  nearbyOverlayNoteButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
   nearbyOverlayNote: {
     position: "absolute",
     left: 16,
