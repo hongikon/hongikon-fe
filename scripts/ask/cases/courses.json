@@ -402,5 +402,153 @@
  {
   "q": "F 학점 받으면 어떻게 돼",
   "expect": "grades"
+ },
+ {
+  "q": "제한인원 4/3/2/1/추가 이게 무슨 뜻이야",
+  "expect": "course-table"
+ },
+ {
+  "q": "사전선택인원 보고 경쟁률 어떻게 계산해?",
+  "expect": "course-table"
+ },
+ {
+  "q": "수강신청 경쟁률 보는 법",
+  "expect": "course-table"
+ },
+ {
+  "q": "강의시간표 숫자 뜻",
+  "expect": "course-table"
+ },
+ {
+  "q": "신청인원이 제한인원보다 많은데 왜 그래?",
+  "expect": "course-table"
+ },
+ {
+  "q": "폐강인원 10명이 뭐야",
+  "expect": "course-table"
+ },
+ {
+  "q": "ABEEK 이수구분이 뭐예요",
+  "expect": "course-table"
+ },
+ {
+  "q": "이수구분 뜻",
+  "expect": "course-table"
+ },
+ {
+  "q": "개설학년 2학년인데 1학년이 들어도 돼?",
+  "expect": "course-table"
+ },
+ {
+  "q": "수강신청 화면 보는법",
+  "expect": "course-table"
+ },
+ {
+  "q": "폐강 기준이 뭐야",
+  "expect": "course-cancelled"
+ },
+ {
+  "q": "논사글 언제 들어야 돼?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "대학영어 몇학년 때 들어?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "전기영 1학년 때 꼭 들어야 해?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "전공기초영어 고학년 되면 못 들어?",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "수강신청 꿀팁",
+  "expect": "classes"
+ },
+ {
+  "q": "수강신청 어디서 해?",
+  "expect": "classes"
+ },
+ {
+  "q": "담아두기 어디서 해",
+  "expect": "classes"
+ },
+ {
+  "q": "수강신청 연습할 수 있는 곳",
+  "expect": "classes"
+ },
+ {
+  "q": "전기영 1이랑 2 차이가 뭐야",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "정정서 쓰는 법",
+  "expect": "course-change"
+ },
+ {
+  "q": "교수님께 정정 메일 어떻게 써?",
+  "expect": "course-change"
+ },
+ {
+  "q": "인원 꽉 찬 과목 정정 받는 방법",
+  "expect": "course-change"
+ },
+ {
+  "q": "수업계획서 읽는 법",
+  "expect": "syllabus"
+ },
+ {
+  "q": "강의계획서 어디서 봐?",
+  "expect": "syllabus"
+ },
+ {
+  "q": "수업계획서에 학점분포가 뭐야",
+  "expect": "syllabus"
+ },
+ {
+  "q": "학점/시수 3/1 뜻",
+  "expect": "syllabus"
+ },
+ {
+  "q": "수업계획서에서 뭐 봐야 돼",
+  "expect": "syllabus"
+ },
+ {
+  "q": "전기영 1 2 기준이 뭐야",
+  "expect": "first-year-courses"
+ },
+ {
+  "q": "최대 수강신청 학점",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "평점 B+ 넘으면 추가학점",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "직전학기 성적 3.5 이상이면 3학점 더 들을 수 있어?",
+  "expect": "credit-limit"
+ },
+ {
+  "q": "창실법 뭐야",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "공대는 디씽 창실법 중에 들어야 해?",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "컴프 들어야 돼?",
+  "expect": "special-liberal"
+ },
+ {
+  "q": "F 받은 과목 재수강 제한 있어?",
+  "expect": "course-retake"
+ },
+ {
+  "q": "계절학기에 안 열리는 과목 있어?",
+  "expect": "seasonal"
  }
 ]

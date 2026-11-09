@@ -26,8 +26,17 @@ export interface AskSection {
   title: string
   items?: readonly string[]
   ordered?: boolean
-  table?: { head: readonly string[]; rows: readonly (readonly string[])[] }
+  /** 운영진이 짧게 정리한 덩어리(주제표 tips). 답을 줄여 보일 때도 자르지 않는다. */
+  full?: boolean
+  table?: {
+    head: readonly string[]
+    rows: readonly (readonly string[])[]
+    /** 열마다 둘레 색(COLORS.gradeTurn 키). 있으면 그 열 칸을 색 테두리로 감싼다 — 수강신청 차례 예시 표. */
+    colors?: readonly (AskTurnColor | null)[]
+  }
 }
+
+export type AskTurnColor = 'g4' | 'g3' | 'g2' | 'g1' | 'extra'
 
 /** 끝 답. 요약 한두 문장 + 덩어리별 자세한 안내 + 전화·학교 원문 링크(·필요하면 지도 위치). */
 export interface AskAnswerNode {
