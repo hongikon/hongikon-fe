@@ -1,4 +1,4 @@
-import type { RouteAlternative } from './routing'
+import type { RouteAlternative } from '../apis/routes'
 
 /** 길찾기 후보 카드 하나에 보여 줄 것(11-09). */
 export interface RouteOptionText {

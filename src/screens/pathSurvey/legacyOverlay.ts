@@ -1,13 +1,13 @@
 import { PATH_EDGES, PATH_WAYPOINTS } from '../../constants/pathNodes'
 import type { Building } from '../../types'
 import { formatFloor } from '../../utils/floors'
-import { resolveRef } from '../../utils/routing'
+import { resolveRef } from '../../utils/pathAudit'
 
 /**
  * 기존 경로망(pathNodes.ts)을 조사 화면에 겹쳐 보이기 위한 목록. 보기 전용 — 조사 모듈은 여기 지점에 잇거나 붙지 않는다.
  * - 지점 n*: 번호로 찍은 실외 지점
  * - 이름 지점 HI_*: 흡연장·다리 끝처럼 이름을 붙인 지점. 층은 id 의 '_2F_' 같은 조각에서 읽은 추정값이다(데이터에 층 칸이 따로 없다).
- * - 지점-지점 간선 / 출입구 앵커 간선('건물명#라벨'): 앵커는 routing.ts 의 resolveRef 로 지도 데이터의 건물·출입구에서 푼다.
+ * - 지점-지점 간선 / 출입구 앵커 간선('건물명#라벨'): 앵커는 pathAudit.ts 의 resolveRef 로 지도 데이터의 건물·출입구에서 푼다.
  */
 
 export interface LegacyNode {

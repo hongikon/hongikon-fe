@@ -1,10 +1,37 @@
-import { resolveRef } from './routing'
 import type { Building, PathEdge, PathWaypoint } from '../types'
+import type { RoutePoint } from './floors'
 
 /**
  * 실외 보행 경로망(pathNodes.ts) 점검 — 개발용 `/dev/path` 화면이 쓴다.
- * 길찾기(routing.ts)와 같은 규칙(resolveRef)으로 간선 양 끝을 풀어, 길찾기에서 조용히 빠지는 것들을 드러낸다.
+ * 간선 양 끝을 resolveRef 로 풀어, 이어지지 않는 것들을 드러낸다. (9월 경로망은 11-09부터 길찾기에 쓰지 않는다 — 길찾기는 서버.)
  */
+
+/**
+ * PATH_EDGES 의 한쪽 끝을 실제 좌표로 푼다. PathWaypoint.id 이거나, '건물명' 또는 '건물명#출입구라벨' 문자열이다.
+ * 못 찾으면 null — 오타가 있는 간선은 조용히 건너뛴다.
+ */
+export function resolveRef(
+  ref: string,
+  waypointById: Map<string, { id: string; lat: number; lng: number }>,
+  buildings: readonly Building[],
+): { id: string; point: RoutePoint } | null {
+  const waypoint = waypointById.get(ref)
+  if (waypoint) return { id: waypoint.id, point: { lat: waypoint.lat, lng: waypoint.lng } }
+
+  const hashIndex = ref.indexOf('#')
+  if (hashIndex === -1) {
+    const building = buildings.find((b) => b.name === ref)
+    if (!building) return null
+    return { id: building.name, point: { lat: building.lat, lng: building.lng } }
+  }
+
+  const buildingName = ref.slice(0, hashIndex)
+  const label = ref.slice(hashIndex + 1)
+  const building = buildings.find((b) => b.name === buildingName)
+  const entrance = building?.entrances?.find((e) => e.label === label)
+  if (!building || !entrance) return null
+  return { id: ref, point: { lat: entrance.lat, lng: entrance.lng } }
+}
 
 export interface AuditPoint {
   id: string

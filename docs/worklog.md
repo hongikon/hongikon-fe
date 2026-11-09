@@ -368,3 +368,13 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 그대로: 하루 3번, 알림 사이 30분, 밤 설정, 현장 테스트 앱의 5분 반복(`perVisit`).
 - 문구: 설정 근처 제휴 안내, 업데이트 내역 1.1.0 항목, 출시·제출 문서 표.
 - 확인: tsc, 테스트 93/93(같은 가게 2시간 30분 뒤 안 보냄·3시간 뒤 보냄·자정 넘김·계속 앉아 있으면 안 보냄, 엔진 점심→1시간 55분 뒤 재방문 안 보냄→저녁 보냄, GPS 대상). JS 만 바뀌어 OTA 가능.
+
+## 2026-11-09 · 지도 길찾기를 서버로(앱 경로망·계산 삭제)
+
+- (사용자 요청) 길찾기 계산(`src/utils/routing.ts`)과 경로망 자료(`src/constants/surveyGraphV3.ts`, 쓰이지 않던 `surveyPaths.ts`)를 앱에서 지우고 서버(hongikon-be `walkroute`)로 옮겼다. 서버 쪽은 앱 결과와 건물 쌍 1,902경우·내 위치 2,496경우를 맞춰 보고 옮겼다(BE worklog 11-09).
+- 건물 → 건물: `src/apis/routes.ts` 의 `fetchWalkRoutes`(`GET /map/routes`). 지도 화면은 받기 전엔 경로를 그리지 않고, 받지 못하면(오프라인·오류) 직선 어림 하나(`src/utils/routeEstimate.ts`, 카드에 '직선 어림').
+- 내 위치 → 건물: 위치를 서버로 보내지 않는다(처리방침 11-16판·11-06 공지 그대로). `fetchWalkApproach`(`GET /map/routes/approach`)로 도착까지의 길 묶음을 받고, `pickApproachRoutes` 가 휴대폰 안에서 150m 안 가까운 길 점 3곳 중 가장 빠른 곳을 골라 그 점의 후보(최대 3개)를 잇는다. 가장 빠른 길은 예전 계산과 같다.
+- 그대로: 9월 경로망 `pathNodes.ts` 는 개발 화면(/dev/path, v2 조사 도구, 출입구 확인)만 쓴다 — 길찾기에는 11-09 전부터 안 쓰였다. `resolveRef` 는 `pathAudit.ts` 로 옮김.
+- 경로 조사 v3: `scripts/path/import-survey-v3.mjs` 가 이제 서버 파일(hongikon-be `src/main/resources/walkroute/survey-graph-v3.json`)을 만든다. v2 가져오기(`import-survey.mjs`)는 지움.
+- 테스트: `routing.test.ts` 를 지우고 `routes.test.ts`(후보 이름, 내 위치 고르기·후보, 직선 어림). tsc, 테스트 85/85, 웹 내보내기에 경로망이 안 들어간 것 확인.
+- 배포 순서: 서버(`/map/routes`)가 운영에 먼저 나가야 이 앱 코드를 OTA 로 낼 수 있다. 이미 깔린 앱은 앱 안 계산을 계속 쓴다.

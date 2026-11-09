@@ -1,7 +1,7 @@
 # 경로망 조사 v3 (`/dev/path-survey-v3`)
 
 **작성일** 2026-11-06
-**상태** 조사 도구 구현 완료. 운영 앱의 길찾기(`src/utils/routing.ts`, `src/constants/pathNodes.ts`, `src/constants/surveyPaths.ts`)와는 아직 연결되어 있지 않다.
+**상태** 조사 도구 구현 완료. 11-09부터 길찾기는 서버(hongikon-be `walkroute`, `GET /map/routes`)가 이 조사 자료로 계산한다 — 백업을 `scripts/path/import-survey-v3.mjs` 로 서버 파일(`src/main/resources/walkroute/survey-graph-v3.json`)로 바꾼다.
 **관련 파일** 코드 `src/utils/pathSurveyV3/`, 화면 `src/screens/DevPathSurveyV3Screen.tsx`, `src/screens/pathSurveyV3/`, 테스트 `scripts/path-survey/test-v3-*.mjs`, 샘플 `scripts/path-survey/fixtures/`
 
 현장을 걸으며 점과 간선을 기록하고, 그 결과를 네비게이션 알고리즘이 가공 없이 읽는 그래프 파일로 내보내는 개발자 화면이다. 웹 전용이고 암호키 입력과 noindex 가 걸려 있다. 기존 `/dev/path-survey`(v2)는 그대로 두고 옆에 새로 만들었다.

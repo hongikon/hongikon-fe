@@ -13,7 +13,7 @@ import { COLORS } from "../../constants/colors";
 import { RADIUS } from "../../constants/spacing";
 import { FONTS } from "../../constants/typography";
 import { describeRoutes } from "../../utils/routeLabels";
-import type { RouteAlternative } from "../../utils/routing";
+import type { RouteAlternative } from "../../apis/routes";
 
 interface RouteOptionsProps {
   routes: readonly RouteAlternative[];
