@@ -318,3 +318,9 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - `reportSchedule.ts` `formatDaysRange`: 시간이 같으면 쉬는 날이 있어도 `매일 14:00~18:00 · 쉬는 날 1일`, 지금 시작은 `지금 ~ 11/13(금) · 매일 …`.
 - 확인: 웹 `/temp/changes` 4번(고른 시작 → 지금, 쉬는 날, 두 모드 오가기, 보낼 값). 테스트 80/80, tsc 통과.
   > **미결**: 서버(BE 9aae427, `schedule_days` 컬럼) 배포 전이라 운영 서버에서는 날짜별 시간이 저장되지 않는다.
+
+## 2026-11-09 · 물어보기 입력창: 웹 Enter 보내기, 포커스 테두리
+
+- 웹(react-native-web 0.21)은 여러 줄 입력칸에서 `submitBehavior="submit"` 을 보지 않아 Enter 가 줄바꿈이 됐다. `AskChat.tsx` 앱 모드 입력칸에 웹 전용 `onKeyPress`: Enter 보내기, Shift+Enter 줄바꿈, 한글 조합 중 Enter 는 글자가 확정된 뒤 칸의 실제 값으로 보낸다. 웹 textarea 를 한 줄(rows 1)로 시작.
+- 브라우저 기본 포커스 바깥선(분홍·파랑)을 없애고(`outlineStyle: none`), 포커스는 입력 상자 테두리 남색으로.
+- 확인: `/temp/changes` 6번(로그인 없이 인사만 답) — 'hi' + Enter → 보내져 인사 답, 칸 비워짐, 바깥선 없음. 테스트 81/81, tsc 통과.

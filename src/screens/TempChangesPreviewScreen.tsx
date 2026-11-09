@@ -6,6 +6,7 @@ import { FONTS } from '../constants/typography'
 import { RADIUS } from '../constants/spacing'
 import BuildingSheet from '../components/map/BuildingSheet'
 import FacilitySheet from '../components/map/FacilitySheet'
+import AskChat from '../components/ask/AskChat'
 import ReportScheduleFields, { initialReportSchedule, resolveSchedule, scheduleDaysFor, type ReportSchedule } from '../components/map/ReportScheduleFields'
 import { toReportMarkers } from '../utils/reports'
 import {
@@ -114,8 +115,27 @@ export default function TempChangesPreviewScreen() {
         <ReportPinsSection />
         <ReportComposerSection />
         <SettingsSection />
+        <AskComposerSection />
       </ScrollView>
     </SafeAreaProvider>
+  )
+}
+
+/** 물어보기 입력창(앱 모드). 로그인 없이 인사(하이·hi)만 답한다 — 웹 Enter 보내기·포커스 테두리 확인용(11-09). */
+function AskComposerSection() {
+  return (
+    <Section title="6. 물어보기 입력창 — 웹 Enter 보내기" commit="FE 11-09">
+      <Changes
+        items={[
+          'Enter 는 보내기, Shift+Enter 는 줄바꿈이에요(한글 조합 중 Enter 도 글자가 확정된 뒤 보내요).',
+          '입력칸의 브라우저 기본 분홍·파랑 테두리를 없애고, 포커스는 입력 상자 테두리 색(남색)으로 보여요.',
+          "로그인 없이 '하이'·'hi' 같은 인사만 답해요(그 밖의 질문은 로그인 안내).",
+        ]}
+      />
+      <View style={{ height: 360, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border }}>
+        <AskChat accessToken={null} beta bottomInset={0} />
+      </View>
+    </Section>
   )
 }
 
