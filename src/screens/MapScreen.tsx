@@ -98,6 +98,8 @@ import ContentColumn from "../components/common/ContentColumn";
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
 import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
+import { requestSettingsIntent } from "../lib/settingsIntents";
+import { navigationRef } from "../navigation/navigationRef";
 import SwipeBackModal from "../components/common/SwipeBackModal";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -127,6 +129,8 @@ export default function MapScreen() {
   const showNearbyOverlayMenu = NEARBY_DEBUG_TOOLS && nearbyAlertsAvailable();
   const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
   const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
+  /** 근처 알림이 아직 등록 전(설정에서 켜지 않음). 안내 줄에 설정으로 가는 버튼을 단다(11-09). */
+  const [nearbyUnregistered, setNearbyUnregistered] = useState(false);
   // 테스트 위치 정하기: 지도 가운데 십자 → "여기로 정하기"를 누르면 그 좌표를 가짜 GPS 로 쓴다(근처 알림 판단만).
   const [pickingNearbyTest, setPickingNearbyTest] = useState(false);
   const [nearbyTestLabel, setNearbyTestLabel] = useState<string | null>(null);
@@ -146,12 +150,13 @@ export default function MapScreen() {
       // 처음 그릴 때만 등록한 자리로 옮긴다(그 뒤에는 사용자가 지도를 움직일 수 있게).
       webViewRef.current?.injectJavaScript(nearbyOverlayScript(overlay, { focus: !focused && !!overlay }));
       if (overlay) focused = true;
+      setNearbyUnregistered(!overlay);
       setNearbyOverlayNote(
         overlay?.error
           ? `등록 실패(원은 계획만 표시): ${overlay.error}\n파란 원: 업체 인식 반경 · 점선: 다시 고르기 원 · 남색 점: 기준 위치`
           : overlay
           ? `등록 ${overlay.regions.length}곳 · 안에 있음 ${overlay.regions.filter((r) => r.inside).length}곳 · 다시 고르기 원 ${overlay.reselectMeters}m\n파란 원: 업체 인식 반경 · 주황: 알림 예약 · 점선: 다시 고르기 원 · 남색 점: 등록한 자리`
-          : "아직 등록 전이에요. 설정에서 근처 제휴 알림을 켜고 앱을 다시 열어 주세요.",
+          : "아직 등록 전이에요. 근처 제휴 알림을 켜고 앱을 다시 열면 원이 보여요.",
       );
     };
     void draw();
@@ -954,12 +959,16 @@ export default function MapScreen() {
    * 지도 메뉴의 "내 위치 켜기"(11-06). 켜 둔 동안 지도 화면에서만 위치를 읽어 점을 보여 주고, 다시 누르거나 지도 탭을 떠나면
    * 끈다. 길찾기와 같이 휴대폰 안에서만 쓰고 저장하거나 보내지 않는다(처리방침 "지도에서 '내 위치 켜기'를 누를 때").
    */
-  const [myLocationOn, setMyLocationOn] = useState(false);
+  // 테스트 앱은 켠 채로 시작한다(11-03 운영진 요청). 다만 '내 위치 끄기'를 누르면 정말 끈다 — 전에는 테스트 앱이면
+  // 메뉴와 상관없이 늘 위치를 읽어 끄기가 먹지 않았다(11-09 버그). 직접 끈 뒤에는 지도 탭에 돌아와도 다시 켜지 않는다.
+  const [myLocationOn, setMyLocationOn] = useState(NEARBY_DEBUG_TOOLS);
+  const myLocationUserOffRef = useRef(false);
   const mapFocused = useIsFocused();
   useEffect(() => {
     if (!mapFocused) setMyLocationOn(false);
+    else if (NEARBY_DEBUG_TOOLS && !myLocationUserOffRef.current) setMyLocationOn(true);
   }, [mapFocused]);
-  const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused) || NEARBY_DEBUG_TOOLS);
+  const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused));
   /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
   const locationFilterRef = useRef<FilterState | null>(null);
   useEffect(() => {
@@ -1738,9 +1747,11 @@ export default function MapScreen() {
    */
   const handleToggleMyLocation = useCallback(async () => {
     if (myLocationOn) {
+      myLocationUserOffRef.current = true;
       setMyLocationOn(false);
       return;
     }
+    myLocationUserOffRef.current = false;
     const located = await locateOnce();
     if (located.status !== "ok") {
       if (located.status === "denied") {
@@ -2017,8 +2028,23 @@ export default function MapScreen() {
           </>
         )}
         {nearbyOverlayOn && nearbyOverlayNote && !sheetOpen && !pickingNearbyTest && (
-          <View pointerEvents="none" style={[styles.nearbyOverlayNote, { bottom: 84 + tabBarHeight }]}>
+          <View pointerEvents={nearbyUnregistered ? "box-none" : "none"} style={[styles.nearbyOverlayNote, { bottom: 84 + tabBarHeight }]}>
             <Text style={styles.nearbyOverlayNoteText}>{nearbyTestLabel ? `${nearbyTestLabel} (빨간 점)\n${nearbyOverlayNote}` : nearbyOverlayNote}</Text>
+            {/* 등록 전이면 바로 설정 > 근처 제휴 알림 창으로(제휴 시트의 안내와 같은 길, 11-09). */}
+            {nearbyUnregistered && (
+              <TouchableOpacity
+                style={styles.nearbyOverlayNoteButton}
+                onPress={() => {
+                  requestSettingsIntent({ type: "openNearbyAlerts" });
+                  if (navigationRef.isReady()) navigationRef.navigate("Main", { screen: "Settings" });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="설정에서 근처 제휴 알림 켜기"
+              >
+                <Text style={styles.nearbyOverlayNoteButtonText}>설정에서 근처 제휴 알림 켜기</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
         {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
@@ -2606,6 +2632,18 @@ function DismissibleNotice({
 }
 
 const styles = StyleSheet.create({
+  nearbyOverlayNoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 2,
+    marginTop: 6,
+    minHeight: 32,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primarySoft,
+  },
+  nearbyOverlayNoteButtonText: { fontFamily: FONTS.semibold, fontSize: 13, color: COLORS.primary },
   nearbyOverlayNote: {
     position: "absolute",
     left: 16,
