@@ -22,6 +22,7 @@ import {
   stayStartedAt,
   type StayRecord,
   CAMPUS_CLEARANCE_METERS,
+  blockedRingsFor,
   benefitFor,
   liveBenefits,
   targetUntil,
@@ -361,4 +362,33 @@ test('끝난 소속의 전용 혜택은 알리지 않고, 저장한 대상은 �
   assert.equal(targetUntil(p, ['경영대학'], '2026-12-01'), '2026-12-14')
   assert.equal(targetUntil({ ...p, affiliations: ['총학생회', '경영대학'] }, ['경영대학'], '2026-12-01'), undefined)
   assert.equal(targetUntil({ ...p, endsOn: '2026-11-30' }, mine, '2026-11-09'), '2026-11-30')
+})
+
+test('건물과 겹치는 업체: 통째로 빼지 않고 겹친 건물 안에서 잡힌 위치만 알림에서 뺀다(11-09)', () => {
+  // 업체 북쪽 15m 부터 시작하는 건물(가로 ±0.0005°). 업체 원(20m + 오차 15m)이 건물에 걸친다.
+  const lng = BASE.lng
+  const building = {
+    ...north(40),
+    boundary: [
+      [north(15).lat, lng - 0.0005],
+      [north(15).lat, lng + 0.0005],
+      [north(80).lat, lng + 0.0005],
+      [north(80).lat, lng - 0.0005],
+    ] as [number, number][],
+  }
+  const shop = partner('shop', 0)
+  assert.equal(pickTargets([shop], { affiliations: [], campusPoints: [building], now: NOON }).length, 1)
+  const inShop = partner('inside', 30)
+  assert.equal(pickTargets([inShop], { affiliations: [], campusPoints: [building], now: NOON }).length, 0)
+
+  const target = { ...shop, blocked: blockedRingsFor(shop, [building]) }
+  assert.equal(target.blocked.length, 1)
+  assert.equal(blockedRingsFor(partner('far', -200), [building]).length, 0)
+  // 가게 안(0m)·앞(남쪽 10m)은 그대로, 건물 안(북쪽 18m, 원 안이지만 건물 영역)은 아니다.
+  assert.deepEqual([...preciseInsideIds([target], north(0), 5, new Set())], ['shop'])
+  assert.deepEqual([...preciseInsideIds([target], north(-10), 5, new Set())], ['shop'])
+  assert.deepEqual([...preciseInsideIds([target], north(18), 5, new Set())], [])
+  assert.deepEqual([...preciseInsideIds([target], north(18), 5, new Set(['shop']))], [])
+  assert.deepEqual(insideAtRegistration([target], north(18).lat, north(18).lng, 20), [])
+  assert.equal(insideAtRegistration([target], north(10).lat, north(10).lng, 20).length, 1)
 })

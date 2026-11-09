@@ -28,6 +28,8 @@ import {
   pickTargets,
   liveBenefits,
   targetUntil,
+  blockedRingsFor,
+  type CampusPoint,
   quietAtNight,
   reselectRadius,
   type PreciseMode,
@@ -759,9 +761,14 @@ export async function requestNearbyPermission(): Promise<NearbyPermission> {
 export interface NearbySource {
   partners: readonly Partner[]
   /** 캠퍼스 건물 좌표(업체 반경이 걸치면 대상에서 뺀다). */
-  campusPoints: readonly { lat: number; lng: number }[]
+  campusPoints: readonly CampusPoint[]
   /** 서버 긴급 스위치(`/map/data` nearbyAlertsEnabled). */
   serverEnabled: boolean
+}
+
+/** 겹치는 건물이 없으면 저장본에 칸을 만들지 않는다. */
+function blockedField(rings: [number, number][][]): { blocked?: [number, number][][] } {
+  return rings.length > 0 ? { blocked: rings } : {}
 }
 
 function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
@@ -778,6 +785,7 @@ function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAf
     affiliations: p.affiliations,
     affiliationBenefits: liveBenefits(p, today).affiliationBenefits,
     until: targetUntil(p, affiliations, today, NEARBY_FIELD_TEST),
+    ...blockedField(blockedRingsFor(p, campusPoints)),
   }))
 }
 

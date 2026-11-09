@@ -40,6 +40,8 @@ export interface SnapshotPartner {
   benefit?: string
   affiliations?: PartnerAffiliation[]
   affiliationBenefits?: { affiliation: PartnerAffiliation; benefit: string }[]
+  /** 알림 영역에서 뺄 건물 외곽(`rules.blockedRingsFor`). 이 안에서 잡힌 위치는 이 업체 안으로 치지 않는다. */
+  blocked?: [number, number][][]
   /** 이 사용자에게 마지막으로 대상인 날(YYYY-MM-DD, 한국). 지나면 `settle` 이 뺀다. 없으면 끝 없음. */
   until?: string
 }

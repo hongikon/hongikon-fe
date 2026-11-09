@@ -1,4 +1,5 @@
 import { haversineMeters } from '../../utils/geo'
+import { distanceToRingMeters, pointInRing } from '../../utils/pathSurveyV3/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
 import type { Partner, PartnerAffiliation } from '../../types'
 
@@ -27,9 +28,9 @@ const ACCURACY_ALLOWANCE_METERS = 15
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
- * 캠퍼스 건물(강의동·기숙사) 중심에서 이만큼 안의 업체는 대상에서 뺀다 — 건물 안에 있는데 알림이 가지 않게.
- * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 60m)로 잰다. 11-09: 깨우는 원(150m)으로 재던 것을 바꿈 —
- * 깨우는 원은 위치를 다시 재기 시작할 뿐 알리지 않는데, 150m 로 재 기숙사 앞 가게(레이브 에스프레소 바 상수 103m 등) 24곳이 빠졌다.
+ * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 60m). 건물 외곽이 업체에서 이만큼 안이면 그 건물 영역은
+ * 이 업체의 알림 영역에서 뺀다(`blockedRingsFor`). 외곽이 없는 건물은 중심이 이 거리 안이면 업체를 통째로 뺀다.
+ * 11-09: 깨우는 원(150m)으로 재 기숙사 앞 가게 24곳이 빠지던 것을 바꿈.
  */
 export const CAMPUS_CLEARANCE_METERS = ALERT_RADIUS_METERS + ACCURACY_ALLOWANCE_METERS + EXIT_MARGIN_METERS
 /**
@@ -166,6 +167,7 @@ export function preciseInsideIds<T extends Located>(
   return new Set(
     ranked
       .filter(({ partner, meters }) => preciselyInside(meters, accuracy, partner.id === nearestId && wasInside.has(partner.id), radius))
+      .filter(({ partner }) => !blockedAt(partner, at.lat, at.lng))
       .map(({ partner }) => partner.id),
   )
 }
@@ -178,6 +180,30 @@ export interface Located {
   id: string
   lat: number
   lng: number
+  /** 알림 영역에서 뺄 캠퍼스 건물 외곽([lat, lng] 고리). 이 안에서 잡힌 위치는 이 업체 안으로 치지 않는다(11-09). */
+  blocked?: readonly (readonly [number, number])[][]
+}
+
+/** 캠퍼스 건물: 중심과(있으면) 외곽. */
+export interface CampusPoint {
+  lat: number
+  lng: number
+  boundary?: readonly (readonly [number, number])[]
+}
+
+/** 위치가 이 업체의 알림 영역에서 빠진 곳(건물 안)인지. */
+function blockedAt(partner: Located, lat: number, lng: number): boolean {
+  return partner.blocked?.some((ring) => pointInRing(lat, lng, ring)) ?? false
+}
+
+/**
+ * 업체 알림 영역과 겹치는 건물 외곽(11-09 사용자 요청: 업체를 통째로 빼지 말고 겹치는 곳만 빼기).
+ * 알림 영역 = 업체 원 − 이 외곽들. 강의실·기숙사 방에서 잡힌 위치로는 알리지 않고, 가게 안·앞에서는 그대로 알린다.
+ */
+export function blockedRingsFor(partner: { lat: number; lng: number }, campus: readonly CampusPoint[]): [number, number][][] {
+  return campus
+    .filter((b) => b.boundary && b.boundary.length >= 3 && distanceToRingMeters(partner.lat, partner.lng, b.boundary) <= CAMPUS_CLEARANCE_METERS)
+    .map((b) => b.boundary!.map(([lat, lng]) => [lat, lng] as [number, number]))
 }
 
 /**
@@ -198,8 +224,11 @@ function endedBefore(endsOn: string | undefined, today: string): boolean {
 export interface PickTargetsOptions {
   /** 사용자가 고른 소속(여러 개 가능). 비어 있으면 총학생회 제휴만. */
   affiliations: readonly PartnerAffiliation[]
-  /** 캠퍼스 건물 좌표. 건물에서 `CAMPUS_CLEARANCE_METERS` 안의 업체는 뺀다(강의실·기숙사 방에서 알림이 가지 않게). */
-  campusPoints: readonly { lat: number; lng: number }[]
+  /**
+   * 캠퍼스 건물. 업체가 건물 외곽 안에 있으면 뺀다(캠퍼스 안 가게). 그 밖에는 대상으로 두고 겹치는 건물 영역만 알림에서 뺀다
+   * (`blockedRingsFor`). 외곽이 없는 건물은 중심에서 `CAMPUS_CLEARANCE_METERS` 안이면 뺀다.
+   */
+  campusPoints: readonly CampusPoint[]
   now: number
   /** 소속을 보지 않고 모든 제휴를 대상으로(현장 테스트 빌드만, 10-29). 제휴가 끝났는지는 그대로 본다. */
   anyAffiliation?: boolean
@@ -219,8 +248,10 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
     if (endedBefore(partner.endsOn, today)) return false
     if (liveAffiliations(partner, mine, today, options.anyAffiliation).length === 0) return false
 
-    return !options.campusPoints.some(
-      (point) => haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
+    return !options.campusPoints.some((point) =>
+      point.boundary && point.boundary.length >= 3
+        ? pointInRing(partner.lat, partner.lng, point.boundary)
+        : haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
     )
   })
 }
@@ -356,7 +387,7 @@ export function insideAtRegistration<T extends Located>(
   lng: number,
   radiusMeters: number = PARTNER_REGION_RADIUS_METERS,
 ): T[] {
-  return regions.filter((partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= radiusMeters)
+  return regions.filter((partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= radiusMeters && !blockedAt(partner, lat, lng))
 }
 
 /**
