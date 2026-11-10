@@ -49,6 +49,8 @@ import {
 import ListRow from '../common/ListRow'
 import SwipeBackModal from '../common/SwipeBackModal'
 import Button from '../common/Button'
+import { useIsAdmin } from '../../admin/AdminAccess'
+import { clearNearbyLog, logClock, readNearbyLog, type NearbyLogLine } from '../../lib/nearbyPartners/debugLog'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
 import NearbyRadiusMap from './NearbyRadiusMap'
@@ -219,6 +221,10 @@ interface ModalProps {
 }
 
 function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessToken, onClose, onResync, onRefresh, onTurnOff }: ModalProps) {
+  // 확인 도구: 테스트 앱 또는 운영 앱의 관리자 계정(11-10). 일반 사용자에게는 보이지 않는다.
+  const isAdmin = useIsAdmin()
+  const devTools = SHOW_DEVELOPER_TOOLS || isAdmin
+  const adminOnly = !SHOW_DEVELOPER_TOOLS && isAdmin
   const alreadyOn = settings?.enabled === true
   const [affiliations, setAffiliations] = useState<PartnerAffiliation[]>(settings?.affiliations ?? [])
   const [consent, setConsent] = useState(false)
@@ -439,8 +445,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
             <Text style={styles.sectionTitle}>받는 방법</Text>
             <View style={styles.card}>
               <Text style={styles.hint}>
-                {SHOW_DEVELOPER_TOOLS && unlimited
-                  ? '테스트 앱은 지금 횟수 제한 없이 보내요(아래 [테스트]에서 바꿀 수 있어요).'
+                {devTools && unlimited
+                  ? '테스트 모드: 지금 횟수 제한 없이 머무는 동안 5분마다 보내요(아래 [테스트]에서 바꿀 수 있어요).'
                   : `같은 가게는 다시 찾았을 때 3시간에 한 번, 하루 최대 ${MAX_ALERTS_PER_DAY}번, 알림 사이는 30분 넘게 띄워요.`}
               </Text>
               <View style={styles.divider} />
@@ -566,9 +572,9 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               </Pressable>
             )}
 
-            {SHOW_DEVELOPER_TOOLS && (
+            {devTools && (
               <>
-                <Text style={styles.sectionTitle}>[테스트] 테스트 앱에서만 보여요</Text>
+                <Text style={styles.sectionTitle}>{adminOnly ? '[테스트] 관리자 계정에만 보여요' : '[테스트] 테스트 앱에서만 보여요'}</Text>
                 <View style={styles.card}>
                   <Text style={styles.settingLabel}>알림 반경</Text>
                   <View style={[styles.chips, styles.radiusChips]}>
@@ -595,12 +601,12 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                     })}
                   </View>
                   <NearbyRadiusMap meters={radius} />
-                  {NEARBY_FIELD_TEST && (
+                  {(NEARBY_FIELD_TEST || adminOnly) && (
                     <>
                       <View style={styles.divider} />
                       <View style={styles.settingRow}>
                         <View style={styles.settingText}>
-                          <Text style={styles.settingLabel}>횟수 제한 없이(머무는 동안 5분마다)</Text>
+                          <Text style={styles.settingLabel}>테스트 모드: 횟수 제한 없이(머무는 동안 5분마다)</Text>
                           <Text style={styles.hint}>끄면 운영 앱과 같은 규칙(하루 최대·30분 간격)으로 확인할 수 있어요.</Text>
                         </View>
                         <ToggleSwitch value={unlimited} onToggle={toggleUnlimited} locked={working} accessibilityLabel="횟수 제한 없이" />
@@ -627,6 +633,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       {testNote && <Text style={styles.hint}>{testNote}</Text>}
                     </>
                   )}
+                  <View style={styles.divider} />
+                  <NearbyDecisionLog visible={visible} />
                 </View>
               </>
             )}
@@ -665,6 +673,50 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
         </SafeAreaView>
       </SafeAreaProvider>
     </SwipeBackModal>
+  )
+}
+
+/**
+ * 판단 기록(11-10): 위치를 어떻게 받았는지, 가장 가까운 가게까지 몇 m 였는지, 들어옴·나감, 알림을 걸었는지·안 건 이유.
+ * "오래 있었는데 안 왔다", "지나가기만 했는데 왔다"를 현장에서 바로 확인하려는 것. 좌표는 남기지 않는다(`debugLog`).
+ */
+function NearbyDecisionLog({ visible }: { visible: boolean }) {
+  const [lines, setLines] = useState<NearbyLogLine[]>([])
+  const [expanded, setExpanded] = useState(false)
+  const reload = useCallback(() => {
+    void readNearbyLog().then(setLines)
+  }, [])
+  useEffect(() => {
+    if (visible) reload()
+  }, [visible, reload])
+  const shown = expanded ? lines : lines.slice(0, 30)
+  return (
+    <>
+      <Text style={styles.settingLabel}>판단 기록(최근 것이 위)</Text>
+      <Text style={styles.hint}>
+        위치 줄은 30초마다, 들어옴·나감·알림 예약·안 보낸 이유는 생길 때마다 남아요. 좌표는 남기지 않고 이 휴대폰에만 둬요.
+      </Text>
+      <View style={styles.testButtons}>
+        <Button label="새로 보기" variant="outline" size="sm" onPress={reload} />
+        <Button label="기록 지우기" variant="ghost" size="sm" onPress={() => void clearNearbyLog().then(reload)} />
+      </View>
+      {lines.length === 0 ? (
+        <Text style={styles.hint}>아직 기록이 없어요. 알림을 켠 채 가게 근처에 가면 쌓여요.</Text>
+      ) : (
+        <View style={styles.logBox}>
+          {shown.map((line, index) => (
+            <Text key={`${line.at}-${index}`} style={styles.logLine} selectable>
+              {logClock(line.at)}  {line.text}
+            </Text>
+          ))}
+          {lines.length > shown.length && (
+            <Pressable onPress={() => setExpanded(true)} accessibilityRole="button" style={styles.logMore}>
+              <Text style={styles.logMoreText}>{lines.length - shown.length}줄 더 보기</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </>
   )
 }
 
@@ -1024,6 +1076,10 @@ const styles = StyleSheet.create({
   stepValue: { minWidth: 44, textAlign: 'center', fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   resetText: { fontSize: 14, fontFamily: FONTS.medium, color: COLORS.primary },
   testButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  logBox: { backgroundColor: COLORS.background, borderRadius: RADIUS.sm, padding: SPACING.sm, gap: 2 },
+  logLine: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textSecondary },
+  logMore: { paddingTop: 6, alignItems: 'center' },
+  logMoreText: { fontSize: 13, fontFamily: FONTS.medium, color: COLORS.primary },
   footerRow: { flexDirection: 'row', gap: SPACING.sm },
   footerItem: { flex: 1 },
 })

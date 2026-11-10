@@ -41,6 +41,11 @@ export interface Building {
   floors?: number
   /** 지하 층수. 지하가 없으면 생략한다. */
   basementFloors?: number
+  /**
+   * 고를 수 있는 층 목록(서버 buildings.floor_levels, 11-10). 범위로 못 적는 건물(홍문관: B1 없이 L=0)도 그대로. 있으면 floors·
+   * basementFloors 보다 먼저 쓴다. 0 은 로비층 L.
+   */
+  floorLevels?: number[]
   /** 층별로 다른 출입구를 쓰는 건물만 채운다. `BuildingEntrance` 참고. */
   entrances?: BuildingEntrance[]
   /** 확인된 값만 채운다. 미확인 건물은 비워두고 배너에서 숨긴다. */

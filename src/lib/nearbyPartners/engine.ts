@@ -1,7 +1,9 @@
 import { kstTodayYmd } from '../../utils/exhibitions'
 import { haversineMeters } from '../../utils/geo'
 import {
+  ALERT_LEAD_MS,
   REENTRY_GRACE_MS,
+  STAY_CONFIRM_MS,
   alertGroup,
   alertableTargetIds,
   coarseExitUncertain,
@@ -12,6 +14,7 @@ import {
   preciseInsideIds,
   quietAtNight,
   stayStartedAt,
+  staySeenAt,
   type DwellMinutes,
   type PreciseMode,
   type SentAlert,
@@ -70,6 +73,11 @@ export interface NearbyState {
   dwellMinutes?: DwellMinutes | null
   /** 알림의 "이 가게 알림 끄기"·설정에서 끈 업체 id. 기기에만 둔다. */
   muted?: string[]
+  /**
+   * 마지막 판단에서 알림을 예약하지 않은 이유(머무는 중이 아니면 null). 테스트 앱·관리자 기록(`debugLog`)에 남긴다.
+   * 예: '대기 12:05', '밤', '하루 한도', '30분 안', '최근 알림', '위치 확인 안 됨'.
+   */
+  lastReason?: string | null
 }
 
 /** 설정에서 바꾸는 값(`onPrefs`). */
@@ -153,9 +161,24 @@ function chooseLead(state: NearbyState, ids: readonly string[], fallback: string
  * 지금 머무는 곳들로 예약 하나를 다시 맞춘다. 바뀌었을 때만 취소·예약을 낸다.
  * 알림 시각은 묶음에서 가장 먼저 들어온 때 기준(그 일대에 머문 시간), 이름은 `chooseLead`.
  */
-export function plan(state: NearbyState, now: number, at?: Position): Step {
+const DECISION_REASON: Record<string, string> = {
+  quiet: '밤(21~8시)',
+  dailyLimit: '하루 한도',
+  tooSoon: '알림 사이 30분 안',
+  partnerRecent: '이 가게 3시간 안에 알림',
+  partnerToday: '이 가게 오늘 알림',
+}
+
+function clock(ms: number): string {
+  const d = new Date(ms + 9 * 60 * 60 * 1000)
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`
+}
+
+export function plan(input: NearbyState, now: number, at?: Position): Step {
   let desired: PendingAlert | null = null
-  if (state.enabled) {
+  let reason: string | null = null
+  if (input.enabled) {
+    const state = input
     const stays = activeStays(state)
     const group = alertGroup(stays, state.sent, now, state.perVisit)
     if (group) {
@@ -175,9 +198,23 @@ export function plan(state: NearbyState, now: number, at?: Position): Step {
         // 알림 시각은 묶음에서 가장 먼저 들어온 곳 기준이라 머무는 시간도 그곳 분류로 정한다.
         dwellMs: dwellFor(state.targets.find((t) => t.id === group.leadId)?.category, state.dwellMinutes),
       })
-      if (decision.schedule) desired = { partnerId: leadId, fireAt: decision.fireAt, othersCount: group.others.length }
+      if (!decision.schedule) {
+        reason = DECISION_REASON[decision.reason] ?? decision.reason
+      } else {
+        // 머문 시간이 다 찬 때(앞 15초 안)에만, 최근 위치가 아직 안일 때만 예약한다(`ALERT_LEAD_MS`·`STAY_CONFIRM_MS`).
+        const seen = Math.max(...members.map((id) => staySeenAt(stays.get(id)!)))
+        if (now - seen > STAY_CONFIRM_MS) reason = '위치 확인 안 됨'
+        else if (decision.fireAt > now + ALERT_LEAD_MS) reason = `대기(${clock(decision.fireAt)} 예정)`
+        else {
+          desired = { partnerId: leadId, fireAt: decision.fireAt, othersCount: group.others.length }
+          // 이미 같은 알림을 걸어 뒀으면 그대로 둔다(늦은 판단마다 시각이 '지금'으로 바뀌어 다시 걸지 않게).
+          const pending = input.pending
+          if (pending && pending.partnerId === desired.partnerId && pending.othersCount === desired.othersCount) desired = pending
+        }
+      }
     }
   }
+  const state = (input.lastReason ?? null) === reason ? input : { ...input, lastReason: reason }
   if (sameAlert(state.pending, desired) || (!state.pending && !desired)) return { state, actions: [] }
   const actions: NearbyAction[] = []
   if (state.pending) actions.push({ kind: 'cancel' })
@@ -193,10 +230,27 @@ export function onEnter(input: NearbyState, partnerId: string, now: number, at?:
   const state = settle(input, now)
   if (!state.enabled || !isTarget(state, partnerId)) return { state, actions: [] }
   const previous = state.stays[partnerId] ?? null
-  // 이미 안에 있다고 기록돼 있으면(등록 직후 중복 진입 신호) 무시한다.
-  if (previous && previous.exitedAt === null) return plan(state, now, at)
+  // 이미 안에 있다고 기록돼 있으면(등록 직후 중복 진입 신호) 새로 세지 않고 확인한 때만 바꾼다.
+  if (previous && previous.exitedAt === null) return plan(markSeen(state, [partnerId], now), now, at)
   const enteredAt = stayStartedAt(previous, now)
-  return plan({ ...state, stays: { ...state.stays, [partnerId]: { enteredAt, exitedAt: null } } }, now, at)
+  return plan({ ...state, stays: { ...state.stays, [partnerId]: { enteredAt, exitedAt: null, seenAt: now } } }, now, at)
+}
+
+/** 위치로 아직 안이라고 확인한 업체들의 `seenAt` 을 바꾼다(열린 머무름만). */
+export function markSeen(state: NearbyState, ids: Iterable<string>, now: number): NearbyState {
+  let stays: Record<string, StayRecord> | null = null
+  for (const id of ids) {
+    const stay = state.stays[id]
+    if (!stay || stay.exitedAt !== null || stay.seenAt === now) continue
+    stays = stays ?? { ...state.stays }
+    stays[id] = { ...stay, seenAt: now }
+  }
+  return stays ? { ...state, stays } : state
+}
+
+/** 위치로 이 업체들 안에 아직 있다고 확인했다(위치 갱신 한 번). 확인한 때를 바꾸고 예약을 다시 맞춘다. */
+export function onSeen(input: NearbyState, ids: Iterable<string>, now: number, at?: Position): Step {
+  return plan(markSeen(settle(input, now), ids, now), now, at)
 }
 
 export function onExit(input: NearbyState, partnerId: string, now: number, at?: Position): Step {
@@ -271,8 +325,9 @@ export function preciseStep(input: NearbyState, now: number, at: Position, accur
     actions.push(...step.actions)
   }
   // 안팎이 그대로여도 대표 가게는 지금 가장 가까운 곳으로 다시 맞춘다(오차 큰 위치로는 바꾸지 않는다).
+  // GPS 위치로 아직 안인 곳은 확인한 때를 바꾼다 — 알림은 최근에 확인된 머무름으로만 보낸다(`STAY_CONFIRM_MS`).
   if (allowEnter) {
-    step = onPosition(step.state, now, at)
+    step = onPosition(markSeen(step.state, insideIds, now), now, at)
     actions.push(...step.actions)
   }
   return { state: step.state, actions }
@@ -301,7 +356,15 @@ export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, 
   )
   const distances = input.targets.filter((t) => alertable.has(t.id)).map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
   const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
-  const step = preciseStep(input, now, at, accuracy, fix.mode === 'fine', radii.alert)
+  let step = preciseStep(input, now, at, accuracy, fix.mode === 'fine', radii.alert)
+  // 모든 가게에서 (오차를 빼고도) 멀어졌으면 열린 머무름도 닫는다 — 위치 갱신을 끈 뒤 남은 머무름으로 알리지 않게(11-10).
+  if (stop) {
+    for (const [id, stay] of Object.entries(step.state.stays)) {
+      if (stay.exitedAt !== null) continue
+      const next = onExit(step.state, id, now)
+      step = { state: next.state, actions: [...step.actions, ...next.actions] }
+    }
+  }
   // 오차 큰 위치로 나감을 못 정해 머무름이 열린 채 남은 가게가 있으면 GPS 로 한 번 재게 한다.
   const needsFineCheck =
     fix.mode !== 'fine' &&
@@ -333,9 +396,12 @@ export function onRegister(
   state = { ...state, stays }
   for (const id of insideIds) {
     const previous = state.stays[id]
-    if (previous && previous.exitedAt === null) continue
+    if (previous && previous.exitedAt === null) {
+      state = markSeen(state, [id], now)
+      continue
+    }
     if (!isTarget(state, id)) continue
-    state = { ...state, stays: { ...state.stays, [id]: { enteredAt: stayStartedAt(previous ?? null, now), exitedAt: null } } }
+    state = { ...state, stays: { ...state.stays, [id]: { enteredAt: stayStartedAt(previous ?? null, now), exitedAt: null, seenAt: now } } }
   }
   return plan(state, now, at)
 }

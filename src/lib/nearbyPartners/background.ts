@@ -36,9 +36,10 @@ import {
   type DwellMinutes,
 } from './rules'
 import { nearbyAlertContent, nearbyGroupContent } from './copy'
+import { clearNearbyLog, nearbyLog } from './debugLog'
 import {
   NEARBY_FIELD_TEST,
-  SHOW_DEVELOPER_TOOLS,
+  nearbyDevTools,
   fieldTestUnlimited,
   loadNearbyDebug,
   nearbyNow,
@@ -167,11 +168,30 @@ function serialized<T>(job: () => Promise<T>): Promise<T> {
 function mutate(change: (state: NearbyState, now: number) => Step | Promise<Step>): Promise<NearbyState> {
   return serialized(async () => {
     await loadNearbyDebug()
-    const { state, actions } = await change(await loadState(), nearbyNow())
+    const before = await loadState()
+    const now = nearbyNow()
+    const { state, actions } = await change(before, now)
     await saveState(state)
+    if (nearbyDevTools()) await logChanges(before, state, now)
     await runActions(state, actions)
     return state
   })
+}
+
+/** 판단 기록(테스트 앱·관리자): 들어옴·나감과 보내지 않은 이유가 바뀐 것만 남긴다. */
+async function logChanges(before: NearbyState, after: NearbyState, now: number): Promise<void> {
+  const name = (id: string) => after.targets.find((t) => t.id === id)?.name ?? before.targets.find((t) => t.id === id)?.name ?? id
+  const open = (state: NearbyState) =>
+    new Set(Object.entries(state.stays).filter(([, stay]) => stay.exitedAt === null).map(([id]) => id))
+  const was = open(before)
+  const is = open(after)
+  for (const id of is) if (!was.has(id)) await nearbyLog(`들어옴: ${name(id)}`, now)
+  for (const id of was) if (!is.has(id)) await nearbyLog(`나감: ${name(id)}`, now)
+  if ((before.lastReason ?? null) !== (after.lastReason ?? null) && after.lastReason) {
+    await nearbyLog(`알림 안 보냄 — ${after.lastReason}`, now)
+  }
+  const fired = after.sent.filter((alert) => !before.sent.some((b) => b.partnerId === alert.partnerId && b.at === alert.at))
+  for (const alert of fired) await nearbyLog(`알림 뜸(기록): ${name(alert.partnerId)}`, alert.at)
 }
 
 // ── 알림 ───────────────────────────────────────────────
@@ -228,6 +248,7 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
     try {
       if (action.kind === 'cancel') {
         await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_ID)
+        void nearbyLog('알림 예약 취소')
         continue
       }
       const partner = state.targets.find((target) => target.id === action.alert.partnerId)
@@ -256,9 +277,11 @@ async function runActions(state: NearbyState, actions: NearbyAction[]): Promise<
         trigger: triggerAfter(seconds),
       })
       lastScheduleNote = `예약함 ${seconds}초 뒤(${new Date(Date.now() + seconds * 1000).toTimeString().slice(0, 5)})`
+      void nearbyLog(`알림 예약: ${partner.name}${members.length > 1 ? ` 외 ${members.length - 1}곳` : ''} (${seconds}초 뒤)`)
     } catch (error) {
       logFailure(action.kind === 'cancel' ? '알림 취소' : '알림 예약', error)
       lastScheduleNote = `${action.kind === 'cancel' ? '취소' : '예약'} 실패: ${(error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').slice(0, 200)}`
+      void nearbyLog(lastScheduleNote)
     }
   }
 }
@@ -355,11 +378,13 @@ async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
     }
     await AsyncStorage.setItem(PRECISE_MODE_KEY, mode).catch(() => {})
     preciseNote = mode === 'fine' ? '켜짐(GPS)' : '켜짐(Wi-Fi·기지국)'
+    void nearbyLog(`위치 갱신 켬: ${mode === 'fine' ? 'GPS' : 'Wi-Fi·기지국'}`)
     return true
   } catch (error) {
     preciseFailedAt = Date.now()
     preciseNote = `못 켬(GPS 한 번씩 재서 판단): ${(error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').slice(-100)}`
     logFailure('GPS 위치 갱신', error)
+    void nearbyLog(`위치 갱신 못 켬: ${preciseNote}`)
     return false
   }
 }
@@ -368,7 +393,10 @@ async function stopPrecise(): Promise<void> {
   const pkg = packages()
   if (!pkg) return
   try {
-    if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
+    if (await pkg.Location.hasStartedLocationUpdatesAsync(NEARBY_PRECISE_TASK)) {
+      await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
+      void nearbyLog('위치 갱신 끔(가게에서 멀어짐 또는 2시간 지남)')
+    }
     await AsyncStorage.removeItem(PRECISE_SINCE_KEY).catch(() => {})
     await AsyncStorage.removeItem(PRECISE_MODE_KEY).catch(() => {})
     if (!preciseRecentlyFailed()) preciseNote = '꺼짐'
@@ -428,6 +456,10 @@ async function fineCheck(force = false): Promise<void> {
   await applyFix({ lat: position.coords.latitude, lng: position.coords.longitude }, position.coords.accuracy ?? null, 'fine', 'GPS 한 번')
 }
 
+/** 판단 기록의 위치 줄 간격. */
+const FIX_LOG_GAP_MS = 30_000
+let lastFixLogAt = 0
+
 /** 위치 하나를 판단에 넣고(`preciseUpdate`), 위치 갱신 단계를 맞추거나 끈다. 위치는 저장하지 않는다. */
 async function applyFix(
   at: { lat: number; lng: number },
@@ -454,6 +486,21 @@ async function applyFix(
     const clock = new Date(now).toTimeString().slice(0, 8)
     const nearest = Number.isFinite(nearestMeters) ? ` · 가장 가까운 가게 ${Math.round(nearestMeters)}m` : ''
     preciseNote = `켜짐(${source}) · 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m${nearest} · ${clock}`
+    if (nearbyDevTools()) {
+      // 위치 줄: 가장 가까운 가게(알릴 수 있는지와 상관없이)와 거리. 30초마다만(안팎이 바뀐 것은 logChanges 가 따로 남긴다).
+      const closest = state.targets
+        .map((t) => ({ name: t.name, meters: haversineMeters(at.lat, at.lng, t.lat, t.lng) }))
+        .sort((a, b) => a.meters - b.meters)[0]
+      if (now - lastFixLogAt >= FIX_LOG_GAP_MS) {
+        lastFixLogAt = now
+        void nearbyLog(
+          `위치(${source}) 오차 ${accuracy === null ? '?' : Math.round(accuracy)}m` +
+            (closest ? ` · 가장 가까운 ${closest.name} ${Math.round(closest.meters)}m` : '') +
+            (outcome.stop ? ' · 멀어져 위치 갱신 끔' : ''),
+          now,
+        )
+      }
+    }
     return outcome
   })
   const running = await preciseMode()
@@ -504,7 +551,7 @@ export async function applyNearbyTestLocation(
   location: { lat: number; lng: number } | null,
   source: NearbySource,
 ): Promise<boolean> {
-  if (!packages() || !SHOW_DEVELOPER_TOOLS) return false
+  if (!packages() || !nearbyDevTools()) return false
   await setTestLocation(location)
   // 실제 GPS 로 돌아갈 때는 테스트 위치 기준 등록을 버리고 실제 위치 둘레로 새로 등록하게 한다.
   if (!location) lastSync = null
@@ -640,6 +687,14 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
   if (testLocation()) return
   const entered = event.eventType === pkg.Location.GeofencingEventType.Enter
   lastEvent = { at: nearbyNow(), kind: entered ? 'enter' : 'exit', id }
+  if (nearbyDevTools()) {
+    const target = id === RESELECT_REGION_ID ? null : (await loadState()).targets.find((t) => t.id === id)
+    void nearbyLog(
+      id === RESELECT_REGION_ID
+        ? `운영체제 신호: 다시 고르기 원 ${entered ? '들어옴' : '나감'}`
+        : `운영체제 신호: ${target?.name ?? id} 근처(${wakeRadiusMeters()}m) ${entered ? '들어옴' : '나감'}`,
+    )
+  }
   if (id === RESELECT_REGION_ID) {
     if (entered) return
     // 큰 원을 벗어났다 = 꽤 멀리 움직였다. 새 위치 둘레로 다시 고른다. 위치를 못 얻으면 기존 등록을 둔다.
@@ -850,7 +905,7 @@ export async function handleNearbyNotificationAction(actionId: string, data: unk
  */
 export async function sendNearbyTestAlert(seconds = 5, group = false): Promise<string> {
   const pkg = packages()
-  if (!pkg || !SHOW_DEVELOPER_TOOLS) return '테스트 앱에서만 쓸 수 있어요.'
+  if (!pkg || !nearbyDevTools()) return '테스트 앱에서만 쓸 수 있어요.'
   await loadNearbyDebug()
   const state = await loadState()
   if (state.targets.length === 0) return '대상 가게가 없어요. 먼저 근처 제휴 알림을 켜 주세요.'
@@ -902,6 +957,7 @@ export async function syncNearbyAlerts(
       await stopGeofencing()
       await stopPrecise()
       lastSync = { at: now, result: 'paused', regions: 0, reselectMeters: 0 }
+      void nearbyLog(`감시 멈춤: ${permission.status !== 'granted' ? `위치 권한 '항상' 아님(${permission.status})` : '서버에서 근처 알림 꺼짐'}`, now)
       const paused = onDisable(state, now)
       return { state: { ...paused.state, enabled: true }, actions: paused.actions }
     }
@@ -909,16 +965,23 @@ export async function syncNearbyAlerts(
       ...state,
       targets: snapshot(source.partners, state.affiliations, source.campusPoints, now),
       // 현장 테스트 앱은 기본으로 횟수 제한 없이. 설정의 [테스트] 스위치로 운영 규칙(하루 최대 수·간격)을 켜 볼 수 있다.
-      perVisit: NEARBY_FIELD_TEST && fieldTestUnlimited(),
+      // 관리자 계정도 설정의 테스트 모드를 켜면 같은 규칙(11-10).
+      perVisit: fieldTestUnlimited(),
     }
     const at = await currentPosition(pkg.Location)
     if (!at) {
       lastSync = { at: now, result: 'noLocation', regions: 0, reselectMeters: 0 }
+      void nearbyLog('등록 못 함: 지금 위치를 못 읽음', now)
       return { state, actions: [] }
     }
     try {
       const step = testLocation() ? await simulateAt(state, now, at) : await registerAround(state, now, at)
       watching = true
+      void nearbyLog(
+        `등록: 대상 ${state.targets.length}곳 중 가까운 ${lastSync?.regions ?? 0}곳 감시${testLocation() ? '(시험 위치)' : ''}` +
+          `${state.perVisit ? ' · 테스트 모드(5분마다)' : ''}`,
+        now,
+      )
       return step
     } catch (error) {
       logFailure('지오펜스 등록', error)
@@ -931,6 +994,7 @@ export async function syncNearbyAlerts(
         // Expo 오류는 "…has failed … → Caused by: <진짜 이유>" 꼴이라 끝부분을 남긴다.
         error: (error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ').slice(-160),
       }
+      void nearbyLog(`등록 실패: ${lastSync.error}`, now)
       return { state, actions: [] }
     }
   })
@@ -957,7 +1021,7 @@ export interface NearbyOverlay {
 }
 
 export async function getNearbyOverlay(): Promise<NearbyOverlay | null> {
-  if (!SHOW_DEVELOPER_TOOLS || !lastSync?.center || !lastSync.regionIds) return null
+  if (!nearbyDevTools() || !lastSync?.center || !lastSync.regionIds) return null
   const state = settle(await loadState(), nearbyNow())
   const radius = lastSync.radius ?? partnerRadiusMeters()
   const regions = lastSync.regionIds.flatMap((id) => {
@@ -975,7 +1039,7 @@ export async function getNearbyOverlay(): Promise<NearbyOverlay | null> {
  * iOS 에서 근처 알림 예약이 "undefined reason" 으로 실패해(10-28) 원인을 좁히려는 것. 결과는 설정 상태 줄에 보인다.
  */
 export async function runNotificationScheduleTest(): Promise<void> {
-  if (!SHOW_DEVELOPER_TOOLS) return
+  if (!nearbyDevTools()) return
   const tries: [string, Notifications.NotificationRequestInput][] = [
     ['즉시', { content: { title: '테스트', body: '즉시' }, trigger: null }],
     ['5초', { content: { title: '테스트', body: '5초' }, trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5 } }],
@@ -1011,7 +1075,7 @@ export async function runNotificationScheduleTest(): Promise<void> {
 
 /** 개발·테스트 빌드 전용(`hongikon://dev/nearby?reset=1`): 보낸 기록·머무름·예약을 비운다. 켜짐·소속·대상은 둔다. */
 export async function resetNearbyHistoryForDebug(): Promise<void> {
-  if (!packages() || !SHOW_DEVELOPER_TOOLS) return
+  if (!packages() || !nearbyDevTools()) return
   await mutate((state) => ({
     state: { ...state, sent: [], stays: {}, pending: null },
     actions: state.pending ? [{ kind: 'cancel' }] : [],
@@ -1029,4 +1093,5 @@ export async function wipeNearbyAlerts(): Promise<void> {
       logFailure('기록 삭제', error)
     }
   })
+  await clearNearbyLog()
 }
