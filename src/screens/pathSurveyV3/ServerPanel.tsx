@@ -262,7 +262,7 @@ export default function ServerPanel({
         <Text style={ui.hint}>{'적용: 고른 버전이 바로 운영 경로망이 되고, 앱 길찾기가 바뀌어요.'}</Text>
       </View>
 
-      <Section title="운영 경로망" help="앱 길찾기가 지금 쓰는 경로망이에요. 아래에서 올린 초안을 적용하면 배포 없이 바로 바뀌어요.">
+      <Section title="운영 경로망" help="앱 길찾기가 지금 쓰는 경로망이에요. 배포 없이 적용으로만 바뀌어요.">
         <Row>
           <Text style={[ui.hint, styles.grow]}>{activeText}</Text>
           <Btn label="새로고침" onPress={refresh} disabled={!!busy} />
@@ -270,8 +270,8 @@ export default function ServerPanel({
       </Section>
 
       <Section
-        title="지금 조사 자료 올리기"
-        help="초안으로만 올라가요(앱에는 아직 안 쓰임). 서버가 검사하고 운영 경로망과 건물 쌍마다 비교해요(수 초). 백업도 함께 올라가 다른 컴퓨터에서 불러올 수 있어요."
+        title="이름 붙여 올리기"
+        help="위 저장 버튼과 같은 초안 저장이에요. 이름을 붙이고 싶을 때만 여기서 올려요. 서버가 검사하고 운영과 건물 쌍마다 비교해요(수 초)."
       >
         <TextInput value={name} onChangeText={setName} placeholder="이름(예: 체육관 주변 보강)" style={ui.memoInput} />
         <Btn label={busy === '올리기' ? '올리는 중…' : '서버에 올리기'} onPress={upload} disabled={!!busy} />
@@ -279,7 +279,7 @@ export default function ServerPanel({
 
       <Section
         title="버전"
-        help="결과: 검사·비교 / 시험: 아래 길 시험 대상 / 적용: 운영에 쓰기 / 불러오기: 그 버전의 백업으로 지금 조사 자료를 덮어써요(확인 후, 저장 지점을 먼저 남겨요)."
+        help="결과: 검사·비교 / 시험: 아래 길 시험 대상 / 적용: 운영에 쓰기(지정된 담당자만, 시험용 초안은 적용하지 않아요) / 불러오기: 그 버전의 백업으로 지금 조사 자료를 덮어써요(확인 후, 저장 지점을 먼저 남겨요)."
       >
         {folded.shown.map((v) => (
           <View key={v.id} style={styles.version}>

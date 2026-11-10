@@ -306,7 +306,7 @@ export type ServerOffer<V extends VersionLike = VersionLike> =
   | { kind: 'load'; version: V; newer: boolean }
 
 export function offerText(offer: ServerOffer): string {
-  if (offer.kind === 'baseline') return '이 브라우저의 조사 내용이 서버에 아직 없어요. 이 내용을 서버에 기준으로 저장할까요?'
+  if (offer.kind === 'baseline') return '이 내용은 아직 서버에 올라가지 않았어요. 서버에 기준으로 저장할까요?'
   return offer.newer
     ? `다른 기기에서 저장한 ${versionLabel(offer.version)}가 서버에 있어요.`
     : `이 브라우저는 비어 있어요. 서버에 저장된 ${versionLabel(offer.version)}가 있어요.`

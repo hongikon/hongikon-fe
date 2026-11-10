@@ -342,7 +342,7 @@ test('entry (a): no server record and a local survey offers the base save, even 
     assert.equal(l.calls.length, 1)
     assert.equal(b.calls.length, 0)
   }
-  assert.ok(S.offerText({ kind: 'baseline' }).includes('기준으로 저장할까요'))
+  assert.equal(S.offerText({ kind: 'baseline' }), '이 내용은 아직 서버에 올라가지 않았어요. 서버에 기준으로 저장할까요?')
 })
 
 test('entry (a): approving the base save uploads once without asking, closing it sends nothing', async () => {
