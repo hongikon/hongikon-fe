@@ -81,7 +81,7 @@ export default function GistPanel({
     : '아직 동기화한 적 없어요'
 
   return (
-    <Section title="Gist 동기화" help={`조사 전체를 비공개 Gist 의 ${GIST_FILE_V3} 파일 하나로 올리고 받아요. 토큰은 이 브라우저에만 저장돼요.`}>
+    <Section title="Gist 동기화 (보험)" help={`서버 저장이 안 될 때 쓰는 예전 방법이에요. 조사 전체를 비공개 Gist 의 ${GIST_FILE_V3} 파일 하나로 올리고 받아요. 토큰은 이 브라우저에만 저장돼요.`}>
       <Text style={ui.hint}>{status}</Text>
       {hasToken ? (
         <Row>

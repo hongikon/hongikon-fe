@@ -69,8 +69,8 @@ export default function BackupPanel({
 
   return (
     <View style={{ gap: 14 }}>
-      <Text style={ui.warn}>{'브라우저 저장은 사이트 데이터를 지우면 사라져요. 백업 파일을 따로 보관해 주세요.'}</Text>
-      <Section title="백업 (작업 원본)" help="다시 불러와 이어서 작업할 때 쓰는 파일이에요. 오류가 있어도 언제든 할 수 있어요. 네비게이션에 쓸 파일은 아래 경로망 내보내기예요.">
+      <Text style={ui.hint}>{'평소에는 위 저장 버튼 한 번이면 돼요. 이 브라우저에 저장하고 서버에 초안으로도 올라가요. 이 탭은 서버 저장이 안 될 때를 대비한 보험이에요.'}</Text>
+      <Section title="백업 (보험)" help="서버 저장이 안 될 때를 대비해 작업 원본을 파일이나 코드로 따로 보관해요. 오류가 있어도 언제든 할 수 있어요. 하루를 마칠 때 받아 두면 더 안전해요.">
         <Text style={ui.hint}>{backupStatus}</Text>
         <Row>
           <Btn label="백업 저장" kind="primary" onPress={saveFile} />
@@ -84,7 +84,7 @@ export default function BackupPanel({
         <TextInput value={text} onChangeText={setText} placeholder="백업 코드 붙여 넣기" multiline autoCapitalize="none" autoCorrect={false} style={ui.memoInput} />
         <Btn label="붙여 넣은 내용 불러오기" disabled={!text.trim()} onPress={() => restore(text)} />
       </Section>
-      <Section title="경로망 내보내기 (네비게이션용)" help="가공 없이 네비게이션에 쓰는 펼친 그래프 파일이에요. 언제든 받을 수 있고, 오류가 있으면 미완성으로 표시돼요. 불러오기용 백업은 위의 백업을 쓰세요.">
+      <Section title="경로망 내보내기 (비상용)" help="서버를 쓸 수 없을 때 개발 담당에게 주는 펼친 그래프 파일이에요. 오류가 있으면 미완성으로 표시돼요. 평소에는 서버 초안으로 충분해요.">
         <Row>
           <Btn
             label="경로망 내보내기"
