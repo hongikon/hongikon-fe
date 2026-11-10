@@ -33,6 +33,7 @@ MATRIX[haiku-graph-wide]="--ask.graph.enabled=true --ask.graph.max-edges=8 --ask
 NAMES=(haiku-base haiku-graph haiku-graph-v2 haiku-graph-medium haiku-graph-reason haiku-graph-wide)
 (( $# > 0 )) && NAMES=("$@")
 
+SETS=${SETS:-reason place}
 RAG=false; [[ -n "${ASK_EMBED_KEY:-}" ]] && RAG=true
 
 for name in $NAMES; do
@@ -44,7 +45,7 @@ for name in $NAMES; do
     ${=MATRIX[$name]} > "server-$name.log" 2>&1) &
   for i in {1..90}; do grep -q "Started " "$OUT/server-$name.log" && break; sleep 2; done
   if grep -q "LLM(/ask/route)이 꺼져" "$OUT/server-$name.log"; then echo "LLM 꺼짐 — ANTHROPIC_API_KEY 확인"; exit 1; fi
-  for set in reason place; do
+  for set in ${=SETS}; do
     ASK_DEV_KEY=$DEVKEY node run.mjs "$name-$set" "http://localhost:$PORT" --cases $set --runs $RUNS
   done
   mv answers-$name-*.json "$OUT/"
@@ -53,7 +54,7 @@ pkill -f "hongmap-backend.*--server.port=$PORT" 2>/dev/null || true
 
 {
   echo "# 물어보기 설정 비교 $(date '+%Y-%m-%d %H:%M') · runs=$RUNS · RAG=$RAG"
-  for set in reason place; do
+  for set in ${=SETS}; do
     echo "\n## $set"
     node check.mjs $set "$OUT"/answers-*-$set.json(N) "$OUT"/answers-*-$set-r*.json(N) | sed -n '/^| 파일/,$p'
   done
