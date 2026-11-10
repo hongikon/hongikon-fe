@@ -23,12 +23,16 @@ export const PARTNER_REGION_RADIUS_METERS = 150
  * 깨우는 원에 들어오면 GPS 를 켜 이 거리를 잰다(`preciselyInside`).
  */
 export const ALERT_RADIUS_METERS = 20
-/** GPS 오차를 얼마까지 반경에 더해 줄지(실내 오차가 커도 반경이 끝없이 넓어지지 않게). */
-const ACCURACY_ALLOWANCE_METERS = 15
+/**
+ * GPS 오차를 얼마까지 반경에 더해 줄지(실내 오차가 커도 반경이 끝없이 넓어지지 않게).
+ * 11-10: 15 → 25. 가게 안(실내)에서는 GPS 가 20~40m 밀려 찍혀 오래 앉아 있어도 '안'으로 잡히지 않았다(현장 제보:
+ * 오래 있어도 알림이 안 옴). 대신 알림은 머문 시간이 다 찬 때의 위치로 한 번 더 확인한다(`STAY_CONFIRM_MS`).
+ */
+const ACCURACY_ALLOWANCE_METERS = 25
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
- * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 60m). 건물 외곽이 업체에서 이만큼 안이면 그 건물 영역은
+ * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 70m, 11-10 전에는 60m). 건물 외곽이 업체에서 이만큼 안이면 그 건물 영역은
  * 이 업체의 알림 영역에서 뺀다(`blockedRingsFor`). 외곽이 없는 건물은 중심이 이 거리 안이면 업체를 통째로 뺀다.
  * 11-09: 깨우는 원(150m)으로 재 기숙사 앞 가게 24곳이 빠지던 것을 바꿈.
  */
@@ -378,6 +382,22 @@ export interface StayRecord {
   enteredAt: number
   /** 아직 안에 있으면 null. */
   exitedAt: number | null
+  /** 위치로 마지막으로 '안'을 확인한 때. 옛 저장본에는 없다(그때는 `enteredAt`). */
+  seenAt?: number
+}
+
+/**
+ * 알림은 머문 시간이 다 찼을 때, 최근 위치가 아직 안이라고 확인될 때만 보낸다(11-10). 전에는 들어오는 순간 "N분 뒤" 알림을
+ * 예약해 두고 나가면 취소했는데, 나감을 제때 알아채지 못하면(백그라운드 위치가 늦게 오거나 끊김) 잠깐 지나가기만 해도
+ * 알림이 왔다(현장 제보). 이제는 알림 시각이 이 안으로 다가왔을 때만 예약한다.
+ */
+export const ALERT_LEAD_MS = 15 * 1000
+/** '안'을 확인한 위치가 이보다 오래됐으면 알리지 않는다(위치가 끊긴 채 남은 머무름으로 알리지 않게). */
+export const STAY_CONFIRM_MS = 60 * 1000
+
+/** 이 머무름을 위치로 마지막 확인한 때. */
+export function staySeenAt(stay: StayRecord): number {
+  return stay.seenAt ?? stay.enteredAt
 }
 
 /** 이번 진입을 언제부터 머문 것으로 칠지. 나간 지 3분 안에 다시 들어왔으면 처음 들어온 때부터. */

@@ -14,6 +14,7 @@ import {
   subscribeAdminIntent,
 } from '../lib/adminIntents'
 import type { AdminOverview, OverviewState } from './types'
+import { setNearbyAdmin } from '../lib/nearbyPartners/debug'
 
 /**
  * 앱 안에서 "이 계정이 관리자인가"를 판단하고, 관리 탭이 쓸 대시보드 수치(overview)를 들고 있는다.
@@ -131,6 +132,13 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
     if (authenticated) refresh()
     else reset()
   }, [authenticated, refresh, reset])
+
+  // 근처 알림 확인 도구(알림 영역·판단 기록·테스트 모드)는 관리자 계정에도 연다(11-10). 백그라운드 작업도 알 수 있게 기기에 남긴다.
+  // 앱을 켠 직후 아직 묻는 중일 때는 바꾸지 않는다(관리자의 시험 위치·테스트 모드가 매번 지워지지 않게).
+  useEffect(() => {
+    if (isAdmin) void setNearbyAdmin(true)
+    else if (!authenticated || probed) void setNearbyAdmin(false)
+  }, [isAdmin, authenticated, probed])
 
   // 관리자 요청 어디서든 403 이면(권한이 회수됨) 탭을 닫는다.
   useEffect(
