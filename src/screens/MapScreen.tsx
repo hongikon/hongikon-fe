@@ -54,7 +54,9 @@ import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import { formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { findRoutes, findRoutesFromPoint, straightLineFallback, straightLineFromPoint } from "../utils/routing";
+import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlternative, type WalkApproach } from "../apis/routes";
+import { isCancelledError } from "../apis/client";
+import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
 import { myLocationScript } from "../utils/myLocationScript";
 import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
 import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
@@ -63,7 +65,6 @@ import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleSc
 const ROUTE_STYLE_DELAY_MS = 300;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
-import type { RouteAlternative } from "../utils/routing";
 import RouteOptions from "../components/map/RouteOptions";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
@@ -425,24 +426,47 @@ export default function MapScreen() {
   const mapHTML = useMemo(() => buildMapHTML(getMapDataSnapshot()?.buildings ?? []), []);
 
   /**
-   * 실측 경로망(routing.ts)에서 대안 경로를 구하고, 아직 그 구간을 못
-   * 덮으면(양쪽 다 비어 있으면) 기존 직선거리 추정 하나로 대신한다.
+   * 길찾기는 서버가 계산한다(11-09, GET /map/routes). 받기 전에는 비어 있고, 받지 못하면(오프라인·오류) 직선 어림 하나로 대신한다.
+   * 내 위치 출발은 위치를 보내지 않는다 — 도착까지의 길 묶음(GET /map/routes/approach)을 받아 휴대폰이 내 위치에서 가까운 길 점을 골라 잇는다.
    */
+  const routesKey =
+    !fromMyLocation && fromBuilding && toBuilding ? `${fromBuilding.id}|${fromFloor}|${toBuilding.id}|${toFloor}` : null;
+  const approachKey = fromMyLocation && toBuilding ? `${toBuilding.id}|${toFloor}` : null;
+  const [serverRoutes, setServerRoutes] = useState<{ key: string; routes: RouteAlternative[] | null } | null>(null);
+  const [approach, setApproach] = useState<{ key: string; data: WalkApproach | null } | null>(null);
+  useEffect(() => {
+    if (!routesKey || !fromBuilding || !toBuilding) return;
+    const controller = new AbortController();
+    fetchWalkRoutes({ from: fromBuilding, fromFloor, to: toBuilding, toFloor, signal: controller.signal })
+      .then((routes) => setServerRoutes({ key: routesKey, routes: routes.length > 0 ? routes : null }))
+      .catch((error) => {
+        if (!isCancelledError(error) && !controller.signal.aborted) setServerRoutes({ key: routesKey, routes: null });
+      });
+    return () => controller.abort();
+    // routesKey 가 건물 id·층을 모두 담는다(같은 건물이 새로 받아져도 다시 묻지 않게).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routesKey]);
+  useEffect(() => {
+    if (!approachKey || !toBuilding) return;
+    const controller = new AbortController();
+    fetchWalkApproach({ to: toBuilding, toFloor, signal: controller.signal })
+      .then((data) => setApproach({ key: approachKey, data }))
+      .catch((error) => {
+        if (!isCancelledError(error) && !controller.signal.aborted) setApproach({ key: approachKey, data: null });
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approachKey]);
+
   const routeAlternatives = useMemo<RouteAlternative[]>(() => {
     if (fromMyLocation && toBuilding) {
-      if (!routeOrigin) return [];
-      const fromMe = findRoutesFromPoint(buildings, routeOrigin, { building: toBuilding, floor: toFloor });
+      if (!routeOrigin || approach?.key !== approachKey) return [];
+      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin) : [];
       return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
     }
-    if (!fromBuilding || !toBuilding) return [];
-    const found = findRoutes(
-      buildings,
-      { building: fromBuilding, floor: fromFloor },
-      { building: toBuilding, floor: toFloor },
-    );
-    if (found.length > 0) return found;
-    return [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [buildings, fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin]);
+    if (!fromBuilding || !toBuilding || serverRoutes?.key !== routesKey) return [];
+    return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
+  }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey]);
 
   const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 

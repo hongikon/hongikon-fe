@@ -123,7 +123,7 @@ for (const e of file.graph.edges) {
 아래는 현재까지 확인한 상태이고, 작업 전에 최신 코드를 다시 확인한다. 백엔드 저장소(hongikon-be)의 경로는 2026-11-07 에 `main`, `dev` 브랜치에서 확인했다.
 
 1. **v3 파일을 그대로 넣을 수 있는 가져오기는 아직 없다.** 기존 가져오기는 두 가지이고, 읽는 형식이 서로 다르다.
-   - 프론트 저장소(hongikon-fe)의 `scripts/path/import-survey.mjs`: v2 조사 파일(`format: "hongikon.pathSurvey"`, `modules` 있음)을 읽어 앱 번들 `src/constants/surveyPaths.ts` 를 만든다. 서버로 보내지는 않는다.
+   - (11-09) v2 가져오기(`scripts/path/import-survey.mjs` → `surveyPaths.ts`)는 지웠다. v3 는 `scripts/path/import-survey-v3.mjs` 가 서버 길찾기 파일(hongikon-be `src/main/resources/walkroute/survey-graph-v3.json`)을 만든다.
    - 백엔드 저장소(hongikon-be)의 `POST /admin/map/path-network/import`: `format: 1` 의 점, 간선, 출입구 참조 JSON 을 읽는다. 조사 파일 형식이 아니다. 코드는 `src/main/java/com/hongmap/hongmapbackend/mapdata/` 의 `AdminMapPathController.java`, `PathNetworkImportService.java`, `dto/PathImportRequest.java` 이다.
 2. **서버 점 종류:** `WAYPOINT`, `ENTRANCE`. v3 의 `basic`, `stairs`, `elevator`, `entrance` 와 층 정보를 어떻게 매핑할지 정해야 한다.
 3. **출입구 좌표:** 서버는 출입구 좌표를 `buildings.entrances` 에서 읽는다. v3 파일의 출입구와 서버 `entrances` 를 라벨로 대조한다. 서버에 없는 라벨(`labelsNotOnServer`)은 백엔드 저장소(hongikon-be)의 건물 정보 동기화 SQL(`db/sync_map_data_*.sql`)로 먼저 추가한다. 건물 정보 변경은 관리자 API가 아니라 SQL 반영이다.
@@ -134,7 +134,7 @@ for (const e of file.graph.edges) {
 
 ## 7. 기존 앱 길찾기와의 관계
 
-- 현재 앱의 길찾기(프론트 저장소 hongikon-fe 의 `src/utils/routing.ts`)는 이전 조사 자료(`src/constants/surveyPaths.ts`, `src/constants/pathNodes.ts`)를 기반으로 동작한다. **v3 파일과는 아직 연결되어 있지 않다.**
+- (11-09) 길찾기는 서버가 v3 그래프로 계산한다(hongikon-be `walkroute`: `GET /map/routes`, 내 위치 출발은 `GET /map/routes/approach`). 앱에는 경로망·계산 코드가 없다. 아래는 그 전에 적은 선택지다.
 - v3 그래프를 앱에 쓰려면 다음 중 하나를 정한다.
   - A. 앱에 v3 그래프를 내려받아 새 길찾기에 쓴다.
   - B. v3 를 기존 `pathNodes` 형식으로 변환하는 스크립트를 만든다.

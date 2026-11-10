@@ -79,8 +79,8 @@ export function hasFloorData(building: Building): boolean {
 }
 
 /**
- * 고른 층에서 드나들 출입구. `src/utils/routing.ts` 도 이걸로 앵커 노드를
- * 정해, 경로가 실제로 잇는 출입구와 배너에 뜨는 좌표가 항상 같게 한다.
+ * 고른 층에서 드나들 출입구. 길찾기를 못 받을 때의 직선 어림(routeEstimate.ts)이 쓴다 — 서버 길찾기
+ * (hongikon-be walkroute/Floors.java)도 같은 규칙이다.
  *
  * 그 층에 걸친 출입구가 있으면 그것을, 없으면 층 차이가 가장 적은 출입구를
  * 고른다(건물 안에서 계단으로 오르내려 그 출입구로 나간다고 본다). 차이가
