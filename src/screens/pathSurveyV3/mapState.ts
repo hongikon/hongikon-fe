@@ -1,5 +1,6 @@
 import { STAIRS_COLOR } from '../../utils/pathSurveyStore'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import type { ChangeMarks } from '../../utils/pathSurveyV3/changes'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import type { NodeType, SurveyEdgeV3, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 
@@ -32,6 +33,14 @@ export const BUILDING_COLORS = [
   '#0D9488',
   '#92400E',
 ] as const
+
+/**
+ * "Show changes" marks. Kept apart from the place colors and type shapes: a halo around the point or under the line.
+ * Added: yellow fill with a dashed ring, a solid yellow band under an edge. Changed: dotted fuchsia ring, a dotted band.
+ */
+export const CHANGE_ADDED_COLOR = '#FACC15'
+export const CHANGE_ADDED_RING = '#A16207'
+export const CHANGE_CHANGED_COLOR = '#C026D3'
 
 export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle'
 
@@ -75,7 +84,11 @@ export interface RenderNode {
   emphasized: boolean
   /** The next chained point joins this one. */
   anchor: boolean
+  /** "Show changes" mark since the last save: added or changed. Empty when off or unchanged. */
+  change: ChangeMark
 }
+
+export type ChangeMark = '' | 'added' | 'changed'
 
 export interface RenderEdge {
   id: string
@@ -91,6 +104,7 @@ export interface RenderEdge {
   clickable: boolean
   /** A dragged node may split this edge. */
   snap: boolean
+  change: ChangeMark
 }
 
 export function buildingColor(index: BuildingIndex, code: string): string {
@@ -189,6 +203,8 @@ export interface RenderOptions {
   anchor?: string | null
   /** "Only the filter can be edited". On by default: points outside the filter are dim and locked. Off: dim but editable. */
   onlyFilter?: boolean
+  /** "Show changes": marks by id. Display only, it never changes what may be pressed or what is dim. */
+  changes?: ChangeMarks | null
 }
 
 export function buildRenderState(store: StoreV3, options: RenderOptions): { nodes: RenderNode[]; edges: RenderEdge[] } {
@@ -219,6 +235,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
         // Locked edges cannot be pressed, so overlapping floors are not hit by accident.
         clickable: editable,
         snap: editable,
+        change: options.changes?.edges.get(edge.id) ?? '',
       },
     ]
   })
@@ -267,6 +284,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       draggable: editable && mode === 'move',
       emphasized,
       anchor: isAnchor,
+      change: options.changes?.nodes.get(node.id) ?? '',
     }
   })
 

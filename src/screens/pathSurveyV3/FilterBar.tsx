@@ -5,7 +5,17 @@ import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 import { BuildingSearch, FloorPicker } from './LevelPicker'
-import { buildingColor, NO_FILTER, selectionsInListOrder, type MapFilter } from './mapState'
+import type { ChangeCounts } from '../../utils/pathSurveyV3/changes'
+import { buildingColor, CHANGE_ADDED_COLOR, CHANGE_ADDED_RING, CHANGE_CHANGED_COLOR, NO_FILTER, selectionsInListOrder, type MapFilter } from './mapState'
+
+function CheckRow({ testID, label, on, onToggle }: { testID: string; label: string; on: boolean; onToggle: () => void }) {
+  return (
+    <Pressable testID={testID} onPress={onToggle} style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={label}>
+      <View style={[styles.box, on && styles.boxOn]}>{on ? <View style={styles.boxMark} /> : null}</View>
+      <Text style={ui.rowText}>{label}</Text>
+    </Pressable>
+  )
+}
 
 /**
  * Search all buildings, selecting all floors or one floor per building. Matching indoor points and
@@ -19,6 +29,9 @@ export default function FilterBar({
   onChange,
   onlyFilter,
   onToggleOnlyFilter,
+  showChanges,
+  onToggleShowChanges,
+  changeCounts,
 }: {
   nodes: readonly SurveyNodeV3[]
   index: BuildingIndex
@@ -26,6 +39,10 @@ export default function FilterBar({
   onChange: (next: MapFilter) => void
   onlyFilter: boolean
   onToggleOnlyFilter: () => void
+  showChanges: boolean
+  onToggleShowChanges: () => void
+  /** Counts since the last save while "show changes" is on. null: no save to compare with. undefined: off. */
+  changeCounts: ChangeCounts | null | undefined
 }) {
   const levelsByBuilding = useMemo(() => {
     const map = new Map<string, Set<number>>()
@@ -62,22 +79,29 @@ export default function FilterBar({
       <View style={styles.row}>
         <Chip label="전체" on={selected.length === 0} onPress={() => onChange(NO_FILTER)} />
       </View>
-      <Pressable
-        testID="only-filter"
-        onPress={onToggleOnlyFilter}
-        style={styles.check}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: onlyFilter }}
-        accessibilityLabel="선택한 필터만 수정"
-      >
-        <View style={[styles.box, onlyFilter && styles.boxOn]}>{onlyFilter ? <View style={styles.boxMark} /> : null}</View>
-        <Text style={ui.rowText}>{'선택한 필터만 수정'}</Text>
-      </Pressable>
+      <CheckRow testID="only-filter" label="선택한 필터만 수정" on={onlyFilter} onToggle={onToggleOnlyFilter} />
       <Text style={ui.hint}>
         {onlyFilter
           ? '켜짐: 필터 밖 점과 간선은 흐리게 보이고 누르거나 고칠 수 없어요. 외부 점은 늘 고칠 수 있어요.'
           : '꺼짐: 필터 밖 점과 간선도 흐리게 보이지만 누르고 고칠 수 있어요.'}
       </Text>
+      <View style={styles.row}>
+        <CheckRow testID="show-changes" label="바뀐 것 표시" on={showChanges} onToggle={onToggleShowChanges} />
+        {changeCounts ? (
+          <Text style={ui.rowText}>{`추가 ${changeCounts.added}, 수정 ${changeCounts.changed}, 삭제 ${changeCounts.removed}`}</Text>
+        ) : null}
+      </View>
+      {changeCounts === null ? (
+        <Text style={ui.hint}>{'비교할 저장이 아직 없어요. 저장 버튼을 누르면 그 뒤로 바뀐 것을 보여 줘요.'}</Text>
+      ) : changeCounts ? (
+        <View style={styles.row}>
+          <View style={[styles.legendDot, styles.legendAdded]} />
+          <Text style={ui.hint}>{'추가(노란 바탕, 파선 테두리)'}</Text>
+          <View style={[styles.legendDot, styles.legendChanged]} />
+          <Text style={ui.hint}>{'수정(자홍색 점선 테두리)'}</Text>
+          <Text style={ui.hint}>{'마지막 저장과 비교, 점과 간선 합계. 삭제는 개수만 보여요.'}</Text>
+        </View>
+      ) : null}
       <BuildingSearch index={index} selected={selected} onPick={toggleBuilding} />
       {unknownBuildings.length ? (
         <View style={styles.row}>
@@ -118,4 +142,7 @@ const styles = StyleSheet.create({
   box: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#94A3B8', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
   boxOn: { borderColor: '#2563EB', backgroundColor: '#2563EB' },
   boxMark: { width: 8, height: 8, borderRadius: 2, backgroundColor: '#FFFFFF' },
+  legendDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  legendAdded: { borderStyle: 'dashed', borderColor: CHANGE_ADDED_RING, backgroundColor: CHANGE_ADDED_COLOR },
+  legendChanged: { borderStyle: 'dotted', borderColor: CHANGE_CHANGED_COLOR },
 })

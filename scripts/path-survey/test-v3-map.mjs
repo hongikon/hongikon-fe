@@ -197,6 +197,38 @@ test('chain base point outside the filter stays readable and pressable with the 
   assert.equal(plain.clickable, false)
 })
 
+test('show changes: marks added and changed points and edges, and never changes pressing, dragging, snap or dim', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 1)]), indoor('n3', [lvl(R, 2)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const changes = { nodes: new Map([['n2', 'added'], ['n3', 'changed']]), edges: new Map([['e2', 'changed']]) }
+  for (const extra of [{}, { filter: { selections: [{ building: R, floor: 1 }] } }, { filter: { selections: [{ building: R, floor: 1 }] }, onlyFilter: false }]) {
+    const plain = draw(s, { mode: 'move', ...extra })
+    const marked = draw(s, { mode: 'move', ...extra, changes })
+    assert.deepEqual(marked.nodes.map((n) => n.change), ['', 'added', 'changed'])
+    assert.deepEqual(marked.edges.map((e) => e.change), ['', 'changed'])
+    const strip = (list) => list.map(({ change, ...rest }) => rest)
+    assert.deepEqual(strip(marked.nodes), strip(plain.nodes), 'clickable, draggable, dim and the rest stay')
+    assert.deepEqual(strip(marked.edges), strip(plain.edges))
+  }
+  assert.ok(draw(s).nodes.every((n) => n.change === ''), 'off: no marks')
+  assert.ok(draw(s, { changes: null }).edges.every((e) => e.change === ''))
+})
+
+test('map script: show changes draws a halo around marked points and a band under marked edges', () => {
+  const { window, markers, lines } = mockMap()
+  const s = store([node('n1'), node('n2'), node('n3')], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const changes = { nodes: new Map([['n1', 'added'], ['n2', 'changed']]), edges: new Map([['e1', 'added'], ['e2', 'changed']]) }
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(s, { changes }) })
+  const html = (id) => markers.find((m) => m.options.title === id).options.icon.content
+  assert.match(html('n1'), /data-change="added"/)
+  assert.match(html('n2'), /data-change="changed"/)
+  assert.doesNotMatch(html('n3'), /data-change/)
+  const bands = lines.filter((l) => l.options.zIndex === 290)
+  assert.equal(bands.length, 2)
+  assert.deepEqual(bands.map((l) => l.options.strokeColor), [M.CHANGE_ADDED_COLOR, M.CHANGE_CHANGED_COLOR])
+  assert.deepEqual(bands.map((l) => l.options.strokeStyle), ['solid', 'shortdot'])
+  assert.ok(bands.every((l) => l.options.clickable === false))
+})
+
 test('selected buildings are listed in server list order, unknown codes last, without changing the filter', () => {
   const filter = { selections: [{ building: 'old_code', floor: null }, { building: K, floor: 1 }, { building: R, floor: null }] }
   const listed = M.selectionsInListOrder(filter, index).map((s) => s.building)

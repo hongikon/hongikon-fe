@@ -33,7 +33,8 @@ import {
   type ServerOffer,
   type ServerSaveState,
 } from '../utils/pathSurveyV3/serverSave'
-import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
+import { changeMarks, diffStores } from '../utils/pathSurveyV3/changes'
+import { createSnapshot, loadSnapshots, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
   applyBulkToNodes,
@@ -231,6 +232,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const [filter, setFilter] = useState<MapFilter>(NO_FILTER)
   // "Only the filter can be edited". Screen state only, never stored: every visit starts locked as before.
   const [onlyFilter, setOnlyFilter] = useState(true)
+  // "Show changes" since the last save button point. Screen state only, off on every visit.
+  const [showChanges, setShowChanges] = useState(false)
   const [labelMode, setLabelMode] = useState<LabelMode>('full')
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(LEGACY_OFF)
   const [report, setReport] = useState<ConvertReport | null>(() => loadConvertReport())
@@ -266,6 +269,18 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return `마지막 백업 ${clockText(backupRecord.at)}(${BACKUP_VIA[backupRecord.via]}), 이후 바뀐 점 ${changes.nodes}, 간선 ${changes.edges}`
   }, [deferredStore, backupRecord])
   const sampleIds = useMemo(() => devSampleNodeIds(store, index), [store, index])
+
+  // Base of "show changes": the newest save button point (rolling slot). Read only while the box is on, again after each save.
+  const changeBase = useMemo((): Snapshot | null => {
+    if (!showChanges) return null
+    return loadSnapshots()
+      .filter((s) => s.kind === 'rolling')
+      .reduce<Snapshot | null>((best, s) => (!best || s.createdAt > best.createdAt ? s : best), null)
+  }, [showChanges, snapshotTick])
+  const changeDiff = useMemo(() => (changeBase ? diffStores(changeBase, deferredStore) : null), [changeBase, deferredStore])
+  const marks = useMemo(() => (changeDiff ? changeMarks(changeDiff) : null), [changeDiff])
+  // undefined: the box is off. null: no save point to compare with.
+  const changeCounts = !showChanges ? undefined : changeDiff ? changeDiff.total : null
   const openManual = useMemo(() => {
     const byId = new Map(store.nodes.map((n) => [n.id, n]))
     return (report?.manual ?? []).filter((item) => isManualItemOpen(item, byId.get(item.nodeId), report?.dismissed)).length
@@ -892,12 +907,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
       ],
     }
-    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null, onlyFilter })
+    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null, onlyFilter, changes: marks })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
     lastRenderRef.current = state
     webViewRef.current?.injectJavaScript(`window.__surveyV3Render && window.__surveyV3Render(${state}); true;`)
-  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor, onlyFilter])
+  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor, onlyFilter, marks])
 
   const selectedNode = findNode(store, selected)
   const edge = findEdge(store, selectedEdge)
@@ -971,6 +986,9 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         onChange={(next) => applyFilter(next, onlyFilter)}
         onlyFilter={onlyFilter}
         onToggleOnlyFilter={() => applyFilter(filter, !onlyFilter)}
+        showChanges={showChanges}
+        onToggleShowChanges={() => setShowChanges((v) => !v)}
+        changeCounts={changeCounts}
       />
       <View style={styles.labelRow}>
         <Text style={ui.sectionHelp}>{'라벨 보기'}</Text>

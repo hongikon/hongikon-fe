@@ -4,6 +4,8 @@
  * description changes, so selecting one point on a phone does not recreate hundreds of markers.
  * A map click right after pressing an object is ignored, so a press never adds a point as well.
  */
+import { CHANGE_ADDED_COLOR, CHANGE_ADDED_RING, CHANGE_CHANGED_COLOR } from './mapState'
+
 export const SETUP_JS = `(function(){
   if (typeof map === 'undefined' || !window.naver) return;
   window.__surveyMode = true;
@@ -83,9 +85,16 @@ export const SETUP_JS = `(function(){
   function anchorHtml(n){
     return n.anchor ? '<span data-anchor="1" style="position:absolute;left:0;top:0;box-sizing:border-box;width:34px;height:34px;border:4px solid #2563EB;border-radius:50%;pointer-events:none"></span>' : '';
   }
+  // Show changes: a halo around the point, bigger than the base point ring. Added: yellow with a dashed ring. Changed: dotted ring.
+  function changeHtml(n){
+    var box = 'position:absolute;left:-4px;top:-4px;box-sizing:border-box;width:42px;height:42px;border-radius:50%;pointer-events:none;';
+    if (n.change === 'added') return '<span data-change="added" style="' + box + 'border:3px dashed ${CHANGE_ADDED_RING};background:rgba(250,204,21,.5)"></span>';
+    if (n.change === 'changed') return '<span data-change="changed" style="' + box + 'border:4px dotted ${CHANGE_CHANGED_COLOR}"></span>';
+    return '';
+  }
   function nodeHtml(n){
     return '<div style="position:relative;transform:translate(-17px,-17px);width:34px;height:34px;display:flex;align-items:center;justify-content:center;opacity:' + (n.dim ? 0.25 : 1) + (n.clickable ? '' : ';pointer-events:none') + '">'
-      + anchorHtml(n) + shapeSvg(n) + labelHtml(n) + '</div>';
+      + changeHtml(n) + anchorHtml(n) + shapeSvg(n) + labelHtml(n) + '</div>';
   }
 
   var current = { edges: [] };
@@ -141,7 +150,11 @@ export const SETUP_JS = `(function(){
   }
   function makeEdge(e){
     var path = [ll(e.p[0], e.p[1]), ll(e.p[2], e.p[3])];
-    var list = [new naver.maps.Polyline({ map: map, zIndex: 300, clickable: false, strokeColor: e.color, strokeWeight: e.weight, strokeOpacity: e.opacity, strokeStyle: e.dashed ? 'shortdash' : 'solid', strokeLineCap: e.dashed ? 'butt' : 'round', path: path })];
+    var list = [];
+    // Show changes: a wide band under the line. Added: solid yellow. Changed: dotted fuchsia.
+    if (e.change) list.push(new naver.maps.Polyline({ map: map, zIndex: 290, clickable: false, strokeColor: e.change === 'added' ? '${CHANGE_ADDED_COLOR}' : '${CHANGE_CHANGED_COLOR}',
+      strokeWeight: e.weight + 10, strokeOpacity: e.opacity < 0.5 ? 0.25 : 0.6, strokeStyle: e.change === 'added' ? 'solid' : 'shortdot', strokeLineCap: 'round', path: path }));
+    list.push(new naver.maps.Polyline({ map: map, zIndex: 300, clickable: false, strokeColor: e.color, strokeWeight: e.weight, strokeOpacity: e.opacity, strokeStyle: e.dashed ? 'shortdash' : 'solid', strokeLineCap: e.dashed ? 'butt' : 'round', path: path }));
     // Stairs look the same everywhere: dark line with a white dash on top.
     if (e.stairs) list.push(new naver.maps.Polyline({ map: map, zIndex: 301, clickable: false, strokeColor: '#fff', strokeWeight: 2, strokeOpacity: e.opacity, strokeStyle: 'shortdash', path: path }));
     if (e.clickable) {
