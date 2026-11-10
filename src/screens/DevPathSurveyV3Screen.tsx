@@ -88,7 +88,7 @@ import ContextBar from './pathSurveyV3/ContextBar'
 import { ChainToggle, Chip } from './pathSurveyV3/controls'
 import ConvertPanel from './pathSurveyV3/ConvertPanel'
 import { addDevSample, devSampleNodeIds, removeDevSample } from './pathSurveyV3/devSample'
-import { anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT } from './pathSurveyV3/editHistory'
+import { anchorAfterRedo, anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT, type HistoryEntry } from './pathSurveyV3/editHistory'
 import EdgeSheet from './pathSurveyV3/EdgeSheet'
 import FilterBar from './pathSurveyV3/FilterBar'
 import {
@@ -224,6 +224,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // A select all button can mix buildings. Selections made point by point or per building never ask.
   const [multiFromAll, setMultiFromAll] = useState(false)
   const [undoCount, setUndoCount] = useState(0)
+  const [redoCount, setRedoCount] = useState(0)
   const [snapshotTick, setSnapshotTick] = useState(0)
   const [backupRecord, setBackupRecord] = useState<BackupRecord | null>(() => loadBackupRecord())
   const [settings, setSettings] = useState<SurveySettings>(() => loadSurveySettings())
@@ -283,10 +284,16 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return () => w.removeEventListener('storage', onStorage)
   }, [])
 
-  const commit = useCallback((next: StoreV3, record = true) => {
+  /**
+   * record: a new undo step (and the redo steps end). fromHistory: the change is an undo or a redo itself, the
+   * only case that keeps the redo steps. Any other unrecorded change (typing on in a memo, arrow presses) ends them.
+   */
+  const commit = useCallback((next: StoreV3, record = true, fromHistory = false) => {
     if (next === storeRef.current) return
     if (record) historyRef.current.record({ store: storeRef.current, anchor: anchorRef.current })
+    else if (!fromHistory) historyRef.current.clearRedo()
     setUndoCount(historyRef.current.size())
+    setRedoCount(historyRef.current.redoSize())
     storeRef.current = next
     setStore(next)
     if (blockedRef.current) return
@@ -312,17 +319,31 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setPending(null)
   }
 
-  const undo = () => {
-    const entry = historyRef.current.pop()
-    if (!entry) return setNotice('되돌릴 게 없어요')
+  /** The store an undo or redo brings back: memo boxes redrawn, selections that no longer exist dropped. */
+  const applyHistory = (entry: HistoryEntry, anchorNext: string | null, text: string) => {
     const prev = entry.store
-    setAnchor(anchorAfterUndo(anchorRef.current, entry))
-    commit(prev, false)
+    setAnchor(anchorNext)
+    commit(prev, false, true)
+    // commit skips the same store object, the counts still changed.
+    setUndoCount(historyRef.current.size())
+    setRedoCount(historyRef.current.redoSize())
     setUndoTick((n) => n + 1)
     setPending(null)
     if (selected && !findNode(prev, selected)) setSelected(null)
     if (selectedEdge && !findEdge(prev, selectedEdge)) setSelectedEdge(null)
-    setNotice('되돌렸어요')
+    setNotice(text)
+  }
+
+  const undo = () => {
+    const entry = historyRef.current.undo({ store: storeRef.current, anchor: anchorRef.current })
+    if (!entry) return setNotice('되돌릴 게 없어요')
+    applyHistory(entry, anchorAfterUndo(anchorRef.current, entry), '되돌렸어요')
+  }
+
+  const redo = () => {
+    const entry = historyRef.current.redo({ store: storeRef.current, anchor: anchorRef.current })
+    if (!entry) return setNotice('다시 적용할 게 없어요')
+    applyHistory(entry, anchorAfterRedo(anchorRef.current, entry), '다시 적용했어요')
   }
 
   const focusOn = useCallback((lat: number, lng: number) => {
@@ -778,12 +799,14 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       selected,
       multi,
       canUndo: historyRef.current.size() > 0,
+      canRedo: historyRef.current.redoSize() > 0,
       canEdit: canEditNode,
     })
     if (!action || (action.kind === 'nudge' && !worldPxRef.current)) return
     event.preventDefault()
     event.stopPropagation()
     if (action.kind === 'undo') undo()
+    else if (action.kind === 'redo') redo()
     else if (action.kind === 'delete') deleteNode(action.id)
     else nudgeNode(action)
   }
@@ -902,6 +925,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         onSave={saveNow}
         undoCount={undoCount}
         onUndo={undo}
+        redoCount={redoCount}
+        onRedo={redo}
         onShowCheck={() => setTab('check')}
         server={serverLine}
         onServerRetry={retryServer}
@@ -953,7 +978,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           <Chip key={m.key} label={m.label} on={labelMode === m.key} onPress={() => setLabelMode(m.key)} />
         ))}
       </View>
-      <Text style={ui.sectionHelp}>{`되돌리기는 ${UNDO_LIMIT}단계까지이고, 새로고침하면 기록이 사라져요.`}</Text>
+      <Text style={ui.sectionHelp}>{`되돌리기와 다시(되돌리기 취소)는 ${UNDO_LIMIT}단계까지이고, 새로고침하면 기록이 사라져요. 되돌린 뒤 새로 고치면 다시 기록은 지워져요.`}</Text>
       <Legend index={index} />
       {__DEV__ ? (
         <Btn

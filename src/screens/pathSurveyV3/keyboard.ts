@@ -32,11 +32,13 @@ export interface ShortcutState {
   selected: string | null
   multi: readonly string[]
   canUndo: boolean
+  /** Something an undo took back can be applied again. Missing means no. */
+  canRedo?: boolean
   /** Whether the point the keys would act on may be edited (the "only the filter" box). Missing means yes. */
   canEdit?: (id: string) => boolean
 }
 
-export type ShortcutAction = { kind: 'undo' } | { kind: 'delete'; id: string } | { kind: 'nudge'; id: string; dx: number; dy: number }
+export type ShortcutAction = { kind: 'undo' } | { kind: 'redo' } | { kind: 'delete'; id: string } | { kind: 'nudge'; id: string; dx: number; dy: number }
 
 /** The one point the keyboard acts on. Several points, or a selection that disagrees with the list, means none. */
 export function keyboardTarget(selected: string | null, multi: readonly string[]): string | null {
@@ -56,8 +58,14 @@ export function nudgeDistance(event: Pick<KeyLike, 'shiftKey' | 'altKey'>): numb
 export function resolveShortcut(event: KeyLike, state: ShortcutState): ShortcutAction | null {
   if (state.typing || state.otherScreen || event.isComposing) return null
   if (event.ctrlKey || event.metaKey) {
+    if (event.altKey) return null
+    // The physical key, so a Korean layout (key is a Hangul letter or Process) still works, or the letter itself.
     const isZ = event.code === 'KeyZ' || event.key === 'z' || event.key === 'Z'
-    return isZ && !event.shiftKey && !event.altKey && state.canUndo ? { kind: 'undo' } : null
+    const isY = event.code === 'KeyY' || event.key === 'y' || event.key === 'Y'
+    // Redo: Ctrl/Cmd+Shift+Z, and Ctrl+Y on Windows. Cmd+Y belongs to the browser on a Mac (history).
+    const redo = (isZ && event.shiftKey) || (isY && event.ctrlKey && !event.metaKey && !event.shiftKey)
+    if (redo) return state.canRedo ? { kind: 'redo' } : null
+    return isZ && !event.shiftKey && state.canUndo ? { kind: 'undo' } : null
   }
   const id = keyboardTarget(state.selected, state.multi)
   if (!id || (state.canEdit && !state.canEdit(id))) return null

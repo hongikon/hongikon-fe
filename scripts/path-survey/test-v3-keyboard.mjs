@@ -28,8 +28,27 @@ test('shortcuts: Ctrl+Z and Cmd+Z undo, also with a Korean layout, and only when
   assert.deepEqual(press('z', {}, { metaKey: true }), { kind: 'undo' })
   assert.deepEqual(press('Process', {}, { ctrlKey: true, code: 'KeyZ' }), { kind: 'undo' })
   assert.equal(press('z', { canUndo: false }, { ctrlKey: true }), null)
-  assert.equal(press('z', {}, { ctrlKey: true, shiftKey: true }), null, 'no redo')
+  assert.equal(press('z', {}, { ctrlKey: true, shiftKey: true }), null, 'Ctrl+Shift+Z is redo, and there is nothing to redo')
   assert.equal(press('z'), null, 'a plain z does nothing')
+})
+
+test('shortcuts: Ctrl+Shift+Z, Cmd+Shift+Z and Ctrl+Y redo, Cmd+Y belongs to the browser', () => {
+  const can = { canRedo: true }
+  assert.deepEqual(press('Z', can, { ctrlKey: true, shiftKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('Z', can, { metaKey: true, shiftKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('y', can, { ctrlKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('Process', can, { ctrlKey: true, shiftKey: true, code: 'KeyZ' }), { kind: 'redo' }, 'Korean layout')
+  assert.deepEqual(press('Process', can, { ctrlKey: true, code: 'KeyY' }), { kind: 'redo' }, 'Korean layout')
+  assert.equal(press('y', can, { metaKey: true }), null, 'Cmd+Y')
+  assert.equal(press('y', can, { ctrlKey: true, metaKey: true }), null)
+  assert.equal(press('y', can, { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('Z', can, { ctrlKey: true, shiftKey: true, altKey: true }), null)
+  assert.equal(press('Z', { canRedo: false }, { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('y', { canRedo: false }, { ctrlKey: true }), null)
+  assert.equal(press('y', can), null, 'a plain y does nothing')
+  assert.deepEqual(press('z', can, { ctrlKey: true }), { kind: 'undo' }, 'Ctrl+Z stays undo')
+  assert.equal(press('Z', { ...can, typing: true }, { ctrlKey: true, shiftKey: true }), null, 'typing: the browser handles it')
+  assert.equal(press('y', { ...can, otherScreen: true }, { ctrlKey: true }), null)
 })
 
 test('shortcuts: a point locked by the filter is not deleted or moved, undo still works', () => {
@@ -159,6 +178,87 @@ test('undo history: keeps the same limit of 50 steps as before, dropping the old
   let last
   for (let entry = history.pop(); entry; entry = history.pop()) last = entry
   assert.equal(last.store.tag, 10)
+})
+
+test('redo: an undone step comes back as the same store, and undo and redo go back and forth', () => {
+  const history = H.createEditHistory()
+  const s0 = { tag: 0 }
+  const s1 = { tag: 1 }
+  const s2 = { tag: 2 }
+  history.record({ store: s0, anchor: 'a0' })
+  history.record({ store: s1, anchor: 'a1' })
+  assert.equal(history.redoSize(), 0)
+  const back = history.undo({ store: s2, anchor: 'a2' })
+  assert.equal(back.store, s1)
+  assert.equal(history.size(), 1)
+  assert.equal(history.redoSize(), 1)
+  const back2 = history.undo({ store: s1, anchor: 'a1' })
+  assert.equal(back2.store, s0)
+  assert.equal(history.redoSize(), 2)
+  const again = history.redo({ store: s0, anchor: 'a0' })
+  assert.equal(again.store, s1)
+  assert.equal(again.anchor, 'a1')
+  assert.equal(history.size(), 1)
+  assert.equal(history.redoSize(), 1, 'other redo steps stay')
+  assert.equal(history.redo({ store: s1, anchor: 'a1' }).store, s2)
+  assert.equal(history.redo({ store: s2, anchor: 'a2' }), undefined)
+  assert.equal(history.size(), 2)
+  assert.equal(history.undo({ store: s2, anchor: 'a2' }).store, s1, 'undo after redo')
+  assert.equal(history.undo({ store: s1, anchor: null }).store, s0)
+  assert.equal(history.undo({ store: s0, anchor: null }), undefined)
+  assert.equal(history.redoSize(), 2, 'an undo with nothing left keeps nothing')
+})
+
+test('redo: a new step, an arrow press or another unrecorded edit ends the redo steps', () => {
+  const entry = (n) => ({ store: { tag: n }, anchor: null })
+  const ready = () => {
+    const history = H.createEditHistory()
+    history.record(entry(0))
+    history.undo(entry(1))
+    assert.equal(history.redoSize(), 1)
+    return history
+  }
+  const a = ready()
+  a.record(entry(2))
+  assert.equal(a.redoSize(), 0)
+  const b = ready()
+  b.recordNudge(entry(2), 'n1', 1000)
+  assert.equal(b.redoSize(), 0)
+  const c = ready()
+  c.clearRedo()
+  assert.equal(c.redoSize(), 0)
+  const d = ready()
+  d.pop()
+  assert.equal(d.redoSize(), 1, 'pop alone does not touch redo')
+})
+
+test('redo: both sides keep at most 50 steps', () => {
+  const history = H.createEditHistory()
+  for (let i = 0; i < 60; i += 1) history.record({ store: { tag: i }, anchor: null })
+  for (let i = 0; i < 60; i += 1) history.undo({ store: { tag: 100 + i }, anchor: null })
+  assert.equal(history.size(), 0)
+  assert.equal(history.redoSize(), 50)
+  for (let i = 0; i < 60; i += 1) history.redo({ store: { tag: 200 + i }, anchor: null })
+  assert.equal(history.size(), 50)
+  assert.equal(history.redoSize(), 0)
+})
+
+test('redo: a group of arrow presses comes back as one step, and the base point of that moment returns', () => {
+  const history = H.createEditHistory()
+  const first = { tag: 'first' }
+  history.recordNudge({ store: first, anchor: 'n1' }, 'n1', 1000)
+  history.recordNudge({ store: { tag: 'mid' }, anchor: 'n1' }, 'n1', 1100)
+  history.recordNudge({ store: { tag: 'mid2' }, anchor: 'n1' }, 'n1', 1200)
+  const moved = { tag: 'moved' }
+  assert.equal(history.undo({ store: moved, anchor: 'n1' }).store, first)
+  assert.equal(history.redo({ store: first, anchor: 'n1' }).store, moved)
+  assert.equal(history.size(), 1)
+
+  const s = Store.addNode(empty(), 37.55, 126.92, OUT, null, 0)
+  const t = H.placeChained(s.store, 37.551, 126.92, OUT, true, s.id, 0)
+  assert.equal(H.anchorAfterRedo(s.id, { store: t.store, anchor: t.id }), t.id, 'the placed point is the base again')
+  assert.equal(H.anchorAfterRedo(s.id, { store: t.store, anchor: 'n999' }), s.id)
+  assert.equal(H.anchorAfterRedo('n998', { store: t.store, anchor: 'n999' }), null)
 })
 
 test('arrow keys end to end: a group of moves goes back in one undo, the edge follows, no edge is split', () => {
@@ -348,6 +448,26 @@ test('split and click link: one undo step each, and the base point comes back', 
   assert.equal(undone.store.edges.length, 1)
   assert.equal(H.anchorAfterUndo(third.id, undone), third.id, 'the second point still exists and stays the base')
   assert.equal(history.size(), 0)
+})
+
+test('split and click link: undone in one step and applied again in one step', () => {
+  const history = H.createEditHistory()
+  const { s, a, b, e } = line(OUT, OUT)
+  history.record({ store: s, anchor: b })
+  const split = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  const undone = history.undo({ store: split.store, anchor: split.id })
+  assert.equal(undone.store, s)
+  const redone = history.redo({ store: s, anchor: H.anchorAfterUndo(split.id, undone) })
+  assert.equal(redone.store, split.store, 'the split comes back whole: one point and two edges')
+  assert.equal(redone.store.edges.length, 2)
+  assert.equal(H.anchorAfterRedo(b, redone), split.id)
+
+  history.record({ store: split.store, anchor: split.id })
+  const joined = Store.addEdge(split.store, a, b, 'normal', 0)
+  assert.equal(history.undo({ store: joined, anchor: b }).store, split.store)
+  assert.equal(history.redo({ store: split.store, anchor: split.id }).store, joined)
+  assert.equal(history.size(), 2)
+  assert.equal(history.redoSize(), 0)
 })
 
 const clickState = (extra = {}) => ({
