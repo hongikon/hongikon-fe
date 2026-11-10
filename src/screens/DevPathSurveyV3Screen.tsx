@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { fetchGraphBackup, listGraphVersions, routeGraphErrorMessage, uploadGraphVersion, type GraphVersion, type GraphVersionSummary } from '../apis/routeGraph'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { COLORS } from '../constants/colors'
@@ -10,6 +11,28 @@ import { buildBuildingIndex, loadBuildingCache, saveBuildingCache, type RawBuild
 import { checkGraph, type CheckIssue } from '../utils/pathSurveyV3/check'
 import { convertV2, isManualItemOpen, loadConvertReport, saveConvertReport, type ConvertReport, type V2Source } from '../utils/pathSurveyV3/convertV2'
 import { selectionBuildings, usedFloorsByBuilding } from '../utils/pathSurveyV3/levels'
+import {
+  afterAdopt,
+  afterUpload,
+  BROWSER_SAVE_FAILED_TEXT,
+  checkOnEntry,
+  hasUnsentChanges,
+  loadServerSaveState,
+  offerText,
+  overwriteCheck,
+  overwriteQuestion,
+  pushSurvey,
+  saveNoticeText,
+  saveServerSaveState,
+  serverNoticeText,
+  serverSaveStateOf,
+  serverStatusLine,
+  stateAfter,
+  UNSENT_WARNING_TEXT,
+  type PushOutcome,
+  type ServerOffer,
+  type ServerSaveState,
+} from '../utils/pathSurveyV3/serverSave'
 import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
@@ -40,6 +63,7 @@ import {
   loadSurveySettings,
   loadWorkContext,
   makeBackupRecord,
+  parseBackupText,
   saveBackupRecord,
   saveSaveMeta,
   saveStateOf,
@@ -140,6 +164,17 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const blockedRef = useRef(boot.corrupt)
   const [saveFailed, setSaveFailed] = useState(false)
   const [saveMeta, setSaveMeta] = useState<SaveMeta>(() => (boot.corrupt ? EMPTY_META : loadSaveMeta()))
+  // Server draft saved by the save button. The ref is read by the upload, which may finish after more edits.
+  const serverStateRef = useRef<ServerSaveState>(loadServerSaveState())
+  const [serverState, setServerState] = useState<ServerSaveState>(serverStateRef.current)
+  const serverBusyRef = useRef(false)
+  const [serverSaving, setServerSaving] = useState(false)
+  // Newest server version id this tab has seen in a list: the reference for asking before the next save.
+  const seenIdRef = useRef<number | null>(null)
+  // Offer from the entry check: save this survey as the base, or load a server version. Never acted on by itself.
+  const [offer, setOffer] = useState<ServerOffer<GraphVersionSummary> | null>(null)
+  // Bumped after each upload so an open Server tab lists the new draft.
+  const [serverTick, setServerTick] = useState(0)
   const [context, setContext] = useState<WorkContext>(() => loadWorkContext())
   const [mode, setMode] = useState<MapMode>('add')
   const [tab, setTab] = useState<Tab>('edit')
@@ -287,11 +322,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (issue.nodeId) focusNode(issue.nodeId)
   }
 
-  /** Replaces all data after asking, and keeps a save point of what was there. */
-  const replaceAll = (next: StoreV3, snapshotName: string, summary: string): boolean => {
+  /** Replaces all data after asking, and keeps a save point of what was there. A warning goes first in the question. */
+  const replaceAll = (next: StoreV3, snapshotName: string, summary: string, warning = ''): boolean => {
     const current = storeRef.current
     if (current.nodes.length || current.edges.length) {
-      if (!confirmAction(`지금 v3 데이터(지점 ${current.nodes.length}, 간선 ${current.edges.length})를 덮어쓸까요? 저장 지점을 먼저 만들어요.\n\n${summary}`)) return false
+      const question = `지금 v3 데이터(지점 ${current.nodes.length}, 간선 ${current.edges.length})를 덮어쓸까요? 저장 지점을 먼저 만들어요.\n\n${summary}`
+      if (!confirmAction(warning ? `${warning}\n\n${question}` : question)) return false
       const { error } = createSnapshot(current, snapshotName, 'protected')
       setSnapshotTick((n) => n + 1)
       if (error && !confirmAction('저장 지점을 만들지 못했어요(개수 또는 용량). 그래도 덮어쓸까요?')) return false
@@ -328,11 +364,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (first) webViewRef.current?.injectJavaScript(`window.__surveyV3Focus && window.__surveyV3Focus(${first[0]}, ${first[1]}); true;`)
   }, [])
 
-  const runRestore = (next: StoreV3) => {
-    if (!replaceAll(next, '불러오기 직전', `불러올 내용: 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)) return
+  const runRestore = (next: StoreV3, warning = ''): boolean => {
+    if (!replaceAll(next, '불러오기 직전', `불러올 내용: 지점 ${next.nodes.length}, 간선 ${next.edges.length}`, warning)) return false
     const first = next.nodes[0]
     if (first) focusOn(first.lat, first.lng)
     setNotice(`불러왔어요. 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)
+    return true
   }
 
   const runSnapshotRestore = (snapshot: Snapshot) => {
@@ -358,16 +395,137 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return true
   }
 
+  /**
+   * Sends the survey to the server as a draft (never to production). Stops without a key, when this tab's saving is
+   * stopped (other tab, damaged data), on the same content as the last draft, or while one upload is going.
+   * A failure only changes the server state: the browser save has already happened.
+   */
+  const recordServerState = useCallback((next: ServerSaveState) => {
+    if (next === serverStateRef.current) return
+    serverStateRef.current = next
+    setServerState(next)
+    saveServerSaveState(next)
+  }, [])
+
+  /**
+   * `check`: the save button path. Before uploading it lists the versions once and asks when another device saved
+   * after the newest version this tab knows (see overwriteCheck). The Server tab and the base save do not ask.
+   */
+  const pushToServer = useCallback(
+    async (content: StoreV3, options: { name?: string; check?: boolean } = {}): Promise<PushOutcome<GraphVersion>> => {
+      const outcome = await pushSurvey({
+        store: content,
+        devKey,
+        blocked: blockedRef.current,
+        state: serverStateRef.current,
+        busy: serverBusyRef.current,
+        name: options.name,
+        begin: () => {
+          serverBusyRef.current = true
+          setServerSaving(true)
+        },
+        end: () => {
+          serverBusyRef.current = false
+          setServerSaving(false)
+        },
+        beforeUpload:
+          options.check && devKey
+            ? async () => {
+                const result = await overwriteCheck({
+                  lastVersionId: serverStateRef.current.lastVersionId,
+                  seenId: seenIdRef.current,
+                  listVersions: () => listGraphVersions(devKey),
+                  confirm: (newer) => confirmAction(overwriteQuestion(newer)),
+                })
+                seenIdRef.current = result.seenId
+                return result.go
+              }
+            : undefined,
+        upload: uploadGraphVersion,
+        errorText: (e) => routeGraphErrorMessage(e, '서버에 저장하지 못했어요.'),
+      })
+      recordServerState(stateAfter(serverStateRef.current, outcome))
+      if (outcome.kind === 'uploaded') {
+        setServerTick((n) => n + 1)
+        setOffer((o) => (o?.kind === 'baseline' ? null : o))
+      }
+      return outcome
+    },
+    [devKey, recordServerState],
+  )
+
+  /** Tapping the failed status line: the same upload as the save button, without a new save point. */
+  const retryServer = () => {
+    void pushToServer(storeRef.current, { check: true }).then((outcome) => {
+      const text = serverNoticeText(outcome)
+      if (text) setNotice(text)
+    })
+  }
+
+  /** Loads a server version through the usual overwrite question, and records it as what this browser holds. */
+  const loadFromServer = async (id: number, version?: GraphVersionSummary) => {
+    if (!devKey) return
+    const next = parseBackupText(await fetchGraphBackup(devKey, id))
+    const warning = hasUnsentChanges(serverStateRef.current, storeRef.current) ? UNSENT_WARNING_TEXT : ''
+    if (!runRestore(next, warning)) return
+    const fingerprint = storeFingerprint(next)
+    recordServerState(version ? afterAdopt(serverStateRef.current, version, fingerprint) : afterUpload(serverStateRef.current, id, fingerprint, Date.now()))
+    seenIdRef.current = Math.max(seenIdRef.current ?? id, id)
+    setOffer(null)
+  }
+
+  const acceptOffer = () => {
+    if (!offer) return
+    if (offer.kind === 'baseline') {
+      void pushToServer(storeRef.current).then((outcome) => {
+        const text = serverNoticeText(outcome)
+        if (text) setNotice(text)
+      })
+      return
+    }
+    loadFromServer(offer.version.id, offer.version).catch((e) => setNotice(routeGraphErrorMessage(e, '서버에서 불러오지 못했어요.')))
+  }
+
+  // One list call when the screen opens with a key. Offers only; nothing is uploaded or loaded by itself.
+  useEffect(() => {
+    if (!devKey || blockedRef.current) return
+    let alive = true
+    checkOnEntry({
+      state: serverStateRef.current,
+      store: storeRef.current,
+      listVersions: () => listGraphVersions(devKey),
+      backupFingerprint: async (id) => storeFingerprint(parseBackupText(await fetchGraphBackup(devKey, id))),
+    }).then((result) => {
+      if (!alive) return
+      seenIdRef.current = result.seenId
+      recordServerState(result.state)
+      setOffer(result.offer)
+    })
+    return () => {
+      alive = false
+    }
+  }, [devKey, recordServerState])
+
+  /**
+   * Browser save point first, then the server draft. A full browser storage does not stop the server save;
+   * a stopped tab or damaged data does (pushSurvey answers blocked).
+   */
   const saveNow = () => {
     const current = storeRef.current
     // Save button points roll over on their own, so pressing it often never runs into the limit.
     const { error } = createSnapshot(current, `저장 ${clockText(Date.now())}`, 'rolling')
     setSnapshotTick((n) => n + 1)
-    if (error) return setNotice('저장 지점을 만들지 못했어요(저장 공간 부족). 저장 지점 탭에서 필요 없는 것을 지워 주세요. 지금 내용은 이 브라우저에 있어요.')
-    const meta = { lastSaveAt: Date.now(), lastSaveFingerprint: storeFingerprint(current) }
-    setSaveMeta(meta)
-    saveSaveMeta(meta)
-    setNotice('저장했어요.')
+    const browserSaved = !error
+    if (browserSaved) {
+      const meta = { lastSaveAt: Date.now(), lastSaveFingerprint: storeFingerprint(current) }
+      setSaveMeta(meta)
+      saveSaveMeta(meta)
+    }
+    if (!blockedRef.current) setNotice(browserSaved ? '저장했어요.' : BROWSER_SAVE_FAILED_TEXT)
+    void pushToServer(current, { check: true }).then((outcome) => {
+      const text = saveNoticeText(browserSaved, outcome)
+      if (text) setNotice(text)
+    })
   }
 
   const updateReport = (fn: (r: ConvertReport) => ConvertReport) => {
@@ -583,6 +741,13 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const nodeManual = selectedNode ? (report?.manual ?? []).filter((m) => m.nodeId === selectedNode.id) : []
   const boundaryOpen = nodeManual.some((m) => m.kind === 'boundary' && isManualItemOpen(m, selectedNode, report?.dismissed))
 
+  const serverLine = serverStatusLine(
+    serverSaveStateOf(serverState, fingerprint, { hasKey: !!devKey, blocked: blockedRef.current, saving: serverSaving }),
+    serverState,
+    check.errors.length,
+    clockText,
+  )
+
   const topBar = (
     <View style={styles.topBar}>
       <SaveBar
@@ -594,7 +759,18 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         undoCount={undoCount}
         onUndo={undo}
         onShowCheck={() => setTab('check')}
+        server={serverLine}
+        onServerRetry={retryServer}
       />
+      {offer ? (
+        <View style={styles.offer}>
+          <Text style={styles.offerText}>{offerText(offer)}</Text>
+          <View style={styles.offerRow}>
+            <Btn label={offer.kind === 'baseline' ? '서버에 저장' : '서버에서 불러오기'} kind="primary" onPress={acceptOffer} disabled={serverSaving} />
+            <Btn label="닫기" onPress={() => setOffer(null)} />
+          </View>
+        </View>
+      ) : null}
       <View style={styles.modeRow}>
         {MODES.map((m) => (
           <Btn
@@ -764,11 +940,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       {tab === 'server' ? (
         <ServerPanel
           devKey={devKey}
-          store={store}
           buildings={buildings}
-          onRestore={runRestore}
+          onLoadVersion={(id) => loadFromServer(id)}
           onRouteLines={showRouteLines}
           onNotice={setNotice}
+          onUpload={(name) => pushToServer(storeRef.current, { name })}
+          tick={serverTick}
         />
       ) : null}
       {tab === 'snapshots' ? (
@@ -814,4 +991,7 @@ const styles = StyleSheet.create({
   tab: { minWidth: '30%' },
   pending: { fontFamily: FONTS.semibold, fontSize: 12.5, color: '#EA580C' },
   notice: { fontFamily: FONTS.medium, fontSize: 12.5, color: '#1D4ED8' },
+  offer: { padding: 8, gap: 6, borderRadius: 8, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
+  offerText: { fontFamily: FONTS.medium, fontSize: 12.5, color: '#1E3A8A' },
+  offerRow: { flexDirection: 'row', gap: 6 },
 })

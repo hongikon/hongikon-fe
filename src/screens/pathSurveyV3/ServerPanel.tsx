@@ -2,23 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import {
   activateGraphVersion,
-  fetchGraphBackup,
   getGraphVersion,
   listGraphVersions,
   previewGraphRoutes,
-  uploadGraphVersion,
+  routeGraphErrorMessage,
   type GraphReport,
   type GraphVersion,
   type GraphVersionList,
 } from '../../apis/routeGraph'
 import type { RouteAlternative } from '../../apis/routes'
-import { getErrorMessage } from '../../apis/client'
 import type { Building } from '../../types'
 import { buildFloorOptions } from '../../utils/floors'
 import { shortBuildingName } from '../../utils/routeLabels'
-import { buildServerGraph } from '../../utils/pathSurveyV3/serverGraph'
-import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { parseBackupText, serializeBackup } from '../../utils/pathSurveyV3/transfer'
+import { applyConfirmText, serverTimeText as timeText, visibleVersions, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
 import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 
@@ -33,14 +29,6 @@ export interface RouteLine {
 }
 
 const STATUS_TEXT = { DRAFT: '초안', ACTIVE: '운영 중', ARCHIVED: '지난 버전' } as const
-
-function timeText(iso: string | null): string {
-  if (!iso) return ''
-  // The server sends UTC without a zone (LocalDateTime).
-  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 const minutes = (seconds: number) => `${(seconds / 60).toFixed(1)}분`
 
@@ -128,27 +116,35 @@ function EndPicker({
  * Server tab (11-10): upload the current survey as a draft (the server checks it and compares with production), test routes,
  * then apply it to production (the app route finder uses it at once, no deploy). Applying an older version rolls back, and the
  * backup sent with each upload can be loaded on another computer. Only the /dev gate key is checked.
+ * Uploading goes through the screen (`onUpload`), the same path as the save button, so both share the same-content skip and state.
  */
 export default function ServerPanel({
   devKey,
-  store,
   buildings,
-  onRestore,
+  onLoadVersion,
   onRouteLines,
   onNotice,
+  onUpload,
+  tick,
 }: {
   devKey: string | undefined
-  store: StoreV3
   buildings: readonly Building[]
-  onRestore: (next: StoreV3) => void
+  /** Loads that version's backup through the screen (overwrite question, save point first, recorded as held). */
+  onLoadVersion: (id: number) => Promise<void>
   onRouteLines: (lines: RouteLine[]) => void
   onNotice: (text: string) => void
+  /** Uploads the current survey as a draft through the screen, with this name (blank: the save time). */
+  onUpload: (name: string) => Promise<PushOutcome<GraphVersion>>
+  /** Changes after every upload, also from the save button, so the list is fetched again. */
+  tick: number
 }) {
   const [list, setList] = useState<GraphVersionList | null>(null)
   const [busy, setBusy] = useState('')
   const [name, setName] = useState('')
   const [shown, setShown] = useState<GraphVersion | null>(null)
   const [testId, setTestId] = useState<number | null>(null)
+  // Screen state only: the list opens folded every time.
+  const [expanded, setExpanded] = useState(false)
   const [from, setFrom] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
   const [to, setTo] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
   const [preview, setPreview] = useState<{ version: RouteAlternative[]; active: RouteAlternative[] } | null>(null)
@@ -158,13 +154,13 @@ export default function ServerPanel({
     try {
       setList(await listGraphVersions(devKey))
     } catch (e) {
-      onNotice(getErrorMessage(e, '서버 경로망 목록을 받지 못했어요.'))
+      onNotice(routeGraphErrorMessage(e, '서버 경로망 목록을 받지 못했어요.'))
     }
   }, [devKey, onNotice])
 
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [refresh, tick])
 
   // Leaving the tab clears the test lines.
   useEffect(() => () => onRouteLines([]), [onRouteLines])
@@ -182,7 +178,7 @@ export default function ServerPanel({
     try {
       await work()
     } catch (e) {
-      onNotice(getErrorMessage(e, `${label}에 실패했어요.`))
+      onNotice(routeGraphErrorMessage(e, `${label}에 실패했어요.`))
     } finally {
       setBusy('')
     }
@@ -190,36 +186,45 @@ export default function ServerPanel({
 
   const upload = () =>
     run('올리기', async () => {
-      const backup = JSON.parse(serializeBackup(store))
-      const made = buildServerGraph(backup)
-      if (made.graph.vertices.length === 0) {
-        onNotice('올릴 경로망이 없어요(간선으로 이어진 점이 없어요).')
-        return
-      }
-      const sourceName = name.trim() || `조사 도구 ${new Date().toLocaleString('ko-KR')}`
-      const version = await uploadGraphVersion(devKey, { sourceName, graph: made.graph, backup })
-      setShown(version)
-      setTestId(version.id)
-      setName('')
-      await refresh()
-      onNotice(
-        `초안 #${version.id} 으로 올렸어요(정점 ${version.vertexCount}, 간선 ${version.edgeCount}${made.skipped.length ? `, 펼치지 못한 것 ${made.skipped.length}` : ''}). ` +
-          '아래 결과와 길 시험을 보고 운영에 적용하세요.',
-      )
+      const outcome = await onUpload(name)
+      if (outcome.kind === 'uploaded') {
+        const { version, skipped } = outcome
+        setShown(version)
+        setTestId(version.id)
+        setName('')
+        onNotice(
+          `초안 #${version.id} 으로 올렸어요(정점 ${version.vertexCount}, 간선 ${version.edgeCount}${skipped ? `, 펼치지 못한 것 ${skipped}` : ''}). ` +
+            '아래 결과와 길 시험을 보고 운영에 적용하세요.',
+        )
+      } else if (outcome.kind === 'same') {
+        if (outcome.versionId !== null) setTestId(outcome.versionId)
+        onNotice(`마지막 초안${outcome.versionId === null ? '' : ` #${outcome.versionId}`} 과 내용이 같아 올리지 않았어요. 그 버전으로 시험하세요.`)
+      } else if (outcome.kind === 'noRoute') onNotice('올릴 경로망이 없어요(간선으로 이어진 점이 없어요). 서버 저장 안 함.')
+      else if (outcome.kind === 'busy') onNotice('저장 버튼으로 올리는 중이에요. 끝난 뒤 다시 눌러 주세요.')
+      else if (outcome.kind === 'blocked') onNotice('이 탭은 저장을 멈춘 상태라 서버에도 올리지 않아요. 새로고침해 주세요.')
+      else if (outcome.kind === 'failed') onNotice(`서버에 올리지 못했어요. ${outcome.text}`)
     })
 
-  const activate = (id: number) => {
-    if (!confirmAction(`#${id} 경로망을 운영에 적용할까요? 바로 앱 길찾기가 이 경로망을 써요. 예전 버전을 다시 적용하면 되돌릴 수 있어요.`)) return
+  /** Reads the check report first; without it the question warns but still lets the person apply. */
+  const activate = (id: number) =>
     run('적용', async () => {
+      const target = list?.versions.find((v) => v.id === id)
+      if (!list || !target) return
+      let report: GraphReport | null = null
+      try {
+        report = (await getGraphVersion(devKey, id)).report
+      } catch {
+        // applyConfirmText puts the missing report first.
+      }
+      if (!confirmAction(applyConfirmText(target, report, list.versions, list.activeSource))) return
       const version = await activateGraphVersion(devKey, id)
       await refresh()
       onNotice(`#${version.id} 을 운영에 적용했어요. 앱 길찾기가 바로 이 경로망을 써요.`)
     })
-  }
 
   const restore = (id: number) =>
     run('불러오기', async () => {
-      onRestore(parseBackupText(await fetchGraphBackup(devKey, id)))
+      await onLoadVersion(id)
     })
 
   const show = (id: number) =>
@@ -248,9 +253,16 @@ export default function ServerPanel({
       ? `저장소 기본(내보낸 시각 ${timeText(list.bundledExportedAt)})`
       : `#${list.activeSource.slice(1)}`
 
+  const folded = visibleVersions(list?.versions ?? [], { expanded, testId })
+
   return (
     <View>
-      <Section title="운영 경로망" help="앱 길찾기가 지금 쓰는 경로망이에요. 아래에서 올린 초안을 적용하면 배포 없이 바로 바뀌어요.">
+      <View style={styles.guide}>
+        <Text style={ui.hint}>{'저장: 초안으로 서버에 보관만 해요. 앱 길찾기는 바뀌지 않아요.'}</Text>
+        <Text style={ui.hint}>{'적용: 고른 버전이 바로 운영 경로망이 되고, 앱 길찾기가 바뀌어요.'}</Text>
+      </View>
+
+      <Section title="운영 경로망" help="앱 길찾기가 지금 쓰는 경로망이에요. 배포 없이 적용으로만 바뀌어요.">
         <Row>
           <Text style={[ui.hint, styles.grow]}>{activeText}</Text>
           <Btn label="새로고침" onPress={refresh} disabled={!!busy} />
@@ -258,8 +270,8 @@ export default function ServerPanel({
       </Section>
 
       <Section
-        title="지금 조사 자료 올리기"
-        help="초안으로만 올라가요(앱에는 아직 안 쓰임). 서버가 검사하고 운영 경로망과 건물 쌍마다 비교해요(수 초). 백업도 함께 올라가 다른 컴퓨터에서 불러올 수 있어요."
+        title="이름 붙여 올리기"
+        help="위 저장 버튼과 같은 초안 저장이에요. 이름을 붙이고 싶을 때만 여기서 올려요. 서버가 검사하고 운영과 건물 쌍마다 비교해요(수 초)."
       >
         <TextInput value={name} onChangeText={setName} placeholder="이름(예: 체육관 주변 보강)" style={ui.memoInput} />
         <Btn label={busy === '올리기' ? '올리는 중…' : '서버에 올리기'} onPress={upload} disabled={!!busy} />
@@ -267,9 +279,9 @@ export default function ServerPanel({
 
       <Section
         title="버전"
-        help="결과: 검사·비교 / 시험: 아래 길 시험 대상 / 적용: 운영에 쓰기 / 불러오기: 그 버전의 백업으로 지금 조사 자료를 덮어써요(확인 후, 저장 지점을 먼저 남겨요)."
+        help="결과: 검사·비교 / 시험: 아래 길 시험 대상 / 적용: 운영에 쓰기(점검 오류와 경고 확인창을 읽은 뒤에 해요. 시험용 초안은 적용하지 않아요) / 불러오기: 그 버전의 백업으로 지금 조사 자료를 덮어써요(확인 후, 저장 지점을 먼저 남겨요)."
       >
-        {(list?.versions ?? []).map((v) => (
+        {folded.shown.map((v) => (
           <View key={v.id} style={styles.version}>
             <Text style={[ui.hint, v.status === 'ACTIVE' ? styles.active : null]}>
               {`#${v.id} ${STATUS_TEXT[v.status]} · ${v.sourceName ?? '이름 없음'} · 정점 ${v.vertexCount} 간선 ${v.edgeCount} · ${timeText(v.createdAt)}`}
@@ -282,6 +294,8 @@ export default function ServerPanel({
             </Row>
           </View>
         ))}
+        {folded.hidden > 0 ? <Btn label={`이전 버전 ${folded.hidden}개 더 보기`} onPress={() => setExpanded(true)} /> : null}
+        {expanded && visibleVersions(list?.versions ?? [], { expanded: false, testId }).hidden > 0 ? <Btn label="접기" onPress={() => setExpanded(false)} /> : null}
         {list && list.versions.length === 0 ? <Text style={ui.hint}>{'아직 올린 버전이 없어요.'}</Text> : null}
       </Section>
 
@@ -322,6 +336,7 @@ export default function ServerPanel({
 
 const styles = StyleSheet.create({
   box: { gap: 4, paddingVertical: 4 },
+  guide: { gap: 2, padding: 8, marginBottom: 8, borderRadius: 8, backgroundColor: '#F1F5F9' },
   gap: { marginTop: 8, gap: 4 },
   grow: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
