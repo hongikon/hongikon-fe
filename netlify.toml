@@ -46,6 +46,16 @@
   to = "/licenses/index.html"
   status = 200
 
+# 홍보 링크(동아리 단톡방 등). 백엔드가 경로별 방문 수를 하나 올리고 바로 /app 으로 302 보낸다
+# (hongikon-be PromoVisitController — 누가 왔는지는 남기지 않고 숫자만). 결과는 GET /admin/promo-visits.
+# 새 경로는 이 블록을 복사해 이름만 바꾸고, 백엔드 설정 promo.sources 에도 더한다.
+# /app 페이지 자체 방문(QR·직접 입력 포함)은 페이지 안 이미지가 /api/promo/app/seen 으로 센다(source=app).
+[[redirects]]
+  from = "/app/club"
+  to = "https://api.hongikon.com/promo/club"
+  status = 200
+  force = true
+
 # 앱 받기 안내(공유·포스터 QR 주소). 기기에 맞는 스토어를 위에 띄운다(scripts/static-pages.mjs appDownloadPage).
 [[redirects]]
   from = "/app"
