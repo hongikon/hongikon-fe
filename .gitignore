@@ -80,3 +80,7 @@ secrets/
 # 물어보기 크롤링 원본 HTML(다시 받을 수 있음)
 scripts/ask/cache/
 __pycache__/
+
+# 물어보기 평가 결과(답 원문 — git 제외)
+scripts/ask/reason-eval/out-*/
+scripts/ask/reason-eval/answers-*.json

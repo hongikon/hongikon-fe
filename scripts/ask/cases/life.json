@@ -546,5 +546,29 @@
  {
   "q": "신입생 오리엔테이션",
   "expect": "freshman-events"
+ },
+ {
+  "q": "동아리 종류 뭐가 있어",
+  "expect": "club-types"
+ },
+ {
+  "q": "연합동아리 괜찮아?",
+  "expect": "club-types"
+ },
+ {
+  "q": "가동아리가 뭐야",
+  "expect": "club-types"
+ },
+ {
+  "q": "학회 들어야 해?",
+  "expect": "club-types"
+ },
+ {
+  "q": "캠퍼스에 사이비 많아?",
+  "expect": "club-types"
+ },
+ {
+  "q": "동아리 1학년 때 들어야 할까",
+  "expect": "club-types"
  }
 ]
