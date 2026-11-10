@@ -1,0 +1,13836 @@
+{
+"note": "curated: 운영진 확인 줄임말. auto: 과목명 뜻 단위 첫 글자 규칙 후보(검색에만 쓰고, 여러 과목이면 되묻는다).",
+"curated": [
+{
+"short": "전필",
+"full": [
+"전공필수"
+],
+"kind": "term"
+},
+{
+"short": "전선",
+"full": [
+"전공선택"
+],
+"kind": "term"
+},
+{
+"short": "교필",
+"full": [
+"교양필수"
+],
+"kind": "term"
+},
+{
+"short": "교선",
+"full": [
+"교양선택"
+],
+"kind": "term"
+},
+{
+"short": "일선",
+"full": [
+"일반선택"
+],
+"kind": "term"
+},
+{
+"short": "복전",
+"full": [
+"복수전공"
+],
+"kind": "term"
+},
+{
+"short": "부전",
+"full": [
+"부전공"
+],
+"kind": "term"
+},
+{
+"short": "연전",
+"full": [
+"연계전공"
+],
+"kind": "term"
+},
+{
+"short": "졸작",
+"full": [
+"졸업작품"
+],
+"kind": "term"
+},
+{
+"short": "졸논",
+"full": [
+"졸업논문"
+],
+"kind": "term"
+},
+{
+"short": "졸요",
+"full": [
+"졸업요건"
+],
+"kind": "term"
+},
+{
+"short": "학고",
+"full": [
+"성적경고"
+],
+"kind": "term"
+},
+{
+"short": "국장",
+"full": [
+"국가장학금"
+],
+"kind": "term"
+},
+{
+"short": "근장",
+"full": [
+"근로장학금"
+],
+"kind": "term"
+},
+{
+"short": "계절",
+"full": [
+"계절학기"
+],
+"kind": "term"
+},
+{
+"short": "학식",
+"full": [
+"학생식당"
+],
+"kind": "facility"
+},
+{
+"short": "중동",
+"full": [
+"중앙동아리"
+],
+"kind": "org"
+},
+{
+"short": "가동",
+"full": [
+"가동아리"
+],
+"kind": "org"
+},
+{
+"short": "총동연",
+"full": [
+"총동아리연합회"
+],
+"kind": "org"
+},
+{
+"short": "총학",
+"full": [
+"총학생회"
+],
+"kind": "org"
+},
+{
+"short": "교환",
+"full": [
+"교환학생"
+],
+"kind": "program"
+},
+{
+"short": "방문",
+"full": [
+"방문학생"
+],
+"kind": "program"
+},
+{
+"short": "컴프",
+"full": [
+"컴퓨터프로그래밍"
+],
+"kind": "course"
+},
+{
+"short": "인프",
+"full": [
+"인터넷프로그래밍"
+],
+"kind": "course"
+},
+{
+"short": "재전화",
+"full": [
+"재료전기화학"
+],
+"kind": "course"
+},
+{
+"short": "협기",
+"full": [
+"협상의기술"
+],
+"kind": "course"
+},
+{
+"short": "화공정",
+"full": [
+"화학공정계산"
+],
+"kind": "course"
+},
+{
+"short": "논사글",
+"full": [
+"논리적사고와글쓰기"
+],
+"kind": "course"
+},
+{
+"short": "전기영",
+"full": [
+"전공기초영어"
+],
+"kind": "course"
+},
+{
+"short": "디씽",
+"full": [
+"디자인씽킹"
+],
+"kind": "course"
+},
+{
+"short": "창실법",
+"full": [
+"창업과실용법률"
+],
+"kind": "course"
+},
+{
+"short": "컴사",
+"full": [
+"컴퓨팅사고"
+],
+"kind": "course"
+},
+{
+"short": "선대",
+"full": [
+"선형대수학"
+],
+"kind": "course"
+},
+{
+"short": "선대수",
+"full": [
+"선형대수학"
+],
+"kind": "course"
+},
+{
+"short": "대물",
+"full": [
+"대학물리",
+"대학물리실험"
+],
+"kind": "course"
+},
+{
+"short": "대수",
+"full": [
+"대학수학"
+],
+"kind": "course"
+},
+{
+"short": "대화",
+"full": [
+"대학화학",
+"대학화학실험"
+],
+"kind": "course"
+},
+{
+"short": "C프",
+"full": [
+"C-프로그래밍"
+],
+"kind": "course"
+},
+{
+"short": "중도",
+"full": [
+"중앙도서관"
+],
+"kind": "facility"
+},
+{
+"short": "홍문관",
+"full": [
+"홍문관 R동"
+],
+"kind": "facility"
+},
+{
+"short": "1공",
+"full": [
+"제1공학관"
+],
+"kind": "facility"
+},
+{
+"short": "2공",
+"full": [
+"제2공학관"
+],
+"kind": "facility"
+},
+{
+"short": "3공",
+"full": [
+"제3공학관"
+],
+"kind": "facility"
+},
+{
+"short": "4공",
+"full": [
+"제4공학관"
+],
+"kind": "facility"
+},
+{
+"short": "긱사",
+"full": [
+"기숙사"
+],
+"kind": "facility"
+}
+],
+"auto": [
+{
+"short": "1영소",
+"full": [
+"19세기영미소설"
+],
+"codes": [
+"201606"
+],
+"ambiguous": false
+},
+{
+"short": "2애",
+"full": [
+"2D애니메이션",
+"2D캐릭터애니메이션"
+],
+"codes": [
+"940525",
+"950421",
+"960213",
+"960317"
+],
+"ambiguous": true
+},
+{
+"short": "3게디",
+"full": [
+"3D게임디자인"
+],
+"codes": [
+"960619",
+"960722"
+],
+"ambiguous": false
+},
+{
+"short": "3그디",
+"full": [
+"3D그래픽디자인"
+],
+"codes": [
+"960314",
+"960420"
+],
+"ambiguous": false
+},
+{
+"short": "3디",
+"full": [
+"3D디자인",
+"3D캐릭터디자인"
+],
+"codes": [
+"410323",
+"410425",
+"960522",
+"960618"
+],
+"ambiguous": true
+},
+{
+"short": "3라렌",
+"full": [
+"3D라이팅과렌더링"
+],
+"codes": [
+"940628"
+],
+"ambiguous": false
+},
+{
+"short": "3모그",
+"full": [
+"3D모션그래픽스"
+],
+"codes": [
+"930847",
+"930850"
+],
+"ambiguous": false
+},
+{
+"short": "3애",
+"full": [
+"3D캐릭터애니메이션"
+],
+"codes": [
+"940825",
+"950630"
+],
+"ambiguous": false
+},
+{
+"short": "3애리",
+"full": [
+"3D애니메이션리깅"
+],
+"codes": [
+"940526"
+],
+"ambiguous": false
+},
+{
+"short": "3애프덕",
+"full": [
+"3D애니메이션프로덕션"
+],
+"codes": [
+"940819",
+"940820"
+],
+"ambiguous": false
+},
+{
+"short": "3오젝모",
+"full": [
+"3D오브젝트모델링"
+],
+"codes": [
+"920228",
+"920231"
+],
+"ambiguous": false
+},
+{
+"short": "3프토",
+"full": [
+"3D프로토타이핑"
+],
+"codes": [
+"667014"
+],
+"ambiguous": false
+},
+{
+"short": "An",
+"full": [
+"AdvertisingDesign"
+],
+"codes": [
+"930851"
+],
+"ambiguous": false
+},
+{
+"short": "Ay",
+"full": [
+"AdvancedTypography"
+],
+"codes": [
+"920230"
+],
+"ambiguous": false
+},
+{
+"short": "A디헬",
+"full": [
+"AI디지털헬스케어"
+],
+"codes": [
+"730526"
+],
+"ambiguous": false
+},
+{
+"short": "A를스",
+"full": [
+"AI를활용한스타트업"
+],
+"codes": [
+"311623"
+],
+"ambiguous": false
+},
+{
+"short": "A응프",
+"full": [
+"AIML응용프로젝트"
+],
+"codes": [
+"101717",
+"101814"
+],
+"ambiguous": false
+},
+{
+"short": "A크크",
+"full": [
+"AI크리에이티브워크샵"
+],
+"codes": [
+"756868"
+],
+"ambiguous": false
+},
+{
+"short": "Ba",
+"full": [
+"BigData"
+],
+"codes": [
+"930523"
+],
+"ambiguous": false
+},
+{
+"short": "Bg",
+"full": [
+"Branding"
+],
+"codes": [
+"920544"
+],
+"ambiguous": false
+},
+{
+"short": "Bn",
+"full": [
+"BookDesign"
+],
+"codes": [
+"920637"
+],
+"ambiguous": false
+},
+{
+"short": "B캡디",
+"full": [
+"Branding캡스톤디자인"
+],
+"codes": [
+"920640"
+],
+"ambiguous": false
+},
+{
+"short": "C&D",
+"full": [
+"Community&SocialDesign"
+],
+"codes": [
+"930728"
+],
+"ambiguous": false
+},
+{
+"short": "C&a",
+"full": [
+"Communication&Ideation"
+],
+"codes": [
+"920542"
+],
+"ambiguous": false
+},
+{
+"short": "Cg",
+"full": [
+"CreativeThinking"
+],
+"codes": [
+"930100",
+"930325"
+],
+"ambiguous": false
+},
+{
+"short": "Cn",
+"full": [
+"ContextualObjectDesign",
+"CulturalContentsDesign"
+],
+"codes": [
+"913824",
+"913846",
+"920536",
+"920634"
+],
+"ambiguous": true
+},
+{
+"short": "Cs",
+"full": [
+"ComparativeLegalStudies"
+],
+"codes": [
+"351529"
+],
+"ambiguous": false
+},
+{
+"short": "C디",
+"full": [
+"CMF디자인"
+],
+"codes": [
+"913851"
+],
+"ambiguous": false
+},
+{
+"short": "C및",
+"full": [
+"CAD및실습"
+],
+"codes": [
+"012311"
+],
+"ambiguous": false
+},
+{
+"short": "C특",
+"full": [
+"CTO특강"
+],
+"codes": [
+"008753"
+],
+"ambiguous": false
+},
+{
+"short": "D&",
+"full": [
+"DesignTheory&Trends"
+],
+"codes": [
+"920226"
+],
+"ambiguous": false
+},
+{
+"short": "D/프스",
+"full": [
+"DELF/DALF프랑스어"
+],
+"codes": [
+"203814"
+],
+"ambiguous": false
+},
+{
+"short": "De",
+"full": [
+"DesignChallenge"
+],
+"codes": [
+"913645"
+],
+"ambiguous": false
+},
+{
+"short": "Do",
+"full": [
+"DesignConvergenceStudio"
+],
+"codes": [
+"920432"
+],
+"ambiguous": false
+},
+{
+"short": "Ds",
+"full": [
+"DesignDynamics",
+"DesignProcess"
+],
+"codes": [
+"920543",
+"920639",
+"930323"
+],
+"ambiguous": true
+},
+{
+"short": "D가디",
+"full": [
+"Digital가구디자인"
+],
+"codes": [
+"415317",
+"415416"
+],
+"ambiguous": false
+},
+{
+"short": "Eg",
+"full": [
+"Englishwritingandspeaking"
+],
+"codes": [
+"201110",
+"201416"
+],
+"ambiguous": false
+},
+{
+"short": "E경이과",
+"full": [
+"ESG경영이론과실제"
+],
+"codes": [
+"311820"
+],
+"ambiguous": false
+},
+{
+"short": "E비",
+"full": [
+"E-비지니스"
+],
+"codes": [
+"381801"
+],
+"ambiguous": false
+},
+{
+"short": "E탐데분",
+"full": [
+"EDA탐색적데이터분석"
+],
+"codes": [
+"140423"
+],
+"ambiguous": false
+},
+{
+"short": "Fe",
+"full": [
+"Finance"
+],
+"codes": [
+"311318",
+"311420"
+],
+"ambiguous": false
+},
+{
+"short": "FⅠ",
+"full": [
+"FinanceⅠ"
+],
+"codes": [
+"311318"
+],
+"ambiguous": false
+},
+{
+"short": "G&h",
+"full": [
+"GraphicDesign&Technology"
+],
+"codes": [
+"930527",
+"930633"
+],
+"ambiguous": false
+},
+{
+"short": "G및설",
+"full": [
+"GIS및수문설계"
+],
+"codes": [
+"116826"
+],
+"ambiguous": false
+},
+{
+"short": "G와공분",
+"full": [
+"GIS와도시공간분석"
+],
+"codes": [
+"115309"
+],
+"ambiguous": false
+},
+{
+"short": "H윈프",
+"full": [
+"HCI윈도우즈프로그래밍"
+],
+"codes": [
+"101413"
+],
+"ambiguous": false
+},
+{
+"short": "Ib",
+"full": [
+"InteractionLab"
+],
+"codes": [
+"920221",
+"950824",
+"950848"
+],
+"ambiguous": false
+},
+{
+"short": "In",
+"full": [
+"InformationDesign",
+"InteractiveMediaDesign",
+"InterfaceDesign"
+],
+"codes": [
+"920538",
+"920630",
+"930628",
+"930846",
+"930848",
+"930849"
+],
+"ambiguous": true
+},
+{
+"short": "Iw",
+"full": [
+"InternationalTradeLaw"
+],
+"codes": [
+"351634"
+],
+"ambiguous": false
+},
+{
+"short": "Iy",
+"full": [
+"IndependentStudy"
+],
+"codes": [
+"930816"
+],
+"ambiguous": false
+},
+{
+"short": "I시종설",
+"full": [
+"IT시스템종합설계"
+],
+"codes": [
+"106723"
+],
+"ambiguous": false
+},
+{
+"short": "I와",
+"full": [
+"IT와경영"
+],
+"codes": [
+"311317"
+],
+"ambiguous": false
+},
+{
+"short": "I와융경",
+"full": [
+"IT와창의융합경영"
+],
+"codes": [
+"381508"
+],
+"ambiguous": false
+},
+{
+"short": "I일실",
+"full": [
+"IPP일학습표준현장실습"
+],
+"codes": [
+"725529",
+"725530",
+"725531",
+"725532",
+"725533"
+],
+"ambiguous": false
+},
+{
+"short": "I종설프",
+"full": [
+"IT종합설계프로젝트"
+],
+"codes": [
+"106825"
+],
+"ambiguous": false
+},
+{
+"short": "KP제실",
+"full": [
+"K-Pop제작실습"
+],
+"codes": [
+"462511"
+],
+"ambiguous": false
+},
+{
+"short": "Ln",
+"full": [
+"LegalDraftingandInterpretation"
+],
+"codes": [
+"351640"
+],
+"ambiguous": false
+},
+{
+"short": "L설기",
+"full": [
+"Layout설계기초"
+],
+"codes": [
+"106615"
+],
+"ambiguous": false
+},
+{
+"short": "M&기인",
+"full": [
+"M&A:기업인수합병론"
+],
+"codes": [
+"311816"
+],
+"ambiguous": false
+},
+{
+"short": "M/실",
+"full": [
+"MCU/IoT실험"
+],
+"codes": [
+"106613"
+],
+"ambiguous": false
+},
+{
+"short": "Mp",
+"full": [
+"MakingWorkshop"
+],
+"codes": [
+"920229",
+"950841",
+"950844"
+],
+"ambiguous": false
+},
+{
+"short": "Ms",
+"full": [
+"MotionGraphics"
+],
+"codes": [
+"930324",
+"930421"
+],
+"ambiguous": false
+},
+{
+"short": "My",
+"full": [
+"MaterialStudy"
+],
+"codes": [
+"913853"
+],
+"ambiguous": false
+},
+{
+"short": "M프실",
+"full": [
+"MATLAB프로그래밍및실습"
+],
+"codes": [
+"012313"
+],
+"ambiguous": false
+},
+{
+"short": "M활",
+"full": [
+"MATLAB활용"
+],
+"codes": [
+"012312"
+],
+"ambiguous": false
+},
+{
+"short": "N응기설",
+"full": [
+"NCS응용기계설계"
+],
+"codes": [
+"720729"
+],
+"ambiguous": false
+},
+{
+"short": "P&i",
+"full": [
+"ProductUserTest&Scenario"
+],
+"codes": [
+"930528",
+"930634"
+],
+"ambiguous": false
+},
+{
+"short": "P+",
+"full": [
+"PBL+1융합"
+],
+"codes": [
+"777024"
+],
+"ambiguous": false
+},
+{
+"short": "P1",
+"full": [
+"PBL1+"
+],
+"codes": [
+"777034"
+],
+"ambiguous": false
+},
+{
+"short": "P1융",
+"full": [
+"PBL1+1융합"
+],
+"codes": [
+"777002"
+],
+"ambiguous": false
+},
+{
+"short": "P글",
+"full": [
+"PR글쓰기"
+],
+"codes": [
+"756862"
+],
+"ambiguous": false
+},
+{
+"short": "P기",
+"full": [
+"PR기획론"
+],
+"codes": [
+"756821"
+],
+"ambiguous": false
+},
+{
+"short": "P학",
+"full": [
+"PR학개론"
+],
+"codes": [
+"756816"
+],
+"ambiguous": false
+},
+{
+"short": "R&n",
+"full": [
+"Regulations&Governance"
+],
+"codes": [
+"351735"
+],
+"ambiguous": false
+},
+{
+"short": "R&앙",
+"full": [
+"R&B앙상블"
+],
+"codes": [
+"462204"
+],
+"ambiguous": false
+},
+{
+"short": "R프",
+"full": [
+"R프로그래밍"
+],
+"codes": [
+"012314"
+],
+"ambiguous": false
+},
+{
+"short": "S/",
+"full": [
+"SCM/물류"
+],
+"codes": [
+"140627"
+],
+"ambiguous": false
+},
+{
+"short": "Sn",
+"full": [
+"SmartLifeDesign",
+"SpatialDesign"
+],
+"codes": [
+"913427",
+"913551",
+"913639",
+"930536"
+],
+"ambiguous": true
+},
+{
+"short": "T&l",
+"full": [
+"TheModernState&LegalTheory"
+],
+"codes": [
+"351832"
+],
+"ambiguous": false
+},
+{
+"short": "Tb",
+"full": [
+"TransmediaLab"
+],
+"codes": [
+"920826"
+],
+"ambiguous": false
+},
+{
+"short": "Ty",
+"full": [
+"Typography"
+],
+"codes": [
+"930322",
+"930420"
+],
+"ambiguous": false
+},
+{
+"short": "Un",
+"full": [
+"UXDesign"
+],
+"codes": [
+"920629",
+"930522"
+],
+"ambiguous": false
+},
+{
+"short": "U공",
+"full": [
+"ULSI공학"
+],
+"codes": [
+"106715"
+],
+"ambiguous": false
+},
+{
+"short": "U디",
+"full": [
+"UX디자인"
+],
+"codes": [
+"140624"
+],
+"ambiguous": false
+},
+{
+"short": "U디사",
+"full": [
+"UX디자인과사용성"
+],
+"codes": [
+"120624"
+],
+"ambiguous": false
+},
+{
+"short": "U분응",
+"full": [
+"UX분석과응용"
+],
+"codes": [
+"411833"
+],
+"ambiguous": false
+},
+{
+"short": "Ve",
+"full": [
+"VisualLanguage"
+],
+"codes": [
+"920636",
+"930852"
+],
+"ambiguous": false
+},
+{
+"short": "Vo",
+"full": [
+"VisualStudio"
+],
+"codes": [
+"950842",
+"950845"
+],
+"ambiguous": false
+},
+{
+"short": "Vy",
+"full": [
+"VisualEssay"
+],
+"codes": [
+"920531"
+],
+"ambiguous": false
+},
+{
+"short": "V워",
+"full": [
+"VFX워크샵"
+],
+"codes": [
+"950819"
+],
+"ambiguous": false
+},
+{
+"short": "X선",
+"full": [
+"X-선회절결정학"
+],
+"codes": [
+"727528"
+],
+"ambiguous": false
+},
+{
+"short": "가공계",
+"full": [
+"가구와공간계획"
+],
+"codes": [
+"415418"
+],
+"ambiguous": false
+},
+{
+"short": "가드",
+"full": [
+"가구드로잉"
+],
+"codes": [
+"415815"
+],
+"ambiguous": false
+},
+{
+"short": "가디",
+"full": [
+"가구디자인"
+],
+"codes": [
+"111502"
+],
+"ambiguous": false
+},
+{
+"short": "가디비",
+"full": [
+"가구디자인비지니스"
+],
+"codes": [
+"415828"
+],
+"ambiguous": false
+},
+{
+"short": "가디창마",
+"full": [
+"가구디자인창업마케팅"
+],
+"codes": [
+"415816",
+"415832"
+],
+"ambiguous": false
+},
+{
+"short": "가디프세",
+"full": [
+"가구디자인프로세스"
+],
+"codes": [
+"415817"
+],
+"ambiguous": false
+},
+{
+"short": "가프",
+"full": [
+"가상현실프로그래밍"
+],
+"codes": [
+"704713"
+],
+"ambiguous": false
+},
+{
+"short": "가환디스",
+"full": [
+"가구와환경디자인스튜디오"
+],
+"codes": [
+"415716"
+],
+"ambiguous": false
+},
+{
+"short": "강공설",
+"full": [
+"강구조공학및설계"
+],
+"codes": [
+"116710"
+],
+"ambiguous": false
+},
+{
+"short": "객프",
+"full": [
+"객체지향프로그래밍"
+],
+"codes": [
+"012305",
+"961827",
+"961831"
+],
+"ambiguous": false
+},
+{
+"short": "거경",
+"full": [
+"거시경제학"
+],
+"codes": [
+"063205",
+"381405",
+"754831"
+],
+"ambiguous": false
+},
+{
+"short": "거경연",
+"full": [
+"거시경제학연습"
+],
+"codes": [
+"361816"
+],
+"ambiguous": false
+},
+{
+"short": "거경원",
+"full": [
+"거시경제원론"
+],
+"codes": [
+"361814"
+],
+"ambiguous": false
+},
+{
+"short": "건경",
+"full": [
+"건설경영",
+"건축경영"
+],
+"codes": [
+"110844",
+"710816"
+],
+"ambiguous": true
+},
+{
+"short": "건계",
+"full": [
+"건축계획"
+],
+"codes": [
+"710515"
+],
+"ambiguous": false
+},
+{
+"short": "건계및",
+"full": [
+"건축계획및행태"
+],
+"codes": [
+"740911"
+],
+"ambiguous": false
+},
+{
+"short": "건공",
+"full": [
+"건축공간론",
+"건축공정"
+],
+"codes": [
+"110962",
+"710718"
+],
+"ambiguous": true
+},
+{
+"short": "건공실",
+"full": [
+"건축공학실무"
+],
+"codes": [
+"710820"
+],
+"ambiguous": false
+},
+{
+"short": "건관기사",
+"full": [
+"건설관리및기술사업화"
+],
+"codes": [
+"116832",
+"116833"
+],
+"ambiguous": false
+},
+{
+"short": "건교",
+"full": [
+"건강교육론"
+],
+"codes": [
+"970204"
+],
+"ambiguous": false
+},
+{
+"short": "건구",
+"full": [
+"건축구조"
+],
+"codes": [
+"740907"
+],
+"ambiguous": false
+},
+{
+"short": "건구실",
+"full": [
+"건축구조실험"
+],
+"codes": [
+"710607"
+],
+"ambiguous": false
+},
+{
+"short": "건구해실",
+"full": [
+"건축구조해석및실습"
+],
+"codes": [
+"710513"
+],
+"ambiguous": false
+},
+{
+"short": "건기",
+"full": [
+"건설기술"
+],
+"codes": [
+"740906"
+],
+"ambiguous": false
+},
+{
+"short": "건디스",
+"full": [
+"건축디자인스튜디오"
+],
+"codes": [
+"710208",
+"710210",
+"710213",
+"710215",
+"710218",
+"710220"
+],
+"ambiguous": false
+},
+{
+"short": "건법",
+"full": [
+"건축법규"
+],
+"codes": [
+"710715",
+"740504"
+],
+"ambiguous": false
+},
+{
+"short": "건법제",
+"full": [
+"건축법과제도"
+],
+"codes": [
+"110751"
+],
+"ambiguous": false
+},
+{
+"short": "건비",
+"full": [
+"건축비평"
+],
+"codes": [
+"111064"
+],
+"ambiguous": false
+},
+{
+"short": "건사",
+"full": [
+"건축과사회"
+],
+"codes": [
+"110941",
+"740905"
+],
+"ambiguous": false
+},
+{
+"short": "건설",
+"full": [
+"건축설계",
+"건축설비"
+],
+"codes": [
+"014312",
+"110121",
+"110221",
+"110321",
+"110421",
+"110521",
+"110621",
+"110721",
+"110821",
+"110921",
+"710514",
+"740704"
+],
+"ambiguous": true
+},
+{
+"short": "건시",
+"full": [
+"건축시공테크놀로지"
+],
+"codes": [
+"110761"
+],
+"ambiguous": false
+},
+{
+"short": "건시재",
+"full": [
+"건축시공및재료"
+],
+"codes": [
+"710827",
+"710828"
+],
+"ambiguous": false
+},
+{
+"short": "건실건개",
+"full": [
+"건축및실내건축개론"
+],
+"codes": [
+"110163"
+],
+"ambiguous": false
+},
+{
+"short": "건에해",
+"full": [
+"건물에너지해석"
+],
+"codes": [
+"710719"
+],
+"ambiguous": false
+},
+{
+"short": "건이",
+"full": [
+"건축이론"
+],
+"codes": [
+"111061"
+],
+"ambiguous": false
+},
+{
+"short": "건재구",
+"full": [
+"건축재료와구법"
+],
+"codes": [
+"110641"
+],
+"ambiguous": false
+},
+{
+"short": "건재역연",
+"full": [
+"건축재료역학및연습"
+],
+"codes": [
+"710411"
+],
+"ambiguous": false
+},
+{
+"short": "건적응실",
+"full": [
+"건축적산및BIM응용실습"
+],
+"codes": [
+"710829"
+],
+"ambiguous": false
+},
+{
+"short": "건정연",
+"full": [
+"건축정역학및연습"
+],
+"codes": [
+"710313"
+],
+"ambiguous": false
+},
+{
+"short": "건조",
+"full": [
+"건축조경"
+],
+"codes": [
+"110863",
+"111810"
+],
+"ambiguous": false
+},
+{
+"short": "건캐",
+"full": [
+"건축캐드"
+],
+"codes": [
+"740909",
+"740910"
+],
+"ambiguous": false
+},
+{
+"short": "건환",
+"full": [
+"건축환경"
+],
+"codes": [
+"111405",
+"710311"
+],
+"ambiguous": false
+},
+{
+"short": "건환계",
+"full": [
+"건축환경계획"
+],
+"codes": [
+"110542",
+"110642"
+],
+"ambiguous": false
+},
+{
+"short": "건환실",
+"full": [
+"건축환경실습"
+],
+"codes": [
+"710412"
+],
+"ambiguous": false
+},
+{
+"short": "게D설",
+"full": [
+"게임DB설계"
+],
+"codes": [
+"961721"
+],
+"ambiguous": false
+},
+{
+"short": "게U디",
+"full": [
+"게임과UX디자인"
+],
+"codes": [
+"960526"
+],
+"ambiguous": false
+},
+{
+"short": "게개프세",
+"full": [
+"게임개발프로세스"
+],
+"codes": [
+"961205"
+],
+"ambiguous": false
+},
+{
+"short": "게그스",
+"full": [
+"게임그래픽스튜디오"
+],
+"codes": [
+"960515"
+],
+"ambiguous": false
+},
+{
+"short": "게기포",
+"full": [
+"게임기획포트폴리오"
+],
+"codes": [
+"961816"
+],
+"ambiguous": false
+},
+{
+"short": "게디",
+"full": [
+"게임디자인"
+],
+"codes": [
+"960836",
+"961820"
+],
+"ambiguous": false
+},
+{
+"short": "게배디",
+"full": [
+"게임배경디자인"
+],
+"codes": [
+"960421"
+],
+"ambiguous": false
+},
+{
+"short": "게서실",
+"full": [
+"게임서버실습"
+],
+"codes": [
+"961620",
+"961716"
+],
+"ambiguous": false
+},
+{
+"short": "게실",
+"full": [
+"게임엔진실습"
+],
+"codes": [
+"961826"
+],
+"ambiguous": false
+},
+{
+"short": "게영기",
+"full": [
+"게임영상기획"
+],
+"codes": [
+"960623"
+],
+"ambiguous": false
+},
+{
+"short": "게영디",
+"full": [
+"게임영상디자인"
+],
+"codes": [
+"960424",
+"960525"
+],
+"ambiguous": false
+},
+{
+"short": "게영연",
+"full": [
+"게임영상연구"
+],
+"codes": [
+"960724"
+],
+"ambiguous": false
+},
+{
+"short": "게영프",
+"full": [
+"게임영상프로젝트"
+],
+"codes": [
+"960852"
+],
+"ambiguous": false
+},
+{
+"short": "게응",
+"full": [
+"게임엔진응용"
+],
+"codes": [
+"961842"
+],
+"ambiguous": false
+},
+{
+"short": "게이",
+"full": [
+"게임이론"
+],
+"codes": [
+"361313"
+],
+"ambiguous": false
+},
+{
+"short": "게인",
+"full": [
+"게임인공지능"
+],
+"codes": [
+"961614"
+],
+"ambiguous": false
+},
+{
+"short": "게인페디",
+"full": [
+"게임인터페이스디자인"
+],
+"codes": [
+"960520",
+"960621"
+],
+"ambiguous": false
+},
+{
+"short": "게제특",
+"full": [
+"게임제작특론"
+],
+"codes": [
+"961841"
+],
+"ambiguous": false
+},
+{
+"short": "게제프",
+"full": [
+"게임제작프로젝트"
+],
+"codes": [
+"961610",
+"961712"
+],
+"ambiguous": false
+},
+{
+"short": "게캡디",
+"full": [
+"게임캡스톤디자인"
+],
+"codes": [
+"961828"
+],
+"ambiguous": false
+},
+{
+"short": "게콘연",
+"full": [
+"게임콘텐츠연구"
+],
+"codes": [
+"960723"
+],
+"ambiguous": false
+},
+{
+"short": "게프",
+"full": [
+"게임엔진프로젝트"
+],
+"codes": [
+"961720"
+],
+"ambiguous": false
+},
+{
+"short": "게프토연",
+"full": [
+"게임프로토타입연구"
+],
+"codes": [
+"961825"
+],
+"ambiguous": false
+},
+{
+"short": "게프패",
+"full": [
+"게임프로그래밍패턴"
+],
+"codes": [
+"961719"
+],
+"ambiguous": false
+},
+{
+"short": "게학",
+"full": [
+"게임학개론"
+],
+"codes": [
+"960848"
+],
+"ambiguous": false
+},
+{
+"short": "결구분",
+"full": [
+"결정구조및분석"
+],
+"codes": [
+"125823"
+],
+"ambiguous": false
+},
+{
+"short": "경경",
+"full": [
+"경제와경영"
+],
+"codes": [
+"710229"
+],
+"ambiguous": false
+},
+{
+"short": "경경수",
+"full": [
+"경영경제수학"
+],
+"codes": [
+"033103",
+"034104"
+],
+"ambiguous": false
+},
+{
+"short": "경데분",
+"full": [
+"경영데이터분석"
+],
+"codes": [
+"034105"
+],
+"ambiguous": false
+},
+{
+"short": "경발",
+"full": [
+"경제발전론"
+],
+"codes": [
+"361504"
+],
+"ambiguous": false
+},
+{
+"short": "경분",
+"full": [
+"경제성분석"
+],
+"codes": [
+"140524"
+],
+"ambiguous": false
+},
+{
+"short": "경세",
+"full": [
+"경제학세미나"
+],
+"codes": [
+"361825"
+],
+"ambiguous": false
+},
+{
+"short": "경수",
+"full": [
+"경제수학"
+],
+"codes": [
+"361812"
+],
+"ambiguous": false
+},
+{
+"short": "경수입",
+"full": [
+"경제수학입문"
+],
+"codes": [
+"361811"
+],
+"ambiguous": false
+},
+{
+"short": "경원",
+"full": [
+"경제학원론"
+],
+"codes": [
+"033102",
+"034102",
+"381101"
+],
+"ambiguous": false
+},
+{
+"short": "경의",
+"full": [
+"경영과의사결정",
+"경영의사결정"
+],
+"codes": [
+"311308",
+"750617"
+],
+"ambiguous": true
+},
+{
+"short": "경입",
+"full": [
+"경제학입문"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "경장",
+"full": [
+"경제성장론"
+],
+"codes": [
+"361510"
+],
+"ambiguous": false
+},
+{
+"short": "경정시",
+"full": [
+"경영정보시스템"
+],
+"codes": [
+"311806",
+"754825"
+],
+"ambiguous": false
+},
+{
+"short": "경컨",
+"full": [
+"경영컨설팅"
+],
+"codes": [
+"313112"
+],
+"ambiguous": false
+},
+{
+"short": "경통",
+"full": [
+"경영통계학",
+"경제통계학"
+],
+"codes": [
+"034204",
+"063204",
+"311204"
+],
+"ambiguous": true
+},
+{
+"short": "경특",
+"full": [
+"경제학특강"
+],
+"codes": [
+"361508",
+"361608"
+],
+"ambiguous": false
+},
+{
+"short": "경학",
+"full": [
+"경제학사"
+],
+"codes": [
+"361602"
+],
+"ambiguous": false
+},
+{
+"short": "경회",
+"full": [
+"경영과회계"
+],
+"codes": [
+"751614"
+],
+"ambiguous": false
+},
+{
+"short": "계이과",
+"full": [
+"계산이론과오토마타"
+],
+"codes": [
+"101416"
+],
+"ambiguous": false
+},
+{
+"short": "계재",
+"full": [
+"계약과지적재산권"
+],
+"codes": [
+"461704"
+],
+"ambiguous": false
+},
+{
+"short": "고게",
+"full": [
+"고급게임엔진"
+],
+"codes": [
+"961416"
+],
+"ambiguous": false
+},
+{
+"short": "고공",
+"full": [
+"고분자공학"
+],
+"codes": [
+"130611",
+"130714"
+],
+"ambiguous": false
+},
+{
+"short": "고관",
+"full": [
+"고객관계관리"
+],
+"codes": [
+"750614"
+],
+"ambiguous": false
+},
+{
+"short": "고마조",
+"full": [
+"고급마케팅조사론"
+],
+"codes": [
+"311719"
+],
+"ambiguous": false
+},
+{
+"short": "고명이",
+"full": [
+"고전명작의이해"
+],
+"codes": [
+"204310"
+],
+"ambiguous": false
+},
+{
+"short": "고문",
+"full": [
+"고전문학사"
+],
+"codes": [
+"204416"
+],
+"ambiguous": false
+},
+{
+"short": "고문문콘",
+"full": [
+"고전문학과문화콘텐츠"
+],
+"codes": [
+"204811"
+],
+"ambiguous": false
+},
+{
+"short": "고문작",
+"full": [
+"고전문학작가론"
+],
+"codes": [
+"204825"
+],
+"ambiguous": false
+},
+{
+"short": "고분",
+"full": [
+"고객분석론"
+],
+"codes": [
+"140833"
+],
+"ambiguous": false
+},
+{
+"short": "고소",
+"full": [
+"고전소설론"
+],
+"codes": [
+"204605"
+],
+"ambiguous": false
+},
+{
+"short": "고소작",
+"full": [
+"고전소설작품읽기"
+],
+"codes": [
+"204814"
+],
+"ambiguous": false
+},
+{
+"short": "고영커",
+"full": [
+"고급영어커뮤니케이션"
+],
+"codes": [
+"201514",
+"201816"
+],
+"ambiguous": false
+},
+{
+"short": "고영합",
+"full": [
+"고급영상합성"
+],
+"codes": [
+"950526"
+],
+"ambiguous": false
+},
+{
+"short": "고입",
+"full": [
+"고분자입문"
+],
+"codes": [
+"730840"
+],
+"ambiguous": false
+},
+{
+"short": "고재",
+"full": [
+"고분자및경량재료"
+],
+"codes": [
+"727820"
+],
+"ambiguous": false
+},
+{
+"short": "고제공",
+"full": [
+"고급제어공학"
+],
+"codes": [
+"106722"
+],
+"ambiguous": false
+},
+{
+"short": "고프",
+"full": [
+"고급C프로그래밍"
+],
+"codes": [
+"961824"
+],
+"ambiguous": false
+},
+{
+"short": "고프스",
+"full": [
+"고급프랑스어"
+],
+"codes": [
+"203307"
+],
+"ambiguous": false
+},
+{
+"short": "고화",
+"full": [
+"고급화성학",
+"고분자화학"
+],
+"codes": [
+"462302",
+"462402",
+"730523"
+],
+"ambiguous": true
+},
+{
+"short": "골이실",
+"full": [
+"골프코칭이론과실습"
+],
+"codes": [
+"970801"
+],
+"ambiguous": false
+},
+{
+"short": "공C그",
+"full": [
+"공학CAD및그래픽스"
+],
+"codes": [
+"012303"
+],
+"ambiguous": false
+},
+{
+"short": "공C및",
+"full": [
+"공학CAD및형상모델링"
+],
+"codes": [
+"120206"
+],
+"ambiguous": false
+},
+{
+"short": "공가조스",
+"full": [
+"공간과가구조형스튜디오"
+],
+"codes": [
+"415512",
+"415613"
+],
+"ambiguous": false
+},
+{
+"short": "공관",
+"full": [
+"공급사슬관리",
+"공정관리"
+],
+"codes": [
+"740912",
+"754840"
+],
+"ambiguous": true
+},
+{
+"short": "공기",
+"full": [
+"공연기획"
+],
+"codes": [
+"383701"
+],
+"ambiguous": false
+},
+{
+"short": "공기수",
+"full": [
+"공학기초수학"
+],
+"codes": [
+"190408"
+],
+"ambiguous": false
+},
+{
+"short": "공디사",
+"full": [
+"공예디자인사"
+],
+"codes": [
+"409520"
+],
+"ambiguous": false
+},
+{
+"short": "공디이",
+"full": [
+"공간디자이너의사고법"
+],
+"codes": [
+"111308"
+],
+"ambiguous": false
+},
+{
+"short": "공분비",
+"full": [
+"공연분석과비평"
+],
+"codes": [
+"461702"
+],
+"ambiguous": false
+},
+{
+"short": "공빅분",
+"full": [
+"공간빅데이터분석"
+],
+"codes": [
+"115809"
+],
+"ambiguous": false
+},
+{
+"short": "공설건프",
+"full": [
+"공장설계와건설프로젝트"
+],
+"codes": [
+"130822"
+],
+"ambiguous": false
+},
+{
+"short": "공소실",
+"full": [
+"공학소프트웨어실습"
+],
+"codes": [
+"120823",
+"120831"
+],
+"ambiguous": false
+},
+{
+"short": "공심",
+"full": [
+"공간과심리"
+],
+"codes": [
+"002401"
+],
+"ambiguous": false
+},
+{
+"short": "공애이스",
+"full": [
+"공간애플리케이션스튜디오"
+],
+"codes": [
+"411732",
+"411849"
+],
+"ambiguous": false
+},
+{
+"short": "공역",
+"full": [
+"공업역학"
+],
+"codes": [
+"114202"
+],
+"ambiguous": false
+},
+{
+"short": "공연스",
+"full": [
+"공간연출스튜디오"
+],
+"codes": [
+"950519",
+"950712"
+],
+"ambiguous": false
+},
+{
+"short": "공열",
+"full": [
+"공업열역학",
+"공정열역학"
+],
+"codes": [
+"013323",
+"130512"
+],
+"ambiguous": true
+},
+{
+"short": "공예",
+"full": [
+"공연예술사"
+],
+"codes": [
+"381103"
+],
+"ambiguous": false
+},
+{
+"short": "공이",
+"full": [
+"공학의이해"
+],
+"codes": [
+"004175"
+],
+"ambiguous": false
+},
+{
+"short": "공이C",
+"full": [
+"공학의이해CTO특강"
+],
+"codes": [
+"008753"
+],
+"ambiguous": false
+},
+{
+"short": "공이학",
+"full": [
+"공학의이해과학사"
+],
+"codes": [
+"002046"
+],
+"ambiguous": false
+},
+{
+"short": "공정공실",
+"full": [
+"공간정보공학및실습"
+],
+"codes": [
+"106308"
+],
+"ambiguous": false
+},
+{
+"short": "공제",
+"full": [
+"공정제어"
+],
+"codes": [
+"130706",
+"730521"
+],
+"ambiguous": false
+},
+{
+"short": "공커",
+"full": [
+"공공커뮤니케이션"
+],
+"codes": [
+"756860"
+],
+"ambiguous": false
+},
+{
+"short": "공컴입실",
+"full": [
+"공학컴퓨터입문및실습"
+],
+"codes": [
+"012301"
+],
+"ambiguous": false
+},
+{
+"short": "공폼스",
+"full": [
+"공간폼팩터스튜디오"
+],
+"codes": [
+"411326",
+"411430"
+],
+"ambiguous": false
+},
+{
+"short": "공프토스",
+"full": [
+"공간프로토타이핑스튜디오"
+],
+"codes": [
+"411526",
+"411625"
+],
+"ambiguous": false
+},
+{
+"short": "공현미",
+"full": [
+"공간과현대미술"
+],
+"codes": [
+"111404"
+],
+"ambiguous": false
+},
+{
+"short": "공환",
+"full": [
+"공간환경"
+],
+"codes": [
+"710214"
+],
+"ambiguous": false
+},
+{
+"short": "과기자해",
+"full": [
+"과학기술자료해석"
+],
+"codes": [
+"351421"
+],
+"ambiguous": false
+},
+{
+"short": "관회경의",
+"full": [
+"관리회계와경영의사결정"
+],
+"codes": [
+"311509"
+],
+"ambiguous": false
+},
+{
+"short": "광P기실",
+"full": [
+"광고PR기획실습"
+],
+"codes": [
+"756839"
+],
+"ambiguous": false
+},
+{
+"short": "광P데분",
+"full": [
+"광고PR조사와데이터분석"
+],
+"codes": [
+"756318"
+],
+"ambiguous": false
+},
+{
+"short": "광공",
+"full": [
+"광전자공학"
+],
+"codes": [
+"106719",
+"701720"
+],
+"ambiguous": false
+},
+{
+"short": "광기",
+"full": [
+"광고기획론"
+],
+"codes": [
+"756819"
+],
+"ambiguous": false
+},
+{
+"short": "광커",
+"full": [
+"광고커뮤니케이션"
+],
+"codes": [
+"381307"
+],
+"ambiguous": false
+},
+{
+"short": "광학",
+"full": [
+"광고학개론"
+],
+"codes": [
+"035104"
+],
+"ambiguous": false
+},
+{
+"short": "교계",
+"full": [
+"교통계획"
+],
+"codes": [
+"115507"
+],
+"ambiguous": false
+},
+{
+"short": "교공",
+"full": [
+"교육공학",
+"교통공학"
+],
+"codes": [
+"115607",
+"280206"
+],
+"ambiguous": true
+},
+{
+"short": "교공설",
+"full": [
+"교량공학및설계"
+],
+"codes": [
+"116814"
+],
+"ambiguous": false
+},
+{
+"short": "교과",
+"full": [
+"교육과정"
+],
+"codes": [
+"280106"
+],
+"ambiguous": false
+},
+{
+"short": "교교",
+"full": [
+"교육교과교육론",
+"교육교과논리및논술"
+],
+"codes": [
+"280611",
+"280711"
+],
+"ambiguous": true
+},
+{
+"short": "교교구",
+"full": [
+"교육교과교재및연구법"
+],
+"codes": [
+"280411"
+],
+"ambiguous": false
+},
+{
+"short": "교발학경",
+"full": [
+"교육발전과학교경영"
+],
+"codes": [
+"280706"
+],
+"ambiguous": false
+},
+{
+"short": "교사",
+"full": [
+"교사와교직사회",
+"교육사회학"
+],
+"codes": [
+"280409",
+"280705"
+],
+"ambiguous": true
+},
+{
+"short": "교세",
+"full": [
+"교육학세미나"
+],
+"codes": [
+"280804"
+],
+"ambiguous": false
+},
+{
+"short": "교실",
+"full": [
+"교직실무"
+],
+"codes": [
+"053707"
+],
+"ambiguous": false
+},
+{
+"short": "교심",
+"full": [
+"교육심리학"
+],
+"codes": [
+"280204"
+],
+"ambiguous": false
+},
+{
+"short": "교이",
+"full": [
+"교수학습이론"
+],
+"codes": [
+"053311"
+],
+"ambiguous": false
+},
+{
+"short": "교정",
+"full": [
+"교육정책론"
+],
+"codes": [
+"280412"
+],
+"ambiguous": false
+},
+{
+"short": "교조법",
+"full": [
+"교육조사방법론"
+],
+"codes": [
+"280510"
+],
+"ambiguous": false
+},
+{
+"short": "교철",
+"full": [
+"교육사철학",
+"교육철학"
+],
+"codes": [
+"053106",
+"280203"
+],
+"ambiguous": true
+},
+{
+"short": "교통",
+"full": [
+"교육통계"
+],
+"codes": [
+"053317"
+],
+"ambiguous": false
+},
+{
+"short": "교학",
+"full": [
+"교육학개론"
+],
+"codes": [
+"280105"
+],
+"ambiguous": false
+},
+{
+"short": "교행",
+"full": [
+"교육행정론"
+],
+"codes": [
+"280307"
+],
+"ambiguous": false
+},
+{
+"short": "구계",
+"full": [
+"구조계획"
+],
+"codes": [
+"111005"
+],
+"ambiguous": false
+},
+{
+"short": "구디",
+"full": [
+"구조디자인"
+],
+"codes": [
+"740707"
+],
+"ambiguous": false
+},
+{
+"short": "구문이",
+"full": [
+"구비문학의이해"
+],
+"codes": [
+"204209"
+],
+"ambiguous": false
+},
+{
+"short": "구설",
+"full": [
+"구조설계"
+],
+"codes": [
+"110862"
+],
+"ambiguous": false
+},
+{
+"short": "구역",
+"full": [
+"구조역학"
+],
+"codes": [
+"110341",
+"110441"
+],
+"ambiguous": false
+},
+{
+"short": "구역실",
+"full": [
+"구조역학및실험"
+],
+"codes": [
+"116820",
+"116828"
+],
+"ambiguous": false
+},
+{
+"short": "구이",
+"full": [
+"구조의이해"
+],
+"codes": [
+"110262",
+"740308"
+],
+"ambiguous": false
+},
+{
+"short": "구재실",
+"full": [
+"구조재료실험"
+],
+"codes": [
+"727826"
+],
+"ambiguous": false
+},
+{
+"short": "구진",
+"full": [
+"구조진동론"
+],
+"codes": [
+"723838"
+],
+"ambiguous": false
+},
+{
+"short": "국개",
+"full": [
+"국문학개론"
+],
+"codes": [
+"023110"
+],
+"ambiguous": false
+},
+{
+"short": "국거",
+"full": [
+"국제거래법"
+],
+"codes": [
+"351712"
+],
+"ambiguous": false
+},
+{
+"short": "국경",
+"full": [
+"국제경영",
+"국제경제법",
+"국제경제학"
+],
+"codes": [
+"313108",
+"351611",
+"751415",
+"752315",
+"754405",
+"754822"
+],
+"ambiguous": true
+},
+{
+"short": "국금",
+"full": [
+"국제금융론"
+],
+"codes": [
+"361506"
+],
+"ambiguous": false
+},
+{
+"short": "국기",
+"full": [
+"국제기구법"
+],
+"codes": [
+"351517"
+],
+"ambiguous": false
+},
+{
+"short": "국마",
+"full": [
+"국제마케팅"
+],
+"codes": [
+"754512"
+],
+"ambiguous": false
+},
+{
+"short": "국무",
+"full": [
+"국제무역론"
+],
+"codes": [
+"361509"
+],
+"ambiguous": false
+},
+{
+"short": "국문",
+"full": [
+"국어문법론"
+],
+"codes": [
+"204309"
+],
+"ambiguous": false
+},
+{
+"short": "국음",
+"full": [
+"국어음운론"
+],
+"codes": [
+"204413"
+],
+"ambiguous": false
+},
+{
+"short": "국의",
+"full": [
+"국어의미론"
+],
+"codes": [
+"204511"
+],
+"ambiguous": false
+},
+{
+"short": "국재",
+"full": [
+"국제재무",
+"국제재판과판례"
+],
+"codes": [
+"313109",
+"351850"
+],
+"ambiguous": true
+},
+{
+"short": "국재관",
+"full": [
+"국제재무관리"
+],
+"codes": [
+"752710"
+],
+"ambiguous": false
+},
+{
+"short": "국지개",
+"full": [
+"국제및지역개발"
+],
+"codes": [
+"115815"
+],
+"ambiguous": false
+},
+{
+"short": "국학",
+"full": [
+"국어학개론"
+],
+"codes": [
+"023209"
+],
+"ambiguous": false
+},
+{
+"short": "국환",
+"full": [
+"국제환경법"
+],
+"codes": [
+"351518"
+],
+"ambiguous": false
+},
+{
+"short": "그디&디",
+"full": [
+"그래픽디자인&헬스케어디자인"
+],
+"codes": [
+"888034"
+],
+"ambiguous": false
+},
+{
+"short": "그콘제",
+"full": [
+"그래픽콘텐츠제작"
+],
+"codes": [
+"756848"
+],
+"ambiguous": false
+},
+{
+"short": "근건",
+"full": [
+"근대건축론"
+],
+"codes": [
+"740403"
+],
+"ambiguous": false
+},
+{
+"short": "근미",
+"full": [
+"근대미학"
+],
+"codes": [
+"409316"
+],
+"ambiguous": false
+},
+{
+"short": "글경리",
+"full": [
+"글로벌경영과리더십"
+],
+"codes": [
+"753214"
+],
+"ambiguous": false
+},
+{
+"short": "글네경",
+"full": [
+"글로벌네트워크경영"
+],
+"codes": [
+"750817"
+],
+"ambiguous": false
+},
+{
+"short": "글벌",
+"full": [
+"글로벌경쟁과협상",
+"글로벌협업제품혁신"
+],
+"codes": [
+"120627",
+"754721"
+],
+"ambiguous": true
+},
+{
+"short": "글커",
+"full": [
+"글로벌커뮤니케이션"
+],
+"codes": [
+"756858"
+],
+"ambiguous": false
+},
+{
+"short": "금계",
+"full": [
+"금융계량경제학"
+],
+"codes": [
+"361707"
+],
+"ambiguous": false
+},
+{
+"short": "금공",
+"full": [
+"금융공학"
+],
+"codes": [
+"311821"
+],
+"ambiguous": false
+},
+{
+"short": "금기",
+"full": [
+"금융기관론"
+],
+"codes": [
+"752512"
+],
+"ambiguous": false
+},
+{
+"short": "금데분",
+"full": [
+"금융데이터분석"
+],
+"codes": [
+"311519"
+],
+"ambiguous": false
+},
+{
+"short": "금물",
+"full": [
+"금속물리"
+],
+"codes": [
+"727526"
+],
+"ambiguous": false
+},
+{
+"short": "금보사연",
+"full": [
+"금융보험사례연구"
+],
+"codes": [
+"752717"
+],
+"ambiguous": false
+},
+{
+"short": "금상",
+"full": [
+"금융상품론"
+],
+"codes": [
+"752819"
+],
+"ambiguous": false
+},
+{
+"short": "금세",
+"full": [
+"금융세미나"
+],
+"codes": [
+"752712"
+],
+"ambiguous": false
+},
+{
+"short": "금재",
+"full": [
+"금속재료"
+],
+"codes": [
+"125715"
+],
+"ambiguous": false
+},
+{
+"short": "금재공",
+"full": [
+"금속재료공정"
+],
+"codes": [
+"727625"
+],
+"ambiguous": false
+},
+{
+"short": "금재실",
+"full": [
+"금속재료실험"
+],
+"codes": [
+"125825"
+],
+"ambiguous": false
+},
+{
+"short": "금회매",
+"full": [
+"금융회사매니지먼트"
+],
+"codes": [
+"311819"
+],
+"ambiguous": false
+},
+{
+"short": "기가리개",
+"full": [
+"기업가정신과리더십개발"
+],
+"codes": [
+"754841"
+],
+"ambiguous": false
+},
+{
+"short": "기경",
+"full": [
+"기업과경영"
+],
+"codes": [
+"033203",
+"381201"
+],
+"ambiguous": false
+},
+{
+"short": "기경과디",
+"full": [
+"기업경영과세무캡스톤디자인"
+],
+"codes": [
+"751520"
+],
+"ambiguous": false
+},
+{
+"short": "기경세",
+"full": [
+"기업경영과세무"
+],
+"codes": [
+"311606",
+"381417",
+"751821"
+],
+"ambiguous": false
+},
+{
+"short": "기공",
+"full": [
+"기계공작법"
+],
+"codes": [
+"120522"
+],
+"ambiguous": false
+},
+{
+"short": "기공설",
+"full": [
+"기초공학및설계"
+],
+"codes": [
+"116707"
+],
+"ambiguous": false
+},
+{
+"short": "기공실",
+"full": [
+"기계공학실험"
+],
+"codes": [
+"720203"
+],
+"ambiguous": false
+},
+{
+"short": "기공연",
+"full": [
+"기계공학연습"
+],
+"codes": [
+"720837"
+],
+"ambiguous": false
+},
+{
+"short": "기공조",
+"full": [
+"기초공구기법과조형"
+],
+"codes": [
+"043157"
+],
+"ambiguous": false
+},
+{
+"short": "기공종설",
+"full": [
+"기계공학종합설계"
+],
+"codes": [
+"720726",
+"720824"
+],
+"ambiguous": false
+},
+{
+"short": "기교",
+"full": [
+"기업교육론"
+],
+"codes": [
+"280610"
+],
+"ambiguous": false
+},
+{
+"short": "기그디",
+"full": [
+"기초그래픽디자인"
+],
+"codes": [
+"410118"
+],
+"ambiguous": false
+},
+{
+"short": "기기",
+"full": [
+"기계기구학",
+"기계학습기초"
+],
+"codes": [
+"101617",
+"720314"
+],
+"ambiguous": true
+},
+{
+"short": "기독",
+"full": [
+"기초독일어"
+],
+"codes": [
+"023107",
+"023207"
+],
+"ambiguous": false
+},
+{
+"short": "기독어",
+"full": [
+"기초독일어회화"
+],
+"codes": [
+"202816",
+"202817"
+],
+"ambiguous": false
+},
+{
+"short": "기드",
+"full": [
+"기초드로잉"
+],
+"codes": [
+"950832",
+"950833"
+],
+"ambiguous": false
+},
+{
+"short": "기디",
+"full": [
+"기초디자인"
+],
+"codes": [
+"415814"
+],
+"ambiguous": false
+},
+{
+"short": "기디스",
+"full": [
+"기업적디자인스튜디오",
+"기초디자인스튜디오"
+],
+"codes": [
+"410834",
+"410836",
+"410839"
+],
+"ambiguous": true
+},
+{
+"short": "기무",
+"full": [
+"기초무용"
+],
+"codes": [
+"461103",
+"461203"
+],
+"ambiguous": false
+},
+{
+"short": "기문",
+"full": [
+"기초독문법"
+],
+"codes": [
+"202815",
+"202818"
+],
+"ambiguous": false
+},
+{
+"short": "기발",
+"full": [
+"기초발성"
+],
+"codes": [
+"461102",
+"461202"
+],
+"ambiguous": false
+},
+{
+"short": "기분",
+"full": [
+"기기분석"
+],
+"codes": [
+"730732"
+],
+"ambiguous": false
+},
+{
+"short": "기사",
+"full": [
+"기초사진"
+],
+"codes": [
+"920207"
+],
+"ambiguous": false
+},
+{
+"short": "기생화",
+"full": [
+"기초생명화공"
+],
+"codes": [
+"130514"
+],
+"ambiguous": false
+},
+{
+"short": "기선설",
+"full": [
+"기본선박설계"
+],
+"codes": [
+"723617"
+],
+"ambiguous": false
+},
+{
+"short": "기설학응",
+"full": [
+"기계설계학및응용"
+],
+"codes": [
+"720836"
+],
+"ambiguous": false
+},
+{
+"short": "기시공실",
+"full": [
+"기계시스템공학실험"
+],
+"codes": [
+"120829",
+"120830"
+],
+"ambiguous": false
+},
+{
+"short": "기시설",
+"full": [
+"기계시스템설계"
+],
+"codes": [
+"720626"
+],
+"ambiguous": false
+},
+{
+"short": "기시심주",
+"full": [
+"기계시스템심화주제"
+],
+"codes": [
+"120848",
+"120849"
+],
+"ambiguous": false
+},
+{
+"short": "기시종설",
+"full": [
+"기계시스템종합설계"
+],
+"codes": [
+"120721"
+],
+"ambiguous": false
+},
+{
+"short": "기실컴그",
+"full": [
+"기초실기와컴퓨터그래픽"
+],
+"codes": [
+"409116",
+"409215"
+],
+"ambiguous": false
+},
+{
+"short": "기심",
+"full": [
+"기계학습심화"
+],
+"codes": [
+"101719"
+],
+"ambiguous": false
+},
+{
+"short": "기연",
+"full": [
+"기초연기"
+],
+"codes": [
+"461101",
+"461201"
+],
+"ambiguous": false
+},
+{
+"short": "기영",
+"full": [
+"기초영상"
+],
+"codes": [
+"950840"
+],
+"ambiguous": false
+},
+{
+"short": "기영합",
+"full": [
+"기초영상합성"
+],
+"codes": [
+"950422"
+],
+"ambiguous": false
+},
+{
+"short": "기요설",
+"full": [
+"기계요소설계"
+],
+"codes": [
+"120516"
+],
+"ambiguous": false
+},
+{
+"short": "기의과",
+"full": [
+"기업의자본조달과법"
+],
+"codes": [
+"351528"
+],
+"ambiguous": false
+},
+{
+"short": "기입",
+"full": [
+"기초입체"
+],
+"codes": [
+"400102"
+],
+"ambiguous": false
+},
+{
+"short": "기재",
+"full": [
+"기능재료"
+],
+"codes": [
+"125611"
+],
+"ambiguous": false
+},
+{
+"short": "기재역",
+"full": [
+"기계재료역학"
+],
+"codes": [
+"014328",
+"720411"
+],
+"ambiguous": false
+},
+{
+"short": "기전실",
+"full": [
+"기초전공실기"
+],
+"codes": [
+"462101",
+"462201",
+"462301",
+"462401"
+],
+"ambiguous": false
+},
+{
+"short": "기진",
+"full": [
+"기계진동학"
+],
+"codes": [
+"720614"
+],
+"ambiguous": false
+},
+{
+"short": "기체",
+"full": [
+"기계체조"
+],
+"codes": [
+"970606"
+],
+"ambiguous": false
+},
+{
+"short": "기평",
+"full": [
+"기초평면"
+],
+"codes": [
+"400101"
+],
+"ambiguous": false
+},
+{
+"short": "기학",
+"full": [
+"기계학습",
+"기계학습1",
+"기계학습2"
+],
+"codes": [
+"140528",
+"140629"
+],
+"ambiguous": true
+},
+{
+"short": "나개",
+"full": [
+"나노소재개론"
+],
+"codes": [
+"125720"
+],
+"ambiguous": false
+},
+{
+"short": "나공응",
+"full": [
+"나노소재공정및응용"
+],
+"codes": [
+"125830"
+],
+"ambiguous": false
+},
+{
+"short": "나바센개",
+"full": [
+"나노바이오센서개론"
+],
+"codes": [
+"888127"
+],
+"ambiguous": false
+},
+{
+"short": "나신개",
+"full": [
+"나노신소재개론"
+],
+"codes": [
+"727313"
+],
+"ambiguous": false
+},
+{
+"short": "나재공",
+"full": [
+"나노재료공정"
+],
+"codes": [
+"130722"
+],
+"ambiguous": false
+},
+{
+"short": "나재기",
+"full": [
+"나노재료및기술"
+],
+"codes": [
+"727814"
+],
+"ambiguous": false
+},
+{
+"short": "네기기",
+"full": [
+"네트워크기반기술"
+],
+"codes": [
+"101619"
+],
+"ambiguous": false
+},
+{
+"short": "네데분",
+"full": [
+"네트워크데이터분석"
+],
+"codes": [
+"140723"
+],
+"ambiguous": false
+},
+{
+"short": "네실",
+"full": [
+"네트워크실험"
+],
+"codes": [
+"704511"
+],
+"ambiguous": false
+},
+{
+"short": "노경",
+"full": [
+"노동경제학"
+],
+"codes": [
+"361617"
+],
+"ambiguous": false
+},
+{
+"short": "노교",
+"full": [
+"노인교육론"
+],
+"codes": [
+"280410"
+],
+"ambiguous": false
+},
+{
+"short": "논작",
+"full": [
+"논문작성",
+"논문작성법"
+],
+"codes": [
+"023210",
+"202611"
+],
+"ambiguous": true
+},
+{
+"short": "논적글",
+"full": [
+"논리적사고와글쓰기"
+],
+"codes": [
+"001011",
+"001012",
+"001013",
+"001015"
+],
+"ambiguous": false
+},
+{
+"short": "논적와",
+"full": [
+"논리적사고와글쓰기┐"
+],
+"codes": [
+"001013"
+],
+"ambiguous": false
+},
+{
+"short": "논회설실",
+"full": [
+"논리회로설계및실험"
+],
+"codes": [
+"013313"
+],
+"ambiguous": false
+},
+{
+"short": "뉴세",
+"full": [
+"뉴미디어세미나"
+],
+"codes": [
+"950524"
+],
+"ambiguous": false
+},
+{
+"short": "뉴연",
+"full": [
+"뉴미디어연구"
+],
+"codes": [
+"462805"
+],
+"ambiguous": false
+},
+{
+"short": "뉴워",
+"full": [
+"뉴미디어워크샵"
+],
+"codes": [
+"950626"
+],
+"ambiguous": false
+},
+{
+"short": "뉴프",
+"full": [
+"뉴미디어액팅프로젝트"
+],
+"codes": [
+"461606"
+],
+"ambiguous": false
+},
+{
+"short": "다교",
+"full": [
+"다양성과포용교육"
+],
+"codes": [
+"280713"
+],
+"ambiguous": false
+},
+{
+"short": "다기경",
+"full": [
+"다국적기업경영론"
+],
+"codes": [
+"311614"
+],
+"ambiguous": false
+},
+{
+"short": "다기전",
+"full": [
+"다국적기업의전략"
+],
+"codes": [
+"790618"
+],
+"ambiguous": false
+},
+{
+"short": "다제워",
+"full": [
+"다큐멘터리제작워크샵"
+],
+"codes": [
+"950839"
+],
+"ambiguous": false
+},
+{
+"short": "다통분",
+"full": [
+"다변량통계분석"
+],
+"codes": [
+"140725"
+],
+"ambiguous": false
+},
+{
+"short": "단계",
+"full": [
+"단지계획"
+],
+"codes": [
+"110715",
+"115602"
+],
+"ambiguous": false
+},
+{
+"short": "단제워",
+"full": [
+"단편영화제작워크샵"
+],
+"codes": [
+"950838"
+],
+"ambiguous": false
+},
+{
+"short": "대물실",
+"full": [
+"대학물리실험",
+"대학물리실험┒"
+],
+"codes": [
+"012103",
+"012106"
+],
+"ambiguous": true
+},
+{
+"short": "대생",
+"full": [
+"대학생물"
+],
+"codes": [
+"012122",
+"012124"
+],
+"ambiguous": false
+},
+{
+"short": "대생세",
+"full": [
+"대학생활세미나"
+],
+"codes": [
+"004004"
+],
+"ambiguous": false
+},
+{
+"short": "대생실",
+"full": [
+"대학생물실험"
+],
+"codes": [
+"012123",
+"012125"
+],
+"ambiguous": false
+},
+{
+"short": "대영",
+"full": [
+"대학영어"
+],
+"codes": [
+"001023"
+],
+"ambiguous": false
+},
+{
+"short": "대이전",
+"full": [
+"대화의이해와전략"
+],
+"codes": [
+"204826"
+],
+"ambiguous": false
+},
+{
+"short": "대화실",
+"full": [
+"대학화학실험"
+],
+"codes": [
+"012109",
+"012113"
+],
+"ambiguous": false
+},
+{
+"short": "데기",
+"full": [
+"데이터기반최적화"
+],
+"codes": [
+"140526"
+],
+"ambiguous": false
+},
+{
+"short": "데기결",
+"full": [
+"데이터기반의사결정"
+],
+"codes": [
+"751522",
+"754414"
+],
+"ambiguous": false
+},
+{
+"short": "데기디스",
+"full": [
+"데이터기반디자인스튜디오"
+],
+"codes": [
+"930629"
+],
+"ambiguous": false
+},
+{
+"short": "데기설",
+"full": [
+"데이터기반최적설계"
+],
+"codes": [
+"720732"
+],
+"ambiguous": false
+},
+{
+"short": "데로문",
+"full": [
+"데이터로보는영어권문화"
+],
+"codes": [
+"201111"
+],
+"ambiguous": false
+},
+{
+"short": "데마",
+"full": [
+"데이터마이닝"
+],
+"codes": [
+"704838"
+],
+"ambiguous": false
+},
+{
+"short": "데베",
+"full": [
+"데이터베이스"
+],
+"codes": [
+"961602"
+],
+"ambiguous": false
+},
+{
+"short": "데베기",
+"full": [
+"데이터베이스기초"
+],
+"codes": [
+"140419"
+],
+"ambiguous": false
+},
+{
+"short": "데베설",
+"full": [
+"데이터베이스설계"
+],
+"codes": [
+"140523"
+],
+"ambiguous": false
+},
+{
+"short": "데베시",
+"full": [
+"데이터베이스시스템"
+],
+"codes": [
+"101618"
+],
+"ambiguous": false
+},
+{
+"short": "데베실",
+"full": [
+"데이터베이스및실습"
+],
+"codes": [
+"704822"
+],
+"ambiguous": false
+},
+{
+"short": "데분디창",
+"full": [
+"데이터분석과디자인창업"
+],
+"codes": [
+"110622"
+],
+"ambiguous": false
+},
+{
+"short": "데분방",
+"full": [
+"데이터분석방법론"
+],
+"codes": [
+"750622"
+],
+"ambiguous": false
+},
+{
+"short": "데분응",
+"full": [
+"데이터분석응용"
+],
+"codes": [
+"140820"
+],
+"ambiguous": false
+},
+{
+"short": "데분활",
+"full": [
+"데이터분석과활용"
+],
+"codes": [
+"756830"
+],
+"ambiguous": false
+},
+{
+"short": "데사",
+"full": [
+"데이터사이언스"
+],
+"codes": [
+"140316",
+"704816"
+],
+"ambiguous": false
+},
+{
+"short": "데사응",
+"full": [
+"데이터사이언스응용"
+],
+"codes": [
+"750413"
+],
+"ambiguous": false
+},
+{
+"short": "데시",
+"full": [
+"데이터시각화"
+],
+"codes": [
+"140628"
+],
+"ambiguous": false
+},
+{
+"short": "데전",
+"full": [
+"데이터전처리"
+],
+"codes": [
+"140421"
+],
+"ambiguous": false
+},
+{
+"short": "데통",
+"full": [
+"데이터통신"
+],
+"codes": [
+"701710"
+],
+"ambiguous": false
+},
+{
+"short": "도거이",
+"full": [
+"도시거버넌스와정책의이해"
+],
+"codes": [
+"115410"
+],
+"ambiguous": false
+},
+{
+"short": "도건",
+"full": [
+"도시건축론"
+],
+"codes": [
+"115411"
+],
+"ambiguous": false
+},
+{
+"short": "도경",
+"full": [
+"도시경관과생태",
+"도시경제론"
+],
+"codes": [
+"115102",
+"115824",
+"115829"
+],
+"ambiguous": true
+},
+{
+"short": "도계개",
+"full": [
+"도시계획개론"
+],
+"codes": [
+"115305"
+],
+"ambiguous": false
+},
+{
+"short": "도계관",
+"full": [
+"도시계획관련법규"
+],
+"codes": [
+"115513"
+],
+"ambiguous": false
+},
+{
+"short": "도계분",
+"full": [
+"도시계량분석"
+],
+"codes": [
+"115412"
+],
+"ambiguous": false
+},
+{
+"short": "도계설실",
+"full": [
+"도시계획설계실습"
+],
+"codes": [
+"115406"
+],
+"ambiguous": false
+},
+{
+"short": "도계설제",
+"full": [
+"도시계획설계제도"
+],
+"codes": [
+"115306"
+],
+"ambiguous": false
+},
+{
+"short": "도계실",
+"full": [
+"도시계획실습"
+],
+"codes": [
+"115701",
+"115801"
+],
+"ambiguous": false
+},
+{
+"short": "도계행실",
+"full": [
+"도시계획행정실무"
+],
+"codes": [
+"115713"
+],
+"ambiguous": false
+},
+{
+"short": "도공개",
+"full": [
+"도시공학개론"
+],
+"codes": [
+"004171"
+],
+"ambiguous": false
+},
+{
+"short": "도공설",
+"full": [
+"도로공학및설계"
+],
+"codes": [
+"116809"
+],
+"ambiguous": false
+},
+{
+"short": "도교계실",
+"full": [
+"도시교통계획실습"
+],
+"codes": [
+"115812",
+"115813"
+],
+"ambiguous": false
+},
+{
+"short": "도네물",
+"full": [
+"도시네트워크와물류"
+],
+"codes": [
+"115828"
+],
+"ambiguous": false
+},
+{
+"short": "도디그실",
+"full": [
+"도시디자인그래픽실습"
+],
+"codes": [
+"115814"
+],
+"ambiguous": false
+},
+{
+"short": "도사",
+"full": [
+"도시사회학"
+],
+"codes": [
+"115606"
+],
+"ambiguous": false
+},
+{
+"short": "도설",
+"full": [
+"도시설계",
+"도시설계론"
+],
+"codes": [
+"110664",
+"115509"
+],
+"ambiguous": true
+},
+{
+"short": "도설획",
+"full": [
+"도시시설계획론"
+],
+"codes": [
+"115512"
+],
+"ambiguous": false
+},
+{
+"short": "도와",
+"full": [
+"도시와기후변화"
+],
+"codes": [
+"115818"
+],
+"ambiguous": false
+},
+{
+"short": "도재",
+"full": [
+"도시재생"
+],
+"codes": [
+"115808"
+],
+"ambiguous": false
+},
+{
+"short": "도정",
+"full": [
+"도시정책론"
+],
+"codes": [
+"115616"
+],
+"ambiguous": false
+},
+{
+"short": "도특",
+"full": [
+"도상학특론"
+],
+"codes": [
+"409821"
+],
+"ambiguous": false
+},
+{
+"short": "독고문",
+"full": [
+"독일고전문학"
+],
+"codes": [
+"202820"
+],
+"ambiguous": false
+},
+{
+"short": "독근문",
+"full": [
+"독일근대문학"
+],
+"codes": [
+"202823"
+],
+"ambiguous": false
+},
+{
+"short": "독동문",
+"full": [
+"독일동화문학"
+],
+"codes": [
+"202310"
+],
+"ambiguous": false
+},
+{
+"short": "독문",
+"full": [
+"독일문학사"
+],
+"codes": [
+"023306",
+"023406"
+],
+"ambiguous": false
+},
+{
+"short": "독문영예",
+"full": [
+"독일문학과영상예술"
+],
+"codes": [
+"202810"
+],
+"ambiguous": false
+},
+{
+"short": "독문이",
+"full": [
+"독일문학의이해",
+"독일문학이론"
+],
+"codes": [
+"023108",
+"202831"
+],
+"ambiguous": true
+},
+{
+"short": "독시예",
+"full": [
+"독일시각예술학"
+],
+"codes": [
+"202836"
+],
+"ambiguous": false
+},
+{
+"short": "독어",
+"full": [
+"독일어작문"
+],
+"codes": [
+"202822",
+"202825"
+],
+"ambiguous": false
+},
+{
+"short": "독어연",
+"full": [
+"독일어번역연습"
+],
+"codes": [
+"202814",
+"202829"
+],
+"ambiguous": false
+},
+{
+"short": "독연",
+"full": [
+"독일어연습"
+],
+"codes": [
+"202812",
+"202813"
+],
+"ambiguous": false
+},
+{
+"short": "독연영",
+"full": [
+"독일연극과영화"
+],
+"codes": [
+"202833"
+],
+"ambiguous": false
+},
+{
+"short": "독예문",
+"full": [
+"독일의예술과문화"
+],
+"codes": [
+"202308"
+],
+"ambiguous": false
+},
+{
+"short": "독유지",
+"full": [
+"독일과유럽지역학"
+],
+"codes": [
+"202819"
+],
+"ambiguous": false
+},
+{
+"short": "독이",
+"full": [
+"독일의이슈"
+],
+"codes": [
+"202609"
+],
+"ambiguous": false
+},
+{
+"short": "독통문",
+"full": [
+"독일통일과문학"
+],
+"codes": [
+"202411"
+],
+"ambiguous": false
+},
+{
+"short": "독프",
+"full": [
+"독립프로젝트"
+],
+"codes": [
+"960853"
+],
+"ambiguous": false
+},
+{
+"short": "독현문",
+"full": [
+"독일현대문학"
+],
+"codes": [
+"202826"
+],
+"ambiguous": false
+},
+{
+"short": "동고미",
+"full": [
+"동양고대미술사"
+],
+"codes": [
+"409213"
+],
+"ambiguous": false
+},
+{
+"short": "동미",
+"full": [
+"동양미술사"
+],
+"codes": [
+"381418"
+],
+"ambiguous": false
+},
+{
+"short": "동미텍이",
+"full": [
+"동양미술텍스트의이해"
+],
+"codes": [
+"409822"
+],
+"ambiguous": false
+},
+{
+"short": "동스",
+"full": [
+"동계스포츠"
+],
+"codes": [
+"970704"
+],
+"ambiguous": false
+},
+{
+"short": "동예사특",
+"full": [
+"동양예술사상특론"
+],
+"codes": [
+"409721"
+],
+"ambiguous": false
+},
+{
+"short": "동조",
+"full": [
+"동양조경사"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "동현미",
+"full": [
+"동양근현대미술론"
+],
+"codes": [
+"409607"
+],
+"ambiguous": false
+},
+{
+"short": "동화",
+"full": [
+"동양화론"
+],
+"codes": [
+"409507"
+],
+"ambiguous": false
+},
+{
+"short": "드스:",
+"full": [
+"드로잉스튜디오:해부학"
+],
+"codes": [
+"940511"
+],
+"ambiguous": false
+},
+{
+"short": "드제실",
+"full": [
+"드라마제작실습"
+],
+"codes": [
+"950629"
+],
+"ambiguous": false
+},
+{
+"short": "디-제개",
+"full": [
+"디자인-공학협업제품개발"
+],
+"codes": [
+"667003"
+],
+"ambiguous": false
+},
+{
+"short": "디건디",
+"full": [
+"디지털건축디자인"
+],
+"codes": [
+"740607"
+],
+"ambiguous": false
+},
+{
+"short": "디공",
+"full": [
+"디지털공학"
+],
+"codes": [
+"703315",
+"704509"
+],
+"ambiguous": false
+},
+{
+"short": "디공개",
+"full": [
+"디스플레이공학개론"
+],
+"codes": [
+"727720"
+],
+"ambiguous": false
+},
+{
+"short": "디교",
+"full": [
+"디지털교육"
+],
+"codes": [
+"008617"
+],
+"ambiguous": false
+},
+{
+"short": "디그디",
+"full": [
+"디지털그래픽디자인"
+],
+"codes": [
+"960820",
+"960841"
+],
+"ambiguous": false
+},
+{
+"short": "디기",
+"full": [
+"디자인기획"
+],
+"codes": [
+"381407"
+],
+"ambiguous": false
+},
+{
+"short": "디논실설",
+"full": [
+"디지털논리실험및설계"
+],
+"codes": [
+"013705"
+],
+"ambiguous": false
+},
+{
+"short": "디논회",
+"full": [
+"디지털논리회로"
+],
+"codes": [
+"106202"
+],
+"ambiguous": false
+},
+{
+"short": "디디",
+"full": [
+"디지털디자인"
+],
+"codes": [
+"110323",
+"110443",
+"110544",
+"111307",
+"111609"
+],
+"ambiguous": false
+},
+{
+"short": "디디스",
+"full": [
+"디지털디자인스튜디오"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "디디입",
+"full": [
+"디지털디자인입문"
+],
+"codes": [
+"002595"
+],
+"ambiguous": false
+},
+{
+"short": "디론",
+"full": [
+"디자인론"
+],
+"codes": [
+"381102"
+],
+"ambiguous": false
+},
+{
+"short": "디리",
+"full": [
+"디자인리서치"
+],
+"codes": [
+"410823",
+"410824"
+],
+"ambiguous": false
+},
+{
+"short": "디마",
+"full": [
+"디지털마케팅"
+],
+"codes": [
+"750316",
+"751315",
+"752416"
+],
+"ambiguous": false
+},
+{
+"short": "디마애",
+"full": [
+"디지털마케팅애널리틱스"
+],
+"codes": [
+"311822"
+],
+"ambiguous": false
+},
+{
+"short": "디매",
+"full": [
+"디자인매니지먼트"
+],
+"codes": [
+"381706"
+],
+"ambiguous": false
+},
+{
+"short": "디모",
+"full": [
+"디지털모델링"
+],
+"codes": [
+"710221"
+],
+"ambiguous": false
+},
+{
+"short": "디문스",
+"full": [
+"디지털문화와스토리텔링"
+],
+"codes": [
+"201314"
+],
+"ambiguous": false
+},
+{
+"short": "디사",
+"full": [
+"디자인사"
+],
+"codes": [
+"381416",
+"950847"
+],
+"ambiguous": false
+},
+{
+"short": "디세",
+"full": [
+"디자인세미나"
+],
+"codes": [
+"381805"
+],
+"ambiguous": false
+},
+{
+"short": "디스",
+"full": [
+"디자인스타트업"
+],
+"codes": [
+"913726",
+"913854"
+],
+"ambiguous": false
+},
+{
+"short": "디시설",
+"full": [
+"디지털시스템설계"
+],
+"codes": [
+"101615"
+],
+"ambiguous": false
+},
+{
+"short": "디신처",
+"full": [
+"디지털신호처리"
+],
+"codes": [
+"106706",
+"701716"
+],
+"ambiguous": false
+},
+{
+"short": "디심",
+"full": [
+"디자인심리"
+],
+"codes": [
+"410514"
+],
+"ambiguous": false
+},
+{
+"short": "디애",
+"full": [
+"디지털애널리틱스"
+],
+"codes": [
+"756872"
+],
+"ambiguous": false
+},
+{
+"short": "디워",
+"full": [
+"디지털워크숍"
+],
+"codes": [
+"410519",
+"410619",
+"410720"
+],
+"ambiguous": false
+},
+{
+"short": "디이트",
+"full": [
+"디자인이슈와트렌드"
+],
+"codes": [
+"111708"
+],
+"ambiguous": false
+},
+{
+"short": "디입심",
+"full": [
+"디지털입체심화"
+],
+"codes": [
+"411323"
+],
+"ambiguous": false
+},
+{
+"short": "디재",
+"full": [
+"디스플레이재료"
+],
+"codes": [
+"125614",
+"727835"
+],
+"ambiguous": false
+},
+{
+"short": "디정",
+"full": [
+"디스플레이공정학"
+],
+"codes": [
+"125714"
+],
+"ambiguous": false
+},
+{
+"short": "디제",
+"full": [
+"디자인과제작"
+],
+"codes": [
+"111818"
+],
+"ambiguous": false
+},
+{
+"short": "디조",
+"full": [
+"디자인조형론"
+],
+"codes": [
+"410424"
+],
+"ambiguous": false
+},
+{
+"short": "디진",
+"full": [
+"디자인진로탐구"
+],
+"codes": [
+"411324"
+],
+"ambiguous": false
+},
+{
+"short": "디커전",
+"full": [
+"디지털커뮤니케이션전략"
+],
+"codes": [
+"756870"
+],
+"ambiguous": false
+},
+{
+"short": "디콘제",
+"full": [
+"디지털콘텐츠제작"
+],
+"codes": [
+"756853"
+],
+"ambiguous": false
+},
+{
+"short": "디탈처",
+"full": [
+"디지탈신호처리"
+],
+"codes": [
+"106706"
+],
+"ambiguous": false
+},
+{
+"short": "디털",
+"full": [
+"디지털리터러시",
+"디지털메이커스랩",
+"디지털입체실무도면",
+"디지털전환과조직",
+"디지털콘텐츠법",
+"디지털타이포그래피",
+"디지털포토그래피"
+],
+"codes": [
+"351717",
+"411428",
+"411846",
+"750521",
+"920331",
+"930831",
+"960829"
+],
+"ambiguous": true
+},
+{
+"short": "디텍",
+"full": [
+"디자인텍스트"
+],
+"codes": [
+"410520",
+"410620"
+],
+"ambiguous": false
+},
+{
+"short": "디통",
+"full": [
+"디지털통신"
+],
+"codes": [
+"106606",
+"701614"
+],
+"ambiguous": false
+},
+{
+"short": "디패프실",
+"full": [
+"디자인패턴프로그래밍및실습"
+],
+"codes": [
+"704828"
+],
+"ambiguous": false
+},
+{
+"short": "디프세",
+"full": [
+"디자인프로세스"
+],
+"codes": [
+"120518",
+"381202"
+],
+"ambiguous": false
+},
+{
+"short": "디헬마",
+"full": [
+"디지털헬스케어마케팅"
+],
+"codes": [
+"888066"
+],
+"ambiguous": false
+},
+{
+"short": "딥자처",
+"full": [
+"딥러닝자연어처리"
+],
+"codes": [
+"101816"
+],
+"ambiguous": false
+},
+{
+"short": "라드",
+"full": [
+"라이프드로잉"
+],
+"codes": [
+"940840"
+],
+"ambiguous": false
+},
+{
+"short": "라앙",
+"full": [
+"라틴앙상블"
+],
+"codes": [
+"462403"
+],
+"ambiguous": false
+},
+{
+"short": "레제실",
+"full": [
+"레코딩제작실습"
+],
+"codes": [
+"462508",
+"462608"
+],
+"ambiguous": false
+},
+{
+"short": "로U디설",
+"full": [
+"로봇UX디자인과설계"
+],
+"codes": [
+"002814"
+],
+"ambiguous": false
+},
+{
+"short": "로공개",
+"full": [
+"로봇공학개론"
+],
+"codes": [
+"720632"
+],
+"ambiguous": false
+},
+{
+"short": "로시공",
+"full": [
+"로봇시스템공학"
+],
+"codes": [
+"120842"
+],
+"ambiguous": false
+},
+{
+"short": "로인",
+"full": [
+"로봇과인공지능"
+],
+"codes": [
+"930723"
+],
+"ambiguous": false
+},
+{
+"short": "리개전탐",
+"full": [
+"리더십개발과전공탐색"
+],
+"codes": [
+"752821",
+"752822",
+"754834",
+"754837"
+],
+"ambiguous": false
+},
+{
+"short": "리디",
+"full": [
+"리빙디자인"
+],
+"codes": [
+"710228"
+],
+"ambiguous": false
+},
+{
+"short": "리시",
+"full": [
+"리튬이온배터리시스템"
+],
+"codes": [
+"720840"
+],
+"ambiguous": false
+},
+{
+"short": "리연",
+"full": [
+"리듬연구"
+],
+"codes": [
+"462306"
+],
+"ambiguous": false
+},
+{
+"short": "리편",
+"full": [
+"리듬편곡법"
+],
+"codes": [
+"462406"
+],
+"ambiguous": false
+},
+{
+"short": "마개",
+"full": [
+"마케팅개론"
+],
+"codes": [
+"035204"
+],
+"ambiguous": false
+},
+{
+"short": "마나공",
+"full": [
+"마이크로/나노공학"
+],
+"codes": [
+"120720"
+],
+"ambiguous": false
+},
+{
+"short": "마빅애",
+"full": [
+"마케팅빅데이터애널리틱스",
+"마케팅빅데이터애널리틱스Ⅰ"
+],
+"codes": [
+"311319"
+],
+"ambiguous": true
+},
+{
+"short": "마세",
+"full": [
+"마케팅세미나"
+],
+"codes": [
+"750718"
+],
+"ambiguous": false
+},
+{
+"short": "마전기",
+"full": [
+"마케팅전략과기획"
+],
+"codes": [
+"750516"
+],
+"ambiguous": false
+},
+{
+"short": "마조",
+"full": [
+"마케팅조사론"
+],
+"codes": [
+"750517"
+],
+"ambiguous": false
+},
+{
+"short": "마트",
+"full": [
+"마케팅트렌드"
+],
+"codes": [
+"311419",
+"756842"
+],
+"ambiguous": false
+},
+{
+"short": "마파",
+"full": [
+"마이크로파공학"
+],
+"codes": [
+"106507",
+"106607"
+],
+"ambiguous": false
+},
+{
+"short": "마프세",
+"full": [
+"마이크로프로세서및HDL"
+],
+"codes": [
+"106510"
+],
+"ambiguous": false
+},
+{
+"short": "만그내",
+"full": [
+"만화그래픽내러티브"
+],
+"codes": [
+"950858"
+],
+"ambiguous": false
+},
+{
+"short": "맞글",
+"full": [
+"맞춤법원리와글쓰기"
+],
+"codes": [
+"204409"
+],
+"ambiguous": false
+},
+{
+"short": "매연",
+"full": [
+"매체연기"
+],
+"codes": [
+"461507"
+],
+"ambiguous": false
+},
+{
+"short": "머실",
+"full": [
+"머신러닝및실습"
+],
+"codes": [
+"704413",
+"704612"
+],
+"ambiguous": false
+},
+{
+"short": "멀시해",
+"full": [
+"멀티피직스시스템해석"
+],
+"codes": [
+"720631"
+],
+"ambiguous": false
+},
+{
+"short": "멀신처",
+"full": [
+"멀티미디어신호처리"
+],
+"codes": [
+"106812"
+],
+"ambiguous": false
+},
+{
+"short": "메개",
+"full": [
+"메카트로닉스개론"
+],
+"codes": [
+"120809"
+],
+"ambiguous": false
+},
+{
+"short": "메디",
+"full": [
+"메카니즘디자인"
+],
+"codes": [
+"120310"
+],
+"ambiguous": false
+},
+{
+"short": "메응",
+"full": [
+"메카닉스응용"
+],
+"codes": [
+"120716"
+],
+"ambiguous": false
+},
+{
+"short": "명문",
+"full": [
+"명작과문화"
+],
+"codes": [
+"950827"
+],
+"ambiguous": false
+},
+{
+"short": "모UU프",
+"full": [
+"모바일UI/UX프로젝트"
+],
+"codes": [
+"960624",
+"961622"
+],
+"ambiguous": false
+},
+{
+"short": "모그",
+"full": [
+"모션그래픽"
+],
+"codes": [
+"950201",
+"950322"
+],
+"ambiguous": false
+},
+{
+"short": "모그고",
+"full": [
+"모션그래픽고급"
+],
+"codes": [
+"950525",
+"950628"
+],
+"ambiguous": false
+},
+{
+"short": "모그디",
+"full": [
+"모션그래픽디자인"
+],
+"codes": [
+"960316"
+],
+"ambiguous": false
+},
+{
+"short": "모디",
+"full": [
+"모바일디자인"
+],
+"codes": [
+"930843"
+],
+"ambiguous": false
+},
+{
+"short": "모리",
+"full": [
+"모빌리티와ITS"
+],
+"codes": [
+"115617"
+],
+"ambiguous": false
+},
+{
+"short": "모리디",
+"full": [
+"모빌리티캡스톤디자인"
+],
+"codes": [
+"725722",
+"725861"
+],
+"ambiguous": false
+},
+{
+"short": "모리스",
+"full": [
+"모빌리티폼팩터스튜디오"
+],
+"codes": [
+"411325",
+"411429"
+],
+"ambiguous": false
+},
+{
+"short": "모리이스",
+"full": [
+"모빌리티애플리케이션스튜디오"
+],
+"codes": [
+"411731",
+"411848"
+],
+"ambiguous": false
+},
+{
+"short": "모술",
+"full": [
+"모더니즘미술론"
+],
+"codes": [
+"409719"
+],
+"ambiguous": false
+},
+{
+"short": "모시융실",
+"full": [
+"모바일시스템융합및실습"
+],
+"codes": [
+"704817"
+],
+"ambiguous": false
+},
+{
+"short": "모앙",
+"full": [
+"모던재즈앙상블"
+],
+"codes": [
+"462602"
+],
+"ambiguous": false
+},
+{
+"short": "모프토스",
+"full": [
+"모빌리티프로토타이핑스튜디오"
+],
+"codes": [
+"411525",
+"411624"
+],
+"ambiguous": false
+},
+{
+"short": "모협",
+"full": [
+"모빌리티협업제품개발"
+],
+"codes": [
+"725621"
+],
+"ambiguous": false
+},
+{
+"short": "목가스",
+"full": [
+"목조형가구스튜디오"
+],
+"codes": [
+"415818",
+"415820",
+"415822",
+"415825",
+"415829",
+"415833"
+],
+"ambiguous": false
+},
+{
+"short": "무기이",
+"full": [
+"무대기술의이해"
+],
+"codes": [
+"461605"
+],
+"ambiguous": false
+},
+{
+"short": "무이",
+"full": [
+"무대의이해"
+],
+"codes": [
+"461505"
+],
+"ambiguous": false
+},
+{
+"short": "문공",
+"full": [
+"문화와공간"
+],
+"codes": [
+"111814"
+],
+"ambiguous": false
+},
+{
+"short": "문기",
+"full": [
+"문제해결기법"
+],
+"codes": [
+"101616"
+],
+"ambiguous": false
+},
+{
+"short": "문산",
+"full": [
+"문화산업론"
+],
+"codes": [
+"383501"
+],
+"ambiguous": false
+},
+{
+"short": "문예경",
+"full": [
+"문화예술경영",
+"문화예술경제학"
+],
+"codes": [
+"311716",
+"381415",
+"666262"
+],
+"ambiguous": true
+},
+{
+"short": "문예정",
+"full": [
+"문화예술정책"
+],
+"codes": [
+"666261"
+],
+"ambiguous": false
+},
+{
+"short": "문정",
+"full": [
+"문화정책"
+],
+"codes": [
+"383601"
+],
+"ambiguous": false
+},
+{
+"short": "문창사",
+"full": [
+"문학과창의적사고"
+],
+"codes": [
+"002585"
+],
+"ambiguous": false
+},
+{
+"short": "문콘산",
+"full": [
+"문화콘텐츠산업론"
+],
+"codes": [
+"311817"
+],
+"ambiguous": false
+},
+{
+"short": "문프",
+"full": [
+"문제해결과SW프로그래밍"
+],
+"codes": [
+"002580"
+],
+"ambiguous": false
+},
+{
+"short": "문학",
+"full": [
+"문화학입문"
+],
+"codes": [
+"202311"
+],
+"ambiguous": false
+},
+{
+"short": "물각",
+"full": [
+"물권각론"
+],
+"codes": [
+"351112"
+],
+"ambiguous": false
+},
+{
+"short": "물경",
+"full": [
+"물류경영"
+],
+"codes": [
+"381704"
+],
+"ambiguous": false
+},
+{
+"short": "물전",
+"full": [
+"물리전자"
+],
+"codes": [
+"106302"
+],
+"ambiguous": false
+},
+{
+"short": "물전공",
+"full": [
+"물리전자공학"
+],
+"codes": [
+"703413"
+],
+"ambiguous": false
+},
+{
+"short": "물전세",
+"full": [
+"물리전자세라믹스"
+],
+"codes": [
+"727824"
+],
+"ambiguous": false
+},
+{
+"short": "물총",
+"full": [
+"물권총론"
+],
+"codes": [
+"351104"
+],
+"ambiguous": false
+},
+{
+"short": "물화",
+"full": [
+"물리화학"
+],
+"codes": [
+"012118",
+"014324",
+"014418"
+],
+"ambiguous": false
+},
+{
+"short": "물화실",
+"full": [
+"물리화학실험"
+],
+"codes": [
+"130411"
+],
+"ambiguous": false
+},
+{
+"short": "뮤개",
+"full": [
+"뮤지컬개론"
+],
+"codes": [
+"461401"
+],
+"ambiguous": false
+},
+{
+"short": "뮤댄",
+"full": [
+"뮤지컬댄스"
+],
+"codes": [
+"461603"
+],
+"ambiguous": false
+},
+{
+"short": "뮤독",
+"full": [
+"뮤지컬독해"
+],
+"codes": [
+"461205"
+],
+"ambiguous": false
+},
+{
+"short": "뮤디제실",
+"full": [
+"뮤직비디오제작실습"
+],
+"codes": [
+"462705"
+],
+"ambiguous": false
+},
+{
+"short": "뮤디제워",
+"full": [
+"뮤직비디오제작워크샵"
+],
+"codes": [
+"950837"
+],
+"ambiguous": false
+},
+{
+"short": "뮤발",
+"full": [
+"뮤지컬발성"
+],
+"codes": [
+"461502",
+"461602",
+"461707"
+],
+"ambiguous": false
+},
+{
+"short": "뮤비",
+"full": [
+"뮤직비즈니스"
+],
+"codes": [
+"383801",
+"462706",
+"462806"
+],
+"ambiguous": false
+},
+{
+"short": "뮤앙",
+"full": [
+"뮤지컬앙상블"
+],
+"codes": [
+"461204"
+],
+"ambiguous": false
+},
+{
+"short": "뮤제실",
+"full": [
+"뮤지컬제작실습"
+],
+"codes": [
+"461501",
+"461601",
+"461701"
+],
+"ambiguous": false
+},
+{
+"short": "뮤컬",
+"full": [
+"뮤지컬움직임"
+],
+"codes": [
+"461503"
+],
+"ambiguous": false
+},
+{
+"short": "뮤컬실",
+"full": [
+"뮤지컬레퍼토리실습"
+],
+"codes": [
+"461302",
+"461402"
+],
+"ambiguous": false
+},
+{
+"short": "뮤현실",
+"full": [
+"뮤지컬현장실습"
+],
+"codes": [
+"461801"
+],
+"ambiguous": false
+},
+{
+"short": "미경",
+"full": [
+"미시경제학"
+],
+"codes": [
+"313105",
+"361817",
+"381303",
+"751509",
+"752313",
+"754823"
+],
+"ambiguous": false
+},
+{
+"short": "미경연",
+"full": [
+"미시경제학연습"
+],
+"codes": [
+"361314",
+"361709"
+],
+"ambiguous": false
+},
+{
+"short": "미경원",
+"full": [
+"미시경제원론"
+],
+"codes": [
+"361813"
+],
+"ambiguous": false
+},
+{
+"short": "미공기서",
+"full": [
+"미래공학기술과서비스"
+],
+"codes": [
+"725622"
+],
+"ambiguous": false
+},
+{
+"short": "미독문",
+"full": [
+"미디어독일문화"
+],
+"codes": [
+"202834"
+],
+"ambiguous": false
+},
+{
+"short": "미모디기",
+"full": [
+"미래모빌리티디자인과기술"
+],
+"codes": [
+"002670"
+],
+"ambiguous": false
+},
+{
+"short": "미모리",
+"full": [
+"미래모빌리티일반"
+],
+"codes": [
+"725520"
+],
+"ambiguous": false
+},
+{
+"short": "미문연",
+"full": [
+"미학문헌연습"
+],
+"codes": [
+"409720"
+],
+"ambiguous": false
+},
+{
+"short": "미문특",
+"full": [
+"미국문학특강"
+],
+"codes": [
+"201507"
+],
+"ambiguous": false
+},
+{
+"short": "미방",
+"full": [
+"미술사방법론"
+],
+"codes": [
+"409518"
+],
+"ambiguous": false
+},
+{
+"short": "미비입",
+"full": [
+"미술비평입문"
+],
+"codes": [
+"409317"
+],
+"ambiguous": false
+},
+{
+"short": "미사",
+"full": [
+"미디어와사회"
+],
+"codes": [
+"756850"
+],
+"ambiguous": false
+},
+{
+"short": "미사이교",
+"full": [
+"미래사회이해와교육"
+],
+"codes": [
+"280312"
+],
+"ambiguous": false
+},
+{
+"short": "미소기",
+"full": [
+"미래소자기술"
+],
+"codes": [
+"703726"
+],
+"ambiguous": false
+},
+{
+"short": "미실",
+"full": [
+"미래실험실"
+],
+"codes": [
+"410521"
+],
+"ambiguous": false
+},
+{
+"short": "미아",
+"full": [
+"미디어아트"
+],
+"codes": [
+"930720"
+],
+"ambiguous": false
+},
+{
+"short": "미아이",
+"full": [
+"미디어아트이론"
+],
+"codes": [
+"409823"
+],
+"ambiguous": false
+},
+{
+"short": "미어",
+"full": [
+"미디어스터디",
+"미디어윤리법제",
+"미디어트렌드와칭"
+],
+"codes": [
+"110164",
+"110264",
+"756837",
+"756869"
+],
+"ambiguous": true
+},
+{
+"short": "미어스",
+"full": [
+"미디어커머스와스타트업"
+],
+"codes": [
+"756876"
+],
+"ambiguous": false
+},
+{
+"short": "미예디시",
+"full": [
+"미래예측디자인시나리오"
+],
+"codes": [
+"411740"
+],
+"ambiguous": false
+},
+{
+"short": "미원",
+"full": [
+"미술원서강독"
+],
+"codes": [
+"409825"
+],
+"ambiguous": false
+},
+{
+"short": "미이제한",
+"full": [
+"미술의이해제2외국어와한문"
+],
+"codes": [
+"002056"
+],
+"ambiguous": false
+},
+{
+"short": "미입",
+"full": [
+"미술사입문",
+"미학입문"
+],
+"codes": [
+"043244",
+"043253"
+],
+"ambiguous": true
+},
+{
+"short": "미플",
+"full": [
+"미디어플래닝"
+],
+"codes": [
+"756857"
+],
+"ambiguous": false
+},
+{
+"short": "미학",
+"full": [
+"미국문학사"
+],
+"codes": [
+"023404"
+],
+"ambiguous": false
+},
+{
+"short": "민사",
+"full": [
+"민법사례연습"
+],
+"codes": [
+"351113"
+],
+"ambiguous": false
+},
+{
+"short": "민소",
+"full": [
+"민사소송법"
+],
+"codes": [
+"351522",
+"351627"
+],
+"ambiguous": false
+},
+{
+"short": "민연",
+"full": [
+"민사법종합연습"
+],
+"codes": [
+"351107"
+],
+"ambiguous": false
+},
+{
+"short": "민총",
+"full": [
+"민법총칙"
+],
+"codes": [
+"063203"
+],
+"ambiguous": false
+},
+{
+"short": "민특",
+"full": [
+"민법특강"
+],
+"codes": [
+"351729"
+],
+"ambiguous": false
+},
+{
+"short": "바공실",
+"full": [
+"바이오공학실험"
+],
+"codes": [
+"730827"
+],
+"ambiguous": false
+},
+{
+"short": "바아를이",
+"full": [
+"바이오아트를통한생명과학의이해"
+],
+"codes": [
+"888029"
+],
+"ambiguous": false
+},
+{
+"short": "바오공",
+"full": [
+"바이오소재공학"
+],
+"codes": [
+"730839"
+],
+"ambiguous": false
+},
+{
+"short": "바일스레",
+"full": [
+"바이오일러스트레이션리빙랩"
+],
+"codes": [
+"888095"
+],
+"ambiguous": false
+},
+{
+"short": "바제시",
+"full": [
+"바이오제어시스템"
+],
+"codes": [
+"703727"
+],
+"ambiguous": false
+},
+{
+"short": "바헬기의",
+"full": [
+"바이오헬스기초의학"
+],
+"codes": [
+"888004"
+],
+"ambiguous": false
+},
+{
+"short": "바헬데마",
+"full": [
+"바이오헬스데이터마이닝"
+],
+"codes": [
+"888098"
+],
+"ambiguous": false
+},
+{
+"short": "바헬역",
+"full": [
+"바이오헬스역량강화"
+],
+"codes": [
+"888045"
+],
+"ambiguous": false
+},
+{
+"short": "바헬응",
+"full": [
+"바이오헬스응용"
+],
+"codes": [
+"140834"
+],
+"ambiguous": false
+},
+{
+"short": "바헬의",
+"full": [
+"바이오헬스의료정보학",
+"바이오헬스의학용어"
+],
+"codes": [
+"888002",
+"888005"
+],
+"ambiguous": true
+},
+{
+"short": "바헬인",
+"full": [
+"바이오헬스인간과질병",
+"바이오헬스인체의신비"
+],
+"codes": [
+"888003",
+"888088"
+],
+"ambiguous": true
+},
+{
+"short": "바헬진설",
+"full": [
+"바이오헬스진로설계"
+],
+"codes": [
+"888001"
+],
+"ambiguous": false
+},
+{
+"short": "바화공개",
+"full": [
+"바이오화학공학개론"
+],
+"codes": [
+"730106"
+],
+"ambiguous": false
+},
+{
+"short": "박공",
+"full": [
+"박막공학"
+],
+"codes": [
+"125515"
+],
+"ambiguous": false
+},
+{
+"short": "박미경",
+"full": [
+"박물관학과미술경영"
+],
+"codes": [
+"381422"
+],
+"ambiguous": false
+},
+{
+"short": "박미행",
+"full": [
+"박물관학과미술행정"
+],
+"codes": [
+"409615"
+],
+"ambiguous": false
+},
+{
+"short": "반공",
+"full": [
+"반도체공정",
+"반도체공학",
+"반응공학"
+],
+"codes": [
+"106511",
+"106611",
+"125407",
+"130612",
+"703620",
+"727527"
+],
+"ambiguous": true
+},
+{
+"short": "반재",
+"full": [
+"반도체재료"
+],
+"codes": [
+"125511",
+"727622"
+],
+"ambiguous": false
+},
+{
+"short": "반재및실",
+"full": [
+"반도체재료및측정실험"
+],
+"codes": [
+"125621"
+],
+"ambiguous": false
+},
+{
+"short": "반제기",
+"full": [
+"반도체제조기술"
+],
+"codes": [
+"720630"
+],
+"ambiguous": false
+},
+{
+"short": "반졸요",
+"full": [
+"반드시하단주석및졸업요건참조"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "반체",
+"full": [
+"반도체소자"
+],
+"codes": [
+"701515"
+],
+"ambiguous": false
+},
+{
+"short": "반화공",
+"full": [
+"반도체화학공정"
+],
+"codes": [
+"130821"
+],
+"ambiguous": false
+},
+{
+"short": "발리",
+"full": [
+"발달심리학"
+],
+"codes": [
+"280311"
+],
+"ambiguous": false
+},
+{
+"short": "발중어",
+"full": [
+"발전중국어회화"
+],
+"codes": [
+"790631",
+"790809"
+],
+"ambiguous": false
+},
+{
+"short": "배민",
+"full": [
+"배드민턴"
+],
+"codes": [
+"970104"
+],
+"ambiguous": false
+},
+{
+"short": "배보",
+"full": [
+"배상책임보험"
+],
+"codes": [
+"752514"
+],
+"ambiguous": false
+},
+{
+"short": "배컨디",
+"full": [
+"배경컨셉디자인"
+],
+"codes": [
+"960838"
+],
+"ambiguous": false
+},
+{
+"short": "버프덕",
+"full": [
+"버추얼프로덕션"
+],
+"codes": [
+"950864"
+],
+"ambiguous": false
+},
+{
+"short": "법개",
+"full": [
+"법학개론"
+],
+"codes": [
+"381304"
+],
+"ambiguous": false
+},
+{
+"short": "법경",
+"full": [
+"법과경영",
+"법과경제학"
+],
+"codes": [
+"361413",
+"381507"
+],
+"ambiguous": true
+},
+{
+"short": "법분",
+"full": [
+"법과분쟁해결"
+],
+"codes": [
+"381420"
+],
+"ambiguous": false
+},
+{
+"short": "법상",
+"full": [
+"법사상사"
+],
+"codes": [
+"351637"
+],
+"ambiguous": false
+},
+{
+"short": "법생지과",
+"full": [
+"법과생활지식재산과법",
+"법과생활지식재산권과법"
+],
+"codes": [
+"002558"
+],
+"ambiguous": true
+},
+{
+"short": "법입",
+"full": [
+"법학입문"
+],
+"codes": [
+"351103"
+],
+"ambiguous": false
+},
+{
+"short": "법정",
+"full": [
+"법과정치"
+],
+"codes": [
+"351521"
+],
+"ambiguous": false
+},
+{
+"short": "법현생",
+"full": [
+"법과현대생활"
+],
+"codes": [
+"381411"
+],
+"ambiguous": false
+},
+{
+"short": "법회",
+"full": [
+"법사회학"
+],
+"codes": [
+"351306"
+],
+"ambiguous": false
+},
+{
+"short": "보경",
+"full": [
+"보건경제학"
+],
+"codes": [
+"361513"
+],
+"ambiguous": false
+},
+{
+"short": "보세",
+"full": [
+"보험세미나"
+],
+"codes": [
+"752808"
+],
+"ambiguous": false
+},
+{
+"short": "보앙",
+"full": [
+"보컬앙상블"
+],
+"codes": [
+"462505"
+],
+"ambiguous": false
+},
+{
+"short": "보학",
+"full": [
+"보험학원론"
+],
+"codes": [
+"753206"
+],
+"ambiguous": false
+},
+{
+"short": "부개입",
+"full": [
+"부동산개발입문"
+],
+"codes": [
+"111817"
+],
+"ambiguous": false
+},
+{
+"short": "부경",
+"full": [
+"부동산경제학"
+],
+"codes": [
+"361810"
+],
+"ambiguous": false
+},
+{
+"short": "분공",
+"full": [
+"분리공정"
+],
+"codes": [
+"730620"
+],
+"ambiguous": false
+},
+{
+"short": "분생공",
+"full": [
+"분자생물공학"
+],
+"codes": [
+"130813"
+],
+"ambiguous": false
+},
+{
+"short": "불미특",
+"full": [
+"불교미술특론"
+],
+"codes": [
+"409614"
+],
+"ambiguous": false
+},
+{
+"short": "브관",
+"full": [
+"브랜드관리"
+],
+"codes": [
+"790617"
+],
+"ambiguous": false
+},
+{
+"short": "브드제",
+"full": [
+"브랜드와신제품"
+],
+"codes": [
+"311616"
+],
+"ambiguous": false
+},
+{
+"short": "브디전",
+"full": [
+"브랜드디자인전략"
+],
+"codes": [
+"381506"
+],
+"ambiguous": false
+},
+{
+"short": "브매",
+"full": [
+"브랜드매니지먼트"
+],
+"codes": [
+"756846"
+],
+"ambiguous": false
+},
+{
+"short": "브스",
+"full": [
+"브랜드스토리텔링"
+],
+"codes": [
+"756867"
+],
+"ambiguous": false
+},
+{
+"short": "브전",
+"full": [
+"브랜드전략"
+],
+"codes": [
+"756514"
+],
+"ambiguous": false
+},
+{
+"short": "블개",
+"full": [
+"블록체인개론"
+],
+"codes": [
+"704837"
+],
+"ambiguous": false
+},
+{
+"short": "블체",
+"full": [
+"블록체인"
+],
+"codes": [
+"101815"
+],
+"ambiguous": false
+},
+{
+"short": "비교",
+"full": [
+"비교교육론"
+],
+"codes": [
+"280501"
+],
+"ambiguous": false
+},
+{
+"short": "비데분",
+"full": [
+"비정형데이터분석"
+],
+"codes": [
+"140832"
+],
+"ambiguous": false
+},
+{
+"short": "비데분인",
+"full": [
+"비즈니스데이터분석과인공지능"
+],
+"codes": [
+"311320"
+],
+"ambiguous": false
+},
+{
+"short": "비디",
+"full": [
+"비주얼이펙트디자인"
+],
+"codes": [
+"960718"
+],
+"ambiguous": false
+},
+{
+"short": "비디현실",
+"full": [
+"비즈니스디자인현장실습"
+],
+"codes": [
+"381421"
+],
+"ambiguous": false
+},
+{
+"short": "비스파",
+"full": [
+"비주얼스토리텔링파운데이션"
+],
+"codes": [
+"950825"
+],
+"ambiguous": false
+},
+{
+"short": "비영",
+"full": [
+"비즈니스영어"
+],
+"codes": [
+"311316"
+],
+"ambiguous": false
+},
+{
+"short": "비외",
+"full": [
+"비즈니스외국어"
+],
+"codes": [
+"753215"
+],
+"ambiguous": false
+},
+{
+"short": "비일",
+"full": [
+"비즈니스일본어"
+],
+"codes": [
+"311517",
+"311621"
+],
+"ambiguous": false
+},
+{
+"short": "비전게이",
+"full": [
+"비즈니스전략과게임이론"
+],
+"codes": [
+"750818"
+],
+"ambiguous": false
+},
+{
+"short": "비중",
+"full": [
+"비즈니스중국어"
+],
+"codes": [
+"311417"
+],
+"ambiguous": false
+},
+{
+"short": "비프",
+"full": [
+"비즈니스프로그래밍"
+],
+"codes": [
+"311206",
+"311622"
+],
+"ambiguous": false
+},
+{
+"short": "비프Ⅰ",
+"full": [
+"비즈니스프로그래밍Ⅰ"
+],
+"codes": [
+"311206"
+],
+"ambiguous": false
+},
+{
+"short": "비프Ⅱ",
+"full": [
+"비즈니스프로그래밍Ⅱ"
+],
+"codes": [
+"311622"
+],
+"ambiguous": false
+},
+{
+"short": "비프세",
+"full": [
+"비디오이미지프로세싱"
+],
+"codes": [
+"101612"
+],
+"ambiguous": false
+},
+{
+"short": "비프스",
+"full": [
+"비즈니스프랑스어"
+],
+"codes": [
+"203819"
+],
+"ambiguous": false
+},
+{
+"short": "빅기경",
+"full": [
+"빅데이터기반경영"
+],
+"codes": [
+"313114"
+],
+"ambiguous": false
+},
+{
+"short": "빅분응",
+"full": [
+"빅데이터분석및응용"
+],
+"codes": [
+"750520"
+],
+"ambiguous": false
+},
+{
+"short": "빅이",
+"full": [
+"빅데이터의이해"
+],
+"codes": [
+"002618"
+],
+"ambiguous": false
+},
+{
+"short": "빅전정시",
+"full": [
+"빅데이터와전자정보시스템"
+],
+"codes": [
+"703838"
+],
+"ambiguous": false
+},
+{
+"short": "빌시",
+"full": [
+"빌딩시스템"
+],
+"codes": [
+"111601"
+],
+"ambiguous": false
+},
+{
+"short": "사경경입",
+"full": [
+"사회와경제경제학입문"
+],
+"codes": [
+"002442"
+],
+"ambiguous": false
+},
+{
+"short": "사공",
+"full": [
+"사용성공학"
+],
+"codes": [
+"002813"
+],
+"ambiguous": false
+},
+{
+"short": "사디",
+"full": [
+"사운드디자인",
+"사이트디자인"
+],
+"codes": [
+"710219",
+"920431",
+"950401"
+],
+"ambiguous": true
+},
+{
+"short": "사문디스",
+"full": [
+"사회문화적디자인스튜디오"
+],
+"codes": [
+"410818",
+"410820",
+"410841"
+],
+"ambiguous": false
+},
+{
+"short": "사보",
+"full": [
+"사회보장법"
+],
+"codes": [
+"351826"
+],
+"ambiguous": false
+},
+{
+"short": "사분",
+"full": [
+"사업타당성분석"
+],
+"codes": [
+"140812"
+],
+"ambiguous": false
+},
+{
+"short": "사세",
+"full": [
+"사진세미나"
+],
+"codes": [
+"381419"
+],
+"ambiguous": false
+},
+{
+"short": "사인",
+"full": [
+"사물인터넷"
+],
+"codes": [
+"930834"
+],
+"ambiguous": false
+},
+{
+"short": "사입",
+"full": [
+"사진입문"
+],
+"codes": [
+"410117"
+],
+"ambiguous": false
+},
+{
+"short": "사회",
+"full": [
+"사업결합회계"
+],
+"codes": [
+"751516"
+],
+"ambiguous": false
+},
+{
+"short": "산모프",
+"full": [
+"산학모빌리티프로젝트"
+],
+"codes": [
+"002677",
+"002678"
+],
+"ambiguous": false
+},
+{
+"short": "산브딩",
+"full": [
+"산업브랜딩과시각화"
+],
+"codes": [
+"411524"
+],
+"ambiguous": false
+},
+{
+"short": "산조",
+"full": [
+"산업조직론"
+],
+"codes": [
+"361606"
+],
+"ambiguous": false
+},
+{
+"short": "산프",
+"full": [
+"산학협력프로젝트"
+],
+"codes": [
+"930845"
+],
+"ambiguous": false
+},
+{
+"short": "산프캡디",
+"full": [
+"산학협력프로젝트캡스톤디자인"
+],
+"codes": [
+"930725"
+],
+"ambiguous": false
+},
+{
+"short": "상단이",
+"full": [
+"상황판단과추리논증의이해"
+],
+"codes": [
+"351849"
+],
+"ambiguous": false
+},
+{
+"short": "상리",
+"full": [
+"상담심리학"
+],
+"codes": [
+"280603"
+],
+"ambiguous": false
+},
+{
+"short": "상사",
+"full": [
+"상법사례연습"
+],
+"codes": [
+"351108"
+],
+"ambiguous": false
+},
+{
+"short": "상재",
+"full": [
+"상사재판과판례"
+],
+"codes": [
+"351527"
+],
+"ambiguous": false
+},
+{
+"short": "상총",
+"full": [
+"상법총칙및상행위법"
+],
+"codes": [
+"063402"
+],
+"ambiguous": false
+},
+{
+"short": "상텍",
+"full": [
+"상업공간과컨텍스트"
+],
+"codes": [
+"111509"
+],
+"ambiguous": false
+},
+{
+"short": "색실건재",
+"full": [
+"색채와실내건축재료"
+],
+"codes": [
+"111602"
+],
+"ambiguous": false
+},
+{
+"short": "색이",
+"full": [
+"색채의이해"
+],
+"codes": [
+"044209"
+],
+"ambiguous": false
+},
+{
+"short": "생경",
+"full": [
+"생산과경영"
+],
+"codes": [
+"311406"
+],
+"ambiguous": false
+},
+{
+"short": "생공",
+"full": [
+"생물공학",
+"생물분리정제공정"
+],
+"codes": [
+"130825",
+"730821"
+],
+"ambiguous": true
+},
+{
+"short": "생데기실",
+"full": [
+"생체데이터기계학습실습"
+],
+"codes": [
+"888091"
+],
+"ambiguous": false
+},
+{
+"short": "생보",
+"full": [
+"생명보험"
+],
+"codes": [
+"752510"
+],
+"ambiguous": false
+},
+{
+"short": "생지",
+"full": [
+"생활지도론"
+],
+"codes": [
+"053407"
+],
+"ambiguous": false
+},
+{
+"short": "생프스회",
+"full": [
+"생활프랑스어회화"
+],
+"codes": [
+"203209"
+],
+"ambiguous": false
+},
+{
+"short": "생화공",
+"full": [
+"생명화학공학"
+],
+"codes": [
+"130613"
+],
+"ambiguous": false
+},
+{
+"short": "서경",
+"full": [
+"서비스경영"
+],
+"codes": [
+"311617",
+"790624"
+],
+"ambiguous": false
+},
+{
+"short": "서근",
+"full": [
+"서양근세미술사I",
+"서양근세미술사II"
+],
+"codes": [
+"409319",
+"409416"
+],
+"ambiguous": true
+},
+{
+"short": "서근미",
+"full": [
+"서양근대미술사"
+],
+"codes": [
+"409519"
+],
+"ambiguous": false
+},
+{
+"short": "서디구",
+"full": [
+"서스테이너블디자인구현"
+],
+"codes": [
+"411523"
+],
+"ambiguous": false
+},
+{
+"short": "서디기과",
+"full": [
+"서비스디자인기획과실행"
+],
+"codes": [
+"411739"
+],
+"ambiguous": false
+},
+{
+"short": "서마",
+"full": [
+"서비스마케팅"
+],
+"codes": [
+"381414",
+"754821"
+],
+"ambiguous": false
+},
+{
+"short": "서미",
+"full": [
+"서양미술사"
+],
+"codes": [
+"381409"
+],
+"ambiguous": false
+},
+{
+"short": "서조",
+"full": [
+"서양조경사"
+],
+"codes": [
+"002571"
+],
+"ambiguous": false
+},
+{
+"short": "서현미",
+"full": [
+"서양현대미술사"
+],
+"codes": [
+"409618"
+],
+"ambiguous": false
+},
+{
+"short": "선건공관",
+"full": [
+"선박건조공정관리"
+],
+"codes": [
+"723717"
+],
+"ambiguous": false
+},
+{
+"short": "선유",
+"full": [
+"선박유체역학"
+],
+"codes": [
+"723418"
+],
+"ambiguous": false
+},
+{
+"short": "선정설",
+"full": [
+"선박정적안정성설계"
+],
+"codes": [
+"723520"
+],
+"ambiguous": false
+},
+{
+"short": "선종설",
+"full": [
+"선박종합설계"
+],
+"codes": [
+"723834"
+],
+"ambiguous": false
+},
+{
+"short": "선해장",
+"full": [
+"선박해양의장설계"
+],
+"codes": [
+"723836"
+],
+"ambiguous": false
+},
+{
+"short": "설커",
+"full": [
+"설득커뮤니케이션"
+],
+"codes": [
+"756414"
+],
+"ambiguous": false
+},
+{
+"short": "세개",
+"full": [
+"세라믹스개론",
+"세법개론"
+],
+"codes": [
+"125406",
+"751830"
+],
+"ambiguous": true
+},
+{
+"short": "세건",
+"full": [
+"세계건축사"
+],
+"codes": [
+"110222",
+"110631",
+"111407"
+],
+"ambiguous": false
+},
+{
+"short": "세재공",
+"full": [
+"세라믹재료및공정"
+],
+"codes": [
+"727723"
+],
+"ambiguous": false
+},
+{
+"short": "세회",
+"full": [
+"세무회계"
+],
+"codes": [
+"311717"
+],
+"ambiguous": false
+},
+{
+"short": "센응",
+"full": [
+"센서응용"
+],
+"codes": [
+"703830"
+],
+"ambiguous": false
+},
+{
+"short": "소공",
+"full": [
+"소프트웨어공학"
+],
+"codes": [
+"101708",
+"704805"
+],
+"ambiguous": false
+},
+{
+"short": "소심",
+"full": [
+"소비자심리학"
+],
+"codes": [
+"756856"
+],
+"ambiguous": false
+},
+{
+"short": "소코실",
+"full": [
+"소프트웨어코딩및실습"
+],
+"codes": [
+"704834"
+],
+"ambiguous": false
+},
+{
+"short": "소행",
+"full": [
+"소비자행동"
+],
+"codes": [
+"311610",
+"381601",
+"754818"
+],
+"ambiguous": false
+},
+{
+"short": "소활독",
+"full": [
+"소프트웨어활용독일어"
+],
+"codes": [
+"202312",
+"202413"
+],
+"ambiguous": false
+},
+{
+"short": "손보",
+"full": [
+"손해보험"
+],
+"codes": [
+"752306"
+],
+"ambiguous": false
+},
+{
+"short": "손이",
+"full": [
+"손해사정이론"
+],
+"codes": [
+"752820"
+],
+"ambiguous": false
+},
+{
+"short": "송워",
+"full": [
+"송라이팅워크숍"
+],
+"codes": [
+"462308",
+"462408"
+],
+"ambiguous": false
+},
+{
+"short": "수공설",
+"full": [
+"수처리공학및설계"
+],
+"codes": [
+"116714"
+],
+"ambiguous": false
+},
+{
+"short": "수실",
+"full": [
+"수리학및실험"
+],
+"codes": [
+"116823",
+"116830"
+],
+"ambiguous": false
+},
+{
+"short": "수해",
+"full": [
+"수치해석"
+],
+"codes": [
+"012308"
+],
+"ambiguous": false
+},
+{
+"short": "스건실",
+"full": [
+"스타트업건축실무"
+],
+"codes": [
+"110263"
+],
+"ambiguous": false
+},
+{
+"short": "스댄",
+"full": [
+"스포츠댄스"
+],
+"codes": [
+"970703",
+"970804"
+],
+"ambiguous": false
+},
+{
+"short": "스도교공",
+"full": [
+"스마트도시교통시설공학"
+],
+"codes": [
+"115825"
+],
+"ambiguous": false
+},
+{
+"short": "스디",
+"full": [
+"스페이스와디자인"
+],
+"codes": [
+"950418"
+],
+"ambiguous": false
+},
+{
+"short": "스마",
+"full": [
+"스포츠마케팅"
+],
+"codes": [
+"970705"
+],
+"ambiguous": false
+},
+{
+"short": "스맛",
+"full": [
+"스포츠맛사지"
+],
+"codes": [
+"970805"
+],
+"ambiguous": false
+},
+{
+"short": "스보",
+"full": [
+"스토리보드&레이아웃"
+],
+"codes": [
+"940837"
+],
+"ambiguous": false
+},
+{
+"short": "스사",
+"full": [
+"스케칭과시각적사고",
+"스튜디오사진",
+"스포츠사회학"
+],
+"codes": [
+"410321",
+"410421",
+"667012",
+"970506"
+],
+"ambiguous": true
+},
+{
+"short": "스시제",
+"full": [
+"스마트시스템제어"
+],
+"codes": [
+"720731"
+],
+"ambiguous": false
+},
+{
+"short": "스심",
+"full": [
+"스포츠심리학"
+],
+"codes": [
+"970701",
+"970802"
+],
+"ambiguous": false
+},
+{
+"short": "스역데분",
+"full": [
+"스포츠역학및데이터분석"
+],
+"codes": [
+"970409"
+],
+"ambiguous": false
+},
+{
+"short": "스영",
+"full": [
+"스포츠영양학"
+],
+"codes": [
+"970605"
+],
+"ambiguous": false
+},
+{
+"short": "스제",
+"full": [
+"스마트제조"
+],
+"codes": [
+"140522"
+],
+"ambiguous": false
+},
+{
+"short": "스지이실",
+"full": [
+"스포츠지도사이론과실습"
+],
+"codes": [
+"970509",
+"970607"
+],
+"ambiguous": false
+},
+{
+"short": "스창지비",
+"full": [
+"스마트창업과지식재산비즈니스"
+],
+"codes": [
+"002642"
+],
+"ambiguous": false
+},
+{
+"short": "스커",
+"full": [
+"스피치커뮤니케이션"
+],
+"codes": [
+"756845"
+],
+"ambiguous": false
+},
+{
+"short": "스트",
+"full": [
+"스마트매뉴팩처링"
+],
+"codes": [
+"120852"
+],
+"ambiguous": false
+},
+{
+"short": "스트디",
+"full": [
+"스마트병원과의료디지털"
+],
+"codes": [
+"888024"
+],
+"ambiguous": false
+},
+{
+"short": "시독어",
+"full": [
+"시사독일어회화"
+],
+"codes": [
+"202828"
+],
+"ambiguous": false
+},
+{
+"short": "시리",
+"full": [
+"시나리오"
+],
+"codes": [
+"940843",
+"950857"
+],
+"ambiguous": false
+},
+{
+"short": "시반설",
+"full": [
+"시스템반도체설계"
+],
+"codes": [
+"106721",
+"701822"
+],
+"ambiguous": false
+},
+{
+"short": "시분",
+"full": [
+"시계열분석",
+"시스템분석"
+],
+"codes": [
+"140715",
+"140724"
+],
+"ambiguous": true
+},
+{
+"short": "시설",
+"full": [
+"시스템설계"
+],
+"codes": [
+"140815"
+],
+"ambiguous": false
+},
+{
+"short": "시이",
+"full": [
+"시뮬레이션"
+],
+"codes": [
+"140722"
+],
+"ambiguous": false
+},
+{
+"short": "시청",
+"full": [
+"시창청음"
+],
+"codes": [
+"462102",
+"462202"
+],
+"ambiguous": false
+},
+{
+"short": "시프",
+"full": [
+"시스템프로그래밍"
+],
+"codes": [
+"101505"
+],
+"ambiguous": false
+},
+{
+"short": "시프실",
+"full": [
+"시스템프로그래밍실습"
+],
+"codes": [
+"961415"
+],
+"ambiguous": false
+},
+{
+"short": "신개응",
+"full": [
+"신개념로봇개발과응용"
+],
+"codes": [
+"002812"
+],
+"ambiguous": false
+},
+{
+"short": "신독문",
+"full": [
+"신화와독일문화"
+],
+"codes": [
+"202827"
+],
+"ambiguous": false
+},
+{
+"short": "신미개",
+"full": [
+"신경미학개론"
+],
+"codes": [
+"888111"
+],
+"ambiguous": false
+},
+{
+"short": "신세",
+"full": [
+"신입생진로탐색세미나"
+],
+"codes": [
+"280107"
+],
+"ambiguous": false
+},
+{
+"short": "신시",
+"full": [
+"신호및시스템",
+"신호와시스템"
+],
+"codes": [
+"106404",
+"703414",
+"704406"
+],
+"ambiguous": true
+},
+{
+"short": "신에",
+"full": [
+"신재생에너지"
+],
+"codes": [
+"703821"
+],
+"ambiguous": false
+},
+{
+"short": "신에공",
+"full": [
+"신재생에너지공학"
+],
+"codes": [
+"120719"
+],
+"ambiguous": false
+},
+{
+"short": "신화",
+"full": [
+"신소재화학"
+],
+"codes": [
+"730842"
+],
+"ambiguous": false
+},
+{
+"short": "실건구시",
+"full": [
+"실내건축구조시스템"
+],
+"codes": [
+"111608"
+],
+"ambiguous": false
+},
+{
+"short": "실건디",
+"full": [
+"실내건축디테일링"
+],
+"codes": [
+"111505"
+],
+"ambiguous": false
+},
+{
+"short": "실건설",
+"full": [
+"실내건축설계"
+],
+"codes": [
+"111301",
+"111401",
+"111501",
+"111603",
+"111701",
+"111811"
+],
+"ambiguous": false
+},
+{
+"short": "실건세",
+"full": [
+"실내건축론세미나"
+],
+"codes": [
+"111703"
+],
+"ambiguous": false
+},
+{
+"short": "실건시",
+"full": [
+"실내건축시공"
+],
+"codes": [
+"111815"
+],
+"ambiguous": false
+},
+{
+"short": "실드",
+"full": [
+"실무드로잉"
+],
+"codes": [
+"411829"
+],
+"ambiguous": false
+},
+{
+"short": "실디론",
+"full": [
+"실내디자인론"
+],
+"codes": [
+"110963"
+],
+"ambiguous": false
+},
+{
+"short": "실분화",
+"full": [
+"실험분석화학"
+],
+"codes": [
+"730834",
+"730843"
+],
+"ambiguous": false
+},
+{
+"short": "실영애워",
+"full": [
+"실험영상애니메이션워크샵"
+],
+"codes": [
+"940838"
+],
+"ambiguous": false
+},
+{
+"short": "실와",
+"full": [
+"실무와직업윤리"
+],
+"codes": [
+"740908"
+],
+"ambiguous": false
+},
+{
+"short": "실조",
+"full": [
+"실내조경"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "실조해공",
+"full": [
+"실험조선해양공학"
+],
+"codes": [
+"723828"
+],
+"ambiguous": false
+},
+{
+"short": "실프실",
+"full": [
+"실용프로그래밍실습"
+],
+"codes": [
+"961840"
+],
+"ambiguous": false
+},
+{
+"short": "심독어",
+"full": [
+"심화독일어회화"
+],
+"codes": [
+"202832"
+],
+"ambiguous": false
+},
+{
+"short": "심무",
+"full": [
+"심화무용"
+],
+"codes": [
+"461305",
+"461405"
+],
+"ambiguous": false
+},
+{
+"short": "심연",
+"full": [
+"심화연기"
+],
+"codes": [
+"461303"
+],
+"ambiguous": false
+},
+{
+"short": "심전실",
+"full": [
+"심화전공실기"
+],
+"codes": [
+"462501",
+"462601",
+"462701",
+"462801"
+],
+"ambiguous": false
+},
+{
+"short": "심프스",
+"full": [
+"심화프랑스어"
+],
+"codes": [
+"203408"
+],
+"ambiguous": false
+},
+{
+"short": "아디",
+"full": [
+"아트앤디자인"
+],
+"codes": [
+"740307",
+"740407"
+],
+"ambiguous": false
+},
+{
+"short": "아설",
+"full": [
+"아날로그IC설계"
+],
+"codes": [
+"106829"
+],
+"ambiguous": false
+},
+{
+"short": "아앙",
+"full": [
+"아카펠라앙상블"
+],
+"codes": [
+"462605"
+],
+"ambiguous": false
+},
+{
+"short": "아회응",
+"full": [
+"아날로그회로응용"
+],
+"codes": [
+"703831"
+],
+"ambiguous": false
+},
+{
+"short": "안프실",
+"full": [
+"안드로이드프로그래밍및실습"
+],
+"codes": [
+"704825"
+],
+"ambiguous": false
+},
+{
+"short": "알분",
+"full": [
+"알고리즘분석"
+],
+"codes": [
+"101503"
+],
+"ambiguous": false
+},
+{
+"short": "알실",
+"full": [
+"알고리즘및실습"
+],
+"codes": [
+"704826"
+],
+"ambiguous": false
+},
+{
+"short": "암공설",
+"full": [
+"암반공학및설계"
+],
+"codes": [
+"116815"
+],
+"ambiguous": false
+},
+{
+"short": "애동",
+"full": [
+"애니메이션동작과표현"
+],
+"codes": [
+"940839",
+"950835"
+],
+"ambiguous": false
+},
+{
+"short": "애시",
+"full": [
+"애니메이션시네메틱"
+],
+"codes": [
+"950625"
+],
+"ambiguous": false
+},
+{
+"short": "어디",
+"full": [
+"어반디자인"
+],
+"codes": [
+"710222"
+],
+"ambiguous": false
+},
+{
+"short": "언언",
+"full": [
+"언어와언어학"
+],
+"codes": [
+"204107"
+],
+"ambiguous": false
+},
+{
+"short": "언의",
+"full": [
+"언어의미와정보"
+],
+"codes": [
+"203823"
+],
+"ambiguous": false
+},
+{
+"short": "언철현인",
+"full": [
+"언어와철학현대인의의사소통"
+],
+"codes": [
+"002589"
+],
+"ambiguous": false
+},
+{
+"short": "언철협기",
+"full": [
+"언어와철학협상의기술"
+],
+"codes": [
+"002530"
+],
+"ambiguous": false
+},
+{
+"short": "에공",
+"full": [
+"에너지공학"
+],
+"codes": [
+"106609",
+"130410",
+"730624"
+],
+"ambiguous": false
+},
+{
+"short": "에나재",
+"full": [
+"에너지나노재료"
+],
+"codes": [
+"727525"
+],
+"ambiguous": false
+},
+{
+"short": "에발공",
+"full": [
+"에너지발전공학"
+],
+"codes": [
+"703518"
+],
+"ambiguous": false
+},
+{
+"short": "에시",
+"full": [
+"에너지시스템"
+],
+"codes": [
+"106713"
+],
+"ambiguous": false
+},
+{
+"short": "에역",
+"full": [
+"에너지역학"
+],
+"codes": [
+"720828",
+"720829"
+],
+"ambiguous": false
+},
+{
+"short": "에재",
+"full": [
+"에너지재료"
+],
+"codes": [
+"125820"
+],
+"ambiguous": false
+},
+{
+"short": "에저",
+"full": [
+"에너지저장장치"
+],
+"codes": [
+"727825"
+],
+"ambiguous": false
+},
+{
+"short": "에전화",
+"full": [
+"에너지전기화학"
+],
+"codes": [
+"730733"
+],
+"ambiguous": false
+},
+{
+"short": "엔기",
+"full": [
+"엔지니어링기초"
+],
+"codes": [
+"002657"
+],
+"ambiguous": false
+},
+{
+"short": "엔문산",
+"full": [
+"엔터테인먼트와문화산업"
+],
+"codes": [
+"756873"
+],
+"ambiguous": false
+},
+{
+"short": "엔앙",
+"full": [
+"엔지니어앙트레프레너십"
+],
+"codes": [
+"190426"
+],
+"ambiguous": false
+},
+{
+"short": "여공계",
+"full": [
+"여가공간계획론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "여생과이",
+"full": [
+"여가생활과레크리에이션"
+],
+"codes": [
+"002052"
+],
+"ambiguous": false
+},
+{
+"short": "역문동사",
+"full": [
+"역사와문화동양사의이해"
+],
+"codes": [
+"002586"
+],
+"ambiguous": false
+},
+{
+"short": "역문서사",
+"full": [
+"역사와문화서양사의이해"
+],
+"codes": [
+"002588"
+],
+"ambiguous": false
+},
+{
+"short": "역속도",
+"full": [
+"역사속의도시"
+],
+"codes": [
+"115823"
+],
+"ambiguous": false
+},
+{
+"short": "연스",
+"full": [
+"연기스튜디오"
+],
+"codes": [
+"950316"
+],
+"ambiguous": false
+},
+{
+"short": "연연",
+"full": [
+"연기와연출"
+],
+"codes": [
+"461609"
+],
+"ambiguous": false
+},
+{
+"short": "연자표",
+"full": [
+"연극과자기표현"
+],
+"codes": [
+"461104"
+],
+"ambiguous": false
+},
+{
+"short": "연회",
+"full": [
+"연결회계"
+],
+"codes": [
+"311720"
+],
+"ambiguous": false
+},
+{
+"short": "열및",
+"full": [
+"열역학및내연기관"
+],
+"codes": [
+"723827"
+],
+"ambiguous": false
+},
+{
+"short": "열시디",
+"full": [
+"열시스템디자인"
+],
+"codes": [
+"120621"
+],
+"ambiguous": false
+},
+{
+"short": "영광제",
+"full": [
+"영상광고제작"
+],
+"codes": [
+"950623"
+],
+"ambiguous": false
+},
+{
+"short": "영단",
+"full": [
+"영미단편소설"
+],
+"codes": [
+"201106"
+],
+"ambiguous": false
+},
+{
+"short": "영담",
+"full": [
+"영어담화와정보"
+],
+"codes": [
+"201415"
+],
+"ambiguous": false
+},
+{
+"short": "영매입",
+"full": [
+"영상매체입문"
+],
+"codes": [
+"409207"
+],
+"ambiguous": false
+},
+{
+"short": "영문강",
+"full": [
+"영미문화강독"
+],
+"codes": [
+"201510"
+],
+"ambiguous": false
+},
+{
+"short": "영문구",
+"full": [
+"영어문장구조"
+],
+"codes": [
+"201813"
+],
+"ambiguous": false
+},
+{
+"short": "영문배",
+"full": [
+"영미문학배경"
+],
+"codes": [
+"201404"
+],
+"ambiguous": false
+},
+{
+"short": "영문비",
+"full": [
+"영미문학의비평"
+],
+"codes": [
+"201601"
+],
+"ambiguous": false
+},
+{
+"short": "영문작",
+"full": [
+"영미문학작가론"
+],
+"codes": [
+"201311"
+],
+"ambiguous": false
+},
+{
+"short": "영미",
+"full": [
+"영화와미디어"
+],
+"codes": [
+"201815"
+],
+"ambiguous": false
+},
+{
+"short": "영발이",
+"full": [
+"영어발음이해"
+],
+"codes": [
+"201315"
+],
+"ambiguous": false
+},
+{
+"short": "영분컴",
+"full": [
+"영어분석과컴퓨터"
+],
+"codes": [
+"201609"
+],
+"ambiguous": false
+},
+{
+"short": "영사",
+"full": [
+"영상사운드"
+],
+"codes": [
+"950828"
+],
+"ambiguous": false
+},
+{
+"short": "영애졸프",
+"full": [
+"영상애니메이션졸업프로젝트"
+],
+"codes": [
+"940835",
+"940836"
+],
+"ambiguous": false
+},
+{
+"short": "영역",
+"full": [
+"영상의역사"
+],
+"codes": [
+"950101",
+"950102"
+],
+"ambiguous": false
+},
+{
+"short": "영연",
+"full": [
+"영상연출"
+],
+"codes": [
+"950420"
+],
+"ambiguous": false
+},
+{
+"short": "영영빅",
+"full": [
+"영어영문학과빅데이터"
+],
+"codes": [
+"201814"
+],
+"ambiguous": false
+},
+{
+"short": "영음제실",
+"full": [
+"영상음악제작실습"
+],
+"codes": [
+"462504",
+"462604"
+],
+"ambiguous": false
+},
+{
+"short": "영의",
+"full": [
+"영어의미론"
+],
+"codes": [
+"201511"
+],
+"ambiguous": false
+},
+{
+"short": "영이",
+"full": [
+"영미시의이해"
+],
+"codes": [
+"201411"
+],
+"ambiguous": false
+},
+{
+"short": "영입",
+"full": [
+"영문학입문"
+],
+"codes": [
+"201109"
+],
+"ambiguous": false
+},
+{
+"short": "영처",
+"full": [
+"영상처리"
+],
+"codes": [
+"701815"
+],
+"ambiguous": false
+},
+{
+"short": "영콘제",
+"full": [
+"영상콘텐츠제작"
+],
+"codes": [
+"756851"
+],
+"ambiguous": false
+},
+{
+"short": "영특",
+"full": [
+"영문학특강",
+"영미시특강"
+],
+"codes": [
+"201506",
+"201808"
+],
+"ambiguous": true
+},
+{
+"short": "영편",
+"full": [
+"영상편집"
+],
+"codes": [
+"950320",
+"950419"
+],
+"ambiguous": false
+},
+{
+"short": "영프듀",
+"full": [
+"영상프로듀싱"
+],
+"codes": [
+"950522"
+],
+"ambiguous": false
+},
+{
+"short": "영학",
+"full": [
+"영문학사",
+"영어학연습",
+"영어학입문"
+],
+"codes": [
+"023206",
+"023304",
+"201207",
+"201708"
+],
+"ambiguous": true
+},
+{
+"short": "예경개",
+"full": [
+"예술경영개론"
+],
+"codes": [
+"461804"
+],
+"ambiguous": false
+},
+{
+"short": "예경입",
+"full": [
+"예술경영입문"
+],
+"codes": [
+"383301"
+],
+"ambiguous": false
+},
+{
+"short": "예과",
+"full": [
+"예술과법"
+],
+"codes": [
+"002559"
+],
+"ambiguous": false
+},
+{
+"short": "예기가",
+"full": [
+"예술기업가정신"
+],
+"codes": [
+"383802"
+],
+"ambiguous": false
+},
+{
+"short": "예사학",
+"full": [
+"예술사회학원론"
+],
+"codes": [
+"409717"
+],
+"ambiguous": false
+},
+{
+"short": "예심원",
+"full": [
+"예술심리학원론"
+],
+"codes": [
+"409612"
+],
+"ambiguous": false
+},
+{
+"short": "예학",
+"full": [
+"예술학입문",
+"예술학특론"
+],
+"codes": [
+"409115",
+"409318"
+],
+"ambiguous": true
+},
+{
+"short": "오관",
+"full": [
+"오퍼레이션즈관리"
+],
+"codes": [
+"751414",
+"752415",
+"754824"
+],
+"ambiguous": false
+},
+{
+"short": "오소",
+"full": [
+"오픈소스소프트웨어"
+],
+"codes": [
+"704833"
+],
+"ambiguous": false
+},
+{
+"short": "오이",
+"full": [
+"오디션과쇼케이스",
+"오케스트레이션"
+],
+"codes": [
+"461802",
+"462607"
+],
+"ambiguous": true
+},
+{
+"short": "오일",
+"full": [
+"오브젝트&스타일링"
+],
+"codes": [
+"913642"
+],
+"ambiguous": false
+},
+{
+"short": "외국교",
+"full": [
+"외국인을위한한국어교육"
+],
+"codes": [
+"204824"
+],
+"ambiguous": false
+},
+{
+"short": "외자",
+"full": [
+"외국어자격시험대책"
+],
+"codes": [
+"790807"
+],
+"ambiguous": false
+},
+{
+"short": "외특",
+"full": [
+"외국어특강"
+],
+"codes": [
+"790806"
+],
+"ambiguous": false
+},
+{
+"short": "외파",
+"full": [
+"외환시장과파생상품"
+],
+"codes": [
+"361807"
+],
+"ambiguous": false
+},
+{
+"short": "외회",
+"full": [
+"외국어회화"
+],
+"codes": [
+"754842"
+],
+"ambiguous": false
+},
+{
+"short": "운관",
+"full": [
+"운영관리"
+],
+"codes": [
+"381308"
+],
+"ambiguous": false
+},
+{
+"short": "운리",
+"full": [
+"운동생리학"
+],
+"codes": [
+"045101",
+"970505"
+],
+"ambiguous": false
+},
+{
+"short": "운처",
+"full": [
+"운동처방"
+],
+"codes": [
+"970404"
+],
+"ambiguous": false
+},
+{
+"short": "운체",
+"full": [
+"운영체제"
+],
+"codes": [
+"101511",
+"704512",
+"961306"
+],
+"ambiguous": false
+},
+{
+"short": "원관회",
+"full": [
+"원가관리회계"
+],
+"codes": [
+"381413"
+],
+"ambiguous": false
+},
+{
+"short": "원제프",
+"full": [
+"원화제작프로젝트"
+],
+"codes": [
+"960815"
+],
+"ambiguous": false
+},
+{
+"short": "원회",
+"full": [
+"원가회계"
+],
+"codes": [
+"313106",
+"751310"
+],
+"ambiguous": false
+},
+{
+"short": "웹디",
+"full": [
+"웹디자인"
+],
+"codes": [
+"920223"
+],
+"ambiguous": false
+},
+{
+"short": "웹아",
+"full": [
+"웹툰&원화아트"
+],
+"codes": [
+"960726"
+],
+"ambiguous": false
+},
+{
+"short": "웹프",
+"full": [
+"웹프로그래밍"
+],
+"codes": [
+"012306"
+],
+"ambiguous": false
+},
+{
+"short": "위관커",
+"full": [
+"위기관리커뮤니케이션"
+],
+"codes": [
+"756822"
+],
+"ambiguous": false
+},
+{
+"short": "윈프실",
+"full": [
+"윈도우프로그래밍실습"
+],
+"codes": [
+"961307"
+],
+"ambiguous": false
+},
+{
+"short": "유공",
+"full": [
+"유전공학"
+],
+"codes": [
+"730838"
+],
+"ambiguous": false
+},
+{
+"short": "유디",
+"full": [
+"유니버설디자인"
+],
+"codes": [
+"913554"
+],
+"ambiguous": false
+},
+{
+"short": "유설",
+"full": [
+"유체저항및선형설계"
+],
+"codes": [
+"723518"
+],
+"ambiguous": false
+},
+{
+"short": "유연",
+"full": [
+"유체역학및연습"
+],
+"codes": [
+"013307",
+"116403"
+],
+"ambiguous": false
+},
+{
+"short": "유화",
+"full": [
+"유기화학"
+],
+"codes": [
+"012119",
+"014325",
+"014419"
+],
+"ambiguous": false
+},
+{
+"short": "융설프",
+"full": [
+"융합설계프로젝트"
+],
+"codes": [
+"120843",
+"120844"
+],
+"ambiguous": false
+},
+{
+"short": "융인",
+"full": [
+"융복합가상인터랙션"
+],
+"codes": [
+"411623"
+],
+"ambiguous": false
+},
+{
+"short": "융프",
+"full": [
+"융합프로젝트"
+],
+"codes": [
+"950622"
+],
+"ambiguous": false
+},
+{
+"short": "음가분",
+"full": [
+"음악과가사분석"
+],
+"codes": [
+"461504"
+],
+"ambiguous": false
+},
+{
+"short": "음제실",
+"full": [
+"음반제작실습"
+],
+"codes": [
+"462704"
+],
+"ambiguous": false
+},
+{
+"short": "음콘제실",
+"full": [
+"음악콘텐츠제작실습"
+],
+"codes": [
+"462808"
+],
+"ambiguous": false
+},
+{
+"short": "응계",
+"full": [
+"응용계량경제학"
+],
+"codes": [
+"361414"
+],
+"ambiguous": false
+},
+{
+"short": "응기수",
+"full": [
+"응용기계수학"
+],
+"codes": [
+"012212"
+],
+"ambiguous": false
+},
+{
+"short": "응데베",
+"full": [
+"응용데이터베이스"
+],
+"codes": [
+"101712"
+],
+"ambiguous": false
+},
+{
+"short": "응물화",
+"full": [
+"응용물리화학"
+],
+"codes": [
+"130412"
+],
+"ambiguous": false
+},
+{
+"short": "응수",
+"full": [
+"응용수학"
+],
+"codes": [
+"012203",
+"012204"
+],
+"ambiguous": false
+},
+{
+"short": "응수조디",
+"full": [
+"응용수치해석및조형디자인"
+],
+"codes": [
+"116407"
+],
+"ambiguous": false
+},
+{
+"short": "응영학",
+"full": [
+"응용영어학개론"
+],
+"codes": [
+"201512"
+],
+"ambiguous": false
+},
+{
+"short": "응유",
+"full": [
+"응용유기화학"
+],
+"codes": [
+"130413"
+],
+"ambiguous": false
+},
+{
+"short": "의결",
+"full": [
+"의사결정"
+],
+"codes": [
+"140318",
+"140420"
+],
+"ambiguous": false
+},
+{
+"short": "의공",
+"full": [
+"의생명공학"
+],
+"codes": [
+"130720"
+],
+"ambiguous": false
+},
+{
+"short": "의보블이",
+"full": [
+"의료보안과블록체인이해"
+],
+"codes": [
+"888078"
+],
+"ambiguous": false
+},
+{
+"short": "이먼워",
+"full": [
+"이머징엔터테인먼트워크샵"
+],
+"codes": [
+"950863"
+],
+"ambiguous": false
+},
+{
+"short": "이수",
+"full": [
+"이산수학"
+],
+"codes": [
+"012206"
+],
+"ambiguous": false
+},
+{
+"short": "이스",
+"full": [
+"이머징VFX스튜디오"
+],
+"codes": [
+"950713"
+],
+"ambiguous": false
+},
+{
+"short": "이재",
+"full": [
+"이차전지재료"
+],
+"codes": [
+"727834"
+],
+"ambiguous": false
+},
+{
+"short": "이현",
+"full": [
+"이동현상"
+],
+"codes": [
+"727818"
+],
+"ambiguous": false
+},
+{
+"short": "인3",
+"full": [
+"인터랙티브3D"
+],
+"codes": [
+"930631"
+],
+"ambiguous": false
+},
+{
+"short": "인개",
+"full": [
+"인공지능개론"
+],
+"codes": [
+"140315"
+],
+"ambiguous": false
+},
+{
+"short": "인공",
+"full": [
+"인간공학",
+"인지공학",
+"인터넷공학"
+],
+"codes": [
+"140317",
+"381402",
+"704831",
+"704832"
+],
+"ambiguous": true
+},
+{
+"short": "인공헬",
+"full": [
+"인간공학과헬스케어"
+],
+"codes": [
+"888112"
+],
+"ambiguous": false
+},
+{
+"short": "인관",
+"full": [
+"인적자원관리"
+],
+"codes": [
+"311410",
+"381703",
+"751717",
+"752312",
+"754830"
+],
+"ambiguous": false
+},
+{
+"short": "인디",
+"full": [
+"인공지능디자인",
+"인터렉티브디자인"
+],
+"codes": [
+"410324",
+"410423",
+"720612"
+],
+"ambiguous": true
+},
+{
+"short": "인머",
+"full": [
+"인공지능및머신러닝"
+],
+"codes": [
+"106823"
+],
+"ambiguous": false
+},
+{
+"short": "인반종설",
+"full": [
+"인공지능반도체종합설계"
+],
+"codes": [
+"106832"
+],
+"ambiguous": false
+},
+{
+"short": "인수",
+"full": [
+"인공지능수학"
+],
+"codes": [
+"101414"
+],
+"ambiguous": false
+},
+{
+"short": "인스",
+"full": [
+"인터랙티브스토리텔링",
+"인터렉티브스토리텔링"
+],
+"codes": [
+"930524",
+"961833"
+],
+"ambiguous": true
+},
+{
+"short": "인스도",
+"full": [
+"인공지능과스마트도시"
+],
+"codes": [
+"115820"
+],
+"ambiguous": false
+},
+{
+"short": "인시",
+"full": [
+"인공지능시스템"
+],
+"codes": [
+"703723"
+],
+"ambiguous": false
+},
+{
+"short": "인응",
+"full": [
+"인공지능응용"
+],
+"codes": [
+"961718"
+],
+"ambiguous": false
+},
+{
+"short": "인인페",
+"full": [
+"인터랙션인터페이스"
+],
+"codes": [
+"411522"
+],
+"ambiguous": false
+},
+{
+"short": "인제워",
+"full": [
+"인형제작워크샵"
+],
+"codes": [
+"940516"
+],
+"ambiguous": false
+},
+{
+"short": "인조세",
+"full": [
+"인사조직세미나"
+],
+"codes": [
+"313113"
+],
+"ambiguous": false
+},
+{
+"short": "인특",
+"full": [
+"인공지능특론"
+],
+"codes": [
+"106833"
+],
+"ambiguous": false
+},
+{
+"short": "일기경무",
+"full": [
+"일본기업경영과무역"
+],
+"codes": [
+"790626"
+],
+"ambiguous": false
+},
+{
+"short": "일미",
+"full": [
+"일본미술사"
+],
+"codes": [
+"409413"
+],
+"ambiguous": false
+},
+{
+"short": "일스레",
+"full": [
+"일러스트레이션"
+],
+"codes": [
+"410322",
+"410422",
+"920322"
+],
+"ambiguous": false
+},
+{
+"short": "임시",
+"full": [
+"임베디드시스템"
+],
+"codes": [
+"120835"
+],
+"ambiguous": false
+},
+{
+"short": "임시설",
+"full": [
+"임베디드시스템설계"
+],
+"codes": [
+"703624"
+],
+"ambiguous": false
+},
+{
+"short": "임시실",
+"full": [
+"임베디드시스템및실험"
+],
+"codes": [
+"101711"
+],
+"ambiguous": false
+},
+{
+"short": "입조디",
+"full": [
+"입체조형디자인"
+],
+"codes": [
+"960831"
+],
+"ambiguous": false
+},
+{
+"short": "자공",
+"full": [
+"자동차공학"
+],
+"codes": [
+"720511"
+],
+"ambiguous": false
+},
+{
+"short": "자공심",
+"full": [
+"자율주행과공간심리"
+],
+"codes": [
+"002679"
+],
+"ambiguous": false
+},
+{
+"short": "자구",
+"full": [
+"자료구조"
+],
+"codes": [
+"961832"
+],
+"ambiguous": false
+},
+{
+"short": "자구최",
+"full": [
+"자료구조및최적화"
+],
+"codes": [
+"106826"
+],
+"ambiguous": false
+},
+{
+"short": "자구프",
+"full": [
+"자료구조및프로그래밍"
+],
+"codes": [
+"013312"
+],
+"ambiguous": false
+},
+{
+"short": "자구프실",
+"full": [
+"자료구조및프로그래밍실습"
+],
+"codes": [
+"704818"
+],
+"ambiguous": false
+},
+{
+"short": "자기",
+"full": [
+"자유연상과표현기법"
+],
+"codes": [
+"043260",
+"410114"
+],
+"ambiguous": false
+},
+{
+"short": "자디제",
+"full": [
+"자율주행차디자인및제작"
+],
+"codes": [
+"002674"
+],
+"ambiguous": false
+},
+{
+"short": "자보",
+"full": [
+"자동차보험"
+],
+"codes": [
+"752818"
+],
+"ambiguous": false
+},
+{
+"short": "자시개",
+"full": [
+"자율운항시스템개론"
+],
+"codes": [
+"723524"
+],
+"ambiguous": false
+},
+{
+"short": "자이진탐",
+"full": [
+"자기이해와진로탐색"
+],
+"codes": [
+"002132"
+],
+"ambiguous": false
+},
+{
+"short": "자장",
+"full": [
+"자본시장법"
+],
+"codes": [
+"351847"
+],
+"ambiguous": false
+},
+{
+"short": "자재",
+"full": [
+"자성및광학재료"
+],
+"codes": [
+"727831"
+],
+"ambiguous": false
+},
+{
+"short": "자제",
+"full": [
+"자동제어"
+],
+"codes": [
+"120609"
+],
+"ambiguous": false
+},
+{
+"short": "자처실",
+"full": [
+"자료처리및실습"
+],
+"codes": [
+"012310"
+],
+"ambiguous": false
+},
+{
+"short": "자프실",
+"full": [
+"자바프로그래밍및실습"
+],
+"codes": [
+"704827"
+],
+"ambiguous": false
+},
+{
+"short": "자환",
+"full": [
+"자연과환경"
+],
+"codes": [
+"002042"
+],
+"ambiguous": false
+},
+{
+"short": "자환경",
+"full": [
+"자원환경경제학"
+],
+"codes": [
+"361821"
+],
+"ambiguous": false
+},
+{
+"short": "작디스",
+"full": [
+"작가적디자인스튜디오"
+],
+"codes": [
+"410819",
+"410821",
+"410840"
+],
+"ambiguous": false
+},
+{
+"short": "작워",
+"full": [
+"작‧편곡워크숍"
+],
+"codes": [
+"462510",
+"462610"
+],
+"ambiguous": false
+},
+{
+"short": "재개",
+"full": [
+"재료물성개론"
+],
+"codes": [
+"124201"
+],
+"ambiguous": false
+},
+{
+"short": "재거",
+"full": [
+"재료거동학"
+],
+"codes": [
+"120619"
+],
+"ambiguous": false
+},
+{
+"short": "재결기적",
+"full": [
+"재료결함과기계적성질"
+],
+"codes": [
+"125629"
+],
+"ambiguous": false
+},
+{
+"short": "재경",
+"full": [
+"재무경제학"
+],
+"codes": [
+"361824"
+],
+"ambiguous": false
+},
+{
+"short": "재공설분",
+"full": [
+"재료공학설계및분석"
+],
+"codes": [
+"125827"
+],
+"ambiguous": false
+},
+{
+"short": "재공실",
+"full": [
+"재료공정실험",
+"재료공학실험"
+],
+"codes": [
+"014311",
+"014407",
+"727827"
+],
+"ambiguous": true
+},
+{
+"short": "재공심실",
+"full": [
+"재료공학심화실험"
+],
+"codes": [
+"125721"
+],
+"ambiguous": false
+},
+{
+"short": "재과",
+"full": [
+"재료과학"
+],
+"codes": [
+"014112",
+"014213",
+"120411",
+"125307"
+],
+"ambiguous": false
+},
+{
+"short": "재과실",
+"full": [
+"재료과학실험"
+],
+"codes": [
+"125310"
+],
+"ambiguous": false
+},
+{
+"short": "재관",
+"full": [
+"재무관리"
+],
+"codes": [
+"381403",
+"751313",
+"752413",
+"754820"
+],
+"ambiguous": false
+},
+{
+"short": "재기분",
+"full": [
+"재료기기분석"
+],
+"codes": [
+"727715"
+],
+"ambiguous": false
+},
+{
+"short": "재기적",
+"full": [
+"재료의기계적성질"
+],
+"codes": [
+"727627"
+],
+"ambiguous": false
+},
+{
+"short": "재디",
+"full": [
+"재료와디자인"
+],
+"codes": [
+"710211"
+],
+"ambiguous": false
+},
+{
+"short": "재물",
+"full": [
+"재료물성론"
+],
+"codes": [
+"725411"
+],
+"ambiguous": false
+},
+{
+"short": "재물현",
+"full": [
+"재료물리현상학"
+],
+"codes": [
+"125615"
+],
+"ambiguous": false
+},
+{
+"short": "재물화",
+"full": [
+"재료물리화학"
+],
+"codes": [
+"125309",
+"727414"
+],
+"ambiguous": false
+},
+{
+"short": "재분",
+"full": [
+"재무분석",
+"재무제표분석"
+],
+"codes": [
+"311513",
+"751831"
+],
+"ambiguous": true
+},
+{
+"short": "재상",
+"full": [
+"재료상변태",
+"재료상평형"
+],
+"codes": [
+"125509",
+"727511",
+"727821"
+],
+"ambiguous": true
+},
+{
+"short": "재성",
+"full": [
+"재료성형학"
+],
+"codes": [
+"125716"
+],
+"ambiguous": false
+},
+{
+"short": "재앙",
+"full": [
+"재즈앙상블"
+],
+"codes": [
+"462502"
+],
+"ambiguous": false
+},
+{
+"short": "재역",
+"full": [
+"재료역학"
+],
+"codes": [
+"723313",
+"723416"
+],
+"ambiguous": false
+},
+{
+"short": "재역연",
+"full": [
+"재료역학및연습"
+],
+"codes": [
+"116306",
+"116408"
+],
+"ambiguous": false
+},
+{
+"short": "재열",
+"full": [
+"재료열역학"
+],
+"codes": [
+"125401",
+"727416"
+],
+"ambiguous": false
+},
+{
+"short": "재와",
+"full": [
+"재료와장식의사회사"
+],
+"codes": [
+"111510"
+],
+"ambiguous": false
+},
+{
+"short": "재이",
+"full": [
+"재료이동현상론"
+],
+"codes": [
+"125311"
+],
+"ambiguous": false
+},
+{
+"short": "재전",
+"full": [
+"재료전산"
+],
+"codes": [
+"727626"
+],
+"ambiguous": false
+},
+{
+"short": "재전모실",
+"full": [
+"재료전산모사실습"
+],
+"codes": [
+"125822"
+],
+"ambiguous": false
+},
+{
+"short": "재정",
+"full": [
+"재정정책론"
+],
+"codes": [
+"361820"
+],
+"ambiguous": false
+},
+{
+"short": "재제",
+"full": [
+"재무제표론"
+],
+"codes": [
+"311415"
+],
+"ambiguous": false
+},
+{
+"short": "재탄",
+"full": [
+"재료탄소성학"
+],
+"codes": [
+"125402"
+],
+"ambiguous": false
+},
+{
+"short": "재화",
+"full": [
+"재즈화성학"
+],
+"codes": [
+"462103",
+"462203"
+],
+"ambiguous": false
+},
+{
+"short": "재화개",
+"full": [
+"재료화학개론"
+],
+"codes": [
+"124103"
+],
+"ambiguous": false
+},
+{
+"short": "재환",
+"full": [
+"재료와환경"
+],
+"codes": [
+"727719"
+],
+"ambiguous": false
+},
+{
+"short": "재회",
+"full": [
+"재무회계"
+],
+"codes": [
+"311203",
+"381602",
+"753212"
+],
+"ambiguous": false
+},
+{
+"short": "저권",
+"full": [
+"저작권법"
+],
+"codes": [
+"351618"
+],
+"ambiguous": false
+},
+{
+"short": "전경",
+"full": [
+"전략경영"
+],
+"codes": [
+"311707",
+"381503",
+"751718",
+"752714",
+"754827"
+],
+"ambiguous": false
+},
+{
+"short": "전경세",
+"full": [
+"전략경영세미나"
+],
+"codes": [
+"311620"
+],
+"ambiguous": false
+},
+{
+"short": "전공",
+"full": [
+"전력공학",
+"전파및안테나공학"
+],
+"codes": [
+"106830",
+"703619"
+],
+"ambiguous": true
+},
+{
+"short": "전구해",
+"full": [
+"전산구조해석"
+],
+"codes": [
+"723833"
+],
+"ambiguous": false
+},
+{
+"short": "전구해설",
+"full": [
+"전산구조해석및설계"
+],
+"codes": [
+"116812"
+],
+"ambiguous": false
+},
+{
+"short": "전기",
+"full": [
+"전기기기",
+"전시기획",
+"전자기학"
+],
+"codes": [
+"106303",
+"106503",
+"383702",
+"703313",
+"703412",
+"703511"
+],
+"ambiguous": true
+},
+{
+"short": "전기실",
+"full": [
+"전시기획및실습"
+],
+"codes": [
+"409824"
+],
+"ambiguous": false
+},
+{
+"short": "전기제",
+"full": [
+"전기기기제어"
+],
+"codes": [
+"106614"
+],
+"ambiguous": false
+},
+{
+"short": "전기제설",
+"full": [
+"전기기기제어및설계"
+],
+"codes": [
+"703720"
+],
+"ambiguous": false
+},
+{
+"short": "전동공",
+"full": [
+"전기동력자동차공학"
+],
+"codes": [
+"120622"
+],
+"ambiguous": false
+},
+{
+"short": "전디",
+"full": [
+"전시디자인"
+],
+"codes": [
+"111604"
+],
+"ambiguous": false
+},
+{
+"short": "전설",
+"full": [
+"전지모듈설계"
+],
+"codes": [
+"725860"
+],
+"ambiguous": false
+},
+{
+"short": "전설설",
+"full": [
+"전기설비설계"
+],
+"codes": [
+"703721"
+],
+"ambiguous": false
+},
+{
+"short": "전세실",
+"full": [
+"전산세무실무"
+],
+"codes": [
+"751823"
+],
+"ambiguous": false
+},
+{
+"short": "전술",
+"full": [
+"전통공연예술론"
+],
+"codes": [
+"383401"
+],
+"ambiguous": false
+},
+{
+"short": "전실",
+"full": [
+"전공실기",
+"전공실기-보이스랩"
+],
+"codes": [
+"461306",
+"461407",
+"970106",
+"970206",
+"970309",
+"970408",
+"970510",
+"970608"
+],
+"ambiguous": true
+},
+{
+"short": "전유",
+"full": [
+"전산유체역학"
+],
+"codes": [
+"720633"
+],
+"ambiguous": false
+},
+{
+"short": "전유설",
+"full": [
+"전산유체성능설계"
+],
+"codes": [
+"723620"
+],
+"ambiguous": false
+},
+{
+"short": "전응역",
+"full": [
+"전산응용역학"
+],
+"codes": [
+"720616"
+],
+"ambiguous": false
+},
+{
+"short": "전자시",
+"full": [
+"전기자동차시스템"
+],
+"codes": [
+"703837",
+"720730"
+],
+"ambiguous": false
+},
+{
+"short": "전재개",
+"full": [
+"전자재료개론"
+],
+"codes": [
+"125308"
+],
+"ambiguous": false
+},
+{
+"short": "전전",
+"full": [
+"전력전자"
+],
+"codes": [
+"106828",
+"703611"
+],
+"ambiguous": false
+},
+{
+"short": "전전공실",
+"full": [
+"전자전기공학실험"
+],
+"codes": [
+"703519",
+"703621"
+],
+"ambiguous": false
+},
+{
+"short": "전전기실",
+"full": [
+"전기전자기초실험"
+],
+"codes": [
+"703312",
+"703411"
+],
+"ambiguous": false
+},
+{
+"short": "전전재",
+"full": [
+"전기전자재료"
+],
+"codes": [
+"106603",
+"725609"
+],
+"ambiguous": false
+},
+{
+"short": "전전종설",
+"full": [
+"전자전기종합설계"
+],
+"codes": [
+"703725",
+"703835"
+],
+"ambiguous": false
+},
+{
+"short": "전제",
+"full": [
+"전동기제어"
+],
+"codes": [
+"120838"
+],
+"ambiguous": false
+},
+{
+"short": "전제기",
+"full": [
+"전산제도기초"
+],
+"codes": [
+"723825"
+],
+"ambiguous": false
+},
+{
+"short": "전종설",
+"full": [
+"전공종합설계"
+],
+"codes": [
+"725717",
+"725815"
+],
+"ambiguous": false
+},
+{
+"short": "전화공",
+"full": [
+"전기화학공학"
+],
+"codes": [
+"130515"
+],
+"ambiguous": false
+},
+{
+"short": "전회",
+"full": [
+"전자회로"
+],
+"codes": [
+"106401",
+"106502",
+"703520",
+"703622"
+],
+"ambiguous": false
+},
+{
+"short": "전회실설",
+"full": [
+"전기회로실험및설계",
+"전자회로실험및설계"
+],
+"codes": [
+"013706",
+"013708"
+],
+"ambiguous": true
+},
+{
+"short": "전회이",
+"full": [
+"전기회로이론"
+],
+"codes": [
+"013211",
+"106301"
+],
+"ambiguous": false
+},
+{
+"short": "정보",
+"full": [
+"정보보안"
+],
+"codes": [
+"101720"
+],
+"ambiguous": false
+},
+{
+"short": "정회",
+"full": [
+"정부비영리회계"
+],
+"codes": [
+"311514"
+],
+"ambiguous": false
+},
+{
+"short": "정획",
+"full": [
+"정지및배수계획론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "제공",
+"full": [
+"제약공학",
+"제어공학"
+],
+"codes": [
+"106508",
+"703623",
+"730828"
+],
+"ambiguous": true
+},
+{
+"short": "제생관",
+"full": [
+"제품생애관리"
+],
+"codes": [
+"140718"
+],
+"ambiguous": false
+},
+{
+"short": "제시공",
+"full": [
+"제조시스템공학"
+],
+"codes": [
+"720830"
+],
+"ambiguous": false
+},
+{
+"short": "제시설",
+"full": [
+"제어시스템설계"
+],
+"codes": [
+"106608"
+],
+"ambiguous": false
+},
+{
+"short": "제실",
+"full": [
+"제작실습"
+],
+"codes": [
+"120827",
+"120828"
+],
+"ambiguous": false
+},
+{
+"short": "제애이스",
+"full": [
+"제품애플리케이션스튜디오"
+],
+"codes": [
+"411733",
+"411851"
+],
+"ambiguous": false
+},
+{
+"short": "제와",
+"full": [
+"제2외국어와한문교양한문"
+],
+"codes": [
+"002605"
+],
+"ambiguous": false
+},
+{
+"short": "제폼스",
+"full": [
+"제품폼팩터스튜디오"
+],
+"codes": [
+"411327",
+"411431"
+],
+"ambiguous": false
+},
+{
+"short": "제프토스",
+"full": [
+"제품프로토타이핑스튜디오"
+],
+"codes": [
+"411527",
+"411626"
+],
+"ambiguous": false
+},
+{
+"short": "조계",
+"full": [
+"조경계획"
+],
+"codes": [
+"115505"
+],
+"ambiguous": false
+},
+{
+"short": "조동",
+"full": [
+"조직행동론"
+],
+"codes": [
+"751610",
+"754819"
+],
+"ambiguous": false
+},
+{
+"short": "조디",
+"full": [
+"조경디자인",
+"조명디자인"
+],
+"codes": [
+"111607",
+"710226"
+],
+"ambiguous": true
+},
+{
+"short": "조변혁",
+"full": [
+"조직변화와혁신"
+],
+"codes": [
+"311721"
+],
+"ambiguous": false
+},
+{
+"short": "조생",
+"full": [
+"조경수생산"
+],
+"codes": [
+"002570"
+],
+"ambiguous": false
+},
+{
+"short": "조설",
+"full": [
+"조경설계론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조수관",
+"full": [
+"조경수목관리"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조식",
+"full": [
+"조경식물학"
+],
+"codes": [
+"002569"
+],
+"ambiguous": false
+},
+{
+"short": "조실세",
+"full": [
+"조경실무세미나"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조실연",
+"full": [
+"조경실무연습"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조예미",
+"full": [
+"조형예술과미학"
+],
+"codes": [
+"002257"
+],
+"ambiguous": false
+},
+{
+"short": "조재시",
+"full": [
+"조경재료및시공"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조학",
+"full": [
+"조경학개론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "조해공개",
+"full": [
+"조선해양공학개론"
+],
+"codes": [
+"723102"
+],
+"ambiguous": false
+},
+{
+"short": "조해공세",
+"full": [
+"조선해양공학세미나"
+],
+"codes": [
+"723720",
+"723824"
+],
+"ambiguous": false
+},
+{
+"short": "조해창설",
+"full": [
+"조선해양창의설계"
+],
+"codes": [
+"723523"
+],
+"ambiguous": false
+},
+{
+"short": "조행",
+"full": [
+"조직행동"
+],
+"codes": [
+"311309",
+"381404"
+],
+"ambiguous": false
+},
+{
+"short": "졸설",
+"full": [
+"졸업설계"
+],
+"codes": [
+"111021"
+],
+"ambiguous": false
+},
+{
+"short": "졸설스",
+"full": [
+"졸업설계스튜디오"
+],
+"codes": [
+"710224",
+"710227"
+],
+"ambiguous": false
+},
+{
+"short": "졸연워",
+"full": [
+"졸업연주워크숍"
+],
+"codes": [
+"462807"
+],
+"ambiguous": false
+},
+{
+"short": "졸연프",
+"full": [
+"졸업연구프로젝트"
+],
+"codes": [
+"960625",
+"960725"
+],
+"ambiguous": false
+},
+{
+"short": "졸프",
+"full": [
+"졸업프로젝트"
+],
+"codes": [
+"410850",
+"930727",
+"930854"
+],
+"ambiguous": false
+},
+{
+"short": "종설",
+"full": [
+"종합설계"
+],
+"codes": [
+"704711",
+"704814",
+"730826"
+],
+"ambiguous": false
+},
+{
+"short": "종설스",
+"full": [
+"종합설계스튜디오"
+],
+"codes": [
+"710716",
+"710817"
+],
+"ambiguous": false
+},
+{
+"short": "종설프",
+"full": [
+"종합설계프로젝트"
+],
+"codes": [
+"101721",
+"101817"
+],
+"ambiguous": false
+},
+{
+"short": "주고문",
+"full": [
+"주제로읽는고전문학"
+],
+"codes": [
+"204311"
+],
+"ambiguous": false
+},
+{
+"short": "중강",
+"full": [
+"중국어강독"
+],
+"codes": [
+"790630",
+"790808"
+],
+"ambiguous": false
+},
+{
+"short": "중거경",
+"full": [
+"중급거시경제학"
+],
+"codes": [
+"361616"
+],
+"ambiguous": false
+},
+{
+"short": "중경",
+"full": [
+"중국경제론",
+"중국경제법"
+],
+"codes": [
+"754627",
+"754718"
+],
+"ambiguous": true
+},
+{
+"short": "중기연",
+"full": [
+"중국기업연구"
+],
+"codes": [
+"754719"
+],
+"ambiguous": false
+},
+{
+"short": "중기운관",
+"full": [
+"중국기업운영관리"
+],
+"codes": [
+"754720"
+],
+"ambiguous": false
+},
+{
+"short": "중대",
+"full": [
+"중국대외무역"
+],
+"codes": [
+"754628"
+],
+"ambiguous": false
+},
+{
+"short": "중미",
+"full": [
+"중국미술사"
+],
+"codes": [
+"409315"
+],
+"ambiguous": false
+},
+{
+"short": "중미경",
+"full": [
+"중급미시경제학"
+],
+"codes": [
+"361818"
+],
+"ambiguous": false
+},
+{
+"short": "중사문",
+"full": [
+"중국사회와문화"
+],
+"codes": [
+"754626"
+],
+"ambiguous": false
+},
+{
+"short": "중어",
+"full": [
+"중국어어법",
+"중국어청취"
+],
+"codes": [
+"790810",
+"790811",
+"790812",
+"790813"
+],
+"ambiguous": true
+},
+{
+"short": "중재회",
+"full": [
+"중급재무회계"
+],
+"codes": [
+"311314",
+"751518",
+"751613"
+],
+"ambiguous": false
+},
+{
+"short": "증분",
+"full": [
+"증권분석"
+],
+"codes": [
+"752619"
+],
+"ambiguous": false
+},
+{
+"short": "지가건",
+"full": [
+"지속가능한건축"
+],
+"codes": [
+"110864"
+],
+"ambiguous": false
+},
+{
+"short": "지가커",
+"full": [
+"지속가능성커뮤니케이션"
+],
+"codes": [
+"756871"
+],
+"ambiguous": false
+},
+{
+"short": "지경",
+"full": [
+"지속가능경영"
+],
+"codes": [
+"311520"
+],
+"ambiguous": false
+},
+{
+"short": "지경세",
+"full": [
+"지역경영세미나"
+],
+"codes": [
+"750719"
+],
+"ambiguous": false
+},
+{
+"short": "지공",
+"full": [
+"지속가능공학"
+],
+"codes": [
+"116617"
+],
+"ambiguous": false
+},
+{
+"short": "지과",
+"full": [
+"지식재산과법"
+],
+"codes": [
+"002558"
+],
+"ambiguous": false
+},
+{
+"short": "지권",
+"full": [
+"지식재산권법"
+],
+"codes": [
+"381802"
+],
+"ambiguous": false
+},
+{
+"short": "지디",
+"full": [
+"지속가능디자인"
+],
+"codes": [
+"913643"
+],
+"ambiguous": false
+},
+{
+"short": "지사교",
+"full": [
+"지역사회교육론"
+],
+"codes": [
+"280407"
+],
+"ambiguous": false
+},
+{
+"short": "지전시",
+"full": [
+"지능형전자시스템"
+],
+"codes": [
+"704308"
+],
+"ambiguous": false
+},
+{
+"short": "지형네",
+"full": [
+"지능형무선통신네트워크"
+],
+"codes": [
+"704839"
+],
+"ambiguous": false
+},
+{
+"short": "진공",
+"full": [
+"진공및박막공정"
+],
+"codes": [
+"727722"
+],
+"ambiguous": false
+},
+{
+"short": "진시설",
+"full": [
+"진동및방진시스템설계"
+],
+"codes": [
+"120520"
+],
+"ambiguous": false
+},
+{
+"short": "진이",
+"full": [
+"진로상담이론"
+],
+"codes": [
+"280310"
+],
+"ambiguous": false
+},
+{
+"short": "집개",
+"full": [
+"집적회로소자개론"
+],
+"codes": [
+"125722"
+],
+"ambiguous": false
+},
+{
+"short": "집공이",
+"full": [
+"집적회로공정이론"
+],
+"codes": [
+"125831"
+],
+"ambiguous": false
+},
+{
+"short": "집설",
+"full": [
+"집적회로설계"
+],
+"codes": [
+"106612"
+],
+"ambiguous": false
+},
+{
+"short": "집회",
+"full": [
+"집적회로"
+],
+"codes": [
+"701718"
+],
+"ambiguous": false
+},
+{
+"short": "차역",
+"full": [
+"차량동역학"
+],
+"codes": [
+"120850"
+],
+"ambiguous": false
+},
+{
+"short": "창공설입",
+"full": [
+"창의적공학설계입문"
+],
+"codes": [
+"725843"
+],
+"ambiguous": false
+},
+{
+"short": "창벤",
+"full": [
+"창업과벤처"
+],
+"codes": [
+"750618"
+],
+"ambiguous": false
+},
+{
+"short": "창적상",
+"full": [
+"창의적아이디어발상법"
+],
+"codes": [
+"756855"
+],
+"ambiguous": false
+},
+{
+"short": "창종설",
+"full": [
+"창의적종합설계",
+"창의종합설계"
+],
+"codes": [
+"125718",
+"130820",
+"730726"
+],
+"ambiguous": true
+},
+{
+"short": "창테설",
+"full": [
+"창의적테크노프레너십설계"
+],
+"codes": [
+"130724"
+],
+"ambiguous": false
+},
+{
+"short": "창화산",
+"full": [
+"창업과화학산업"
+],
+"codes": [
+"730832"
+],
+"ambiguous": false
+},
+{
+"short": "채총",
+"full": [
+"채권총론"
+],
+"codes": [
+"351313"
+],
+"ambiguous": false
+},
+{
+"short": "철구",
+"full": [
+"철골구조",
+"철근콘크리트구조",
+"철근콘트리트구조"
+],
+"codes": [
+"710509",
+"710602",
+"710611"
+],
+"ambiguous": true
+},
+{
+"short": "철구설",
+"full": [
+"철근콘크리트구조설계"
+],
+"codes": [
+"116840",
+"116841"
+],
+"ambiguous": false
+},
+{
+"short": "첨공응",
+"full": [
+"첨단공정및응용"
+],
+"codes": [
+"120626"
+],
+"ambiguous": false
+},
+{
+"short": "첨바공",
+"full": [
+"첨단바이오공학"
+],
+"codes": [
+"730844"
+],
+"ambiguous": false
+},
+{
+"short": "첨에공",
+"full": [
+"첨단에너지공학"
+],
+"codes": [
+"125832"
+],
+"ambiguous": false
+},
+{
+"short": "체인",
+"full": [
+"체험인공지능"
+],
+"codes": [
+"002641"
+],
+"ambiguous": false
+},
+{
+"short": "초공",
+"full": [
+"초고주파공학"
+],
+"codes": [
+"701719"
+],
+"ambiguous": false
+},
+{
+"short": "촉공",
+"full": [
+"촉매반응공학"
+],
+"codes": [
+"130717"
+],
+"ambiguous": false
+},
+{
+"short": "최반기동",
+"full": [
+"최신반도체기술동향"
+],
+"codes": [
+"106724"
+],
+"ambiguous": false
+},
+{
+"short": "최통기트",
+"full": [
+"최신통신기술트렌드"
+],
+"codes": [
+"106720"
+],
+"ambiguous": false
+},
+{
+"short": "추시설",
+"full": [
+"추진시스템설계"
+],
+"codes": [
+"723615"
+],
+"ambiguous": false
+},
+{
+"short": "취창실",
+"full": [
+"취업및창업실습"
+],
+"codes": [
+"961817"
+],
+"ambiguous": false
+},
+{
+"short": "취포",
+"full": [
+"취창업포트폴리오"
+],
+"codes": [
+"411627"
+],
+"ambiguous": false
+},
+{
+"short": "친건설",
+"full": [
+"친환경건축설계"
+],
+"codes": [
+"710825"
+],
+"ambiguous": false
+},
+{
+"short": "친디",
+"full": [
+"친환경디자인"
+],
+"codes": [
+"710223"
+],
+"ambiguous": false
+},
+{
+"short": "친스공계",
+"full": [
+"친환경스포츠공간계획론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "친스학",
+"full": [
+"친환경스포츠학개론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "캐디",
+"full": [
+"캐릭터디자인"
+],
+"codes": [
+"940320",
+"960810"
+],
+"ambiguous": false
+},
+{
+"short": "캠분",
+"full": [
+"캠페인사례분석"
+],
+"codes": [
+"756852"
+],
+"ambiguous": false
+},
+{
+"short": "캡디",
+"full": [
+"캡스톤디자인"
+],
+"codes": [
+"756874",
+"756875"
+],
+"ambiguous": false
+},
+{
+"short": "커개",
+"full": [
+"커뮤니케이션개론"
+],
+"codes": [
+"035105"
+],
+"ambiguous": false
+},
+{
+"short": "커디",
+"full": [
+"커뮤니케이션디자인"
+],
+"codes": [
+"410829",
+"410831"
+],
+"ambiguous": false
+},
+{
+"short": "커아",
+"full": [
+"커뮤니케이션아트"
+],
+"codes": [
+"756854"
+],
+"ambiguous": false
+},
+{
+"short": "컨가디",
+"full": [
+"컨셉튜얼가구디자인"
+],
+"codes": [
+"415318",
+"415417",
+"415511",
+"415612",
+"415715",
+"415836"
+],
+"ambiguous": false
+},
+{
+"short": "컨아",
+"full": [
+"컨셉아트"
+],
+"codes": [
+"960422",
+"960524"
+],
+"ambiguous": false
+},
+{
+"short": "컴S기",
+"full": [
+"컴퓨터SW기초"
+],
+"codes": [
+"002579"
+],
+"ambiguous": false
+},
+{
+"short": "컴구",
+"full": [
+"컴퓨터구조"
+],
+"codes": [
+"101510",
+"106601",
+"703517",
+"704410"
+],
+"ambiguous": false
+},
+{
+"short": "컴그",
+"full": [
+"컴퓨터그래픽스"
+],
+"codes": [
+"961517",
+"961623"
+],
+"ambiguous": false
+},
+{
+"short": "컴그와",
+"full": [
+"컴퓨터그래픽스와메타버스"
+],
+"codes": [
+"101718"
+],
+"ambiguous": false
+},
+{
+"short": "컴네",
+"full": [
+"컴퓨터네트워크"
+],
+"codes": [
+"101609"
+],
+"ambiguous": false
+},
+{
+"short": "컴네보",
+"full": [
+"컴퓨터네트워크및보안"
+],
+"codes": [
+"961834"
+],
+"ambiguous": false
+},
+{
+"short": "컴보",
+"full": [
+"컴퓨터보안"
+],
+"codes": [
+"704811"
+],
+"ambiguous": false
+},
+{
+"short": "컴소개",
+"full": [
+"컴퓨터소프트웨어개론"
+],
+"codes": [
+"961823"
+],
+"ambiguous": false
+},
+{
+"short": "컴시과언",
+"full": [
+"컴퓨터시스템과어셈블리언어"
+],
+"codes": [
+"101415"
+],
+"ambiguous": false
+},
+{
+"short": "컴음",
+"full": [
+"컴퓨터음악"
+],
+"codes": [
+"462106",
+"462206",
+"462304",
+"462404"
+],
+"ambiguous": false
+},
+{
+"short": "컴응기공",
+"full": [
+"컴퓨터응용기계공학"
+],
+"codes": [
+"720724"
+],
+"ambiguous": false
+},
+{
+"short": "컴응수",
+"full": [
+"컴퓨터응용수치계산"
+],
+"codes": [
+"720834"
+],
+"ambiguous": false
+},
+{
+"short": "컴응통",
+"full": [
+"컴퓨터응용통계"
+],
+"codes": [
+"012208"
+],
+"ambiguous": false
+},
+{
+"short": "컴일",
+"full": [
+"컴파일러"
+],
+"codes": [
+"101701"
+],
+"ambiguous": false
+},
+{
+"short": "컴커네",
+"full": [
+"컴퓨터커뮤니케이션네트워크"
+],
+"codes": [
+"106610"
+],
+"ambiguous": false
+},
+{
+"short": "컴통시",
+"full": [
+"컴퓨터통합생산시스템"
+],
+"codes": [
+"720827"
+],
+"ambiguous": false
+},
+{
+"short": "컴활기",
+"full": [
+"컴퓨터활용기초"
+],
+"codes": [
+"002534"
+],
+"ambiguous": false
+},
+{
+"short": "콘개창",
+"full": [
+"콘텐츠개발과창업"
+],
+"codes": [
+"461708"
+],
+"ambiguous": false
+},
+{
+"short": "콘드",
+"full": [
+"콘셉트드로잉"
+],
+"codes": [
+"920218"
+],
+"ambiguous": false
+},
+{
+"short": "크코",
+"full": [
+"크리에이티브코딩"
+],
+"codes": [
+"930525"
+],
+"ambiguous": false
+},
+{
+"short": "테스",
+"full": [
+"테크니컬스케치&렌더링"
+],
+"codes": [
+"920227"
+],
+"ambiguous": false
+},
+{
+"short": "텍마",
+"full": [
+"텍스트마이닝"
+],
+"codes": [
+"140626"
+],
+"ambiguous": false
+},
+{
+"short": "텍미프스",
+"full": [
+"텍스트와미디어프랑스어"
+],
+"codes": [
+"203309"
+],
+"ambiguous": false
+},
+{
+"short": "토분",
+"full": [
+"토지이용분석"
+],
+"codes": [
+"115827"
+],
+"ambiguous": false
+},
+{
+"short": "토역실",
+"full": [
+"토질역학및실험"
+],
+"codes": [
+"116821",
+"116829"
+],
+"ambiguous": false
+},
+{
+"short": "토재실",
+"full": [
+"토목재료실험"
+],
+"codes": [
+"013405"
+],
+"ambiguous": false
+},
+{
+"short": "통S",
+"full": [
+"통계SW활용"
+],
+"codes": [
+"970306"
+],
+"ambiguous": false
+},
+{
+"short": "통디",
+"full": [
+"통합디자인"
+],
+"codes": [
+"710217"
+],
+"ambiguous": false
+},
+{
+"short": "통이",
+"full": [
+"통신이론"
+],
+"codes": [
+"106506",
+"701514",
+"704514"
+],
+"ambiguous": false
+},
+{
+"short": "통프",
+"full": [
+"통신프로그래밍"
+],
+"codes": [
+"704836"
+],
+"ambiguous": false
+},
+{
+"short": "트미파",
+"full": [
+"트랜스미디어파운데이션"
+],
+"codes": [
+"950826"
+],
+"ambiguous": false
+},
+{
+"short": "트법",
+"full": [
+"트레이닝방법론"
+],
+"codes": [
+"970601"
+],
+"ambiguous": false
+},
+{
+"short": "특공조",
+"full": [
+"특수공구기법과조형"
+],
+"codes": [
+"043249"
+],
+"ambiguous": false
+},
+{
+"short": "특교",
+"full": [
+"특수교육론"
+],
+"codes": [
+"053503"
+],
+"ambiguous": false
+},
+{
+"short": "특설",
+"full": [
+"특수선설계"
+],
+"codes": [
+"723837"
+],
+"ambiguous": false
+},
+{
+"short": "팀프",
+"full": [
+"팀프로젝트"
+],
+"codes": [
+"960850"
+],
+"ambiguous": false
+},
+{
+"short": "파골",
+"full": [
+"파크골프"
+],
+"codes": [
+"970406"
+],
+"ambiguous": false
+},
+{
+"short": "파금상",
+"full": [
+"파생금융상품"
+],
+"codes": [
+"752613"
+],
+"ambiguous": false
+},
+{
+"short": "파상",
+"full": [
+"파생상품론"
+],
+"codes": [
+"311712"
+],
+"ambiguous": false
+},
+{
+"short": "파프",
+"full": [
+"파이썬프로그래밍"
+],
+"codes": [
+"012315",
+"012316",
+"012317"
+],
+"ambiguous": false
+},
+{
+"short": "판민",
+"full": [
+"판례민법"
+],
+"codes": [
+"351115"
+],
+"ambiguous": false
+},
+{
+"short": "팝상",
+"full": [
+"팝-록앙상블"
+],
+"codes": [
+"462104"
+],
+"ambiguous": false
+},
+{
+"short": "패디",
+"full": [
+"패키지디자인"
+],
+"codes": [
+"920638"
+],
+"ambiguous": false
+},
+{
+"short": "편디",
+"full": [
+"편집디자인"
+],
+"codes": [
+"920540"
+],
+"ambiguous": false
+},
+{
+"short": "평교",
+"full": [
+"평생교육론"
+],
+"codes": [
+"280308"
+],
+"ambiguous": false
+},
+{
+"short": "평교경",
+"full": [
+"평생교육경영론"
+],
+"codes": [
+"280511"
+],
+"ambiguous": false
+},
+{
+"short": "평교방",
+"full": [
+"평생교육방법론"
+],
+"codes": [
+"280406"
+],
+"ambiguous": false
+},
+{
+"short": "평교실",
+"full": [
+"평생교육실습"
+],
+"codes": [
+"280808"
+],
+"ambiguous": false
+},
+{
+"short": "평교프그",
+"full": [
+"평생교육프로그램개발론"
+],
+"codes": [
+"280712"
+],
+"ambiguous": false
+},
+{
+"short": "포더",
+"full": [
+"포스트모더니즘미술론"
+],
+"codes": [
+"409820"
+],
+"ambiguous": false
+},
+{
+"short": "포바분",
+"full": [
+"포스트바이분석"
+],
+"codes": [
+"756864"
+],
+"ambiguous": false
+},
+{
+"short": "포영드",
+"full": [
+"포스트모던영미드라마"
+],
+"codes": [
+"201811"
+],
+"ambiguous": false
+},
+{
+"short": "포제",
+"full": [
+"포트폴리오제작"
+],
+"codes": [
+"410847"
+],
+"ambiguous": false
+},
+{
+"short": "포프덕워",
+"full": [
+"포스트프로덕션워크샵"
+],
+"codes": [
+"950715"
+],
+"ambiguous": false
+},
+{
+"short": "품경",
+"full": [
+"품질과경영"
+],
+"codes": [
+"311506"
+],
+"ambiguous": false
+},
+{
+"short": "퓨앙",
+"full": [
+"퓨전앙상블"
+],
+"codes": [
+"462303"
+],
+"ambiguous": false
+},
+{
+"short": "프기",
+"full": [
+"프로그래밍기초"
+],
+"codes": [
+"012321"
+],
+"ambiguous": false
+},
+{
+"short": "프덕",
+"full": [
+"프로덕트아틀리에"
+],
+"codes": [
+"920232"
+],
+"ambiguous": false
+},
+{
+"short": "프덕디워",
+"full": [
+"프로덕션디자인워크샵"
+],
+"codes": [
+"950620",
+"950855"
+],
+"ambiguous": false
+},
+{
+"short": "프문대예",
+"full": [
+"프랑스문학과대중예술"
+],
+"codes": [
+"203817"
+],
+"ambiguous": false
+},
+{
+"short": "프문비",
+"full": [
+"프랑스문학비평"
+],
+"codes": [
+"203511"
+],
+"ambiguous": false
+},
+{
+"short": "프문산",
+"full": [
+"프랑스문학산책"
+],
+"codes": [
+"203211"
+],
+"ambiguous": false
+},
+{
+"short": "프문역",
+"full": [
+"프랑스문학과역사"
+],
+"codes": [
+"023310"
+],
+"ambiguous": false
+},
+{
+"short": "프문작이",
+"full": [
+"프랑스문학작품의이해"
+],
+"codes": [
+"023410"
+],
+"ambiguous": false
+},
+{
+"short": "프스",
+"full": [
+"프랑스문화사",
+"프랑스어",
+"프랑스학",
+"프랑스학1",
+"프랑스학2"
+],
+"codes": [
+"023111",
+"023211",
+"203812",
+"203813",
+"203822"
+],
+"ambiguous": true
+},
+{
+"short": "프스구이",
+"full": [
+"프랑스어구문의이해"
+],
+"codes": [
+"203818"
+],
+"ambiguous": false
+},
+{
+"short": "프스권",
+"full": [
+"프랑스어권명작산책"
+],
+"codes": [
+"203815"
+],
+"ambiguous": false
+},
+{
+"short": "프스발",
+"full": [
+"프랑스어발음과문법"
+],
+"codes": [
+"203109"
+],
+"ambiguous": false
+},
+{
+"short": "프스비문",
+"full": [
+"프랑스어와비주얼문화"
+],
+"codes": [
+"203410"
+],
+"ambiguous": false
+},
+{
+"short": "프스사",
+"full": [
+"프랑스어와사고",
+"프랑스인문학과사회"
+],
+"codes": [
+"203507",
+"203712"
+],
+"ambiguous": true
+},
+{
+"short": "프스예",
+"full": [
+"프랑스인문학과예술"
+],
+"codes": [
+"203816"
+],
+"ambiguous": false
+},
+{
+"short": "프스작연",
+"full": [
+"프랑스어작문연습"
+],
+"codes": [
+"203110"
+],
+"ambiguous": false
+},
+{
+"short": "프스커",
+"full": [
+"프랑스어커뮤니케이션"
+],
+"codes": [
+"203510"
+],
+"ambiguous": false
+},
+{
+"short": "프스텍와",
+"full": [
+"프랑스어텍스트와이미지"
+],
+"codes": [
+"203820"
+],
+"ambiguous": false
+},
+{
+"short": "프스회고",
+"full": [
+"프랑스어회화고급"
+],
+"codes": [
+"203411"
+],
+"ambiguous": false
+},
+{
+"short": "프스회입",
+"full": [
+"프랑스어회화입문"
+],
+"codes": [
+"203112"
+],
+"ambiguous": false
+},
+{
+"short": "프스회중",
+"full": [
+"프랑스어회화중급"
+],
+"codes": [
+"203311"
+],
+"ambiguous": false
+},
+{
+"short": "프언",
+"full": [
+"프로그래밍언어론"
+],
+"codes": [
+"101512"
+],
+"ambiguous": false
+},
+{
+"short": "프언이",
+"full": [
+"프랑스언어학의이해"
+],
+"codes": [
+"023411"
+],
+"ambiguous": false
+},
+{
+"short": "프유",
+"full": [
+"프랑스와유럽"
+],
+"codes": [
+"203713"
+],
+"ambiguous": false
+},
+{
+"short": "프페",
+"full": [
+"프로페셔널프랙티스"
+],
+"codes": [
+"111802"
+],
+"ambiguous": false
+},
+{
+"short": "피공설",
+"full": [
+"피에스콘크리트공학및설계"
+],
+"codes": [
+"116709"
+],
+"ambiguous": false
+},
+{
+"short": "피크",
+"full": [
+"피지컬워크숍"
+],
+"codes": [
+"410851",
+"410852",
+"410853"
+],
+"ambiguous": false
+},
+{
+"short": "필데",
+"full": [
+"필름투데이"
+],
+"codes": [
+"950810"
+],
+"ambiguous": false
+},
+{
+"short": "하공설",
+"full": [
+"하천공학및설계"
+],
+"codes": [
+"116810"
+],
+"ambiguous": false
+},
+{
+"short": "하리",
+"full": [
+"하이브리드이미징"
+],
+"codes": [
+"950834"
+],
+"ambiguous": false
+},
+{
+"short": "하스",
+"full": [
+"하계스포츠"
+],
+"codes": [
+"970105"
+],
+"ambiguous": false
+},
+{
+"short": "하영제",
+"full": [
+"하이브리드영상제작"
+],
+"codes": [
+"950860"
+],
+"ambiguous": false
+},
+{
+"short": "학답",
+"full": [
+"학술답사"
+],
+"codes": [
+"204306"
+],
+"ambiguous": false
+},
+{
+"short": "학실",
+"full": [
+"학교현장실습"
+],
+"codes": [
+"053708"
+],
+"ambiguous": false
+},
+{
+"short": "학실학실",
+"full": [
+"학교현장실습학교현장실습"
+],
+"codes": [
+"053708"
+],
+"ambiguous": false
+},
+{
+"short": "학이",
+"full": [
+"학교현장의이해"
+],
+"codes": [
+"008736"
+],
+"ambiguous": false
+},
+{
+"short": "학폭이",
+"full": [
+"학교폭력예방및학생의이해"
+],
+"codes": [
+"053710"
+],
+"ambiguous": false
+},
+{
+"short": "한건",
+"full": [
+"한국건축사"
+],
+"codes": [
+"110531",
+"740802"
+],
+"ambiguous": false
+},
+{
+"short": "한경",
+"full": [
+"한국경제론"
+],
+"codes": [
+"361701"
+],
+"ambiguous": false
+},
+{
+"short": "한근미",
+"full": [
+"한국근대미술사"
+],
+"codes": [
+"409517"
+],
+"ambiguous": false
+},
+{
+"short": "한데분활",
+"full": [
+"한국어데이터분석과활용"
+],
+"codes": [
+"204608"
+],
+"ambiguous": false
+},
+{
+"short": "한디사",
+"full": [
+"한국디자인사"
+],
+"codes": [
+"410518",
+"410618"
+],
+"ambiguous": false
+},
+{
+"short": "한문세문",
+"full": [
+"한국문학과세계문학"
+],
+"codes": [
+"204823"
+],
+"ambiguous": false
+},
+{
+"short": "한미",
+"full": [
+"한국미술사"
+],
+"codes": [
+"043332",
+"043427",
+"381410"
+],
+"ambiguous": false
+},
+{
+"short": "한사예디",
+"full": [
+"한국사의이해예술과디자인"
+],
+"codes": [
+"002587"
+],
+"ambiguous": false
+},
+{
+"short": "한어역",
+"full": [
+"한국어의기원과역사"
+],
+"codes": [
+"204508"
+],
+"ambiguous": false
+},
+{
+"short": "한영세",
+"full": [
+"한국영화세미나"
+],
+"codes": [
+"950854"
+],
+"ambiguous": false
+},
+{
+"short": "한전가연",
+"full": [
+"한국전통가구연구"
+],
+"codes": [
+"415509"
+],
+"ambiguous": false
+},
+{
+"short": "한현미",
+"full": [
+"한국현대미술론"
+],
+"codes": [
+"409617"
+],
+"ambiguous": false
+},
+{
+"short": "합화실",
+"full": [
+"합성화학실험"
+],
+"codes": [
+"730617"
+],
+"ambiguous": false
+},
+{
+"short": "해공설",
+"full": [
+"해안항만공학및설계"
+],
+"codes": [
+"116715"
+],
+"ambiguous": false
+},
+{
+"short": "해공입",
+"full": [
+"해양플랜트공학입문"
+],
+"codes": [
+"723829"
+],
+"ambiguous": false
+},
+{
+"short": "해구설",
+"full": [
+"해양구조물설계"
+],
+"codes": [
+"723835"
+],
+"ambiguous": false
+},
+{
+"short": "해에공",
+"full": [
+"해양에너지공학"
+],
+"codes": [
+"723831"
+],
+"ambiguous": false
+},
+{
+"short": "해역",
+"full": [
+"해양파역학"
+],
+"codes": [
+"723604"
+],
+"ambiguous": false
+},
+{
+"short": "해플",
+"full": [
+"해양플랜트FEED"
+],
+"codes": [
+"723839"
+],
+"ambiguous": false
+},
+{
+"short": "행구",
+"full": [
+"행정구제법"
+],
+"codes": [
+"351516"
+],
+"ambiguous": false
+},
+{
+"short": "행법",
+"full": [
+"행정법사례연습"
+],
+"codes": [
+"351629"
+],
+"ambiguous": false
+},
+{
+"short": "행조",
+"full": [
+"행정조직법"
+],
+"codes": [
+"351730"
+],
+"ambiguous": false
+},
+{
+"short": "헌기",
+"full": [
+"헌법기본권론"
+],
+"codes": [
+"063202"
+],
+"ambiguous": false
+},
+{
+"short": "헌사",
+"full": [
+"헌법사례연습"
+],
+"codes": [
+"351523"
+],
+"ambiguous": false
+},
+{
+"short": "헌소",
+"full": [
+"헌법소송법"
+],
+"codes": [
+"351418"
+],
+"ambiguous": false
+},
+{
+"short": "헌재",
+"full": [
+"헌법재판과판례"
+],
+"codes": [
+"351731"
+],
+"ambiguous": false
+},
+{
+"short": "헌통",
+"full": [
+"헌법통치구조론"
+],
+"codes": [
+"351307"
+],
+"ambiguous": false
+},
+{
+"short": "헌특",
+"full": [
+"헌법특강"
+],
+"codes": [
+"351726"
+],
+"ambiguous": false
+},
+{
+"short": "헬데마",
+"full": [
+"헬스케어데이터마케팅"
+],
+"codes": [
+"888044"
+],
+"ambiguous": false
+},
+{
+"short": "헬서디",
+"full": [
+"헬스케어서비스디자인"
+],
+"codes": [
+"888053"
+],
+"ambiguous": false
+},
+{
+"short": "헬커",
+"full": [
+"헬스커뮤니케이션"
+],
+"codes": [
+"756815"
+],
+"ambiguous": false
+},
+{
+"short": "혁금",
+"full": [
+"혁신금융"
+],
+"codes": [
+"311518"
+],
+"ambiguous": false
+},
+{
+"short": "혁방프세",
+"full": [
+"혁신방법론과프로세스"
+],
+"codes": [
+"411433"
+],
+"ambiguous": false
+},
+{
+"short": "현가디사",
+"full": [
+"현대가구디자인사"
+],
+"codes": [
+"043431"
+],
+"ambiguous": false
+},
+{
+"short": "현건",
+"full": [
+"현대건축",
+"현대건축론"
+],
+"codes": [
+"110731",
+"740903"
+],
+"ambiguous": true
+},
+{
+"short": "현경금",
+"full": [
+"현대경영과금융"
+],
+"codes": [
+"753106"
+],
+"ambiguous": false
+},
+{
+"short": "현독사이",
+"full": [
+"현대독일사회의이해"
+],
+"codes": [
+"202206"
+],
+"ambiguous": false
+},
+{
+"short": "현문",
+"full": [
+"현대문학사"
+],
+"codes": [
+"204308"
+],
+"ambiguous": false
+},
+{
+"short": "현문스",
+"full": [
+"현대문학과스토리텔링"
+],
+"codes": [
+"204812"
+],
+"ambiguous": false
+},
+{
+"short": "현문연",
+"full": [
+"현대문학연습"
+],
+"codes": [
+"204807"
+],
+"ambiguous": false
+},
+{
+"short": "현문이",
+"full": [
+"현대문학이론"
+],
+"codes": [
+"204820"
+],
+"ambiguous": false
+},
+{
+"short": "현문작",
+"full": [
+"현대문학작품읽기"
+],
+"codes": [
+"204819"
+],
+"ambiguous": false
+},
+{
+"short": "현미",
+"full": [
+"현대미학"
+],
+"codes": [
+"409616"
+],
+"ambiguous": false
+},
+{
+"short": "현미분실",
+"full": [
+"현대미술분석및실습"
+],
+"codes": [
+"409415"
+],
+"ambiguous": false
+},
+{
+"short": "현사한",
+"full": [
+"현대사회와한국어"
+],
+"codes": [
+"204806"
+],
+"ambiguous": false
+},
+{
+"short": "현소",
+"full": [
+"현대소설론"
+],
+"codes": [
+"204602"
+],
+"ambiguous": false
+},
+{
+"short": "현시",
+"full": [
+"현대시론"
+],
+"codes": [
+"204603"
+],
+"ambiguous": false
+},
+{
+"short": "현실",
+"full": [
+"현장실습"
+],
+"codes": [
+"190418"
+],
+"ambiguous": false
+},
+{
+"short": "현실건",
+"full": [
+"현대실내건축"
+],
+"codes": [
+"111402"
+],
+"ambiguous": false
+},
+{
+"short": "현영드",
+"full": [
+"현대영미드라마"
+],
+"codes": [
+"201812"
+],
+"ambiguous": false
+},
+{
+"short": "현영소",
+"full": [
+"현대영미소설"
+],
+"codes": [
+"201702"
+],
+"ambiguous": false
+},
+{
+"short": "현음워",
+"full": [
+"현대음악워크숍"
+],
+"codes": [
+"462702"
+],
+"ambiguous": false
+},
+{
+"short": "현음편",
+"full": [
+"현대음악편곡법"
+],
+"codes": [
+"462509"
+],
+"ambiguous": false
+},
+{
+"short": "현조",
+"full": [
+"현대조경론"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "현프문스",
+"full": [
+"현대프랑스문학과스토리텔링"
+],
+"codes": [
+"203611"
+],
+"ambiguous": false
+},
+{
+"short": "형각",
+"full": [
+"형법각론"
+],
+"codes": [
+"351408"
+],
+"ambiguous": false
+},
+{
+"short": "형사",
+"full": [
+"형법사례연습"
+],
+"codes": [
+"351109"
+],
+"ambiguous": false
+},
+{
+"short": "형소",
+"full": [
+"형사소송법"
+],
+"codes": [
+"351524",
+"351628"
+],
+"ambiguous": false
+},
+{
+"short": "형소사",
+"full": [
+"형사소송법사례연습"
+],
+"codes": [
+"351720"
+],
+"ambiguous": false
+},
+{
+"short": "형실와",
+"full": [
+"형사실무와모의재판"
+],
+"codes": [
+"351837"
+],
+"ambiguous": false
+},
+{
+"short": "형정",
+"full": [
+"형사정책"
+],
+"codes": [
+"351812"
+],
+"ambiguous": false
+},
+{
+"short": "형총",
+"full": [
+"형법총론"
+],
+"codes": [
+"063301"
+],
+"ambiguous": false
+},
+{
+"short": "형특",
+"full": [
+"형법특강"
+],
+"codes": [
+"351106"
+],
+"ambiguous": false
+},
+{
+"short": "화공계",
+"full": [
+"화학공정계산"
+],
+"codes": [
+"130819"
+],
+"ambiguous": false
+},
+{
+"short": "화공실",
+"full": [
+"화학공학실험"
+],
+"codes": [
+"130615",
+"730627"
+],
+"ambiguous": false
+},
+{
+"short": "화공해안",
+"full": [
+"화학공정해석과안전"
+],
+"codes": [
+"130723"
+],
+"ambiguous": false
+},
+{
+"short": "화기분",
+"full": [
+"화공기기분석"
+],
+"codes": [
+"130518"
+],
+"ambiguous": false
+},
+{
+"short": "화기실",
+"full": [
+"화공기초실험"
+],
+"codes": [
+"130307"
+],
+"ambiguous": false
+},
+{
+"short": "화반",
+"full": [
+"화학반응공학"
+],
+"codes": [
+"730715"
+],
+"ambiguous": false
+},
+{
+"short": "화생공",
+"full": [
+"화학생물공정"
+],
+"codes": [
+"730833"
+],
+"ambiguous": false
+},
+{
+"short": "화소실",
+"full": [
+"화공소재합성실험"
+],
+"codes": [
+"130516"
+],
+"ambiguous": false
+},
+{
+"short": "화양",
+"full": [
+"화공양론"
+],
+"codes": [
+"130308"
+],
+"ambiguous": false
+},
+{
+"short": "화열",
+"full": [
+"화공열역학"
+],
+"codes": [
+"130614",
+"730516"
+],
+"ambiguous": false
+},
+{
+"short": "화전",
+"full": [
+"화공전산"
+],
+"codes": [
+"130406"
+],
+"ambiguous": false
+},
+{
+"short": "화전모",
+"full": [
+"화공전산모사"
+],
+"codes": [
+"130824"
+],
+"ambiguous": false
+},
+{
+"short": "확및",
+"full": [
+"확률및불규칙변수"
+],
+"codes": [
+"704502"
+],
+"ambiguous": false
+},
+{
+"short": "확통",
+"full": [
+"확률및통계"
+],
+"codes": [
+"012210"
+],
+"ambiguous": false
+},
+{
+"short": "환공",
+"full": [
+"환경공학"
+],
+"codes": [
+"730730"
+],
+"ambiguous": false
+},
+{
+"short": "환보안공",
+"full": [
+"환경보건및안전공학"
+],
+"codes": [
+"116409"
+],
+"ambiguous": false
+},
+{
+"short": "환생공",
+"full": [
+"환경생태공학"
+],
+"codes": [
+"116308"
+],
+"ambiguous": false
+},
+{
+"short": "환조관",
+"full": [
+"환경조경관련법규"
+],
+"codes": [],
+"ambiguous": false
+},
+{
+"short": "회원",
+"full": [
+"회계원리"
+],
+"codes": [
+"033104",
+"034203",
+"381301"
+],
+"ambiguous": false
+},
+{
+"short": "회이",
+"full": [
+"회로이론"
+],
+"codes": [
+"703314",
+"703415",
+"704305"
+],
+"ambiguous": false
+},
+{
+"short": "회정시",
+"full": [
+"회계정보시스템"
+],
+"codes": [
+"751521",
+"751611"
+],
+"ambiguous": false
+},
+{
+"short": "회학연",
+"full": [
+"회계학실전연습"
+],
+"codes": [
+"751417"
+],
+"ambiguous": false
+},
+{
+"short": "휴로인디",
+"full": [
+"휴먼-로봇인터랙션디자인"
+],
+"codes": [
+"002671"
+],
+"ambiguous": false
+},
+{
+"short": "휴자인디",
+"full": [
+"휴먼-자율주행인터랙션디자인"
+],
+"codes": [
+"002673"
+],
+"ambiguous": false
+},
+{
+"short": "희독",
+"full": [
+"희곡독해"
+],
+"codes": [
+"461105"
+],
+"ambiguous": false
+}
+]
+}

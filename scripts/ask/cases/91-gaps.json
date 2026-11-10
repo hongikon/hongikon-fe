@@ -78,5 +78,17 @@
  {
   "q": "분실물 어디서 찾아요",
   "expect": "lost-found"
+ },
+ {
+  "q": "중동 가입 어떻게 해",
+  "expect": "clubs"
+ },
+ {
+  "q": "교환 가고 싶어",
+  "expect": "exchange"
+ },
+ {
+  "q": "디씽 공대도 들어야 해?",
+  "expect": "special-liberal"
  }
 ]
