@@ -92,7 +92,17 @@ import FilterBar from './pathSurveyV3/FilterBar'
 import { hasOpenDialog, isShortcutTab, isTypingElement, keyboardTarget, NUDGE_HINT, nudgeCoord, resolveShortcut, type ShortcutAction } from './pathSurveyV3/keyboard'
 import Legend from './pathSurveyV3/Legend'
 import { SETUP_JS } from './pathSurveyV3/mapBridge'
-import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilter, type MapMode } from './pathSurveyV3/mapState'
+import {
+  buildRenderState,
+  canEditEdge,
+  editableNodeIds,
+  editableSelection,
+  isNodeStrong,
+  NO_FILTER,
+  type LabelMode,
+  type MapFilter,
+  type MapMode,
+} from './pathSurveyV3/mapState'
 import MultiPanel from './pathSurveyV3/MultiPanel'
 import NodeSheet from './pathSurveyV3/NodeSheet'
 import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
@@ -193,6 +203,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const [backupRecord, setBackupRecord] = useState<BackupRecord | null>(() => loadBackupRecord())
   const [settings, setSettings] = useState<SurveySettings>(() => loadSurveySettings())
   const [filter, setFilter] = useState<MapFilter>(NO_FILTER)
+  // "Only the filter can be edited". Screen state only, never stored: every visit starts locked as before.
+  const [onlyFilter, setOnlyFilter] = useState(true)
   const [labelMode, setLabelMode] = useState<LabelMode>('full')
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(LEGACY_OFF)
   const [report, setReport] = useState<ConvertReport | null>(() => loadConvertReport())
@@ -342,9 +354,39 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const selectMany = (ids: string[], fromAll = false) => {
-    setMulti(ids)
-    setMultiFromAll(fromAll && ids.length > 0)
+    const allowed = editableNodeIds(storeRef.current, ids, filter, onlyFilter)
+    setMulti(allowed)
+    setMultiFromAll(fromAll && allowed.length > 0)
+    if (allowed.length < ids.length) setNotice(`필터 밖 점 ${ids.length - allowed.length}개는 고르지 않았어요`)
   }
+
+  /**
+   * The same rule as the map: with "only the filter" on, points outside the filter are locked. The base point
+   * (the point placed or picked last) stays editable, so a new point placed outside the filter can still be filled in.
+   */
+  const canEditNode = (id: string | null | undefined): boolean => {
+    if (!id) return false
+    if (id === anchorRef.current) return !!findNode(storeRef.current, id)
+    return editableNodeIds(storeRef.current, [id], filter, onlyFilter).length > 0
+  }
+  const canEditEdgeId = (id: string | null | undefined) => canEditEdge(storeRef.current, id ?? null, filter, onlyFilter)
+
+  /** A new filter or box state drops the selection that could no longer be edited. */
+  const applyFilter = (nextFilter: MapFilter, nextOnly: boolean) => {
+    setFilter(nextFilter)
+    setOnlyFilter(nextOnly)
+    const kept = editableSelection(storeRef.current, { selected, selectedEdge, pending, multi }, nextFilter, nextOnly)
+    const dropped = kept.selected !== selected || kept.selectedEdge !== selectedEdge || kept.pending !== pending || kept.multi.length !== multi.length
+    if (!dropped) return
+    setSelected(kept.selected)
+    setSelectedEdge(kept.selectedEdge)
+    setPending(kept.pending)
+    setMulti([...kept.multi])
+    setMultiFromAll(multiFromAll && kept.multi.length > 0)
+    setNotice('필터 밖이 된 선택은 풀었어요')
+  }
+
+  const lockedText = "필터 밖이라 고칠 수 없어요. 필터를 바꾸거나 '선택한 필터만 수정'을 꺼 주세요."
 
   const runConvert = (source: V2Source) => {
     if (index.list.length === 0) return setNotice('건물 목록이 아직 없어요. 온라인에서 한 번 연 뒤 다시 해 주세요.')
@@ -544,7 +586,9 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   /** One point opens its sheet with the boundary building ready. Many points go to the bulk panel. */
-  const makeIndoor = (ids: string[]) => {
+  const makeIndoor = (all: string[]) => {
+    const ids = editableNodeIds(storeRef.current, all, filter, onlyFilter)
+    if (ids.length === 0) return setNotice(lockedText)
     if (ids.length === 1) {
       change((s) => setNodeScope(s, ids[0], 'indoor'))
       focusNode(ids[0])
@@ -561,12 +605,15 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const applyBulk = (bulk: BulkChange) => {
-    const count = multi.length
-    const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, multi, index) : []
+    const ids = editableNodeIds(storeRef.current, multi, filter, onlyFilter)
+    if (ids.length === 0) return setNotice(lockedText)
+    const count = ids.length
+    const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, ids, index) : []
     if (mixed.length > 1 && !confirmAction(`여러 건물의 점이 섞여 있어요. 건물 ${mixed.length}곳, 점 ${count}개에 같은 값을 넣을까요?`)) return
-    change((s) => applyBulkToNodes(s, multi, bulk))
+    change((s) => applyBulkToNodes(s, ids, bulk))
     selectMany([])
-    setNotice(`${count}개에 적용했어요. 되돌리기로 한 번에 취소할 수 있어요.`)
+    const skipped = multi.length - count
+    setNotice(`${count}개에 적용했어요${skipped ? `(필터 밖 ${skipped}개는 건너뜀)` : ''}. 되돌리기로 한 번에 취소할 수 있어요.`)
   }
 
   const onTap = (lat: number, lng: number) => {
@@ -580,11 +627,13 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (crossing) notes.push('외부 점과 내부 점은 출입구로만 이을 수 있어 이 간선은 점검에서 오류로 나와요')
     if (made.type === 'entrance') notes.push('아래에서 건물, 층, 이름을 고르세요. 비워 두면 점검 오류로 나와요')
     else if (made.scope === 'indoor' && !made.levels?.length) notes.push('건물과 층이 없어 점검 오류로 나와요')
+    if (!isNodeStrong(made, filter)) notes.push(`지금 층 필터 밖의 점이라 흐리게 보여요${onlyFilter ? '. 다른 점을 고르면 이 점은 잠겨요' : ''}`)
     setNotice(notes.join('. '))
     panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
   const onNodePress = (id: string) => {
+    if (!canEditNode(id)) return
     if (mode === 'select') {
       setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
       return
@@ -603,7 +652,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const onEdgePress = (id: string) => {
-    if (mode === 'select') return
+    if (mode === 'select' || !canEditEdgeId(id)) return
     setSelectedEdge(id)
     setSelected(null)
     setPending(null)
@@ -611,9 +660,9 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const onMove = (msg: any) => {
-    if (!Number.isFinite(msg.lat) || !Number.isFinite(msg.lng)) return
+    if (!Number.isFinite(msg.lat) || !Number.isFinite(msg.lng) || !canEditNode(msg.id)) return
     const current = storeRef.current
-    if (msg.edgeId) {
+    if (msg.edgeId && canEditEdgeId(msg.edgeId)) {
       const result = moveNodeOntoEdge(current, msg.id, msg.edgeId, msg.lat, msg.lng)
       if (result.split) {
         commit(result.store)
@@ -659,6 +708,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       selected,
       multi,
       canUndo: historyRef.current.size() > 0,
+      canEdit: canEditNode,
     })
     if (!action || (action.kind === 'nudge' && !worldPxRef.current)) return
     event.preventDefault()
@@ -678,7 +728,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }, [ready])
 
   // The map's own arrow key panning is off only while the arrow keys move a point.
-  const keysLocked = ready && isShortcutTab(tab) && !!findNode(store, keyboardTarget(selected, multi))
+  const keysLocked = ready && isShortcutTab(tab) && !!findNode(store, keyboardTarget(selected, multi)) && canEditNode(keyboardTarget(selected, multi))
   const keysLockedRef = useRef(keysLocked)
   keysLockedRef.current = keysLocked
   useEffect(() => {
@@ -725,12 +775,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
       ],
     }
-    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null })
+    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null, onlyFilter })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
     lastRenderRef.current = state
     webViewRef.current?.injectJavaScript(`window.__surveyV3Render && window.__surveyV3Render(${state}); true;`)
-  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor])
+  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor, onlyFilter])
 
   const selectedNode = findNode(store, selected)
   const edge = findEdge(store, selectedEdge)
@@ -795,7 +845,14 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     <>
       <Text style={ui.hint}>{activeMode.help}</Text>
       {mode === 'link' && pending ? <Text style={styles.pending}>{`${pending} 에서 시작, 이을 점을 누르세요`}</Text> : null}
-      <FilterBar nodes={store.nodes} index={index} filter={filter} onChange={setFilter} />
+      <FilterBar
+        nodes={store.nodes}
+        index={index}
+        filter={filter}
+        onChange={(next) => applyFilter(next, onlyFilter)}
+        onlyFilter={onlyFilter}
+        onToggleOnlyFilter={() => applyFilter(filter, !onlyFilter)}
+      />
       <View style={styles.labelRow}>
         <Text style={ui.sectionHelp}>{'라벨 보기'}</Text>
         {LABEL_MODES.map((m) => (
@@ -863,7 +920,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           }}
         />
       ) : null}
-      {selectedNode && mode !== 'select' ? (
+      {selectedNode && mode !== 'select' && canEditNode(selectedNode.id) ? (
         <NodeSheet
           key={`${selectedNode.id}:${undoTick}`}
           node={selectedNode}
@@ -881,7 +938,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         />
       ) : null}
       {selectedNode && boundaryOpen && mode !== 'select' && selectedNode.scope === 'outdoor' ? <Btn label="이 점은 외부 유지" onPress={() => keepOutdoor([selectedNode.id])} /> : null}
-      {edge && mode !== 'select' ? (
+      {edge && mode !== 'select' && canEditEdgeId(edge.id) ? (
         <EdgeSheet
           key={`${edge.id}:${undoTick}`}
           edge={edge}
@@ -918,7 +975,10 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           onConvert={runConvert}
           onFocus={focusNode}
           onNotice={setNotice}
-          onToggleMulti={(id) => setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))}
+          onToggleMulti={(id) => {
+            if (!multi.includes(id) && !canEditNode(id)) return setNotice(lockedText)
+            setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
+          }}
           onSelectMany={selectMany}
           onKeepOutdoor={keepOutdoor}
           onResetKept={() => updateReport((r) => ({ ...r, dismissed: [] }))}

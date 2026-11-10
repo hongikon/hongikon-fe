@@ -32,6 +32,18 @@ test('shortcuts: Ctrl+Z and Cmd+Z undo, also with a Korean layout, and only when
   assert.equal(press('z'), null, 'a plain z does nothing')
 })
 
+test('shortcuts: a point locked by the filter is not deleted or moved, undo still works', () => {
+  const locked = { canEdit: (id) => id !== 'n1' }
+  assert.equal(press('Delete', locked), null)
+  assert.equal(press('Backspace', locked), null)
+  assert.equal(press('ArrowUp', locked), null)
+  assert.equal(press('ArrowLeft', locked, { shiftKey: true }), null)
+  assert.deepEqual(press('z', locked, { ctrlKey: true }), { kind: 'undo' })
+  assert.deepEqual(press('Delete', { ...locked, selected: 'n2' }), { kind: 'delete', id: 'n2' })
+  assert.deepEqual(press('Delete', { canEdit: () => true }), { kind: 'delete', id: 'n1' })
+  assert.deepEqual(press('Delete'), { kind: 'delete', id: 'n1' }, 'without the check every point may be edited')
+})
+
 test('shortcuts: Ctrl+X is not connected, and a modifier never turns into a delete or a move', () => {
   assert.equal(press('x', {}, { ctrlKey: true, code: 'KeyX' }), null)
   assert.equal(press('Delete', {}, { ctrlKey: true }), null)

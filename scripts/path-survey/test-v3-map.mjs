@@ -132,6 +132,71 @@ test('a catalog building without survey points can be filtered', () => {
   assert.deepEqual(draw(store([]), { index: fullIndex, filter }), { nodes: [], edges: [] })
 })
 
+test('only the filter on (default) locks dim points and edges, off keeps them dim but pressable, draggable and snapping', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 2)]), indoor('n3', [lvl(R, 3)]), indoor('n4', [lvl(K, 1)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3'), edge('e3', 'n1', 'n4')])
+  const filter = { selections: [{ building: R, floor: 2 }] }
+  const on = draw(s, { filter, mode: 'move' })
+  assert.deepEqual(on, draw(s, { filter, mode: 'move', onlyFilter: true }), 'on is the default')
+  assert.deepEqual(on.nodes.map((n) => n.dim), [false, false, true, true])
+  assert.deepEqual(on.nodes.map((n) => n.clickable), [true, true, false, false])
+  assert.deepEqual(on.nodes.map((n) => n.draggable), [true, true, false, false])
+  assert.deepEqual(on.edges.map((e) => [e.clickable, e.snap]), [[true, true], [false, false], [false, false]])
+
+  const off = draw(s, { filter, mode: 'move', onlyFilter: false })
+  assert.deepEqual(off.nodes.map((n) => n.dim), [false, false, true, true], 'still drawn dim')
+  assert.ok(off.nodes.every((n) => n.clickable && n.draggable))
+  assert.ok(off.edges.every((e) => e.clickable && e.snap))
+  assert.deepEqual(off.edges.map((e) => e.opacity), on.edges.map((e) => e.opacity))
+  assert.ok(draw(s, { filter, mode: 'add', onlyFilter: false }).nodes.every((n) => !n.draggable), 'only move mode drags')
+})
+
+test('editable rules: outdoor always, edges need both ends, multi building filter keeps the link between them', () => {
+  const out = node('n1')
+  const r0 = indoor('n2', [lvl(R, 0)])
+  const k1 = indoor('n3', [lvl(K, -1)])
+  const r5 = indoor('n4', [lvl(R, 5)])
+  const filter = { selections: [{ building: R, floor: 0 }, { building: K, floor: -1 }] }
+  assert.equal(M.isNodeEditable(out, filter, true), true)
+  assert.equal(M.isNodeEditable(r5, filter, true), false)
+  assert.equal(M.isNodeEditable(r5, filter, false), true)
+  assert.equal(M.isNodeEditable(r5, M.NO_FILTER, true), true, 'no filter, nothing locked')
+  assert.equal(M.isEdgeEditable(r0, k1, filter, true), true, 'the edge between the two chosen buildings')
+  assert.equal(M.isEdgeEditable(out, r0, filter, true), true)
+  assert.equal(M.isEdgeEditable(r0, r5, filter, true), false)
+  assert.equal(M.isEdgeEditable(r0, r5, filter, false), true)
+
+  const s = store([out, r0, k1, r5], [edge('e1', 'n2', 'n3'), edge('e2', 'n2', 'n4'), edge('e3', 'n9', 'n2')])
+  assert.deepEqual(M.editableNodeIds(s, ['n1', 'n2', 'n3', 'n4', 'n9'], filter, true), ['n1', 'n2', 'n3'])
+  assert.deepEqual(M.editableNodeIds(s, ['n4', 'n9'], filter, false), ['n4'], 'unknown ids are dropped')
+  assert.equal(M.canEditEdge(s, 'e1', filter, true), true)
+  assert.equal(M.canEditEdge(s, 'e2', filter, true), false)
+  assert.equal(M.canEditEdge(s, 'e3', filter, false), false, 'an edge with a missing end')
+  assert.equal(M.canEditEdge(s, null, filter, false), false)
+})
+
+test('a filter change keeps only the selection that may still be edited', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 1)]), indoor('n3', [lvl(R, 2)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const all = { selected: 'n3', selectedEdge: 'e2', pending: 'n2', multi: ['n1', 'n2', 'n3'] }
+  const filter = { selections: [{ building: R, floor: 1 }] }
+  assert.deepEqual(M.editableSelection(s, all, filter, true), { selected: null, selectedEdge: null, pending: 'n2', multi: ['n1', 'n2'] })
+  assert.deepEqual(M.editableSelection(s, all, filter, false), all)
+  assert.deepEqual(M.editableSelection(s, all, M.NO_FILTER, true), all)
+  const edgeOnly = { selected: null, selectedEdge: 'e1', pending: null, multi: [] }
+  assert.deepEqual(M.editableSelection(s, edgeOnly, filter, true), edgeOnly)
+})
+
+test('chain base point outside the filter stays readable and pressable with the box on, as before', () => {
+  const s = store([indoor('n1', [lvl(R, 1)]), indoor('n2', [lvl(R, 2)])])
+  const filter = { selections: [{ building: R, floor: 1 }] }
+  const anchored = draw(s, { filter, anchor: 'n2' }).nodes[1]
+  assert.equal(anchored.dim, false)
+  assert.equal(anchored.clickable, true)
+  assert.equal(anchored.draggable, false, 'add mode never drags')
+  const plain = draw(s, { filter }).nodes[1]
+  assert.equal(plain.dim, true)
+  assert.equal(plain.clickable, false)
+})
+
 test('selected buildings are listed in server list order, unknown codes last, without changing the filter', () => {
   const filter = { selections: [{ building: 'old_code', floor: null }, { building: K, floor: 1 }, { building: R, floor: null }] }
   const listed = M.selectionsInListOrder(filter, index).map((s) => s.building)

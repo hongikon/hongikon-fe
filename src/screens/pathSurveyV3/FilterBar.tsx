@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { ui } from '../pathSurvey/ui'
@@ -9,18 +9,23 @@ import { buildingColor, NO_FILTER, selectionsInListOrder, type MapFilter } from 
 
 /**
  * Search all buildings, selecting all floors or one floor per building. Matching indoor points and
- * all outdoor points stay strong; everything else is dimmed and cannot be pressed.
+ * all outdoor points stay strong; everything else is dimmed. With "only the filter" on (the default) the
+ * dimmed ones cannot be pressed or edited; with it off they can.
  */
 export default function FilterBar({
   nodes,
   index,
   filter,
   onChange,
+  onlyFilter,
+  onToggleOnlyFilter,
 }: {
   nodes: readonly SurveyNodeV3[]
   index: BuildingIndex
   filter: MapFilter
   onChange: (next: MapFilter) => void
+  onlyFilter: boolean
+  onToggleOnlyFilter: () => void
 }) {
   const levelsByBuilding = useMemo(() => {
     const map = new Map<string, Set<number>>()
@@ -57,6 +62,22 @@ export default function FilterBar({
       <View style={styles.row}>
         <Chip label="전체" on={selected.length === 0} onPress={() => onChange(NO_FILTER)} />
       </View>
+      <Pressable
+        testID="only-filter"
+        onPress={onToggleOnlyFilter}
+        style={styles.check}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: onlyFilter }}
+        accessibilityLabel="선택한 필터만 수정"
+      >
+        <View style={[styles.box, onlyFilter && styles.boxOn]}>{onlyFilter ? <View style={styles.boxMark} /> : null}</View>
+        <Text style={ui.rowText}>{'선택한 필터만 수정'}</Text>
+      </Pressable>
+      <Text style={ui.hint}>
+        {onlyFilter
+          ? '켜짐: 필터 밖 점과 간선은 흐리게 보이고 누르거나 고칠 수 없어요. 외부 점은 늘 고칠 수 있어요.'
+          : '꺼짐: 필터 밖 점과 간선도 흐리게 보이지만 누르고 고칠 수 있어요.'}
+      </Text>
       <BuildingSearch index={index} selected={selected} onPick={toggleBuilding} />
       {unknownBuildings.length ? (
         <View style={styles.row}>
@@ -93,4 +114,8 @@ const styles = StyleSheet.create({
   wrap: { gap: 6 },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   group: { gap: 8, padding: 10, borderRadius: 8, backgroundColor: '#F8FAFC' },
+  check: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36, alignSelf: 'flex-start' },
+  box: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#94A3B8', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+  boxOn: { borderColor: '#2563EB', backgroundColor: '#2563EB' },
+  boxMark: { width: 8, height: 8, borderRadius: 2, backgroundColor: '#FFFFFF' },
 })

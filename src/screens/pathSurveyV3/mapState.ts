@@ -105,6 +105,50 @@ export function isNodeStrong(node: SurveyNodeV3, filter: MapFilter): boolean {
   return filter.selections.some(({ building, floor }) => levels.some((l) => l.building === building && (floor === null || l.floor === floor)))
 }
 
+/**
+ * May this point be pressed, dragged and edited. With "only the filter" off every point may, dim or not.
+ * With it on (the default) only strong points may: outdoor points and points matching the filter.
+ */
+export const isNodeEditable = (node: SurveyNodeV3, filter: MapFilter, onlyFilter: boolean): boolean => !onlyFilter || isNodeStrong(node, filter)
+
+/** An edge may be edited when both end points may. */
+export const isEdgeEditable = (a: SurveyNodeV3, b: SurveyNodeV3, filter: MapFilter, onlyFilter: boolean): boolean =>
+  isNodeEditable(a, filter, onlyFilter) && isNodeEditable(b, filter, onlyFilter)
+
+/** The ids among these that are points that may be edited. Unknown ids are dropped. */
+export function editableNodeIds(store: StoreV3, ids: readonly string[], filter: MapFilter, onlyFilter: boolean): string[] {
+  const byId = new Map(store.nodes.map((n) => [n.id, n]))
+  return ids.filter((id) => {
+    const node = byId.get(id)
+    return !!node && isNodeEditable(node, filter, onlyFilter)
+  })
+}
+
+export function canEditEdge(store: StoreV3, id: string | null, filter: MapFilter, onlyFilter: boolean): boolean {
+  const edge = id ? store.edges.find((e) => e.id === id) : undefined
+  const a = edge && store.nodes.find((n) => n.id === edge.a)
+  const b = edge && store.nodes.find((n) => n.id === edge.b)
+  return !!a && !!b && isEdgeEditable(a, b, filter, onlyFilter)
+}
+
+export interface EditSelection {
+  selected: string | null
+  selectedEdge: string | null
+  pending: string | null
+  multi: readonly string[]
+}
+
+/** What stays selected after the filter or the "only the filter" box changed: only what may still be edited. */
+export function editableSelection(store: StoreV3, selection: EditSelection, filter: MapFilter, onlyFilter: boolean): EditSelection {
+  const keep = (id: string | null) => (id && editableNodeIds(store, [id], filter, onlyFilter).length ? id : null)
+  return {
+    selected: keep(selection.selected),
+    selectedEdge: canEditEdge(store, selection.selectedEdge, filter, onlyFilter) ? selection.selectedEdge : null,
+    pending: keep(selection.pending),
+    multi: editableNodeIds(store, selection.multi, filter, onlyFilter),
+  }
+}
+
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
 
 /** An edge from outdoors to indoors, or a link between buildings. Display only: the check rules do not use this. */
@@ -143,10 +187,12 @@ export interface RenderOptions {
   labelMode?: LabelMode
   /** Chain base point. Pass it only while chaining is on. */
   anchor?: string | null
+  /** "Only the filter can be edited". On by default: points outside the filter are dim and locked. Off: dim but editable. */
+  onlyFilter?: boolean
 }
 
 export function buildRenderState(store: StoreV3, options: RenderOptions): { nodes: RenderNode[]; edges: RenderEdge[] } {
-  const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full' } = options
+  const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full', onlyFilter = true } = options
   const multi = new Set(options.multi ?? [])
   const byId = new Map(store.nodes.map((n) => [n.id, n]))
   const filtering = filter.selections.length > 0
@@ -156,6 +202,7 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
     const b = byId.get(edge.b)
     if (!a || !b || a === b) return []
     const strong = isNodeStrong(a, filter) && isNodeStrong(b, filter)
+    const editable = isEdgeEditable(a, b, filter, onlyFilter)
     const emphasized = edge.id === selectedEdge
     const stairs = edge.kind === 'stairs'
     return [
@@ -169,9 +216,9 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
         dashed: !stairs && isNeutralEdge(a, b),
         weight: (emphasized ? 8 : 5) + (stairs ? 2 : 0),
         opacity: filtering && !strong ? 0.18 : 0.9,
-        // Dim edges cannot be pressed, so overlapping floors are not hit by accident.
-        clickable: !filtering || strong,
-        snap: !filtering || strong,
+        // Locked edges cannot be pressed, so overlapping floors are not hit by accident.
+        clickable: editable,
+        snap: editable,
       },
     ]
   })
@@ -181,6 +228,8 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
     const isAnchor = node.id === options.anchor
     // The base point stays readable under a filter, because the next point is about to join it.
     const dim = filtering && !strong && !isAnchor
+    // The base point also stays pressable, as before this option existed.
+    const editable = isAnchor || isNodeEditable(node, filter, onlyFilter)
     const indoor = node.scope === 'indoor'
     const buildings = indoor ? buildingsOf(node) : []
     const fill = !indoor ? OUTDOOR_COLOR : buildings[0] ? buildingColor(index, buildings[0]) : NEUTRAL_COLOR
@@ -214,8 +263,8 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       letter: labelled && withLetter ? letter : '',
       badge: labelled && withLetter ? levelBadge(node, index) : '',
       dim,
-      clickable: !dim,
-      draggable: !dim && mode === 'move',
+      clickable: editable,
+      draggable: editable && mode === 'move',
       emphasized,
       anchor: isAnchor,
     }

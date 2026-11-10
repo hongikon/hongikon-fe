@@ -31,6 +31,8 @@ export interface ShortcutState {
   selected: string | null
   multi: readonly string[]
   canUndo: boolean
+  /** Whether the point the keys would act on may be edited (the "only the filter" box). Missing means yes. */
+  canEdit?: (id: string) => boolean
 }
 
 export type ShortcutAction = { kind: 'undo' } | { kind: 'delete'; id: string } | { kind: 'nudge'; id: string; dx: number; dy: number }
@@ -57,7 +59,7 @@ export function resolveShortcut(event: KeyLike, state: ShortcutState): ShortcutA
     return isZ && !event.shiftKey && !event.altKey && state.canUndo ? { kind: 'undo' } : null
   }
   const id = keyboardTarget(state.selected, state.multi)
-  if (!id) return null
+  if (!id || (state.canEdit && !state.canEdit(id))) return null
   if (event.key === 'Delete' || event.key === 'Backspace') return event.shiftKey || event.altKey ? null : { kind: 'delete', id }
   const arrow = ARROWS[event.key]
   const distance = arrow ? nudgeDistance(event) : null
