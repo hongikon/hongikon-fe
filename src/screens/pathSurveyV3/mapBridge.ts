@@ -89,29 +89,39 @@ export const SETUP_JS = `(function(){
   }
 
   var current = { edges: [] };
-  function snapTarget(n, p){
+  // Closest point on the edge to p, with its squared distance in screen pixels. null past the ends or within 9px of one.
+  function projectOnEdge(e, p){
     var projection = map.getProjection();
     var point = projection.fromCoordToOffset(p);
+    var a = projection.fromCoordToOffset(ll(e.p[0], e.p[1]));
+    var b = projection.fromCoordToOffset(ll(e.p[2], e.p[3]));
+    var dx = b.x - a.x, dy = b.y - a.y;
+    var length2 = dx * dx + dy * dy;
+    if (!length2) return null;
+    var t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / length2;
+    if (t <= 0 || t >= 1) return null;
+    // Do not split right next to an end point.
+    if (Math.min(t, 1 - t) * Math.sqrt(length2) < 9) return null;
+    var x = a.x + t * dx, y = a.y + t * dy;
+    return { coord: projection.fromOffsetToCoord(new naver.maps.Point(x, y)), distance: (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y) };
+  }
+  function snapTarget(n, p){
     var best = null, bestDistance = 12 * 12;
     current.edges.forEach(function(e){
       if (!e.snap || e.a === n.id || e.b === n.id) return;
-      var a = projection.fromCoordToOffset(ll(e.p[0], e.p[1]));
-      var b = projection.fromCoordToOffset(ll(e.p[2], e.p[3]));
-      var dx = b.x - a.x, dy = b.y - a.y;
-      var length2 = dx * dx + dy * dy;
-      if (!length2) return;
-      var t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / length2;
-      if (t <= 0 || t >= 1) return;
-      // Do not split right next to an end point.
-      if (Math.min(t, 1 - t) * Math.sqrt(length2) < 9) return;
-      var x = a.x + t * dx, y = a.y + t * dy;
-      var distance = (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = { id: e.id, coord: projection.fromOffsetToCoord(new naver.maps.Point(x, y)) };
+      var on = projectOnEdge(e, p);
+      if (on && on.distance < bestDistance) {
+        bestDistance = on.distance;
+        best = { id: e.id, coord: on.coord };
       }
     });
     return best;
+  }
+  // Modifier keys of a click, when the map passes the browser event. Without them the screen uses its own key state.
+  function withMods(m, ev){
+    var d = ev && ev.domEvent;
+    if (d) { m.shift = !!d.shiftKey; m.ctrl = !!d.ctrlKey; m.meta = !!d.metaKey; }
+    return m;
   }
 
   function makeNode(n){
@@ -119,7 +129,7 @@ export const SETUP_JS = `(function(){
       position: ll(n.lat, n.lng), map: map, zIndex: n.emphasized ? 800 : (n.dim ? 500 : 700), title: n.id,
       clickable: n.clickable, draggable: n.draggable, icon: { content: nodeHtml(n) }
     });
-    if (n.clickable) naver.maps.Event.addListener(mk, 'click', function(){ hit(); post({ type: 'node', id: n.id }); });
+    if (n.clickable) naver.maps.Event.addListener(mk, 'click', function(ev){ hit(); post(withMods({ type: 'node', id: n.id }, ev)); });
     if (n.draggable) naver.maps.Event.addListener(mk, 'dragend', function(){
       hit();
       var p = mk.getPosition();
@@ -136,7 +146,17 @@ export const SETUP_JS = `(function(){
     if (e.stairs) list.push(new naver.maps.Polyline({ map: map, zIndex: 301, clickable: false, strokeColor: '#fff', strokeWeight: 2, strokeOpacity: e.opacity, strokeStyle: 'shortdash', path: path }));
     if (e.clickable) {
       var hitLine = new naver.maps.Polyline({ map: map, zIndex: 330, clickable: true, strokeColor: e.color, strokeWeight: 22, strokeOpacity: 0.01, path: path });
-      naver.maps.Event.addListener(hitLine, 'click', function(){ hit(); post({ type: 'edge', id: e.id }); });
+      naver.maps.Event.addListener(hitLine, 'click', function(ev){
+        hit();
+        var m = withMods({ type: 'edge', id: e.id }, ev);
+        // The clicked spot moved onto the line, for Shift + click. null when it is too close to an end point.
+        if (ev && ev.coord) {
+          var on = projectOnEdge(e, ev.coord);
+          m.lat = on ? on.coord.lat() : null;
+          m.lng = on ? on.coord.lng() : null;
+        }
+        post(m);
+      });
       list.push(hitLine);
     }
     return list;

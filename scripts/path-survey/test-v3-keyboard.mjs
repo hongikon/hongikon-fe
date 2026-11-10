@@ -268,6 +268,140 @@ test('chain toggle text', () => {
   assert.equal(K.NUDGE_HINT, '방향키로 선택한 점 이동 (Shift: 크게, Alt: 작게)')
 })
 
+// Map click shortcuts: Shift + click splits the selected edge, Cmd/Ctrl + click joins two points.
+
+/** Two points and one edge between them, made with the store functions. */
+function line(ctxA, ctxB, edgeExtra = {}) {
+  const a = Store.addNode(empty(), 37.55, 126.92, ctxA, null, 0)
+  const b = Store.addNode(a.store, 37.55, 126.93, ctxB, a.id, 0)
+  const s = { ...b.store, edges: b.store.edges.map((e) => ({ ...e, ...edgeExtra })) }
+  return { s, a: a.id, b: b.id, e: s.edges[0].id }
+}
+
+test('split: a point on the edge splits it in two, keeps kind and memo, the new point is basic and copies the place', () => {
+  const both = { scope: 'indoor', type: 'basic', levels: [lvl(R, 1), lvl(R, 2)] }
+  const { s, a, b, e } = line({ ...both, type: 'stairs' }, { scope: 'indoor', type: 'basic', levels: [lvl(R, 2), lvl(R, 1)] }, { kind: 'stairs', memo: 'note' })
+  const result = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  assert.equal(result.refused, null)
+  const made = Store.findNode(result.store, result.id)
+  assert.equal(made.type, 'basic')
+  assert.equal(made.scope, 'indoor')
+  assert.deepEqual(made.levels, [lvl(R, 1), lvl(R, 2)])
+  assert.equal(made.memo, undefined)
+  assert.equal(made.ties, undefined)
+  assert.equal(Store.findEdge(result.store, e), undefined, 'the old edge is gone')
+  assert.equal(result.store.edges.length, 2)
+  for (const half of result.store.edges) {
+    assert.equal(half.kind, 'stairs')
+    assert.equal(half.memo, 'note')
+  }
+  assert.ok(Store.hasEdgeBetween(result.store, a, result.id) && Store.hasEdgeBetween(result.store, result.id, b))
+  assert.equal(result.store.nextNode, s.nextNode + 1)
+
+  const out = line(OUT, OUT)
+  const outdoor = Store.splitEdgeAt(out.s, out.e, 37.55, 126.925, 0)
+  assert.equal(Store.findNode(outdoor.store, outdoor.id).scope, 'outdoor')
+  const entrance = line(inside(R, 1, 'entrance'), inside(R, 1))
+  assert.equal(Store.splitEdgeAt(entrance.s, entrance.e, 37.55, 126.925, 0).refused, null, 'only the type differs: allowed')
+})
+
+test('split: refused without any change when the ends differ, the edge has pairs, the spot is an end, or the edge is unknown', () => {
+  const cases = [
+    ['mixed', line(OUT, inside(R, 1))],
+    ['mixed', line(inside(R, 1), inside(R, 2))],
+    ['mixed', line(inside(R, 1), inside('hongik_k', 1))],
+    ['mixed', line({ scope: 'indoor', type: 'basic', levels: [lvl(R, 1), lvl(R, 2)] }, inside(R, 1))],
+    ['mixed', line({ scope: 'indoor', type: 'basic' }, { scope: 'indoor', type: 'basic' })],
+    ['pairs', line(inside(R, 1), inside(R, 1), { pairs: [[lvl(R, 1), lvl('hongik_k', 1)]] })],
+  ]
+  for (const [why, { s, e }] of cases) {
+    const result = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+    assert.equal(result.refused, why)
+    assert.equal(result.store, s, 'the same store object')
+    assert.equal(result.id, null)
+  }
+  const { s, e } = line(OUT, OUT)
+  const end = Store.splitEdgeAt(s, e, 37.55, 126.92, 0)
+  assert.equal(end.refused, 'end')
+  assert.equal(end.store, s, 'no point number is used up')
+  assert.equal(end.store.nextNode, s.nextNode)
+  assert.equal(Store.splitEdgeAt(s, 'e999', 37.55, 126.925, 0).refused, 'missing')
+  assert.equal(Store.splitEdgeAt(s, e, NaN, 126.925, 0).refused, 'missing')
+})
+
+test('split and click link: one undo step each, and the base point comes back', () => {
+  const history = H.createEditHistory()
+  const { s, a, b, e } = line(OUT, OUT)
+  history.record({ store: s, anchor: b })
+  const split = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  assert.equal(history.size(), 1)
+  const back = history.pop()
+  assert.equal(back.store, s)
+  assert.equal(back.store.nodes.length, 2)
+  assert.equal(H.anchorAfterUndo(split.id, back), b, 'the new point is gone, the base point from before returns')
+
+  const third = Store.addNode(s, 37.56, 126.92, OUT, null, 0)
+  history.record({ store: third.store, anchor: a })
+  const joined = Store.addEdge(third.store, a, third.id, 'normal', 0)
+  assert.equal(joined.edges.length, third.store.edges.length + 1)
+  const undone = history.pop()
+  assert.equal(undone.store.edges.length, 1)
+  assert.equal(H.anchorAfterUndo(third.id, undone), third.id, 'the second point still exists and stays the base')
+  assert.equal(history.size(), 0)
+})
+
+const clickState = (extra = {}) => ({
+  mode: 'add',
+  selected: 'n1',
+  selectedEdge: null,
+  pending: null,
+  hasEdge: () => false,
+  canEditNode: () => true,
+  canEditEdge: () => true,
+  ...extra,
+})
+const nodeClick = (mods, extra) => K.resolveClickShortcut({ kind: 'node', id: 'n2' }, mods, clickState(extra))
+const edgeClick = (mods, extra) => K.resolveClickShortcut({ kind: 'edge', id: 'e1' }, mods, clickState({ selected: null, selectedEdge: 'e1', ...extra }))
+
+test('click shortcuts: Cmd or Ctrl + click joins the selected point in add, link and move modes only', () => {
+  const link = { kind: 'link', from: 'n1', to: 'n2' }
+  for (const mode of ['add', 'link', 'move']) {
+    assert.deepEqual(nodeClick({ ctrl: true }, { mode }), link, mode)
+    assert.deepEqual(nodeClick({ meta: true }, { mode }), link, mode)
+  }
+  assert.equal(nodeClick({ ctrl: true }, { mode: 'select' }), null, 'the several points mode')
+  assert.equal(nodeClick({}), null, 'no modifier: a normal press')
+  assert.equal(nodeClick({ shift: true }), null, 'Shift alone does not join')
+  assert.deepEqual(nodeClick({ ctrl: true, shift: true }), link)
+  assert.equal(nodeClick({ ctrl: true }, { selected: null }), null, 'nothing selected')
+  assert.equal(nodeClick({ ctrl: true }, { selected: 'n2' }), null, 'the selected point itself')
+  assert.equal(nodeClick({ ctrl: true }, { mode: 'link', pending: 'n1' }), null, 'a started pair in link mode keeps its own behavior')
+  assert.deepEqual(nodeClick({ ctrl: true }, { mode: 'add', pending: 'n1' }), link, 'pending only matters in link mode')
+  assert.deepEqual(nodeClick({ ctrl: true }, { hasEdge: (x, y) => x === 'n1' && y === 'n2' }), { kind: 'blocked', why: 'exists' })
+  assert.deepEqual(nodeClick({ ctrl: true }, { canEditNode: (id) => id !== 'n1' }), { kind: 'blocked', why: 'locked' })
+  assert.deepEqual(nodeClick({ meta: true }, { canEditNode: (id) => id !== 'n2' }), { kind: 'blocked', why: 'locked' })
+})
+
+test('click shortcuts: Shift + click on the selected edge splits it, in add, link and move modes only', () => {
+  for (const mode of ['add', 'link', 'move']) assert.deepEqual(edgeClick({ shift: true }, { mode }), { kind: 'split', edgeId: 'e1' }, mode)
+  assert.equal(edgeClick({ shift: true }, { mode: 'select' }), null)
+  assert.equal(edgeClick({}), null, 'a plain press selects as before')
+  assert.equal(edgeClick({ shift: true }, { selectedEdge: null }), null, 'the first press only selects the edge')
+  assert.equal(edgeClick({ shift: true }, { selectedEdge: 'e2' }), null, 'another edge is selected')
+  assert.equal(edgeClick({ shift: true, ctrl: true }), null)
+  assert.equal(edgeClick({ shift: true, meta: true }), null)
+  assert.equal(edgeClick({ ctrl: true }), null, 'Ctrl on an edge does nothing special')
+  assert.deepEqual(edgeClick({ shift: true }, { canEditEdge: () => false }), { kind: 'blocked', why: 'locked' })
+})
+
+test('click shortcuts: key state kept from key events for clicks that do not carry their keys', () => {
+  const held = K.modsAfterKey(K.NO_MODS, { shiftKey: true, ctrlKey: false, metaKey: false })
+  assert.deepEqual(held, { shift: true, ctrl: false, meta: false })
+  assert.equal(K.modsAfterKey(held, { shiftKey: true }), held, 'same state, same object')
+  assert.deepEqual(K.modsAfterKey(held, { metaKey: true }), { shift: false, ctrl: false, meta: true })
+  assert.deepEqual(K.modsAfterKey(held, {}), K.NO_MODS)
+})
+
 // The screen needs the app runtime to render, so these read its source. They exist so that a screen rewrite cannot silently drop these again.
 const screen = readFileSync(new URL('../../src/screens/DevPathSurveyV3Screen.tsx', import.meta.url), 'utf8')
 const controls = readFileSync(new URL('../../src/screens/pathSurveyV3/controls.tsx', import.meta.url), 'utf8')

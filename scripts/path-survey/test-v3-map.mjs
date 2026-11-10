@@ -379,6 +379,33 @@ test('map script: drag snaps only to snap edges and never to its own edges', () 
   assert.equal(filtered.lat, 5)
 })
 
+test('map script: clicks pass the held keys, and an edge click passes the spot moved onto the line', () => {
+  const { window, markers, lines, messages, LatLng } = mockMap()
+  const nodes = [node('n1', { lat: 0, lng: 0 }), node('n2', { lat: 0, lng: 100 })]
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(store(nodes, [edge('e1', 'n1', 'n2')])) })
+  const hitLine = lines.find((l) => l.listeners.click)
+  hitLine.listeners.click({ coord: new LatLng(3, 40), domEvent: { shiftKey: true } })
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', shift: true, ctrl: false, meta: false, lat: 0, lng: 40, src: 'surveyV3' })
+  hitLine.listeners.click({ coord: new LatLng(0, 5), domEvent: { shiftKey: true } })
+  assert.equal(messages.at(-1).lat, null, 'within 9px of an end point: no spot')
+  assert.equal(messages.at(-1).lng, null)
+  markers[1].listeners.click({ domEvent: { metaKey: true } })
+  assert.deepEqual(messages.at(-1), { type: 'node', id: 'n2', shift: false, ctrl: false, meta: true, src: 'surveyV3' })
+  markers[0].listeners.click({ domEvent: { ctrlKey: true } })
+  assert.equal(messages.at(-1).ctrl, true)
+})
+
+test('map script: a click without an event object posts what it did before', () => {
+  const { window, markers, lines, messages } = mockMap()
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(store([node('n1'), node('n2')], [edge('e1', 'n1', 'n2')])) })
+  markers[0].listeners.click()
+  assert.deepEqual(messages.at(-1), { type: 'node', id: 'n1', src: 'surveyV3' })
+  lines.find((l) => l.listeners.click).listeners.click()
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', src: 'surveyV3' })
+  lines.find((l) => l.listeners.click).listeners.click({ coord: undefined })
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', src: 'surveyV3' }, 'no spot and no keys')
+})
+
 test('map script: only changed objects are rebuilt, removed ones disappear', () => {
   const { window, markers } = mockMap()
   const s = store([node('n1'), node('n2')])

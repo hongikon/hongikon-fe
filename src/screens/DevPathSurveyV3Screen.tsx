@@ -50,7 +50,9 @@ import {
   setEdgeMemo,
   setNodeMemo,
   setNodeScope,
+  splitEdgeAt,
   STORE_KEY_V3,
+  type SplitRefusal,
   type BulkChange,
   type StoreV3,
 } from '../utils/pathSurveyV3/store'
@@ -89,7 +91,23 @@ import { addDevSample, devSampleNodeIds, removeDevSample } from './pathSurveyV3/
 import { anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT } from './pathSurveyV3/editHistory'
 import EdgeSheet from './pathSurveyV3/EdgeSheet'
 import FilterBar from './pathSurveyV3/FilterBar'
-import { hasOpenDialog, isShortcutTab, isTypingElement, keyboardTarget, NUDGE_HINT, nudgeCoord, resolveShortcut, type ShortcutAction } from './pathSurveyV3/keyboard'
+import {
+  CLICK_HINT,
+  hasOpenDialog,
+  isShortcutTab,
+  isTypingElement,
+  keyboardTarget,
+  modsAfterKey,
+  NO_MODS,
+  NUDGE_HINT,
+  nudgeCoord,
+  resolveClickShortcut,
+  resolveShortcut,
+  type ClickMods,
+  type ClickShortcut,
+  type ClickTarget,
+  type ShortcutAction,
+} from './pathSurveyV3/keyboard'
 import Legend from './pathSurveyV3/Legend'
 import { SETUP_JS } from './pathSurveyV3/mapBridge'
 import {
@@ -126,6 +144,13 @@ const LABEL_MODES: { key: LabelMode; label: string }[] = [
 ]
 
 const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
+
+const SPLIT_REFUSED: Record<SplitRefusal, string> = {
+  missing: '간선이나 양 끝 점을 찾지 못해 나누지 않았어요.',
+  pairs: '층 짝이 있는 간선이라 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
+  mixed: '양 끝 점의 위치(외부/내부, 건물, 층)가 달라서 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
+  end: '끝점과 같은 자리라 나누지 않았어요.',
+}
 
 /** The overlay starts hidden here: the new graph is the main thing on this screen. */
 const LEGACY_OFF: LegacyToggles = {
@@ -632,7 +657,33 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
-  const onNodePress = (id: string) => {
+  /** Cmd/Ctrl + click and Shift + click on the map. null means the press goes on as usual. */
+  const clickShortcut = (target: ClickTarget, mods: ClickMods): ClickShortcut | null =>
+    resolveClickShortcut(target, mods, {
+      mode,
+      selected,
+      selectedEdge,
+      pending,
+      hasEdge: (a, b) => hasEdgeBetween(storeRef.current, a, b),
+      canEditNode,
+      canEditEdge: canEditEdgeId,
+    })
+
+  /** Joins the selected point to the clicked one in one undo step, and moves the selection to the clicked one. */
+  const linkByClick = (from: string, to: string) => {
+    commit(addEdge(storeRef.current, from, to))
+    pickNode(to)
+    setSelectedEdge(null)
+    setPending(null)
+    setNotice(`${from} 와 ${to} 를 이었어요`)
+  }
+
+  const onNodePress = (id: string, mods: ClickMods = NO_MODS) => {
+    const shortcut = clickShortcut({ kind: 'node', id }, mods)
+    if (shortcut?.kind === 'link') return linkByClick(shortcut.from, shortcut.to)
+    if (shortcut?.kind === 'blocked') {
+      return setNotice(shortcut.why === 'exists' ? `${selected} 와 ${id} 는 이미 이어져 있어요. 지우려면 간선을 눌러 지워 주세요.` : lockedText)
+    }
     if (!canEditNode(id)) return
     if (mode === 'select') {
       setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
@@ -651,7 +702,26 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setPending(pending === id ? null : id)
   }
 
-  const onEdgePress = (id: string) => {
+  /**
+   * Shift + click on the selected edge: a new point at the clicked spot on the line, splitting the edge, in one
+   * undo step. lat/lng come from the map already moved onto the line; null means too close to an end point.
+   */
+  const splitByClick = (edgeId: string, lat: unknown, lng: unknown) => {
+    if (lat === null || lng === null) return setNotice('끝점에 너무 가까워요. 간선 가운데 쪽을 Shift+클릭해 주세요.')
+    if (typeof lat !== 'number' || typeof lng !== 'number') return setNotice('클릭한 위치를 알 수 없어 간선을 나누지 못했어요.')
+    const result = splitEdgeAt(storeRef.current, edgeId, lat, lng)
+    if (!result.id) return setNotice(SPLIT_REFUSED[result.refused ?? 'missing'])
+    commit(result.store)
+    pickNode(result.id)
+    setSelectedEdge(null)
+    setPending(null)
+    setNotice(`${result.id} 를 만들고 간선을 둘로 나눴어요`)
+  }
+
+  const onEdgePress = (id: string, mods: ClickMods = NO_MODS, at: { lat?: unknown; lng?: unknown } = {}) => {
+    const shortcut = clickShortcut({ kind: 'edge', id }, mods)
+    if (shortcut?.kind === 'split') return splitByClick(shortcut.edgeId, at.lat, at.lng)
+    if (shortcut?.kind === 'blocked') return setNotice(lockedText)
     if (mode === 'select' || !canEditEdgeId(id)) return
     setSelectedEdge(id)
     setSelected(null)
@@ -718,6 +788,30 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     else nudgeNode(action)
   }
 
+  // Modifier keys seen in key events. A map click that carries its own keys (domEvent) wins; this is the fallback.
+  const modsRef = useRef<Required<ClickMods>>(NO_MODS)
+  const clickMods = (msg: any): ClickMods =>
+    typeof msg?.shift === 'boolean' ? { shift: msg.shift, ctrl: !!msg.ctrl, meta: !!msg.meta } : modsRef.current
+  useEffect(() => {
+    const w = globalThis as any
+    if (Platform.OS !== 'web' || typeof w.addEventListener !== 'function') return
+    const onModKey = (event: any) => {
+      modsRef.current = modsAfterKey(modsRef.current, event)
+    }
+    // A key released in another window never reaches this one.
+    const onBlur = () => {
+      modsRef.current = NO_MODS
+    }
+    w.addEventListener('keydown', onModKey, true)
+    w.addEventListener('keyup', onModKey, true)
+    w.addEventListener('blur', onBlur)
+    return () => {
+      w.removeEventListener('keydown', onModKey, true)
+      w.removeEventListener('keyup', onModKey, true)
+      w.removeEventListener('blur', onBlur)
+    }
+  }, [])
+
   // Registered only while the map is up, in the capture phase so that the map does not also act on the key.
   useEffect(() => {
     const w = globalThis as any
@@ -743,8 +837,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (msg.type === 'scale') {
       if (Number.isFinite(msg.worldPx) && msg.worldPx > 0) worldPxRef.current = msg.worldPx
     } else if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
-    else if (msg.type === 'node') onNodePress(msg.id)
-    else if (msg.type === 'edge') onEdgePress(msg.id)
+    else if (msg.type === 'node') onNodePress(msg.id, clickMods(msg))
+    else if (msg.type === 'edge') onEdgePress(msg.id, clickMods(msg), msg)
     else if (msg.type === 'move' && mode === 'move') onMove(msg)
   }
 
@@ -904,6 +998,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       <Text style={styles.summary}>{`경로망 조사 v3, 지점 ${store.nodes.length}, 간선 ${store.edges.length}`}</Text>
       <Text style={styles.summary}>{backupStatus}</Text>
       {Platform.OS === 'web' ? <Text style={ui.sectionHelp}>{NUDGE_HINT}</Text> : null}
+      {Platform.OS === 'web' ? <Text style={ui.sectionHelp}>{CLICK_HINT}</Text> : null}
       {saveFailed ? <Text style={ui.error}>{'브라우저에 보관하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있으니 백업 파일을 내려받아 주세요.'}</Text> : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {mode === 'select' ? (
