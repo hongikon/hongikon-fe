@@ -137,10 +137,9 @@ def main():
 
                 def bbox(i):
                     return cells[i] if i is not None and i < len(cells) else None
-                if cell(cols['category']).strip():
-                    category = squash(cell(cols['category']))
-                if cols['sub'] is not None and cell(cols['sub']).strip():
-                    sub = squash(cell(cols['sub']))
+                # 이수구분 칸은 위아래로 합쳐진 칸이라 어디까지인지 알 수 없다 — 그 행에 적힌 때만 쓴다(전공 과목에 '과학'이 붙던 것, 11-10).
+                category = squash(cell(cols['category']))
+                sub = squash(cell(cols['sub'])) if cols['sub'] is not None else ''
                 if not cell(cols['name']).strip():
                     cr1, cr2 = lines(cell(cols['cr1'])), lines(cell(cols['cr2']))
                     if any(NUM.match(x) for x in cr1 + cr2) and totals is None:
