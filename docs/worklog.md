@@ -379,9 +379,19 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 테스트: `routing.test.ts` 를 지우고 `routes.test.ts`(후보 이름, 내 위치 고르기·후보, 직선 어림). tsc, 테스트 85/85, 웹 내보내기에 경로망이 안 들어간 것 확인.
 - 배포 순서: 서버(`/map/routes`)가 운영에 먼저 나가야 이 앱 코드를 OTA 로 낼 수 있다. 이미 깔린 앱은 앱 안 계산을 계속 쓴다.
 
+## 2026-11-10 · 경로 조사 도구 '서버' 탭: 올리기 → 길 시험 → 운영에 적용
+
+- (사용자 요청) 경로망을 백업 → PR → 배포 없이 조사 도구에서 바로 서버로. `/dev/path-survey-v3` 에 '서버' 탭(`src/screens/pathSurveyV3/ServerPanel.tsx`).
+  - 서버에 올리기: 지금 조사 자료를 서버 경로망으로 바꿔(`src/utils/pathSurveyV3/serverGraph.ts`, import-survey-v3.mjs 와 같은 코드) 백업과 함께 초안으로 올린다. 서버가 검사(떨어진 점, 서버 건물로 안 이어지는 code, 출입구 없는 건물)하고 운영 경로망과 건물 쌍마다 비교한 결과를 보여 준다.
+  - 길 시험: 출발·도착 건물·층(앱 층 다이얼과 같은 목록)을 고르면 고른 버전(주황 실선)과 운영(남색 점선) 길을 지도에 겹쳐 그리고 시간·길 흐름을 나란히.
+  - 적용: 운영에 바로(배포 없이 앱 길찾기가 그 경로망을 씀). 예전 버전을 다시 적용하면 되돌아감. 불러오기: 그 버전의 백업으로 지금 자료를 덮어씀(확인·저장 지점).
+- 확인은 /dev 게이트 암호키(X-Dev-Key, 사용자 결정 11-10). API `src/apis/routeGraph.ts` → hongikon-be `/map/route-graph`.
+- 조사 도구 규칙대로 새 코드 주석은 ASCII, 화면 글에 화살표·줄표 없음(`test-v3-ascii.mjs`).
+- 확인: tsc, 테스트 92/92(`serverGraph.test.ts` 새로), 조사 도구 테스트 전부. 실제 올리기는 서버 배포(+ `walk_graph_versions` 테이블) 뒤.
+
 ## 2026-11-10 · 층 다이얼을 서버 층 목록(floorLevels)으로
 
 - (사용자 요청) 건물 층 정보를 엑셀(홍익대학교_건물_정보_amenity_locations_1109.xlsx)대로 서버에 넣음(hongikon-be `db/sync_building_floors_2026_11_10.sql`, 새 열 `floor_levels`). 그 전엔 서버 건물에 층수가 비어 출입구 층으로만 다이얼을 만들어 T동은 1~5층만 골랐다.
 - `buildFloorOptions` 가 `floorLevels` 를 먼저 쓴다(서버 길찾기 층 검사와 같은 규칙). 홍문관은 B6~B2·L·1~16층(B1 없음, 엑셀대로).
 - 인문사회관 A동 n층 = B동 (n-2)층(사용자 확인): A동 다이얼 1~7층, A동 3층 이상·B동 지하층은 서버 길찾기가 이어진 건물의 같은 층으로 안내('B동 3층(A동 5층)').
-- 확인: tsc, 테스트 86/86.
+- 확인: tsc, 테스트 86/86(dev 와 합친 뒤 93/93).

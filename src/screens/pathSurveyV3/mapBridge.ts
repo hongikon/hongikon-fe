@@ -185,4 +185,16 @@ export const SETUP_JS = `(function(){
     map.setCenter(ll(lat, lng));
     if (map.getZoom && map.setZoom && map.getZoom() < 18) map.setZoom(18);
   };
+
+  // Server tab route test: routes found by the server drawn over the survey lines (version = thick solid, production = dashed).
+  (window.__surveyV3RouteLines || []).forEach(function(o){ o.setMap(null); });
+  window.__surveyV3RouteLines = [];
+  window.__surveyV3Routes = function(routes){
+    window.__surveyV3RouteLines.forEach(function(o){ o.setMap(null); });
+    window.__surveyV3RouteLines = (routes || []).map(function(r){
+      return new naver.maps.Polyline({ map: map, zIndex: 400, clickable: false, strokeColor: r.color, strokeWeight: r.dashed ? 5 : 7,
+        strokeOpacity: r.dashed ? 0.9 : 0.75, strokeStyle: r.dashed ? 'shortdash' : 'solid', strokeLineCap: 'round', strokeLineJoin: 'round',
+        path: r.points.map(function(p){ return ll(p[0], p[1]); }) });
+    });
+  };
 })(); true;`
