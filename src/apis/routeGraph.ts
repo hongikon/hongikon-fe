@@ -1,6 +1,7 @@
-import { apiRequest } from './client'
+import { apiRequest, getErrorMessage } from './client'
 import type { RouteAlternative } from './routes'
 import type { ServerGraph } from '../utils/pathSurveyV3/serverGraph'
+import { serverErrorText } from '../utils/pathSurveyV3/serverSave'
 
 /**
  * 경로 조사 도구 '서버' 탭(11-10): 경로망 올리기(초안·검사·비교) → 길 시험 → 운영에 적용·되돌리기, 백업 다시 불러오기.
@@ -63,6 +64,12 @@ export interface GraphVersionList {
 }
 
 const UPLOAD_TIMEOUT_MS = 90_000
+
+/**
+ * 화면 문구. 이 API 는 로그인이 아니라 /dev 암호키를 쓰므로 401, 403 은 "로그인 만료"가 아니라 암호키 거절로 보인다.
+ * 앱 전체가 쓰는 getErrorMessage 는 그대로 둔다.
+ */
+export const routeGraphErrorMessage = (error: unknown, fallback: string): string => serverErrorText(error, fallback, getErrorMessage)
 
 function headers(devKey: string) {
   return { headers: { 'X-Dev-Key': devKey }, skipTokenRefresh: true }

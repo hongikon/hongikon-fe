@@ -242,3 +242,14 @@ test('server state: a small edit after a draft shows as changed', async () => {
   const edited = { ...routable, edges: [...routable.edges, edge('e-extra', routable.nodes[0].id, routable.nodes[1].id)] }
   assert.equal(S.serverSaveStateOf(state, print(edited), { hasKey: true, blocked: false, saving: false }), 'changed')
 })
+
+test('server save: one going already skips a new upload, but same content and no key still answer first', async () => {
+  const { calls, upload } = fakeUpload()
+  assert.deepEqual(await push({ busy: true, upload }), { kind: 'busy' })
+  assert.equal((await push({ busy: true, devKey: undefined, upload })).kind, 'noKey')
+  assert.equal((await push({ busy: true, blocked: true, upload })).kind, 'blocked')
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 4, print(routable), 10)
+  assert.equal((await push({ busy: true, state, upload })).kind, 'same')
+  assert.equal(calls.length, 0)
+  assert.equal(S.stateAfter(state, { kind: 'busy' }), state)
+})

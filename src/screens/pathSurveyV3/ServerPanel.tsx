@@ -6,19 +6,18 @@ import {
   getGraphVersion,
   listGraphVersions,
   previewGraphRoutes,
-  uploadGraphVersion,
+  routeGraphErrorMessage,
   type GraphReport,
   type GraphVersion,
   type GraphVersionList,
 } from '../../apis/routeGraph'
 import type { RouteAlternative } from '../../apis/routes'
-import { getErrorMessage } from '../../apis/client'
 import type { Building } from '../../types'
 import { buildFloorOptions } from '../../utils/floors'
 import { shortBuildingName } from '../../utils/routeLabels'
-import { buildServerGraph } from '../../utils/pathSurveyV3/serverGraph'
+import type { PushOutcome } from '../../utils/pathSurveyV3/serverSave'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { parseBackupText, serializeBackup } from '../../utils/pathSurveyV3/transfer'
+import { parseBackupText } from '../../utils/pathSurveyV3/transfer'
 import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 
@@ -128,21 +127,26 @@ function EndPicker({
  * Server tab (11-10): upload the current survey as a draft (the server checks it and compares with production), test routes,
  * then apply it to production (the app route finder uses it at once, no deploy). Applying an older version rolls back, and the
  * backup sent with each upload can be loaded on another computer. Only the /dev gate key is checked.
+ * Uploading goes through the screen (`onUpload`), the same path as the save button, so both share the same-content skip and state.
  */
 export default function ServerPanel({
   devKey,
-  store,
   buildings,
   onRestore,
   onRouteLines,
   onNotice,
+  onUpload,
+  tick,
 }: {
   devKey: string | undefined
-  store: StoreV3
   buildings: readonly Building[]
   onRestore: (next: StoreV3) => void
   onRouteLines: (lines: RouteLine[]) => void
   onNotice: (text: string) => void
+  /** Uploads the current survey as a draft through the screen, with this name (blank: the save time). */
+  onUpload: (name: string) => Promise<PushOutcome<GraphVersion>>
+  /** Changes after every upload, also from the save button, so the list is fetched again. */
+  tick: number
 }) {
   const [list, setList] = useState<GraphVersionList | null>(null)
   const [busy, setBusy] = useState('')
@@ -158,13 +162,13 @@ export default function ServerPanel({
     try {
       setList(await listGraphVersions(devKey))
     } catch (e) {
-      onNotice(getErrorMessage(e, '서버 경로망 목록을 받지 못했어요.'))
+      onNotice(routeGraphErrorMessage(e, '서버 경로망 목록을 받지 못했어요.'))
     }
   }, [devKey, onNotice])
 
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [refresh, tick])
 
   // Leaving the tab clears the test lines.
   useEffect(() => () => onRouteLines([]), [onRouteLines])
@@ -182,7 +186,7 @@ export default function ServerPanel({
     try {
       await work()
     } catch (e) {
-      onNotice(getErrorMessage(e, `${label}에 실패했어요.`))
+      onNotice(routeGraphErrorMessage(e, `${label}에 실패했어요.`))
     } finally {
       setBusy('')
     }
@@ -190,22 +194,23 @@ export default function ServerPanel({
 
   const upload = () =>
     run('올리기', async () => {
-      const backup = JSON.parse(serializeBackup(store))
-      const made = buildServerGraph(backup)
-      if (made.graph.vertices.length === 0) {
-        onNotice('올릴 경로망이 없어요(간선으로 이어진 점이 없어요).')
-        return
-      }
-      const sourceName = name.trim() || `조사 도구 ${new Date().toLocaleString('ko-KR')}`
-      const version = await uploadGraphVersion(devKey, { sourceName, graph: made.graph, backup })
-      setShown(version)
-      setTestId(version.id)
-      setName('')
-      await refresh()
-      onNotice(
-        `초안 #${version.id} 으로 올렸어요(정점 ${version.vertexCount}, 간선 ${version.edgeCount}${made.skipped.length ? `, 펼치지 못한 것 ${made.skipped.length}` : ''}). ` +
-          '아래 결과와 길 시험을 보고 운영에 적용하세요.',
-      )
+      const outcome = await onUpload(name)
+      if (outcome.kind === 'uploaded') {
+        const { version, skipped } = outcome
+        setShown(version)
+        setTestId(version.id)
+        setName('')
+        onNotice(
+          `초안 #${version.id} 으로 올렸어요(정점 ${version.vertexCount}, 간선 ${version.edgeCount}${skipped ? `, 펼치지 못한 것 ${skipped}` : ''}). ` +
+            '아래 결과와 길 시험을 보고 운영에 적용하세요.',
+        )
+      } else if (outcome.kind === 'same') {
+        if (outcome.versionId !== null) setTestId(outcome.versionId)
+        onNotice(`마지막 초안${outcome.versionId === null ? '' : ` #${outcome.versionId}`} 과 내용이 같아 올리지 않았어요. 그 버전으로 시험하세요.`)
+      } else if (outcome.kind === 'noRoute') onNotice('올릴 경로망이 없어요(간선으로 이어진 점이 없어요). 서버 저장 안 함.')
+      else if (outcome.kind === 'busy') onNotice('저장 버튼으로 올리는 중이에요. 끝난 뒤 다시 눌러 주세요.')
+      else if (outcome.kind === 'blocked') onNotice('이 탭은 저장을 멈춘 상태라 서버에도 올리지 않아요. 새로고침해 주세요.')
+      else if (outcome.kind === 'failed') onNotice(`서버에 올리지 못했어요. ${outcome.text}`)
     })
 
   const activate = (id: number) => {

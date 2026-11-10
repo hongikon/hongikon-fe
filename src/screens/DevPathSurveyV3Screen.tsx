@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { routeGraphErrorMessage, uploadGraphVersion, type GraphVersion } from '../apis/routeGraph'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { COLORS } from '../constants/colors'
@@ -10,6 +11,7 @@ import { buildBuildingIndex, loadBuildingCache, saveBuildingCache, type RawBuild
 import { checkGraph, type CheckIssue } from '../utils/pathSurveyV3/check'
 import { convertV2, isManualItemOpen, loadConvertReport, saveConvertReport, type ConvertReport, type V2Source } from '../utils/pathSurveyV3/convertV2'
 import { selectionBuildings, usedFloorsByBuilding } from '../utils/pathSurveyV3/levels'
+import { loadServerSaveState, pushSurvey, saveServerSaveState, stateAfter, type PushOutcome, type ServerSaveState } from '../utils/pathSurveyV3/serverSave'
 import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
@@ -93,6 +95,13 @@ const LABEL_MODES: { key: LabelMode; label: string }[] = [
 
 const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
 
+/** Save button notices for server outcomes that need no numbers. */
+const SERVER_NOTICE: Partial<Record<PushOutcome['kind'], string>> = {
+  noKey: '브라우저에만 저장했어요. 이 탭에 서버 암호키가 없어요. 탭을 닫고 /dev/path-survey-v3 에서 암호키를 다시 입력해 주세요.',
+  noRoute: '브라우저에 저장했어요. 서버 저장 안 함(올릴 길 없음).',
+  busy: '브라우저에 저장했어요. 서버에 올리는 중이라 이번 것은 건너뛰었어요. 끝난 뒤 다시 눌러 주세요.',
+}
+
 /** The overlay starts hidden here: the new graph is the main thing on this screen. */
 const LEGACY_OFF: LegacyToggles = {
   ...DEFAULT_LEGACY,
@@ -140,6 +149,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const blockedRef = useRef(boot.corrupt)
   const [saveFailed, setSaveFailed] = useState(false)
   const [saveMeta, setSaveMeta] = useState<SaveMeta>(() => (boot.corrupt ? EMPTY_META : loadSaveMeta()))
+  // Server draft saved by the save button. The ref is read by the upload, which may finish after more edits.
+  const serverStateRef = useRef<ServerSaveState>(loadServerSaveState())
+  const [, setServerState] = useState<ServerSaveState>(serverStateRef.current)
+  const serverBusyRef = useRef(false)
+  // Bumped after each upload so an open Server tab lists the new draft.
+  const [serverTick, setServerTick] = useState(0)
   const [context, setContext] = useState<WorkContext>(() => loadWorkContext())
   const [mode, setMode] = useState<MapMode>('add')
   const [tab, setTab] = useState<Tab>('edit')
@@ -358,6 +373,40 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return true
   }
 
+  /**
+   * Sends the survey to the server as a draft (never to production). Stops without a key, when this tab's saving is
+   * stopped (other tab, damaged data), on the same content as the last draft, or while one upload is going.
+   * A failure only changes the server state: the browser save has already happened.
+   */
+  const pushToServer = useCallback(
+    async (content: StoreV3, name?: string): Promise<PushOutcome<GraphVersion>> => {
+      const outcome = await pushSurvey({
+        store: content,
+        devKey,
+        blocked: blockedRef.current,
+        state: serverStateRef.current,
+        busy: serverBusyRef.current,
+        name,
+        upload: (key, body) => {
+          serverBusyRef.current = true
+          return uploadGraphVersion(key, body).finally(() => {
+            serverBusyRef.current = false
+          })
+        },
+        errorText: (e) => routeGraphErrorMessage(e, '서버에 저장하지 못했어요.'),
+      })
+      const next = stateAfter(serverStateRef.current, outcome)
+      if (next !== serverStateRef.current) {
+        serverStateRef.current = next
+        setServerState(next)
+        saveServerSaveState(next)
+      }
+      if (outcome.kind === 'uploaded') setServerTick((n) => n + 1)
+      return outcome
+    },
+    [devKey],
+  )
+
   const saveNow = () => {
     const current = storeRef.current
     // Save button points roll over on their own, so pressing it often never runs into the limit.
@@ -368,6 +417,13 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setSaveMeta(meta)
     saveSaveMeta(meta)
     setNotice('저장했어요.')
+    void pushToServer(current).then((outcome) => {
+      if (outcome.kind === 'uploaded') setNotice(`저장했어요. 서버 초안 #${outcome.version.id}`)
+      else if (outcome.kind === 'same') setNotice(`저장했어요. 서버 초안${outcome.versionId === null ? '' : ` #${outcome.versionId}`} 과 같아 올리지 않았어요.`)
+      else if (outcome.kind === 'failed') setNotice(`브라우저에는 저장했어요. 서버 저장 실패: ${outcome.text} 저장을 다시 누르면 다시 올려요.`)
+      else if (SERVER_NOTICE[outcome.kind]) setNotice(SERVER_NOTICE[outcome.kind]!)
+      // blocked: the notice that saving stopped stays on screen.
+    })
   }
 
   const updateReport = (fn: (r: ConvertReport) => ConvertReport) => {
@@ -764,11 +820,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       {tab === 'server' ? (
         <ServerPanel
           devKey={devKey}
-          store={store}
           buildings={buildings}
           onRestore={runRestore}
           onRouteLines={showRouteLines}
           onNotice={setNotice}
+          onUpload={(name) => pushToServer(storeRef.current, name)}
+          tick={serverTick}
         />
       ) : null}
       {tab === 'snapshots' ? (

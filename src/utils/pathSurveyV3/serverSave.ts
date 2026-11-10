@@ -135,34 +135,37 @@ export interface UploadedVersion {
   edgeCount: number
 }
 
-export type PushOutcome =
+export type PushOutcome<V extends UploadedVersion = UploadedVersion> =
   | { kind: 'noKey' }
   | { kind: 'blocked' }
   | { kind: 'same'; versionId: number | null }
+  | { kind: 'busy' }
   | { kind: 'noRoute'; fingerprint: string }
-  | { kind: 'uploaded'; version: UploadedVersion; fingerprint: string; skipped: number }
+  | { kind: 'uploaded'; version: V; fingerprint: string; skipped: number }
   | { kind: 'failed'; text: string }
 
 /**
- * One save to the server, in this order: no key, blocked (other tab or damaged data), same content, then
- * backup, server graph, upload. The caller guards against a second run while one is going, and records the state.
+ * One save to the server, in this order: no key, blocked (other tab or damaged data), same content, one already
+ * going, then backup, server graph, upload. The caller records the state and clears its busy flag afterwards.
  * The key only goes to `upload`; it is never part of the outcome.
  */
-export async function pushSurvey(input: {
+export async function pushSurvey<V extends UploadedVersion>(input: {
   store: StoreV3
   devKey: string | undefined
   blocked: boolean
   state: ServerSaveState
+  busy?: boolean
   name?: string
   now?: number
-  upload: (devKey: string, body: { sourceName: string; graph: ServerGraph; backup: unknown }) => Promise<UploadedVersion>
+  upload: (devKey: string, body: { sourceName: string; graph: ServerGraph; backup: unknown }) => Promise<V>
   errorText: (error: unknown) => string
-}): Promise<PushOutcome> {
+}): Promise<PushOutcome<V>> {
   const { store, devKey, blocked, state } = input
   if (!devKey) return { kind: 'noKey' }
   if (blocked) return { kind: 'blocked' }
   const fingerprint = storeFingerprint(store)
   if (!shouldUpload(state, fingerprint)) return { kind: 'same', versionId: state.lastVersionId }
+  if (input.busy) return { kind: 'busy' }
   const now = input.now ?? Date.now()
   try {
     const backup = JSON.parse(serializeBackup(store, now))
@@ -176,7 +179,7 @@ export async function pushSurvey(input: {
   }
 }
 
-/** The state after an outcome. noKey and blocked leave it as it was. */
+/** The state after an outcome. noKey, blocked and busy leave it as it was. */
 export function stateAfter(state: ServerSaveState, outcome: PushOutcome, now = Date.now()): ServerSaveState {
   if (outcome.kind === 'uploaded') return afterUpload(state, outcome.version.id, outcome.fingerprint, now)
   if (outcome.kind === 'failed') return afterFailure(state, outcome.text)
