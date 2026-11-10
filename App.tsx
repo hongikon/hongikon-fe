@@ -14,7 +14,7 @@ import { WEB_LINKING, formatDocumentTitle } from './src/navigation/linking'
 import { usePushNotifications } from './src/lib/pushNotifications'
 import { useNearbyPartnerAlerts } from './src/lib/nearbyPartners/useNearbyPartnerAlerts'
 import NetworkStatusBanner from './src/components/common/NetworkStatusBanner'
-import UpdateBanner from './src/components/common/UpdateBanner'
+import UpdateBanner, { useApplyUpdateOnLaunch } from './src/components/common/UpdateBanner'
 import NotificationPrimer from './src/components/common/NotificationPrimer'
 import OnboardingGate from './src/components/onboarding/OnboardingGate'
 import ErrorBoundary from './src/components/common/ErrorBoundary'
@@ -172,15 +172,18 @@ SplashScreen.preventAutoHideAsync()
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(FONT_ASSETS)
+  // 켤 때 새 업데이트가 있으면 스플래시 동안 받아 바로 적용한다(최대 3초, UpdateBanner.tsx).
+  const launchUpdateDone = useApplyUpdateOnLaunch()
+  const fontsDone = fontsLoaded || !!fontError
 
   useEffect(() => {
     // 폰트 로드에 실패해도 스플래시는 내린다. 시스템 폰트로라도 앱은 써야 한다.
-    if (fontsLoaded || fontError) {
+    if (fontsDone && launchUpdateDone) {
       SplashScreen.hideAsync()
     }
-  }, [fontsLoaded, fontError])
+  }, [fontsDone, launchUpdateDone])
 
-  if (!fontsLoaded && !fontError) {
+  if (!fontsDone || !launchUpdateDone) {
     return null
   }
 
