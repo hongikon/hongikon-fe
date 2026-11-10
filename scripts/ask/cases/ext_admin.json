@@ -291,5 +291,20 @@
  {"q": "등교가 몇시", "expect": "none"},
  {"q": "학교 목요일 휴강", "expect": "none"},
  {"q": "민원 어디에 넣어요", "expect": "suggestion"},
- {"q": "학교 건의 어떻게 해요", "expect": "suggestion"}
+ {"q": "학교 건의 어떻게 해요", "expect": "suggestion"},
+ {"q": "홍익대 교훈이 뭐야", "expect": "school-about"},
+ {"q": "홍대 교훈", "expect": "school-about"},
+ {"q": "건학이념 알려줘", "expect": "school-about"},
+ {"q": "홍익대 언제 설립됐어", "expect": "school-about"},
+ {"q": "홍대 몇년도에 생겼어", "expect": "school-about"},
+ {"q": "우리학교 슬로건 뭐야", "expect": "school-about"},
+ {"q": "홍익대 비전", "expect": "school-about"},
+ {"q": "홍익대 인재상", "expect": "school-about"},
+ {"q": "홍익대학교 소개해줘", "expect": "school-about"},
+ {"q": "홍익대 개교 언제야", "expect": "school-about"},
+ {"q": "홍익대 조직도", "expect": "school-org"},
+ {"q": "학교 조직도 보여줘", "expect": "school-org"},
+ {"q": "행정조직 어떻게 돼", "expect": "school-org"},
+ {"q": "홍대 근처 맛집 소개해줘", "expect": "none"},
+ {"q": "학교에 새 건물 생겼어", "expect": "none"}
 ]

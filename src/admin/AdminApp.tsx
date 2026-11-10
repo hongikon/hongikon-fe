@@ -14,11 +14,13 @@ import DashboardScreen from './screens/DashboardScreen'
 import ReportsScreen from './screens/ReportsScreen'
 import FlaggedCommentsScreen from './screens/FlaggedCommentsScreen'
 import FeedbackScreen from './screens/FeedbackScreen'
+import AskFeedbackScreen from './screens/AskFeedbackScreen'
 import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
+import NoticesScreen from './screens/NoticesScreen'
 import { RADIUS } from '../constants/spacing'
 
 /**
@@ -45,9 +47,11 @@ const SECTION_PATHS: Record<AdminSection, string> = {
   comments: '/admin/comments',
   users: '/admin/users',
   feedback: '/admin/feedback',
+  askFeedback: '/admin/ask-feedback',
   partners: '/admin/partners',
   facilities: '/admin/facilities',
   exhibitions: '/admin/exhibitions',
+  notices: '/admin/notices',
   tools: '/admin/tools',
 }
 
@@ -57,9 +61,11 @@ const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<ty
   { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
+  { section: 'askFeedback', label: '물어보기 피드백', icon: 'thumbs-down-outline' },
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
   { section: 'facilities', label: '편의시설', icon: 'business-outline' },
   { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
+  { section: 'notices', label: '앱 공지', icon: 'megaphone-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]
 
@@ -305,9 +311,11 @@ export default function AdminApp() {
   else if (section === 'comments') content = <FlaggedCommentsScreen onChanged={refreshOverview} overview={overview} />
   else if (section === 'users') content = <UsersScreen />
   else if (section === 'feedback') content = <FeedbackScreen onChanged={refreshOverview} overview={overview} />
+  else if (section === 'askFeedback') content = <AskFeedbackScreen />
   else if (section === 'partners') content = <PartnersScreen />
   else if (section === 'facilities') content = <FacilitiesScreen />
   else if (section === 'exhibitions') content = <ExhibitionsScreen />
+  else if (section === 'notices') content = <NoticesScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />
   else content = <DashboardScreen overview={overviewState} onNavigate={navigate} />
 

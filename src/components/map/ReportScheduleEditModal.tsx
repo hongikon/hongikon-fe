@@ -14,10 +14,15 @@ import {
   dayChipLabel,
   formatClock,
   formatDay,
+  canRunDaily,
+  kstDateKey,
   kstMidnight,
   nextStepAfter,
+  parseReportDays,
+  type ReportDayHours,
 } from '../../utils/reportSchedule'
 import { parseServerTime } from '../../utils/serverTime'
+import ReportDaysEditor, { reportDaysFor, type EditableDay } from './ReportDaysEditor'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
@@ -28,10 +33,12 @@ interface ReportScheduleEditModalProps {
   /** 서버 시각 문자열(UTC). */
   startsAt: string
   endsAt: string
+  /** 날짜별 운영 시간(여러 날 제보). 없으면 한 번짜리. */
+  days?: ReportDayHours[] | null
   saving: boolean
   onClose: () => void
   /** 시작을 고치지 않았으면 받은 startsAt 문자열을 그대로 넘긴다(서버가 같은 값이면 지난 시작도 받는다). */
-  onSave: (next: { startsAt: string; endsAt: string }) => void
+  onSave: (next: { startsAt: string; endsAt: string; days?: ReportDayHours[] }) => void
 }
 
 /**
@@ -42,6 +49,7 @@ export default function ReportScheduleEditModal({
   visible,
   startsAt,
   endsAt,
+  days,
   saving,
   onClose,
   onSave,
@@ -52,14 +60,29 @@ export default function ReportScheduleEditModal({
   const [endMs, setEndMs] = useState(parseServerTime(endsAt))
   const [picker, setPicker] = useState<'start' | 'end' | null>(null)
   const [now, setNow] = useState(Date.now())
+  const [daily, setDaily] = useState(false)
+  const [editedDays, setEditedDays] = useState<EditableDay[]>([])
 
-  // 열 때마다 받은 값으로 되돌린다.
+  // 열 때마다 받은 값으로 되돌린다. 날짜별 운영 시간이 있으면 그 날들을 그대로, 빠진 가운데 날은 쉬는 날로 둔다.
   useEffect(() => {
     if (!visible) return
     setStartMs(parseServerTime(startsAt))
     setEndMs(parseServerTime(endsAt))
     setNow(Date.now())
-  }, [visible, startsAt, endsAt])
+    const spans = parseReportDays({ days })
+    setDaily(spans !== null)
+    if (!spans) {
+      setEditedDays([])
+      return
+    }
+    const open = new Set(spans.map((span) => span.date))
+    const offDays: EditableDay[] = []
+    for (let midnight = kstMidnight(spans[0].startMs); midnight < kstMidnight(spans[spans.length - 1].startMs); midnight += DAY_MS) {
+      const date = kstDateKey(midnight)
+      if (!open.has(date)) offDays.push({ date, startMs: midnight, endMs: midnight, off: true })
+    }
+    setEditedDays([...spans, ...offDays])
+  }, [visible, startsAt, endsAt, days])
 
   const started = originalStartMs <= now
   const startChanged = startMs !== originalStartMs
@@ -89,7 +112,10 @@ export default function ReportScheduleEditModal({
         : endMs - startMs > MAX_DURATION_MS
           ? `진행 기간은 최대 ${REPORT_MAX_DURATION_DAYS}일까지 정할 수 있어요.`
           : null
-  const unchanged = !startChanged && endMs === parseServerTime(endsAt)
+  const dailyAvailable = canRunDaily(startMs, endMs)
+  const nextDays = reportDaysFor(daily && dailyAvailable, startMs, endMs, editedDays)
+  const unchanged =
+    !startChanged && endMs === parseServerTime(endsAt) && JSON.stringify(nextDays) === JSON.stringify(normalizeDays(days))
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -113,6 +139,23 @@ export default function ReportScheduleEditModal({
             disabled={saving}
             onPress={() => setPicker('end')}
           />
+          {endMs > startMs ? (
+            <ReportDaysEditor
+              startMs={startMs}
+              endMs={endMs}
+              enabled={daily}
+              edited={editedDays}
+              onChange={(patch) => {
+                if (patch.daily !== undefined) setDaily(patch.daily)
+                if (patch.edited) setEditedDays(patch.edited)
+                if (patch.startMs !== undefined) setStartMs(patch.startMs)
+                if (patch.endMs !== undefined) setEndMs(patch.endMs)
+              }}
+              earliestStart={firstValidStart}
+              startLocked={started}
+              disabled={saving}
+            />
+          ) : null}
           {problem ? <Text style={styles.problem}>{problem}</Text> : null}
 
           <View style={styles.actions}>
@@ -125,6 +168,8 @@ export default function ReportScheduleEditModal({
                 onSave({
                   startsAt: startChanged ? new Date(startMs).toISOString() : startsAt,
                   endsAt: new Date(endMs).toISOString(),
+                  // 생략하면 서버가 한 번짜리로 바꾼다.
+                  ...(nextDays ? { days: nextDays } : {}),
                 })
               }
               style={styles.action}
@@ -167,6 +212,12 @@ export default function ReportScheduleEditModal({
       </Pressable>
     </Modal>
   )
+}
+
+/** 비교용: 서버 값을 `reportDaysFor` 가 돌려주는 모양(시각 HH:mm)으로. */
+function normalizeDays(days: ReportDayHours[] | null | undefined): ReportDayHours[] | null {
+  if (!days || days.length < 2) return null
+  return days.map((day) => ({ date: day.date, start: day.start.slice(0, 5), end: day.end.slice(0, 5) }))
 }
 
 function TimeRow({

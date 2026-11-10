@@ -1,4 +1,5 @@
 import { haversineMeters } from '../../utils/geo'
+import { distanceToRingMeters, pointInRing } from '../../utils/pathSurveyV3/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
 import type { Partner, PartnerAffiliation } from '../../types'
 
@@ -26,6 +27,12 @@ export const ALERT_RADIUS_METERS = 20
 const ACCURACY_ALLOWANCE_METERS = 15
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
+/**
+ * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 60m). 건물 외곽이 업체에서 이만큼 안이면 그 건물 영역은
+ * 이 업체의 알림 영역에서 뺀다(`blockedRingsFor`). 외곽이 없는 건물은 중심이 이 거리 안이면 업체를 통째로 뺀다.
+ * 11-09: 깨우는 원(150m)으로 재 기숙사 앞 가게 24곳이 빠지던 것을 바꿈.
+ */
+export const CAMPUS_CLEARANCE_METERS = ALERT_RADIUS_METERS + ACCURACY_ALLOWANCE_METERS + EXIT_MARGIN_METERS
 /**
  * 사용자 둘레 "다시 고르기" 원의 한계. 실제 반경은 `reselectRadius` 가 업체 밀도에 맞춰 정한다.
  * 홍대 앞은 500m 안에 제휴 업체가 중앙값 86곳이라(10-28 운영 데이터) 고정 500m 원이면 19곳 밖 업체 반경에
@@ -65,13 +72,24 @@ export function dwellFor(category: string | undefined, custom?: DwellMinutes | n
 }
 /** 나갔다가 이 안에 다시 들어오면(위치 흔들림) 이어서 머문 것으로 본다. */
 export const REENTRY_GRACE_MS = 3 * 60 * 1000
-/** 하루(한국 날짜) 전체 알림 수. 같은 가게는 하루 1번(`partnerToday`)이라, 가게를 옮겨 다닐 때만 더 온다. */
+/** 하루(한국 날짜) 전체 알림 수. 같은 가게는 `SAME_PARTNER_COOLDOWN_MS` 규칙을 따로 지킨다. */
 export const MAX_ALERTS_PER_DAY = 3
 /**
  * 알림 사이 최소 간격. 20m 반경이면 실제로 그 가게에 있을 때만 오므라 2시간(10-28)은 길었다 — 밥 먹고 카페로 옮기면
  * 카페 알림이 오게 30분(10-29). 시간대 제한(밤 9시~아침 8시, 점심·저녁 우선)은 10-29 사용자 요청으로 없앴다.
  */
 export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
+/**
+ * 같은 가게를 다시 알리기까지의 간격(11-09 사용자 결정, 이전에는 하루 1번). 머무는 동안에는 다시 알리지 않고,
+ * 나갔다가 다시 들어온 방문이 지난 알림에서 이만큼 지났을 때만 다시 알린다 — 점심·저녁에 같은 가게를 찾은 사람은 두 번 받고,
+ * 가게 바로 옆에 오래 있는 사람(위층 자취방 등)은 시간이 지나도 다시 받지 않는다.
+ */
+export const SAME_PARTNER_COOLDOWN_MS = 3 * 60 * 60 * 1000
+
+/** 같은 가게를 이번 방문(`stayStart` 부터)에 다시 알리면 안 되는지 — 이번 방문 중이나 들어오기 전 3시간 안에 그 가게를 알렸으면. */
+export function alertedRecently(partnerId: string, stayStart: number, sent: readonly SentAlert[]): boolean {
+  return sent.some((alert) => alert.partnerId === partnerId && stayStart - alert.at < SAME_PARTNER_COOLDOWN_MS)
+}
 /**
  * 밤에는 보내지 않는다(11-01 사용자 결정). 정보통신망법 제50조 제3항 — 광고성 정보를 21시~다음 날 8시에 보내려면 별도 동의가
  * 필요해, 기본은 이 시간에 보내지 않고 사용자가 설정에서 "밤에도 받기"를 켜(서버에 야간 수신 동의 시각을 남긴 뒤)야 보낸다.
@@ -122,6 +140,15 @@ export function coarselyOutside(meters: number, accuracy: number | null | undefi
 }
 
 /**
+ * Wi-Fi·기지국 위치로는 나갔는지 정할 수 없는 경우: 찍힌 자리로는 반경 + 나감 여유 밖인데 오차가 커서 `coarselyOutside` 가 아니다.
+ * 이대로 두면 머무름이 열린 채 남아, 가게에서 150m 떨어져도 "안"으로 남고 테스트 앱은 5분마다 다시 알렸다(11-06).
+ * 이럴 때는 GPS 로 한 번 재서 정한다(`background.fineCheck`).
+ */
+export function coarseExitUncertain(meters: number, accuracy: number | null | undefined, radius: number = ALERT_RADIUS_METERS): boolean {
+  return meters > radius + EXIT_MARGIN_METERS && !coarselyOutside(meters, accuracy, radius)
+}
+
+/**
  * GPS 로 잰 거리로 알림 반경 안인지. 오차(accuracy)만큼은 반경에 더해 주되 `ACCURACY_ALLOWANCE_METERS` 까지만,
  * 이미 안으로 본 곳(`wasInside`)은 `EXIT_MARGIN_METERS` 더 멀어져야 나간 것으로 본다.
  */
@@ -151,6 +178,7 @@ export function preciseInsideIds<T extends Located>(
   return new Set(
     ranked
       .filter(({ partner, meters }) => preciselyInside(meters, accuracy, partner.id === nearestId && wasInside.has(partner.id), radius))
+      .filter(({ partner }) => !blockedAt(partner, at.lat, at.lng))
       .map(({ partner }) => partner.id),
   )
 }
@@ -163,6 +191,30 @@ export interface Located {
   id: string
   lat: number
   lng: number
+  /** 알림 영역에서 뺄 캠퍼스 건물 외곽([lat, lng] 고리). 이 안에서 잡힌 위치는 이 업체 안으로 치지 않는다(11-09). */
+  blocked?: readonly (readonly [number, number])[][]
+}
+
+/** 캠퍼스 건물: 중심과(있으면) 외곽. */
+export interface CampusPoint {
+  lat: number
+  lng: number
+  boundary?: readonly (readonly [number, number])[]
+}
+
+/** 위치가 이 업체의 알림 영역에서 빠진 곳(건물 안)인지. */
+function blockedAt(partner: Located, lat: number, lng: number): boolean {
+  return partner.blocked?.some((ring) => pointInRing(lat, lng, ring)) ?? false
+}
+
+/**
+ * 업체 알림 영역과 겹치는 건물 외곽(11-09 사용자 요청: 업체를 통째로 빼지 말고 겹치는 곳만 빼기).
+ * 알림 영역 = 업체 원 − 이 외곽들. 강의실·기숙사 방에서 잡힌 위치로는 알리지 않고, 가게 안·앞에서는 그대로 알린다.
+ */
+export function blockedRingsFor(partner: { lat: number; lng: number }, campus: readonly CampusPoint[]): [number, number][][] {
+  return campus
+    .filter((b) => b.boundary && b.boundary.length >= 3 && distanceToRingMeters(partner.lat, partner.lng, b.boundary) <= CAMPUS_CLEARANCE_METERS)
+    .map((b) => b.boundary!.map(([lat, lng]) => [lat, lng] as [number, number]))
 }
 
 /**
@@ -183,38 +235,82 @@ function endedBefore(endsOn: string | undefined, today: string): boolean {
 export interface PickTargetsOptions {
   /** 사용자가 고른 소속(여러 개 가능). 비어 있으면 총학생회 제휴만. */
   affiliations: readonly PartnerAffiliation[]
-  /** 캠퍼스 건물 좌표. 업체 반경이 건물에 걸치면(강의실에서 알림이 가는 경우) 뺀다. */
-  campusPoints: readonly { lat: number; lng: number }[]
+  /**
+   * 캠퍼스 건물. 업체가 건물 외곽 안에 있으면 뺀다(캠퍼스 안 가게). 그 밖에는 대상으로 두고 겹치는 건물 영역만 알림에서 뺀다
+   * (`blockedRingsFor`). 외곽이 없는 건물은 중심에서 `CAMPUS_CLEARANCE_METERS` 안이면 뺀다.
+   */
+  campusPoints: readonly CampusPoint[]
   now: number
   /** 소속을 보지 않고 모든 제휴를 대상으로(현장 테스트 빌드만, 10-29). 제휴가 끝났는지는 그대로 본다. */
   anyAffiliation?: boolean
 }
 
 /**
- * 근처 알림 대상 업체. 관리자가 "근처 알림 대상"으로 켠 업체 중
- * 혜택 문구가 있고, 제휴가 끝나지 않았고, 사용자 소속(또는 총학생회) 제휴이며, 캠퍼스 건물과 겹치지 않는 곳.
+ * 근처 알림 대상 업체. 혜택 문구가 있고, 제휴가 끝나지 않았고, 사용자가 고른 소속(공과대학·기숙사 등, 또는 총학생회) 제휴이며,
+ * 캠퍼스 건물과 겹치지 않는 곳. 11-09 운영진 요청: 관리자가 업체마다 켜는 "근처 알림 대상" 표시(`nearbyAlert`)는 더 보지 않고
+ * 소속 필터로만 정한다(표시가 켜진 곳이 1곳뿐이라 거의 울리지 않았다).
  * 서버도 끝난 제휴를 빼서 내려주지만, 백그라운드에서는 기기에 저장해 둔 목록을 쓰므로 날짜를 다시 본다.
  */
 export function pickTargets(partners: readonly Partner[], options: PickTargetsOptions): Partner[] {
   const today = kstTodayYmd(options.now)
   const mine = options.affiliations
   return partners.filter((partner) => {
-    if (partner.nearbyAlert !== true) return false
-    if (benefitFor(partner, mine) === null) return false
+    if (benefitFor(liveBenefits(partner, today), mine) === null) return false
     if (endedBefore(partner.endsOn, today)) return false
+    if (liveAffiliations(partner, mine, today, options.anyAffiliation).length === 0) return false
 
-    const affiliations = partner.affiliations ?? []
-    const eligible = affiliations.filter((item) => {
-      if (!options.anyAffiliation && item !== '총학생회' && !mine.includes(item)) return false
-      const end = partner.affiliationEnds?.find((e) => e.affiliation === item)?.endsOn
-      return !endedBefore(end, today)
-    })
-    if (eligible.length === 0) return false
-
-    return !options.campusPoints.some(
-      (point) => haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < PARTNER_REGION_RADIUS_METERS,
+    return !options.campusPoints.some((point) =>
+      point.boundary && point.boundary.length >= 3
+        ? pointInRing(partner.lat, partner.lng, point.boundary)
+        : haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
     )
   })
+}
+
+type DatedPartner = Pick<Partner, 'affiliations' | 'affiliationEnds' | 'endsOn'>
+
+/** 이 사용자에게 오늘 살아 있는 제휴 소속: 고른 소속·총학생회(현장 테스트는 모두) 중 그 소속 제휴가 끝나지 않은 것. */
+export function liveAffiliations(
+  partner: DatedPartner,
+  mine: readonly PartnerAffiliation[],
+  today: string,
+  anyAffiliation = false,
+): PartnerAffiliation[] {
+  return (partner.affiliations ?? []).filter((item) => {
+    if (!anyAffiliation && item !== '총학생회' && !mine.includes(item)) return false
+    return !endedBefore(affiliationEnd(partner, item), today)
+  })
+}
+
+function affiliationEnd(partner: DatedPartner, affiliation: PartnerAffiliation): string | undefined {
+  return partner.affiliationEnds?.find((e) => e.affiliation === affiliation)?.endsOn
+}
+
+/**
+ * 끝난 소속의 전용 혜택을 뺀 업체(11-09). `benefitFor` 는 날짜를 보지 않아, 경영대학(12-14 끝)·미술대학을 함께 고른 사람에게
+ * 12-14 뒤에도 경영대학 전용 혜택을 알렸다.
+ */
+export function liveBenefits<T extends BenefitSource & DatedPartner>(partner: T, today: string): T {
+  if (!partner.affiliationBenefits?.length) return partner
+  const affiliationBenefits = partner.affiliationBenefits.filter(
+    (item) => !endedBefore(affiliationEnd(partner, item.affiliation), today),
+  )
+  return { ...partner, affiliationBenefits }
+}
+
+/**
+ * 이 사용자에게 마지막으로 대상인 날(한국 날짜). 끝이 없으면 undefined. 기기에 저장한 대상 목록은 앱을 열 때만 새로 고르므로
+ * 백그라운드에서 이 날이 지나면 뺀다(`engine.settle`) — 저장본에 날짜가 없어 끝난 제휴로도 알릴 수 있었다(11-09).
+ */
+export function targetUntil(
+  partner: DatedPartner,
+  mine: readonly PartnerAffiliation[],
+  today: string,
+  anyAffiliation = false,
+): string | undefined {
+  const ends = liveAffiliations(partner, mine, today, anyAffiliation).map((item) => affiliationEnd(partner, item))
+  const affiliationsUntil = ends.some((end) => end === undefined) ? undefined : (ends as string[]).sort().reverse()[0]
+  return [partner.endsOn, affiliationsUntil].filter((d): d is string => d !== undefined).sort()[0]
 }
 
 export interface Distanced<T extends Located> {
@@ -302,12 +398,12 @@ export function insideAtRegistration<T extends Located>(
   lng: number,
   radiusMeters: number = PARTNER_REGION_RADIUS_METERS,
 ): T[] {
-  return regions.filter((partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= radiusMeters)
+  return regions.filter((partner) => haversineMeters(lat, lng, partner.lat, partner.lng) <= radiusMeters && !blockedAt(partner, lat, lng))
 }
 
 /**
  * 알림 한 번에 담을 업체. 가게가 몰린 곳에서는 반경 안에 여러 곳이 겹친다 — 업체마다 따로 알리지 않고
- * 가장 오래 머문 곳(같으면 id 순) 하나를 이름으로 내세우고 나머지는 "외 N곳"으로 묶는다. 오늘 이미 알린 업체는 뺀다.
+ * 가장 오래 머문 곳(같으면 id 순) 하나를 이름으로 내세우고 나머지는 "외 N곳"으로 묶는다. 최근에 알린 업체(`alertedRecently`)는 뺀다.
  */
 export function alertGroup(
   stays: ReadonlyMap<string, StayRecord>,
@@ -315,13 +411,10 @@ export function alertGroup(
   now: number,
   perVisit = false,
 ): { leadId: string; others: string[] } | null {
-  const day = kstTodayYmd(now)
-  const alertedToday = new Set(sent.filter((alert) => kstTodayYmd(alert.at) === day).map((alert) => alert.partnerId))
   // perVisit(현장 테스트, 11-04): 보낸 곳도 빼지 않는다 — 같은 가게에 머무는 동안 `FIELD_TEST_REPEAT_MS` 마다 다시 알린다
   // (간격은 decideOnEnter 의 lastAlertAt 이 맞춘다).
-  const alerted = (id: string) => !perVisit && alertedToday.has(id)
   const inside = [...stays.entries()]
-    .filter(([id, stay]) => stay.exitedAt === null && !alerted(id))
+    .filter(([id, stay]) => stay.exitedAt === null && (perVisit || !alertedRecently(id, stay.enteredAt, sent)))
     .sort(([idA, a], [idB, b]) => a.enteredAt - b.enteredAt || idA.localeCompare(idB))
   if (inside.length === 0) return null
   return { leadId: inside[0][0], others: inside.slice(1).map(([id]) => id) }
@@ -335,7 +428,7 @@ export interface SentAlert {
 
 export type EnterDecision =
   | { schedule: true; fireAt: number }
-  | { schedule: false; reason: 'partnerToday' | 'dailyLimit' | 'tooSoon' | 'quiet' }
+  | { schedule: false; reason: 'partnerRecent' | 'dailyLimit' | 'tooSoon' | 'quiet' }
 
 export interface DecideOptions {
   /** 현장 테스트: 횟수·간격 제한 없이 방문마다 한 번. */
@@ -366,16 +459,16 @@ export function decideOnEnter(
   // 현장 테스트(10-29·11-04 사용자 요청): 횟수·간격 제한 없이, 머무는 동안 5분마다 다시.
   if (options.perVisit) return { schedule: true, fireAt }
 
+  if (alertedRecently(partnerId, stayStart, sent)) return { schedule: false, reason: 'partnerRecent' }
   const day = kstTodayYmd(fireAt)
   const today = sent.filter((alert) => kstTodayYmd(alert.at) === day)
-  if (today.some((alert) => alert.partnerId === partnerId)) return { schedule: false, reason: 'partnerToday' }
   if (today.length >= MAX_ALERTS_PER_DAY) return { schedule: false, reason: 'dailyLimit' }
   if (sent.some((alert) => Math.abs(fireAt - alert.at) < MIN_ALERT_GAP_MS)) return { schedule: false, reason: 'tooSoon' }
   return { schedule: true, fireAt }
 }
 
 /**
- * GPS 로 20m 를 잴 만한 업체(11-03, 배터리). 오늘 이미 알린 곳·하루 한도를 채운 날은 더 잴 게 없어 GPS 를 켜지 않는다 —
+ * GPS 로 20m 를 잴 만한 업체(11-03, 배터리). 최근에 알린 곳(`alertedRecently`)·하루 한도를 채운 날은 더 잴 게 없어 GPS 를 켜지 않는다 —
  * 알림을 받은 카페에 두 시간 앉아 있어도 GPS 가 계속 켜져 있던 것을 막는다. 예약해 둔 곳(pendingId)은 그 전에 나가면
  * 취소해야 해서 계속 잰다. perVisit(현장 테스트)는 이번 방문에 이미 보낸 곳만 뺀다.
  */
@@ -399,9 +492,11 @@ export function alertableTargetIds(
       result.add(id)
       continue
     }
-    const stay = stays.get(id)
+    const stay = stays.get(id) ?? null
+    // 지금 들어오면 시작될 방문(안에 있으면 그 방문)이 최근 알림 간격에 걸리면 잴 필요가 없다.
+    const stayStart = stay && stay.exitedAt === null ? stay.enteredAt : stayStartedAt(stay, now)
     // 현장 테스트는 머무는 동안 다시 알리므로(FIELD_TEST_REPEAT_MS) 보낸 곳도 GPS 로 계속 잰다.
-    const done = !perVisit && today.some((alert) => alert.partnerId === id)
+    const done = !perVisit && alertedRecently(id, stayStart, sent)
     if (!done) result.add(id)
   }
   return result

@@ -13,16 +13,22 @@ const RAW_KEY = '@hongikon_dev_path_key'
 
 const DevPathAuditScreen = lazy(() => import('./DevPathAuditScreen'))
 const DevPathSurveyScreen = lazy(() => import('./DevPathSurveyScreen'))
+const DevPathSurveyV3Screen = lazy(() => import('./DevPathSurveyV3Screen'))
 const DevAskScreen = lazy(() => import('./DevAskScreen'))
 
 /** 'ask' = `/dev/ask` 물어보기 챗봇 미리보기(같은 암호키). */
-type DevPathMode = 'audit' | 'survey' | 'ask'
+type DevPathMode = 'audit' | 'survey' | 'surveyV3' | 'ask'
 
-const TITLES: Record<DevPathMode, string> = { audit: '경로망 점검', survey: '경로망 현장 조사', ask: '물어보기 미리보기' }
+const TITLES: Record<DevPathMode, string> = { audit: '경로망 점검', survey: '경로망 현장 조사', surveyV3: '경로망 조사 v3', ask: '물어보기 미리보기' }
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/** crypto.subtle only exists on https and localhost, so the key cannot be checked on a plain http LAN address. */
+function cannotCheckKey(): boolean {
+  return typeof window !== 'undefined' && (window.isSecureContext === false || !globalThis.crypto?.subtle)
 }
 
 function readRawKey(): string | undefined {
@@ -63,7 +69,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   if (unlocked) {
     return (
       <Suspense fallback={<Text style={styles.loading}>불러오는 중이에요</Text>}>
-        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : <DevAskScreen devKey={rawKey} />}
+        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : mode === 'surveyV3' ? <DevPathSurveyV3Screen devKey={rawKey} /> : <DevAskScreen devKey={rawKey} />}
       </Suspense>
     )
   }
@@ -98,6 +104,9 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
       <View style={styles.card}>
         <Text style={styles.title}>{TITLES[mode]}</Text>
         <Text style={styles.sub}>개발용 페이지예요. 암호키를 입력해 주세요.</Text>
+        {mode === 'surveyV3' && cannotCheckKey() ? (
+          <Text style={styles.error}>{'이 주소(http)에서는 브라우저가 암호키를 확인할 수 없어요. localhost 나 https 주소로 열어 주세요.'}</Text>
+        ) : null}
         <TextInput
           value={value}
           onChangeText={(text) => {

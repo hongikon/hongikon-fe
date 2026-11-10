@@ -37,6 +37,7 @@ import {
 import ReportScheduleFields, {
   initialReportSchedule,
   resolveSchedule,
+  scheduleDaysFor,
   type ReportSchedule,
 } from './ReportScheduleFields'
 import { formatClock, formatDay, scheduleError } from '../../utils/reportSchedule'
@@ -567,6 +568,8 @@ export default function ReportComposerModal({
     }
     const startsAt = new Date(resolved.startMs)
     const endsAt = new Date(resolved.endMs)
+    // 여러 날 정해진 시간에만 운영하면 날짜별 운영 시간(11-08). 첫날 시작·마지막 날 끝은 위 startsAt·endsAt 과 같다.
+    const days = scheduleDaysFor(schedule, resolved)
 
     const imageKeys: string[] = []
     try {
@@ -625,6 +628,7 @@ export default function ReportComposerModal({
           content: content.trim() || undefined,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
+          ...(days ? { days } : {}),
         },
         accessToken,
       )

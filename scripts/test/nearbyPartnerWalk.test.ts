@@ -248,3 +248,51 @@ test('Wi-Fi 를 끄거나 핫스팟을 켜 기지국 위치만 수백 m 틀리�
   // 오차는 300m 까지만 빼 준다 — 1km 떨어진 곳이면 오차가 2km 여도 끈다.
   assert.equal(preciseUpdate(state, T0, { at: at(40, 1000), accuracy: 2000, mode: 'coarse' }, RADII).stop, true)
 })
+
+/** 가게 B 안(8m)에 머물러 알림을 받은 뒤의 상태와 시각. */
+function afterAlertAtB(perVisit: boolean): { state: NearbyState; now: number } {
+  let state = start(perVisit)
+  let now = T0
+  for (let minute = 0; minute <= 6; minute += 1) {
+    now = T0 + minute * MIN
+    state = preciseUpdate(state, now, { at: at(40, 8), accuracy: 8, mode: 'fine' }, RADII).state
+  }
+  state = settle(state, now + 1)
+  assert.deepEqual(state.sent.map((s) => s.partnerId), ['B'])
+  return { state, now }
+}
+
+for (const perVisit of [false, true]) {
+  test(`가게를 나와 150m 떨어졌는데 Wi-Fi·기지국 오차(120m)로 나감을 못 정하면 GPS 를 한 번 재라고 하고, 그 GPS 로 나간다(11-06, perVisit=${perVisit})`, () => {
+    let { state, now } = afterAlertAtB(perVisit)
+    now += MIN
+    // B 에서 북쪽 150m, 오차 120m: 거리-오차 30m 라 Wi-Fi·기지국 위치만으로는 나갔다고 못 한다.
+    const coarse = preciseUpdate(state, now, { at: at(40, 150), accuracy: 120, mode: 'coarse' }, RADII)
+    assert.equal(coarse.state.stays.B?.exitedAt, null)
+    assert.equal(coarse.needsFineCheck, true)
+    // GPS 한 번(오차 10m)으로 나간 것이 정해지고, 더 알리지 않는다(테스트 앱의 5분마다 다시 알림도 멈춘다).
+    now += 5 * SEC
+    const fine = preciseUpdate(coarse.state, now, { at: at(40, 150), accuracy: 10, mode: 'fine' }, RADII)
+    state = fine.state
+    assert.notEqual(state.stays.B?.exitedAt, null)
+    assert.equal(state.pending, null)
+    for (let minute = 1; minute <= 20; minute += 1) {
+      state = preciseUpdate(state, now + minute * MIN, { at: at(40, 150), accuracy: 120, mode: 'coarse' }, RADII).state
+    }
+    assert.deepEqual(settle(state, now + 21 * MIN).sent.map((s) => s.partnerId), ['B'])
+  })
+}
+
+test('알림 받은 가게에 앉아 있을 때(Wi-Fi·기지국 위치가 가게 쪽)는 GPS 를 다시 켜지 않는다(배터리)', () => {
+  const { state, now } = afterAlertAtB(false)
+  const outcome = preciseUpdate(state, now + MIN, { at: at(40, 30), accuracy: 100, mode: 'coarse' }, RADII)
+  assert.equal(outcome.needsFineCheck, false)
+  assert.equal(outcome.state.stays.B?.exitedAt, null)
+})
+
+test('오차가 작아 Wi-Fi·기지국 위치로도 나간 것이 확실하면 GPS 없이 나간다', () => {
+  const { state, now } = afterAlertAtB(false)
+  const outcome = preciseUpdate(state, now + MIN, { at: at(40, 150), accuracy: 40, mode: 'coarse' }, RADII)
+  assert.equal(outcome.needsFineCheck, false)
+  assert.notEqual(outcome.state.stays.B?.exitedAt, null)
+})

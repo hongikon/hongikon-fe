@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import { ApiError, apiRequest } from './client'
 import type { ReportCategory, ReportStatus } from '../types'
 
@@ -30,6 +31,8 @@ export interface MyReport {
   lng: number
   startsAt: string
   endsAt: string
+  /** 여러 날 제보의 날짜별 운영 시간(한국 시간). 한 번짜리·이전 서버는 없음. */
+  days?: ReportDayHours[] | null
   status: ReportStatus
   /** 없으면(옛 서버) `resolveDisplayStatus` 가 status·시각으로 정한다. */
   displayStatus?: MyReportDisplayStatus | null

@@ -21,7 +21,6 @@ import BoardAlertsModal from '../components/settings/BoardAlertsModal'
 import ToggleSwitch from '../components/settings/ToggleSwitch'
 import NearbyAlertSettings from '../components/settings/NearbyAlertSettings'
 import { nearbyAlertsAvailable } from '../lib/nearbyPartners/background'
-import NoticeDetailModal from '../components/settings/NoticeDetailModal'
 import NoticeListModal from '../components/settings/NoticeListModal'
 import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
 import TermsModal from '../components/settings/TermsModal'
@@ -67,7 +66,7 @@ import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
 import { confirmAction, notify } from '../utils/dialog'
 import { promptLogin } from '../utils/reports'
 import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
-import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
+import { useAppNotices } from '../lib/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { PARTNER_SOURCES } from '../constants/partnerSources'
 import { FONTS, TYPE } from '../constants/typography'
@@ -83,7 +82,6 @@ type SettingsGroup = 'account' | 'alerts' | 'general' | 'support' | 'policies'
 
 type ModalType =
   | 'notices'
-  | 'noticeDetail'
   | 'sources'
   | 'terms'
   | 'licenses'
@@ -101,6 +99,7 @@ type ModalType =
 
 export default function SettingsScreen() {
   const tabInset = useTabBarInset()
+  const appNotices = useAppNotices()
   // 이미 설정 탭에 있을 때 하단 '설정' 탭을 다시 누르면 맨 위로 올린다(10-08 요청).
   const scrollRef = useRef<ScrollView>(null)
   useScrollToTop(scrollRef)
@@ -147,7 +146,6 @@ export default function SettingsScreen() {
   }, [])
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
-  const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null)
 
   const handleLogout = () => {
     confirmAction({
@@ -196,11 +194,6 @@ export default function SettingsScreen() {
         void resetSettings()
       },
     })
-  }
-
-  const openNoticeDetail = (notice: AppNotice) => {
-    setSelectedNotice(notice)
-    setActiveModal('noticeDetail')
   }
 
   const permission = useNotificationPermission()
@@ -326,20 +319,61 @@ export default function SettingsScreen() {
   const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
   /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
   const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
+  /**
+   * 지도(근처 알림 영역·제휴 시트)에서 '근처 제휴 알림 켜러 가기'로 넘어왔을 때(11-09).
+   * ① 알림 묶음을 펼치고 '근처 제휴' 칸으로 바로 스크롤해 남색으로 강조한다 — 어디 있는지 먼저 보이게.
+   * ② 탭 전환이 끝난 뒤(0.7초) 그 설정 창을 연다. 전에는 화면이 붙는 순간 창을 열어 iOS 에서 창이 안 뜨는 때가 있었고,
+   *    강조도 창을 닫은 뒤에만 해 아무 표시 없이 설정 탭만 보였다.
+   * 강조는 창을 닫고 3초 뒤(창이 안 떴으면 8초 뒤) 사라진다.
+   */
+  const [nearbyHighlight, setNearbyHighlight] = useState(false)
+  /** '근처 제휴' 칸 위치 = 알림 묶음 y + 펼친 내용 y + 칸 y(각각 부모 기준 onLayout). */
+  const nearbyYRef = useRef({ section: 0, body: 0, block: 0 })
+  const nearbyTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => nearbyTimersRef.current.forEach(clearTimeout), [])
+  const showNearbySetting = useCallback(() => {
+    nearbyTimersRef.current.forEach(clearTimeout)
+    setNearbyHighlight(true)
+    const scroll = setTimeout(() => {
+      const { section, body, block } = nearbyYRef.current
+      scrollRef.current?.scrollTo({ y: Math.max(0, section + body + block - 120), animated: true })
+    }, 250)
+    const open = setTimeout(() => setNearbyOpenSignal((n) => n + 1), 700)
+    const off = setTimeout(() => setNearbyHighlight(false), 8000)
+    nearbyTimersRef.current = [scroll, open, off]
+  }, [])
+  const handleNearbyModalClose = useCallback(() => {
+    nearbyTimersRef.current.forEach(clearTimeout)
+    nearbyTimersRef.current = [setTimeout(() => setNearbyHighlight(false), 3000)]
+  }, [])
 
   // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
   const handleSettingsIntent = useCallback(() => {
     const intent = consumeSettingsIntent()
-    if (!intent || isGuest) return
+    if (!intent) return
+    if (intent.type === 'openAlerts') {
+      setExpanded((prev) => new Set(prev).add('alerts'))
+      return
+    }
+    if (intent.type === 'openSubscriptions') {
+      setSubManagerVisible(true)
+      return
+    }
     if (intent.type === 'openNearbyAlerts') {
       // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
       setExpanded((prev) => new Set(prev).add('alerts'))
-      setNearbyOpenSignal((n) => n + 1)
+      if (isGuest) {
+        // 게스트는 근처 알림 줄이 없다. 그냥 설정 탭만 보이면 왜 왔는지 몰라 한 줄 알린다.
+        notify('근처 제휴 알림', '근처 제휴 알림은 로그인한 뒤 알림 > 근처 제휴에서 켤 수 있어요.')
+        return
+      }
+      showNearbySetting()
       return
     }
+    if (isGuest) return
     setHighlightReportId(intent.reportId)
     setActiveModal('myReports')
-  }, [isGuest])
+  }, [isGuest, showNearbySetting])
   useFocusEffect(handleSettingsIntent)
   useEffect(() => subscribeSettingsIntent(handleSettingsIntent), [handleSettingsIntent])
 
@@ -473,7 +507,7 @@ export default function SettingsScreen() {
             )}
           </View>
           )}
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => (nearbyYRef.current.section = e.nativeEvent.layout.y)}>
           <GroupHeader
             icon="notifications-outline"
             label="알림"
@@ -483,7 +517,7 @@ export default function SettingsScreen() {
             onPress={() => toggleGroup('alerts')}
           />
           {expanded.has('alerts') && (
-              <View style={styles.groupBody}>
+              <View style={styles.groupBody} onLayout={(e) => (nearbyYRef.current.body = e.nativeEvent.layout.y)}>
                 <View style={styles.subBlockFirst}>
                   {isGuest && (
                     <View style={styles.guestNotice}>
@@ -626,9 +660,14 @@ export default function SettingsScreen() {
 
                 {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
                 {nearbyAlertsAvailable() && !isGuest && (
-                  <View style={styles.subBlock}>
-                    <Text style={styles.subHeader}>근처 제휴</Text>
-                    <NearbyAlertSettings openSignal={nearbyOpenSignal} />
+                  <View
+                    style={[styles.subBlock, nearbyHighlight && styles.subBlockHighlight]}
+                    onLayout={(e) => (nearbyYRef.current.block = e.nativeEvent.layout.y)}
+                  >
+                    <Text style={[styles.subHeader, nearbyHighlight && styles.subHeaderHighlight]}>
+                      {nearbyHighlight ? '근처 제휴 · 여기서 켜고 꺼요' : '근처 제휴'}
+                    </Text>
+                    <NearbyAlertSettings openSignal={nearbyOpenSignal} onModalClose={handleNearbyModalClose} />
                   </View>
                 )}
 
@@ -782,17 +821,10 @@ export default function SettingsScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <NoticeDetailModal
-        visible={activeModal === 'noticeDetail'}
-        notice={selectedNotice}
-        onClose={() => setActiveModal(null)}
-      />
-
       <NoticeListModal
         visible={activeModal === 'notices'}
-        notices={APP_NOTICES}
+        notices={appNotices}
         onClose={() => setActiveModal(null)}
-        onSelectNotice={openNoticeDetail}
       />
 
       <PartnerSourcesModal
@@ -923,7 +955,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   // 펼친 묶음의 내용(머리 줄 아래). 옅은 바탕으로 머리 줄과 구분한다.
-  groupBody: { backgroundColor: COLORS.background, paddingVertical: SPACING.xs },
+  // 아래 여백은 두지 않는다 — 마지막 흰 줄이 카드 아래 끝까지 닿아야 아래 모서리도 위(머리 줄)와 같은 곡률로 보인다
+  // (11-08: 아래에 옅은 바탕 4pt 가 남아 '설정 초기화' 아래 모서리가 덜 둥글어 보였다).
+  groupBody: { backgroundColor: COLORS.background, paddingTop: SPACING.xs },
   subBlockFirst: { backgroundColor: COLORS.white },
   subHeader: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
   categoryHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
@@ -931,6 +965,17 @@ const styles = StyleSheet.create({
   categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
   categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
   subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
+  // 지도에서 근처 알림을 켜러 왔을 때 잠깐 강조(11-09).
+  // 칸 전체를 남색 테두리로 감싼다(11-09 — 왼쪽 막대만으로는 어느 칸인지 덜 보였다). 테두리만큼 안쪽 여백을 줄여
+  // 내용이 옆으로 밀리지 않게 하고, 둥근 모서리가 보이게 양옆을 조금 띄운다.
+  subBlockHighlight: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    marginHorizontal: SPACING.xs,
+    overflow: 'hidden',
+  },
+  subHeaderHighlight: { color: COLORS.primary },
   groupHeader: {
     minHeight: 58,
     flexDirection: 'row',

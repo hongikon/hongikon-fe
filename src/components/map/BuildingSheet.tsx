@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building, Facility, FacilityKind } from "../../types";
-import { FACILITY_KINDS, facilityKindLabel } from "../../constants/facilityKinds";
+import { HIDDEN_FACILITY_KINDS, VISIBLE_FACILITY_KINDS, facilityChipLabel } from "../../constants/facilityKinds";
 import { formatFloor } from "../../utils/floors";
 import { KindIcon } from "./ChipIcon";
 import { FONTS } from "../../constants/typography";
@@ -20,6 +20,7 @@ import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { RADIUS } from "../../constants/spacing";
 import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
+import RouteEndpointButtons, { type RouteNext } from "./RouteEndpointButtons";
 
 interface BuildingSheetProps {
   building: Building;
@@ -33,7 +34,7 @@ interface BuildingSheetProps {
   onSetFrom: () => void;
   onSetTo: () => void;
   /** 길찾기 중 다음에 고를 쪽. 그 버튼을 진하게 강조한다(출발을 정했으면 '도착'). */
-  routeNext?: "from" | "to" | null;
+  routeNext?: RouteNext;
 }
 
 /** 서버가 건물 종류를 아직 모를 때 넣어 둔 값. 사용자에게는 보이지 않게 한다. */
@@ -47,9 +48,9 @@ interface KindRow {
   floors: number[];
 }
 
-/** 이 건물의 편의시설을 칩 순서(FACILITY_KINDS)대로 종류별로 묶는다. */
+/** 이 건물의 편의시설을 칩 순서대로 종류별로 묶는다. 칩에 없는 종류(엘리베이터)는 빼 칩 줄과 같은 목록을 쓴다(11-08). */
 function groupByKind(facilities: readonly Facility[]): KindRow[] {
-  return FACILITY_KINDS.flatMap(({ key }) => {
+  return VISIBLE_FACILITY_KINDS.flatMap(({ key }) => {
     const items = facilities.filter((f) => f.kind === key);
     if (items.length === 0) return [];
     const floors = [...new Set(items.flatMap((f) => (f.floor === undefined ? [] : [f.floor])))].sort((a, b) => a - b);
@@ -76,10 +77,8 @@ export default function BuildingSheet({
   routeFindingEnabled,
   onSetFrom,
   onSetTo,
-  routeNext: routeNextProp = null,
+  routeNext = null,
 }: BuildingSheetProps) {
-  // 길찾기를 시작하기 전에는 출발이 먼저다.
-  const routeNext = routeNextProp ?? "from";
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
@@ -87,6 +86,8 @@ export default function BuildingSheet({
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const kindRows = groupByKind(facilities);
+  // 시설 데이터가 없을 때 대신 보이는 건물 메모 칩에서도 감추는 종류(엘리베이터)는 뺀다.
+  const facilityNotes = (building.facilities ?? []).filter((f) => !HIDDEN_FACILITY_KINDS.has(f));
   const type = building.type && building.type !== UNKNOWN_TYPE ? building.type : null;
   const typeLine = [
     type,
@@ -118,26 +119,7 @@ export default function BuildingSheet({
 
       {/* 출발·도착은 제목 바로 아래, 스크롤해도 늘 보이는 자리(11-03). */}
       {routeFindingEnabled && (
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.actionFrom, routeNext === "from" && styles.actionFromStrong]}
-            onPress={onSetFrom}
-            accessibilityRole="button"
-            accessibilityLabel={`${building.name}에서 출발`}
-          >
-            <View style={[styles.actionDotFrom, routeNext === "from" && styles.actionDotFromStrong]} />
-            <Text style={[styles.actionFromText, routeNext === "from" && styles.actionTextStrong]}>출발</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionTo, routeNext === "to" && styles.actionToStrong]}
-            onPress={onSetTo}
-            accessibilityRole="button"
-            accessibilityLabel={`${building.name}로 도착`}
-          >
-            <View style={[styles.actionDotTo, routeNext === "to" && styles.actionDotToStrong]} />
-            <Text style={[styles.actionToText, routeNext === "to" && styles.actionTextStrong]}>도착</Text>
-          </TouchableOpacity>
-        </View>
+        <RouteEndpointButtons name={building.name} routeNext={routeNext} onSetFrom={onSetFrom} onSetTo={onSetTo} />
       )}
       </View>
 
@@ -152,8 +134,8 @@ export default function BuildingSheet({
         <View style={styles.kindSection}>
           <Text style={styles.sectionTitle}>건물 안 시설</Text>
           {kindRows.map((row) => {
-            const meta = FACILITY_KINDS.find((k) => k.key === row.kind)!;
-            const label = facilityKindLabel(row.kind);
+            const meta = VISIBLE_FACILITY_KINDS.find((k) => k.key === row.kind)!;
+            const label = facilityChipLabel(row.kind);
             const floors = floorSummary(row.floors);
             return (
               <SheetTouchable
@@ -178,9 +160,10 @@ export default function BuildingSheet({
         </View>
       )}
 
-      {kindRows.length === 0 && building.facilities && building.facilities.length > 0 && (
+      {/* 지도 데이터에 이 건물 시설이 하나도 없을 때만. 칩에서 숨긴 종류(엘리베이터)만 있는 건물은 아무것도 안 보인다. */}
+      {facilities.length === 0 && facilityNotes.length > 0 && (
         <View style={styles.facilities}>
-          {building.facilities.map((facility) => (
+          {facilityNotes.map((facility) => (
             <View key={facility} style={styles.facilityChip}>
               <Text style={styles.facilityChipText}>{facility}</Text>
             </View>
@@ -331,36 +314,4 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     textDecorationLine: "underline",
   },
-  // 길찾기 버튼은 메인 컬러만(11-03). 지금 고를 차례인 쪽은 남색으로 채우고, 다른 쪽은 옅은 남색 바탕.
-  actions: { flexDirection: "row", gap: 10, marginTop: 2, marginBottom: 12 },
-  actionFrom: {
-    flex: 1,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  actionTo: {
-    flex: 1,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  actionFromStrong: { backgroundColor: COLORS.primary },
-  actionToStrong: { backgroundColor: COLORS.primary },
-  actionFromText: { fontSize: 15, color: COLORS.primary, fontFamily: FONTS.semibold },
-  actionToText: { fontSize: 15, color: COLORS.primary, fontFamily: FONTS.semibold },
-  actionTextStrong: { color: COLORS.white },
-  /** 출발: 빈 원, 도착: 채운 원 — 지도 경로 막대·표시와 같은 모양. */
-  actionDotFrom: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: COLORS.primary },
-  actionDotFromStrong: { borderColor: COLORS.white },
-  actionDotTo: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  actionDotToStrong: { backgroundColor: COLORS.white },
 });

@@ -17,6 +17,9 @@ interface MapActionMenuProps {
   /** 넘기지 않으면(길찾기 꺼짐) 항목을 그리지 않는다. */
   onRoute?: () => void
   onRecenter: () => void
+  /** 지도에 내 위치 보기 켜고 끄기(11-06). 위치를 못 쓰는 환경이면 넘기지 않아 항목을 그리지 않는다. */
+  onMyLocation?: () => void
+  myLocationOn?: boolean
   /** 제보 보기(종류·HOT). 위쪽 칩 줄에서 옮겨 왔다(10-27). */
   reportFilter: ReportFilterProps
   /**
@@ -67,6 +70,8 @@ export default function MapActionMenu({
   onReport,
   onRoute,
   onRecenter,
+  onMyLocation,
+  myLocationOn,
   reportFilter,
   maxItemsHeight,
   onToggleNearbyOverlay,
@@ -112,6 +117,16 @@ export default function MapActionMenu({
             label: nearbyOverlayOn ? '근처 알림 영역 끄기' : '근처 알림 영역 보기',
             icon: <Ionicons name="radio-outline" size={17} color={COLORS.primary} />,
             onPress: onToggleNearbyOverlay,
+          },
+        ]
+      : []),
+    ...(onMyLocation
+      ? [
+          {
+            key: 'myLocation',
+            label: myLocationOn ? '내 위치 끄기' : '내 위치 켜기',
+            icon: <Ionicons name={myLocationOn ? 'locate' : 'locate-outline'} size={17} color={COLORS.primary} />,
+            onPress: onMyLocation,
           },
         ]
       : []),

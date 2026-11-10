@@ -4,6 +4,7 @@ import {
   REENTRY_GRACE_MS,
   alertGroup,
   alertableTargetIds,
+  coarseExitUncertain,
   coarselyOutside,
   decideOnEnter,
   dwellFor,
@@ -39,6 +40,10 @@ export interface SnapshotPartner {
   benefit?: string
   affiliations?: PartnerAffiliation[]
   affiliationBenefits?: { affiliation: PartnerAffiliation; benefit: string }[]
+  /** 알림 영역에서 뺄 건물 외곽(`rules.blockedRingsFor`). 이 안에서 잡힌 위치는 이 업체 안으로 치지 않는다. */
+  blocked?: [number, number][][]
+  /** 이 사용자에게 마지막으로 대상인 날(YYYY-MM-DD, 한국). 지나면 `settle` 이 뺀다. 없으면 끝 없음. */
+  until?: string
 }
 
 export interface PendingAlert {
@@ -106,7 +111,11 @@ export function settle(state: NearbyState, now: number): NearbyState {
   for (const [id, stay] of Object.entries(state.stays)) {
     if (stay.exitedAt === null || now - stay.exitedAt <= REENTRY_GRACE_MS) stays[id] = stay
   }
-  return { ...state, sent, pending, stays }
+  const today = kstTodayYmd(now)
+  const targets = state.targets.some((t) => t.until !== undefined && t.until < today)
+    ? state.targets.filter((t) => t.until === undefined || t.until >= today)
+    : state.targets
+  return { ...state, sent, pending, stays, targets }
 }
 
 function sameAlert(a: PendingAlert | null, b: PendingAlert | null): boolean {
@@ -234,6 +243,8 @@ export interface PreciseOutcome extends Step {
   stop: boolean
   /** 아직 알릴 수 있는 가게 중 가장 가까운 곳까지 거리(m). 없으면 Infinity. */
   nearestMeters: number
+  /** Wi-Fi·기지국 위치로는 머무는 가게에서 나갔는지 정할 수 없다 — GPS 로 한 번 재야 한다(`coarseExitUncertain`). */
+  needsFineCheck: boolean
 }
 
 /**
@@ -272,7 +283,7 @@ export function preciseStep(input: NearbyState, now: number, at: Position, accur
  * 가게 기준), 끌지. `background.ts` 는 이 결과대로 저장·예약하고 위치 갱신을 켜고 끈다.
  */
 export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, radii: PreciseRadii): PreciseOutcome {
-  if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true, nearestMeters: Infinity }
+  if (!input.enabled) return { state: input, actions: [], nextMode: fix.mode, stop: true, nearestMeters: Infinity, needsFineCheck: false }
   const { at, accuracy } = fix
   // 끌지도 오차를 빼고 정한다 — Wi-Fi 를 끄거나 핫스팟을 켜면 기지국 위치만 와 수백 m 틀리는데, 그 위치 하나로 '근처에
   // 가게가 없다'며 위치 갱신을 끄면 가게 안에 있어도 알림이 끊겼다(11-05). 오차는 STOP_ACCURACY_CAP_METERS 까지만 뺀다.
@@ -291,7 +302,15 @@ export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, 
   const distances = input.targets.filter((t) => alertable.has(t.id)).map((t) => haversineMeters(at.lat, at.lng, t.lat, t.lng))
   const nearest = distances.length > 0 ? Math.min(...distances) : Infinity
   const step = preciseStep(input, now, at, accuracy, fix.mode === 'fine', radii.alert)
-  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop, nearestMeters: nearest }
+  // 오차 큰 위치로 나감을 못 정해 머무름이 열린 채 남은 가게가 있으면 GPS 로 한 번 재게 한다.
+  const needsFineCheck =
+    fix.mode !== 'fine' &&
+    step.state.targets.some(
+      (t) =>
+        step.state.stays[t.id]?.exitedAt === null &&
+        coarseExitUncertain(haversineMeters(at.lat, at.lng, t.lat, t.lng), accuracy, radii.alert),
+    )
+  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop, nearestMeters: nearest, needsFineCheck }
 }
 
 /**

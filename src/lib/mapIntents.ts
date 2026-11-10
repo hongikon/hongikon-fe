@@ -6,6 +6,9 @@
  * - startReport: 내 제보 내역이 비어 있을 때 "지도로 가서 제보하기" → 제보 위치 고르기를 시작한다(게스트면 로그인 안내).
  * - focusPartner: 근처 제휴 알림을 누르면 그 업체만 지도에 올리고 업체 시트를 연다.
  * - nearbyGroup: 근처에 제휴가 여러 곳 겹친 알림을 누르면 "지금 계신 곳 근처 제휴" 목록을 띄운다(고른 곳의 시트를 연다).
+ * - focusPlace: 물어보기 답의 "지도에서 보기" → 그 건물·편의시설·제휴처를 가운데에 띄우고 시트를 열며, 지도 위에 짧은 설명 카드(11-07).
+ * - routeTo: 물어보기 답의 "여기서 가는 길"(11-09 — 'Q동 어떻게 가') → 그 건물(시설이면 그 건물·층)을 도착으로, 출발은 내 위치로 길찾기를 연다.
+ *   위치는 길찾기와 똑같이 휴대폰 안에서만 쓴다(물어보기 서버로 보내지 않는다).
  * 지도 화면은 포커스될 때 요청을 꺼내(consume) 처리한다 — 두 번 처리되지 않는다.
  */
 export type MapIntent =
@@ -16,6 +19,10 @@ export type MapIntent =
   | { type: 'nearbyGroup'; partnerIds: string[] }
   /** label: 핀 이름표(제보 제목). detail: 지도 위 안내 줄에 덧붙일 작성자·건물·층. */
   | { type: 'previewLocation'; lat: number; lng: number; label?: string; detail?: string }
+  /** target: 'building:{code}' | 'facility:{id}' | 'partner:{id}'. title·summary: 지도 위 설명 카드. */
+  | { type: 'focusPlace'; target: string; title?: string; summary?: string }
+  /** target: 'building:{code}' | 'facility:{id}'. 제휴처(캠퍼스 밖)는 길찾기 경로망에 없어 받지 않는다. */
+  | { type: 'routeTo'; target: string }
 
 /**
  * focusReport 요청은 웹에서 sessionStorage 에도 15분 동안 남긴다. 카카오·Apple 웹 로그인은 페이지를 통째로 넘겼다

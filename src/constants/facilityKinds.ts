@@ -26,6 +26,11 @@ export interface FacilityKindMeta {
    * 바꾸지 않고, 보이는 이름만 바꿀 때 쓴다(예: '학생처' → '행정·지원').
    */
   label?: string
+  /**
+   * 지도 핀 이름에 층을 붙이지 않는다. 한 건물에 부서가 많은 종류는 "Q동 1F·2F·3F·9F·10F·11F" 처럼 길기만 해
+   * 건물 이름만 둔다(11-06 요청). 층은 핀을 눌러 여는 시트에 부서마다 나온다.
+   */
+  hideFloorsInPin?: boolean
 }
 
 /**
@@ -39,7 +44,7 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '프린터', icon: 'print', color: '#4F46E5' },
   { key: '증명서 발급', icon: 'ribbon', color: '#0F766E' },
   // 학생처뿐 아니라 입학·교무·총무 등 학생이 찾아가는 행정 부서를 모두 담는다.
-  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C' },
+  { key: '학생처', label: '행정·지원', icon: 'people', color: '#EA580C', hideFloorsInPin: true },
   { key: '스터디룸', icon: 'people-circle', color: '#2563EB' },
   { key: '정수기', icon: 'water', color: '#0EA5E9' },
   // 사선 없는 담배(MaterialCommunityIcons 'smoking') — Ionicons 'logo-no-smoking' 은 금연 표시라 뜻이 반대였다(10-27). 칩은 카페 바로 왼쪽(10-27 요청). 지도 핀도 사선 없음.
@@ -57,6 +62,14 @@ export const FACILITY_KINDS: readonly FacilityKindMeta[] = [
   { key: '행사·전시', icon: 'easel', color: '#DB2777' },
   { key: '엘리베이터', icon: 'swap-vertical', color: '#475569' },
 ]
+
+/**
+ * 사용자 앱에서 아예 감추는 종류. 서버·관리자 화면의 데이터는 그대로 두고, 앱이 지도 데이터를 받을 때 뺀다
+ * (`normalizeMapData`) — 그래야 칩·건물 시트·검색·핀 어디에서도 안 나온다.
+ * 엘리베이터: 위치가 건물 단위로만 확인돼 쓸모가 적다(10-02). 칩만 숨겼더니 건물 시트의 '엘리베이터' 줄을 누르면
+ * 그 종류가 켜지는데 끌 칩이 없어 빠져나올 수 없었다(11-06 핫픽스).
+ */
+export const HIDDEN_FACILITY_KINDS: ReadonlySet<string> = new Set<FacilityKind>(['엘리베이터'])
 
 const META_BY_KEY = new Map(FACILITY_KINDS.map((meta) => [meta.key, meta]))
 
@@ -76,4 +89,17 @@ export function isFacilityKind(key: string): key is FacilityKind {
 
 export function facilityKindLabel(key: FacilityKind): string {
   return META_BY_KEY.get(key)?.label ?? key
+}
+
+/** 지도 칩 줄·건물 시트에 보이는 종류(칩 순서). */
+export const VISIBLE_FACILITY_KINDS: readonly FacilityKindMeta[] = FACILITY_KINDS.filter(
+  (meta) => !HIDDEN_FACILITY_KINDS.has(meta.key),
+)
+
+/** 칩에는 짧게. 서버 값 '행사·전시'의 행사는 이제 제보로 받는다. 검색어로는 `facilityKindLabel`(긴 이름)을 그대로 쓴다. */
+const CHIP_LABEL: Partial<Record<FacilityKind, string>> = { '행사·전시': '전시' }
+
+/** 지도 칩·건물 시트·시설 시트 머리에 보이는 이름. */
+export function facilityChipLabel(key: FacilityKind): string {
+  return CHIP_LABEL[key] ?? facilityKindLabel(key)
 }

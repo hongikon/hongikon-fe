@@ -186,5 +186,12 @@
   {"q": "근로 시간", "expect": "work-wage/start"},
   {"q": "컴공 멀티미디어실 운영시간", "expect": "ce-multimedia-room"},
   {"q": "멀티미디어실 몇시까지 열어?", "expect": "ce-multimedia-room"},
-  {"q": "T604 이용 시간", "expect": "ce-multimedia-room"}
+  {"q": "T604 이용 시간", "expect": "ce-multimedia-room"},
+  {"q": "멀미실", "expect": "ce-multimedia-room"},
+  {"q": "멀미실 어디야", "expect": "ce-multimedia-room"},
+  {"q": "멀미실 몇시까지 해?", "expect": "ce-multimedia-room"},
+  {"q": "컴공 멀미실", "expect": "ce-multimedia-room"},
+  {"q": "멀티실 위치", "expect": "ce-multimedia-room"},
+  {"q": "컴공 멀티미디어실", "expect": "ce-multimedia-room"},
+  {"q": "멀티미디어실 어디야", "expect": "ce-multimedia-room"}
 ]

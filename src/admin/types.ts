@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import type { Exhibition, Facility, FacilityKind, Partner, ReportCategory } from '../types'
 
 /**
@@ -59,6 +60,8 @@ export interface AdminReport {
   lng: number | null
   startsAt: string
   endsAt: string
+  /** 여러 날 제보의 날짜별 운영 시간(한국 시간). 한 번짜리·이전 서버는 없음. */
+  days?: ReportDayHours[] | null
   createdAt: string
   authorId: number | null
   /**
@@ -206,9 +209,11 @@ export type AdminSection =
   | 'comments'
   | 'users'
   | 'feedback'
+  | 'askFeedback'
   | 'partners'
   | 'facilities'
   | 'exhibitions'
+  | 'notices'
   | 'tools'
 
 // ── 지도 데이터(제휴업체·편의시설) 관리 — `GET/POST/PUT/DELETE /admin/map/*` ──────────────
@@ -256,4 +261,100 @@ export interface OverviewState {
   /** 마지막으로 성공한 시각(ms) */
   updatedAt: number | null
   refresh: () => void
+}
+
+// ── 물어보기 피드백 — `GET/PATCH /admin/ask/feedback` (11-06) ──────────────
+
+export type AskFeedbackReasonCode = 'WRONG' | 'OUTDATED' | 'OFF_TOPIC' | 'NOT_ENOUGH'
+export type AskFeedbackFilter = 'OPEN' | 'REVIEWED' | 'ALL'
+
+export interface AdminAskHandoff {
+  feedbackId: number
+  content: string
+  contact: string | null
+  status: FeedbackStatus
+  createdAt: string
+  /** presigned GET(1시간). 문의를 처리 완료하면 사진이 지워져 빈 배열 */
+  imageUrls: string[]
+}
+
+/** '해결 안 됨' 답 한 건. ROUTE=서버 답(answer·references), FLOW=앱 안내 흐름 답(flowId·nodeId). */
+export interface AdminAskFeedbackItem {
+  source: 'ROUTE' | 'FLOW'
+  id: number
+  createdAt: string
+  question: string
+  answer: string | null
+  outcome: string
+  flowId: string | null
+  nodeId: string | null
+  references: string[]
+  nodeIds: string[]
+  reason: AskFeedbackReasonCode | null
+  reviewedAt: string | null
+  handoffs: AdminAskHandoff[]
+}
+
+export interface AdminAskFeedbackResponse {
+  days: number
+  items: AdminAskFeedbackItem[]
+  /** 이유별 개수(NONE=이유 안 고름) */
+  reasons: Record<string, number>
+}
+
+/** GET /admin/ask/feedback/report — 주간 요약(11-06). */
+export interface AdminAskReportGroup {
+  kind: 'GUIDE' | 'UNMATCHED'
+  key: string
+  label: string
+  count: number
+  open: number
+  reasons: Record<string, number>
+  questions: string[]
+}
+
+export interface AdminAskReport {
+  days: number
+  questions: number
+  resolvedYes: number
+  resolvedNo: number
+  reasons: Record<string, number>
+  groups: AdminAskReportGroup[]
+}
+
+/** 운영진 확인 안내 — `GET/POST/PATCH /admin/ask/notes`. */
+export interface AdminAskNote {
+  id: number
+  question: string
+  answer: string
+  askRef: string | null
+  active: boolean
+  createdBy: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ── 앱 공지사항 — `GET/POST/PUT/DELETE /admin/notices` (11-09) ──────────────
+
+/** 관리자 공지 한 건. 시각은 서버 그대로(UTC, 존 없음) — parseServerTime 으로 읽는다. */
+export interface AdminNotice {
+  id: number
+  title: string
+  body: string
+  publishAt: string
+  popupUntil: string | null
+  popupText: string | null
+  /** SCHEDULED = 게시 전(예약), PUBLISHED = 앱에 보이는 중. */
+  status: 'SCHEDULED' | 'PUBLISHED'
+  createdAt: string
+  updatedAt: string
+}
+
+/** 공지 추가·수정 본문. 시각은 toISOString()(UTC). popupUntil 이 없으면 팝업 없이 목록에만. */
+export interface AdminNoticeInput {
+  title: string
+  body: string
+  publishAt: string
+  popupUntil?: string
+  popupText?: string
 }

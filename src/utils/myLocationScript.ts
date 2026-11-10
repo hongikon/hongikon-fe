@@ -2,8 +2,8 @@
  * 지도 페이지(map.html)에 내 위치 점과 정확도 원을 그리는 스크립트(11-03, 길찾기). map.html 을 새로 배포하지 않도록
  * nearbyOverlayScript 처럼 WebView 에 그대로 넣는다. null 이면 지운다.
  *
- * 좌표는 이 페이지 안에서 점을 그리는 데만 쓴다. 지도를 내 위치로 옮기지 않고(지도 그림 요청에 위치가 드러나지 않게),
- * 저장하거나 밖으로 보내지 않는다.
+ * 좌표는 이 페이지 안에서 점을 그리는 데만 쓴다. 이 스크립트는 지도를 옮기지 않고(지도 그림 요청에 위치가 드러나지 않게),
+ * 저장하거나 밖으로 보내지 않는다. 지도 메뉴 "내 위치"(11-06)만 캠퍼스 범위 안일 때 지도를 옮긴다(MapScreen).
  */
 export function myLocationScript(position: { lat: number; lng: number; accuracy: number | null } | null): string {
   const data = JSON.stringify(position)

@@ -344,17 +344,7 @@ export default function PartnersScreen() {
               accessibilityLabel="지도 아이콘"
             />
           </Field>
-          <Field
-            label="근처 알림 대상"
-            hint="켜면 앱이 이 업체 근처에 머문 학생에게 혜택을 알려요(근처 알림 기능 출시 후). 혜택 문구가 있고 캠퍼스 건물과 100m 넘게 떨어진 곳만 실제로 알려요."
-          >
-            <OptionChips
-              options={['근처 알림 켜기'] as const}
-              isSelected={() => draft.nearbyAlert}
-              onToggle={() => update({ nearbyAlert: !draft.nearbyAlert })}
-              accessibilityLabel="근처 알림 대상"
-            />
-          </Field>
+          {/* 근처 알림 대상은 11-09부터 앱이 소속 필터(고른 소속·총학생회)로 정한다 — 업체별 표시(nearbyAlert)는 쓰지 않아 칸을 뺐다. 값은 저장할 때 그대로 둔다. */}
           <View style={formStyles.row}>
             <View style={formStyles.half}>
               <Field label="위도 (필수)">
@@ -458,7 +448,6 @@ export default function PartnersScreen() {
                 <Text style={[adminText.strong, styles.itemTitle]}>{partner.name}</Text>
                 <Badge label={partner.category} tone="info" />
                 {partner.mapIcon ? <Badge label={`아이콘: ${partner.mapIcon}`} /> : null}
-                {partner.nearbyAlert ? <Badge label="근처 알림" /> : null}
               </View>
               {partner.affiliations?.length ? <Text style={adminText.muted}>{partner.affiliations.join(' · ')}</Text> : null}
               {partner.benefit ? <Text style={adminText.body}>{partner.benefit}</Text> : null}

@@ -1,3 +1,4 @@
+import type { ReportDayHours } from '../utils/reportSchedule'
 import { ApiError, apiRequest } from './client'
 import { stripJpegLocation, stripPngMetadata } from '../utils/jpegPrivacy'
 import type {
@@ -198,10 +199,37 @@ export async function getLiveReports(
  */
 export async function updateReportSchedule(
   id: number,
-  input: { startsAt: string; endsAt: string },
+  input: { startsAt: string; endsAt: string; days?: ReportDayHours[] },
   accessToken: string,
 ): Promise<Report> {
   return apiRequest<Report>(`/reports/${id}/schedule`, { method: 'PUT', body: input, accessToken })
+}
+
+/** 작성자 제보 수정(`PUT /reports/{id}`, 11-09) 본문. 핀(건물·좌표)은 그대로라 보내지 않는다. */
+export interface UpdateReportInput {
+  /** 건물 안 제보만(지하는 음수). 캠퍼스 밖 제보는 비운다. */
+  floor?: number
+  category: string
+  customCategoryLabel?: string
+  title: string
+  content?: string
+  placeLabel?: string
+  /** 남길 지금 사진의 번호(지금 imageUrls 순서, 0부터). 이 순서대로 앞에 둔다. */
+  keepImageIndexes: number[]
+  /** 새로 올린 사진 key(남긴 사진 뒤에 붙는다, 합쳐 최대 3장). */
+  imageKeys?: string[]
+  /** 시작을 그대로 두려면 받은 문자열을 그대로 보낸다(이미 시작한 제보도 고칠 수 있다). */
+  startsAt: string
+  endsAt: string
+  days?: ReportDayHours[]
+}
+
+/**
+ * 내 제보 고치기. 공개된 제보도 고친 내용이 바로 지도에 보이고 `editedAt` 이 남는다(사용자 결정 11-09).
+ * 남의 제보 403, 숨김·반려 409, 1시간 20회 넘으면 429.
+ */
+export async function updateReport(id: number, input: UpdateReportInput, accessToken: string): Promise<Report> {
+  return apiRequest<Report>(`/reports/${id}`, { method: 'PUT', body: input, accessToken, retries: 0 })
 }
 
 /** 본인 제보 삭제. */

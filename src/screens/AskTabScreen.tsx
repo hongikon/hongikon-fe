@@ -10,6 +10,9 @@ import Button from '../components/common/Button'
 import ContentColumn from '../components/common/ContentColumn'
 import { getAskStatus, type AskStatus } from '../apis/ask'
 import { useAuth } from '../contexts/AuthContext'
+import { requestMapIntent } from '../lib/mapIntents'
+import { requestSettingsIntent } from '../lib/settingsIntents'
+import { ROUTE_FINDING_ENABLED } from '../constants/route'
 import { COLORS } from '../constants/colors'
 import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
@@ -26,6 +29,41 @@ const CONSENT_KEY = 'ask.consent.v1'
 export default function AskTabScreen() {
   const { status, accessToken, logout } = useAuth()
   const navigation = useNavigation()
+  // 답의 "지도에서 보기"(11-07): 지도 탭에 요청을 넘기고 옮긴다 — 지도 탭이 포커스될 때 꺼내 핀·시트·설명 카드를 띄운다.
+  const showOnMap = useCallback(
+    (place: { target: string; title?: string; summary?: string }) => {
+      Keyboard.dismiss()
+      requestMapIntent({ type: 'focusPlace', ...place })
+      navigation.navigate('Map' as never)
+    },
+    [navigation],
+  )
+  // 답의 "여기서 가는 길"(11-09): 지도 탭에서 그 곳을 도착으로, 내 위치를 출발로 길찾기를 연다.
+  const routeTo = useCallback(
+    (place: { target: string }) => {
+      Keyboard.dismiss()
+      requestMapIntent({ type: 'routeTo', target: place.target })
+      navigation.navigate('Map' as never)
+    },
+    [navigation],
+  )
+  // '알림 설정 어떻게 해'(11-09): 설정 탭으로 옮겨 그 화면을 연다(바꾸지는 않는다).
+  const openSettings = useCallback(
+    (screen: 'alerts' | 'subscriptions') => {
+      Keyboard.dismiss()
+      requestSettingsIntent({ type: screen === 'alerts' ? 'openAlerts' : 'openSubscriptions' })
+      navigation.navigate('Settings' as never)
+    },
+    [navigation],
+  )
+  // '○○ 공지 찾아줘'(11-09): 소식 게시글 검색을 그 말로 연다(루트 스택 화면).
+  const searchNews = useCallback(
+    (query: string) => {
+      Keyboard.dismiss()
+      ;(navigation as unknown as { navigate: (name: string, params: object) => void }).navigate('NewsSearch', { query })
+    },
+    [navigation],
+  )
   const insets = useSafeAreaInsets()
   const tabBarHeight = useBottomTabBarHeight()
   const loggedIn = status === 'authenticated' && !!accessToken
@@ -116,7 +154,7 @@ export default function AskTabScreen() {
               <Text style={styles.cardTitle}>시작하기 전에 확인해 주세요</Text>
               <Bullet text="학교 홈페이지 안내와 공지를 근거로 AI가 답해요. 시험 중인 기능이라 틀릴 수 있으니, 중요한 일정·조건은 답 아래 원문 링크나 담당 부서로 꼭 확인해 주세요." />
               <Bullet text="답을 쓰기 위해 질문과 직전 대화가 Anthropic(미국)의 AI 서버로 암호화되어 전송돼요." />
-              <Bullet text="서비스 개선을 위해 질문·답·'해결됐나요' 응답을 1년 동안 보관해요. 계정과 연결하지 않고, 학번·전화번호·이메일 형태는 가려서 저장해요." />
+              <Bullet text="서비스 개선을 위해 질문·답·'해결됐나요' 응답(과 고른 이유)을 1년 동안 보관해요. 계정과 연결하지 않고, 학번·전화번호·이메일 형태는 가려서 저장해요." />
               <Bullet text="학번·연락처 같은 개인정보는 질문에 적지 말아 주세요." />
               <Bullet text="동의하지 않아도 다른 기능은 그대로 쓸 수 있어요." />
             </View>
@@ -138,6 +176,10 @@ export default function AskTabScreen() {
         bottomInset={keyboardShown ? insets.bottom : tabBarHeight}
         composerNote={note}
         onAsked={refreshStatus}
+        onShowOnMap={showOnMap}
+        onRouteTo={ROUTE_FINDING_ENABLED ? routeTo : undefined}
+        onOpenSettings={openSettings}
+        onSearchNews={searchNews}
       />
     </View>
   )

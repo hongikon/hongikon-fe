@@ -1,7 +1,15 @@
 import { Alert, Platform } from 'react-native'
 import type { ReportCategory, ReportListItem } from '../types'
 import { parseServerTime } from './serverTime'
-import { formatDay, formatServerSchedule, formatStartShort, isSameKstDay, isUpcomingReport } from './reportSchedule'
+import {
+  formatDay,
+  formatReportSchedule,
+  isSameKstDay,
+  isUpcomingReport,
+  parseReportDays,
+  reportPhase,
+  type ReportDayHours,
+} from './reportSchedule'
 import { returnToOpenReportAfterAuth } from '../lib/mapIntents'
 
 /**
@@ -52,6 +60,13 @@ export interface ReportMarker {
   upcoming?: boolean
   /** HOT(최근 60분 🔥 가 몰림). 지도에서 배지 오른쪽 위에 🔥 원이 붙는다. 커뮤니티 기능 전 서버는 없음. */
   hot?: boolean
+  /**
+   * 이름 아래 둘째 줄(11-08). 매일 제보는 `오늘 14:00 시작`·`운영 중 · 18:00까지`, 모든 제보는 끝나기 30분 안이면
+   * `곧 종료 · 18:00`. 없으면 이름만(지금과 같음). 이전 지도 페이지(map.html)는 이 값을 몰라 이름만 그린다.
+   */
+  sub?: string
+  /** 곧 종료(30분 안). 둘째 줄을 진하게 보여 준다. */
+  ending?: boolean
 }
 
 const KST_OFFSET_MINUTES = 9 * 60
@@ -89,11 +104,21 @@ export function formatElapsed(iso: string, now: number = Date.now()): string {
  * 배너에 쓰는 신선도 한 줄. 예: '12분 전 등록 · 18시까지'
  * 제보는 지금 벌어지는 일이라, 언제 올라왔고 언제 끝나는지가 본문만큼 중요하다.
  */
-export function formatFreshness(report: Pick<ReportListItem, 'createdAt' | 'endsAt'> & { startsAt?: string }): string {
+export function formatFreshness(
+  report: Pick<ReportListItem, 'createdAt' | 'endsAt'> & {
+    startsAt?: string
+    days?: readonly ReportDayHours[] | null
+  },
+): string {
+  const schedule = report.startsAt
+    ? formatReportSchedule({ startsAt: report.startsAt, endsAt: report.endsAt, days: report.days })
+    : null
   // 예정 제보는 언제 시작하는지가 먼저다. 예: '예정 · 10/3(토) 11:00 ~ 15:00'
   if (report.startsAt && isUpcomingReport({ startsAt: report.startsAt })) {
-    return `예정 · ${formatServerSchedule(report.startsAt, report.endsAt)}`
+    return `예정 · ${schedule}`
   }
+  // 날짜별 운영 제보는 기간과 운영 시간을 적는다. 예: '11/14(토) ~ 11/17(화) · 매일 14:00~18:00'(오늘 상태는 시트의 배지)
+  if (schedule && parseReportDays(report)) return schedule
   // 여러 날 제보는 끝나는 날짜도 적는다. 예: '2시간 전 등록 · 10/5(월) 18시까지'
   const endMs = parseServerTime(report.endsAt)
   const endText = isSameKstDay(endMs, Date.now()) ? formatKstTime(report.endsAt) : `${formatDay(endMs)} ${formatKstTime(report.endsAt)}`
@@ -114,19 +139,27 @@ export function visibleReports(
   return reports.filter((report) => parseServerTime(report.endsAt) > now)
 }
 
-export function toReportMarkers(reports: readonly ReportListItem[]): ReportMarker[] {
-  const now = Date.now()
+export function toReportMarkers(reports: readonly ReportListItem[], now: number = Date.now()): ReportMarker[] {
   return reports.map((report) => {
-    const upcoming = isUpcomingReport(report, now)
+    const phase = reportPhase(report, now)
+    const daily = parseReportDays(report) !== null
+    // 한 번짜리 예정 제보는 지금처럼 이름 앞에 시작 시각을 붙인다(예: '내일 11:00 · 붕어빵 트럭').
+    // 매일 제보는 이름은 그대로 두고 둘째 줄에 오늘 상태를 적는다(11-08 결정).
+    const upcomingOnce = phase.kind === 'upcoming' && !daily
+    const sub =
+      phase.kind === 'upcoming' ? (daily ? `${phase.text} 시작` : undefined) : (phase.text ?? undefined)
+    // 시작 전이거나 오늘 시간대 밖이면 속이 빈 '예정' 배지로 그린다. 핀은 기간 내내 남는다.
+    const muted = phase.kind === 'upcoming' || phase.kind === 'later'
     return {
       id: report.id,
       category: report.category,
       lat: report.lat,
       lng: report.lng,
-      // 예정 제보는 이름 앞에 시작 시각을 붙인다(예: '내일 11:00 · 붕어빵 트럭').
-      label: upcoming ? `${formatStartShort(parseServerTime(report.startsAt), now)} · ${report.title}` : report.title,
-      upcoming,
-      hot: !upcoming && report.hot === true,
+      label: upcomingOnce ? `${phase.text} · ${report.title}` : report.title,
+      upcoming: muted,
+      hot: !muted && report.hot === true,
+      ...(sub ? { sub } : {}),
+      ...(phase.kind === 'ending' ? { ending: true } : {}),
     }
   })
 }

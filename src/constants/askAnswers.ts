@@ -26,8 +26,17 @@ export interface AskSection {
   title: string
   items?: readonly string[]
   ordered?: boolean
-  table?: { head: readonly string[]; rows: readonly (readonly string[])[] }
+  /** 운영진이 짧게 정리한 덩어리(주제표 tips). 답을 줄여 보일 때도 자르지 않는다. */
+  full?: boolean
+  table?: {
+    head: readonly string[]
+    rows: readonly (readonly string[])[]
+    /** 열마다 둘레 색(COLORS.gradeTurn 키). 있으면 그 열 칸을 색 테두리로 감싼다 — 수강신청 차례 예시 표. */
+    colors?: readonly (AskTurnColor | null)[]
+  }
 }
+
+export type AskTurnColor = 'g4' | 'g3' | 'g2' | 'g1' | 'extra'
 
 /** 끝 답. 요약 한두 문장 + 덩어리별 자세한 안내 + 전화·학교 원문 링크(·필요하면 지도 위치). */
 export interface AskAnswerNode {
@@ -930,7 +939,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
     checkedAt: '2026-10-15',
   },
   {
-    // 운영진이 알려 준 T동(제4공학관) 강의실 대여 창구(2026-10-16). 교양교육원 전화는 부서 안내 담당정보 '영어 교과목, R·Q·T·Z1·Z2·K동 강의실 예약'.
+    // 운영진이 알려 준 T동(제4공학관) 강의실 대여 창구(2026-10-16), 강의실 마이크는 3층 경비실(2026-11-06). 교양교육원 전화는 부서 안내 담당정보 '영어 교과목, R·Q·T·Z1·Z2·K동 강의실 예약'.
     // 멀티미디어실 위치는 지도 시설(T동 6층 컴퓨터공학과 라운지, T604). 교양교육원 위치는 자료마다 달라 적지 않는다.
     id: 't-classroom-booking',
     entries: [
@@ -942,7 +951,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
           ['예약', '대여', '빌리', '빌려', '사용신청', '잡'],
         ],
         node: 'start',
-        not: ['열람실', '스터디', '공동학습', '프레젠테이션'],
+        not: ['열람실', '스터디', '공동학습', '프레젠테이션', '마이크'],
       },
     ],
     nodes: {
@@ -955,6 +964,7 @@ export const ASK_FLOWS: readonly AskFlow[] = [
             items: [
               'T0101·T0011·T501: 교양교육원에서 대여를 받아요.',
               '그 밖의 T동 강의실: T동 6층 멀티미디어실(T604)에서 대여 접수를 받아요.',
+              'T동 강의실에서 쓸 마이크: T동 3층 경비실에서 빌려요.',
             ],
           },
         ],
@@ -972,16 +982,20 @@ export const ASK_FLOWS: readonly AskFlow[] = [
     entries: [
       {
         match: [
-          ['멀티미디어실', '멀티미디어룸', 't604'],
-          ['운영', '시간', '몇시', '언제', '열어', '열려', '닫아', '이용', '사용', '쓸수'],
+          ['멀티미디어실', '멀티미디어룸', 't604', '멀미실', '멀티실'],
+          ['운영', '시간', '몇시', '언제', '열어', '열려', '닫아', '이용', '사용', '쓸수', '어디', '위치', '몇층', '몇호', '가는', '찾아'],
         ],
         node: 'start',
       },
+      // 학생들이 줄여 부르는 이름('멀미실'·'멀티실', 11-06 운영진)은 그것만 쳐도 이 안내로. 그냥 '멀티미디어실'은
+      // 다른 건물에도 있어 컴공·T동을 같이 말할 때만.
+      { match: [['멀미실', '멀티실']], node: 'start' },
+      { match: [['멀티미디어실', '멀티미디어룸'], ['컴공', '컴퓨터공학', 't동', '티동', '제4공학관']], node: 'start' },
     ],
     nodes: {
       start: {
         kind: 'answer',
-        text: '컴퓨터공학과 멀티미디어실(T동 6층 T604)은 학기 중 평일 09:00~22:00, 방학 중 10:00~20:00에 운영해요.',
+        text: "컴퓨터공학과 멀티미디어실(T동 6층 T604, 줄여서 '멀미실')은 학기 중 평일 09:00~22:00, 방학 중 10:00~20:00에 운영해요.",
         sections: [
           {
             title: '알아 둘 점',

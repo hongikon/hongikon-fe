@@ -150,6 +150,14 @@ test('오래된 기록 정리: 보낸 지 2일, 나간 지 3분이 넘으면 지
   assert.deepEqual(Object.keys(s.stays), ['b'])
 })
 
+test('저장한 대상은 마지막 날(until)이 지나면 빠지고, 그 가게에 들어가도 알리지 않는다(11-09)', () => {
+  const dated: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, until: '2026-10-27' } : t)) }
+  assert.deepEqual(settle(dated, kst(12, 0)).targets.map((t) => t.id), ['b', 'c'])
+  assert.deepEqual(onEnter(dated, 'a', kst(12, 0)).state.stays, {})
+  const today: NearbyState = { ...base, targets: base.targets.map((t) => (t.id === 'a' ? { ...t, until: '2026-10-28' } : t)) }
+  assert.equal(settle(today, kst(12, 0)).targets.length, 3)
+})
+
 test('끈 가게는 머물러도 알리지 않고, 예약해 둔 가게를 끄면 예약을 취소한다', () => {
   const muted: NearbyState = { ...base, muted: ['a'] }
   assert.deepEqual(onEnter(muted, 'a', kst(12, 0)).actions, [])
@@ -220,4 +228,20 @@ test('현장 테스트: 같은 가게에 머무는 동안 5분마다 다시 예�
   // 운영(perVisit 아님)은 같은 가게에 머물러도 다시 예약하지 않는다
   const prod = onPosition(onEnter(base, 'a', kst(12, 0)).state, kst(12, 6), { lat: 37.55, lng: 126.92 })
   assert.deepEqual(prod.actions, [])
+})
+
+test('운영: 같은 가게는 머무는 동안 한 번, 나갔다 다시 와도 지난 알림에서 3시간이 지나야 다시(11-09)', () => {
+  // 12:00 들어옴 → 12:05 알림. 16:00 까지 계속 앉아 있어도 다시 예약하지 않는다(가게 옆에 오래 있는 경우).
+  let s = onEnter(base, 'a', kst(12, 0)).state
+  const sitting = onPosition(s, kst(16, 0), { lat: 37.55, lng: 126.92 })
+  assert.deepEqual(sitting.state.sent, [{ partnerId: 'a', at: kst(12, 5) }])
+  assert.deepEqual(sitting.actions, [])
+  // 12:30 나감 → 14:00 다시 옴(알림에서 1시간 55분) → 안 보냄.
+  s = onExit(onPosition(s, kst(12, 6), { lat: 37.55, lng: 126.92 }).state, 'a', kst(12, 30)).state
+  const soon = onEnter(s, 'a', kst(14, 0))
+  assert.deepEqual(soon.actions, [])
+  // 14:10 나감 → 18:00 저녁에 다시 옴(알림에서 5시간 55분) → 머문 뒤 18:05 에 보냄.
+  s = onExit(soon.state, 'a', kst(14, 10)).state
+  const dinner = onEnter(s, 'a', kst(18, 0))
+  assert.deepEqual(dinner.actions, [{ kind: 'schedule', alert: { partnerId: 'a', fireAt: kst(18, 0) + DWELL_MS, othersCount: 0 } }])
 })
