@@ -11,6 +11,8 @@ import ContentColumn from '../components/common/ContentColumn'
 import { getAskStatus, type AskStatus } from '../apis/ask'
 import { useAuth } from '../contexts/AuthContext'
 import { requestMapIntent } from '../lib/mapIntents'
+import { requestSettingsIntent } from '../lib/settingsIntents'
+import { ROUTE_FINDING_ENABLED } from '../constants/route'
 import { COLORS } from '../constants/colors'
 import { FONTS, TYPE } from '../constants/typography'
 import { RADIUS, SPACING } from '../constants/spacing'
@@ -33,6 +35,32 @@ export default function AskTabScreen() {
       Keyboard.dismiss()
       requestMapIntent({ type: 'focusPlace', ...place })
       navigation.navigate('Map' as never)
+    },
+    [navigation],
+  )
+  // 답의 "여기서 가는 길"(11-09): 지도 탭에서 그 곳을 도착으로, 내 위치를 출발로 길찾기를 연다.
+  const routeTo = useCallback(
+    (place: { target: string }) => {
+      Keyboard.dismiss()
+      requestMapIntent({ type: 'routeTo', target: place.target })
+      navigation.navigate('Map' as never)
+    },
+    [navigation],
+  )
+  // '알림 설정 어떻게 해'(11-09): 설정 탭으로 옮겨 그 화면을 연다(바꾸지는 않는다).
+  const openSettings = useCallback(
+    (screen: 'alerts' | 'subscriptions') => {
+      Keyboard.dismiss()
+      requestSettingsIntent({ type: screen === 'alerts' ? 'openAlerts' : 'openSubscriptions' })
+      navigation.navigate('Settings' as never)
+    },
+    [navigation],
+  )
+  // '○○ 공지 찾아줘'(11-09): 소식 게시글 검색을 그 말로 연다(루트 스택 화면).
+  const searchNews = useCallback(
+    (query: string) => {
+      Keyboard.dismiss()
+      ;(navigation as unknown as { navigate: (name: string, params: object) => void }).navigate('NewsSearch', { query })
     },
     [navigation],
   )
@@ -149,6 +177,9 @@ export default function AskTabScreen() {
         composerNote={note}
         onAsked={refreshStatus}
         onShowOnMap={showOnMap}
+        onRouteTo={ROUTE_FINDING_ENABLED ? routeTo : undefined}
+        onOpenSettings={openSettings}
+        onSearchNews={searchNews}
       />
     </View>
   )

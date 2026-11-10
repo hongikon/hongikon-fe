@@ -231,6 +231,8 @@ export default function MapScreen() {
    * 저장하거나 서버로 보내지 않는다(처리방침 11-09판 "길찾기 화면을 보는 동안에만").
    */
   const [fromMyLocation, setFromMyLocation] = useState(false);
+  /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
+  const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
   const [myLocation, setMyLocation] = useState<LivePosition | null>(null);
   /** 경로를 다시 계산하는 기준 위치. 15m 넘게 움직였을 때만 바꿔 경로가 자꾸 바뀌지 않게 한다. */
   const [routeOrigin, setRouteOrigin] = useState<LivePosition | null>(null);
@@ -1662,6 +1664,26 @@ export default function MapScreen() {
       setAskCard(title ? { title: intent.title || title, summary: intent.summary ?? "" } : null);
       return;
     }
+    if (intent?.type === "routeTo") {
+      // 물어보기 답의 "여기서 가는 길"(11-09). 도착 = 그 건물(시설이면 그 건물·층), 출발 = 내 위치(권한·위치를 못 쓰면 출발은 비워 둬 고르게 한다).
+      stopPicker();
+      clearPreview();
+      setAskCard(null);
+      const split = intent.target.indexOf(":");
+      const kind = intent.target.slice(0, split);
+      const id = intent.target.slice(split + 1);
+      const facility = kind === "facility" ? facilities.find((f) => f.id === id) : undefined;
+      const building = kind === "building"
+        ? buildings.find((b) => b.code === id)
+        : facility ? buildings.find((b) => b.name === facility.buildingName) : undefined;
+      if (!building || !ROUTE_FINDING_ENABLED) return;
+      setShowSearch(false);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      commitTo(building, typeof facility?.floor === "number" ? facility.floor : null);
+      void selectMyLocationRef.current?.();
+      return;
+    }
     if (intent?.type === "previewLocation") {
       stopPicker();
       setSelectedBuilding(null);
@@ -1674,7 +1696,7 @@ export default function MapScreen() {
       showPreviewPin(preview);
     }
   }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect,
-    clearPreview, facilities, buildings, openFacilitySheet, postToMap]);
+    clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo]);
 
   // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
   useEffect(() => {
@@ -1805,6 +1827,7 @@ export default function MapScreen() {
       notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보거나 건물을 골라 주세요.");
     }
   }, [closeRouteSearch]);
+  selectMyLocationRef.current = handleSelectMyLocation;
 
   /**
    * 지도 메뉴 "내 위치 켜기". 처음 누를 때 "앱 사용 중" 위치 권한을 묻고, 켜져 있으면 끈다. 지도는 캠퍼스 일대만 움직일 수 있어

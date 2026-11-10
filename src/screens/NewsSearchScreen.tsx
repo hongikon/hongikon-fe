@@ -52,14 +52,14 @@ const DRAG_CLOSE_VELOCITY = 0.9
  * 게시글 검색과 학과 검색은 대상이 달라 결과 모양도 다르므로,
  * 필터 칩으로 모드를 바꾸고 입력창 하나를 그 모드의 훅에 연결한다.
  */
-export default function NewsSearchScreen({ navigation }: Props) {
+export default function NewsSearchScreen({ navigation, route }: Props) {
   const { isBookmarked, settings } = useSettings()
   const { toggleBookmark, toggleSubscribedDept } = useFeedbackToggles()
   const [mode, setMode] = useState<SearchMode>('게시글')
 
   // 게시글 검색은 서버(`GET /news?keyword=`, 제목 부분 일치)가 한다. 타이핑마다 부르지 않도록
   // 300ms 디바운스하고, 검색어가 비면 필터 없는 전체 최신 소식을 보여준다.
-  const [postQuery, setPostQuery] = useState('')
+  const [postQuery, setPostQuery] = useState(route.params?.query ?? '')
   const keyword = useDebouncedValue(postQuery.trim())
   const newsFeed = useNewsFeed({ keyword })
   const isSearchingPosts = keyword.length > 0

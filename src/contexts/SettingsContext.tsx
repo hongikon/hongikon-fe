@@ -700,6 +700,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
 }
 
+/** 설정 공급자 밖에서도 그려지는 화면용(웹 /dev/ask 미리보기 — 물어보기 설정 카드는 공급자가 없으면 꺼진다). */
+export function useOptionalSettings(): SettingsContextValue | null {
+  return useContext(SettingsContext)
+}
+
 export function useSettings(): SettingsContextValue {
   const ctx = useContext(SettingsContext)
   if (!ctx) throw new Error('useSettings must be used within SettingsProvider')
