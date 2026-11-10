@@ -526,3 +526,118 @@ test('server times: a time without a zone is UTC, a bad one is kept as text', ()
   assert.equal(S.serverTimeText('bad'), 'bad')
   assert.equal(S.versionLabel({ id: 2, sourceName: null, createdAt: 'bad' }), '#2(bad)')
 })
+
+// D stage: folded version list, apply warnings
+
+const V = (id, status = 'DRAFT', vertexCount = 100, edgeCount = 100) => ({ id, status, vertexCount, edgeCount, sourceName: null, createdAt: '' })
+const range = (n, make = (id) => V(id)) => Array.from({ length: n }, (_, i) => make(i + 1))
+const ids = (list) => list.map((v) => v.id)
+
+test('version list: exactly 10 are all shown and nothing is folded', () => {
+  const { shown, hidden } = S.visibleVersions(range(10), { expanded: false })
+  assert.deepEqual(ids(shown), [10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
+  assert.equal(hidden, 0)
+})
+
+test('version list: 11 show the newest 10 and fold one, expanded shows all newest first', () => {
+  const shuffled = [V(3), V(11), V(1), V(7), V(2), V(10), V(4), V(9), V(5), V(8), V(6)]
+  const folded = S.visibleVersions(shuffled, { expanded: false })
+  assert.deepEqual(ids(folded.shown), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2])
+  assert.equal(folded.hidden, 1)
+  const open = S.visibleVersions(shuffled, { expanded: true })
+  assert.deepEqual(ids(open.shown), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
+  assert.equal(open.hidden, 0)
+})
+
+test('version list: production and the route test target stay visible beyond the newest 10, in id order', () => {
+  const versions = range(15, (id) => V(id, id === 2 ? 'ACTIVE' : id < 4 ? 'ARCHIVED' : 'DRAFT'))
+  const folded = S.visibleVersions(versions, { expanded: false })
+  assert.deepEqual(ids(folded.shown), [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 2])
+  assert.equal(folded.hidden, 4)
+  const withTest = S.visibleVersions(versions, { expanded: false, testId: 4 })
+  assert.deepEqual(ids(withTest.shown), [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 4, 2])
+  assert.equal(withTest.hidden, 3)
+  // Production as the 11th from the top: just past the cut.
+  const eleventh = S.visibleVersions(range(11, (id) => V(id, id === 1 ? 'ACTIVE' : 'DRAFT')), { expanded: false })
+  assert.equal(eleventh.shown.length, 11)
+  assert.equal(eleventh.hidden, 0)
+  assert.deepEqual(S.visibleVersions([], { expanded: false }), { shown: [], hidden: 0 })
+})
+
+test('20 percent drop: exactly 20 percent warns, just under does not, growth and an empty production never do', () => {
+  assert.equal(S.droppedByFifth(100, 80), true)
+  assert.equal(S.droppedByFifth(100, 81), false)
+  assert.equal(S.droppedByFifth(100, 79), true)
+  assert.equal(S.droppedByFifth(5, 4), true)
+  assert.equal(S.droppedByFifth(6, 5), false)
+  assert.equal(S.droppedByFifth(100, 120), false)
+  assert.equal(S.droppedByFifth(0, 0), false)
+})
+
+const cleanReport = () => report()
+const applyList = (...versions) => versions
+
+test('apply warnings: the newest draft with a clean report and similar size gives the plain question', () => {
+  const versions = applyList(V(5, 'ACTIVE', 100, 100), V(6, 'DRAFT', 95, 98))
+  assert.deepEqual(S.applyWarnings(versions[1], cleanReport(), versions, 'v5'), [])
+  assert.equal(S.applyConfirmText(versions[1], cleanReport(), versions, 'v5'), S.plainApplyQuestion(6))
+  assert.equal(S.plainApplyQuestion(6), '#6 경로망을 운영에 적용할까요? 바로 앱 길찾기가 이 경로망을 써요. 예전 버전을 다시 적용하면 되돌릴 수 있어요.')
+})
+
+test('apply warnings: a missing report comes first', () => {
+  const versions = applyList(V(5, 'ACTIVE'), V(6))
+  for (const missing of [null, undefined]) {
+    const lines = S.applyWarnings(versions[1], missing, versions, 'v5')
+    assert.equal(lines.length, 1)
+    assert.ok(lines[0].startsWith('검사 결과를 받지 못했어요'))
+  }
+})
+
+test('apply warnings: check problems give their count, then the detail lines', () => {
+  const versions = applyList(V(5, 'ACTIVE'), V(6))
+  const bad = report({ detachedVertices: 2, detachedSample: ['n1', 'n2'], unresolvedBuildingCodes: ['hongik_x'] }, { becameEstimate: 1 })
+  assert.equal(S.reportProblemCount(bad), 4)
+  const lines = S.applyWarnings(versions[1], bad, versions, 'v5')
+  assert.equal(lines[0], '서버 점검 문제 4건이 있어요.')
+  assert.equal(lines.length, 4)
+  const one = S.applyWarnings(versions[1], report({}, { becameEstimate: 1 }), versions, 'v5')
+  assert.equal(one[0], '서버 점검 문제 1건이 있어요.')
+})
+
+test('apply warnings: points or edges down 20 percent against production, at the boundary', () => {
+  const at = applyList(V(5, 'ACTIVE', 100, 50), V(6, 'DRAFT', 80, 50))
+  const lines = S.applyWarnings(at[1], cleanReport(), at, 'v5')
+  assert.equal(lines.length, 1)
+  assert.ok(lines[0].startsWith('점이 운영 #5보다 20% 이상 줄어요'))
+  const under = applyList(V(5, 'ACTIVE', 100, 50), V(6, 'DRAFT', 81, 41))
+  assert.deepEqual(S.applyWarnings(under[1], cleanReport(), under, 'v5'), [])
+  const edges = applyList(V(5, 'ACTIVE', 100, 50), V(6, 'DRAFT', 100, 40))
+  assert.ok(S.applyWarnings(edges[1], cleanReport(), edges, 'v5')[0].startsWith('간선이 운영 #5보다'))
+  // Production is the bundled file: its counts are unknown, so no size warning.
+  assert.deepEqual(S.applyWarnings(at[1], cleanReport(), at.slice(1), 'file'), [])
+})
+
+test('apply warnings: an older draft or an archived version is not the newest draft', () => {
+  const versions = applyList(V(3, 'ARCHIVED'), V(5, 'ACTIVE'), V(6), V(7))
+  const older = S.applyWarnings(versions[2], cleanReport(), versions, 'v5')
+  assert.deepEqual(older, ['가장 최신 초안(#7)이 아니에요. 되돌리려는 게 아니면 최신 초안인지 확인해 주세요.'])
+  assert.equal(S.applyWarnings(versions[0], cleanReport(), versions, 'v5').length, 1)
+  assert.deepEqual(S.applyWarnings(versions[3], cleanReport(), versions, 'v5'), [])
+  const noDraft = applyList(V(3, 'ARCHIVED'), V(5, 'ACTIVE'))
+  assert.deepEqual(S.applyWarnings(noDraft[0], cleanReport(), noDraft, 'v5'), ['가장 최신 초안이 아니에요.'])
+})
+
+test('apply confirmation with warnings: warnings, both counts with the difference, then the plain question', () => {
+  const versions = applyList(V(5, 'ACTIVE', 100, 90), V(6, 'DRAFT', 70, 95), V(7))
+  const text = S.applyConfirmText(versions[1], null, versions, 'v5')
+  const lines = text.split('\n')
+  assert.equal(lines[0], '주의할 점')
+  assert.ok(lines[1].startsWith('- 검사 결과를 받지 못했어요'))
+  assert.ok(lines[2].startsWith('- 점이 운영 #5보다'))
+  assert.ok(lines[3].startsWith('- 가장 최신 초안(#7)'))
+  assert.ok(text.includes('적용할 #6: 점 70, 간선 95'))
+  assert.ok(text.includes('운영 #5: 점 100, 간선 90 (차이 점 -30, 간선 +5)'))
+  assert.ok(text.endsWith(S.plainApplyQuestion(6)))
+  const fromFile = S.applyConfirmText(versions[1], null, versions, 'file')
+  assert.ok(fromFile.includes('운영: 저장소 기본 경로망'))
+})

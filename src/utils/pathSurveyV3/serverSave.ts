@@ -385,3 +385,92 @@ export const UNSENT_WARNING_TEXT = '서버에 안 올린 변경이 있어요. �
 
 export const hasUnsentChanges = (state: Pick<ServerSaveState, 'lastFingerprint'>, store: Pick<StoreV3, 'nodes' | 'edges'>): boolean =>
   (store.nodes.length > 0 || store.edges.length > 0) && state.lastFingerprint !== storeFingerprint(store)
+
+// Server tab: version list
+
+export const VERSION_LIST_LIMIT = 10
+
+/**
+ * The versions the Server tab shows, newest id first. Folded: the newest `limit`, plus the production version and
+ * the route test target wherever they are. `hidden` counts what folding leaves out (0 when expanded).
+ */
+export function visibleVersions<V extends { id: number; status: string }>(
+  versions: readonly V[],
+  options: { expanded: boolean; testId?: number | null; limit?: number },
+): { shown: V[]; hidden: number } {
+  const sorted = [...versions].sort((a, b) => b.id - a.id)
+  if (options.expanded) return { shown: sorted, hidden: 0 }
+  const limit = options.limit ?? VERSION_LIST_LIMIT
+  const shown = sorted.filter((v, i) => i < limit || v.status === 'ACTIVE' || v.id === options.testId)
+  return { shown, hidden: sorted.length - shown.length }
+}
+
+// Server tab: apply to production
+
+export interface CountedVersion {
+  id: number
+  status: string
+  vertexCount: number
+  edgeCount: number
+}
+
+/** True when `now` is at least 20 percent below `before`. Integer math, so exactly 20 percent counts. */
+export const droppedByFifth = (before: number, now: number): boolean => before > 0 && (before - now) * 5 >= before
+
+/** Problems in the server check: detached points, building codes that do not resolve, building pairs that lost their route. */
+export const reportProblemCount = (report: GraphReport): number =>
+  report.checks.detachedVertices + report.checks.unresolvedBuildingCodes.length + report.comparison.becameEstimate
+
+/**
+ * Warning lines for the apply confirmation, in this order: no check report (or not received), check problems with
+ * their count and details, points or edges down 20 percent or more against production, not the newest draft.
+ * An empty list means the plain question.
+ */
+export function applyWarnings<V extends CountedVersion>(target: V, report: GraphReport | null | undefined, versions: readonly V[], activeSource: string): string[] {
+  const lines: string[] = []
+  if (!report) lines.push(...activationWarnings(report))
+  else {
+    const problems = reportProblemCount(report)
+    if (problems > 0) lines.push(`서버 점검 문제 ${problems}건이 있어요.`, ...activationWarnings(report))
+  }
+  const active = activeVersionOf(versions, activeSource)
+  if (active && active.id !== target.id) {
+    if (droppedByFifth(active.vertexCount, target.vertexCount)) lines.push(`점이 운영 #${active.id}보다 20% 이상 줄어요(${active.vertexCount} > ${target.vertexCount}).`)
+    if (droppedByFifth(active.edgeCount, target.edgeCount)) lines.push(`간선이 운영 #${active.id}보다 20% 이상 줄어요(${active.edgeCount} > ${target.edgeCount}).`)
+  }
+  const newestDraft = versions.filter((v) => v.status === 'DRAFT').reduce<V | null>((best, v) => (!best || v.id > best.id ? v : best), null)
+  if (!newestDraft || newestDraft.id !== target.id) {
+    lines.push(newestDraft ? `가장 최신 초안(#${newestDraft.id})이 아니에요. 되돌리려는 게 아니면 최신 초안인지 확인해 주세요.` : '가장 최신 초안이 아니에요.')
+  }
+  return lines
+}
+
+/** The production version from the list, or null when production is the bundled file (its counts are not listed). */
+export function activeVersionOf<V extends CountedVersion>(versions: readonly V[], activeSource: string): V | null {
+  if (!activeSource.startsWith('v')) return null
+  const id = Number(activeSource.slice(1))
+  return versions.find((v) => v.id === id) ?? null
+}
+
+export const plainApplyQuestion = (id: number): string =>
+  `#${id} 경로망을 운영에 적용할까요? 바로 앱 길찾기가 이 경로망을 써요. 예전 버전을 다시 적용하면 되돌릴 수 있어요.`
+
+/** Without warnings it is the plain question as before. With warnings: warnings, counts against production, then the question. */
+export function applyConfirmText<V extends CountedVersion>(target: V, report: GraphReport | null | undefined, versions: readonly V[], activeSource: string): string {
+  const warnings = applyWarnings(target, report, versions, activeSource)
+  if (warnings.length === 0) return plainApplyQuestion(target.id)
+  const active = activeVersionOf(versions, activeSource)
+  const sign = (n: number) => (n > 0 ? `+${n}` : String(n))
+  const against = active
+    ? `운영 #${active.id}: 점 ${active.vertexCount}, 간선 ${active.edgeCount} (차이 점 ${sign(target.vertexCount - active.vertexCount)}, 간선 ${sign(target.edgeCount - active.edgeCount)})`
+    : '운영: 저장소 기본 경로망(점, 간선 수는 목록에 없어요)'
+  return [
+    '주의할 점',
+    ...warnings.map((line) => `- ${line}`),
+    '',
+    `적용할 #${target.id}: 점 ${target.vertexCount}, 간선 ${target.edgeCount}`,
+    against,
+    '',
+    plainApplyQuestion(target.id),
+  ].join('\n')
+}

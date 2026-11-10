@@ -14,7 +14,7 @@ import type { RouteAlternative } from '../../apis/routes'
 import type { Building } from '../../types'
 import { buildFloorOptions } from '../../utils/floors'
 import { shortBuildingName } from '../../utils/routeLabels'
-import { serverTimeText as timeText, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
+import { applyConfirmText, serverTimeText as timeText, visibleVersions, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
 import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 
@@ -143,6 +143,8 @@ export default function ServerPanel({
   const [name, setName] = useState('')
   const [shown, setShown] = useState<GraphVersion | null>(null)
   const [testId, setTestId] = useState<number | null>(null)
+  // Screen state only: the list opens folded every time.
+  const [expanded, setExpanded] = useState(false)
   const [from, setFrom] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
   const [to, setTo] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
   const [preview, setPreview] = useState<{ version: RouteAlternative[]; active: RouteAlternative[] } | null>(null)
@@ -203,14 +205,22 @@ export default function ServerPanel({
       else if (outcome.kind === 'failed') onNotice(`서버에 올리지 못했어요. ${outcome.text}`)
     })
 
-  const activate = (id: number) => {
-    if (!confirmAction(`#${id} 경로망을 운영에 적용할까요? 바로 앱 길찾기가 이 경로망을 써요. 예전 버전을 다시 적용하면 되돌릴 수 있어요.`)) return
+  /** Reads the check report first; without it the question warns but still lets the person apply. */
+  const activate = (id: number) =>
     run('적용', async () => {
+      const target = list?.versions.find((v) => v.id === id)
+      if (!list || !target) return
+      let report: GraphReport | null = null
+      try {
+        report = (await getGraphVersion(devKey, id)).report
+      } catch {
+        // applyConfirmText puts the missing report first.
+      }
+      if (!confirmAction(applyConfirmText(target, report, list.versions, list.activeSource))) return
       const version = await activateGraphVersion(devKey, id)
       await refresh()
       onNotice(`#${version.id} 을 운영에 적용했어요. 앱 길찾기가 바로 이 경로망을 써요.`)
     })
-  }
 
   const restore = (id: number) =>
     run('불러오기', async () => {
@@ -243,8 +253,15 @@ export default function ServerPanel({
       ? `저장소 기본(내보낸 시각 ${timeText(list.bundledExportedAt)})`
       : `#${list.activeSource.slice(1)}`
 
+  const folded = visibleVersions(list?.versions ?? [], { expanded, testId })
+
   return (
     <View>
+      <View style={styles.guide}>
+        <Text style={ui.hint}>{'저장: 초안으로 서버에 보관만 해요. 앱 길찾기는 바뀌지 않아요.'}</Text>
+        <Text style={ui.hint}>{'적용: 고른 버전이 바로 운영 경로망이 되고, 앱 길찾기가 바뀌어요.'}</Text>
+      </View>
+
       <Section title="운영 경로망" help="앱 길찾기가 지금 쓰는 경로망이에요. 아래에서 올린 초안을 적용하면 배포 없이 바로 바뀌어요.">
         <Row>
           <Text style={[ui.hint, styles.grow]}>{activeText}</Text>
@@ -264,7 +281,7 @@ export default function ServerPanel({
         title="버전"
         help="결과: 검사·비교 / 시험: 아래 길 시험 대상 / 적용: 운영에 쓰기 / 불러오기: 그 버전의 백업으로 지금 조사 자료를 덮어써요(확인 후, 저장 지점을 먼저 남겨요)."
       >
-        {(list?.versions ?? []).map((v) => (
+        {folded.shown.map((v) => (
           <View key={v.id} style={styles.version}>
             <Text style={[ui.hint, v.status === 'ACTIVE' ? styles.active : null]}>
               {`#${v.id} ${STATUS_TEXT[v.status]} · ${v.sourceName ?? '이름 없음'} · 정점 ${v.vertexCount} 간선 ${v.edgeCount} · ${timeText(v.createdAt)}`}
@@ -277,6 +294,8 @@ export default function ServerPanel({
             </Row>
           </View>
         ))}
+        {folded.hidden > 0 ? <Btn label={`이전 버전 ${folded.hidden}개 더 보기`} onPress={() => setExpanded(true)} /> : null}
+        {expanded && visibleVersions(list?.versions ?? [], { expanded: false, testId }).hidden > 0 ? <Btn label="접기" onPress={() => setExpanded(false)} /> : null}
         {list && list.versions.length === 0 ? <Text style={ui.hint}>{'아직 올린 버전이 없어요.'}</Text> : null}
       </Section>
 
@@ -317,6 +336,7 @@ export default function ServerPanel({
 
 const styles = StyleSheet.create({
   box: { gap: 4, paddingVertical: 4 },
+  guide: { gap: 2, padding: 8, marginBottom: 8, borderRadius: 8, backgroundColor: '#F1F5F9' },
   gap: { marginTop: 8, gap: 4 },
   grow: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
