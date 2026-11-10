@@ -253,3 +253,276 @@ test('server save: one going already skips a new upload, but same content and no
   assert.equal(calls.length, 0)
   assert.equal(S.stateAfter(state, { kind: 'busy' }), state)
 })
+
+// C stage: status line, notices, entry check, check before a save
+
+const clock = (at) => `t${at}`
+const SUMMARY = (id, extra = {}) => ({ id, sourceName: `name${id}`, createdAt: '2026-11-10T05:05:00', status: 'DRAFT', ...extra })
+const lister = (versions) => {
+  const calls = []
+  return {
+    calls,
+    list: async () => {
+      calls.push(1)
+      return { activeSource: 'file', bundledExportedAt: '', versions }
+    },
+  }
+}
+const backups = (byId) => {
+  const calls = []
+  return {
+    calls,
+    fingerprint: async (id) => {
+      calls.push(id)
+      if (byId[id] instanceof Error) throw byId[id]
+      return byId[id]
+    },
+  }
+}
+const failingList = async () => {
+  throw new Error('offline')
+}
+
+test('status line: every server state has its text, errors are added, only a failure retries', () => {
+  const good = S.afterUpload(S.EMPTY_SERVER_STATE, 12, 'a', 500)
+  const line = (view, state = good, errors = 0) => S.serverStatusLine(view, state, errors, clock)
+  assert.deepEqual(line('synced'), { text: '서버 저장됨 #12 t500', tone: 'ok', retry: false })
+  assert.equal(line('changed').text, '서버에 안 올린 변경 있음 (마지막 서버 저장 #12 t500)')
+  assert.equal(line('saving').text, '서버 저장 중...')
+  assert.equal(line('noKey').text, '브라우저에만 저장됨: 이 탭에 서버 암호키가 없어요')
+  assert.equal(line('noRoute').text, '서버에 올릴 길 없음')
+  const failed = line('failed', S.afterFailure(good, '서버와 연결이 원활하지 않아요.'))
+  assert.equal(failed.text, '서버 저장 실패: 서버와 연결이 원활하지 않아요. 눌러서 다시 시도')
+  assert.equal(failed.retry, true)
+  assert.equal(line('synced', good, 3).text, '서버 저장됨 #12 t500 (점검 오류 3건 포함)')
+  assert.ok(line('changed', good, 2).text.endsWith('(점검 오류 2건 포함)'))
+  assert.equal(line('noKey', good, 2).text.includes('점검 오류'), false, 'nothing about errors when the server is not involved')
+  for (const view of ['blocked', 'noKey', 'saving', 'synced', 'noRoute', 'never', 'changed']) assert.equal(line(view).retry, false, view)
+})
+
+test('status line: what the screen shows follows serverSaveStateOf', () => {
+  const on = { hasKey: true, blocked: false, saving: false }
+  const failed = S.afterFailure(S.afterUpload(S.EMPTY_SERVER_STATE, 2, 'a', 1), 'down')
+  assert.equal(S.serverStatusLine(S.serverSaveStateOf(failed, 'b', on), failed, 0, clock).retry, true)
+  assert.equal(S.serverStatusLine(S.serverSaveStateOf(failed, 'b', { ...on, saving: true }), failed, 0, clock).text, '서버 저장 중...')
+})
+
+test('save notice: browser result first, then the server result, both when the browser storage was full', () => {
+  const up = { kind: 'uploaded', version: { id: 8, vertexCount: 1, edgeCount: 1 }, fingerprint: 'x', skipped: 0 }
+  assert.equal(S.saveNoticeText(true, up), '브라우저에 저장했어요. 서버 초안 #8에도 저장했어요.')
+  const full = S.saveNoticeText(false, up)
+  assert.ok(full.startsWith('브라우저에는 저장하지 못했어요'))
+  assert.ok(full.endsWith('서버 초안 #8에는 저장했어요.'))
+  assert.ok(S.saveNoticeText(true, { kind: 'same', versionId: 8 }).includes('(#8)'))
+  assert.ok(S.saveNoticeText(true, { kind: 'failed', text: 'down.' }).includes('서버 저장 실패: down.'))
+  assert.ok(S.saveNoticeText(true, { kind: 'noRoute', fingerprint: 'x' }).endsWith('서버 저장 안 함(올릴 길 없음).'))
+  assert.ok(S.saveNoticeText(true, { kind: 'canceled' }).endsWith('서버에는 올리지 않았어요.'))
+  assert.equal(S.saveNoticeText(true, { kind: 'blocked' }), null, 'the stopped notice stays')
+  assert.equal(S.saveNoticeText(false, { kind: 'blocked' }), S.BROWSER_SAVE_FAILED_TEXT)
+})
+
+test('full browser storage still saves to the server, a stopped tab does not', async () => {
+  const ok = fakeUpload()
+  const outcome = await push({ upload: ok.upload })
+  assert.equal(outcome.kind, 'uploaded')
+  assert.ok(S.saveNoticeText(false, outcome).includes('#7에는 저장했어요'))
+  const stopped = fakeUpload()
+  assert.equal((await push({ blocked: true, upload: stopped.upload })).kind, 'blocked')
+  assert.equal(stopped.calls.length, 0)
+})
+
+test('entry (a): no server record and a local survey offers the base save, even with server versions, and fetches no backup', async () => {
+  for (const versions of [[], [SUMMARY(3), SUMMARY(9)]]) {
+    const l = lister(versions)
+    const b = backups({})
+    const result = await S.checkOnEntry({ state: S.EMPTY_SERVER_STATE, store: routable, listVersions: l.list, backupFingerprint: b.fingerprint })
+    assert.deepEqual(result.offer, { kind: 'baseline' })
+    assert.equal(result.state, S.EMPTY_SERVER_STATE)
+    assert.equal(result.seenId, versions.length ? 9 : null)
+    assert.equal(l.calls.length, 1)
+    assert.equal(b.calls.length, 0)
+  }
+  assert.ok(S.offerText({ kind: 'baseline' }).includes('기준으로 저장할까요'))
+})
+
+test('entry (a): approving the base save uploads once without asking, closing it sends nothing', async () => {
+  const approved = fakeUpload()
+  const outcome = await push({ upload: approved.upload })
+  assert.equal(outcome.kind, 'uploaded')
+  assert.equal(approved.calls.length, 1)
+  // Closing the offer is just not calling push: the entry check itself never uploads.
+  const closed = fakeUpload()
+  await S.checkOnEntry({ state: S.EMPTY_SERVER_STATE, store: routable, listVersions: lister([]).list, backupFingerprint: backups({}).fingerprint })
+  assert.equal(closed.calls.length, 0)
+})
+
+test('entry (b): a newer id is compared by content; the same content is recorded quietly', async () => {
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 3, 'old', 1)
+  const b = backups({ 5: print(routable) })
+  const result = await S.checkOnEntry({ state, store: routable, listVersions: lister([SUMMARY(3), SUMMARY(5)]).list, backupFingerprint: b.fingerprint })
+  assert.equal(result.offer, null)
+  assert.deepEqual(b.calls, [5])
+  assert.equal(result.state.lastVersionId, 5)
+  assert.equal(result.state.lastFingerprint, print(routable))
+  assert.equal(result.state.lastAt, Date.UTC(2026, 10, 10, 5, 5), 'the server time, read as UTC')
+  assert.equal(S.serverSaveStateOf(result.state, print(routable), { hasKey: true, blocked: false, saving: false }), 'synced')
+})
+
+test('entry (b): other content, or a backup that cannot be read, is offered for loading', async () => {
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 3, 'old', 1)
+  for (const value of ['other-print', new Error('down')]) {
+    const result = await S.checkOnEntry({ state, store: routable, listVersions: lister([SUMMARY(5), SUMMARY(3)]).list, backupFingerprint: backups({ 5: value }).fingerprint })
+    assert.equal(result.offer.kind, 'load')
+    assert.equal(result.offer.version.id, 5)
+    assert.equal(result.offer.newer, true)
+    assert.equal(result.state, state)
+  }
+  const text = S.offerText({ kind: 'load', version: SUMMARY(15), newer: true })
+  assert.ok(text.startsWith('다른 기기에서 저장한 #15('))
+  assert.ok(text.includes('name15'))
+})
+
+test('entry (b): the newest id is this browser own, no backup is fetched and nothing is offered', async () => {
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 5, 'mine', 1)
+  const b = backups({})
+  const result = await S.checkOnEntry({ state, store: routable, listVersions: lister([SUMMARY(4), SUMMARY(5)]).list, backupFingerprint: b.fingerprint })
+  assert.equal(result.offer, null)
+  assert.equal(b.calls.length, 0)
+  assert.equal(result.seenId, 5)
+})
+
+test('entry (c): an empty browser offers the newest version, nothing when the server is empty too', async () => {
+  const empty = { nodes: [], edges: [] }
+  const result = await S.checkOnEntry({ state: S.EMPTY_SERVER_STATE, store: empty, listVersions: lister([SUMMARY(2), SUMMARY(7), SUMMARY(4)]).list, backupFingerprint: backups({}).fingerprint })
+  assert.deepEqual(result.offer, { kind: 'load', version: SUMMARY(7), newer: false })
+  assert.ok(S.offerText(result.offer).startsWith('이 브라우저는 비어 있어요'))
+  const none = await S.checkOnEntry({ state: S.EMPTY_SERVER_STATE, store: empty, listVersions: lister([]).list, backupFingerprint: backups({}).fingerprint })
+  assert.equal(none.offer, null)
+})
+
+test('entry: a failed list gives no offer and leaves the state', async () => {
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 3, 'old', 1)
+  const result = await S.checkOnEntry({ state, store: routable, listVersions: failingList, backupFingerprint: backups({}).fingerprint })
+  assert.deepEqual(result, { offer: null, state, seenId: null })
+})
+
+test('loading over unsent work warns first, an empty browser or a synced one does not', () => {
+  assert.equal(S.hasUnsentChanges(S.EMPTY_SERVER_STATE, routable), true)
+  assert.equal(S.hasUnsentChanges(S.afterUpload(S.EMPTY_SERVER_STATE, 1, print(routable), 1), routable), false)
+  assert.equal(S.hasUnsentChanges(S.EMPTY_SERVER_STATE, { nodes: [], edges: [] }), false)
+  assert.ok(S.UNSENT_WARNING_TEXT.startsWith('서버에 안 올린 변경이 있어요'))
+  const adopted = S.afterAdopt(S.EMPTY_SERVER_STATE, SUMMARY(6, { createdAt: 'bad' }), 'p', 77)
+  assert.deepEqual([adopted.lastVersionId, adopted.lastFingerprint, adopted.lastAt], [6, 'p', 77])
+})
+
+test('before a save: nothing known asks nothing and lists nothing', async () => {
+  const l = lister([SUMMARY(9)])
+  let asked = 0
+  const result = await S.overwriteCheck({
+    lastVersionId: null,
+    seenId: null,
+    listVersions: l.list,
+    confirm: () => {
+      asked += 1
+      return false
+    },
+  })
+  assert.deepEqual(result, { go: true, seenId: null })
+  assert.equal(l.calls.length, 0)
+  assert.equal(asked, 0)
+})
+
+test('before a save: no newer version goes on, a newer one asks, yes goes on and no cancels', async () => {
+  const never = () => assert.fail('no question expected')
+  const quiet = await S.overwriteCheck({ lastVersionId: 5, seenId: 5, listVersions: lister([SUMMARY(5), SUMMARY(4)]).list, confirm: never })
+  assert.deepEqual(quiet, { go: true, seenId: 5 })
+  // The first save after the base offer: only something newer than what was seen on entry asks.
+  const afterEntry = await S.overwriteCheck({ lastVersionId: null, seenId: 9, listVersions: lister([SUMMARY(9)]).list, confirm: never })
+  assert.equal(afterEntry.go, true)
+  const asked = []
+  const yes = await S.overwriteCheck({
+    lastVersionId: 5,
+    seenId: 6,
+    listVersions: lister([SUMMARY(8), SUMMARY(5)]).list,
+    confirm: (v) => {
+      asked.push(v.id)
+      return true
+    },
+  })
+  assert.deepEqual(yes, { go: true, seenId: 8 })
+  assert.deepEqual(asked, [8])
+  const no = await S.overwriteCheck({ lastVersionId: 5, seenId: 6, listVersions: lister([SUMMARY(8)]).list, confirm: () => false })
+  assert.deepEqual(no, { go: false, seenId: 6 }, 'canceling keeps the old reference, so the next save asks again')
+  const offline = await S.overwriteCheck({ lastVersionId: 5, seenId: null, listVersions: failingList, confirm: () => false })
+  assert.equal(offline.go, true)
+  assert.ok(S.overwriteQuestion(SUMMARY(8)).endsWith('그래도 이 내용으로 새 초안을 만들까요?'))
+})
+
+test('before a save: canceling the question uploads nothing and keeps the state, busy is set and cleared', async () => {
+  const { calls, upload } = fakeUpload()
+  const events = []
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 5, 'older', 1)
+  const outcome = await push({
+    state,
+    upload,
+    begin: () => events.push('begin'),
+    end: () => events.push('end'),
+    beforeUpload: async () => (await S.overwriteCheck({ lastVersionId: 5, seenId: 5, listVersions: lister([SUMMARY(8)]).list, confirm: () => false })).go,
+  })
+  assert.deepEqual(outcome, { kind: 'canceled' })
+  assert.equal(calls.length, 0)
+  assert.deepEqual(events, ['begin', 'end'])
+  assert.equal(S.stateAfter(state, outcome), state)
+})
+
+test('busy is only set when an upload really starts, and is cleared after a failure', async () => {
+  const events = []
+  const track = { begin: () => events.push('begin'), end: () => events.push('end') }
+  const state = S.afterUpload(S.EMPTY_SERVER_STATE, 5, print(routable), 1)
+  await push({ state, upload: fakeUpload().upload, ...track })
+  await push({ busy: true, upload: fakeUpload().upload, ...track })
+  assert.deepEqual(events, [])
+  await push({ upload: fakeUpload(new Error('down')).upload, ...track })
+  assert.deepEqual(events, ['begin', 'end'])
+})
+
+test('retry after a failure: the next try uploads, clears the failure and the line turns synced', async () => {
+  let state = S.EMPTY_SERVER_STATE
+  state = S.stateAfter(state, await push({ state, upload: fakeUpload(new Error('down')).upload }))
+  const on = { hasKey: true, blocked: false, saving: false }
+  assert.equal(S.serverSaveStateOf(state, print(routable), on), 'failed')
+  const again = fakeUpload({ id: 11, vertexCount: 1, edgeCount: 1 })
+  state = S.stateAfter(state, await push({ state, upload: again.upload }), 50)
+  assert.equal(again.calls.length, 1)
+  assert.equal(state.lastError, null)
+  assert.equal(S.serverStatusLine(S.serverSaveStateOf(state, print(routable), on), state, 0, clock).text, '서버 저장됨 #11 t50')
+})
+
+test('C stage: the dev key stays out of the state after entry checks, loads, cancels and failures', async () => {
+  const storage = memoryStorage()
+  const entry = await S.checkOnEntry({
+    state: S.afterUpload(S.EMPTY_SERVER_STATE, 3, 'o', 1),
+    store: routable,
+    listVersions: lister([SUMMARY(5)]).list,
+    backupFingerprint: backups({ 5: print(routable) }).fingerprint,
+  })
+  const states = [
+    entry.state,
+    S.afterAdopt(S.EMPTY_SERVER_STATE, SUMMARY(4), 'p'),
+    S.stateAfter(S.EMPTY_SERVER_STATE, await push({ upload: fakeUpload().upload, beforeUpload: async () => false })),
+    S.stateAfter(S.EMPTY_SERVER_STATE, await push({ upload: fakeUpload(new Error('down')).upload })),
+  ]
+  for (const state of states) {
+    S.saveServerSaveState(state, storage)
+    assert.ok(!storage.data.get(S.SERVER_KEY_V3).includes(DEV_KEY))
+  }
+})
+
+test('server times: a time without a zone is UTC, a bad one is kept as text', () => {
+  assert.equal(S.serverTimeMs('2026-11-10T05:05:00'), Date.UTC(2026, 10, 10, 5, 5))
+  assert.equal(S.serverTimeMs('2026-11-10T05:05:00Z'), Date.UTC(2026, 10, 10, 5, 5))
+  assert.equal(S.serverTimeMs('2026-11-10T14:05:00+09:00'), Date.UTC(2026, 10, 10, 5, 5))
+  assert.equal(S.serverTimeMs(null), null)
+  assert.equal(S.serverTimeText('bad'), 'bad')
+  assert.equal(S.versionLabel({ id: 2, sourceName: null, createdAt: 'bad' }), '#2(bad)')
+})

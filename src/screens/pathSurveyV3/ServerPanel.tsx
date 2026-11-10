@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import {
   activateGraphVersion,
-  fetchGraphBackup,
   getGraphVersion,
   listGraphVersions,
   previewGraphRoutes,
@@ -15,9 +14,7 @@ import type { RouteAlternative } from '../../apis/routes'
 import type { Building } from '../../types'
 import { buildFloorOptions } from '../../utils/floors'
 import { shortBuildingName } from '../../utils/routeLabels'
-import type { PushOutcome } from '../../utils/pathSurveyV3/serverSave'
-import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { parseBackupText } from '../../utils/pathSurveyV3/transfer'
+import { serverTimeText as timeText, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
 import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 
@@ -32,14 +29,6 @@ export interface RouteLine {
 }
 
 const STATUS_TEXT = { DRAFT: '초안', ACTIVE: '운영 중', ARCHIVED: '지난 버전' } as const
-
-function timeText(iso: string | null): string {
-  if (!iso) return ''
-  // The server sends UTC without a zone (LocalDateTime).
-  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 const minutes = (seconds: number) => `${(seconds / 60).toFixed(1)}분`
 
@@ -132,7 +121,7 @@ function EndPicker({
 export default function ServerPanel({
   devKey,
   buildings,
-  onRestore,
+  onLoadVersion,
   onRouteLines,
   onNotice,
   onUpload,
@@ -140,7 +129,8 @@ export default function ServerPanel({
 }: {
   devKey: string | undefined
   buildings: readonly Building[]
-  onRestore: (next: StoreV3) => void
+  /** Loads that version's backup through the screen (overwrite question, save point first, recorded as held). */
+  onLoadVersion: (id: number) => Promise<void>
   onRouteLines: (lines: RouteLine[]) => void
   onNotice: (text: string) => void
   /** Uploads the current survey as a draft through the screen, with this name (blank: the save time). */
@@ -224,7 +214,7 @@ export default function ServerPanel({
 
   const restore = (id: number) =>
     run('불러오기', async () => {
-      onRestore(parseBackupText(await fetchGraphBackup(devKey, id)))
+      await onLoadVersion(id)
     })
 
   const show = (id: number) =>
