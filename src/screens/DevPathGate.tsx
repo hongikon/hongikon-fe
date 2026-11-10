@@ -69,7 +69,7 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
   if (unlocked) {
     return (
       <Suspense fallback={<Text style={styles.loading}>불러오는 중이에요</Text>}>
-        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : mode === 'surveyV3' ? <DevPathSurveyV3Screen /> : <DevAskScreen devKey={rawKey} />}
+        {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : mode === 'surveyV3' ? <DevPathSurveyV3Screen devKey={rawKey} /> : <DevAskScreen devKey={rawKey} />}
       </Suspense>
     )
   }
