@@ -188,7 +188,7 @@ test('알림 반경 20m: 오차가 작을 때(5m) B 에서 40m 떨어져 머물�
   assert.deepEqual(settle(state, now + 1).sent, [])
 })
 
-test('알림 반경 20m 의 실제 경계: GPS 오차는 15m 까지 반경에 더해 준다(오차 15m 면 35m 까지 안)', () => {
+test('알림 반경 20m 의 실제 경계: GPS 오차는 25m 까지 반경에 더해 준다(오차 15m 면 35m, 실내 오차 30m 면 45m 까지 안, 11-10)', () => {
   const rand = noise(9)
   const runAt = (y: number, accuracy: number) => {
     let state = start()
@@ -204,8 +204,10 @@ test('알림 반경 20m 의 실제 경계: GPS 오차는 15m 까지 반경에 �
   }
   assert.deepEqual(runAt(30, 15), ['B'])
   assert.deepEqual(runAt(30, 5), [])
-  // 오차가 아무리 커도(50m) 15m 까지만 더한다.
-  assert.deepEqual(runAt(40, 50), [])
+  // 가게 안 실내 오차(30m)로 40m 밀려 찍혀도 안으로 본다(11-10 현장: 오래 있어도 알림이 안 옴).
+  assert.deepEqual(runAt(40, 30), ['B'])
+  // 오차가 아무리 커도(50m) 25m 까지만 더한다.
+  assert.deepEqual(runAt(50, 50), [])
 })
 
 test('두 가게 사이(A·B 에서 20m씩)에 머물면 한 번만 알린다(두 번 아님)', () => {

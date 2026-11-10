@@ -99,6 +99,7 @@ import { SheetHeaderContext } from "../hooks/useResizableSheet";
 import ContentColumn from "../components/common/ContentColumn";
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
+import { useIsAdmin } from "../admin/AdminAccess";
 import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
 import { requestSettingsIntent } from "../lib/settingsIntents";
 import { navigationRef } from "../navigation/navigationRef";
@@ -127,8 +128,10 @@ function buildingLabel(building: Building, floor: number | null): string {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
-  // 근처 알림 영역 보기(개발·현장 테스트 빌드만): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
-  const showNearbyOverlayMenu = NEARBY_DEBUG_TOOLS && nearbyAlertsAvailable();
+  // 근처 알림 영역 보기(개발·현장 테스트 빌드, 운영 앱은 관리자 계정만 — 11-10): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
+  const isAdmin = useIsAdmin();
+  const nearbyTools = NEARBY_DEBUG_TOOLS || isAdmin;
+  const showNearbyOverlayMenu = nearbyTools && nearbyAlertsAvailable();
   const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
   const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
   /** 근처 알림이 아직 등록 전(설정에서 켜지 않음). 안내 줄에 설정으로 가는 버튼을 단다(11-09). */
@@ -1054,6 +1057,7 @@ export default function MapScreen() {
   }, [locationActive]);
 
   // 고른 경로에서 20m 안이면 점을 경로선 위에 붙여 보여 준다(길 맞추기). 직선 어림 경로에는 붙이지 않는다.
+  const shownLocationRef = useRef<LivePosition | null>(null);
   const shownLocation = useMemo(() => {
     if (!myLocation) return null;
     const route = routeAlternatives[selectedRouteIndex];
@@ -1062,6 +1066,7 @@ export default function MapScreen() {
   }, [myLocation, routeAlternatives, selectedRouteIndex]);
 
   useEffect(() => {
+    shownLocationRef.current = shownLocation;
     webViewRef.current?.injectJavaScript(myLocationScript(shownLocation));
   }, [shownLocation]);
 
@@ -1327,6 +1332,8 @@ export default function MapScreen() {
     if (reportsOn && shownReportData !== undefined) {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
+    // 내 위치 점도 다시 그린다 — 지도가 다시 뜨면 점이 사라지고, 가만히 있으면 새 위치가 오지 않아 다시 그려지지 않았다(11-10).
+    if (shownLocationRef.current) webViewRef.current?.injectJavaScript(myLocationScript(shownLocationRef.current));
     // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
     if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
     // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
@@ -2148,7 +2155,7 @@ export default function MapScreen() {
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
             // 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다.
-            onMyLocation={canLocate() && (NEARBY_DEBUG_TOOLS || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
+            onMyLocation={canLocate() && (nearbyTools || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
             myLocationOn={myLocationOn}
             onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
             onPickNearbyTestLocation={showNearbyOverlayMenu ? () => setPickingNearbyTest(true) : undefined}

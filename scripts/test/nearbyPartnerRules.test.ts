@@ -56,12 +56,13 @@ function partner(id: string, meters: number, extra: Partial<Partner> = {}): Part
 
 const NOON = kst(12, 0)
 
-test('알림 반경(20m): GPS 오차는 15m 까지만 더하고, 안에 있던 곳은 25m 더 멀어져야 나간다', () => {
+test('알림 반경(20m): GPS 오차는 25m 까지만 더하고(11-10), 안에 있던 곳은 25m 더 멀어져야 나간다', () => {
   assert.equal(preciselyInside(20, 0, false), true)
   assert.equal(preciselyInside(21, 0, false), false)
   assert.equal(preciselyInside(30, 12, false), true)
-  // 오차가 아무리 커도 20 + 15m 까지만.
-  assert.equal(preciselyInside(36, 80, false), false)
+  assert.equal(preciselyInside(45, 30, false), true)
+  // 오차가 아무리 커도 20 + 25m 까지만.
+  assert.equal(preciselyInside(46, 80, false), false)
   assert.equal(preciselyInside(44, 0, true), true)
   assert.equal(preciselyInside(46, 0, true), false)
   assert.equal(preciselyInside(28, null, false, 30), true)
@@ -90,12 +91,12 @@ test('대상 업체: 혜택·기한·소속·캠퍼스 겹침으로 거른다(�
   assert.deepEqual(art, ['ok', 'notFlagged', 'endsToday', 'collegeOnly'])
 })
 
-test('대상 업체: 캠퍼스 건물과는 알림이 닿는 거리(60m)로 겹침을 본다 — 깨우는 원(150m)이 아니라(11-09)', () => {
+test('대상 업체: 캠퍼스 건물과는 알림이 닿는 거리(70m, 11-10)로 겹침을 본다 — 깨우는 원(150m)이 아니라(11-09)', () => {
   const dorm = [north(0)]
   const ids = (m: number) => pickTargets([partner('p', m)], { affiliations: [], campusPoints: dorm, now: NOON }).length
-  assert.equal(CAMPUS_CLEARANCE_METERS, 60)
-  assert.equal(ids(56), 0)
-  assert.equal(ids(61), 1)
+  assert.equal(CAMPUS_CLEARANCE_METERS, 70)
+  assert.equal(ids(66), 0)
+  assert.equal(ids(71), 1)
   assert.equal(ids(103), 1)
 })
 
