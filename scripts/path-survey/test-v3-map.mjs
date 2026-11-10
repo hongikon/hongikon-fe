@@ -132,6 +132,15 @@ test('a catalog building without survey points can be filtered', () => {
   assert.deepEqual(draw(store([]), { index: fullIndex, filter }), { nodes: [], edges: [] })
 })
 
+test('selected buildings are listed in server list order, unknown codes last, without changing the filter', () => {
+  const filter = { selections: [{ building: 'old_code', floor: null }, { building: K, floor: 1 }, { building: R, floor: null }] }
+  const listed = M.selectionsInListOrder(filter, index).map((s) => s.building)
+  const expected = [R, K].sort((x, y) => index.byCode.get(x).order - index.byCode.get(y).order)
+  assert.deepEqual(listed, [...expected, 'old_code'])
+  assert.deepEqual(filter.selections.map((s) => s.building), ['old_code', K, R])
+  assert.deepEqual(M.selectionsInListOrder(M.NO_FILTER, index), [])
+})
+
 test('selection and pending rings, only move mode can drag', () => {
   const s = store([node('n1'), node('n2'), node('n3')])
   const { nodes } = draw(s, { selected: 'n1', pending: 'n2' })

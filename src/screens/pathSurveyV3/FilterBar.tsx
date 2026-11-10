@@ -5,7 +5,7 @@ import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 import { BuildingSearch, FloorPicker } from './LevelPicker'
-import { buildingColor, NO_FILTER, type MapFilter } from './mapState'
+import { buildingColor, NO_FILTER, selectionsInListOrder, type MapFilter } from './mapState'
 
 /**
  * Search all buildings, selecting all floors or one floor per building. Matching indoor points and
@@ -65,12 +65,13 @@ export default function FilterBar({
           ))}
         </View>
       ) : null}
-      {filter.selections.map(({ building, floor }) => (
+      {selectionsInListOrder(filter, index).map(({ building, floor }) => (
         <View key={building} style={styles.group}>
           <View style={styles.row}>
             <Text style={ui.rowText}>{index.byCode.get(building)?.name ?? building}</Text>
             <Chip label="이 건물 빼기" onPress={() => toggleBuilding(building)} />
           </View>
+          {levelsByBuilding.has(building) ? null : <Text style={ui.hint}>{'이 건물에는 아직 내부 점이 없어요. 외부 점만 진하게 보여요.'}</Text>}
           <View style={styles.row}>
             <Chip label="모든 층" on={floor === null} color={buildingColor(index, building)} onPress={() => setFloor(building, null)} />
           </View>

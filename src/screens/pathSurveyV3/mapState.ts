@@ -44,6 +44,12 @@ export interface MapFilter {
 
 export const NO_FILTER: MapFilter = { selections: [] }
 
+/** Selected buildings in the order of the server building list. Codes missing from the list go last. */
+export function selectionsInListOrder(filter: MapFilter, index: BuildingIndex): MapFilter['selections'] {
+  const orderOf = (code: string) => index.byCode.get(code)?.order ?? Number.MAX_SAFE_INTEGER
+  return [...filter.selections].sort((x, y) => orderOf(x.building) - orderOf(y.building))
+}
+
 export type MapMode = 'add' | 'link' | 'move' | 'select'
 
 /** What the point labels show. */
