@@ -72,9 +72,10 @@ import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilt
 import MultiPanel from './pathSurveyV3/MultiPanel'
 import NodeSheet from './pathSurveyV3/NodeSheet'
 import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
+import ServerPanel, { type RouteLine } from './pathSurveyV3/ServerPanel'
 import SnapshotPanel from './pathSurveyV3/SnapshotPanel'
 
-type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'snapshots' | 'legacy'
+type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'server' | 'snapshots' | 'legacy'
 
 const MODES: { key: MapMode; label: string; help: string }[] = [
   { key: 'add', label: '점 찍기', help: '지도를 누르면 위의 설정대로 점이 생겨요. 이어 찍기를 켜면 직전 점과 간선으로 이어요.' },
@@ -121,7 +122,8 @@ const initialLoad = () => loadStoreV3()
  * Every change is kept in localStorage. The save button adds a save point on top of that.
  * The v2 screen and its storage are not touched.
  */
-export default function DevPathSurveyV3Screen() {
+/** @param devKey /dev gate key; the Server tab sends it (X-Dev-Key) to upload and apply route graphs. */
+export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = {}) {
   const webViewRef = useRef<NaverMapViewHandle>(null)
   const panelRef = useRef<ScrollView>(null)
   const { buildings, data, status, reload } = useMapData()
@@ -318,6 +320,13 @@ export default function DevPathSurveyV3Screen() {
     if (first) focusOn(first.lat, first.lng)
     setNotice(`v2 에서 가져왔어요. 지점 ${result.mergedNodes}, 간선 ${result.mergedEdges}. 수동 확인 ${result.manual.length}건`)
   }
+
+  /** Draws the Server tab test routes (found by the server) over the survey lines. An empty list clears them. */
+  const showRouteLines = useCallback((lines: RouteLine[]) => {
+    webViewRef.current?.injectJavaScript(`window.__surveyV3Routes && window.__surveyV3Routes(${JSON.stringify(lines)}); true;`)
+    const first = lines[0]?.points[0]
+    if (first) webViewRef.current?.injectJavaScript(`window.__surveyV3Focus && window.__surveyV3Focus(${first[0]}, ${first[1]}); true;`)
+  }, [])
 
   const runRestore = (next: StoreV3) => {
     if (!replaceAll(next, '불러오기 직전', `불러올 내용: 지점 ${next.nodes.length}, 간선 ${next.edges.length}`)) return
@@ -652,6 +661,7 @@ export default function DevPathSurveyV3Screen() {
     { key: 'check', label: `점검 ${check.errors.length}` },
     { key: 'convert', label: report ? `v2 변환 ${openManual}` : 'v2 변환' },
     { key: 'backup', label: '백업' },
+    { key: 'server', label: '서버' },
     { key: 'snapshots', label: '저장 지점' },
     { key: 'legacy', label: '기존 자료' },
   ]
@@ -748,6 +758,16 @@ export default function DevPathSurveyV3Screen() {
           onBackedUp={markBackedUp}
           onRestore={runRestore}
           onPulled={runGistPull}
+          onNotice={setNotice}
+        />
+      ) : null}
+      {tab === 'server' ? (
+        <ServerPanel
+          devKey={devKey}
+          store={store}
+          buildings={buildings}
+          onRestore={runRestore}
+          onRouteLines={showRouteLines}
           onNotice={setNotice}
         />
       ) : null}
