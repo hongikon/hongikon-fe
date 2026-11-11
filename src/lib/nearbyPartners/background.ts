@@ -1075,7 +1075,7 @@ export async function runNotificationScheduleTest(): Promise<void> {
     [
       '문구+data',
       {
-        content: { title: '시험 가게에 계신가요?', body: '제휴 혜택: 10%\n알림 끄기: 설정', data: { type: 'NEARBY_PARTNER', partnerId: 'x' } },
+        content: { title: '(광고) 시험 가게에 계신가요?', body: '제휴 혜택: 10%\n수신 거부: 홍익온 앱 설정 > 근처 제휴 알림', data: { type: 'NEARBY_PARTNER', partnerId: 'x' } },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 6 },
       },
     ],
