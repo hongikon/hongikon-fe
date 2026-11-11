@@ -57,9 +57,8 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   const app = useAdminHost() === 'app'
   const [confirming, setConfirming] = useState(false)
   const [reason, setReason] = useState('')
-  /** 공식 계정 지정 입력 중(학생회 등 — 문의 탭의 '공식 계정 신청'을 확인한 뒤). */
+  /** 공식 계정 지정 입력 중(학생회 등 — 공식 계정 신청을 보낸 회원만). */
   const [officialEditing, setOfficialEditing] = useState(false)
-  const [officialDraft, setOfficialDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const suspended = user.status === 'SUSPENDED'
@@ -72,8 +71,6 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       .then((updated) => {
         setConfirming(false)
         setReason('')
-        setOfficialEditing(false)
-        setOfficialDraft('')
         onChanged(updated)
       })
       .catch((err: unknown) => setError(toMessage(err, fallback)))
@@ -159,32 +156,14 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
       ) : null}
 
       {officialEditing ? (
-        <ConfirmBar
-          message="이 계정에 붙일 공식 이름(2~30자)을 적어 주세요. 앱 닉네임 대신 이 이름과 공식 배지가 제보·댓글에 보입니다. 단체를 확인한 뒤에만 지정하세요."
-          confirmLabel="지정"
-          busy={busy}
+        <OfficialNameForm
+          userId={user.id}
           onCancel={() => setOfficialEditing(false)}
-          onConfirm={() => {
-            const name = officialDraft.trim()
-            if (name.length < 2) {
-              setError('공식 이름을 2자 이상 입력해주세요.')
-              return
-            }
-            run(() => setOfficialName(user.id, name), '공식 계정으로 지정하지 못했습니다. 다시 시도해주세요.', officialError)
+          onDone={(updated) => {
+            setOfficialEditing(false)
+            onChanged(updated)
           }}
-        >
-          <TextInput
-            value={officialDraft}
-            onChangeText={setOfficialDraft}
-            placeholder="예: 경영대학 학생회"
-            placeholderTextColor={COLORS.textPlaceholder}
-            maxLength={30}
-            style={[styles.input, app && styles.inputApp]}
-            autoFocus
-            accessibilityLabel="공식 이름"
-            editable={!busy}
-          />
-        </ConfirmBar>
+        />
       ) : confirming ? (
         <ConfirmBar
           message="이 회원의 이용을 정지할까요? 로그인과 조회는 되지만 제보·신고·문의·닉네임 변경이 막힙니다. 사유는 회원에게 알림으로 전달되고(약관 제10조), 회원은 14일 안에 이의를 제기할 수 있습니다."
@@ -235,14 +214,13 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
           ) : null}
           {user.officialName ? (
             <Button label="공식 해제" icon="shield-outline" variant="ghost" onPress={confirmClearOfficial} disabled={busy} small />
-          ) : !suspended && 'officialName' in user ? (
+          ) : !suspended && 'officialName' in user && user.officialRequested !== false ? (
             <Button
               label="공식 계정 지정"
               icon="ribbon-outline"
               variant="ghost"
               onPress={() => {
                 setError(null)
-                setOfficialDraft('')
                 setOfficialEditing(true)
               }}
               disabled={busy}
@@ -267,11 +245,75 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
   )
 }
 
-/** 공식 계정 지정·해제 오류 문구. 409 는 같은 공식 이름이 이미 있음, 404/405 는 이 기능 전 서버. */
+/**
+ * 공식 이름 입력·지정 막대. 회원 카드와 문의 탭의 '공식 계정 신청' 글에서 함께 쓴다. 신청 글에서는 신청서의 단체 이름을
+ * initialName 으로 미리 채워, 확인만 하고 누르면 되게 한다. 서버는 공식 계정 신청을 보낸 회원에게만 붙이고(그 외 400),
+ * 붙이면 그 회원의 열린 신청을 처리 완료로 닫는다.
+ */
+export function OfficialNameForm({
+  userId,
+  initialName = '',
+  onDone,
+  onCancel,
+}: {
+  userId: number
+  initialName?: string
+  onDone: (user: AdminUser) => void
+  onCancel: () => void
+}) {
+  const app = useAdminHost() === 'app'
+  const [draft, setDraft] = useState(initialName)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = () => {
+    const name = draft.trim()
+    if (name.length < 2) {
+      setError('공식 이름을 2자 이상 입력해주세요.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    setOfficialName(userId, name)
+      .then(onDone)
+      .catch((err: unknown) => setError(officialError(err, '공식 계정으로 지정하지 못했습니다. 다시 시도해주세요.')))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <View style={styles.officialForm}>
+      <ConfirmBar
+        message="이 계정에 붙일 공식 이름(2~30자)을 확인해 주세요. 앱 닉네임 대신 이 이름과 공식 배지가 제보·댓글에 보입니다. 단체를 확인한 뒤에만 지정하세요."
+        confirmLabel="지정"
+        busy={busy}
+        onCancel={onCancel}
+        onConfirm={submit}
+      >
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="예: 경영대학 학생회"
+          placeholderTextColor={COLORS.textPlaceholder}
+          maxLength={30}
+          style={[styles.input, app && styles.inputApp]}
+          autoFocus
+          accessibilityLabel="공식 이름"
+          editable={!busy}
+        />
+      </ConfirmBar>
+      {error ? <InlineError message={error} /> : null}
+    </View>
+  )
+}
+
+/**
+ * 공식 계정 지정·해제 오류 문구. 409 는 같은 공식 이름이 이미 있음, 400 은 서버가 쓴 이유(이름 길이, 신청하지 않은 회원),
+ * 404/405 는 이 기능 전 서버.
+ */
 function officialError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     if (err.status === 409) return '같은 공식 이름을 쓰는 계정이 이미 있습니다. 다른 이름을 입력해주세요.'
-    if (err.status === 400) return '공식 이름은 2~30자로 입력해주세요.'
+    if (err.status === 400) return err.serverMessage || '공식 이름은 2~30자로 입력해주세요.'
     if (err.status === 404 || err.status === 405) return '서버가 아직 공식 계정 기능을 지원하지 않습니다. 서버 업데이트 후 다시 시도해주세요.'
   }
   return fallback
@@ -402,6 +444,7 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' },
   actionsStart: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start' },
+  officialForm: { gap: 8 },
   inputApp: { minHeight: 44, fontSize: 16 },
   input: {
     fontFamily: FONTS.regular,
