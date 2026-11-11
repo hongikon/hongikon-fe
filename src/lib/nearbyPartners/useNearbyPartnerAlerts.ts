@@ -11,6 +11,7 @@ import {
   wipeNearbyAlerts,
 } from './background'
 import { applyNearbyDebugUrl } from './debug'
+import { checkConsentReconfirm } from './consentNotice'
 
 /**
  * 근처 제휴 알림을 앱 상태에 맞춘다. `App.tsx` 에서 `usePushNotifications` 옆에서 한 번 부른다.
@@ -23,7 +24,7 @@ import { applyNearbyDebugUrl } from './debug'
  */
 export function useNearbyPartnerAlerts(): void {
   const available = nearbyAlertsAvailable()
-  const { status } = useAuth()
+  const { status, accessToken } = useAuth()
   const { data, partners, buildings } = useMapData()
   const sourceRef = useRef({ partners, campusPoints: buildings, serverEnabled: data?.nearbyAlertsEnabled === true })
   sourceRef.current = { partners, campusPoints: buildings, serverEnabled: data?.nearbyAlertsEnabled === true }
@@ -39,6 +40,12 @@ export function useNearbyPartnerAlerts(): void {
     if (!data) return
     void syncNearbyAlerts(sourceRef.current)
   }, [available, status, signedIn, data])
+
+  // 수신 동의 2년 재확인(정보통신망법 시행령 제62조의3). 로그인한 채 앱을 열 때 한 번.
+  useEffect(() => {
+    if (!available || !signedIn || !accessToken) return
+    void checkConsentReconfirm(accessToken)
+  }, [available, signedIn, accessToken])
 
   useEffect(() => {
     if (!available || !signedIn) return

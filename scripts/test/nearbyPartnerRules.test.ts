@@ -230,10 +230,9 @@ test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길�
     affiliationBenefits: [{ affiliation: '미술대학', benefit: '미대생 아메리카노 1+1' }],
   })
   assert.deepEqual(nearbyAlertContent(p, []), {
-    title: '홍익카페에 계신가요?',
-    body: '제휴 혜택: 음료 10% 할인\n알림 끄기: 설정 > 근처 제휴 알림',
+    title: '(광고) 홍익카페에 계신가요?',
+    body: '제휴 혜택: 음료 10% 할인\n수신 거부: 홍익온 앱 설정 > 근처 제휴 알림',
   })
-  assert.ok(!nearbyAlertContent(p, [])!.title.includes('광고'))
   assert.match(nearbyAlertContent(p, ['미술대학'])!.body, /^제휴 혜택: 미대생 아메리카노 1\+1\n/)
   assert.match(nearbyAlertContent(p, [], 2)!.body, /\n근처에 제휴업체 2곳이 더 있어요\n/)
 
@@ -251,7 +250,8 @@ test('알림 문구: ○○에 계신가요?, 수신 거부, 소속 혜택, 길�
 
 test('여러 곳 알림: 몇 곳인지와 이름 두 개까지, 단정하지 않는다', () => {
   const two = nearbyGroupContent([{ name: '키이스케이프' }, { name: '수지앤파스타' }])
-  assert.equal(two.title, '근처에 제휴 가게가 2곳 있어요')
+  assert.equal(two.title, '(광고) 근처에 제휴 가게가 2곳 있어요')
+  assert.ok(two.body.endsWith('\n수신 거부: 홍익온 앱 설정 > 근처 제휴 알림'))
   assert.match(two.body, /^키이스케이프 · 수지앤파스타 — 눌러서 혜택 보기\n/)
   const four = nearbyGroupContent([{ name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }])
   assert.match(four.body, /^a · b 외 2곳 — /)
@@ -413,4 +413,27 @@ test('다시 고르기 원 나감: 등록 직후 상태 신호·아직 원 안�
   assert.equal(reselectDecision(last, 1_000_000 + REGISTER_SETTLE_MS + 1, { lat: at0.lat + 400 / 111_195, lng: at0.lng }), 'register')
   assert.equal(reselectDecision(last, 1_000_000 + REGISTER_SETTLE_MS + 1, null), 'noLocation')
   assert.equal(reselectDecision(null, 0, at0), 'register')
+})
+
+test('광고성 정보 수신 동의: 처리 결과 안내와 2년 재확인(정보통신망법 제50조 제8항)', async () => {
+  const { consentResultNotice, reconfirmDueAt, parseConsentAt, kstDateLabel } = await import('../../src/lib/nearbyPartners/consent.ts')
+  const at = parseConsentAt('2026-11-11T10:00:00')!
+  assert.equal(at, Date.parse('2026-11-11T10:00:00+09:00'))
+  assert.equal(kstDateLabel(at), '2026년 11월 11일')
+  const consent = consentResultNotice('consent', at)
+  assert.match(consent.message, /^전송자: 홍익온\n일자: 2026년 11월 11일\n내용: .*수신에 동의했어요\.\n처리 결과: /)
+  assert.match(consent.message, /수신 거부: 홍익온 앱 설정 > 근처 제휴 알림/)
+  assert.match(consentResultNotice('withdraw', at).message, /수신 거부 처리를 마쳤어요/)
+
+  const day = 24 * 60 * 60 * 1000
+  const twoYears = Date.parse('2028-11-11T10:00:00+09:00')
+  assert.equal(reconfirmDueAt(at, twoYears - day, null), null)
+  assert.equal(reconfirmDueAt(at, twoYears + day, null), twoYears)
+  // 이미 안내했으면 다음 2년까지 다시 띄우지 않는다.
+  assert.equal(reconfirmDueAt(at, twoYears + 30 * day, twoYears + day), null)
+  const fourYears = Date.parse('2030-11-11T10:00:00+09:00')
+  assert.equal(reconfirmDueAt(at, fourYears + day, twoYears + day), fourYears)
+  // 2월 29일 동의는 2년 뒤 2월 28일.
+  const leap = parseConsentAt('2028-02-29T12:00:00+09:00')!
+  assert.equal(reconfirmDueAt(leap, Date.parse('2030-03-01T00:00:00+09:00'), null), Date.parse('2030-02-28T12:00:00+09:00'))
 })

@@ -3,12 +3,20 @@ import type { PartnerAffiliation } from '../../types'
 
 /**
  * 근처 제휴 알림 문구. 제목은 "○○에 계신가요?" — 알림 반경이 20m 라(10-29) 실제로 그 가게에 있을 때 온다.
- * 사용자가 직접 켠 혜택 안내라 "(광고)"를 붙이지 않는다(10-29 사용자 결정). 끄는 방법은 계속 적는다.
+ *
+ * 정보통신망법 제50조 제4항·시행령 제61조(11-11 사용자 요청, 10-29 결정을 바꿈): 광고성 정보라
+ * - 제목 맨 앞에 "(광고)"를 붙이고,
+ * - 본문 끝에 전송자 이름(홍익온)과 무료 수신 거부 방법을 "수신 거부: …"로 적는다.
+ * 야간(21~8시) 별도 동의는 `rules.isQuietHour`, 동의·철회 결과 안내와 2년 재확인은 `consentNotice.ts`.
  */
+
+/** 광고성 정보 표시. 제목 맨 앞에 둔다. */
+export const AD_PREFIX = '(광고) '
 
 /** 업체 이름이 길면 제목에서 자른다(알림 제목은 한 줄). */
 const MAX_NAME_LENGTH = 20
-const OPT_OUT_LINE = '알림 끄기: 설정 > 근처 제휴 알림'
+/** 전송자 이름과 수신 거부 방법(앱 설정에서 바로, 무료). */
+export const OPT_OUT_LINE = '수신 거부: 홍익온 앱 설정 > 근처 제휴 알림'
 /** 알림 본문에서 혜택 문구 최대 길이. 넘으면 자르고 전체는 업체 시트에서 본다. */
 const MAX_BENEFIT_LENGTH = 60
 
@@ -34,7 +42,7 @@ export function nearbyGroupContent(members: readonly { name: string }[]): Nearby
   const names = members.slice(0, 2).map((member) => truncate(member.name, 12))
   const rest = members.length - names.length
   return {
-    title: `근처에 제휴 가게가 ${members.length}곳 있어요`,
+    title: `${AD_PREFIX}근처에 제휴 가게가 ${members.length}곳 있어요`,
     body: `${names.join(' · ')}${rest > 0 ? ` 외 ${rest}곳` : ''} — 눌러서 혜택 보기\n${OPT_OUT_LINE}`,
   }
 }
@@ -52,7 +60,7 @@ export function nearbyAlertContent(
   const scope = own ? '' : `(${partner.affiliations!.join('·')} 제휴) `
   const others = othersCount > 0 ? `\n근처에 제휴업체 ${othersCount}곳이 더 있어요` : ''
   return {
-    title: `${truncate(partner.name, MAX_NAME_LENGTH)}에 계신가요?`,
+    title: `${AD_PREFIX}${truncate(partner.name, MAX_NAME_LENGTH)}에 계신가요?`,
     body: `${scope}제휴 혜택: ${truncate(benefit, MAX_BENEFIT_LENGTH)}${others}\n${OPT_OUT_LINE}`,
   }
 }

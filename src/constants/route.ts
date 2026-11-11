@@ -27,3 +27,10 @@ export const ROUTE_FINDING_ENABLED = true
  * 적용되는 날이다 — 처리방침은 바꾸면 적용일 7일 전부터 공지한다(11-06 공지, 운영 OTA). 날짜를 옮기면 legalText.ts 와 공지(id 7)도 같이 옮긴다.
  */
 export const MY_LOCATION_BUTTON_FROM = '2026-11-16'
+
+/**
+ * 길찾기 결과 카드에 길 설명 글(흐름 "R동 1층 출구 → T동 3층 출입구 …"·지나는 곳 조사 메모)을 보여 줄지.
+ * 11-11 끔(사용자 요청): 설명이 아직 정확하지 않아 지도 위 경로 선·시간·거리만 보여 준다.
+ * 서버는 steps·notes 를 그대로 보내고 앱도 받아 두니, 설명을 다듬은 뒤 true 로 돌리면 된다.
+ */
+export const ROUTE_DIRECTIONS_TEXT_ENABLED = false

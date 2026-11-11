@@ -51,6 +51,7 @@ import SwipeBackModal from '../common/SwipeBackModal'
 import Button from '../common/Button'
 import { useIsAdmin } from '../../admin/AdminAccess'
 import { clearNearbyLog, logClock, readNearbyLog, type NearbyLogLine } from '../../lib/nearbyPartners/debugLog'
+import { showConsentResult } from '../../lib/nearbyPartners/consentNotice'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
 import NearbyRadiusMap from './NearbyRadiusMap'
@@ -67,7 +68,7 @@ const ALWAYS_ALLOW_NOTICE =
 const QUIET_START_LABEL = `밤 ${QUIET_START_HOUR > 12 ? QUIET_START_HOUR - 12 : QUIET_START_HOUR}시`
 const NIGHT_LABEL = `${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에도 받기`
 /** 켜면 야간 수신 별도 동의가 된다(정보통신망법 제50조 제3항) — 기본은 꺼짐이라 이 시간엔 오지 않는다. */
-const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 동의를 거두고 ${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
+const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 야간 수신 동의를 철회하고 ${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
 
 function affiliationLabel(affiliations: readonly PartnerAffiliation[]): string {
   return [...affiliations, '총학생회'].join('·')
@@ -144,6 +145,8 @@ export default function NearbyAlertSettings({
     if (!NEARBY_FIELD_TEST) patchNotificationSettings({ partnerAdConsent: false }, accessToken).catch(() => {})
     await refresh()
     setBusy(false)
+    // 정보통신망법 제50조 제8항: 수신 거부 처리 결과(전송자·일자·결과)를 알린다.
+    showConsentResult('withdraw')
   }
 
   const description = unsupported
@@ -248,6 +251,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   const finish = useCallback(async () => {
     setStep({ kind: 'working', message: '근처 제휴 업체를 등록하는 중이에요' })
     // 현장 테스트 빌드(TestFlight 내부)는 서버에 동의 필드가 없어도 돌게 기기에만 남긴다.
+    let consentAt: string | null = null
     if (!NEARBY_FIELD_TEST && !alreadyOn) {
       try {
         // 동의 시각을 서버에 남긴다(수신 동의 기록). 이 필드를 모르는 서버면 켜지 않는다.
@@ -256,6 +260,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
           setStep({ kind: 'error', message: '서버가 아직 근처 알림을 지원하지 않아요. 잠시 뒤 다시 시도해 주세요.' })
           return
         }
+        consentAt = saved.partnerAdConsentAt
       } catch {
         setStep({ kind: 'error', message: '수신 동의를 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.' })
         return
@@ -264,6 +269,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     // 새로 켤 때는 밤에 쉬는 기본값으로 — 끄면서 서버의 야간 동의 기록도 지워졌다(수신 동의 철회와 함께).
     if (!alreadyOn) await setNearbyPrefs({ quietNight: true })
     const watching = await onResync(affiliations, true)
+    // 정보통신망법 제50조 제8항: 수신 동의 처리 결과(전송자·동의 일자·결과)를 알린다.
+    if (consentAt) showConsentResult('consent', consentAt)
     if (!watching) {
       setStep({ kind: 'error', message: '켜 두었어요. 지금은 위치를 확인하지 못해, 앱을 다시 열면 근처 업체를 등록해요.' })
       return
@@ -332,14 +339,17 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
         await setNearbyPrefs({ quietNight: true })
         if (!NEARBY_FIELD_TEST) await patchNotificationSettings({ partnerAdNightConsent: false }, accessToken).catch(() => {})
       })
+      showConsentResult('nightWithdraw')
       return
     }
     let saved = NEARBY_FIELD_TEST
+    let nightAt: string | null = null
     await run('저장하는 중이에요', async () => {
       if (!NEARBY_FIELD_TEST) {
         try {
           const res = await patchNotificationSettings({ partnerAdNightConsent: true }, accessToken)
           saved = Boolean(res.partnerAdNightConsentAt)
+          nightAt = res.partnerAdNightConsentAt ?? null
         } catch {
           saved = false
         }
@@ -347,6 +357,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
       if (saved) await setNearbyPrefs({ quietNight: false })
     })
     if (!saved) setStep({ kind: 'error', message: '야간 수신 동의를 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.' })
+    else showConsentResult('nightConsent', nightAt)
   }
 
   /** 소속은 여러 개 고를 수 있다(11-01 — 복수전공·학생회 겸직 등). 누르면 넣고 빼기. */
@@ -600,8 +611,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 <View style={styles.consentBody}>
                   <Text style={styles.consentTitle}>(필수) 근처 제휴 혜택 알림을 받을게요</Text>
                   <Text style={styles.hint}>
-                    제휴 가게에 머물 때 그 가게의 학생 혜택을 알려 드려요(제휴 혜택 알림). 동의하면 동의 여부와 시각만 서버에 남기고, 알림을
-                    끄면 바로 지워요. 동의하지 않아도 다른 기능은 그대로 쓸 수 있어요. {QUIET_START_LABEL}~아침 {QUIET_END_HOUR}시에는
+                    제휴 가게에 머물 때 그 가게의 학생 혜택을 알려 드려요(제휴 혜택 알림). 광고성 정보예요. 동의하면 동의 여부와 시각만 서버에 남기고,
+                    수신 거부하면 바로 지워요. 동의하지 않아도 다른 기능은 그대로 쓸 수 있어요. {QUIET_START_LABEL}~아침 {QUIET_END_HOUR}시에는
                     따로 켜야 받아요.
                   </Text>
                 </View>
@@ -663,7 +674,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
             {alreadyOn ? (
               <>
                 <View style={styles.footerItem}>
-                  <Button label="알림 끄기" variant="secondary" size="lg" onPress={() => void onTurnOff()} disabled={working} />
+                  <Button label="수신 거부" variant="secondary" size="lg" onPress={() => void onTurnOff()} disabled={working} />
                 </View>
                 <View style={styles.footerItem}>
                   <Button label="완료" size="lg" onPress={onClose} />
@@ -929,7 +940,7 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
             '쓰는 곳: 가까운 제휴 가게까지 거리를 재 머문 시간을 세는 데만 써요.',
             '위치는 휴대폰 안에서만 처리하고 서버나 다른 회사로 보내거나 저장하지 않아요.',
             `제휴 가게 ${PARTNER_REGION_RADIUS_METERS}m 안에 있을 때만 정확한 거리를 재고, 멀어지면 멈춰요.`,
-            '설정 > 근처 제휴 알림에서 언제든 끌 수 있고, 끄면 위치를 더 쓰지 않아요.',
+            '설정 > 근처 제휴 알림에서 언제든 수신 거부할 수 있고, 수신 거부하면 위치를 더 쓰지 않아요.',
           ].map((line) => (
             <View key={line} style={styles.bulletRow}>
               <Text style={styles.bullet}>·</Text>

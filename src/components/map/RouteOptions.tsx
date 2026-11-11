@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { RADIUS } from "../../constants/spacing";
 import { FONTS } from "../../constants/typography";
+import { ROUTE_DIRECTIONS_TEXT_ENABLED } from "../../constants/route";
 import { describeRoutes } from "../../utils/routeLabels";
 import type { RouteAlternative } from "../../apis/routes";
 
@@ -31,6 +32,7 @@ const SETTLE_MS = 140;
 /**
  * 길찾기 결과 카드(11-09 사용자 요청: 후보 3개 정도, 옆으로 넘겨 보기). 카드 하나가 후보 하나다 —
  * 이름(가장 빠른 길·T동 거쳐 …), 더 걸리는 시간, 도보 시간·거리, 계단·엘리베이터, 어림 안내.
+ * 길 흐름·조사 메모 글은 ROUTE_DIRECTIONS_TEXT_ENABLED 가 켜졌을 때만 보인다(11-11 끔).
  * 옆으로 넘기면 그 길을 고른 것으로 보고(`onSelect`) 지도에서 그 길이 굵어진다. 아래 점이 몇 번째인지 보여 준다.
  */
 export default function RouteOptions({
@@ -107,8 +109,10 @@ export default function RouteOptions({
                       text?.delta,
                       `${route.minutes}분, ${route.distanceMeters}m`,
                       ...(text?.tags ?? []),
-                      route.steps?.length ? route.steps.join(", ") : null,
-                      ...(route.notes ?? []),
+                      ROUTE_DIRECTIONS_TEXT_ENABLED && route.steps?.length
+                        ? route.steps.join(", ")
+                        : null,
+                      ...(ROUTE_DIRECTIONS_TEXT_ENABLED ? (route.notes ?? []) : []),
                       note,
                     ]
                       .filter(Boolean)
@@ -141,12 +145,13 @@ export default function RouteOptions({
                           .join(" · ")}
                       </Text>
                     </View>
-                    {route.steps?.length ? (
+                    {/* 길 설명 글은 ROUTE_DIRECTIONS_TEXT_ENABLED 로 감춘다(11-11 — 아직 정확하지 않음). */}
+                    {ROUTE_DIRECTIONS_TEXT_ENABLED && route.steps?.length ? (
                       <Text style={styles.steps} numberOfLines={2}>
                         {route.steps.join("  →  ")}
                       </Text>
                     ) : null}
-                    {route.notes?.length ? (
+                    {ROUTE_DIRECTIONS_TEXT_ENABLED && route.notes?.length ? (
                       <Text style={styles.notes} numberOfLines={2}>
                         {route.notes.slice(0, 3).join(" · ")}
                         {route.notes.length > 3
