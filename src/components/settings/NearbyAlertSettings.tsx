@@ -438,6 +438,11 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                     </View>
                   ))}
                 </View>
+                {/* 알림 영역 예시(11-11 운영진: 테스트 기능이 아니라 처음 켤 때 모두에게 보여 줄 것). 반경 고르기는 [테스트] 칸에만. */}
+                <Text style={styles.sectionTitle}>알림이 오는 곳</Text>
+                <View style={styles.card}>
+                  <NearbyRadiusMap meters={radius} />
+                </View>
               </>
             )}
 
@@ -600,7 +605,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                       )
                     })}
                   </View>
-                  <NearbyRadiusMap meters={radius} />
+                  {/* 켜기 전에는 위 '알림이 오는 곳'에 같은 그림이 있다. 켠 뒤에 반경을 바꿔 볼 때만 여기 그린다. */}
+                  {alreadyOn && <NearbyRadiusMap meters={radius} />}
                   {(NEARBY_FIELD_TEST || adminOnly) && (
                     <>
                       <View style={styles.divider} />

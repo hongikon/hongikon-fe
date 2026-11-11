@@ -28,7 +28,7 @@ export const ALERT_RADIUS_METERS = 20
  * 11-10: 15 → 25. 가게 안(실내)에서는 GPS 가 20~40m 밀려 찍혀 오래 앉아 있어도 '안'으로 잡히지 않았다(현장 제보:
  * 오래 있어도 알림이 안 옴). 대신 알림은 머문 시간이 다 찬 때의 위치로 한 번 더 확인한다(`STAY_CONFIRM_MS`).
  */
-const ACCURACY_ALLOWANCE_METERS = 25
+export const ACCURACY_ALLOWANCE_METERS = 25
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
