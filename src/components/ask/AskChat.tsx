@@ -7,6 +7,7 @@ import {
   FlatList,
   TouchableOpacity,
   Linking,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -260,6 +261,20 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const latestInputRef = useRef("");
   latestInputRef.current = input;
   const [composerFocused, setComposerFocused] = useState(false);
+  // 키보드가 올라오면 아래 탭 바 자리(bottomInset)만큼 띄우던 여백을 없앤다 — 입력칸이 키보드 바로 위에 붙게(11-11 운영진).
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  const composerBottom = keyboardOpen ? 0 : (bottomInset ?? insets.bottom);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // 설정 공급자 밖(웹 /dev/ask 미리보기)이면 설정 카드를 띄우지 않는다.
   const appSettings = useOptionalSettings();
@@ -1628,7 +1643,11 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
             </View>
 
             {appMode ? (
-              <View style={[styles.composerWrap, { paddingBottom: 6 + (bottomInset ?? insets.bottom) }]}>
+              <View style={[styles.composerWrap, { paddingBottom: 6 + composerBottom }]}>
+                {/* 안내 문구는 입력칸 위에(11-11 운영진 — 키보드가 올라와도 입력칸이 키보드 바로 위에 붙고 안내는 그 위에 보이게). */}
+                <Text style={styles.disclaimer} numberOfLines={2}>
+                  {composerNote ? `${composerNote} · ` : ""}AI 답변은 틀릴 수 있어요. 중요한 내용은 원문에서 확인하세요.
+                </Text>
                 <View style={[styles.composerBox, composerFocused && styles.composerBoxFocused]}>
                   <TextInput
                     ref={inputRef}
@@ -1684,14 +1703,11 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                     </TouchableOpacity>
                   )}
                 </View>
-                <Text style={styles.disclaimer} numberOfLines={2}>
-                  {composerNote ? `${composerNote} · ` : ""}AI 답변은 틀릴 수 있어요. 중요한 내용은 원문에서 확인하세요.
-                </Text>
               </View>
             ) : (
               <>
                 {composerNote ? <Text style={styles.composerNote}>{composerNote}</Text> : null}
-                <View style={[styles.composer, { paddingBottom: 10 + (bottomInset ?? insets.bottom) }]}>
+                <View style={[styles.composer, { paddingBottom: 10 + composerBottom }]}>
                   <TextInput
                     ref={inputRef}
                     style={[styles.input, WEB_NO_OUTLINE]}
