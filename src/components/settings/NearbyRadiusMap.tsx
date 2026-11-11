@@ -4,9 +4,10 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
 import { useMapData } from '../../lib/mapData'
+import { ACCURACY_ALLOWANCE_METERS } from '../../lib/nearbyPartners/rules'
 
-/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside, 최대 15m). 설명 글에만 적는다. */
-const GPS_ALLOWANCE_METERS = 15
+/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside). 설명 글에만 적는다. */
+const GPS_ALLOWANCE_METERS = ACCURACY_ALLOWANCE_METERS
 
 /**
  * 예시 그림의 가운데 지점(11-02 운영진이 고름, 소코아 홍대점 위치). 상수역 앞 제휴업체가 모인 골목이다. 알림 영역은 가게마다 그린다.

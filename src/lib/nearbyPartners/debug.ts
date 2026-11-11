@@ -91,14 +91,17 @@ export async function setTestLocation(location: { lat: number; lng: number } | n
   }
 }
 
-/** 알림 반경(m). 테스트 빌드에서 고른 값이 있으면 그것, 없으면 `ALERT_RADIUS_METERS`. */
+/**
+ * 알림 반경(m). 사용자가 설정에서 고른 값이 있으면 그것, 없으면 `ALERT_RADIUS_METERS`(권장 20m).
+ * 11-11 운영진: 테스트 앱·관리자만이 아니라 모든 사용자가 고를 수 있게(설정 > 근처 제휴 알림 > 알림 반경). 기기에만 둔다.
+ */
 export function partnerRadiusMeters(): number {
-  return (nearbyDevTools() && values.radiusMeters) || ALERT_RADIUS_METERS
+  return values.radiusMeters || ALERT_RADIUS_METERS
 }
 
-/** 테스트 빌드 설정 화면에서 고른 업체 반경(null 이면 기본값). 바꾼 뒤 `syncNearbyAlerts` 로 다시 등록해야 적용된다. */
+/** 설정에서 고른 업체 반경(null 이면 권장값). 바꾼 뒤 `syncNearbyAlerts` 로 다시 등록해야 적용된다. */
 export async function setPartnerRadius(meters: number | null): Promise<void> {
-  if (!nearbyDevTools()) return
+  await loadNearbyDebug()
   values = { ...values, radiusMeters: meters }
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(values))
@@ -125,7 +128,7 @@ export async function setFieldTestUnlimited(on: boolean): Promise<void> {
 }
 
 /**
- * 로그인한 계정이 관리자인지 알려 준다(AdminAccess 의 `useIsAdmin`). 관리자가 아니게 되면 테스트 모드·시험 위치·반경도 되돌린다.
+ * 로그인한 계정이 관리자인지 알려 준다(AdminAccess 의 `useIsAdmin`). 관리자가 아니게 되면 테스트 모드·시험 위치·시계를 되돌린다(알림 반경은 사용자 설정이라 둔다).
  */
 export async function setNearbyAdmin(admin: boolean): Promise<void> {
   await loadNearbyDebug()
@@ -134,7 +137,7 @@ export async function setNearbyAdmin(admin: boolean): Promise<void> {
     ? { ...values, admin: true }
     : SHOW_DEVELOPER_TOOLS
       ? { ...values, admin: false }
-      : { clockOffsetMs: 0, radiusMeters: null, testLocation: null, admin: false }
+      : { clockOffsetMs: 0, radiusMeters: values.radiusMeters, testLocation: null, admin: false }
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(values))
   } catch {

@@ -359,6 +359,7 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
   // 테스트 빌드: 반경을 바꾸면 켜져 있을 때 바로 다시 등록한다.
   const chooseRadius = (meters: number) => {
     setRadius(meters)
+    // 모든 사용자가 이 휴대폰의 실제 알림 반경을 고른다(11-11 운영진). 켜져 있으면 바로 다시 등록한다.
     void run(`반경 ${meters}m 로 다시 등록하는 중이에요`, async () => {
       await setPartnerRadius(meters === ALERT_RADIUS_METERS ? null : meters)
       if (alreadyOn) await onResync(affiliations, false)
@@ -440,6 +441,41 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                 </View>
               </>
             )}
+
+            {/*
+              알림 반경(11-11 운영진: 테스트 기능이 아니라 모두에게 — 범위를 그림으로 보고 직접 고른다). 고른 값은 이 휴대폰에만
+              두고 바로 판단에 쓴다(`chooseRadius` → `setPartnerRadius`).
+            */}
+            <Text style={styles.sectionTitle}>알림 반경</Text>
+            <View style={styles.card}>
+              <View style={[styles.chips, styles.radiusChips]}>
+                {TEST_RADIUS_OPTIONS.map((meters) => {
+                  const selected = radius === meters
+                  return (
+                    <Pressable
+                      key={meters}
+                      onPress={() => chooseRadius(meters)}
+                      disabled={working}
+                      style={[styles.chip, selected && styles.chipOn]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`알림 반경 ${meters}미터${meters === ALERT_RADIUS_METERS ? ', 권장' : ''}`}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextOn]}>{meters}m</Text>
+                      {meters === ALERT_RADIUS_METERS && (
+                        <View style={styles.recommendWrap} pointerEvents="none">
+                          <Text style={styles.recommend}>권장</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  )
+                })}
+              </View>
+              <NearbyRadiusMap meters={radius} />
+              <Text style={styles.hint}>
+                {`고른 반경 안에 머물면 알림이 와요. 넓게 고르면 가게 앞을 지나거나 옆 가게에 있을 때도 올 수 있고, 좁게 고르면 가게 안에서 늦게 오거나 오지 않을 수 있어요. 권장은 ${ALERT_RADIUS_METERS}m예요.`}
+              </Text>
+            </View>
 
             {/* 받는 방법은 켜기 전에도 고를 수 있게(11-01 — 켠 뒤에만 보여 머무는 시간 선택을 찾을 수 없었다). */}
             <Text style={styles.sectionTitle}>받는 방법</Text>
@@ -576,34 +612,8 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               <>
                 <Text style={styles.sectionTitle}>{adminOnly ? '[테스트] 관리자 계정에만 보여요' : '[테스트] 테스트 앱에서만 보여요'}</Text>
                 <View style={styles.card}>
-                  <Text style={styles.settingLabel}>알림 반경</Text>
-                  <View style={[styles.chips, styles.radiusChips]}>
-                    {TEST_RADIUS_OPTIONS.map((meters) => {
-                      const selected = radius === meters
-                      return (
-                        <Pressable
-                          key={meters}
-                          onPress={() => chooseRadius(meters)}
-                          disabled={working}
-                          style={[styles.chip, selected && styles.chipOn]}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected }}
-                          accessibilityLabel={`알림 반경 ${meters}미터${meters === ALERT_RADIUS_METERS ? ', 권장' : ''}`}
-                        >
-                          <Text style={[styles.chipText, selected && styles.chipTextOn]}>{meters}m</Text>
-                          {meters === ALERT_RADIUS_METERS && (
-                            <View style={styles.recommendWrap} pointerEvents="none">
-                              <Text style={styles.recommend}>권장</Text>
-                            </View>
-                          )}
-                        </Pressable>
-                      )
-                    })}
-                  </View>
-                  <NearbyRadiusMap meters={radius} />
                   {(NEARBY_FIELD_TEST || adminOnly) && (
                     <>
-                      <View style={styles.divider} />
                       <View style={styles.settingRow}>
                         <View style={styles.settingText}>
                           <Text style={styles.settingLabel}>테스트 모드: 횟수 제한 없이(머무는 동안 5분마다)</Text>

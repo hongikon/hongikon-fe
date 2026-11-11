@@ -28,7 +28,7 @@ export const ALERT_RADIUS_METERS = 20
  * 11-10: 15 → 25. 가게 안(실내)에서는 GPS 가 20~40m 밀려 찍혀 오래 앉아 있어도 '안'으로 잡히지 않았다(현장 제보:
  * 오래 있어도 알림이 안 옴). 대신 알림은 머문 시간이 다 찬 때의 위치로 한 번 더 확인한다(`STAY_CONFIRM_MS`).
  */
-const ACCURACY_ALLOWANCE_METERS = 25
+export const ACCURACY_ALLOWANCE_METERS = 25
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
@@ -46,6 +46,36 @@ export const MIN_RESELECT_RADIUS_METERS = 150
 export const MAX_RESELECT_RADIUS_METERS = 1000
 /** @deprecated 고정 반경 대신 `reselectRadius` 를 쓴다. */
 export const RESELECT_REGION_RADIUS_METERS = 500
+/**
+ * 등록 직후 운영체제가 원마다 지금 상태(안·밖)를 한꺼번에 알려 준다. 이 안에 온 신호는 '움직였다'로 보지 않는다(11-11 현장:
+ * 다시 등록할 때마다 '다시 고르기 원 나감'이 와서 1초마다 다시 등록하는 고리에 빠졌다).
+ */
+export const REGISTER_SETTLE_MS = 15 * 1000
+
+/** 마지막으로 운영체제에 건 등록(다시 고르기 원 가운데·반경). */
+export interface Registration {
+  lat: number
+  lng: number
+  /** 다시 고르기 원 반경(m). */
+  radius: number
+  at: number
+}
+
+/**
+ * '다시 고르기 원 나감' 신호를 받았을 때 다시 등록할지. 등록 직후 상태 신호면 무시하고, 새로 읽은 위치가 아직 원 안이면 무시한다
+ * (iOS 가 원 안인데도 '나감'을 보내는 경우 — 다시 등록하면 같은 신호가 또 와 고리가 된다).
+ */
+export function reselectDecision(
+  last: Registration | null,
+  now: number,
+  at: { lat: number; lng: number } | null,
+): 'register' | 'settling' | 'stillInside' | 'noLocation' {
+  if (last && now - last.at < REGISTER_SETTLE_MS) return 'settling'
+  if (!at) return 'noLocation'
+  if (last && haversineMeters(last.lat, last.lng, at.lat, at.lng) < last.radius) return 'stillInside'
+  return 'register'
+}
+
 /** iOS 등록 한도 20개 중 큰 원 1개를 뺀 수. Android(100개)도 같은 수로 맞춘다. */
 export const MAX_PARTNER_REGIONS = 19
 /** 이만큼 머물러야 알린다. */

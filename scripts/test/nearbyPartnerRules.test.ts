@@ -26,6 +26,8 @@ import {
   benefitFor,
   liveBenefits,
   targetUntil,
+  REGISTER_SETTLE_MS,
+  reselectDecision,
 } from '../../src/lib/nearbyPartners/rules.ts'
 import { nearbyAlertContent, nearbyGroupContent } from '../../src/lib/nearbyPartners/copy.ts'
 import type { Partner } from '../../src/types/index.ts'
@@ -401,4 +403,14 @@ test('건물과 겹치는 업체: 통째로 빼지 않고 겹친 건물 안에�
   assert.deepEqual([...preciseInsideIds([target], north(18), 5, new Set(['shop']))], [])
   assert.deepEqual(insideAtRegistration([target], north(18).lat, north(18).lng, 20), [])
   assert.equal(insideAtRegistration([target], north(10).lat, north(10).lng, 20).length, 1)
+})
+
+test('다시 고르기 원 나감: 등록 직후 상태 신호·아직 원 안이면 다시 등록하지 않는다(11-11 1초마다 다시 등록하던 고리)', () => {
+  const at0 = { lat: 37.5535, lng: 126.9235 }
+  const last = { ...at0, radius: 300, at: 1_000_000 }
+  assert.equal(reselectDecision(last, 1_000_000 + 2_000, at0), 'settling')
+  assert.equal(reselectDecision(last, 1_000_000 + REGISTER_SETTLE_MS + 1, { lat: at0.lat + 100 / 111_195, lng: at0.lng }), 'stillInside')
+  assert.equal(reselectDecision(last, 1_000_000 + REGISTER_SETTLE_MS + 1, { lat: at0.lat + 400 / 111_195, lng: at0.lng }), 'register')
+  assert.equal(reselectDecision(last, 1_000_000 + REGISTER_SETTLE_MS + 1, null), 'noLocation')
+  assert.equal(reselectDecision(null, 0, at0), 'register')
 })
