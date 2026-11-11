@@ -1,4 +1,4 @@
-import { Linking, Platform } from 'react-native'
+import { Alert, Linking, Platform } from 'react-native'
 import { requireOptionalNativeModule } from 'expo'
 
 /**
@@ -39,6 +39,8 @@ export type LocateResult =
   | { status: 'servicesOff' }
   /** 시간 안에 위치를 못 얻음(실내 등). */
   | { status: 'failed' }
+  /** 위치 정보 사용 안내(`confirmLocationDisclosure`)에서 "동의하지 않음". 권한 창을 띄우지 않았다 — 조용히 끝낸다. */
+  | { status: 'declined' }
 
 /**
  * 위치를 얻는 순서(2026-10-27 에뮬레이터 테스트로 정함):
@@ -97,9 +99,51 @@ export async function getLocationPermission(): Promise<LocationPermissionState |
   }
 }
 
-export async function requestLocationPermission(): Promise<LocationPermissionState | null> {
+/** 위치를 쓰는 기능(안내 문구가 달라진다). */
+export type LocationPurpose = 'nearby' | 'myLocation' | 'route' | 'settings'
+
+const PURPOSE_TEXT: Record<LocationPurpose, string> = {
+  nearby: '지금 있는 곳에서 가까운 제휴 가게를 보여 주기',
+  myLocation: '지도에 내 위치를 보여 주기',
+  route: '내 위치에서 출발하는 길을 안내하기',
+  settings: '지도에 내 위치와 가까운 제휴 가게를 보여 주고 내 위치에서 출발하는 길을 안내하기',
+}
+
+/**
+ * 위치 정보 사용 명시적 공개(11-11, Google Play 사용자 데이터 정책 — "앱의 모든 영역을 확인하세요"). 시스템 위치 권한 창을
+ * 처음 띄우기 바로 앞에 무엇을(이 기기의 위치) 왜(기능별 목적) 언제(앱을 사용하는 동안) 쓰는지와 휴대폰 밖으로 보내지 않는다는
+ * 것을 알리고 동의를 받는다. 이미 허용했거나 시스템 창이 다시 뜨지 않는 경우(다시 묻지 않음)에는 띄우지 않는다.
+ * 근처 제휴 알림(백그라운드 위치)은 따로 전체 화면 안내를 쓴다(`NearbyAlertSettings` AlwaysAllowOverlay).
+ * 길찾기 '내 위치 출발'도 위치를 보내지 않는다(`apis/routes.ts` — 길 후보를 받아 휴대폰에서 고른다).
+ */
+export async function confirmLocationDisclosure(purpose: LocationPurpose): Promise<boolean> {
+  const Location = getPackage()
+  if (!Location) return true
+  try {
+    const current = await Location.getForegroundPermissionsAsync()
+    if (current.granted || !current.canAskAgain) return true
+  } catch {
+    return true
+  }
+  return new Promise((resolve) => {
+    Alert.alert(
+      '위치 정보 사용 안내',
+      `홍익온은 ${PURPOSE_TEXT[purpose]} 위해 이 기기의 위치 정보(정확한 위치)에 액세스합니다.\n\n` +
+        '앱을 사용하는 동안에만 쓰고, 위치는 휴대폰 안에서만 처리해 서버나 다른 회사로 보내거나 저장하지 않아요. ' +
+        '동의하면 휴대폰의 위치 권한 창이 떠요.',
+      [
+        { text: '동의하지 않음', style: 'cancel', onPress: () => resolve(false) },
+        { text: '동의하고 계속', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    )
+  })
+}
+
+export async function requestLocationPermission(purpose: LocationPurpose = 'settings'): Promise<LocationPermissionState | null> {
   const Location = getPackage()
   if (!Location) return null
+  if (!(await confirmLocationDisclosure(purpose))) return getLocationPermission()
   try {
     const res = await Location.requestForegroundPermissionsAsync()
     return { status: res.granted ? 'granted' : res.status === 'denied' ? 'denied' : 'undetermined', canAskAgain: res.canAskAgain }
@@ -118,10 +162,11 @@ function logFailure(step: string, error: unknown): null {
   return null
 }
 
-/** "앱 사용 중" 위치 권한을 (필요하면) 묻고 위치를 한 번 읽는다. */
-export async function locateOnce(): Promise<LocateResult> {
+/** "앱 사용 중" 위치 권한을 (필요하면 위치 정보 사용 안내 뒤에) 묻고 위치를 한 번 읽는다. */
+export async function locateOnce(purpose: LocationPurpose): Promise<LocateResult> {
   const Location = getPackage()
   if (!Location) return { status: 'failed' }
+  if (!(await confirmLocationDisclosure(purpose))) return { status: 'declined' }
 
   try {
     const permission = await Location.requestForegroundPermissionsAsync()

@@ -1815,7 +1815,8 @@ export default function MapScreen() {
 
   /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
   const handleSelectMyLocation = useCallback(async () => {
-    const located = await locateOnce();
+    const located = await locateOnce("route");
+    if (located.status === "declined") return;
     if (located.status === "ok") {
       const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
       setMyLocation(first);
@@ -1847,7 +1848,8 @@ export default function MapScreen() {
       return;
     }
     myLocationUserOffRef.current = false;
-    const located = await locateOnce();
+    const located = await locateOnce("myLocation");
+    if (located.status === "declined") return;
     if (located.status !== "ok") {
       if (located.status === "denied") {
         notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 지도에서 내 위치를 볼 수 있어요.");

@@ -5,9 +5,14 @@
  * 브라우저 위치를 한 번 읽는다. 저장하거나 서버로 보내지 않는다. `expo-location` 을 쓰지 않아 웹 번들에 들어가지 않는다.
  */
 
-import type { LocateResult, LocationPermissionState } from './platform'
+import type { LocateResult, LocationPermissionState, LocationPurpose } from './platform'
 
-export type { LocateResult, LocationPermissionState }
+export type { LocateResult, LocationPermissionState, LocationPurpose }
+
+/** 웹은 브라우저가 사이트 위치 권한 창을 띄운다(앱이 앞에 안내를 둘 수 없는 시스템 창이 아니다). */
+export async function confirmLocationDisclosure(_purpose: LocationPurpose): Promise<boolean> {
+  return true
+}
 
 /** 웹은 휴대폰 위치 서비스를 켤 수 없다. */
 export const CAN_TURN_ON_LOCATION_SERVICES = false
@@ -21,7 +26,7 @@ export async function getLocationPermission(): Promise<LocationPermissionState |
   return null
 }
 
-export async function requestLocationPermission(): Promise<LocationPermissionState | null> {
+export async function requestLocationPermission(_purpose?: LocationPurpose): Promise<LocationPermissionState | null> {
   return null
 }
 
@@ -42,7 +47,7 @@ export const CAN_OPEN_LOCATION_SETTINGS = false
 
 export function openLocationSettings(): void {}
 
-export function locateOnce(): Promise<LocateResult> {
+export function locateOnce(_purpose: LocationPurpose): Promise<LocateResult> {
   if (!canLocate()) return Promise.resolve({ status: 'failed' })
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(

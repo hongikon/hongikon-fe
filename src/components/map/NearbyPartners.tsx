@@ -60,7 +60,9 @@ export default function NearbyPartners({ partners, onSelect, state, onStateChang
 
   const locate = async () => {
     onStateChange({ kind: "locating" });
-    onStateChange({ kind: "done", result: await locateOnce() });
+    const result = await locateOnce("nearby");
+    // 위치 정보 사용 안내에서 '동의하지 않음' — 처음 상태로(버튼을 다시 누를 수 있게).
+    onStateChange(result.status === "declined" ? { kind: "idle" } : { kind: "done", result });
   };
 
   // 휴대폰 설정에서 권한·위치를 켜고 돌아오면 다시 누르지 않아도 바로 찾는다.
@@ -140,6 +142,7 @@ export default function NearbyPartners({ partners, onSelect, state, onStateChang
           </>
         );
       case "ok":
+      case "declined":
         return null;
     }
   };
