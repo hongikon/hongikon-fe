@@ -18,7 +18,7 @@ export function BuildingSearch({
   index: BuildingIndex
   onPick: (code: string) => void
   exclude?: readonly string[]
-  selected?: string | null
+  selected?: string | readonly string[] | null
 }) {
   const [query, setQuery] = useState('')
   const results = useMemo(() => searchBuildings(index, query).filter((b) => !exclude.includes(b.code)), [index, query, exclude])
@@ -38,7 +38,7 @@ export function BuildingSearch({
           <Chip
             key={b.code}
             label={query.trim() ? b.name : shortBuildingName(b)}
-            on={selected === b.code}
+            on={typeof selected === 'string' ? selected === b.code : !!selected?.includes(b.code)}
             color={buildingColor(index, b.code)}
             onPress={() => {
               setQuery('')

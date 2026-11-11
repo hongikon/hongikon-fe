@@ -33,7 +33,8 @@ import {
   type ServerOffer,
   type ServerSaveState,
 } from '../utils/pathSurveyV3/serverSave'
-import { createSnapshot, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
+import { changeMarks, diffStores } from '../utils/pathSurveyV3/changes'
+import { createSnapshot, loadSnapshots, storeFromSnapshot, type Snapshot } from '../utils/pathSurveyV3/snapshots'
 import {
   addEdge,
   applyBulkToNodes,
@@ -50,7 +51,9 @@ import {
   setEdgeMemo,
   setNodeMemo,
   setNodeScope,
+  splitEdgeAt,
   STORE_KEY_V3,
+  type SplitRefusal,
   type BulkChange,
   type StoreV3,
 } from '../utils/pathSurveyV3/store'
@@ -86,13 +89,39 @@ import ContextBar from './pathSurveyV3/ContextBar'
 import { ChainToggle, Chip } from './pathSurveyV3/controls'
 import ConvertPanel from './pathSurveyV3/ConvertPanel'
 import { addDevSample, devSampleNodeIds, removeDevSample } from './pathSurveyV3/devSample'
-import { anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT } from './pathSurveyV3/editHistory'
+import { anchorAfterRedo, anchorAfterUndo, createEditHistory, placeChained, UNDO_LIMIT, type HistoryEntry } from './pathSurveyV3/editHistory'
 import EdgeSheet from './pathSurveyV3/EdgeSheet'
 import FilterBar from './pathSurveyV3/FilterBar'
-import { hasOpenDialog, isShortcutTab, isTypingElement, keyboardTarget, NUDGE_HINT, nudgeCoord, resolveShortcut, type ShortcutAction } from './pathSurveyV3/keyboard'
+import {
+  CLICK_HINT,
+  hasOpenDialog,
+  isShortcutTab,
+  isTypingElement,
+  keyboardTarget,
+  modsAfterKey,
+  NO_MODS,
+  NUDGE_HINT,
+  nudgeCoord,
+  resolveClickShortcut,
+  resolveShortcut,
+  type ClickMods,
+  type ClickShortcut,
+  type ClickTarget,
+  type ShortcutAction,
+} from './pathSurveyV3/keyboard'
 import Legend from './pathSurveyV3/Legend'
 import { SETUP_JS } from './pathSurveyV3/mapBridge'
-import { buildRenderState, isNodeStrong, NO_FILTER, type LabelMode, type MapFilter, type MapMode } from './pathSurveyV3/mapState'
+import {
+  buildRenderState,
+  canEditEdge,
+  editableNodeIds,
+  editableSelection,
+  isNodeStrong,
+  NO_FILTER,
+  type LabelMode,
+  type MapFilter,
+  type MapMode,
+} from './pathSurveyV3/mapState'
 import MultiPanel from './pathSurveyV3/MultiPanel'
 import NodeSheet from './pathSurveyV3/NodeSheet'
 import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
@@ -116,6 +145,13 @@ const LABEL_MODES: { key: LabelMode; label: string }[] = [
 ]
 
 const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
+
+const SPLIT_REFUSED: Record<SplitRefusal, string> = {
+  missing: '간선이나 양 끝 점을 찾지 못해 나누지 않았어요.',
+  pairs: '층 짝이 있는 간선이라 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
+  mixed: '양 끝 점의 위치(외부/내부, 건물, 층)가 달라서 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
+  end: '끝점과 같은 자리라 나누지 않았어요.',
+}
 
 /** The overlay starts hidden here: the new graph is the main thing on this screen. */
 const LEGACY_OFF: LegacyToggles = {
@@ -189,10 +225,15 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // A select all button can mix buildings. Selections made point by point or per building never ask.
   const [multiFromAll, setMultiFromAll] = useState(false)
   const [undoCount, setUndoCount] = useState(0)
+  const [redoCount, setRedoCount] = useState(0)
   const [snapshotTick, setSnapshotTick] = useState(0)
   const [backupRecord, setBackupRecord] = useState<BackupRecord | null>(() => loadBackupRecord())
   const [settings, setSettings] = useState<SurveySettings>(() => loadSurveySettings())
   const [filter, setFilter] = useState<MapFilter>(NO_FILTER)
+  // "Only the filter can be edited". Screen state only, never stored: every visit starts locked as before.
+  const [onlyFilter, setOnlyFilter] = useState(true)
+  // "Show changes" since the last save button point. Screen state only, off on every visit.
+  const [showChanges, setShowChanges] = useState(false)
   const [labelMode, setLabelMode] = useState<LabelMode>('full')
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(LEGACY_OFF)
   const [report, setReport] = useState<ConvertReport | null>(() => loadConvertReport())
@@ -228,6 +269,18 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return `마지막 백업 ${clockText(backupRecord.at)}(${BACKUP_VIA[backupRecord.via]}), 이후 바뀐 점 ${changes.nodes}, 간선 ${changes.edges}`
   }, [deferredStore, backupRecord])
   const sampleIds = useMemo(() => devSampleNodeIds(store, index), [store, index])
+
+  // Base of "show changes": the newest save button point (rolling slot). Read only while the box is on, again after each save.
+  const changeBase = useMemo((): Snapshot | null => {
+    if (!showChanges) return null
+    return loadSnapshots()
+      .filter((s) => s.kind === 'rolling')
+      .reduce<Snapshot | null>((best, s) => (!best || s.createdAt > best.createdAt ? s : best), null)
+  }, [showChanges, snapshotTick])
+  const changeDiff = useMemo(() => (changeBase ? diffStores(changeBase, deferredStore) : null), [changeBase, deferredStore])
+  const marks = useMemo(() => (changeDiff ? changeMarks(changeDiff) : null), [changeDiff])
+  // undefined: the box is off. null: no save point to compare with.
+  const changeCounts = !showChanges ? undefined : changeDiff ? changeDiff.total : null
   const openManual = useMemo(() => {
     const byId = new Map(store.nodes.map((n) => [n.id, n]))
     return (report?.manual ?? []).filter((item) => isManualItemOpen(item, byId.get(item.nodeId), report?.dismissed)).length
@@ -246,10 +299,16 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     return () => w.removeEventListener('storage', onStorage)
   }, [])
 
-  const commit = useCallback((next: StoreV3, record = true) => {
+  /**
+   * record: a new undo step (and the redo steps end). fromHistory: the change is an undo or a redo itself, the
+   * only case that keeps the redo steps. Any other unrecorded change (typing on in a memo, arrow presses) ends them.
+   */
+  const commit = useCallback((next: StoreV3, record = true, fromHistory = false) => {
     if (next === storeRef.current) return
     if (record) historyRef.current.record({ store: storeRef.current, anchor: anchorRef.current })
+    else if (!fromHistory) historyRef.current.clearRedo()
     setUndoCount(historyRef.current.size())
+    setRedoCount(historyRef.current.redoSize())
     storeRef.current = next
     setStore(next)
     if (blockedRef.current) return
@@ -275,17 +334,31 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setPending(null)
   }
 
-  const undo = () => {
-    const entry = historyRef.current.pop()
-    if (!entry) return setNotice('되돌릴 게 없어요')
+  /** The store an undo or redo brings back: memo boxes redrawn, selections that no longer exist dropped. */
+  const applyHistory = (entry: HistoryEntry, anchorNext: string | null, text: string) => {
     const prev = entry.store
-    setAnchor(anchorAfterUndo(anchorRef.current, entry))
-    commit(prev, false)
+    setAnchor(anchorNext)
+    commit(prev, false, true)
+    // commit skips the same store object, the counts still changed.
+    setUndoCount(historyRef.current.size())
+    setRedoCount(historyRef.current.redoSize())
     setUndoTick((n) => n + 1)
     setPending(null)
     if (selected && !findNode(prev, selected)) setSelected(null)
     if (selectedEdge && !findEdge(prev, selectedEdge)) setSelectedEdge(null)
-    setNotice('되돌렸어요')
+    setNotice(text)
+  }
+
+  const undo = () => {
+    const entry = historyRef.current.undo({ store: storeRef.current, anchor: anchorRef.current })
+    if (!entry) return setNotice('되돌릴 게 없어요')
+    applyHistory(entry, anchorAfterUndo(anchorRef.current, entry), '되돌렸어요')
+  }
+
+  const redo = () => {
+    const entry = historyRef.current.redo({ store: storeRef.current, anchor: anchorRef.current })
+    if (!entry) return setNotice('다시 적용할 게 없어요')
+    applyHistory(entry, anchorAfterRedo(anchorRef.current, entry), '다시 적용했어요')
   }
 
   const focusOn = useCallback((lat: number, lng: number) => {
@@ -342,9 +415,39 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const selectMany = (ids: string[], fromAll = false) => {
-    setMulti(ids)
-    setMultiFromAll(fromAll && ids.length > 0)
+    const allowed = editableNodeIds(storeRef.current, ids, filter, onlyFilter)
+    setMulti(allowed)
+    setMultiFromAll(fromAll && allowed.length > 0)
+    if (allowed.length < ids.length) setNotice(`필터 밖 점 ${ids.length - allowed.length}개는 고르지 않았어요`)
   }
+
+  /**
+   * The same rule as the map: with "only the filter" on, points outside the filter are locked. The base point
+   * (the point placed or picked last) stays editable, so a new point placed outside the filter can still be filled in.
+   */
+  const canEditNode = (id: string | null | undefined): boolean => {
+    if (!id) return false
+    if (id === anchorRef.current) return !!findNode(storeRef.current, id)
+    return editableNodeIds(storeRef.current, [id], filter, onlyFilter).length > 0
+  }
+  const canEditEdgeId = (id: string | null | undefined) => canEditEdge(storeRef.current, id ?? null, filter, onlyFilter)
+
+  /** A new filter or box state drops the selection that could no longer be edited. */
+  const applyFilter = (nextFilter: MapFilter, nextOnly: boolean) => {
+    setFilter(nextFilter)
+    setOnlyFilter(nextOnly)
+    const kept = editableSelection(storeRef.current, { selected, selectedEdge, pending, multi }, nextFilter, nextOnly)
+    const dropped = kept.selected !== selected || kept.selectedEdge !== selectedEdge || kept.pending !== pending || kept.multi.length !== multi.length
+    if (!dropped) return
+    setSelected(kept.selected)
+    setSelectedEdge(kept.selectedEdge)
+    setPending(kept.pending)
+    setMulti([...kept.multi])
+    setMultiFromAll(multiFromAll && kept.multi.length > 0)
+    setNotice('필터 밖이 된 선택은 풀었어요')
+  }
+
+  const lockedText = "필터 밖이라 고칠 수 없어요. 필터를 바꾸거나 '선택한 필터만 수정'을 꺼 주세요."
 
   const runConvert = (source: V2Source) => {
     if (index.list.length === 0) return setNotice('건물 목록이 아직 없어요. 온라인에서 한 번 연 뒤 다시 해 주세요.')
@@ -544,7 +647,9 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   /** One point opens its sheet with the boundary building ready. Many points go to the bulk panel. */
-  const makeIndoor = (ids: string[]) => {
+  const makeIndoor = (all: string[]) => {
+    const ids = editableNodeIds(storeRef.current, all, filter, onlyFilter)
+    if (ids.length === 0) return setNotice(lockedText)
     if (ids.length === 1) {
       change((s) => setNodeScope(s, ids[0], 'indoor'))
       focusNode(ids[0])
@@ -561,12 +666,15 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const applyBulk = (bulk: BulkChange) => {
-    const count = multi.length
-    const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, multi, index) : []
+    const ids = editableNodeIds(storeRef.current, multi, filter, onlyFilter)
+    if (ids.length === 0) return setNotice(lockedText)
+    const count = ids.length
+    const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, ids, index) : []
     if (mixed.length > 1 && !confirmAction(`여러 건물의 점이 섞여 있어요. 건물 ${mixed.length}곳, 점 ${count}개에 같은 값을 넣을까요?`)) return
-    change((s) => applyBulkToNodes(s, multi, bulk))
+    change((s) => applyBulkToNodes(s, ids, bulk))
     selectMany([])
-    setNotice(`${count}개에 적용했어요. 되돌리기로 한 번에 취소할 수 있어요.`)
+    const skipped = multi.length - count
+    setNotice(`${count}개에 적용했어요${skipped ? `(필터 밖 ${skipped}개는 건너뜀)` : ''}. 되돌리기로 한 번에 취소할 수 있어요.`)
   }
 
   const onTap = (lat: number, lng: number) => {
@@ -580,11 +688,39 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (crossing) notes.push('외부 점과 내부 점은 출입구로만 이을 수 있어 이 간선은 점검에서 오류로 나와요')
     if (made.type === 'entrance') notes.push('아래에서 건물, 층, 이름을 고르세요. 비워 두면 점검 오류로 나와요')
     else if (made.scope === 'indoor' && !made.levels?.length) notes.push('건물과 층이 없어 점검 오류로 나와요')
+    if (!isNodeStrong(made, filter)) notes.push(`지금 층 필터 밖의 점이라 흐리게 보여요${onlyFilter ? '. 다른 점을 고르면 이 점은 잠겨요' : ''}`)
     setNotice(notes.join('. '))
     panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
-  const onNodePress = (id: string) => {
+  /** Cmd/Ctrl + click and Shift + click on the map. null means the press goes on as usual. */
+  const clickShortcut = (target: ClickTarget, mods: ClickMods): ClickShortcut | null =>
+    resolveClickShortcut(target, mods, {
+      mode,
+      selected,
+      selectedEdge,
+      pending,
+      hasEdge: (a, b) => hasEdgeBetween(storeRef.current, a, b),
+      canEditNode,
+      canEditEdge: canEditEdgeId,
+    })
+
+  /** Joins the selected point to the clicked one in one undo step, and moves the selection to the clicked one. */
+  const linkByClick = (from: string, to: string) => {
+    commit(addEdge(storeRef.current, from, to))
+    pickNode(to)
+    setSelectedEdge(null)
+    setPending(null)
+    setNotice(`${from} 와 ${to} 를 이었어요`)
+  }
+
+  const onNodePress = (id: string, mods: ClickMods = NO_MODS) => {
+    const shortcut = clickShortcut({ kind: 'node', id }, mods)
+    if (shortcut?.kind === 'link') return linkByClick(shortcut.from, shortcut.to)
+    if (shortcut?.kind === 'blocked') {
+      return setNotice(shortcut.why === 'exists' ? `${selected} 와 ${id} 는 이미 이어져 있어요. 지우려면 간선을 눌러 지워 주세요.` : lockedText)
+    }
+    if (!canEditNode(id)) return
     if (mode === 'select') {
       setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
       return
@@ -602,8 +738,27 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setPending(pending === id ? null : id)
   }
 
-  const onEdgePress = (id: string) => {
-    if (mode === 'select') return
+  /**
+   * Shift + click on the selected edge: a new point at the clicked spot on the line, splitting the edge, in one
+   * undo step. lat/lng come from the map already moved onto the line; null means too close to an end point.
+   */
+  const splitByClick = (edgeId: string, lat: unknown, lng: unknown) => {
+    if (lat === null || lng === null) return setNotice('끝점에 너무 가까워요. 간선 가운데 쪽을 Shift+클릭해 주세요.')
+    if (typeof lat !== 'number' || typeof lng !== 'number') return setNotice('클릭한 위치를 알 수 없어 간선을 나누지 못했어요.')
+    const result = splitEdgeAt(storeRef.current, edgeId, lat, lng)
+    if (!result.id) return setNotice(SPLIT_REFUSED[result.refused ?? 'missing'])
+    commit(result.store)
+    pickNode(result.id)
+    setSelectedEdge(null)
+    setPending(null)
+    setNotice(`${result.id} 를 만들고 간선을 둘로 나눴어요`)
+  }
+
+  const onEdgePress = (id: string, mods: ClickMods = NO_MODS, at: { lat?: unknown; lng?: unknown } = {}) => {
+    const shortcut = clickShortcut({ kind: 'edge', id }, mods)
+    if (shortcut?.kind === 'split') return splitByClick(shortcut.edgeId, at.lat, at.lng)
+    if (shortcut?.kind === 'blocked') return setNotice(lockedText)
+    if (mode === 'select' || !canEditEdgeId(id)) return
     setSelectedEdge(id)
     setSelected(null)
     setPending(null)
@@ -611,9 +766,9 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }
 
   const onMove = (msg: any) => {
-    if (!Number.isFinite(msg.lat) || !Number.isFinite(msg.lng)) return
+    if (!Number.isFinite(msg.lat) || !Number.isFinite(msg.lng) || !canEditNode(msg.id)) return
     const current = storeRef.current
-    if (msg.edgeId) {
+    if (msg.edgeId && canEditEdgeId(msg.edgeId)) {
       const result = moveNodeOntoEdge(current, msg.id, msg.edgeId, msg.lat, msg.lng)
       if (result.split) {
         commit(result.store)
@@ -659,14 +814,41 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       selected,
       multi,
       canUndo: historyRef.current.size() > 0,
+      canRedo: historyRef.current.redoSize() > 0,
+      canEdit: canEditNode,
     })
     if (!action || (action.kind === 'nudge' && !worldPxRef.current)) return
     event.preventDefault()
     event.stopPropagation()
     if (action.kind === 'undo') undo()
+    else if (action.kind === 'redo') redo()
     else if (action.kind === 'delete') deleteNode(action.id)
     else nudgeNode(action)
   }
+
+  // Modifier keys seen in key events. A map click that carries its own keys (domEvent) wins; this is the fallback.
+  const modsRef = useRef<Required<ClickMods>>(NO_MODS)
+  const clickMods = (msg: any): ClickMods =>
+    typeof msg?.shift === 'boolean' ? { shift: msg.shift, ctrl: !!msg.ctrl, meta: !!msg.meta } : modsRef.current
+  useEffect(() => {
+    const w = globalThis as any
+    if (Platform.OS !== 'web' || typeof w.addEventListener !== 'function') return
+    const onModKey = (event: any) => {
+      modsRef.current = modsAfterKey(modsRef.current, event)
+    }
+    // A key released in another window never reaches this one.
+    const onBlur = () => {
+      modsRef.current = NO_MODS
+    }
+    w.addEventListener('keydown', onModKey, true)
+    w.addEventListener('keyup', onModKey, true)
+    w.addEventListener('blur', onBlur)
+    return () => {
+      w.removeEventListener('keydown', onModKey, true)
+      w.removeEventListener('keyup', onModKey, true)
+      w.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   // Registered only while the map is up, in the capture phase so that the map does not also act on the key.
   useEffect(() => {
@@ -678,7 +860,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   }, [ready])
 
   // The map's own arrow key panning is off only while the arrow keys move a point.
-  const keysLocked = ready && isShortcutTab(tab) && !!findNode(store, keyboardTarget(selected, multi))
+  const keysLocked = ready && isShortcutTab(tab) && !!findNode(store, keyboardTarget(selected, multi)) && canEditNode(keyboardTarget(selected, multi))
   const keysLockedRef = useRef(keysLocked)
   keysLockedRef.current = keysLocked
   useEffect(() => {
@@ -693,8 +875,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     if (msg.type === 'scale') {
       if (Number.isFinite(msg.worldPx) && msg.worldPx > 0) worldPxRef.current = msg.worldPx
     } else if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
-    else if (msg.type === 'node') onNodePress(msg.id)
-    else if (msg.type === 'edge') onEdgePress(msg.id)
+    else if (msg.type === 'node') onNodePress(msg.id, clickMods(msg))
+    else if (msg.type === 'edge') onEdgePress(msg.id, clickMods(msg), msg)
     else if (msg.type === 'move' && mode === 'move') onMove(msg)
   }
 
@@ -725,12 +907,12 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
       ],
     }
-    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null })
+    const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null, onlyFilter, changes: marks })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
     lastRenderRef.current = state
     webViewRef.current?.injectJavaScript(`window.__surveyV3Render && window.__surveyV3Render(${state}); true;`)
-  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor])
+  }, [ready, store, index, filter, mode, selected, pending, selectedEdge, multi, labelMode, legacyToggles, overlay, chain, anchor, onlyFilter, marks])
 
   const selectedNode = findNode(store, selected)
   const edge = findEdge(store, selectedEdge)
@@ -758,6 +940,8 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         onSave={saveNow}
         undoCount={undoCount}
         onUndo={undo}
+        redoCount={redoCount}
+        onRedo={redo}
         onShowCheck={() => setTab('check')}
         server={serverLine}
         onServerRetry={retryServer}
@@ -795,14 +979,24 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     <>
       <Text style={ui.hint}>{activeMode.help}</Text>
       {mode === 'link' && pending ? <Text style={styles.pending}>{`${pending} 에서 시작, 이을 점을 누르세요`}</Text> : null}
-      <FilterBar nodes={store.nodes} index={index} filter={filter} onChange={setFilter} />
+      <FilterBar
+        nodes={store.nodes}
+        index={index}
+        filter={filter}
+        onChange={(next) => applyFilter(next, onlyFilter)}
+        onlyFilter={onlyFilter}
+        onToggleOnlyFilter={() => applyFilter(filter, !onlyFilter)}
+        showChanges={showChanges}
+        onToggleShowChanges={() => setShowChanges((v) => !v)}
+        changeCounts={changeCounts}
+      />
       <View style={styles.labelRow}>
         <Text style={ui.sectionHelp}>{'라벨 보기'}</Text>
         {LABEL_MODES.map((m) => (
           <Chip key={m.key} label={m.label} on={labelMode === m.key} onPress={() => setLabelMode(m.key)} />
         ))}
       </View>
-      <Text style={ui.sectionHelp}>{`되돌리기는 ${UNDO_LIMIT}단계까지이고, 새로고침하면 기록이 사라져요.`}</Text>
+      <Text style={ui.sectionHelp}>{`되돌리기와 다시(되돌리기 취소)는 ${UNDO_LIMIT}단계까지이고, 새로고침하면 기록이 사라져요. 되돌린 뒤 새로 고치면 다시 기록은 지워져요.`}</Text>
       <Legend index={index} />
       {__DEV__ ? (
         <Btn
@@ -847,6 +1041,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
       <Text style={styles.summary}>{`경로망 조사 v3, 지점 ${store.nodes.length}, 간선 ${store.edges.length}`}</Text>
       <Text style={styles.summary}>{backupStatus}</Text>
       {Platform.OS === 'web' ? <Text style={ui.sectionHelp}>{NUDGE_HINT}</Text> : null}
+      {Platform.OS === 'web' ? <Text style={ui.sectionHelp}>{CLICK_HINT}</Text> : null}
       {saveFailed ? <Text style={ui.error}>{'브라우저에 보관하지 못했어요(용량 또는 브라우저 제한). 지금 내용은 이 탭에만 있으니 백업 파일을 내려받아 주세요.'}</Text> : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {mode === 'select' ? (
@@ -863,7 +1058,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           }}
         />
       ) : null}
-      {selectedNode && mode !== 'select' ? (
+      {selectedNode && mode !== 'select' && canEditNode(selectedNode.id) ? (
         <NodeSheet
           key={`${selectedNode.id}:${undoTick}`}
           node={selectedNode}
@@ -881,7 +1076,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
         />
       ) : null}
       {selectedNode && boundaryOpen && mode !== 'select' && selectedNode.scope === 'outdoor' ? <Btn label="이 점은 외부 유지" onPress={() => keepOutdoor([selectedNode.id])} /> : null}
-      {edge && mode !== 'select' ? (
+      {edge && mode !== 'select' && canEditEdgeId(edge.id) ? (
         <EdgeSheet
           key={`${edge.id}:${undoTick}`}
           edge={edge}
@@ -918,7 +1113,10 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           onConvert={runConvert}
           onFocus={focusNode}
           onNotice={setNotice}
-          onToggleMulti={(id) => setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))}
+          onToggleMulti={(id) => {
+            if (!multi.includes(id) && !canEditNode(id)) return setNotice(lockedText)
+            setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
+          }}
           onSelectMany={selectMany}
           onKeepOutdoor={keepOutdoor}
           onResetKept={() => updateReport((r) => ({ ...r, dismissed: [] }))}

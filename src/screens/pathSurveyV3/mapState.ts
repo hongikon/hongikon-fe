@@ -1,7 +1,8 @@
 import { STAIRS_COLOR } from '../../utils/pathSurveyStore'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import type { ChangeMarks } from '../../utils/pathSurveyV3/changes'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
-import { hasLevel, type NodeType, type SurveyEdgeV3, type SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
+import type { NodeType, SurveyEdgeV3, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 
 /**
  * Turns the store into what the map draws. Pure so that the rules can be tested without a map.
@@ -33,16 +34,30 @@ export const BUILDING_COLORS = [
   '#92400E',
 ] as const
 
+/**
+ * "Show changes" marks. Kept apart from the place colors and type shapes: a halo around the point or under the line.
+ * Added: yellow fill with a dashed ring, a solid yellow band under an edge. Changed: dotted fuchsia ring, a dotted band.
+ */
+export const CHANGE_ADDED_COLOR = '#FACC15'
+export const CHANGE_ADDED_RING = '#A16207'
+export const CHANGE_CHANGED_COLOR = '#C026D3'
+
 export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle'
 
 export const SHAPE_OF: Record<NodeType, NodeShape> = { basic: 'circle', entrance: 'square', elevator: 'diamond', stairs: 'triangle' }
 
 export interface MapFilter {
-  building: string | null
-  floor: number | null
+  /** Empty means all buildings. Each selected building has all floors (null) or one floor. */
+  selections: readonly { building: string; floor: number | null }[]
 }
 
-export const NO_FILTER: MapFilter = { building: null, floor: null }
+export const NO_FILTER: MapFilter = { selections: [] }
+
+/** Selected buildings in the order of the server building list. Codes missing from the list go last. */
+export function selectionsInListOrder(filter: MapFilter, index: BuildingIndex): MapFilter['selections'] {
+  const orderOf = (code: string) => index.byCode.get(code)?.order ?? Number.MAX_SAFE_INTEGER
+  return [...filter.selections].sort((x, y) => orderOf(x.building) - orderOf(y.building))
+}
 
 export type MapMode = 'add' | 'link' | 'move' | 'select'
 
@@ -69,7 +84,11 @@ export interface RenderNode {
   emphasized: boolean
   /** The next chained point joins this one. */
   anchor: boolean
+  /** "Show changes" mark since the last save: added or changed. Empty when off or unchanged. */
+  change: ChangeMark
 }
+
+export type ChangeMark = '' | 'added' | 'changed'
 
 export interface RenderEdge {
   id: string
@@ -85,6 +104,7 @@ export interface RenderEdge {
   clickable: boolean
   /** A dragged node may split this edge. */
   snap: boolean
+  change: ChangeMark
 }
 
 export function buildingColor(index: BuildingIndex, code: string): string {
@@ -94,10 +114,53 @@ export function buildingColor(index: BuildingIndex, code: string): string {
 
 /** Strong means drawn at full color. Outdoor points always are. Without a building filter everything is. */
 export function isNodeStrong(node: SurveyNodeV3, filter: MapFilter): boolean {
-  if (!filter.building || node.scope !== 'indoor') return true
+  if (filter.selections.length === 0 || node.scope !== 'indoor') return true
   const levels = node.levels ?? []
-  if (filter.floor === null) return levels.some((l) => l.building === filter.building)
-  return hasLevel(levels, { building: filter.building, floor: filter.floor })
+  return filter.selections.some(({ building, floor }) => levels.some((l) => l.building === building && (floor === null || l.floor === floor)))
+}
+
+/**
+ * May this point be pressed, dragged and edited. With "only the filter" off every point may, dim or not.
+ * With it on (the default) only strong points may: outdoor points and points matching the filter.
+ */
+export const isNodeEditable = (node: SurveyNodeV3, filter: MapFilter, onlyFilter: boolean): boolean => !onlyFilter || isNodeStrong(node, filter)
+
+/** An edge may be edited when both end points may. */
+export const isEdgeEditable = (a: SurveyNodeV3, b: SurveyNodeV3, filter: MapFilter, onlyFilter: boolean): boolean =>
+  isNodeEditable(a, filter, onlyFilter) && isNodeEditable(b, filter, onlyFilter)
+
+/** The ids among these that are points that may be edited. Unknown ids are dropped. */
+export function editableNodeIds(store: StoreV3, ids: readonly string[], filter: MapFilter, onlyFilter: boolean): string[] {
+  const byId = new Map(store.nodes.map((n) => [n.id, n]))
+  return ids.filter((id) => {
+    const node = byId.get(id)
+    return !!node && isNodeEditable(node, filter, onlyFilter)
+  })
+}
+
+export function canEditEdge(store: StoreV3, id: string | null, filter: MapFilter, onlyFilter: boolean): boolean {
+  const edge = id ? store.edges.find((e) => e.id === id) : undefined
+  const a = edge && store.nodes.find((n) => n.id === edge.a)
+  const b = edge && store.nodes.find((n) => n.id === edge.b)
+  return !!a && !!b && isEdgeEditable(a, b, filter, onlyFilter)
+}
+
+export interface EditSelection {
+  selected: string | null
+  selectedEdge: string | null
+  pending: string | null
+  multi: readonly string[]
+}
+
+/** What stays selected after the filter or the "only the filter" box changed: only what may still be edited. */
+export function editableSelection(store: StoreV3, selection: EditSelection, filter: MapFilter, onlyFilter: boolean): EditSelection {
+  const keep = (id: string | null) => (id && editableNodeIds(store, [id], filter, onlyFilter).length ? id : null)
+  return {
+    selected: keep(selection.selected),
+    selectedEdge: canEditEdge(store, selection.selectedEdge, filter, onlyFilter) ? selection.selectedEdge : null,
+    pending: keep(selection.pending),
+    multi: editableNodeIds(store, selection.multi, filter, onlyFilter),
+  }
 }
 
 const buildingsOf = (node: SurveyNodeV3) => [...new Set((node.levels ?? []).map((l) => l.building))]
@@ -138,19 +201,24 @@ export interface RenderOptions {
   labelMode?: LabelMode
   /** Chain base point. Pass it only while chaining is on. */
   anchor?: string | null
+  /** "Only the filter can be edited". On by default: points outside the filter are dim and locked. Off: dim but editable. */
+  onlyFilter?: boolean
+  /** "Show changes": marks by id. Display only, it never changes what may be pressed or what is dim. */
+  changes?: ChangeMarks | null
 }
 
 export function buildRenderState(store: StoreV3, options: RenderOptions): { nodes: RenderNode[]; edges: RenderEdge[] } {
-  const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full' } = options
+  const { index, filter, mode, selected, pending, selectedEdge, labelMode = 'full', onlyFilter = true } = options
   const multi = new Set(options.multi ?? [])
   const byId = new Map(store.nodes.map((n) => [n.id, n]))
-  const filtering = !!filter.building
+  const filtering = filter.selections.length > 0
 
   const edges = store.edges.flatMap((edge: SurveyEdgeV3): RenderEdge[] => {
     const a = byId.get(edge.a)
     const b = byId.get(edge.b)
     if (!a || !b || a === b) return []
     const strong = isNodeStrong(a, filter) && isNodeStrong(b, filter)
+    const editable = isEdgeEditable(a, b, filter, onlyFilter)
     const emphasized = edge.id === selectedEdge
     const stairs = edge.kind === 'stairs'
     return [
@@ -164,9 +232,10 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
         dashed: !stairs && isNeutralEdge(a, b),
         weight: (emphasized ? 8 : 5) + (stairs ? 2 : 0),
         opacity: filtering && !strong ? 0.18 : 0.9,
-        // Dim edges cannot be pressed, so overlapping floors are not hit by accident.
-        clickable: !filtering || strong,
-        snap: !filtering || strong,
+        // Locked edges cannot be pressed, so overlapping floors are not hit by accident.
+        clickable: editable,
+        snap: editable,
+        change: options.changes?.edges.get(edge.id) ?? '',
       },
     ]
   })
@@ -176,6 +245,8 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
     const isAnchor = node.id === options.anchor
     // The base point stays readable under a filter, because the next point is about to join it.
     const dim = filtering && !strong && !isAnchor
+    // The base point also stays pressable, as before this option existed.
+    const editable = isAnchor || isNodeEditable(node, filter, onlyFilter)
     const indoor = node.scope === 'indoor'
     const buildings = indoor ? buildingsOf(node) : []
     const fill = !indoor ? OUTDOOR_COLOR : buildings[0] ? buildingColor(index, buildings[0]) : NEUTRAL_COLOR
@@ -209,10 +280,11 @@ export function buildRenderState(store: StoreV3, options: RenderOptions): { node
       letter: labelled && withLetter ? letter : '',
       badge: labelled && withLetter ? levelBadge(node, index) : '',
       dim,
-      clickable: !dim,
-      draggable: !dim && mode === 'move',
+      clickable: editable,
+      draggable: editable && mode === 'move',
       emphasized,
       anchor: isAnchor,
+      change: options.changes?.nodes.get(node.id) ?? '',
     }
   })
 

@@ -78,18 +78,164 @@ test('edge color: outdoor, indoor building, neutral for entrances and links betw
 
 test('floor filter: matching and outdoor points are strong, others dim and cannot be pressed', () => {
   const s = store([node('n1'), indoor('n2', [lvl(R, 1), lvl(R, 2)]), indoor('n3', [lvl(R, 3)]), indoor('n4', [lvl(K, 1)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
-  const floor = draw(s, { filter: { building: R, floor: 2 }, mode: 'move' })
+  const floor = draw(s, { filter: { selections: [{ building: R, floor: 2 }] }, mode: 'move' })
   assert.deepEqual(floor.nodes.map((n) => n.dim), [false, false, true, true])
   assert.deepEqual(floor.nodes.map((n) => n.clickable), [true, true, false, false])
   assert.deepEqual(floor.nodes.map((n) => n.draggable), [true, true, false, false])
   assert.deepEqual(floor.edges.map((e) => e.clickable), [true, false])
   assert.deepEqual(floor.edges.map((e) => e.snap), [true, false])
   assert.ok(floor.edges[1].opacity < floor.edges[0].opacity)
-  const building = draw(s, { filter: { building: R, floor: null } })
+  const building = draw(s, { filter: { selections: [{ building: R, floor: null }] } })
   assert.deepEqual(building.nodes.map((n) => n.dim), [false, false, false, true])
   const off = draw(s)
   assert.ok(off.nodes.every((n) => n.clickable && !n.dim))
   assert.ok(off.edges.every((e) => e.clickable && e.snap))
+})
+
+test('multiple buildings use their own floors and keep connecting edges editable', () => {
+  const s = store([
+    node('n1'),
+    indoor('n2', [lvl(R, 0)]),
+    indoor('n3', [lvl(R, 1.5)]),
+    indoor('n4', [lvl(K, -1)]),
+    indoor('n5', [lvl(K, 0)]),
+    indoor('n6', [lvl(R, 2), lvl(K, -1)]),
+    indoor('n7', [lvl('hongik_m', -1)]),
+    indoor('n8', []),
+  ], [edge('e1', 'n2', 'n4'), edge('e2', 'n4', 'n5'), edge('e3', 'n1', 'n6')])
+  const filter = { selections: [{ building: R, floor: 0 }, { building: K, floor: -1 }] }
+  const drawn = draw(s, { filter, mode: 'move' })
+  assert.deepEqual(drawn.nodes.map((n) => n.dim), [false, false, true, false, true, false, true, true])
+  assert.deepEqual(drawn.nodes.map((n) => n.clickable), [true, true, false, true, false, true, false, false])
+  assert.deepEqual(drawn.nodes.map((n) => n.draggable), [true, true, false, true, false, true, false, false])
+  assert.deepEqual(drawn.nodes.map((n) => n.num), ['', '2', '', '4', '', '6', '', ''])
+  assert.deepEqual(drawn.edges.map((e) => e.clickable), [true, false, true])
+  assert.deepEqual(drawn.edges.map((e) => e.snap), [true, false, true])
+  assert.deepEqual(drawn.edges.map((e) => e.opacity), [0.9, 0.18, 0.9])
+
+  const mixed = draw(s, { filter: { selections: [{ building: R, floor: null }, { building: K, floor: -1 }] } })
+  assert.deepEqual(mixed.nodes.map((n) => n.dim), [false, false, false, false, true, false, true, true])
+  const halfFloor = draw(s, { filter: { selections: [{ building: R, floor: 1.5 }] } })
+  assert.deepEqual(halfFloor.nodes.map((n) => n.dim), [false, true, false, true, true, true, true, true])
+
+  const all = draw(s, { filter: M.NO_FILTER, mode: 'move' })
+  assert.ok(all.nodes.every((n) => !n.dim && n.clickable && n.draggable))
+  assert.ok(all.edges.every((e) => e.clickable && e.snap && e.opacity === 0.9))
+})
+
+test('a catalog building without survey points can be filtered', () => {
+  const catalogOnly = 'hongik_catalog_only'
+  const fullIndex = B.buildBuildingIndex([...FIXTURE_BUILDINGS, { code: catalogOnly, name: '새 건물', lat: 1, lng: 1 }])
+  const s = store([node('n1'), indoor('n2', [lvl(R, 1)])])
+  const filter = { selections: [{ building: catalogOnly, floor: null }] }
+  assert.deepEqual(draw(s, { index: fullIndex, filter }).nodes.map((n) => n.dim), [false, true])
+  assert.deepEqual(draw(store([]), { index: fullIndex, filter }), { nodes: [], edges: [] })
+})
+
+test('only the filter on (default) locks dim points and edges, off keeps them dim but pressable, draggable and snapping', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 2)]), indoor('n3', [lvl(R, 3)]), indoor('n4', [lvl(K, 1)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3'), edge('e3', 'n1', 'n4')])
+  const filter = { selections: [{ building: R, floor: 2 }] }
+  const on = draw(s, { filter, mode: 'move' })
+  assert.deepEqual(on, draw(s, { filter, mode: 'move', onlyFilter: true }), 'on is the default')
+  assert.deepEqual(on.nodes.map((n) => n.dim), [false, false, true, true])
+  assert.deepEqual(on.nodes.map((n) => n.clickable), [true, true, false, false])
+  assert.deepEqual(on.nodes.map((n) => n.draggable), [true, true, false, false])
+  assert.deepEqual(on.edges.map((e) => [e.clickable, e.snap]), [[true, true], [false, false], [false, false]])
+
+  const off = draw(s, { filter, mode: 'move', onlyFilter: false })
+  assert.deepEqual(off.nodes.map((n) => n.dim), [false, false, true, true], 'still drawn dim')
+  assert.ok(off.nodes.every((n) => n.clickable && n.draggable))
+  assert.ok(off.edges.every((e) => e.clickable && e.snap))
+  assert.deepEqual(off.edges.map((e) => e.opacity), on.edges.map((e) => e.opacity))
+  assert.ok(draw(s, { filter, mode: 'add', onlyFilter: false }).nodes.every((n) => !n.draggable), 'only move mode drags')
+})
+
+test('editable rules: outdoor always, edges need both ends, multi building filter keeps the link between them', () => {
+  const out = node('n1')
+  const r0 = indoor('n2', [lvl(R, 0)])
+  const k1 = indoor('n3', [lvl(K, -1)])
+  const r5 = indoor('n4', [lvl(R, 5)])
+  const filter = { selections: [{ building: R, floor: 0 }, { building: K, floor: -1 }] }
+  assert.equal(M.isNodeEditable(out, filter, true), true)
+  assert.equal(M.isNodeEditable(r5, filter, true), false)
+  assert.equal(M.isNodeEditable(r5, filter, false), true)
+  assert.equal(M.isNodeEditable(r5, M.NO_FILTER, true), true, 'no filter, nothing locked')
+  assert.equal(M.isEdgeEditable(r0, k1, filter, true), true, 'the edge between the two chosen buildings')
+  assert.equal(M.isEdgeEditable(out, r0, filter, true), true)
+  assert.equal(M.isEdgeEditable(r0, r5, filter, true), false)
+  assert.equal(M.isEdgeEditable(r0, r5, filter, false), true)
+
+  const s = store([out, r0, k1, r5], [edge('e1', 'n2', 'n3'), edge('e2', 'n2', 'n4'), edge('e3', 'n9', 'n2')])
+  assert.deepEqual(M.editableNodeIds(s, ['n1', 'n2', 'n3', 'n4', 'n9'], filter, true), ['n1', 'n2', 'n3'])
+  assert.deepEqual(M.editableNodeIds(s, ['n4', 'n9'], filter, false), ['n4'], 'unknown ids are dropped')
+  assert.equal(M.canEditEdge(s, 'e1', filter, true), true)
+  assert.equal(M.canEditEdge(s, 'e2', filter, true), false)
+  assert.equal(M.canEditEdge(s, 'e3', filter, false), false, 'an edge with a missing end')
+  assert.equal(M.canEditEdge(s, null, filter, false), false)
+})
+
+test('a filter change keeps only the selection that may still be edited', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 1)]), indoor('n3', [lvl(R, 2)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const all = { selected: 'n3', selectedEdge: 'e2', pending: 'n2', multi: ['n1', 'n2', 'n3'] }
+  const filter = { selections: [{ building: R, floor: 1 }] }
+  assert.deepEqual(M.editableSelection(s, all, filter, true), { selected: null, selectedEdge: null, pending: 'n2', multi: ['n1', 'n2'] })
+  assert.deepEqual(M.editableSelection(s, all, filter, false), all)
+  assert.deepEqual(M.editableSelection(s, all, M.NO_FILTER, true), all)
+  const edgeOnly = { selected: null, selectedEdge: 'e1', pending: null, multi: [] }
+  assert.deepEqual(M.editableSelection(s, edgeOnly, filter, true), edgeOnly)
+})
+
+test('chain base point outside the filter stays readable and pressable with the box on, as before', () => {
+  const s = store([indoor('n1', [lvl(R, 1)]), indoor('n2', [lvl(R, 2)])])
+  const filter = { selections: [{ building: R, floor: 1 }] }
+  const anchored = draw(s, { filter, anchor: 'n2' }).nodes[1]
+  assert.equal(anchored.dim, false)
+  assert.equal(anchored.clickable, true)
+  assert.equal(anchored.draggable, false, 'add mode never drags')
+  const plain = draw(s, { filter }).nodes[1]
+  assert.equal(plain.dim, true)
+  assert.equal(plain.clickable, false)
+})
+
+test('show changes: marks added and changed points and edges, and never changes pressing, dragging, snap or dim', () => {
+  const s = store([node('n1'), indoor('n2', [lvl(R, 1)]), indoor('n3', [lvl(R, 2)])], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const changes = { nodes: new Map([['n2', 'added'], ['n3', 'changed']]), edges: new Map([['e2', 'changed']]) }
+  for (const extra of [{}, { filter: { selections: [{ building: R, floor: 1 }] } }, { filter: { selections: [{ building: R, floor: 1 }] }, onlyFilter: false }]) {
+    const plain = draw(s, { mode: 'move', ...extra })
+    const marked = draw(s, { mode: 'move', ...extra, changes })
+    assert.deepEqual(marked.nodes.map((n) => n.change), ['', 'added', 'changed'])
+    assert.deepEqual(marked.edges.map((e) => e.change), ['', 'changed'])
+    const strip = (list) => list.map(({ change, ...rest }) => rest)
+    assert.deepEqual(strip(marked.nodes), strip(plain.nodes), 'clickable, draggable, dim and the rest stay')
+    assert.deepEqual(strip(marked.edges), strip(plain.edges))
+  }
+  assert.ok(draw(s).nodes.every((n) => n.change === ''), 'off: no marks')
+  assert.ok(draw(s, { changes: null }).edges.every((e) => e.change === ''))
+})
+
+test('map script: show changes draws a halo around marked points and a band under marked edges', () => {
+  const { window, markers, lines } = mockMap()
+  const s = store([node('n1'), node('n2'), node('n3')], [edge('e1', 'n1', 'n2'), edge('e2', 'n2', 'n3')])
+  const changes = { nodes: new Map([['n1', 'added'], ['n2', 'changed']]), edges: new Map([['e1', 'added'], ['e2', 'changed']]) }
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(s, { changes }) })
+  const html = (id) => markers.find((m) => m.options.title === id).options.icon.content
+  assert.match(html('n1'), /data-change="added"/)
+  assert.match(html('n2'), /data-change="changed"/)
+  assert.doesNotMatch(html('n3'), /data-change/)
+  const bands = lines.filter((l) => l.options.zIndex === 290)
+  assert.equal(bands.length, 2)
+  assert.deepEqual(bands.map((l) => l.options.strokeColor), [M.CHANGE_ADDED_COLOR, M.CHANGE_CHANGED_COLOR])
+  assert.deepEqual(bands.map((l) => l.options.strokeStyle), ['solid', 'shortdot'])
+  assert.ok(bands.every((l) => l.options.clickable === false))
+})
+
+test('selected buildings are listed in server list order, unknown codes last, without changing the filter', () => {
+  const filter = { selections: [{ building: 'old_code', floor: null }, { building: K, floor: 1 }, { building: R, floor: null }] }
+  const listed = M.selectionsInListOrder(filter, index).map((s) => s.building)
+  const expected = [R, K].sort((x, y) => index.byCode.get(x).order - index.byCode.get(y).order)
+  assert.deepEqual(listed, [...expected, 'old_code'])
+  assert.deepEqual(filter.selections.map((s) => s.building), ['old_code', K, R])
+  assert.deepEqual(M.selectionsInListOrder(M.NO_FILTER, index), [])
 })
 
 test('selection and pending rings, only move mode can drag', () => {
@@ -227,7 +373,7 @@ test('map script: stairs edge is a dark line with a white dash, other edges one 
 test('map script: clicks post messages, a dim point has no click, and the map tap after a press is ignored', () => {
   const { window, markers, messages, mapListeners, LatLng } = mockMap()
   const s = store([node('n1'), indoor('n2', [lvl(R, 1)])])
-  const { nodes, edges } = draw(s, { filter: { building: K, floor: 1 } })
+  const { nodes, edges } = draw(s, { filter: { selections: [{ building: K, floor: 1 }] } })
   window.__surveyV3Render({ legacy: LEGACY, nodes, edges })
   assert.equal(markers[1].options.clickable, false)
   assert.equal(markers[1].listeners.click, undefined)
@@ -260,9 +406,36 @@ test('map script: drag snaps only to snap edges and never to its own edges', () 
   assert.equal(run(M.NO_FILTER).edgeId, 'e1')
   assert.equal(run(M.NO_FILTER).lat, 0)
   // The indoor edge on another floor is dim: the point just moves.
-  const filtered = run({ building: R, floor: 9 })
+  const filtered = run({ selections: [{ building: R, floor: 9 }] })
   assert.equal(filtered.edgeId, null)
   assert.equal(filtered.lat, 5)
+})
+
+test('map script: clicks pass the held keys, and an edge click passes the spot moved onto the line', () => {
+  const { window, markers, lines, messages, LatLng } = mockMap()
+  const nodes = [node('n1', { lat: 0, lng: 0 }), node('n2', { lat: 0, lng: 100 })]
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(store(nodes, [edge('e1', 'n1', 'n2')])) })
+  const hitLine = lines.find((l) => l.listeners.click)
+  hitLine.listeners.click({ coord: new LatLng(3, 40), domEvent: { shiftKey: true } })
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', shift: true, ctrl: false, meta: false, lat: 0, lng: 40, src: 'surveyV3' })
+  hitLine.listeners.click({ coord: new LatLng(0, 5), domEvent: { shiftKey: true } })
+  assert.equal(messages.at(-1).lat, null, 'within 9px of an end point: no spot')
+  assert.equal(messages.at(-1).lng, null)
+  markers[1].listeners.click({ domEvent: { metaKey: true } })
+  assert.deepEqual(messages.at(-1), { type: 'node', id: 'n2', shift: false, ctrl: false, meta: true, src: 'surveyV3' })
+  markers[0].listeners.click({ domEvent: { ctrlKey: true } })
+  assert.equal(messages.at(-1).ctrl, true)
+})
+
+test('map script: a click without an event object posts what it did before', () => {
+  const { window, markers, lines, messages } = mockMap()
+  window.__surveyV3Render({ legacy: LEGACY, ...draw(store([node('n1'), node('n2')], [edge('e1', 'n1', 'n2')])) })
+  markers[0].listeners.click()
+  assert.deepEqual(messages.at(-1), { type: 'node', id: 'n1', src: 'surveyV3' })
+  lines.find((l) => l.listeners.click).listeners.click()
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', src: 'surveyV3' })
+  lines.find((l) => l.listeners.click).listeners.click({ coord: undefined })
+  assert.deepEqual(messages.at(-1), { type: 'edge', id: 'e1', src: 'surveyV3' }, 'no spot and no keys')
 })
 
 test('map script: only changed objects are rebuilt, removed ones disappear', () => {

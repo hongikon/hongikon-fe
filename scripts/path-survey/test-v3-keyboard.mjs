@@ -28,8 +28,39 @@ test('shortcuts: Ctrl+Z and Cmd+Z undo, also with a Korean layout, and only when
   assert.deepEqual(press('z', {}, { metaKey: true }), { kind: 'undo' })
   assert.deepEqual(press('Process', {}, { ctrlKey: true, code: 'KeyZ' }), { kind: 'undo' })
   assert.equal(press('z', { canUndo: false }, { ctrlKey: true }), null)
-  assert.equal(press('z', {}, { ctrlKey: true, shiftKey: true }), null, 'no redo')
+  assert.equal(press('z', {}, { ctrlKey: true, shiftKey: true }), null, 'Ctrl+Shift+Z is redo, and there is nothing to redo')
   assert.equal(press('z'), null, 'a plain z does nothing')
+})
+
+test('shortcuts: Ctrl+Shift+Z, Cmd+Shift+Z and Ctrl+Y redo, Cmd+Y belongs to the browser', () => {
+  const can = { canRedo: true }
+  assert.deepEqual(press('Z', can, { ctrlKey: true, shiftKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('Z', can, { metaKey: true, shiftKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('y', can, { ctrlKey: true }), { kind: 'redo' })
+  assert.deepEqual(press('Process', can, { ctrlKey: true, shiftKey: true, code: 'KeyZ' }), { kind: 'redo' }, 'Korean layout')
+  assert.deepEqual(press('Process', can, { ctrlKey: true, code: 'KeyY' }), { kind: 'redo' }, 'Korean layout')
+  assert.equal(press('y', can, { metaKey: true }), null, 'Cmd+Y')
+  assert.equal(press('y', can, { ctrlKey: true, metaKey: true }), null)
+  assert.equal(press('y', can, { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('Z', can, { ctrlKey: true, shiftKey: true, altKey: true }), null)
+  assert.equal(press('Z', { canRedo: false }, { ctrlKey: true, shiftKey: true }), null)
+  assert.equal(press('y', { canRedo: false }, { ctrlKey: true }), null)
+  assert.equal(press('y', can), null, 'a plain y does nothing')
+  assert.deepEqual(press('z', can, { ctrlKey: true }), { kind: 'undo' }, 'Ctrl+Z stays undo')
+  assert.equal(press('Z', { ...can, typing: true }, { ctrlKey: true, shiftKey: true }), null, 'typing: the browser handles it')
+  assert.equal(press('y', { ...can, otherScreen: true }, { ctrlKey: true }), null)
+})
+
+test('shortcuts: a point locked by the filter is not deleted or moved, undo still works', () => {
+  const locked = { canEdit: (id) => id !== 'n1' }
+  assert.equal(press('Delete', locked), null)
+  assert.equal(press('Backspace', locked), null)
+  assert.equal(press('ArrowUp', locked), null)
+  assert.equal(press('ArrowLeft', locked, { shiftKey: true }), null)
+  assert.deepEqual(press('z', locked, { ctrlKey: true }), { kind: 'undo' })
+  assert.deepEqual(press('Delete', { ...locked, selected: 'n2' }), { kind: 'delete', id: 'n2' })
+  assert.deepEqual(press('Delete', { canEdit: () => true }), { kind: 'delete', id: 'n1' })
+  assert.deepEqual(press('Delete'), { kind: 'delete', id: 'n1' }, 'without the check every point may be edited')
 })
 
 test('shortcuts: Ctrl+X is not connected, and a modifier never turns into a delete or a move', () => {
@@ -149,6 +180,87 @@ test('undo history: keeps the same limit of 50 steps as before, dropping the old
   assert.equal(last.store.tag, 10)
 })
 
+test('redo: an undone step comes back as the same store, and undo and redo go back and forth', () => {
+  const history = H.createEditHistory()
+  const s0 = { tag: 0 }
+  const s1 = { tag: 1 }
+  const s2 = { tag: 2 }
+  history.record({ store: s0, anchor: 'a0' })
+  history.record({ store: s1, anchor: 'a1' })
+  assert.equal(history.redoSize(), 0)
+  const back = history.undo({ store: s2, anchor: 'a2' })
+  assert.equal(back.store, s1)
+  assert.equal(history.size(), 1)
+  assert.equal(history.redoSize(), 1)
+  const back2 = history.undo({ store: s1, anchor: 'a1' })
+  assert.equal(back2.store, s0)
+  assert.equal(history.redoSize(), 2)
+  const again = history.redo({ store: s0, anchor: 'a0' })
+  assert.equal(again.store, s1)
+  assert.equal(again.anchor, 'a1')
+  assert.equal(history.size(), 1)
+  assert.equal(history.redoSize(), 1, 'other redo steps stay')
+  assert.equal(history.redo({ store: s1, anchor: 'a1' }).store, s2)
+  assert.equal(history.redo({ store: s2, anchor: 'a2' }), undefined)
+  assert.equal(history.size(), 2)
+  assert.equal(history.undo({ store: s2, anchor: 'a2' }).store, s1, 'undo after redo')
+  assert.equal(history.undo({ store: s1, anchor: null }).store, s0)
+  assert.equal(history.undo({ store: s0, anchor: null }), undefined)
+  assert.equal(history.redoSize(), 2, 'an undo with nothing left keeps nothing')
+})
+
+test('redo: a new step, an arrow press or another unrecorded edit ends the redo steps', () => {
+  const entry = (n) => ({ store: { tag: n }, anchor: null })
+  const ready = () => {
+    const history = H.createEditHistory()
+    history.record(entry(0))
+    history.undo(entry(1))
+    assert.equal(history.redoSize(), 1)
+    return history
+  }
+  const a = ready()
+  a.record(entry(2))
+  assert.equal(a.redoSize(), 0)
+  const b = ready()
+  b.recordNudge(entry(2), 'n1', 1000)
+  assert.equal(b.redoSize(), 0)
+  const c = ready()
+  c.clearRedo()
+  assert.equal(c.redoSize(), 0)
+  const d = ready()
+  d.pop()
+  assert.equal(d.redoSize(), 1, 'pop alone does not touch redo')
+})
+
+test('redo: both sides keep at most 50 steps', () => {
+  const history = H.createEditHistory()
+  for (let i = 0; i < 60; i += 1) history.record({ store: { tag: i }, anchor: null })
+  for (let i = 0; i < 60; i += 1) history.undo({ store: { tag: 100 + i }, anchor: null })
+  assert.equal(history.size(), 0)
+  assert.equal(history.redoSize(), 50)
+  for (let i = 0; i < 60; i += 1) history.redo({ store: { tag: 200 + i }, anchor: null })
+  assert.equal(history.size(), 50)
+  assert.equal(history.redoSize(), 0)
+})
+
+test('redo: a group of arrow presses comes back as one step, and the base point of that moment returns', () => {
+  const history = H.createEditHistory()
+  const first = { tag: 'first' }
+  history.recordNudge({ store: first, anchor: 'n1' }, 'n1', 1000)
+  history.recordNudge({ store: { tag: 'mid' }, anchor: 'n1' }, 'n1', 1100)
+  history.recordNudge({ store: { tag: 'mid2' }, anchor: 'n1' }, 'n1', 1200)
+  const moved = { tag: 'moved' }
+  assert.equal(history.undo({ store: moved, anchor: 'n1' }).store, first)
+  assert.equal(history.redo({ store: first, anchor: 'n1' }).store, moved)
+  assert.equal(history.size(), 1)
+
+  const s = Store.addNode(empty(), 37.55, 126.92, OUT, null, 0)
+  const t = H.placeChained(s.store, 37.551, 126.92, OUT, true, s.id, 0)
+  assert.equal(H.anchorAfterRedo(s.id, { store: t.store, anchor: t.id }), t.id, 'the placed point is the base again')
+  assert.equal(H.anchorAfterRedo(s.id, { store: t.store, anchor: 'n999' }), s.id)
+  assert.equal(H.anchorAfterRedo('n998', { store: t.store, anchor: 'n999' }), null)
+})
+
 test('arrow keys end to end: a group of moves goes back in one undo, the edge follows, no edge is split', () => {
   const history = H.createEditHistory()
   let store = Store.addNode(empty(), 37.55, 126.92, OUT).store
@@ -245,7 +357,7 @@ test('chain base point on the map: marked and kept readable under a filter, off 
   const marked = M.buildRenderState(made.store, { ...base, anchor: made.id }).nodes[0]
   assert.equal(marked.anchor, true)
   assert.equal(marked.emphasized, true)
-  const filter = { building: 'hongik_k', floor: null }
+  const filter = { selections: [{ building: 'hongik_k', floor: null }] }
   assert.equal(M.buildRenderState(made.store, { ...base, filter }).nodes[0].dim, true)
   assert.equal(M.buildRenderState(made.store, { ...base, filter, anchor: made.id }).nodes[0].dim, false)
 })
@@ -254,6 +366,160 @@ test('chain toggle text', () => {
   assert.equal(H.chainToggleLabel(true), '이어 찍기 켜짐 - 직전 점과 연결 중')
   assert.equal(H.chainToggleLabel(false), '이어 찍기 꺼짐')
   assert.equal(K.NUDGE_HINT, '방향키로 선택한 점 이동 (Shift: 크게, Alt: 작게)')
+})
+
+// Map click shortcuts: Shift + click splits the selected edge, Cmd/Ctrl + click joins two points.
+
+/** Two points and one edge between them, made with the store functions. */
+function line(ctxA, ctxB, edgeExtra = {}) {
+  const a = Store.addNode(empty(), 37.55, 126.92, ctxA, null, 0)
+  const b = Store.addNode(a.store, 37.55, 126.93, ctxB, a.id, 0)
+  const s = { ...b.store, edges: b.store.edges.map((e) => ({ ...e, ...edgeExtra })) }
+  return { s, a: a.id, b: b.id, e: s.edges[0].id }
+}
+
+test('split: a point on the edge splits it in two, keeps kind and memo, the new point is basic and copies the place', () => {
+  const both = { scope: 'indoor', type: 'basic', levels: [lvl(R, 1), lvl(R, 2)] }
+  const { s, a, b, e } = line({ ...both, type: 'stairs' }, { scope: 'indoor', type: 'basic', levels: [lvl(R, 2), lvl(R, 1)] }, { kind: 'stairs', memo: 'note' })
+  const result = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  assert.equal(result.refused, null)
+  const made = Store.findNode(result.store, result.id)
+  assert.equal(made.type, 'basic')
+  assert.equal(made.scope, 'indoor')
+  assert.deepEqual(made.levels, [lvl(R, 1), lvl(R, 2)])
+  assert.equal(made.memo, undefined)
+  assert.equal(made.ties, undefined)
+  assert.equal(Store.findEdge(result.store, e), undefined, 'the old edge is gone')
+  assert.equal(result.store.edges.length, 2)
+  for (const half of result.store.edges) {
+    assert.equal(half.kind, 'stairs')
+    assert.equal(half.memo, 'note')
+  }
+  assert.ok(Store.hasEdgeBetween(result.store, a, result.id) && Store.hasEdgeBetween(result.store, result.id, b))
+  assert.equal(result.store.nextNode, s.nextNode + 1)
+
+  const out = line(OUT, OUT)
+  const outdoor = Store.splitEdgeAt(out.s, out.e, 37.55, 126.925, 0)
+  assert.equal(Store.findNode(outdoor.store, outdoor.id).scope, 'outdoor')
+  const entrance = line(inside(R, 1, 'entrance'), inside(R, 1))
+  assert.equal(Store.splitEdgeAt(entrance.s, entrance.e, 37.55, 126.925, 0).refused, null, 'only the type differs: allowed')
+})
+
+test('split: refused without any change when the ends differ, the edge has pairs, the spot is an end, or the edge is unknown', () => {
+  const cases = [
+    ['mixed', line(OUT, inside(R, 1))],
+    ['mixed', line(inside(R, 1), inside(R, 2))],
+    ['mixed', line(inside(R, 1), inside('hongik_k', 1))],
+    ['mixed', line({ scope: 'indoor', type: 'basic', levels: [lvl(R, 1), lvl(R, 2)] }, inside(R, 1))],
+    ['mixed', line({ scope: 'indoor', type: 'basic' }, { scope: 'indoor', type: 'basic' })],
+    ['pairs', line(inside(R, 1), inside(R, 1), { pairs: [[lvl(R, 1), lvl('hongik_k', 1)]] })],
+  ]
+  for (const [why, { s, e }] of cases) {
+    const result = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+    assert.equal(result.refused, why)
+    assert.equal(result.store, s, 'the same store object')
+    assert.equal(result.id, null)
+  }
+  const { s, e } = line(OUT, OUT)
+  const end = Store.splitEdgeAt(s, e, 37.55, 126.92, 0)
+  assert.equal(end.refused, 'end')
+  assert.equal(end.store, s, 'no point number is used up')
+  assert.equal(end.store.nextNode, s.nextNode)
+  assert.equal(Store.splitEdgeAt(s, 'e999', 37.55, 126.925, 0).refused, 'missing')
+  assert.equal(Store.splitEdgeAt(s, e, NaN, 126.925, 0).refused, 'missing')
+})
+
+test('split and click link: one undo step each, and the base point comes back', () => {
+  const history = H.createEditHistory()
+  const { s, a, b, e } = line(OUT, OUT)
+  history.record({ store: s, anchor: b })
+  const split = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  assert.equal(history.size(), 1)
+  const back = history.pop()
+  assert.equal(back.store, s)
+  assert.equal(back.store.nodes.length, 2)
+  assert.equal(H.anchorAfterUndo(split.id, back), b, 'the new point is gone, the base point from before returns')
+
+  const third = Store.addNode(s, 37.56, 126.92, OUT, null, 0)
+  history.record({ store: third.store, anchor: a })
+  const joined = Store.addEdge(third.store, a, third.id, 'normal', 0)
+  assert.equal(joined.edges.length, third.store.edges.length + 1)
+  const undone = history.pop()
+  assert.equal(undone.store.edges.length, 1)
+  assert.equal(H.anchorAfterUndo(third.id, undone), third.id, 'the second point still exists and stays the base')
+  assert.equal(history.size(), 0)
+})
+
+test('split and click link: undone in one step and applied again in one step', () => {
+  const history = H.createEditHistory()
+  const { s, a, b, e } = line(OUT, OUT)
+  history.record({ store: s, anchor: b })
+  const split = Store.splitEdgeAt(s, e, 37.55, 126.925, 0)
+  const undone = history.undo({ store: split.store, anchor: split.id })
+  assert.equal(undone.store, s)
+  const redone = history.redo({ store: s, anchor: H.anchorAfterUndo(split.id, undone) })
+  assert.equal(redone.store, split.store, 'the split comes back whole: one point and two edges')
+  assert.equal(redone.store.edges.length, 2)
+  assert.equal(H.anchorAfterRedo(b, redone), split.id)
+
+  history.record({ store: split.store, anchor: split.id })
+  const joined = Store.addEdge(split.store, a, b, 'normal', 0)
+  assert.equal(history.undo({ store: joined, anchor: b }).store, split.store)
+  assert.equal(history.redo({ store: split.store, anchor: split.id }).store, joined)
+  assert.equal(history.size(), 2)
+  assert.equal(history.redoSize(), 0)
+})
+
+const clickState = (extra = {}) => ({
+  mode: 'add',
+  selected: 'n1',
+  selectedEdge: null,
+  pending: null,
+  hasEdge: () => false,
+  canEditNode: () => true,
+  canEditEdge: () => true,
+  ...extra,
+})
+const nodeClick = (mods, extra) => K.resolveClickShortcut({ kind: 'node', id: 'n2' }, mods, clickState(extra))
+const edgeClick = (mods, extra) => K.resolveClickShortcut({ kind: 'edge', id: 'e1' }, mods, clickState({ selected: null, selectedEdge: 'e1', ...extra }))
+
+test('click shortcuts: Cmd or Ctrl + click joins the selected point in add, link and move modes only', () => {
+  const link = { kind: 'link', from: 'n1', to: 'n2' }
+  for (const mode of ['add', 'link', 'move']) {
+    assert.deepEqual(nodeClick({ ctrl: true }, { mode }), link, mode)
+    assert.deepEqual(nodeClick({ meta: true }, { mode }), link, mode)
+  }
+  assert.equal(nodeClick({ ctrl: true }, { mode: 'select' }), null, 'the several points mode')
+  assert.equal(nodeClick({}), null, 'no modifier: a normal press')
+  assert.equal(nodeClick({ shift: true }), null, 'Shift alone does not join')
+  assert.deepEqual(nodeClick({ ctrl: true, shift: true }), link)
+  assert.equal(nodeClick({ ctrl: true }, { selected: null }), null, 'nothing selected')
+  assert.equal(nodeClick({ ctrl: true }, { selected: 'n2' }), null, 'the selected point itself')
+  assert.equal(nodeClick({ ctrl: true }, { mode: 'link', pending: 'n1' }), null, 'a started pair in link mode keeps its own behavior')
+  assert.deepEqual(nodeClick({ ctrl: true }, { mode: 'add', pending: 'n1' }), link, 'pending only matters in link mode')
+  assert.deepEqual(nodeClick({ ctrl: true }, { hasEdge: (x, y) => x === 'n1' && y === 'n2' }), { kind: 'blocked', why: 'exists' })
+  assert.deepEqual(nodeClick({ ctrl: true }, { canEditNode: (id) => id !== 'n1' }), { kind: 'blocked', why: 'locked' })
+  assert.deepEqual(nodeClick({ meta: true }, { canEditNode: (id) => id !== 'n2' }), { kind: 'blocked', why: 'locked' })
+})
+
+test('click shortcuts: Shift + click on the selected edge splits it, in add, link and move modes only', () => {
+  for (const mode of ['add', 'link', 'move']) assert.deepEqual(edgeClick({ shift: true }, { mode }), { kind: 'split', edgeId: 'e1' }, mode)
+  assert.equal(edgeClick({ shift: true }, { mode: 'select' }), null)
+  assert.equal(edgeClick({}), null, 'a plain press selects as before')
+  assert.equal(edgeClick({ shift: true }, { selectedEdge: null }), null, 'the first press only selects the edge')
+  assert.equal(edgeClick({ shift: true }, { selectedEdge: 'e2' }), null, 'another edge is selected')
+  assert.equal(edgeClick({ shift: true, ctrl: true }), null)
+  assert.equal(edgeClick({ shift: true, meta: true }), null)
+  assert.equal(edgeClick({ ctrl: true }), null, 'Ctrl on an edge does nothing special')
+  assert.deepEqual(edgeClick({ shift: true }, { canEditEdge: () => false }), { kind: 'blocked', why: 'locked' })
+})
+
+test('click shortcuts: key state kept from key events for clicks that do not carry their keys', () => {
+  const held = K.modsAfterKey(K.NO_MODS, { shiftKey: true, ctrlKey: false, metaKey: false })
+  assert.deepEqual(held, { shift: true, ctrl: false, meta: false })
+  assert.equal(K.modsAfterKey(held, { shiftKey: true }), held, 'same state, same object')
+  assert.deepEqual(K.modsAfterKey(held, { metaKey: true }), { shift: false, ctrl: false, meta: true })
+  assert.deepEqual(K.modsAfterKey(held, {}), K.NO_MODS)
 })
 
 // The screen needs the app runtime to render, so these read its source. They exist so that a screen rewrite cannot silently drop these again.

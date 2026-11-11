@@ -14,36 +14,72 @@ export interface HistoryEntry {
 
 export interface EditHistory {
   size(): number
-  /** Starts a new undo step. Also ends any group of arrow presses. */
+  /** Steps that an undo took back and a redo can apply again. */
+  redoSize(): number
+  /** Starts a new undo step. Also ends any group of arrow presses, and drops the redo steps. */
   record(entry: HistoryEntry): void
-  /** Starts a new undo step only when this press does not continue the current group. */
+  /** Starts a new undo step only when this press does not continue the current group. Drops the redo steps. */
   recordNudge(entry: HistoryEntry, id: string, now: number): void
+  /** Takes the last undo step without keeping anything for redo. */
   pop(): HistoryEntry | undefined
+  /** Takes the last undo step and keeps the current state (before the undo) as the next redo step. */
+  undo(current: HistoryEntry): HistoryEntry | undefined
+  /** Takes the last redo step and keeps the current state as an undo step again. Other redo steps stay. */
+  redo(current: HistoryEntry): HistoryEntry | undefined
+  /** A new edit that was not recorded as its own step (typing on in a memo) still ends the redo steps. */
+  clearRedo(): void
 }
 
 export function createEditHistory(limit = UNDO_LIMIT): EditHistory {
   let entries: HistoryEntry[] = []
+  let redoEntries: HistoryEntry[] = []
   let group: { id: string; at: number } | null = null
   const push = (entry: HistoryEntry) => {
     entries = [...entries.slice(-(limit - 1)), entry]
   }
+  const pop = () => {
+    group = null
+    const entry = entries[entries.length - 1]
+    entries = entries.slice(0, -1)
+    return entry
+  }
   return {
     size: () => entries.length,
+    redoSize: () => redoEntries.length,
     record(entry) {
       group = null
+      redoEntries = []
       push(entry)
     },
     recordNudge(entry, id, now) {
+      redoEntries = []
       if (!group || group.id !== id || now - group.at >= NUDGE_GROUP_MS) push(entry)
       group = { id, at: now }
     },
-    pop() {
-      group = null
-      const entry = entries[entries.length - 1]
-      entries = entries.slice(0, -1)
+    pop,
+    undo(current) {
+      const entry = pop()
+      if (entry) redoEntries = [...redoEntries.slice(-(limit - 1)), current]
       return entry
     },
+    redo(current) {
+      group = null
+      const entry = redoEntries[redoEntries.length - 1]
+      if (!entry) return undefined
+      redoEntries = redoEntries.slice(0, -1)
+      push(current)
+      return entry
+    },
+    clearRedo() {
+      redoEntries = []
+    },
   }
+}
+
+/** After a redo the base point of that moment comes back when it exists, otherwise the current one stays if it can. */
+export function anchorAfterRedo(current: string | null, entry: HistoryEntry): string | null {
+  if (findNode(entry.store, entry.anchor)) return entry.anchor
+  return findNode(entry.store, current) ? current : null
 }
 
 /** The base point stays when it survived the undo. Otherwise the one from before the undone edit comes back. */

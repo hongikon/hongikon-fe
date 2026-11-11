@@ -267,6 +267,49 @@ export function moveNodeOntoEdge(
   return { store: next, split: true, pairsDropped: !!edge.pairs?.length }
 }
 
+/** Same floors in any order. Duplicates do not count. */
+const sameLevels = (x: readonly LevelRef[], y: readonly LevelRef[]) => x.every((l) => y.some((m) => sameLevel(l, m))) && y.every((l) => x.some((m) => sameLevel(l, m)))
+
+/**
+ * Where a point placed on the edge between a and b would be: both outdoor, or both indoor with exactly the same
+ * buildings and floors (a stairs or entrance point next to a basic one is fine). The new point is always basic.
+ * null when the two ends disagree, or are indoor without any floor (the new point would be a check error).
+ */
+export function splitContext(a: SurveyNodeV3, b: SurveyNodeV3): NodeContext | null {
+  if (a.scope !== b.scope) return null
+  if (a.scope === 'outdoor') return OUTDOOR_CONTEXT
+  const levels = a.levels ?? []
+  if (!levels.length || !sameLevels(levels, b.levels ?? [])) return null
+  const unique = levels.filter((l, i) => levels.findIndex((m) => sameLevel(l, m)) === i)
+  return { scope: 'indoor', type: 'basic', levels: unique.map((l) => ({ ...l })) }
+}
+
+export type SplitRefusal = 'missing' | 'pairs' | 'mixed' | 'end'
+
+/**
+ * Adds a point on an edge at lat/lng and splits the edge in two, as one edit (moveNodeOntoEdge keeps kind and memo
+ * on both halves). The point takes its place from the two ends (splitContext). Edges with floor pairs are refused,
+ * because the pairs would be lost. Any refusal returns the same store, so no number is used up.
+ */
+export function splitEdgeAt(
+  store: StoreV3,
+  edgeId: string,
+  lat: number,
+  lng: number,
+  now = Date.now(),
+): { store: StoreV3; id: string | null; refused: SplitRefusal | null } {
+  const edge = findEdge(store, edgeId)
+  const a = findNode(store, edge?.a)
+  const b = findNode(store, edge?.b)
+  if (!edge || !a || !b || a === b || !Number.isFinite(lat) || !Number.isFinite(lng)) return { store, id: null, refused: 'missing' }
+  if (edge.pairs?.length) return { store, id: null, refused: 'pairs' }
+  const context = splitContext(a, b)
+  if (!context) return { store, id: null, refused: 'mixed' }
+  const placed = addNode(store, lat, lng, context, null, now)
+  const result = moveNodeOntoEdge(placed.store, placed.id, edgeId, lat, lng, now)
+  return result.split ? { store: result.store, id: placed.id, refused: null } : { store, id: null, refused: 'end' }
+}
+
 const withMemo = <T extends { memo?: string }>(item: T, memo: string): T => {
   if ((item.memo ?? '') === memo) return item
   const next = { ...item }

@@ -29,6 +29,8 @@ export default function SaveBar({
   onSave,
   undoCount,
   onUndo,
+  redoCount,
+  onRedo,
   onShowCheck,
   server,
   onServerRetry,
@@ -40,6 +42,9 @@ export default function SaveBar({
   onSave: () => void
   undoCount: number
   onUndo: () => void
+  /** Steps an undo took back. Kept in memory only, like the undo steps. */
+  redoCount: number
+  onRedo: () => void
   onShowCheck: () => void
   /** Server draft status. A failed line is pressable and tries the upload again. */
   server: ServerStatusLine
@@ -67,6 +72,15 @@ export default function SaveBar({
           accessibilityRole="button"
         >
           <Text style={[styles.undoText, undoCount > 0 ? styles.undoTextOn : styles.undoTextOff]}>{`되돌리기 ${undoCount}`}</Text>
+        </Pressable>
+        <Pressable
+          onPress={onRedo}
+          disabled={redoCount === 0}
+          style={[styles.redo, redoCount > 0 ? styles.undoOn : styles.undoOff]}
+          accessibilityRole="button"
+          accessibilityLabel={`되돌리기 취소, ${redoCount}단계`}
+        >
+          <Text style={[styles.undoText, redoCount > 0 ? styles.undoTextOn : styles.undoTextOff]}>{`다시 ${redoCount}`}</Text>
         </Pressable>
       </View>
       {server.retry ? (
@@ -99,6 +113,7 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: FONTS.bold, fontSize: 12, color: '#FFFFFF' },
   badgeSub: { fontFamily: FONTS.regular, fontSize: 10, color: '#FFFFFF' },
   undo: { minHeight: TOUCH, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  redo: { minHeight: TOUCH, paddingHorizontal: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   undoOn: { backgroundColor: '#FEF3C7' },
   undoOff: { backgroundColor: COLORS.fill },
   undoText: { fontFamily: FONTS.semibold, fontSize: 13 },
