@@ -24,6 +24,9 @@ import {
   PARTNER_REGION_RADIUS_METERS,
   alertGroup,
   insideAtRegistration,
+  REGISTER_SETTLE_MS,
+  reselectDecision,
+  type Registration,
   pickNearest,
   pickTargets,
   liveBenefits,
@@ -89,6 +92,17 @@ const PRECISE_STOP_MARGIN_METERS = 50
 const PRECISE_MODE_KEY = 'hongikon_nearby_precise_mode'
 /** 사용자 둘레 큰 원. 벗어나면 가까운 업체를 다시 고른다. 업체 id 와 겹치지 않게. */
 const RESELECT_REGION_ID = '__reselect__'
+/** 마지막 운영체제 등록(다시 고르기 원). 앱이 꺼진 채 깨어나도 알 수 있게 기기에 둔다. 좌표는 등록 가운데 하나뿐이다. */
+const REGISTRATION_KEY = 'hongikon_nearby_registration'
+
+async function loadRegistration(): Promise<Registration | null> {
+  try {
+    const raw = await AsyncStorage.getItem(REGISTRATION_KEY)
+    return raw ? (JSON.parse(raw) as Registration) : null
+  } catch {
+    return null
+  }
+}
 const STORAGE_KEY = 'hongikon_nearby_alerts_v1'
 /** 예약 알림은 늘 하나라 고정 id 로 덮어쓰고 지운다. */
 const NOTIFICATION_ID = 'nearby-partner'
@@ -632,6 +646,9 @@ async function registerAround(state: NearbyState, now: number, at: { lat: number
       notifyOnEnter: false,
     },
   ])
+  // 등록 직후 몰려오는 상태 신호를 '움직임'으로 보지 않게 등록 시각·원을 남긴다(`reselectDecision`).
+  const registration: Registration = { lat: at.lat, lng: at.lng, radius: reselectMeters, at: Date.now() }
+  await AsyncStorage.setItem(REGISTRATION_KEY, JSON.stringify(registration)).catch(() => {})
   lastSync = {
     at: now,
     result: 'registered',
@@ -687,7 +704,10 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
   if (testLocation()) return
   const entered = event.eventType === pkg.Location.GeofencingEventType.Enter
   lastEvent = { at: nearbyNow(), kind: entered ? 'enter' : 'exit', id }
-  if (nearbyDevTools()) {
+  const registration = await loadRegistration()
+  // 등록 직후 몰려오는 원별 상태 신호(가게 19곳 + 다시 고르기 원). 기록을 덮지 않게 남기지 않는다 — 등록 줄이 대신한다.
+  const settling = !!registration && Date.now() - registration.at < REGISTER_SETTLE_MS
+  if (nearbyDevTools() && !settling) {
     const target = id === RESELECT_REGION_ID ? null : (await loadState()).targets.find((t) => t.id === id)
     void nearbyLog(
       id === RESELECT_REGION_ID
@@ -699,20 +719,29 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
     if (entered) return
     // 큰 원을 벗어났다 = 꽤 멀리 움직였다. 새 위치 둘레로 다시 고른다. 위치를 못 얻으면 기존 등록을 둔다.
     // 최근 위치는 쓰지 않는다 — 떠나온 자리일 수 있어 그 둘레로 다시 등록하면 새 자리 업체가 빠진다(10-28 에뮬레이터).
+    // 11-11: 등록 직후 상태 신호이거나 새 위치가 아직 원 안이면 다시 등록하지 않는다(1초마다 다시 등록하던 고리).
+    if (settling) return
     const at = await currentPosition(pkg.Location, { fresh: true })
-    if (!at) return
+    const decision = reselectDecision(registration, Date.now(), at)
+    if (decision !== 'register' || !at) {
+      if (decision === 'stillInside') void nearbyLog('다시 고르기 원 나감 신호를 무시함: 새 위치가 아직 원 안')
+      return
+    }
     await mutate((state, now) => (state.enabled ? registerAround(state, now, at) : { state, actions: [] }))
     return
   }
   // 깨우는 원에 들어왔다 → GPS 를 켜 알림 반경(20m)은 위치 갱신이 판단한다. 못 켜도 이 신호(150m)를 머무름으로 쓰지 않고
   // GPS 한 번으로 알림 반경 안인지만 본다(11-06: 150m 떨어진 곳에서 알림이 오던 것).
+  // 등록 직후 상태 신호면 등록이 이미 GPS 를 한 번 쟀으니(`registerAround`) 가게마다 또 재지 않는다.
   if (entered) {
     await startPrecise()
-    void fineCheck(true)
+    if (!settling) void fineCheck(true)
     return
   }
   // 깨우는 원(150m)을 나갔으면 알림 반경 밖인 것도 확실하다. 남은 예약의 이름을 가장 가까운 업체로 고르려고 위치를 한 번
-  // 읽는다(최근 1분 위치 → Wi-Fi·기지국 4초). 못 읽으면 없이 간다.
+  // 읽는다(최근 1분 위치 → Wi-Fi·기지국 4초). 못 읽으면 없이 간다. 머무는 중이 아닌 가게는 할 일이 없다.
+  const open = (await loadState()).stays[id]
+  if (!open || open.exitedAt !== null) return
   const at = await quickPosition(pkg.Location)
   await mutate((state, now) => onExit(state, id, now, at))
 }
