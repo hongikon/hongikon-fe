@@ -1,6 +1,6 @@
 import { useRef, useState, useSyncExternalStore } from 'react'
 import { useIsFocused } from '@react-navigation/native'
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Linking, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -90,7 +90,15 @@ export default function LaunchNoticeModal() {
 
   // '보러가기'는 팝업 창을 닫고 본문 창을 새로 띄우지 않고, 같은 창 안에서 본문으로 바꿔 보여 준다. iOS 에서 창이 닫히는
   // 중에 다른 창을 띄우면 안 뜨고 화면이 멈출 수 있다(11-06 설정 공지 목록에서 실제로 멈췄다). 본문을 닫으면 이번 실행에서만 닫힌다.
-  const openDetail = () => setDetailOpen(true)
+  const openDetail = () => {
+    // 업데이트 안내처럼 주소가 있는 공지는 본문 대신 그 주소(스토어)를 연다.
+    const url = popupNotice?.popup?.url
+    if (url) {
+      Linking.openURL(url).catch(() => setDetailOpen(true))
+      return
+    }
+    setDetailOpen(true)
+  }
   const closeDetail = () => {
     setDetailOpen(false)
     closeForNow()

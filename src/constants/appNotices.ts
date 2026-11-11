@@ -1,4 +1,6 @@
 import type { ComponentProps } from 'react'
+import { Platform } from 'react-native'
+import { APP_STORE_URL, PLAY_STORE_URL } from './storeLinks'
 import type { Ionicons } from '@expo/vector-icons'
 import { PARTNER_NOTICE_TEXT } from '../components/map/PartnerNoticeModal'
 
@@ -16,8 +18,9 @@ export interface AppNoticePopup {
   until: string
   /** 옆으로 넘기는 카드. 마지막 카드 아래에 linkLabel 이 붙는다. */
   slides: AppNoticeSlide[]
-  /** 누르면 이 공지 본문(설정 > 공지사항과 같은 화면)을 연다. */
+  /** 누르면 이 공지 본문(설정 > 공지사항과 같은 화면)을 연다. url 이 있으면 대신 그 주소(예: 스토어)를 연다. */
   linkLabel: string
+  url?: string
 }
 
 /**
@@ -39,8 +42,43 @@ export interface AppNotice {
   comparison?: NoticeComparison
 }
 
+/** 업데이트 안내에 쓰는 스토어 이름과 주소(이 휴대폰 기준). */
+const UPDATE_STORE = Platform.OS === 'android' ? 'Play 스토어' : 'App Store'
+const UPDATE_URL = Platform.OS === 'android' ? (PLAY_STORE_URL ?? undefined) : APP_STORE_URL
+
 /** 최신순. 날짜는 'YYYY.MM.DD'. 앱에 실제로 있는 기능만 적는다(길찾기는 아직 꺼져 있다 — ROUTE_FINDING_ENABLED). */
 export const APP_NOTICES: AppNotice[] = [
+  {
+    // 11-11 운영진: 1.0.0 을 쓰는 사람에게 새 버전 업데이트 안내. 1.0.0 runtime OTA 에만 넣는다(1.1.0 앱·웹에는 없다).
+    id: '8',
+    title: '새 버전(1.1.0)으로 업데이트해 주세요',
+    date: '2026.11.11',
+    popup: {
+      until: '2026-12-31',
+      slides: [
+        {
+          icon: 'arrow-up-circle',
+          badge: '새 버전',
+          title: '홍익온 1.1.0이 나왔어요',
+          text: `지금 쓰는 앱은 이전 버전(1.0.0)이에요. ${UPDATE_STORE}에서 홍익온을 업데이트하면 새 기능을 쓸 수 있어요.`,
+        },
+        {
+          icon: 'sparkles',
+          badge: '1.1.0',
+          title: '새로 들어온 기능',
+          text: "AI 안내 '물어보기'(BETA), 건물 사이 길찾기, 제휴 가게에 머물 때 혜택을 알려 주는 근처 제휴 알림(선택)이 생겼어요.",
+        },
+      ],
+      linkLabel: `${UPDATE_STORE}에서 업데이트하기`,
+      url: UPDATE_URL,
+    },
+    body:
+      `홍익온 새 버전(1.1.0)이 나왔어요. 지금 쓰는 앱은 이전 버전(1.0.0)이라 새 기능이 보이지 않아요. ${UPDATE_STORE}에서 홍익온을 검색해 업데이트해 주세요.\n\n` +
+      "· 물어보기(AI 안내, BETA): 학사·장학·시설 같은 학교 생활 질문에 학교 안내를 찾아 답해 드려요.\n" +
+      '· 길찾기: 건물에서 건물로 가는 길을 지도에 보여 드려요.\n' +
+      '· 근처 제휴 알림(선택): 직접 켜면 제휴 가게에 머물 때 그 가게 혜택을 알려 드려요.\n\n' +
+      '업데이트해도 로그인·설정·관심 목록은 그대로예요. 궁금한 점은 hongikonsupport@gmail.com 으로 알려 주세요.',
+  },
   {
     // 처리방침 11-16판(지도 "내 위치 켜기"). 불리한 변경이 아니라 팝업 없이 목록에만 둔다. 11-06 운영 OTA 로 먼저 낸다(1.1.0 심사 철회로 출시가 늦어져서). 버튼은 1.1.0 에 있다.
     id: '7',
