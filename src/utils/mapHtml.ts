@@ -1535,9 +1535,11 @@ export function buildMapHTML(
 
         // 배너를 닫는 등, 네이티브 쪽에서 건물 선택만 풀 때 쓴다.
         // 핀을 끄지는 않으므로 renderBuildings 로 강조만 되돌린다.
+        // 11-11: 핀이 하나도 없을 때(건물 핀 꺼짐·아무것도 안 고름)도 다시 그린다 — 물어보기 '지도에서 보기'로 건물을 고르면
+        // 그 건물 핀이 떠야 하는데, 그려진 핀이 있을 때만 다시 그려 핀 없이 카메라만 옮겨졌다.
         if (msg.type === 'selectBuilding') {
           selectedBuildingName = msg.name === undefined ? null : msg.name;
-          if (buildingMarkers.length > 0) renderBuildings();
+          if (buildings.length > 0) renderBuildings();
         }
 
         if (msg.type === 'selectPartner') {
