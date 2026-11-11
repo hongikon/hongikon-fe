@@ -202,7 +202,7 @@ export default function NearbyAlertSettings({
 type Step =
   | { kind: 'form' }
   | { kind: 'working'; message: string }
-  /** 시스템 권한 창을 띄우기 전, 왜 "항상 허용"이 필요한지와 위치를 가져가지 않는다는 안내(전체 화면). */
+  /** 시스템 권한 창을 띄우기 전 위치 정보 사용 명시적 공개(무엇을·왜·앱을 쓰지 않을 때에도, 동의/동의하지 않음, 전체 화면). */
   | { kind: 'explain' }
   | { kind: 'needsAlways' }
   | { kind: 'error'; message: string; openSettings?: boolean }
@@ -889,7 +889,7 @@ function PermissionMock({ title, options, pick, list }: Omit<PermissionStep, 'ca
 
 /**
  * "항상 허용" 안내(시스템 권한 창 전에 띄운다 — Google Play 백그라운드 위치 정책의 "눈에 띄는 고지"이기도 하다).
- * 왜 필요한지, 시스템 창에서 무엇을 고르는지, 위치를 가져가지 않는다는 것을 한 화면에 둔다.
+ * 맨 위에 위치 정보 사용 명시적 공개(Google Play 사용자 데이터 정책), 그 아래 시스템 창에서 무엇을 고르는지 둔다.
  * `afterSettings`: "앱 사용 중"만 허용하고 돌아온 경우 — 휴대폰 설정에서 바꾸는 길을 안내한다.
  */
 function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
@@ -902,13 +902,40 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
         <View style={styles.overlayIcon}>
           <Ionicons name="navigate" size={28} color={COLORS.white} />
         </View>
-        <Text style={styles.overlayTitle}>위치를 "항상 허용"으로 해 주세요</Text>
+        <Text style={styles.overlayTitle}>{afterSettings ? '위치를 "항상 허용"으로 바꿔 주세요' : '위치 정보 사용 안내'}</Text>
+
+        {/*
+          명시적 공개(11-11 Google Play 거부: "앱 내의 명시적 공개에 액세스 또는 수집되는 위치 데이터의 사용 사실이 명시되어 있지 않음").
+          시스템 권한 창 바로 앞에, 무엇(정확한 위치·백그라운드)을 왜(제휴 혜택 알림, 광고성 정보) 언제(앱이 닫혀 있거나 사용하지
+          않을 때에도) 쓰는지를 맨 위에 한 문장으로 먼저 보여 준다. 허용 방법 그림은 그 아래로 내렸다.
+        */}
+        <View style={styles.disclosureCard} accessibilityRole="summary">
+          <Text style={styles.disclosureLead}>
+            홍익온은 앱이 닫혀 있거나 사용 중이 아닐 때에도, 제휴 가게에 머무는 것을 알아채 그 가게의 학생 혜택 알림(광고성 정보)을
+            보내기 위해 이 기기의 정확한 위치 정보에 액세스합니다.
+          </Text>
+          {[
+            '사용하는 정보: 정확한 위치(GPS·Wi-Fi), 앱을 사용하지 않을 때의 위치(백그라운드 위치)',
+            '쓰는 곳: 가까운 제휴 가게까지 거리를 재 머문 시간을 세는 데만 써요.',
+            '위치는 휴대폰 안에서만 처리하고 서버나 다른 회사로 보내거나 저장하지 않아요.',
+            `제휴 가게 ${PARTNER_REGION_RADIUS_METERS}m 안에 있을 때만 정확한 거리를 재고, 멀어지면 멈춰요.`,
+            '설정 > 근처 제휴 알림에서 언제든 끌 수 있고, 끄면 위치를 더 쓰지 않아요.',
+          ].map((line) => (
+            <View key={line} style={styles.bulletRow}>
+              <Text style={styles.bullet}>·</Text>
+              <Text style={styles.bulletText}>{line}</Text>
+            </View>
+          ))}
+        </View>
+
         <Text style={styles.overlayBody}>
-          앱을 닫아 둬도 제휴 가게에 머무는 걸 알아채려면 위치를 "항상" 쓸 수 있어야 해요. 그래야 가게에 있을 때 바로 혜택을 알려 드릴 수
-          있어요.{' '}
           {Platform.OS === 'android'
-            ? 'Android 는 처음 창에 "항상 허용"이 없어요. "앱 사용 중에만 허용"을 고른 뒤, 이어서 열리는 휴대폰 설정 화면에서 "항상 허용"을 골라 주세요. "앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
-            : '"앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'}
+            ? afterSettings
+              ? '"앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
+              : '동의하면 위치 권한 창이 떠요. "앱 사용 중에만 허용"을 고른 뒤, 이어서 열리는 설정 화면에서 "항상 허용"을 골라 주세요.'
+            : afterSettings
+              ? '"앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
+              : '동의하면 위치 권한 창이 떠요. 아래처럼 고르면 앱을 닫아도 알림을 받을 수 있어요.'}
         </Text>
 
         {steps.map((item, index) => (
@@ -919,33 +946,14 @@ function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSett
             <PermissionMock title={item.title} options={item.options} pick={item.pick} list={item.list} />
           </View>
         ))}
-
-        <View style={styles.overlayCard}>
-          <View style={styles.privacyHead}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.privacyTitle}>홍익온은 내 위치를 가져가지 않아요</Text>
-          </View>
-          {[
-            '위치는 휴대폰 안에서 가까운 제휴 가게를 찾는 데만 써요.',
-            '위치를 서버로 보내거나 저장하지 않아요. 운영진도 볼 수 없어요.',
-            `가게 ${PARTNER_REGION_RADIUS_METERS}m 근처에 있을 때만 잠깐 GPS 로 거리를 재고, 멀어지면 바로 꺼요.`,
-            '휴대폰에는 알림을 보낸 가게와 시각만 2일 동안 남아 같은 알림이 또 가지 않게 해요.',
-            '설정 > 근처 제휴 알림에서 언제든 끌 수 있어요.',
-          ].map((line) => (
-            <View key={line} style={styles.bulletRow}>
-              <Text style={styles.bullet}>·</Text>
-              <Text style={styles.bulletText}>{line}</Text>
-            </View>
-          ))}
-        </View>
       </ScrollView>
       <View style={[styles.footer, layoutStyles.readable, styles.overlayFooter]}>
         {afterSettings ? (
           <Button label="휴대폰 설정 열기" size="lg" onPress={() => Linking.openSettings().catch(() => {})} />
         ) : (
-          <Button label="계속하기" size="lg" onPress={onContinue} />
+          <Button label="동의하고 계속" size="lg" onPress={onContinue} />
         )}
-        <Button label={afterSettings ? '나중에 할게요' : '켜지 않을게요'} variant="secondary" size="lg" onPress={onCancel} />
+        <Button label={afterSettings ? '나중에 할게요' : '동의하지 않음'} variant="secondary" size="lg" onPress={onCancel} />
       </View>
     </View>
   )
@@ -1015,7 +1023,8 @@ const styles = StyleSheet.create({
   },
   overlayTitle: { fontSize: 20, lineHeight: 28, fontFamily: FONTS.bold, color: COLORS.textPrimary, textAlign: 'center' },
   overlayBody: { fontSize: 15, lineHeight: 23, fontFamily: FONTS.regular, color: COLORS.textSecondary, textAlign: 'center' },
-  overlayCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg, gap: 10 },
+  disclosureCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg, gap: 8, borderWidth: 1, borderColor: COLORS.primary },
+  disclosureLead: { fontSize: 16, lineHeight: 24, fontFamily: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 4 },
   privacyHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   mockStep: { gap: 8 },
   mockCaption: { fontSize: 14, fontFamily: FONTS.semibold, color: COLORS.textPrimary },

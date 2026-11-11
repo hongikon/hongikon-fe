@@ -1,0 +1,190 @@
+{
+ "tables": 225,
+ "courses": 3047,
+ "problems": [
+  {
+   "page": 83,
+   "dept": "데이터사이언스전공",
+   "grade": 3,
+   "kind": "2학기 합계 다름",
+   "table": 25.0,
+   "parsed": 22.0
+  },
+  {
+   "page": 83,
+   "dept": "데이터사이언스전공",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 24.0,
+   "parsed": 30.0
+  },
+  {
+   "page": 90,
+   "dept": "건설환경공학과",
+   "grade": 2,
+   "kind": "2학기 합계 다름",
+   "table": 24.0,
+   "parsed": 30.0
+  },
+  {
+   "page": 94,
+   "dept": "신소재 · 화공시스템공학부",
+   "grade": 1,
+   "kind": "1학기 합계 다름",
+   "table": 21.0,
+   "parsed": 22.0
+  },
+  {
+   "page": 96,
+   "dept": "화학공학전공",
+   "grade": 2,
+   "kind": "2학기 합계 다름",
+   "table": 24.0,
+   "parsed": 30.0
+  },
+  {
+   "page": 101,
+   "dept": "산업·데이터공학과",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 27.0,
+   "parsed": 30.0
+  },
+  {
+   "page": 103,
+   "dept": "기계·시스템디자인공학과",
+   "grade": 3,
+   "kind": "1학기 합계 다름",
+   "table": 30.0,
+   "parsed": 27.0
+  },
+  {
+   "page": 103,
+   "dept": "기계·시스템디자인공학과",
+   "grade": 3,
+   "kind": "2학기 합계 다름",
+   "table": 36.0,
+   "parsed": 33.0
+  },
+  {
+   "page": 103,
+   "dept": "기계·시스템디자인공학과",
+   "grade": 4,
+   "kind": "1학기 합계 다름",
+   "table": 30.0,
+   "parsed": 27.0
+  },
+  {
+   "page": 103,
+   "dept": "기계·시스템디자인공학과",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 30.0,
+   "parsed": 27.0
+  },
+  {
+   "page": 107,
+   "dept": "건축학전공",
+   "grade": 3,
+   "kind": "1학기 합계 다름",
+   "table": 19.0,
+   "parsed": 23.0
+  },
+  {
+   "page": 110,
+   "dept": "실내건축학전공",
+   "grade": 3,
+   "kind": "1학기 합계 다름",
+   "table": 20.0,
+   "parsed": 24.0
+  },
+  {
+   "page": 116,
+   "dept": "경영학전공",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 21.0,
+   "parsed": 27.0
+  },
+  {
+   "page": 127,
+   "dept": "독어독문학과",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 18.0,
+   "parsed": 24.0
+  },
+  {
+   "page": 136,
+   "dept": "법학부",
+   "grade": 4,
+   "kind": "2학기 합계 다름",
+   "table": 55.0,
+   "parsed": 61.0
+  },
+  {
+   "page": 153,
+   "dept": "교육학과",
+   "grade": 3,
+   "kind": "1학기 합계 다름",
+   "table": 21.0,
+   "parsed": 20.0
+  },
+  {
+   "page": 153,
+   "dept": "교육학과",
+   "grade": 3,
+   "kind": "2학기 합계 다름",
+   "table": 22.0,
+   "parsed": 19.0
+  },
+  {
+   "page": 165,
+   "dept": "시각디자인전공",
+   "grade": 2,
+   "kind": "2학기 합계 다름",
+   "table": 27.0,
+   "parsed": 33.0
+  },
+  {
+   "page": 168,
+   "dept": "산업디자인전공",
+   "grade": 3,
+   "kind": "1학기 합계 다름",
+   "table": 18.0,
+   "parsed": 24.0
+  },
+  {
+   "page": 168,
+   "dept": "산업디자인전공",
+   "grade": 3,
+   "kind": "2학기 합계 다름",
+   "table": 15.0,
+   "parsed": 21.0
+  },
+  {
+   "page": 182,
+   "dept": "뮤지컬전공",
+   "grade": 2,
+   "kind": "1학기 합계 다름",
+   "table": 18.0,
+   "parsed": 23.0
+  },
+  {
+   "page": 184,
+   "dept": "실용음악전공",
+   "grade": 2,
+   "kind": "1학기 합계 다름",
+   "table": 17.0,
+   "parsed": 22.0
+  },
+  {
+   "page": 236,
+   "dept": "게임소프트웨어전공",
+   "grade": 4,
+   "kind": "1학기 합계 다름",
+   "table": 24.0,
+   "parsed": 30.0
+  }
+ ]
+}

@@ -1,3 +1,4 @@
+import { ASK_ALIASES } from '../constants/askAliases'
 import { ASK_FLOWS, type AskFlow } from '../constants/askAnswers'
 import { ASK_PAGE_FLOWS } from '../constants/askPages'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
@@ -246,6 +247,24 @@ export function askOffices(
 }
 
 /** 안내 흐름(`ASK_FLOWS`) 가운데 질문에 맞는 첫 흐름과 시작할 단계. 질문이 상황을 이미 말하면 되묻지 않고 그 답에서 시작한다. */
+/** 줄임말 뒤 조사 — '중동에서', '교환은'. */
+const ALIAS_JOSA = new Set(['', '은', '는', '이', '가', '을', '를', '에', '에서', '도', '랑', '이랑', '하고', '의', '으로', '로', '만', '이야', '야', '부터', '까지'])
+
+/** 질문 속 운영진 확인 줄임말(ASK_ALIASES) 뒤에 정식 이름을 붙인다. 낱말 앞부분이 줄임말이고 나머지가 조사일 때만. */
+export function expandAliases(question: string): string {
+  const extra: string[] = []
+  for (const token of question.split(/[\s,.?!~·/()"']+/)) {
+    for (let len = Math.min(4, token.length); len >= 2; len--) {
+      const full = ASK_ALIASES[token.slice(0, len)]
+      if (full && ALIAS_JOSA.has(token.slice(len))) {
+        extra.push(...full)
+        break
+      }
+    }
+  }
+  return extra.length > 0 ? `${question} ${extra.join(' ')}` : question
+}
+
 export function matchAskFlow(
   question: string,
   flows: readonly AskFlow[] = ALL_ASK_FLOWS,
@@ -259,6 +278,12 @@ export function matchAskFlow(
   // 오타 교정(typoFix): 고친 글이 더 높은 점수로 걸릴 때만 쓴다 — 맞게 쓴 질문은 그대로 간다.
   const fixed = fixQuestionTypos(question, askVocabulary(flows))
   let best = original
+  // 줄임말(중동·교환·4공 …, 11-10): 원래 글로 아무 안내도 안 걸릴 때만 정식 이름을 붙여 다시 찾는다
+  // ('학생증 교환'의 교환은 교환학생이 아니다 — 원래 글이 걸리면 그대로 둔다).
+  if (!best) {
+    const expanded = expandAliases(question)
+    if (expanded !== question) best = scoreFlows(squash(expanded).replace(/\|/g, ''), flows)
+  }
   if (fixed) {
     const retry = scoreFlows(squash(fixed).replace(/\|/g, ''), flows)
     if (retry && (!best || retry.score > best.score)) best = retry
