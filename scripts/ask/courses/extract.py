@@ -10,6 +10,8 @@
 - 과목명이 길면 다음 줄로 넘어간다('논리적사고와글쓰기(공학),' + '공학글쓰기 중 택1') — 학점 줄 수에 맞춰 붙인다.
 - 표 아래 학기 합계 행(이름 칸이 비고 학점만 있음)으로 검산한다. 안 맞으면 보고서에 남기고 사람이 PDF 쪽을 본다.
 학과·학년은 표 바로 위 '○○학과 N학년' 줄에서 읽는다.
+이수구분은 위아래로 합쳐진 칸 — 그 칸을 가로지르는 가로줄 사이(category_blocks)에 이름 줄이 있는 과목에 붙인다.
+category 는 정규 이름(전공필수·전공선택·전공기초·MSC·교양·교양필수·교양선택·일반선택·교직·특성화교양), categoryDetail 은 영역(과학·핵심교양 …), categoryRaw 는 책자 글자.
 """
 import json
 import os
@@ -103,6 +105,70 @@ def split_pairs(name, credits, hours, codes):
     return [(name, credits, hours, code_list[0] if code_list else None)]
 
 
+def category_blocks(page, table, words, x0, x1):
+    """이수구분 칸(x0~x1)을 가로줄로 나눈 덩어리 [(위, 아래, 글자)].
+
+    이수구분 칸은 위아래로 합쳐진 칸이고 표 왼쪽 테두리가 없어 pdfplumber 가 칸을 못 잡는다(None, 11-12 확인: 99쪽).
+    대신 그 칸을 가로지르는 가로줄이 합쳐진 칸의 실제 경계다 — 줄과 줄 사이 글자가 그 덩어리의 이수구분이고,
+    그 사이에 이름 줄이 있는 과목만 그 이수구분을 받는다(다음 경계에서 끊기니 '과학'이 전공 과목으로 번지지 않는다)."""
+    top, bottom = table.bbox[1], table.bbox[3]
+    xm = (x0 + x1) / 2
+    cuts = sorted({round(e['top'], 1) for e in page.edges
+                   if e['orientation'] == 'h' and e['x0'] <= xm <= e['x1'] and top - 1 <= e['top'] <= bottom + 1}
+                  | {round(top, 1), round(bottom, 1)})
+    out = []
+    for lo, hi in zip(cuts, cuts[1:]):
+        if hi - lo < 2:
+            continue
+        inside = sorted((w for w in words if x0 - 1 <= w['x0'] < x1 - 1 and lo - 1 <= w['top'] < hi - 1),
+                        key=lambda w: (round(w['top']), w['x0']))
+        out.append((lo, hi, ''.join(w['text'] for w in inside)))
+    return out
+
+
+def pick_label(block, written):
+    """덩어리 글자와 그 행 칸에 적힌 글자 중 더 온전한 쪽(글자 하나가 경계에 걸려 '일반'만 잡힌 때, 11-12)."""
+    if written and (not block or (written != block and written.startswith(block))):
+        return written
+    return block
+
+
+def block_label(blocks, y):
+    return next((label for lo, hi, label in blocks if lo - 1 <= y < hi - 1), '')
+
+
+# 이수구분 원문(raw) → 정규 이름. 원문 표기가 학과마다 다르다(전공필수·전필·필수, 기본소양·핵심교양 …).
+CATEGORY_RULES = [
+    (re.compile(r'^(전공)?필수$|^전필$|^전공필수'), '전공필수'),
+    (re.compile(r'^(전공)?선택$|^전선$|^전공선택'), '전공선택'),
+    (re.compile(r'^전공기초'), '전공기초'),
+    (re.compile(r'^(교양필수|교필)|소양교양필수$'), '교양필수'),
+    (re.compile(r'^(교양선택|교선)'), '교양선택'),
+    (re.compile(r'^일반선택|^일선|^일반이수'), '일반선택'),
+    (re.compile(r'MSC|^(수학|과학|전산|통계)(영역)?$'), 'MSC'),
+    (re.compile(r'특성화교양'), '특성화교양'),
+    (re.compile(r'^교직'), '교직'),
+    (re.compile(r'교양|기본소양'), '교양'),
+]
+
+
+AREA = re.compile(r'영역|교양|수학|과학|전산|통계|MSC')
+
+
+def normalize_category(main, sub):
+    """(큰 칸, 작은 칸) 원문 → (정규 이수구분, 세부). 세부는 교양 영역(핵심교양·과학 …)."""
+    raw = '·'.join(x for x in (main, sub) if x)
+    if not raw:
+        return None, None
+    for cand in (main + sub, sub, main, raw):
+        for rule, name in CATEGORY_RULES:
+            if cand and rule.search(cand):
+                # 세부는 영역 이름만(세로 글자가 두 칸에 걸친 '전선·공택' 같은 조각은 버린다).
+                detail = sub if sub and sub != name and AREA.search(sub) else None
+                return name, detail
+    return None, None
+
+
 def credit_sum(value):
     return sum(float(x) for x in str(value).split(',') if NUM.match(x.strip()))
 
@@ -113,6 +179,7 @@ def main():
     for page_no, page in enumerate(pdf.pages, start=1):
         text_lines = page.extract_text_lines()
         grade_lines = [(w['top'], m) for w in text_lines if (m := GRADE_LINE.match(w['text'].strip()))]
+        page_words = page.extract_words()
         for table in page.find_tables():
             rows = table.extract()
             if not rows or len(rows) < 3:
@@ -129,6 +196,13 @@ def main():
             table_start = len(courses)
             totals = None
             category = sub = ''
+            col_x = [c.bbox[0] for c in table.columns]
+            main_blocks = sub_blocks = []
+            if cols['category'] is not None:
+                main_end = col_x[cols['sub']] if cols['sub'] is not None else col_x[cols['name']]
+                main_blocks = category_blocks(page, table, page_words, table.bbox[0], main_end)
+                if cols['sub'] is not None:
+                    sub_blocks = category_blocks(page, table, page_words, col_x[cols['sub']], col_x[cols['name']])
             for r_index, row in enumerate(rows[2:], start=2):
                 cells = table.rows[r_index].cells
 
@@ -137,7 +211,7 @@ def main():
 
                 def bbox(i):
                     return cells[i] if i is not None and i < len(cells) else None
-                # 이수구분 칸은 위아래로 합쳐진 칸이라 어디까지인지 알 수 없다 — 그 행에 적힌 때만 쓴다(전공 과목에 '과학'이 붙던 것, 11-10).
+                # 그 행에 적힌 이수구분(덩어리 글자가 없을 때만 쓴다 — 실제 값은 category_blocks 의 합쳐진 칸 범위로, 11-12).
                 category = squash(cell(cols['category']))
                 sub = squash(cell(cols['sub'])) if cols['sub'] is not None else ''
                 if not cell(cols['name']).strip():
@@ -188,6 +262,11 @@ def main():
                         for it, code in zip(merged, by_pos):
                             it[f'c{term}'] = code
                 for item in merged:
+                    # 이 과목 이름 줄이 들어 있는 합쳐진 칸의 글자(없으면 그 행에 적힌 글자).
+                    raw_main = pick_label(block_label(main_blocks, item['top']), category)
+                    raw_sub = pick_label(block_label(sub_blocks, item['top']), sub)
+                    cat_name, cat_detail = normalize_category(raw_main, raw_sub)
+                    cat_raw = '·'.join(x for x in (raw_main, raw_sub) if x) or None
                     for term in (1, 2):
                         cr, hr, code = item[f'cr{term}'], item[f'h{term}'], item[f'c{term}']
                         if not cr or cr in ('-', '–'):
@@ -197,7 +276,7 @@ def main():
                             courses.append(dict(
                                 code=one_code, name=re.sub(r'\s+', ' ', one_name).strip(), dept=dept, grade=grade, term=term,
                                 credits=one_cr, hours=one_hr,
-                                category='·'.join(x for x in (category, sub) if x) or None,
+                                category=cat_name, categoryDetail=cat_detail, categoryRaw=cat_raw,
                                 offeredBy=item['offered'], choice='택' in one_name, borrowed=(code or '') == '부학기',
                                 campus='세종' if page_no >= SEJONG_FROM_PAGE else '서울',
                                 src=f'2026 교과과정책자 PDF {page_no}쪽'))
