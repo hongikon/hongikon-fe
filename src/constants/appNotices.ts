@@ -50,9 +50,10 @@ const UPDATE_URL = Platform.OS === 'android' ? (PLAY_STORE_URL ?? undefined) : A
 export const APP_NOTICES: AppNotice[] = [
   {
     // 11-11 운영진: 1.0.0 을 쓰는 사람에게 새 버전 업데이트 안내. 1.0.0 runtime OTA 에만 넣는다(1.1.0 앱·웹에는 없다).
+    // 11-12: iOS 만 먼저 올린다(eas update --platform ios). Android 는 Play 1.1.0 심사 통과 뒤 같은 커밋을 --platform android 로.
     id: '8',
     title: '새 버전(1.1.0)으로 업데이트해 주세요',
-    date: '2026.11.11',
+    date: '2026.11.12',
     popup: {
       until: '2026-12-31',
       slides: [
