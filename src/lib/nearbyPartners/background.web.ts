@@ -16,7 +16,11 @@ export async function getNearbyPermission(): Promise<NearbyPermission> {
   return { status: 'unavailable' }
 }
 
-export async function requestNearbyPermission(): Promise<NearbyPermission> {
+export async function requestNearbyForeground(): Promise<NearbyPermission> {
+  return { status: 'unavailable' }
+}
+
+export async function requestNearbyBackground(): Promise<NearbyPermission> {
   return { status: 'unavailable' }
 }
 
