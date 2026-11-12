@@ -47,6 +47,7 @@ import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
+import NearbyFilterIntro from "../components/map/NearbyFilterIntro";
 import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -1910,6 +1911,8 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <PartnerNoticeModal />
+      {/* 업데이트 후 '제휴 업체'를 처음 누르면 근처 제휴 알림을 한 번 소개한다(11-12). */}
+      <NearbyFilterIntro active={layer === "제휴업체"} />
       <LaunchNoticeModal />
 
       <View style={styles.mapArea}>
