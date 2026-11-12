@@ -63,6 +63,8 @@ import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleSc
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
+/** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
+const ROUTE_PIN_MAX_METERS = 150;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import RouteOptions from "../components/map/RouteOptions";
@@ -270,7 +272,8 @@ export default function MapScreen() {
   // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
   const [pickingLocation, setPickingLocation] = useState(false);
   /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
-  const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner">("report");
+  /** report: 제보, partner: 정보 제보, routeTo: 길찾기 도착 건물을 핀으로(11-12). */
+  const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner" | "routeTo">("report");
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
   const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
   const [pickerCenter, setPickerCenter] = useState<{
@@ -668,6 +671,9 @@ export default function MapScreen() {
   const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
   /** 지도에서 경로를 누른 시각과, 메시지 처리기(위)에서 부를 경로 고르기(아래에서 채운다). */
   const routeTapAtRef = useRef(0);
+  /** 출발·도착이 다 정해져 경로를 보여 주는 중인지(아래에서 채운다). 이때는 지도 탭으로 건물을 고르지 않는다. */
+  const routeShownRef = useRef(false);
+  routeShownRef.current = !pickingLocation && (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
   const routeAlternativesRef = useRef<RouteAlternative[]>([]);
   const handleSelectRouteAlternativeRef = useRef<(index: number) => void>(() => {});
 
@@ -684,8 +690,12 @@ export default function MapScreen() {
           postToMap({ type: "selectBuilding", name: null });
           return;
         }
-        // 경로를 누른 바로 그 손동작의 지도 탭은 무시한다.
-        if ((msg.type === "buildingTap" || msg.type === "buildingDismiss") && Date.now() - routeTapAtRef.current < 500) {
+        // 경로를 누른 바로 그 손동작의 지도 탭은 무시한다. 경로를 보여 주는 동안에는 지도 탭 자체로 건물을 고르지 않는다(11-12) —
+        // 길(선)을 누른 탭이 경로 선이 아닌 건물 위로 들어와 건물 배너가 경로 카드를 가렸다.
+        if (
+          ((msg.type === "buildingTap" || msg.type === "buildingDismiss") && Date.now() - routeTapAtRef.current < 500) ||
+          (msg.type === "buildingTap" && routeShownRef.current)
+        ) {
           postToMap({ type: "selectBuilding", name: null });
           return;
         }
@@ -1519,7 +1529,7 @@ export default function MapScreen() {
 
   /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
   const startPicker = useCallback(
-    (purpose: "report" | "partner") => {
+    (purpose: "report" | "partner" | "routeTo") => {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
@@ -1791,11 +1801,44 @@ export default function MapScreen() {
     }, [closeTopMapLayer]),
   );
 
+  /**
+   * 길찾기 도착을 핀으로 고를 때 그 핀이 가리키는 건물(11-12). 길은 서버가 건물(id)끼리만 계산해, 핀 아래(지도가 알려 준 가까운
+   * 건물) 건물을 쓰고, 없으면 핀에서 ROUTE_PIN_MAX_METERS 안의 가장 가까운 건물을 쓴다. 그것도 없으면 null.
+   */
+  const routePinBuilding = useMemo(() => {
+    if (pickerPurpose !== "routeTo" || !pickerCenter) return null;
+    const routable = buildings.filter((b) => b.id !== undefined);
+    const named = pickerCenter.buildingName ? routable.find((b) => b.name === pickerCenter.buildingName) : undefined;
+    if (named) return named;
+    let best: Building | null = null;
+    let bestMeters = ROUTE_PIN_MAX_METERS;
+    for (const b of routable) {
+      const meters = haversineMeters(pickerCenter.lat, pickerCenter.lng, b.lat, b.lng);
+      if (meters <= bestMeters) {
+        best = b;
+        bestMeters = meters;
+      }
+    }
+    return best;
+  }, [pickerPurpose, pickerCenter, buildings]);
+
+  /** 도착 검색 창의 "지도에서 핀으로 고르기". 검색 창을 닫고 화면 가운데 핀으로 도착 건물을 고르게 한다. */
+  const handlePickRouteDestinationOnMap = useCallback(() => {
+    closeRouteSearch();
+    startPicker("routeTo");
+  }, [closeRouteSearch, startPicker]);
+
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
     if (!pickerCenter) return;
+    if (pickerPurpose === "routeTo" && !routePinBuilding) return;
     setPickingLocation(false);
     postToMap({ type: "stopLocationPicker" });
+    if (pickerPurpose === "routeTo") {
+      // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
+      beginTo(routePinBuilding!);
+      return;
+    }
     if (pickerPurpose === "partner") {
       setPartnerSuggest({
         location: {
@@ -1811,7 +1854,7 @@ export default function MapScreen() {
       lng: pickerCenter.lng,
       buildingName: pickerCenter.buildingName,
     });
-  }, [pickerCenter, pickerPurpose, postToMap]);
+  }, [pickerCenter, pickerPurpose, postToMap, routePinBuilding, beginTo]);
 
   /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
   const handleSelectMyLocation = useCallback(async () => {
@@ -2182,7 +2225,11 @@ export default function MapScreen() {
               <View style={styles.pickerCrosshairH} />
               <View style={styles.pickerPinAnchor}>
                 <View style={styles.pickerPinBubble}>
-                  <ReportMegaphoneIcon size={18} color={COLORS.white} />
+                  {pickerPurpose === "routeTo" ? (
+                    <Ionicons name="flag" size={18} color={COLORS.white} />
+                  ) : (
+                    <ReportMegaphoneIcon size={18} color={COLORS.white} />
+                  )}
                 </View>
                 <View style={styles.pickerPinTail} />
               </View>
@@ -2193,7 +2240,9 @@ export default function MapScreen() {
               <Text style={styles.pickerTopText} numberOfLines={2}>
                 {pickerPurpose === "partner"
                   ? "지도를 움직여 가게 위치에 핀을 맞춰 주세요"
-                  : "지도를 움직여 제보할 위치를 맞춰 주세요"}
+                  : pickerPurpose === "routeTo"
+                    ? "지도를 움직여 도착할 건물에 핀을 맞춰 주세요"
+                    : "지도를 움직여 제보할 위치를 맞춰 주세요"}
               </Text>
               <TouchableOpacity
                 onPress={handleCancelReportPicker}
@@ -2210,7 +2259,11 @@ export default function MapScreen() {
               <View style={styles.pickerLocationRow}>
                 <Ionicons name="location" size={16} color={COLORS.primary} />
                 <Text style={styles.pickerLocationText} numberOfLines={1}>
-                  {pickerCenter
+                  {pickerPurpose === "routeTo" && pickerCenter
+                    ? routePinBuilding
+                      ? `도착: ${routePinBuilding.name}`
+                      : "근처에 길찾기할 수 있는 건물이 없어요"
+                    : pickerCenter
                     ? pickerCenter.buildingName
                       ? `${pickerCenter.buildingName} 근처`
                       : pickerPurpose === "report"
@@ -2234,9 +2287,11 @@ export default function MapScreen() {
                 </TouchableOpacity>
               </View>
               <Button
-                label={pickerPurpose === "partner" ? "이 위치로 정보 제보" : "이 위치 제보하기"}
+                label={
+                  pickerPurpose === "partner" ? "이 위치로 정보 제보" : pickerPurpose === "routeTo" ? "여기로 도착" : "이 위치 제보하기"
+                }
                 onPress={handleConfirmReportPicker}
-                disabled={!pickerCenter}
+                disabled={!pickerCenter || (pickerPurpose === "routeTo" && !routePinBuilding)}
               />
             </View>
           </>
@@ -2581,7 +2636,21 @@ export default function MapScreen() {
                   </TouchableOpacity>
                 )}
                 ListHeaderComponent={
-                  routeTarget === "from" && canLocate() ? (
+                  routeTarget === "to" ? (
+                    <TouchableOpacity
+                      style={styles.buildingItem}
+                      onPress={handlePickRouteDestinationOnMap}
+                      accessibilityRole="button"
+                      accessibilityLabel="지도에서 핀으로 도착 건물 고르기"
+                    >
+                      <Ionicons name="flag" size={18} color={COLORS.primary} />
+                      <View style={styles.buildingItemInfo}>
+                        <Text style={styles.buildingItemName}>지도에서 핀으로 고르기</Text>
+                        <Text style={styles.buildingItemType}>지도를 움직여 도착할 건물에 핀을 맞춰요</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
+                    </TouchableOpacity>
+                  ) : routeTarget === "from" && canLocate() ? (
                     <TouchableOpacity
                       style={styles.buildingItem}
                       onPress={() => void handleSelectMyLocation()}
