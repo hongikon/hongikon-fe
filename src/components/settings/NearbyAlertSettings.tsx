@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -26,13 +26,15 @@ import {
   getNearbySettings,
   nearbyAlertsAvailable,
   nearbyGeofencingUnsupported,
-  requestNearbyPermission,
+  requestNearbyBackground,
+  requestNearbyForeground,
   resetNearbyHistoryForDebug,
   sendNearbyTestAlert,
   setNearbyPrefs,
   syncNearbyAlerts,
   unmuteNearbyPartner,
   type NearbyChecklist,
+  type NearbyPermission,
   type NearbySettings,
   type NearbySource,
 } from '../../lib/nearbyPartners/background'
@@ -52,6 +54,7 @@ import Button from '../common/Button'
 import { useIsAdmin } from '../../admin/AdminAccess'
 import { clearNearbyLog, logClock, readNearbyLog, type NearbyLogLine } from '../../lib/nearbyPartners/debugLog'
 import { showConsentResult } from '../../lib/nearbyPartners/consentNotice'
+import { backgroundDisclosure, deviceIsKorean } from '../../lib/nearbyPartners/locationDisclosure'
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
 import NearbyRadiusMap from './NearbyRadiusMap'
@@ -207,6 +210,9 @@ type Step =
   | { kind: 'working'; message: string }
   /** 시스템 권한 창을 띄우기 전 위치 정보 사용 명시적 공개(무엇을·왜·앱을 쓰지 않을 때에도, 동의/동의하지 않음, 전체 화면). */
   | { kind: 'explain' }
+  /** "앱 사용 중"을 허용한 뒤, "항상" 권한 창(Android 는 설정 화면) 전에 무엇을 고르는지 보여 준다. */
+  | { kind: 'chooseAlways' }
+  /** "항상"을 고르지 않고 돌아왔다 — 휴대폰 설정에서 바꾸는 길을 안내한다. */
   | { kind: 'needsAlways' }
   | { kind: 'error'; message: string; openSettings?: boolean }
 
@@ -289,20 +295,14 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     return () => sub.remove()
   }, [visible, step.kind, finish])
 
-  const start = async () => {
-    setStep({ kind: 'working', message: '권한을 확인하는 중이에요' })
-    const notification = await requestNotificationPermission()
-    if (notification.status !== 'granted') {
-      setStep({ kind: 'error', message: '알림 권한이 꺼져 있어 근처 알림을 보낼 수 없어요. 휴대폰 설정에서 알림을 켜 주세요.', openSettings: true })
-      return
-    }
-    const location = await requestNearbyPermission()
+  /** 위치 권한 결과로 다음 단계. `afterForeground`: "앱 사용 중"만 막 허용됐으면 "항상" 고르는 안내로. */
+  const afterLocation = (location: NearbyPermission, afterForeground: boolean) => {
     if (location.status === 'granted') {
       void finish()
       return
     }
     if (location.status === 'foregroundOnly') {
-      setStep({ kind: 'needsAlways' })
+      setStep({ kind: afterForeground ? 'chooseAlways' : 'needsAlways' })
       return
     }
     setStep({
@@ -312,9 +312,30 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
     })
   }
 
-  // 이미 "항상 허용"이면 안내 화면 없이 바로, 아니면 안내 화면부터(시스템 창은 안내에서 "계속"을 눌러야 뜬다).
+  // 위치 정보 사용 안내에서 '동의하고 계속' — 바로 위치 권한 창(다른 창을 끼우지 않는다).
+  const agreeLocation = async () => {
+    setStep({ kind: 'working', message: '권한을 확인하는 중이에요' })
+    afterLocation(await requestNearbyForeground(), true)
+  }
+
+  const chooseAlways = async () => {
+    setStep({ kind: 'working', message: '권한을 확인하는 중이에요' })
+    afterLocation(await requestNearbyBackground(), false)
+  }
+
+  /**
+   * 켜기: 알림 권한을 먼저 묻고, 그다음 위치 정보 사용 안내 → 위치 권한 창. 11-12 Play 거부 뒤 순서를 바꿨다 — 전에는 안내에서
+   * '동의하고 계속'을 누르면 알림 권한 창이 먼저 떠, 위치 안내와 위치 권한 창 사이에 다른 창이 끼었다(정책: 권한 요청 바로 앞에 공개).
+   * 이미 "항상 허용"이면 안내 없이 바로 켠다.
+   */
   const begin = async () => {
-    if ((await getNearbyPermission()).status === 'granted') void start()
+    setStep({ kind: 'working', message: '권한을 확인하는 중이에요' })
+    const notification = await requestNotificationPermission()
+    if (notification.status !== 'granted') {
+      setStep({ kind: 'error', message: '알림 권한이 꺼져 있어 근처 알림을 보낼 수 없어요. 휴대폰 설정에서 알림을 켜 주세요.', openSettings: true })
+      return
+    }
+    if ((await getNearbyPermission()).status === 'granted') void finish()
     else setStep({ kind: 'explain' })
   }
 
@@ -684,10 +705,13 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
               <Button label="근처 제휴 알림 켜기" size="lg" onPress={() => void begin()} disabled={!consent} loading={working} />
             )}
           </View>
-          {(step.kind === 'explain' || step.kind === 'needsAlways') && (
+          {step.kind === 'explain' && (
+            <LocationDisclosureOverlay onAgree={() => void agreeLocation()} onDecline={() => setStep({ kind: 'form' })} />
+          )}
+          {(step.kind === 'chooseAlways' || step.kind === 'needsAlways') && (
             <AlwaysAllowOverlay
               afterSettings={step.kind === 'needsAlways'}
-              onContinue={() => void start()}
+              onContinue={() => void chooseAlways()}
               onCancel={() => setStep({ kind: 'form' })}
             />
           )}
@@ -808,17 +832,8 @@ function CheckRow({
   )
 }
 
-/** 휴대폰 언어가 한국어인지(시스템 창 글자를 같은 말로 그리려고). 알 수 없으면 한국어. */
-function deviceIsKorean(): boolean {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase().startsWith('ko')
-  } catch {
-    return true
-  }
-}
-
 interface PermissionStep {
-  /** 그림 위 설명("처음 뜨는 창"). */
+  /** 그림 위 설명("이어서 뜨는 창에서"). */
   caption: string
   /** 시스템 창 제목(설정 화면 목록이면 null). */
   title: string | null
@@ -832,14 +847,15 @@ interface PermissionStep {
 /**
  * 시스템 권한 창·설정 화면을 그대로 본뜬 그림의 내용. 실제 시스템 창에는 앱이 테두리를 그릴 수 없어(운영체제가 앱 위에 그린다)
  * 미리 같은 모양을 보여 주고 눌러야 할 버튼을 표시한다(10-29 사용자 요청). 글자는 휴대폰 언어(한국어·영어)를 따른다.
+ * "앱 사용 중"을 허용한 뒤의 "항상" 단계만 그린다 — 위치 정보 사용 안내 화면에는 넣지 않는다(11-12 Play 거부: 공개와 섞지 않음).
+ * `afterSettings`: "항상"을 고르지 않고 돌아온 경우 — 휴대폰 설정의 위치 목록.
  */
-function permissionSteps(afterSettings: boolean): PermissionStep[] {
-  const ko = deviceIsKorean()
+function permissionSteps(afterSettings: boolean, ko: boolean): PermissionStep[] {
   if (Platform.OS === 'ios') {
     if (afterSettings) {
       return [
         {
-          caption: ko ? '휴대폰 설정 > 홍익온 > 위치에서' : '휴대폰 설정 > 홍익온 > 위치(Location)에서',
+          caption: ko ? '휴대폰 설정 > 홍익온 > 위치에서' : 'In Settings > 홍익온 > Location',
           title: null,
           options: ko
             ? ['안 함', '다음번에 묻기 또는 공유할 때', '앱을 사용하는 동안', '항상']
@@ -851,13 +867,7 @@ function permissionSteps(afterSettings: boolean): PermissionStep[] {
     }
     return [
       {
-        caption: '처음 뜨는 창에서',
-        title: ko ? "'홍익온'이(가) 사용자의 위치를 사용하도록 허용하겠습니까?" : "Allow '홍익온' to use your location?",
-        options: ko ? ['한 번 허용', '앱을 사용하는 동안 허용', '허용 안 함'] : ['Allow Once', 'Allow While Using App', "Don't Allow"],
-        pick: 1,
-      },
-      {
-        caption: '이어서 뜨는 창에서',
+        caption: ko ? '이어서 뜨는 창에서' : 'In the next prompt',
         title: ko
           ? "'홍익온'이(가) 앱을 사용하지 않을 때에도 사용자의 위치를 사용하도록 허용하겠습니까?"
           : "Allow '홍익온' to also use your location even when you are not using the app?",
@@ -866,22 +876,20 @@ function permissionSteps(afterSettings: boolean): PermissionStep[] {
       },
     ]
   }
-  const settingsList: PermissionStep = {
-    caption: afterSettings ? '휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치에서' : '이어서 열리는 설정 화면에서',
-    title: null,
-    options: ko ? ['항상 허용', '앱 사용 중에만 허용', '항상 확인', '허용 안함'] : ['Allow all the time', 'Allow only while using the app', 'Ask every time', "Don't allow"],
-    pick: 0,
-    list: true,
-  }
-  if (afterSettings) return [settingsList]
   return [
     {
-      caption: '처음 뜨는 창에서',
-      title: ko ? '홍익온에서 기기 위치에 액세스하도록 허용하시겠습니까?' : 'Allow 홍익온 to access this device’s location?',
-      options: ko ? ['앱 사용 중에만 허용', '이번만 허용', '허용 안함'] : ['While using the app', 'Only this time', "Don't allow"],
+      caption: afterSettings
+        ? ko
+          ? '휴대폰 설정 > 앱 > 홍익온 > 권한 > 위치에서'
+          : 'In Settings > Apps > 홍익온 > Permissions > Location'
+        : ko
+          ? '이어서 열리는 설정 화면에서'
+          : 'On the settings screen that opens next',
+      title: null,
+      options: ko ? ['항상 허용', '앱 사용 중에만 허용', '항상 확인', '허용 안함'] : ['Allow all the time', 'Allow only while using the app', 'Ask every time', "Don't allow"],
       pick: 0,
+      list: true,
     },
-    settingsList,
   ]
 }
 
@@ -908,75 +916,102 @@ function PermissionMock({ title, options, pick, list }: Omit<PermissionStep, 'ca
   )
 }
 
-/**
- * "항상 허용" 안내(시스템 권한 창 전에 띄운다 — Google Play 백그라운드 위치 정책의 "눈에 띄는 고지"이기도 하다).
- * 맨 위에 위치 정보 사용 명시적 공개(Google Play 사용자 데이터 정책), 그 아래 시스템 창에서 무엇을 고르는지 둔다.
- * `afterSettings`: "앱 사용 중"만 허용하고 돌아온 경우 — 휴대폰 설정에서 바꾸는 길을 안내한다.
- */
-function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
+/** 전체 화면 안내 틀(아이콘·제목·스크롤 본문·아래 버튼). */
+function OverlayFrame({ title, footer, children }: { title: string; footer: ReactNode; children: ReactNode }) {
   // 절대 위치라 SafeAreaView 의 여백을 받지 못한다 — 상태 막대·홈 표시줄만큼 직접 띄운다(10-29 시뮬레이터에서 아이콘이 시계와 겹침).
   const insets = useSafeAreaInsets()
-  const steps = permissionSteps(afterSettings)
   return (
     <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={[styles.overlayContent, layoutStyles.readable]}>
         <View style={styles.overlayIcon}>
           <Ionicons name="navigate" size={28} color={COLORS.white} />
         </View>
-        <Text style={styles.overlayTitle}>{afterSettings ? '위치를 "항상 허용"으로 바꿔 주세요' : '위치 정보 사용 안내'}</Text>
+        <Text style={styles.overlayTitle}>{title}</Text>
+        {children}
+      </ScrollView>
+      <View style={[styles.footer, layoutStyles.readable, styles.overlayFooter]}>{footer}</View>
+    </View>
+  )
+}
 
-        {/*
-          명시적 공개(11-11 Google Play 거부: "앱 내의 명시적 공개에 액세스 또는 수집되는 위치 데이터의 사용 사실이 명시되어 있지 않음").
-          시스템 권한 창 바로 앞에, 무엇(정확한 위치·백그라운드)을 왜(제휴 혜택 알림, 광고성 정보) 언제(앱이 닫혀 있거나 사용하지
-          않을 때에도) 쓰는지를 맨 위에 한 문장으로 먼저 보여 준다. 허용 방법 그림은 그 아래로 내렸다.
-        */}
-        <View style={styles.disclosureCard} accessibilityRole="summary">
-          <Text style={styles.disclosureLead}>
-            홍익온은 앱이 닫혀 있거나 사용 중이 아닐 때에도, 제휴 가게에 머무는 것을 알아채 그 가게의 학생 혜택 알림(광고성 정보)을
-            보내기 위해 이 기기의 정확한 위치 정보에 액세스합니다.
-          </Text>
-          {[
-            '사용하는 정보: 정확한 위치(GPS·Wi-Fi), 앱을 사용하지 않을 때의 위치(백그라운드 위치)',
-            '쓰는 곳: 가까운 제휴 가게까지 거리를 재 머문 시간을 세는 데만 써요.',
-            '위치는 휴대폰 안에서만 처리하고 서버나 다른 회사로 보내거나 저장하지 않아요.',
-            `제휴 가게 ${PARTNER_REGION_RADIUS_METERS}m 안에 있을 때만 정확한 거리를 재고, 멀어지면 멈춰요.`,
-            '설정 > 근처 제휴 알림에서 언제든 수신 거부할 수 있고, 수신 거부하면 위치를 더 쓰지 않아요.',
-          ].map((line) => (
-            <View key={line} style={styles.bulletRow}>
-              <Text style={styles.bullet}>·</Text>
-              <Text style={styles.bulletText}>{line}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.overlayBody}>
-          {Platform.OS === 'android'
-            ? afterSettings
-              ? '"앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
-              : '동의하면 위치 권한 창이 떠요. "앱 사용 중에만 허용"을 고른 뒤, 이어서 열리는 설정 화면에서 "항상 허용"을 골라 주세요.'
-            : afterSettings
-              ? '"앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
-              : '동의하면 위치 권한 창이 떠요. 아래처럼 고르면 앱을 닫아도 알림을 받을 수 있어요.'}
-        </Text>
-
-        {steps.map((item, index) => (
-          <View key={item.caption} style={styles.mockStep}>
-            <Text style={styles.mockCaption}>
-              {index + 1}. {item.caption}
-            </Text>
-            <PermissionMock title={item.title} options={item.options} pick={item.pick} list={item.list} />
+/**
+ * 위치 정보 사용 명시적 공개(Google Play 사용자 데이터 정책 "명시적 공개 및 동의 요건", 백그라운드 위치 정책의 "눈에 띄는 고지").
+ * 위치 권한 창 바로 앞에 띄우고, '동의하고 계속'을 누르면 곧바로 위치 권한 창이 뜬다(알림 권한은 이 화면 전에 묻는다).
+ * 공개 문장과 동의 버튼만 둔다 — 권한 창 사용법 그림은 "앱 사용 중"을 허용한 뒤 `AlwaysAllowOverlay` 에서.
+ * 문구는 `locationDisclosure.ts`(휴대폰 언어가 한국어가 아니면 영어 — 11-12 두 번째 거절 때 심사 기기가 영어였다).
+ */
+function LocationDisclosureOverlay({ onAgree, onDecline }: { onAgree: () => void; onDecline: () => void }) {
+  const copy = backgroundDisclosure(deviceIsKorean(), PARTNER_REGION_RADIUS_METERS)
+  return (
+    <OverlayFrame
+      title={copy.title}
+      footer={
+        <>
+          <Button label={copy.agree} size="lg" onPress={onAgree} />
+          <Button label={copy.decline} variant="secondary" size="lg" onPress={onDecline} />
+        </>
+      }
+    >
+      <View style={styles.disclosureCard} accessibilityRole="summary">
+        <Text style={styles.disclosureLead}>{copy.lead}</Text>
+        {copy.bullets.map((line) => (
+          <View key={line} style={styles.bulletRow}>
+            <Text style={styles.bullet}>·</Text>
+            <Text style={styles.bulletText}>{line}</Text>
           </View>
         ))}
-      </ScrollView>
-      <View style={[styles.footer, layoutStyles.readable, styles.overlayFooter]}>
-        {afterSettings ? (
-          <Button label="휴대폰 설정 열기" size="lg" onPress={() => Linking.openSettings().catch(() => {})} />
-        ) : (
-          <Button label="동의하고 계속" size="lg" onPress={onContinue} />
-        )}
-        <Button label={afterSettings ? '나중에 할게요' : '동의하지 않음'} variant="secondary" size="lg" onPress={onCancel} />
       </View>
-    </View>
+      <Text style={styles.overlayBody}>{copy.next}</Text>
+    </OverlayFrame>
+  )
+}
+
+/**
+ * "항상 허용" 고르기 안내. "앱 사용 중"을 허용한 뒤 "항상" 권한 창(Android 는 앱 위치 설정 화면) 전에 무엇을 고르는지 그림으로 보여 준다.
+ * `afterSettings`: "항상"을 고르지 않고 돌아온 경우 — 휴대폰 설정에서 바꾸는 길을 안내한다.
+ */
+function AlwaysAllowOverlay({ afterSettings, onContinue, onCancel }: { afterSettings: boolean; onContinue: () => void; onCancel: () => void }) {
+  const ko = deviceIsKorean()
+  const ios = Platform.OS === 'ios'
+  const steps = permissionSteps(afterSettings, ko)
+  const title = ko ? '위치를 "항상 허용"으로 바꿔 주세요' : ios ? 'Change location to "Always"' : 'Change location to "Allow all the time"'
+  const body = afterSettings
+    ? ko
+      ? ios
+        ? '"앱을 사용하는 동안"만 허용하면 앱을 닫았을 때는 알림이 오지 않아요.'
+        : '"앱 사용 중에만 허용"으로 두면 앱을 닫았을 때는 알림이 오지 않아요.'
+      : ios
+        ? 'With "While Using the App", alerts will not arrive when the app is closed.'
+        : 'With "Allow only while using the app", alerts will not arrive when the app is closed.'
+    : ko
+      ? ios
+        ? '근처 제휴 알림은 앱이 닫혀 있을 때에도 위치를 써야 해요. 이어서 뜨는 창에서 아래처럼 골라 주세요.'
+        : '근처 제휴 알림은 앱이 닫혀 있을 때에도 위치를 써야 해요. 이어서 열리는 설정 화면에서 아래처럼 골라 주세요.'
+      : ios
+        ? 'Nearby partner alerts need location even when the app is closed. In the next prompt, choose as shown below.'
+        : 'Nearby partner alerts need location even when the app is closed. On the settings screen that opens next, choose as shown below.'
+  return (
+    <OverlayFrame
+      title={title}
+      footer={
+        <>
+          {afterSettings ? (
+            <Button label={ko ? '휴대폰 설정 열기' : 'Open phone settings'} size="lg" onPress={() => Linking.openSettings().catch(() => {})} />
+          ) : (
+            <Button label={ko ? '계속' : 'Continue'} size="lg" onPress={onContinue} />
+          )}
+          <Button label={ko ? '나중에 할게요' : 'Not now'} variant="secondary" size="lg" onPress={onCancel} />
+        </>
+      }
+    >
+      <Text style={styles.overlayBody}>{body}</Text>
+      {steps.map((item) => (
+        <View key={item.caption} style={styles.mockStep}>
+          <Text style={styles.mockCaption}>{item.caption}</Text>
+          <PermissionMock title={item.title} options={item.options} pick={item.pick} list={item.list} />
+        </View>
+      ))}
+    </OverlayFrame>
   )
 }
 

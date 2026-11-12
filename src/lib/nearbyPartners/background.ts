@@ -823,17 +823,32 @@ export async function getNearbyChecklist(): Promise<NearbyChecklist> {
 }
 
 /**
- * "앱 사용 중" → "항상" 순서로 묻는다. Android 11 이상은 "항상"을 앱 안 창으로 고를 수 없어
- * 시스템이 앱 위치 설정 화면을 연다 — 돌아온 뒤 `getNearbyPermission` 으로 다시 확인한다.
+ * 1단계: "앱 사용 중" 위치를 묻는다(이미 허용이면 창 없이 지금 상태). 위치 정보 사용 안내에서 '동의하고 계속' 바로 뒤에 부른다 —
+ * 그 사이에 다른 권한 창을 끼우지 않는다(Google Play: 권한 요청 바로 앞에 명시적 공개).
  */
-export async function requestNearbyPermission(): Promise<NearbyPermission> {
+export async function requestNearbyForeground(): Promise<NearbyPermission> {
   const pkg = packages()
   if (!pkg) return { status: 'unavailable' }
   try {
     const fg = await pkg.Location.requestForegroundPermissionsAsync()
     if (!fg.granted) return { status: 'denied', canAskAgain: fg.canAskAgain }
+    return getNearbyPermission()
+  } catch (error) {
+    logFailure('권한 요청', error)
+    return getNearbyPermission()
+  }
+}
+
+/**
+ * 2단계: "항상" 위치를 묻는다. Android 11 이상은 "항상"을 앱 안 창으로 고를 수 없어 시스템이 앱 위치 설정 화면을 연다 —
+ * 돌아온 뒤 `getNearbyPermission` 으로 다시 확인한다.
+ */
+export async function requestNearbyBackground(): Promise<NearbyPermission> {
+  const pkg = packages()
+  if (!pkg) return { status: 'unavailable' }
+  try {
     const bg = await pkg.Location.requestBackgroundPermissionsAsync()
-    return bg.granted ? { status: 'granted' } : { status: 'foregroundOnly', canAskAgain: bg.canAskAgain }
+    return bg.granted ? { status: 'granted' } : getNearbyPermission()
   } catch (error) {
     logFailure('권한 요청', error)
     return getNearbyPermission()
