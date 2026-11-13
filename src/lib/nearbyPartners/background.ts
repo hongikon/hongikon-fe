@@ -12,6 +12,7 @@ import {
   preciseUpdate,
   onRegister,
   settle,
+  smoothFineFix,
   type NearbyAction,
   type NearbyPrefs,
   type NearbyState,
@@ -53,6 +54,7 @@ import {
 } from './debug'
 import { haversineMeters } from '../../utils/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
+import type { FilterState } from '../../utils/locationFilter'
 import type { Partner, PartnerAffiliation } from '../../types'
 
 /**
@@ -411,6 +413,7 @@ async function stopPrecise(): Promise<void> {
       await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
       void nearbyLog('위치 갱신 끔(가게에서 멀어짐 또는 2시간 지남)')
     }
+    fineFilter = null
     await AsyncStorage.removeItem(PRECISE_SINCE_KEY).catch(() => {})
     await AsyncStorage.removeItem(PRECISE_MODE_KEY).catch(() => {})
     if (!preciseRecentlyFailed()) preciseNote = '꺼짐'
@@ -474,13 +477,26 @@ async function fineCheck(force = false): Promise<void> {
 const FIX_LOG_GAP_MS = 30_000
 let lastFixLogAt = 0
 
+/**
+ * GPS 위치를 다듬는 칼만 필터의 지금 추정(11-13, `smoothFineFix`). 메모리에만 두고 저장하지 않는다 — 앱이 꺼졌다 깨어나면
+ * 처음부터 다시 쌓는다. GPS 위치 갱신을 끄면(`stopPrecise`) 비운다.
+ */
+let fineFilter: FilterState | null = null
+
 /** 위치 하나를 판단에 넣고(`preciseUpdate`), 위치 갱신 단계를 맞추거나 끈다. 위치는 저장하지 않는다. */
 async function applyFix(
-  at: { lat: number; lng: number },
+  raw: { lat: number; lng: number },
   accuracy: number | null,
   mode: PreciseMode,
   source: string,
 ): Promise<{ stop: boolean; nextMode: PreciseMode; nearestMeters: number; needsFineCheck: boolean }> {
+  // GPS 위치만 다듬는다. Wi-Fi·기지국 위치는 오차가 커 그대로 '나감' 판단에만 쓴다.
+  let at = raw
+  if (mode === 'fine') {
+    const smoothed = smoothFineFix(fineFilter, raw, accuracy, Date.now())
+    fineFilter = smoothed.filter
+    at = smoothed.at
+  }
   const since = Number(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null)) || Date.now()
   let stop = Date.now() - since > PRECISE_MAX_MS
   let nextMode: PreciseMode = mode

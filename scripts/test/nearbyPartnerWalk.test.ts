@@ -5,9 +5,11 @@ import {
   INITIAL_NEARBY_STATE,
   preciseUpdate,
   settle,
+  smoothFineFix,
   type NearbyState,
   type PreciseRadii,
 } from '../../src/lib/nearbyPartners/engine.ts'
+import type { FilterState } from '../../src/utils/locationFilter.ts'
 import { ALERT_RADIUS_METERS, PARTNER_REGION_RADIUS_METERS, type PreciseMode } from '../../src/lib/nearbyPartners/rules.ts'
 
 /**
@@ -69,12 +71,17 @@ interface Run {
   stoppedAt: number | null
 }
 
-function walk(legs: Leg[], { perVisit = false, startX = -60, seed = 7 } = {}): Run {
+/**
+ * `smooth`(기본 켬): 운영과 같이 GPS 단계 위치를 칼만 필터로 다듬어 넣는다(`background.applyFix` → `smoothFineFix`).
+ * GPS 단계가 아니면 필터를 비운다(운영은 위치 갱신을 끌 때 비운다).
+ */
+function walk(legs: Leg[], { perVisit = false, startX = -60, seed = 7, smooth = true } = {}): Run {
   const rand = noise(seed)
   let state = start(perVisit)
   let mode: PreciseMode = 'coarse'
   let now = T0
   let x = startX
+  let filter: FilterState | null = null
   const modes: PreciseMode[] = []
   let stoppedAt: number | null = null
   for (const leg of legs) {
@@ -87,7 +94,15 @@ function walk(legs: Leg[], { perVisit = false, startX = -60, seed = 7 } = {}): R
       const bias = mode === 'coarse' ? (leg.coarseBias ?? 0) : 0
       const accuracy = mode === 'coarse' ? (leg.accuracy ?? 65) : (leg.accuracy ?? 10)
       // Wi-Fi·기지국 쏠림은 길과 직각(북쪽)으로 — 길 방향으로 쏠리면 옆 가게에 가까워져 우연히 맞는다.
-      const outcome = preciseUpdate(state, now, { at: at(x + rand() * 2 * jitter, rand() * 2 * jitter + bias), accuracy, mode }, RADII)
+      let fix = at(x + rand() * 2 * jitter, rand() * 2 * jitter + bias)
+      if (smooth && mode === 'fine') {
+        const smoothed = smoothFineFix(filter, fix, accuracy, now)
+        filter = smoothed.filter
+        fix = smoothed.at
+      } else {
+        filter = null
+      }
+      const outcome = preciseUpdate(state, now, { at: fix, accuracy, mode }, RADII)
       state = outcome.state
       modes.push(mode)
       mode = outcome.nextMode
@@ -297,4 +312,36 @@ test('오차가 작아 Wi-Fi·기지국 위치로도 나간 것이 확실하면 
   const outcome = preciseUpdate(state, now + MIN, { at: at(40, 150), accuracy: 40, mode: 'coarse' }, RADII)
   assert.equal(outcome.needsFineCheck, false)
   assert.notEqual(outcome.state.stays.B?.exitedAt, null)
+})
+
+// 칼만 필터(11-13, `smoothFineFix`): 실내에서 크게 튀는 GPS 위치를 다듬어 판단한다.
+// 시드 300개 시뮬레이션: 흔들림 40m·오차 30m 로 B 안에 6분 → 원래 위치 46%, 다듬은 위치 100% 가 B 로 한 번 알렸다.
+test('칼만 필터: B 안에서 GPS 가 40m 씩 튀어도(오차 30m) B 이름으로 한 번 알린다 — 다듬지 않으면 놓치거나 옆 가게', () => {
+  const legs: Leg[] = [
+    { toX: 40, ms: 75 * SEC },
+    { toX: 40, ms: 6 * MIN, jitter: 40, accuracy: 30 },
+    { toX: 140, ms: 75 * SEC },
+  ]
+  let smoothedOk = 0
+  let rawOk = 0
+  for (let seed = 1; seed <= 40; seed += 1) {
+    if (JSON.stringify(sentIds(walk(legs, { seed }))) === '["B"]') smoothedOk += 1
+    if (JSON.stringify(sentIds(walk(legs, { seed, smooth: false }))) === '["B"]') rawOk += 1
+  }
+  assert.equal(smoothedOk, 40, `다듬은 위치는 40번 모두 B 여야 한다(${smoothedOk})`)
+  assert.ok(rawOk < smoothedOk, `다듬지 않은 위치(${rawOk})보다 나아야 한다`)
+})
+
+test('칼만 필터: 천천히(3분) 흔들리며 지나가기만 하면 다듬어도 알리지 않는다', () => {
+  for (let seed = 1; seed <= 20; seed += 1) {
+    assert.deepEqual(sentIds(walk([{ toX: 140, ms: 3 * MIN, jitter: 15, accuracy: 15 }], { seed })), [])
+  }
+})
+
+test('칼만 필터: 오차가 커 버린 위치(50m 넘음)는 지난 추정이 아니라 받은 위치 그대로 넘긴다', () => {
+  const first = smoothFineFix(null, at(40), 10, T0)
+  const far = at(300)
+  const rejected = smoothFineFix(first.filter, far, 80, T0 + 5 * SEC)
+  assert.deepEqual(rejected.at, far)
+  assert.equal(rejected.filter, first.filter)
 })
