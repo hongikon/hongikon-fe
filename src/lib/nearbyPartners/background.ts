@@ -55,6 +55,7 @@ import {
 import { haversineMeters } from '../../utils/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
 import type { FilterState } from '../../utils/locationFilter'
+import { fieldRecording, recordField, setFieldRecording, type FieldFix } from './fieldRecord'
 import type { Partner, PartnerAffiliation } from '../../types'
 
 /**
@@ -502,6 +503,7 @@ async function applyFix(
   let nextMode: PreciseMode = mode
   let nearestMeters = Infinity
   let needsFineCheck = false
+  let fieldFix: FieldFix | null = null
   await mutate((state, now) => {
     const outcome = preciseUpdate(state, now, { at, accuracy, mode }, {
       alert: partnerRadiusMeters(),
@@ -531,12 +533,58 @@ async function applyFix(
         )
       }
     }
+    // 현장 측정 기록용(측정 중일 때만 아래에서 남긴다): 판단에 넣은 위치 기준 가장 가까운 가게, 머무는 중인 가게, 새로 보낸 알림.
+    const near = outcome.state.targets
+      .map((t) => ({ id: t.id, name: t.name, meters: haversineMeters(at.lat, at.lng, t.lat, t.lng) }))
+      .sort((a, b) => a.meters - b.meters)[0]
+    const lastBefore = state.sent.at(-1)
+    const lastAfter = outcome.state.sent.at(-1)
+    fieldFix = {
+      k: 'fix',
+      t: now,
+      src: source,
+      lat: raw.lat,
+      lng: raw.lng,
+      acc: accuracy,
+      slat: at.lat,
+      slng: at.lng,
+      nearId: near?.id,
+      nearName: near?.name,
+      nearM: near?.meters,
+      inside: Object.entries(outcome.state.stays)
+        .filter(([, stay]) => stay.exitedAt === null)
+        .map(([id]) => id),
+      alert: lastAfter && (lastAfter.partnerId !== lastBefore?.partnerId || lastAfter.at !== lastBefore?.at) ? lastAfter.partnerId : undefined,
+    }
     return outcome
   })
+  // 현장 측정 중에는 위치를 끊지 않고 GPS 로 계속 받는다(정답과 맞춰 볼 연속 기록이 필요하다).
+  if (await fieldRecording()) {
+    stop = false
+    nextMode = 'fine'
+    if (fieldFix) void recordField(fieldFix)
+  }
   const running = await preciseMode()
   if (stop) await stopPrecise()
   else if (running !== null && nextMode !== running) await startPrecise(nextMode)
   return { stop, nextMode, nearestMeters, needsFineCheck }
+}
+
+/**
+ * 현장 측정 시작(11-13, 테스트 앱·관리자 계정): 기록을 켜고 GPS 위치 갱신을 바로 켠다. 측정 중에는 가게에서 멀어져도,
+ * 2시간이 지나도 끄지 않는다. 위치 갱신을 켜지 못하면(위치 '항상' 허용 없음 등) false.
+ */
+export async function startNearbyFieldRecording(): Promise<boolean> {
+  await setFieldRecording(true)
+  const ok = await startPrecise('fine')
+  void nearbyLog(ok ? '현장 측정 시작 — GPS 계속 켬' : '현장 측정 시작했지만 GPS 위치 갱신을 켜지 못함')
+  return ok
+}
+
+/** 현장 측정 끝: 기록을 끄고 GPS 위치 갱신을 끈다(다음 가게 근처에서 평소처럼 다시 켜진다). */
+export async function stopNearbyFieldRecording(): Promise<void> {
+  await setFieldRecording(false)
+  await stopPrecise()
 }
 
 /**
