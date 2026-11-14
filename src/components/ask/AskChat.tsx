@@ -1556,8 +1556,11 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     </View>
   ) : null;
 
+  // Android 도 padding(11-14 핫픽스): 물어보기는 모달이 아니라 탭 화면이라, edge-to-edge(Android 15·Expo 기본)에서는 키보드가 떠도
+  // 창이 줄지 않아 입력칸이 키보드에 가렸다. KeyboardAvoidingView 는 키보드와 실제로 겹친 만큼만 띄우므로, 창이 줄어드는 기기에서도
+  // 두 번 띄우지 않는다. 다른 입력 화면(모달)은 자기 창이 줄어 그대로 둔다.
   return (
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "web" ? undefined : "padding"}>
         <View style={[styles.container, appMode && styles.containerApp, { paddingTop: insets.top + (appMode ? 0 : 8) }]}>
           <ContentColumn>
             <ScreenHeader
