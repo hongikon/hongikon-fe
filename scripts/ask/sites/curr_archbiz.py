@@ -13,17 +13,16 @@
 """
 import sys
 
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_archbiz_architecture': VIEW_URL + '#p106',
-    'curr_archbiz_interior': VIEW_URL + '#p109',
-    'curr_archbiz_urban': VIEW_URL + '#p111',
-    'curr_archbiz_bizadmin': VIEW_URL + '#p115',
-    'curr_archbiz_econ': VIEW_URL + '#p138',
-    'curr_archbiz_law': VIEW_URL + '#p134',
+    'curr_archbiz_architecture': page_url(106),
+    'curr_archbiz_interior': page_url(109),
+    'curr_archbiz_urban': page_url(111),
+    'curr_archbiz_bizadmin': page_url(115),
+    'curr_archbiz_econ': page_url(138),
+    'curr_archbiz_law': page_url(134),
 }
 
 TITLES = {

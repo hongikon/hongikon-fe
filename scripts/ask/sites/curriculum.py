@@ -15,17 +15,25 @@
 """
 import os, re, sys, urllib.request
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
+LABEL = '2026 교과과정책자(학교 전자책)'
+# PDF 는 받기 쉬운 컴퓨터공학과 게시판 첨부에서 받지만(원문 검사용), 답에 거는 링크는 학교 전자책(ibook)이다 — 같은 237쪽 책자라
+# 쪽 번호가 같고('/Viewer/2026curriculum/119' 가 PDF 119쪽, 11-14 확인), 학과마다 자기 쪽이 열린다. 컴퓨터공학과 게시판으로 잇지 않는다.
 PDF_URL = 'https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=download&articleNo=149240&attachNo=86762'
-VIEW_URL = 'https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240'
+BOOK_URL = 'https://ibook.hongik.ac.kr/Viewer/2026curriculum'
+
+
+def page_url(page):
+    """책자 PDF 쪽 번호(1부터) → 학교 전자책의 그 쪽."""
+    return f'{BOOK_URL}/{page}'
+
 
 # 키마다 같은 게시글(첨부 PDF 가 있는 글)을 가리킨다. 실제 본문은 PDF 에서 읽는다.
 PAGES = {
-    'curriculum_eng_abeek': VIEW_URL + '#p5',       # 공과대학 [공학교육인증과정대상] (책자 3~5쪽, PDF 5~7쪽)
-    'curriculum_eng_nonabeek': VIEW_URL + '#p10',   # 공과대학·건축도시대학 도시공학과 [비인증과정대상] (책자 8~9쪽)
-    'curriculum_eng_lawecon': VIEW_URL + '#p17',    # 문과·법과대학·경제학부·사범대학 … (책자 15쪽)
-    'curriculum_eng_biz': VIEW_URL + '#p21',        # 경영대학 (책자 19쪽)
-    'curriculum_eng_arch': VIEW_URL + '#p22',       # 건축학전공(5년제)·실내건축학전공(4년제) (책자 20~21쪽)
+    'curriculum_eng_abeek': page_url(5),       # 공과대학 [공학교육인증과정대상] (책자 3~5쪽, PDF 5~7쪽)
+    'curriculum_eng_nonabeek': page_url(10),   # 공과대학·건축도시대학 도시공학과 [비인증과정대상] (책자 8~9쪽)
+    'curriculum_eng_lawecon': page_url(17),    # 문과·법과대학·경제학부·사범대학 … (책자 15쪽)
+    'curriculum_eng_biz': page_url(21),        # 경영대학 (책자 19쪽)
+    'curriculum_eng_arch': page_url(22),       # 건축학전공(5년제)·실내건축학전공(4년제) (책자 20~21쪽)
 }
 
 TITLES = {
@@ -305,8 +313,8 @@ _PA_MAJOR = '전공필수 모두 포함하여 전공 50학점 이상 이수 (전
 _PA_THESIS = '졸업논문 (졸업공연 혹은 졸업공연에 준하는 졸업시험)'
 
 PAGES.update({
-    'curriculum_arts_fineart': VIEW_URL + '#p19',     # 미술대학(예술학과 제외) (책자 17쪽)
-    'curriculum_arts_performing': VIEW_URL + '#p25',  # 공연예술학부 (책자 23쪽)
+    'curriculum_arts_fineart': page_url(19),     # 미술대학(예술학과 제외) (책자 17쪽)
+    'curriculum_arts_performing': page_url(25),  # 공연예술학부 (책자 23쪽)
 })
 TITLES.update({
     'curriculum_arts_fineart': '미술대학(예술학과 제외) 졸업학점 현황',
@@ -346,7 +354,7 @@ BANDS.update({
 
 # ── 'curriculum_ce' 컴퓨터공학과 학년별 교과과정(책자 공-10·공-11, PDF 98·99쪽). 졸업요건 총괄은 위 공과대학 쪽(인증·비인증)을 함께 본다. ──
 # PDF 표에서 '전공필수'가 두 줄('전공'/'필수')로 갈라져 있어 원문 검사가 통하도록 '전공 필수'로 띄어 적었다.
-PAGES.update({'curriculum_ce': VIEW_URL + '#p98'})
+PAGES.update({'curriculum_ce': page_url(98)})
 TITLES.update({'curriculum_ce': '컴퓨터공학과 교과과정(2026)'})
 BANDS.update({
     'curriculum_ce': [
@@ -370,7 +378,7 @@ BANDS.update({
 
 # ── 'curriculum_rules' 교과과정 개정에 따른 적용원칙(책자 1·2쪽, PDF 3·4쪽). 10-27 '전필 안 들어도 졸업돼?'에 단과대학 요건만 답하던 것 —
 # 필수과목이 폐지·선택으로 바뀌었을 때, 개설 학년이 바뀌었을 때, 복수전공 동일과목은 이 원칙을 본다. 쪽 그림을 보고 원문 그대로 옮겼다.
-PAGES.update({'curriculum_rules': VIEW_URL + '#p3'})
+PAGES.update({'curriculum_rules': page_url(3)})
 TITLES.update({'curriculum_rules': '교과과정 개정에 따른 적용원칙(필수과목 폐지·변경, 복수전공 동일과목)'})
 BANDS.update({
     'curriculum_rules': [
