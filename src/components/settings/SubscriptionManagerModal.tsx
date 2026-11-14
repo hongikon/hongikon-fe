@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { usePresentationScene } from '../../debug/presentation/scenes'
 import {
   Animated,
   View,
@@ -39,6 +40,7 @@ export default function SubscriptionManagerModal({
   onToggleDept,
 }: SubscriptionManagerModalProps) {
   const [query, setQuery] = useState('')
+  usePresentationScene(scene => setQuery(scene === 'news-selected-dept' ? '컴퓨터공학과' : ''))
   const drag = useDragToClose(onClose)
   // 알림 설정(전체 스위치)이 꺼져 있으면 안내 문구를 바꾼다.
   const { settings } = useSettings()

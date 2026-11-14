@@ -104,6 +104,7 @@ import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
 import { requestSettingsIntent } from "../lib/settingsIntents";
 import { navigationRef } from "../navigation/navigationRef";
 import SwipeBackModal from "../components/common/SwipeBackModal";
+import { PRESENTATION_DEMO, usePresentationScene } from "../debug/presentation/scenes";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -131,7 +132,7 @@ export default function MapScreen() {
   // 근처 알림 영역 보기(개발·현장 테스트 빌드, 운영 앱은 관리자 계정만 — 11-10): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
   const isAdmin = useIsAdmin();
   const nearbyTools = NEARBY_DEBUG_TOOLS || isAdmin;
-  const showNearbyOverlayMenu = nearbyTools && nearbyAlertsAvailable();
+  const showNearbyOverlayMenu = PRESENTATION_DEMO || (nearbyTools && nearbyAlertsAvailable());
   const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
   const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
   /** 근처 알림이 아직 등록 전(설정에서 켜지 않음). 안내 줄에 설정으로 가는 버튼을 단다(11-09). */
@@ -147,7 +148,10 @@ export default function MapScreen() {
     let cancelled = false;
     let focused = false;
     const draw = async () => {
-      const overlay = await getNearbyOverlay();
+      const overlay: Awaited<ReturnType<typeof getNearbyOverlay>> = PRESENTATION_DEMO ? {
+        center: { lat: 37.54945, lng: 126.9224 }, reselectMeters: 400,
+        regions: nearbySourceRef.current.partners.filter(p => p.lat && p.lng).slice(0, 16).map(p => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, radius: 100, inside: false, pending: false })),
+      } : await getNearbyOverlay();
       if (cancelled) return;
       // 링크(at=)로 바꾼 테스트 위치도 안내 줄에 보이게 그릴 때마다 다시 읽는다.
       const fake = nearbyTestLocation();
@@ -1906,6 +1910,63 @@ export default function MapScreen() {
     setRouteTarget(null);
     setSearchQuery("");
   }, []);
+
+  // Recording shortcuts set the same state as the real controls. They are gated in scenes.ts.
+  usePresentationScene(scene => {
+    setReportTarget(null); setFloorDial(null); setShowRoute(false); setShowSearch(false); setPickingLocation(false);
+    if (scene.startsWith('news') || scene.startsWith('ask') && !['ask-place', 'ask-route'].includes(scene)) return;
+    const timer = setTimeout(() => {
+      handleClearRoute(); setSelectedBuilding(null); setSelectedFacilityBuilding(null);
+      setSelectedPartner(null); setSelectedReport(null); setReportTarget(null); setPickingLocation(false);
+      setNearbyOverlayOn(false); setLayer(null); setFacilityKind(null); setSelectedAffiliation(null); setSelectedCategory(null);
+      if (scene === 'map') handleRecenter();
+      if (scene === 'map-facilities') { setLayer('편의시설'); applyFacilityKind(null); }
+      if (scene === 'map-printers') { setLayer('편의시설'); applyFacilityKind('프린터'); }
+      if (scene === 'map-printer') {
+        const f = facilities.find(f => f.id === 'hi-g-1f-printer');
+        if (f) openFacilitySheet(f.kind, f.buildingName, f);
+      }
+      if (scene === 'map-arrival') {
+        setToBuilding(buildings.find(b => b.code === 'hongik_g') ?? null); setToFloor(1);
+      }
+      if (scene === 'map-destination-floor') {
+        const b = buildings.find(b => b.code === 'hongik_g'); if (b) beginTo(b);
+      }
+      if (scene === 'map-origin') {
+        setToBuilding(buildings.find(b => b.code === 'hongik_g') ?? null); setToFloor(1);
+        setRouteTarget('from'); setSearchQuery('제4공학관 T동'); setShowRoute(true);
+      }
+      if (scene === 'map-origin-floor') {
+        setToBuilding(buildings.find(b => b.code === 'hongik_g') ?? null); setToFloor(1);
+        const b = buildings.find(b => b.code === 'hongik_t'); if (b) beginFrom(b);
+      }
+      if (scene === 'map-route' || scene === 'ask-route') {
+        setFromBuilding(buildings.find(b => b.code === 'hongik_t') ?? null); setFromFloor(1);
+        setToBuilding(buildings.find(b => b.code === (scene === 'ask-route' ? 'hongik_q' : 'hongik_g')) ?? null);
+        setToFloor(scene === 'ask-route' ? 3 : 1);
+      }
+      if (scene.startsWith('map-partners') || scene === 'nearby') {
+        setLayer('제휴업체'); applyFacilityKind(null);
+        const affiliation = scene === 'nearby' ? '총학생회' : scene.split('-')[2];
+        if (affiliation) { setSelectedAffiliation(affiliation as PartnerAffiliation); applyFilter({ affiliation: affiliation as PartnerAffiliation, category: null }); }
+        if (scene === 'nearby') setNearbyOverlayOn(true);
+      }
+      if (scene === 'map-picker') {
+        startPicker('report');
+        const b = buildings.find(b => b.name.includes('강당'));
+        if (b) webViewRef.current?.injectJavaScript(`if(window.map&&window.naver)map.setCenter(new naver.maps.LatLng(${b.lat},${b.lng}));true;`);
+      }
+      if (scene.startsWith('map-report')) {
+        const b = buildings.find(b => b.name.includes('강당'));
+        if (b) setReportTarget({ lat: b.lat, lng: b.lng, buildingName: b.name });
+      }
+      if (scene === 'ask-place') {
+        const f = facilities.find(f => f.id === 'hi-q-3f-office-02');
+        if (f) openFacilitySheet(f.kind, f.buildingName, f);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  });
 
   return (
     <View style={styles.container}>

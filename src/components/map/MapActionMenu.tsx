@@ -11,6 +11,7 @@ import { reportCategoryMeta } from '../../constants/reportCategories'
 import type { ReportCategory } from '../../types'
 import * as haptics from '../../lib/haptics'
 import { RADIUS } from '../../constants/spacing'
+import { usePresentationScene } from '../../debug/presentation/scenes'
 
 interface MapActionMenuProps {
   onReport: () => void
@@ -82,6 +83,10 @@ export default function MapActionMenu({
   const [open, setOpen] = useState(false)
   /** '제보 보기'를 눌러 종류 줄을 펼쳤는지. 메뉴를 닫으면 다시 접는다. */
   const [filterOpen, setFilterOpen] = useState(false)
+  usePresentationScene(scene => {
+    setOpen(scene === 'map-reports-menu' || scene === 'nearby')
+    setFilterOpen(scene === 'map-reports-menu')
+  })
   const progress = useRef(new Animated.Value(0)).current
   const scrollRef = useRef<ScrollView>(null)
 

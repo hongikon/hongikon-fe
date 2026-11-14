@@ -33,6 +33,8 @@ import { clearAccountLinkedDeviceData, deleteWithdrawnAccountData } from '../lib
 import { setHiddenAuthorsOwner } from '../lib/hiddenAuthors'
 import { getUserIdFromToken } from '../lib/jwt'
 import AppLoadingScreen from '../screens/AppLoadingScreen'
+import { PRESENTATION_DEMO } from '../debug/presentation/scenes'
+import { presentationReady, PRESENTATION_TOKEN } from '../debug/presentation/bootstrap'
 
 // 앱이 카카오 로그인 팝업 자신으로 다시 열렸을 때(웹 타깃) 인증 세션을 마저 끝내준다.
 // Expo 공식 가이드가 권장하는 모듈 스코프 호출.
@@ -289,6 +291,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function restore() {
+      if (PRESENTATION_DEMO) {
+        await presentationReady
+        setAccessToken(PRESENTATION_TOKEN)
+        setStoredProvider('demo')
+        setStatus('authenticated')
+        return
+      }
       // 웹: Apple 로그인에서 막 돌아온 경우(`/auth/apple/callback#…`) 저장된 상태보다 먼저 처리한다.
       const appleCallback = takeWebAppleCallback()
       if (appleCallback !== undefined) {

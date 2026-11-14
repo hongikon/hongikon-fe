@@ -50,6 +50,8 @@ import * as haptics from "../../lib/haptics";
 import { defaultGuides, guidesFromIds, isGreeting, type GreetingGuide } from "../../utils/askGreeting";
 import { newsSearchQuery, parseAskAppCommand, type AskAppCommand } from "../../utils/askAppCommand";
 import { useOptionalSettings } from "../../contexts/SettingsContext";
+import { usePresentationScene } from "../../debug/presentation/scenes";
+import { presentationAnswer } from "../../debug/presentation/bootstrap";
 
 /** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
 
@@ -276,6 +278,26 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   }, []);
   const composerBottom = keyboardOpen ? 0 : (bottomInset ?? insets.bottom);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  usePresentationScene(scene => {
+    const question = '국민취업지원제도를 신청하려면 어떻게 해야하나요?';
+    if (scene === 'ask-input') { setInput(question); setMessages([]); }
+    if (scene === 'ask-answer' || scene === 'ask-links') {
+      atBottomRef.current = scene === 'ask-links';
+      setInput('');
+      setMessages([
+        { id: 800, role: 'user', text: question },
+        { id: 801, role: 'reply', text: presentationAnswer.answer, found: true, sources: [], links: presentationAnswer.references,
+          buttons: { pages: [], phones: presentationAnswer.phones, facilityId: presentationAnswer.facilityId },
+          appActions: presentationAnswer.actions, question, streaming: false, status: '', stopped: false, logId: null,
+          steps: ['학교 공지 확인'], stepsOpen: false, sections: presentationAnswer.sections.map(section => ({ ...section, table: undefined })), moreOpen: true },
+      ]);
+      const timer = setTimeout(() => {
+        if (scene === 'ask-links') listRef.current?.scrollToEnd({ animated: false });
+        else listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  });
   // 설정 공급자 밖(웹 /dev/ask 미리보기)이면 설정 카드를 띄우지 않는다.
   const appSettings = useOptionalSettings();
   /** 서버에 묻는 중(입력을 막고 '찾고 있어요'를 보인다). */

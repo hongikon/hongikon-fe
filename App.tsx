@@ -3,7 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native'
 import { useFonts } from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
-import { NavigationContainer } from '@react-navigation/native'
+import { NavigationContainer, StackActions } from '@react-navigation/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { SettingsProvider } from './src/contexts/SettingsContext'
 import { AuthProvider } from './src/contexts/AuthContext'
@@ -29,6 +29,32 @@ import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 import { requestAdminIntent } from './src/lib/adminIntents'
 import { initMapData } from './src/lib/mapData'
 import LaunchOverlay from './src/components/common/LaunchOverlay'
+import { usePresentationScene } from './src/debug/presentation/scenes'
+import * as Notifications from 'expo-notifications'
+
+function PresentationNavigation() {
+  usePresentationScene(scene => {
+    const move = () => {
+      if (!navigationRef.isReady()) return
+      if (scene === 'news-notification') {
+        void Notifications.requestPermissionsAsync().then(permission => {
+          if (permission.granted) return Notifications.scheduleNotificationAsync({
+            content: { title: '컴퓨터공학과 새 소식', body: '졸업프로젝트 발표 공결 관련 안내', data: { type: 'NEWS', newsId: 13377 }, sound: true },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 6 },
+          })
+        })
+      }
+      if (scene === 'news-detail') {
+        navigationRef.navigate('NewsDetail', { newsId: '13377' })
+      } else {
+        navigationRef.dispatch(StackActions.popTo('Main', { screen: scene.startsWith('news') ? 'News' : scene.startsWith('ask') && !['ask-place', 'ask-route'].includes(scene) ? 'Ask' : 'Map' }))
+      }
+    }
+    const timer = setTimeout(move, 250)
+    return () => clearTimeout(timer)
+  })
+  return null
+}
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -272,6 +298,7 @@ export default function App() {
               documentTitle={{ formatter: (_options, route) => formatDocumentTitle(route?.name, route?.params) }}
             >
               <PushNotificationsBridge />
+              <PresentationNavigation />
               {Platform.OS === 'web' && <WebReturnPathBridge />}
               {Platform.OS === 'web' && <WebDocumentTitleBridge />}
               {Platform.OS === 'web' ? (

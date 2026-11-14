@@ -25,6 +25,7 @@ import RetryableError from '../components/common/RetryableError'
 import TabHeaderCard, { HeaderCircleButton, SegmentedTabs } from '../components/common/TabHeaderCard'
 import EmptyState from '../components/common/EmptyState'
 import Button from '../components/common/Button'
+import { usePresentationScene } from '../debug/presentation/scenes'
 
 type TabType = '북마크' | '구독' | '전체'
 // 소식 탭 스택(학과 소식) 안에 있으면서 루트 스택(상세·검색)으로도 이동한다.
@@ -40,7 +41,7 @@ const TABS: TabType[] = ['북마크', '구독', '전체']
 
 export default function NewsScreen() {
   const navigation = useNavigation<NavProp>()
-  const { settings, isBookmarked } = useSettings()
+  const { settings, isBookmarked, toggleSubscriptionAlert } = useSettings()
   // 북마크·구독은 진동과 토스트("북마크에 저장했어요")가 붙은 버전을 쓴다.
   const { toggleBookmark, toggleSubscribedDept } = useFeedbackToggles()
   // 처음엔 구독한 게시판이 있으면 '구독', 없으면 고를 수 있는 '전체'를 연다. 북마크는 대개 비어 있어
@@ -55,6 +56,27 @@ export default function NewsScreen() {
   useScrollToTop(listRef)
   useScrollToTop(treeRef)
   const [manageChipsOpen, setManageChipsOpen] = useState(false)
+  usePresentationScene(scene => {
+    setSubManagerOpen(['news-manager', 'news-selected', 'news-selected-dept'].includes(scene))
+    if (!scene.startsWith('news')) return
+    if (scene === 'news') {
+      setActiveTab('구독')
+      settings.subscribedDepts.forEach(toggleSubscribedDept)
+      if (isBookmarked('13377')) toggleBookmark('13377')
+      if (!settings.subscriptionAlert) toggleSubscriptionAlert()
+    }
+    if (scene === 'news-detail' && !isBookmarked('13377')) toggleBookmark('13377')
+    if (scene === 'news-manager') { setActiveTab('구독'); setSubManagerOpen(true) }
+    if (scene === 'news-selected') {
+      setActiveTab('구독'); setSubManagerOpen(true)
+      for (const id of ['교수학습지원', '장학', '컴퓨터공학과']) if (!settings.subscribedDepts.includes(id)) toggleSubscribedDept(id)
+    }
+    if (scene === 'news-subscribed') { setActiveTab('구독'); setSelectedSource('컴퓨터공학과') }
+    if (scene === 'news-bookmarks') {
+      setActiveTab('북마크')
+      if (!isBookmarked('13377')) toggleBookmark('13377')
+    }
+  })
 
   // 구독 탭: 구독한 게시판(리프 id)들을 sourceId 로 서버에서 거른다. 구독이 없으면 부르지 않고 빈 화면 안내를
   // 그대로 보여준다. 분야로는 거르지 않는다 — 설정의 '알림 받을 분야'는 푸시 알림에만 쓰이고 피드와는 따로다.

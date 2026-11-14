@@ -63,6 +63,7 @@ import { useAttentionFlash } from '../../hooks/useAttentionFlash'
 import WheelPicker, { type WheelItem } from '../common/WheelPicker'
 import type { Report, ReportCategory } from '../../types'
 import { RADIUS } from '../../constants/spacing'
+import { usePresentationScene } from '../../debug/presentation/scenes'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 const REPORT_PLACE_MAX_LENGTH = 60
@@ -191,6 +192,17 @@ export default function ReportComposerModal({
   // 등록 성공. 바로 닫지 않고 "검토 후 반영" 안내를 먼저 보여준다.
   // 올린 제보가 지도에 안 보이는 것을 실패로 오해하지 않게 하려는 것이다.
   const [submitted, setSubmitted] = useState(false)
+  usePresentationScene(scene => {
+    if (!scene.startsWith('map-report')) return
+    const timer = setTimeout(() => {
+      setCategory('FOOD_TRUCK')
+      setTitle('컴퓨터공학과 간식행사')
+      setContent('학생회비 납부한 컴퓨터공학과 학생만 수령 가능')
+      setSubmitted(scene === 'map-report-success')
+      scrollRef.current?.scrollTo({ y: scene === 'map-report-form' ? 400 : 0, animated: false })
+    }, 1000)
+    return () => clearTimeout(timer)
+  })
 
   // 서버는 제보를 건물·층 단위로 받는다(둘 다 필수). 핀 근처 건물이 없으면 올릴 수 없다.
   // 핀 근처 건물 이름은 지도 페이지가 찾아 준다 — 같은 이름의 건물을 지도 데이터에서 찾는다.
