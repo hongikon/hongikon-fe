@@ -2849,16 +2849,6 @@
 "ambiguous": false
 },
 {
-"short": "교과",
-"full": [
-"교육과정"
-],
-"codes": [
-"280106"
-],
-"ambiguous": false
-},
-{
 "short": "교교",
 "full": [
 "교육교과교육론",
@@ -9715,16 +9705,6 @@
 "ambiguous": false
 },
 {
-"short": "이수",
-"full": [
-"이산수학"
-],
-"codes": [
-"012206"
-],
-"ambiguous": false
-},
-{
 "short": "이스",
 "full": [
 "이머징VFX스튜디오"
@@ -10610,18 +10590,6 @@
 "ambiguous": false
 },
 {
-"short": "전공",
-"full": [
-"전력공학",
-"전파및안테나공학"
-],
-"codes": [
-"106830",
-"703619"
-],
-"ambiguous": true
-},
-{
 "short": "전구해",
 "full": [
 "전산구조해석"
@@ -10946,16 +10914,6 @@
 "codes": [
 "013211",
 "106301"
-],
-"ambiguous": false
-},
-{
-"short": "정보",
-"full": [
-"정보보안"
-],
-"codes": [
-"101720"
 ],
 "ambiguous": false
 },

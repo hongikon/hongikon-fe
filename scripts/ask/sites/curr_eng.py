@@ -12,18 +12,17 @@
 """
 import sys
 
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_eng_common': VIEW_URL + '#p89',   # 공-1 공과대학 공통 일반선택 및 전공선택 과목
-    'curr_eng_civil': VIEW_URL + '#p90',    # 공-2·3 건설환경공학과
-    'curr_eng_ee': VIEW_URL + '#p92',       # 공-4·5 전자·전기공학부
-    'curr_eng_mse': VIEW_URL + '#p94',      # 공-6·7 신소재공학전공
-    'curr_eng_chem': VIEW_URL + '#p96',     # 공-8·9 화학공학전공
-    'curr_eng_ie': VIEW_URL + '#p100',      # 공-12·13 산업·데이터공학과
-    'curr_eng_me': VIEW_URL + '#p102',      # 공-14·15 기계·시스템디자인공학과
+    'curr_eng_common': page_url(89),   # 공-1 공과대학 공통 일반선택 및 전공선택 과목
+    'curr_eng_civil': page_url(90),    # 공-2·3 건설환경공학과
+    'curr_eng_ee': page_url(92),       # 공-4·5 전자·전기공학부
+    'curr_eng_mse': page_url(94),      # 공-6·7 신소재공학전공
+    'curr_eng_chem': page_url(96),     # 공-8·9 화학공학전공
+    'curr_eng_ie': page_url(100),      # 공-12·13 산업·데이터공학과
+    'curr_eng_me': page_url(102),      # 공-14·15 기계·시스템디자인공학과
 }
 
 TITLES = {

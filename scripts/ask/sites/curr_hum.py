@@ -12,17 +12,16 @@
 """
 import sys
 
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_hum_english': VIEW_URL + '#p124',      # 영어영문학과 (문-1·2)
-    'curr_hum_german': VIEW_URL + '#p126',       # 독어독문학과 (문-3·4)
-    'curr_hum_french': VIEW_URL + '#p128',       # 불어불문학과 (문-5·6)
-    'curr_hum_korean': VIEW_URL + '#p130',       # 국어국문학과 (문-7·8)
-    'curr_hum_designmgmt': VIEW_URL + '#p119',   # 디자인·예술경영학부 디자인경영전공 (디-1~3)
-    'curr_hum_artsmgmt': VIEW_URL + '#p121',     # 디자인·예술경영학부 예술경영전공 (디-1, 디-4·5)
+    'curr_hum_english': page_url(124),      # 영어영문학과 (문-1·2)
+    'curr_hum_german': page_url(126),       # 독어독문학과 (문-3·4)
+    'curr_hum_french': page_url(128),       # 불어불문학과 (문-5·6)
+    'curr_hum_korean': page_url(130),       # 국어국문학과 (문-7·8)
+    'curr_hum_designmgmt': page_url(119),   # 디자인·예술경영학부 디자인경영전공 (디-1~3)
+    'curr_hum_artsmgmt': page_url(121),     # 디자인·예술경영학부 예술경영전공 (디-1, 디-4·5)
 }
 
 TITLES = {

@@ -7,22 +7,21 @@
 - 단과대학 공통 졸업요건(총 132학점·전공 48학점 등)은 sites/curriculum.py 'curriculum_arts_fineart'(PDF 19쪽),
   예술학과는 'curriculum_eng_lawecon'(PDF 17쪽)에 있다. 여기는 학과마다 다른 것(학년별 전공필수, 졸업작품 과목, 졸업논문 학수번호,
   SW/데이터활용역량인증 대체인정 과목)만 옮긴다. 전공선택 전체 목록은 옮기지 않았다.
-- 크롤: 이 키들은 모두 같은 게시글(VIEW_URL)을 가리킨다. cache/curr_fine/<키>.html 은 그 글 하나면 된다
+- 크롤: 이 키들은 모두 같은 책자(학교 전자책)의 쪽을 가리킨다. cache/curr_fine/<키>.html 은 그 글 하나면 된다
   (crawl.py --site curr_fine 또는 cache/curriculum/curriculum_ce.html 복사). 본문은 PDF 에서 읽는다.
 사용: PYTHONPATH=<pypdf 경로> python3 scripts/ask/extract.py --site curr_fine
 """
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 import re, sys
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_fine_common': VIEW_URL + '#p156',     # 미술대학 전공기초 및 공통 전공선택 과목 (미-1)
-    'curr_fine_oriental': VIEW_URL + '#p157',   # 동양화과 (미-2·3)
-    'curr_fine_painting': VIEW_URL + '#p159',   # 회화과 (미-4·5)
-    'curr_fine_printmk': VIEW_URL + '#p161',    # 판화과 (미-6·7)
-    'curr_fine_sculpture': VIEW_URL + '#p163',  # 조소과 (미-8·9)
-    'curr_fine_art': VIEW_URL + '#p177',        # 예술학과 (미-22·23)
+    'curr_fine_common': page_url(156),     # 미술대학 전공기초 및 공통 전공선택 과목 (미-1)
+    'curr_fine_oriental': page_url(157),   # 동양화과 (미-2·3)
+    'curr_fine_painting': page_url(159),   # 회화과 (미-4·5)
+    'curr_fine_printmk': page_url(161),    # 판화과 (미-6·7)
+    'curr_fine_sculpture': page_url(163),  # 조소과 (미-8·9)
+    'curr_fine_art': page_url(177),        # 예술학과 (미-22·23)
 }
 
 TITLES = {

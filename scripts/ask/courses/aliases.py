@@ -38,6 +38,8 @@ CURATED = [
 ]
 
 PARTICLES = ('의', '와', '과', '및')
+# 첫 글자 줄임말이 학사 질문에 흔히 나오는 낱말과 같으면 넣지 않는다(11-14: '교직 이수'의 '이수'를 이산수학으로 풀었다).
+COMMON_WORDS = {'이수', '전공', '교과', '정보'}
 NOISE = re.compile(r'[※*·]|\([^)]*\)|\[[^\]]*\]|[ⅠⅡⅢⅣ0-9]+$|^\*|\s+')
 
 
@@ -108,7 +110,7 @@ def main():
         if len(units) < 2 or len(units) > 4:
             continue
         short = ''.join(u[0] for u in units)
-        if len(short) < 2 or short == name:
+        if len(short) < 2 or short == name or short in COMMON_WORDS:
             continue
         by_short[short].add(name)
         if c['code']:
