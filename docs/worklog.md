@@ -515,3 +515,9 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 문제: 'reserve-forces' 가 복학 안내(학사행정 › 복학)를 본문으로 써서 예비군 질문에 복학 링크가 붙었다('아래는 그 안내가 실린 복학 안내예요').
 - `topics/academic.py`: page = `hiweb_dept-reserve`(예비군연대본부 부서 안내), faqpage = 복학 안내(전입신고 메뉴). lead 는 그 쪽 원문대로(편성 대상·제외, 전입·전출, 기본교육 8시간·보충교육). 전화 예비군연대본부 02-320-1090.
 - 확인: test-routing 2855/2855. 학과 이름이 붙은 질문('컴공 예비군') 처리는 BE worklog.
+
+## 2026-11-14 · 물어보기: 자매대학 — 국제협력본부 자매대학현황을 이어 보기로(사용자 요청)
+
+- 문제: 교환학생 자매대학 내용을 제대로 확인하지 못함. 'exchange-partners' 는 학교 홈페이지 국제교류프로그램(협약 연도·교류 유형)만 쓰고, 국제협력본부 자매대학현황(`oia_partners`, 35개 나라·지역 158곳, 비고에 언어 조건)은 수집만 하고 어느 안내도 쓰지 않아 색인에도 없었다.
+- `topics/academic.py` exchange-partners: `faqpage='oia_partners'`(exchange-partners/more), lead 에 한 줄.
+- `cases/ext_intl.json`: 자매대학 질문 4개(→ exchange-partners). test-routing 2859/2859.

@@ -2885,9 +2885,1238 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    }
   ],
   "nodes": {
+   "more": {
+    "kind": "answer",
+    "text": "국제협력본부 홈페이지 '자매대학현황' 안내예요.",
+    "sections": [
+     {
+      "title": "대만",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "國立臺南藝術大學 Tainan National University of the Arts",
+         "http://www.tnnua.edu.tw",
+         "-"
+        ],
+        [
+         "國立臺北藝術大學 Taipei National University of the Arts",
+         "http://www.tnua.edu.tw",
+         "-"
+        ],
+        [
+         "National Yunlin University of Science and Technology",
+         "https://eng.yuntech.edu.tw",
+         "-"
+        ],
+        [
+         "Chinese Culture University",
+         "https://www.pccu.edu.tw",
+         "-"
+        ],
+        [
+         "Shih Chien University",
+         "https://www.usc.edu.tw/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "말레이시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Universiti Kuala Lumpur",
+         "http://www.unikl.edu.my",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "일본",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "武藏野美術大學 Musashino Art University",
+         "http://www.musabi.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "長岡造形大學 Nagaoka Institute of Design",
+         "http://www.nagaoka-id.ac.jp",
+         "-"
+        ],
+        [
+         "Osaka University of Arts",
+         "http://www.osaka-geidai.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "立命館大學 Ritsumeikan University",
+         "http://www.ritsumei.ac.jp",
+         "-"
+        ],
+        [
+         "多摩美術大學 Tama Arts University",
+         "http://www.tamabi.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "京都精華大學 Kyoto Seika University",
+         "http://www.kyoto-seika.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "京都造形藝術大學 Kyoto University of Art and Design",
+         "http://www.kyoto-art.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "創價大學 Soka University",
+         "http://www.soka.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "筑波大學 The University of Tsukuba",
+         "http://www.tsukuba.ac.jp",
+         "일어/영어"
+        ],
+        [
+         "東北藝術工科大學 Tohoku University of Art & Design",
+         "http://www.tuad.ac.jp",
+         "-"
+        ],
+        [
+         "東京理科大學 Tokyo University of Science",
+         "http://www.tus.ac.jp",
+         "-"
+        ],
+        [
+         "Kanagawa University",
+         "www.kanagawa-u.ac.jp",
+         "-"
+        ],
+        [
+         "Nagasaki University of Foreign Studies",
+         "http://www.nagasaki-gaigo.ac.jp",
+         "-"
+        ],
+        [
+         "Nagoya University of the Arts",
+         "https://www.nua.ac.jp/en/",
+         "-"
+        ],
+        [
+         "Chiba University",
+         "https://www.chiba-u.ac.jp/e/",
+         "-"
+        ],
+        [
+         "Future University Hakodate",
+         "https://www.fun.ac.jp/en",
+         "-"
+        ],
+        [
+         "Seikei University",
+         "https://www.seikei.ac.jp/gakuen",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "중국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "渤海大學 Bohai University",
+         "http://www.bhu.edu.cn",
+         "-"
+        ],
+        [
+         "中央美術學院 Central Academy of Fine Arts",
+         "http://www.cafa.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "魯迅美術學院 Luxun Academy of Fine Arts",
+         "http://www.lumei.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "東北師範大學 Northeast Normal University",
+         "http://www.nenu.edu.cn",
+         "-"
+        ],
+        [
+         "對外經濟貿易大學 University of International Business & Economics",
+         "http:///www.uibe.edu.cn",
+         "-"
+        ],
+        [
+         "延邊大學 Yanbian University",
+         "http://www.ybu.edu.cn",
+         "-"
+        ],
+        [
+         "湖北美術學院 Hubei Institute of Fine Arts",
+         "http://www.hifa.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "四川大學 Sichuan University (Law School)",
+         "http://www.scu.edu.cn",
+         "-"
+        ],
+        [
+         "西安交通大學 Xi'an Jiaotong University",
+         "http://www.xjtu.edu.cn",
+         "-"
+        ],
+        [
+         "哈爾濱工程大學 Harbin Engineering University",
+         "https://english.hrbeu.edu.cn/",
+         "-"
+        ],
+        [
+         "中國人民大學 Renmin University of China- IP Academy",
+         "http://www.ruc.edu.cn",
+         "-"
+        ],
+        [
+         "中國美術學院 China Academy of Art",
+         "https://en.caa.edu.cn/",
+         "-"
+        ],
+        [
+         "南京藝術學院 Nanjing University of the Arts",
+         "https://www.nua.edu.cn/",
+         "-"
+        ],
+        [
+         "广西师范大学 Guangxi Normal University-통번역전공",
+         "http://www.gxnu.edu.cn",
+         "-"
+        ],
+        [
+         "鄭州大學 Zhengzhou University-박사학위생 공동양성",
+         "http://www.zzu.edu.cn/",
+         "-"
+        ],
+        [
+         "清华大学 Tsinghua University, Academy of Arts & Design",
+         "https://www.enad.tsinghua.edu.cn/",
+         "-"
+        ],
+        [
+         "Minzu University of China",
+         "https://www.muc.edu.cn",
+         "-"
+        ],
+        [
+         "東北大學 Northeastern University",
+         "https://www.neu.edu.cn",
+         "-"
+        ],
+        [
+         "Qingdao University of Science and Technology",
+         "https://en.qust.edu.cn/",
+         "-"
+        ],
+        [
+         "Beijing University of Technology",
+         "https://english.bjut.edu.cn",
+         "-"
+        ],
+        [
+         "北京师范大学 Beijing Normal University",
+         "https://www.bnu.edu.cn/",
+         "-"
+        ],
+        [
+         "Wuhan University of Technology",
+         "https://english.whut.edu.cn/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이스라엘",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Bezalel Academy of Arts andDesign, Jerusalem",
+         "http://www.bezalel.ac.il",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "카자흐스탄",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Al-Farabi Kazakh National University",
+         "http://www.kaznu.kz",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "태국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "King Mongkut's University of Technology North Bangkok",
+         "http://www.kmutnb.ac.th/en/",
+         "-"
+        ],
+        [
+         "Silpakorn University",
+         "http://www.su.ac.th",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "몽골",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Mongolia International University",
+         "http://www.miu.edu.mn",
+         "-"
+        ],
+        [
+         "International University of Ulaanbaatar",
+         "https://iuu.edu.mn/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "베트남",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "FPT University",
+         "http://international.fpt.edu.vn",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "싱가포르",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Lasalle College of the Arts",
+         "http://www.lasalle.edu.sg",
+         "-"
+        ],
+        [
+         "Nanyang Technological University",
+         "https://www.ntu.edu.sg/hass/admissions/programmes",
+         "College of Humanities, Arts and Social Sciences"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이란",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Art University of Isfahan",
+         "http://aui.ac.ir",
+         "-"
+        ],
+        [
+         "University of Art, Tehran",
+         "http://www.art.ac.ir",
+         "-"
+        ],
+        [
+         "University of Tehran, I.R.IRAN",
+         "https://ut.ac.ir/fa",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "요르단",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Jordan University of Science and Technology",
+         "http://www.just.edu.jo",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "튀르키예",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Ondokuz Mayis University",
+         "http://www.omu.edu.tr",
+         "-"
+        ],
+        [
+         "KOC University",
+         "https://www.ku.edu.tr",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "인도네시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Faculty of Industrial Technology,Institut Teknologi Bandung",
+         "http://www.itb.ac.id",
+         "-"
+        ],
+        [
+         "BINUS University",
+         "https://binus.ac.id",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "우즈베키스탄",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Samarkand State Architectureand Civil Engineering Institute",
+         "http://www.samgasi.uz",
+         "-"
+        ],
+        [
+         "Tashkent University of Architecture and Civil Engineering",
+         "http://www.taqu.uz",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "인도",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Ajeenkya",
+         "https://adypu.edu.in",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "홍콩",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Hong Kong Design Institute(HKDI)",
+         "https://www.hkdi.edu.hk/en",
+         "-"
+        ],
+        [
+         "Hong Kong Polytechnic University",
+         "https://www.polyu.edu.hk/tc",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "네덜란드",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Design Academy Eindhoven",
+         "http://www.designacademy.nl",
+         "-"
+        ],
+        [
+         "Delft University of Technology",
+         "https://www.tudelft.nl",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "덴마크",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Aalborg University",
+         "http://www.aau.dk",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "독일",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Akademie Mode & Design",
+         "http://www.amdnet.de",
+         "-"
+        ],
+        [
+         "Staatlichen Akademie der Bildenden Künste Stuttgart (Stuttgart State Academy of Art and Design)",
+         "http://www.abk-stuttgart.de",
+         "-"
+        ],
+        [
+         "Hochschule Pforzheim University",
+         "http://www.hs-pforzheim.de",
+         "-"
+        ],
+        [
+         "RWTH Aachen University",
+         "http://www.rwth-aachen.de",
+         "-"
+        ],
+        [
+         "Hochschule für Gestaltung Schwäbisch Gmünd (University of Applied Sciences Schwabisch Gmünd)",
+         "http://www.hfg-gmuend.de",
+         "-"
+        ],
+        [
+         "Universität Gesamthochschule Essen",
+         "https://www.uni-due.de",
+         "-"
+        ],
+        [
+         "Merz AkademieHochschule für Gestaltung,Kunst und Medien, StuttgartMerz Akademie, University of Applied Art, Design and Media, Stuttgart",
+         "http://www.merz-akademie.de",
+         "-"
+        ],
+        [
+         "University of Wuppertal",
+         "https://www.uni-wuppertal.de/en",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "러시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Russian State University of Design and Applied Arts (Stroganov University)",
+         "http://www.mghpu.ru",
+         "-"
+        ],
+        [
+         "Ivanovo State Power Engineering University",
+         "http://www.ispu.ru",
+         "-"
+        ],
+        [
+         "Moscow State University of Design & Technology (The Kosygin State University of Russia)",
+         "https://kosygin-rgu.ru",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스웨덴",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Umeå Institute of Design",
+         "http://www.umu.se/en/umea-institute-of-design",
+         "-"
+        ],
+        [
+         "Högskolan för design och konsthantverk - Göteborgs universitetAcademy of Design and Crafts,University of Gothenburg",
+         "http://www.hdk.gu.se",
+         "-"
+        ],
+        [
+         "Royal Institute of Art",
+         "https://kkh.se/en/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스위스",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Lucerne University of Applied Sciences and Arts",
+         "http://www.hslu.ch/design-kunst",
+         "-"
+        ],
+        [
+         "Zürcher Hochschule der Künste (Zurich University of the Arts)",
+         "http://www.zhdk.ch/",
+         "-"
+        ],
+        [
+         "Ecole Cantonale d’Art de Lausanne (ECAL)",
+         "https://ecal.ch/en/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스페인",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Catedra Gaudi University Polytechnic Catalana",
+         "https://catedragaudi.upc.edu",
+         "-"
+        ],
+        [
+         "Design College of Barcelona",
+         "https://www.baued.es/en",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "영국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Architectural Association School of Architecture",
+         "http://www.aaschool.ac.uk",
+         "-"
+        ],
+        [
+         "Art University Bournemouth",
+         "http://www.aub.ac.uk",
+         "-"
+        ],
+        [
+         "Kingston University",
+         "http://www.kingston.ac.uk",
+         "-"
+        ],
+        [
+         "Northumbria University Newcastle",
+         "http://www.northumbria.ac.uk",
+         "-"
+        ],
+        [
+         "Royal College of Art",
+         "http://www.rca.ac.uk",
+         "-"
+        ],
+        [
+         "University of Dundee",
+         "http://www.dundee.ac.uk",
+         "-"
+        ],
+        [
+         "University of the Arts London",
+         "http://www.arts.ac.uk",
+         "-"
+        ],
+        [
+         "Loughborough University",
+         "http://www.lboro.ac.uk",
+         "-"
+        ],
+        [
+         "THE University of SHEFFIELD",
+         "https://www.sheffield.ac.uk",
+         "-"
+        ],
+        [
+         "University of Central Lancashire (University of Lancashire)",
+         "https://www.uclan.ac.uk",
+         "-"
+        ],
+        [
+         "University of Liverpool",
+         "https://www.liverpool.ac.uk",
+         "-"
+        ],
+        [
+         "University of Wolverhampton",
+         "https://www.wlv.ac.uk",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이탈리아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Domus Academy",
+         "http://www.domusacademy.com",
+         "-"
+        ],
+        [
+         "Nuova Accademia diBelle Arti Milano",
+         "http://www.naba.it",
+         "-"
+        ],
+        [
+         "Istituto Europeo di Design spa: Design and Fashion school",
+         "http://www.ied.it",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "프랑스",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "L'école de Design Nantes Atlantique",
+         "http://www.lecolededesign.com",
+         "영어"
+        ],
+        [
+         "École de Management Bretagne Atlantique (EMBA-ISUGA)",
+         "http://www.isuga.fr/",
+         "-"
+        ],
+        [
+         "École Nationale Supérieure de Création Industrielle/Les Ateliers",
+         "http://www.ensci.com",
+         "-"
+        ],
+        [
+         "École Nationale Supérieure des Beaux-Arts (Beaux-Arts de Paris)",
+         "http://www.ensba.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Spéciale d’Architecture",
+         "http://www.esa-paris.fr",
+         "불어/영어"
+        ],
+        [
+         "Paris College of Art",
+         "http://www.paris.edu/",
+         "불어/영어"
+        ],
+        [
+         "Université de La Rochelle",
+         "http://www.univ-larochelle.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Supérieure des beaux-arts de Nantes Métropole (Beaux-Arts Nantes Saint-Nazaire)",
+         "http://beauxartsnantes.fr",
+         "-"
+        ],
+        [
+         "National Institute of Oriental Languages and Civilizations (INALCO)",
+         "http://www.inalco.fr",
+         "-"
+        ],
+        [
+         "Université Paris Cité (구. Université Paris Diderot)",
+         "http://u-paris.fr",
+         "-"
+        ],
+        [
+         "Université Bordeaux Montaigne",
+         "https://www.u-bordeaux-montaigne.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Supérieure d’arts et Médias de Caen/Cherbourg",
+         "https://www.esam-c2.fr/",
+         "불어 가능자"
+        ],
+        [
+         "École Communication Visuelle",
+         "https://www.ecv.fr",
+         "불어 가능자"
+        ],
+        [
+         "EHESS(L'Ecole des hautes etudes en sciences sociales)",
+         "https://www.ehess.fr/fr",
+         "-"
+        ],
+        [
+         "Aix Marseille Universite",
+         "https://www.univ-amu.fr/",
+         "-"
+        ],
+        [
+         "Universite Jean-Moulin Lyon 3",
+         "https://www.univ-lyon3.fr/",
+         "-"
+        ],
+        [
+         "École Supérieure des Arts Appliques Duperré",
+         "https://duperre.org/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "핀란드",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Aalto University School of Art & Design (Taideteollinen Korkeakoulu)",
+         "https://www.aalto.fi/",
+         "-"
+        ],
+        [
+         "Haaga-Helia University of Applied Sciences",
+         "http://www.haaga-helia.fi",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "오스트리아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Innsbruck",
+         "http://www.uibk.ac.at",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "크로아티아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Zagreb",
+         "http://www.unizg.hr/homepage",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "슬로베니아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Ljubljana",
+         "https://www.uni-lj.si/university/",
+         "IDAS"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "미국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "California Institute of the Arts",
+         "https://calarts.edu/",
+         "-"
+        ],
+        [
+         "California State University, Long Beach",
+         "http://www.csulb.edu",
+         "-"
+        ],
+        [
+         "California State University, Los Angeles",
+         "http://www.calstatela.edu",
+         "-"
+        ],
+        [
+         "Central Connecticut State University, New Britain",
+         "http://www.ccsu.edu",
+         "-"
+        ],
+        [
+         "Illinois Institute of Technology",
+         "http://www.iit.edu",
+         "방문/복수학위"
+        ],
+        [
+         "Indiana University, Maurer School of Law",
+         "http://www.law.indiana.edu",
+         "석사 복수학위"
+        ],
+        [
+         "Maryland Institute, College of Art",
+         "http://www.mica.edu",
+         "-"
+        ],
+        [
+         "Rhode Island School of Design",
+         "http://www.risd.edu",
+         "-"
+        ],
+        [
+         "Rutgers,the State University of New Jersey,New Brunswick",
+         "http://www.rutgers.edu/",
+         "-"
+        ],
+        [
+         "State University of New York at New Paltz",
+         "http://www.newpaltz.edu",
+         "-"
+        ],
+        [
+         "Suffolk University (Suffolk University of Law)",
+         "http://www.suffolk.edu",
+         "-"
+        ],
+        [
+         "Univeristy of Kansas",
+         "http://www.ku.edu",
+         "-"
+        ],
+        [
+         "University of North Carolina at Charlotte",
+         "http://www.uncc.edu",
+         "-"
+        ],
+        [
+         "Utah State University",
+         "http://www.usu.edu",
+         "-"
+        ],
+        [
+         "Washington State University",
+         "http://www.wsu.edu",
+         "-"
+        ],
+        [
+         "Emerson College",
+         "http://www.emerson.edu",
+         "-"
+        ],
+        [
+         "University of Michigan (Stamp School of Art & Design)",
+         "https://stamps.umich.edu/",
+         "-"
+        ],
+        [
+         "The New School (Parsons School of Design)",
+         "https://www.newschool.edu/parsons/",
+         "-"
+        ],
+        [
+         "Portland State University",
+         "https://www.pdx.edu/",
+         "복수학위"
+        ],
+        [
+         "University of Nevada, Reno",
+         "https://www.unr.edu/",
+         "-"
+        ],
+        [
+         "San Diego State University",
+         "https://www.sdsu.edu/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "캐나다",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of British Columbia, Continuing Studies",
+         "https://www.ubc.ca/",
+         "-"
+        ],
+        [
+         "Emily Carr University of Art + Design",
+         "http://www.ecuad.ca",
+         "-"
+        ],
+        [
+         "OCAD University",
+         "https://www.ocadu.ca",
+         "-"
+        ],
+        [
+         "Trent University",
+         "https://www.trentu.ca",
+         "-"
+        ],
+        [
+         "Ontario Tech University",
+         "https://ontariotechu.ca",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "브라질",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Universidade do Vale do Rio dos Sinos",
+         "http://www.unisinos.br",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "호주",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Australian National University,Canberra School of Art",
+         "http://www.anu.edu.au",
+         "-"
+        ],
+        [
+         "Curtin University of Technology,Perth",
+         "http://www.curtin.edu.au/",
+         "-"
+        ],
+        [
+         "Swinburne University of Techology",
+         "http://www.swin.edu.au",
+         "-"
+        ],
+        [
+         "University of Melbourne",
+         "http://unimelb.edu.au",
+         "-"
+        ],
+        [
+         "Griffith University",
+         "http://griffith.edu.au",
+         "outbound 방문 only"
+        ]
+       ]
+      }
+     }
+    ],
+    "phones": [
+     {
+      "label": "국제교류실 · 교환학생(Outbound)",
+      "phone": "02-320-1042"
+     }
+    ],
+    "links": [
+     {
+      "label": "국제협력본부 홈페이지 · 자매대학현황",
+      "url": "https://oia.hongik.ac.kr/oia/content/3"
+     }
+    ],
+    "facilityId": "hi-q-1f-office-02"
+   },
    "start": {
     "kind": "answer",
-    "text": "본교와 협약한 국외 자매대학 목록이에요. 대학마다 학술교류(MoU)·교환학생(SEA)·방문학생(VSA)·복수학위(DDA) 중 어떤 교류를 하는지 적혀 있어요. 학기마다 실제로 파견할 수 있는 대학은 국제협력본부 홈페이지에서 따로 알려요.",
+    "text": "본교와 협약한 국외 자매대학 목록이에요. 대학마다 학술교류(MoU)·교환학생(SEA)·방문학생(VSA)·복수학위(DDA) 중 어떤 교류를 하는지 적혀 있어요. 국제협력본부 자매대학현황에는 35개 나라·지역 158곳이 나라별로 대학명·홈페이지·비고(언어 조건 등)와 함께 올라 있어요(아래 이어 보기). 학기마다 실제로 파견할 수 있는 대학은 국제협력본부 홈페이지에서 따로 알려요.",
     "sections": [
      {
       "title": "국제협력본부 조직 소개",
@@ -3276,7 +4505,13 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
       "url": "mailto:int_rel@hongik.ac.kr"
      }
     ],
-    "facilityId": "hi-q-1f-office-02"
+    "facilityId": "hi-q-1f-office-02",
+    "followUps": [
+     {
+      "label": "자매대학현황",
+      "next": "more"
+     }
+    ]
    }
   },
   "checkedAt": "2026-10-15"

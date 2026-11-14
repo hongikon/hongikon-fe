@@ -1374,5 +1374,21 @@
  {
   "q": "해외인턴십 학점인정 신청서 어디서 받아요",
   "expect": "intl-intern-credit"
+ },
+ {
+  "q": "교환학생 자매대학 어디 있어?",
+  "expect": "exchange-partners"
+ },
+ {
+  "q": "홍익대 자매대학 목록",
+  "expect": "exchange-partners"
+ },
+ {
+  "q": "교환학생 어느 나라로 갈 수 있어",
+  "expect": "exchange-partners"
+ },
+ {
+  "q": "일본 자매대학 알려줘",
+  "expect": "exchange-partners"
  }
 ]
