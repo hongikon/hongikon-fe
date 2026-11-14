@@ -138,8 +138,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return withoutBackgroundFetch({
     ...config,
-    // 버전을 따로 줄 때만 쓴다(예: 1.0.0 사용자용 OTA `update:production:1.0.0`). 현장 테스트 TestFlight 빌드도 11-04 부터
-    // 운영과 같은 app.json version(1.1.0)을 쓴다 — 채널(nearby-testflight)이 달라 운영 OTA 와 섞이지 않는다.
+    // 버전을 따로 줄 때만 쓴다(예: 1.0.0 사용자용 OTA `update:production:1.0.0`).
+    // 현장 테스트 TestFlight(nearby-testflight)는 11-14 부터 1.1.1(eas.json 프로필 env): 1.1.0 이 App Store 승인되면 Apple 이
+    // 1.1.0 기차를 닫아 같은 버전 TestFlight 업로드가 처리 실패한다(ITMS-90186·90062, 빌드 34·35). 런타임도 1.1.1 이 되고,
+    // `update:testflight` 가 같은 프로필 env 를 넣어 테스트 OTA 도 1.1.1 로 간다. 운영(1.1.0)과는 채널·런타임 모두 따로다.
     version: process.env.APP_VERSION_OVERRIDE || config.version,
     plugins,
     name: `${config.name ?? '홍익온'}${NAME_SUFFIX[VARIANT]}`,
