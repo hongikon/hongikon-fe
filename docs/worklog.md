@@ -509,3 +509,9 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - `topics/life.py` 'startup': lead 에 창업장학금 요약·가산점, `faqpage` 로 두 공지(startup/more·more1).
 - 넣지 않은 것: '창업 교과목 수강 시 창업장학금 가산점'은 검색 요약에만 있고 창업교육센터 페이지(0202·0301)에서 확인하지 못했다. 2026학년도 창업장학금 공지는 11-14 기준 아직 없음 — 새 공지가 나오면 글 번호·lead 학년도를 바꾼다.
 - 확인: test-routing 2855/2855, BE export version 6d95207c6bb2.
+
+## 2026-11-14 · 물어보기: 예비군 안내 본문을 예비군연대본부로(사용자 요청)
+
+- 문제: 'reserve-forces' 가 복학 안내(학사행정 › 복학)를 본문으로 써서 예비군 질문에 복학 링크가 붙었다('아래는 그 안내가 실린 복학 안내예요').
+- `topics/academic.py`: page = `hiweb_dept-reserve`(예비군연대본부 부서 안내), faqpage = 복학 안내(전입신고 메뉴). lead 는 그 쪽 원문대로(편성 대상·제외, 전입·전출, 기본교육 8시간·보충교육). 전화 예비군연대본부 02-320-1090.
+- 확인: test-routing 2855/2855. 학과 이름이 붙은 질문('컴공 예비군') 처리는 BE worklog.
