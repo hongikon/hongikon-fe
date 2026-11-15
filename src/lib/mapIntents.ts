@@ -21,8 +21,8 @@ export type MapIntent =
   | { type: 'previewLocation'; lat: number; lng: number; label?: string; detail?: string }
   /** target: 'building:{code}' | 'facility:{id}' | 'partner:{id}'. title·summary: 지도 위 설명 카드. */
   | { type: 'focusPlace'; target: string; title?: string; summary?: string }
-  /** target: 'building:{code}' | 'facility:{id}'. 제휴처(캠퍼스 밖)는 길찾기 경로망에 없어 받지 않는다. */
-  | { type: 'routeTo'; target: string }
+  /** target: 'building:{code}' | 'facility:{id}'. 제휴처(캠퍼스 밖)는 길찾기 경로망에 없어 받지 않는다. from: 출발 'building:{code}'(없으면 내 위치). */
+  | { type: 'routeTo'; target: string; from?: string }
 
 /**
  * focusReport 요청은 웹에서 sessionStorage 에도 15분 동안 남긴다. 카카오·Apple 웹 로그인은 페이지를 통째로 넘겼다
