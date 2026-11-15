@@ -149,6 +149,8 @@ export interface AdminFeedback {
   /** 작성자 표시 이름(앱 닉네임 또는 "홍**")·회원 번호. 로그인 닉네임 가리기 전 서버는 없다. */
   userDisplayName?: string | null
   userMemberCode?: string | null
+  /** 공식 계정 신청이면 신청서에 적힌 단체 이름(공식 이름 칸에 미리 채운다). 아니면 null, 이 기능 전 서버는 키가 없다. */
+  officialRequestName?: string | null
 }
 
 export type UserStatus = 'ACTIVE' | 'SUSPENDED'
@@ -183,6 +185,11 @@ export interface AdminUser {
   priorHistory?: AdminUserPriorHistory | null
   /** 운영진이 붙인 공식 이름(학생회 등). 없으면 null. 이 기능 전 서버는 키가 없다. */
   officialName?: string | null
+  /**
+   * 공식 계정 신청을 보낸 회원인지. 서버는 신청한 회원(또는 이미 공식 계정)에게만 공식 이름을 붙여 준다 — false 면 지정 버튼을
+   * 숨긴다. 이 기능 전 서버는 키가 없다(그때는 예전처럼 버튼을 보여 준다).
+   */
+  officialRequested?: boolean
 }
 
 /** `GET /admin/users/{id}/login-name` — 로그인(카카오/Apple) 닉네임 원문. 버튼을 눌렀을 때만 부른다. */
