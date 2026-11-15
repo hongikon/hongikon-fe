@@ -53,7 +53,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
-import { formatFloor, hasFloorData } from "../utils/floors";
+import { buildFloorOptions, formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlternative, type WalkApproach } from "../apis/routes";
 import { isCancelledError } from "../apis/client";
@@ -231,7 +231,10 @@ export default function MapScreen() {
   const [fromFloor, setFromFloor] = useState<number | null>(null);
   const [toFloor, setToFloor] = useState<number | null>(null);
   /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
-  const [floorDial, setFloorDial] = useState<{ role: "출발" | "도착"; building: Building } | null>(null);
+  /** initialFloor: 다이얼을 열 때 먼저 골라 둘 층(필터 칩 시설이 여러 층에 있을 때 가장 아래 층, 11-16). */
+  const [floorDial, setFloorDial] = useState<
+    { role: "출발" | "도착"; building: Building; initialFloor?: number | null } | null
+  >(null);
   /**
    * 출발지 "내 위치"(11-03). 위치는 길찾기를 보는 동안만 휴대폰에서 읽어 경로 계산과 지도 점에만 쓰고,
    * 저장하거나 서버로 보내지 않는다(처리방침 11-09판 "길찾기 화면을 보는 동안에만").
@@ -1009,6 +1012,7 @@ export default function MapScreen() {
             bottom: bottomInsetRef.current + 12 + (routeCardHeightRef.current || 90) + 24,
           },
           routes[selectedIndex]?.indoorSegments ?? [],
+          routes[selectedIndex]?.markers ?? [],
         );
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
         setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
@@ -1103,7 +1107,12 @@ export default function MapScreen() {
       setTimeout(
         () =>
           webViewRef.current?.injectJavaScript(
-            routeStyleScript(index, undefined, routeAlternativesRef.current[index]?.indoorSegments ?? []),
+            routeStyleScript(
+              index,
+              undefined,
+              routeAlternativesRef.current[index]?.indoorSegments ?? [],
+              routeAlternativesRef.current[index]?.markers ?? [],
+            ),
           ),
         ROUTE_STYLE_DELAY_MS,
       );
@@ -1154,12 +1163,27 @@ export default function MapScreen() {
     [commitFrom],
   );
 
+  /**
+   * 도착 정하기. 학교 시설 필터 칩(열람실 등)을 켠 채 건물을 도착으로 고르면 그 시설이 있는 층을 도착 층으로 쓴다(11-16 사용자 요청).
+   * 한 층에만 있으면 바로 정하고, 여러 층이면 층 다이얼을 가장 아래 층에 맞춰 연다.
+   */
   const beginTo = useCallback(
     (building: Building) => {
-      if (hasFloorData(building)) setFloorDial({ role: "도착", building });
-      else commitTo(building, null);
+      const options = buildFloorOptions(building).map((o) => o.value);
+      if (options.length === 0) {
+        commitTo(building, null);
+        return;
+      }
+      // 건물 층 목록에 있는 층만(없는 층을 보내면 서버가 400 — 직선 어림으로 떨어진다).
+      const kindFloors = facilityKind
+        ? [...new Set(facilities
+            .filter((f) => f.kind === facilityKind && f.buildingName === building.name && typeof f.floor === "number")
+            .map((f) => f.floor as number))].filter((floor) => options.includes(floor)).sort((a, b) => a - b)
+        : [];
+      if (kindFloors.length === 1) commitTo(building, kindFloors[0]);
+      else setFloorDial({ role: "도착", building, initialFloor: kindFloors[0] ?? null });
     },
-    [commitTo],
+    [commitTo, facilityKind, facilities],
   );
 
   const handleFloorDialConfirm = useCallback(
@@ -1174,7 +1198,9 @@ export default function MapScreen() {
   );
 
   const floorDialInitial =
-    floorDial?.role === "출발"
+    floorDial?.initialFloor != null
+      ? floorDial.initialFloor
+      : floorDial?.role === "출발"
       ? fromBuilding === floorDial.building ? fromFloor : null
       : floorDial && toBuilding === floorDial.building ? toFloor : null;
   const floorDialSheet = (

@@ -35,6 +35,17 @@ export interface RouteAlternative {
   steps?: string[]
   /** 건물 안 구간. 지도에서 점선으로 겹쳐 그린다. */
   indoorSegments?: RoutePoint[][]
+  /** 층 바뀌는 곳(11-16): 건물 출구·입구·통과, 건물 안 계단·엘리베이터 층 이동, 바깥 계단. 지나는 순서로 지도에 찍는다. */
+  markers?: RouteMarker[]
+}
+
+export interface RouteMarker {
+  lat: number
+  lng: number
+  kind: 'exit' | 'enter' | 'pass' | 'floor' | 'stairs'
+  /** 'T동 3층 출구', '엘리베이터 5층 ↑', '계단 ↓' */
+  label: string
+  floor?: number | null
 }
 
 /**
