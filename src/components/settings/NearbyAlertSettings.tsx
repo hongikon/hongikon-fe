@@ -58,6 +58,7 @@ import { backgroundDisclosure, deviceIsKorean } from '../../lib/nearbyPartners/l
 import ToggleSwitch from './ToggleSwitch'
 import ModalHeader from './ModalHeader'
 import NearbyRadiusMap from './NearbyRadiusMap'
+import NearbyFieldRecorder from './NearbyFieldRecorder'
 import type { PartnerAffiliation } from '../../types'
 
 /** 테스트 빌드에서 고를 수 있는 업체 반경(m). */
@@ -673,6 +674,12 @@ function NearbyAlertModal({ visible, settings, checklist, serverPaused, accessTo
                         />
                       </View>
                       {testNote && <Text style={styles.hint}>{testNote}</Text>}
+                    </>
+                  )}
+                  {alreadyOn && (
+                    <>
+                      <View style={styles.divider} />
+                      <NearbyFieldRecorder visible={visible} />
                     </>
                   )}
                   <View style={styles.divider} />

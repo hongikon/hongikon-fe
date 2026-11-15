@@ -83,6 +83,8 @@ export interface AskAction {
   target: string
   label?: string | null
   summary?: string | null
+  /** 'route' 의 출발 건물('building:{code}', 11-15 '제4공학관에서 홍문관'). 없으면 내 위치에서 출발. */
+  from?: string | null
 }
 
 /**

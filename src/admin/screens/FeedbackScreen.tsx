@@ -7,6 +7,7 @@ import { fetchFeedback, updateFeedbackStatus } from '../api'
 import { formatDateTime, formatMemberRef, formatRelative } from '../format'
 import type { AdminFeedback, AdminOverview, FeedbackStatusFilter } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
+import { OfficialNameForm } from '../UserModeration'
 import { INFO_SUGGESTION_BADGES, OFFICIAL_REQUEST_PREFIX, infoSuggestTypeOf } from '../../constants/feedback'
 
 /** 앱 설정 > 문의하기로 들어온 의견. 처리 완료/다시 열기만 한다(답장은 연락처로 직접). */
@@ -93,6 +94,11 @@ export default function FeedbackScreen({
   )
 }
 
+/** 신청 글 첫 줄 머리말 뒤의 단체 이름. 서버가 officialRequestName 을 주기 전 버전일 때만 쓴다. */
+function requestedNameOf(content: string): string {
+  return content.slice(OFFICIAL_REQUEST_PREFIX.length).split('\n')[0].trim()
+}
+
 /** 알림으로 연 항목을 맨 위로(나머지 순서는 그대로). */
 function withFocusedFirst<T extends { id: number }>(items: T[], focusId: number | null): T[] {
   if (focusId === null) return items
@@ -113,9 +119,16 @@ function FeedbackCard({
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** 공식 계정 신청에 공식 이름을 붙이는 중(입력 막대 열림). */
+  const [appointing, setAppointing] = useState(false)
+  /** 방금 붙인 공식 이름(카드에 결과를 보여 준다). */
+  const [appointedName, setAppointedName] = useState<string | null>(null)
   const resolved = item.status === 'RESOLVED'
   // 설정 > 정보 제보하기로 들어온 문의면 종류(제휴·전시·행사·시설 정보·기타)를 표시한다.
   const suggestType = infoSuggestTypeOf(item.content)
+  const officialRequest = item.content.startsWith(OFFICIAL_REQUEST_PREFIX)
+  // 로그인해서 보낸 신청만 그 계정에 붙일 수 있다(탈퇴한 작성자는 userId 가 없다).
+  const canAppoint = officialRequest && item.userId !== null && !resolved
 
   const toggle = () => {
     setPending(true)
@@ -132,7 +145,7 @@ function FeedbackCard({
         <View style={styles.badges}>
           <Badge label={resolved ? '처리 완료' : '미처리'} tone={resolved ? 'success' : 'warning'} />
           {suggestType !== null ? <Badge label={INFO_SUGGESTION_BADGES[suggestType]} tone="info" /> : null}
-          {item.content.startsWith(OFFICIAL_REQUEST_PREFIX) ? <Badge label="공식 계정 신청" tone="info" /> : null}
+          {officialRequest ? <Badge label="공식 계정 신청" tone="info" /> : null}
           {movedOut ? <Badge label="방금 처리함" tone="info" /> : null}
         </View>
         <Text style={styles.meta}>#{item.id}</Text>
@@ -159,7 +172,34 @@ function FeedbackCard({
         {item.resolvedAt ? <Text style={styles.fact}>처리 {formatDateTime(item.resolvedAt)}</Text> : null}
       </View>
 
+      {appointedName ? <Text style={styles.appointed}>공식 이름 '{appointedName}'을(를) 붙였습니다.</Text> : null}
+      {appointing && item.userId !== null ? (
+        <OfficialNameForm
+          userId={item.userId}
+          initialName={item.officialRequestName ?? requestedNameOf(item.content)}
+          onCancel={() => setAppointing(false)}
+          onDone={(user) => {
+            setAppointing(false)
+            setAppointedName(user.officialName ?? null)
+            // 서버가 이 신청을 처리 완료로 닫았다 — 목록을 다시 받지 않고 카드만 바꾼다.
+            onUpdated({ ...item, status: 'RESOLVED', resolvedAt: new Date().toISOString() })
+          }}
+        />
+      ) : null}
+
       <View style={styles.actions}>
+        {canAppoint && !appointing ? (
+          <Button
+            label="공식 이름 지정"
+            icon="ribbon-outline"
+            variant="secondary"
+            onPress={() => {
+              setError(null)
+              setAppointing(true)
+            }}
+            small
+          />
+        ) : null}
         <Button
           label={resolved ? '다시 열기' : '처리 완료'}
           icon={resolved ? 'arrow-undo-outline' : 'checkmark'}
@@ -187,5 +227,6 @@ const styles = StyleSheet.create({
   facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 },
   fact: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
   factStrong: { fontFamily: FONTS.medium, color: COLORS.textPrimary },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end' },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
+  appointed: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.success },
 })
