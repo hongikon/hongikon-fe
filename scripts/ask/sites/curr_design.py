@@ -13,19 +13,18 @@
 """
 import sys
 
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_design_vd': VIEW_URL + '#p165',
-    'curr_design_id': VIEW_URL + '#p167',
-    'curr_design_metal': VIEW_URL + '#p169',
-    'curr_design_ceramic': VIEW_URL + '#p171',
-    'curr_design_wood': VIEW_URL + '#p173',
-    'curr_design_textile': VIEW_URL + '#p175',
-    'curr_design_musical': VIEW_URL + '#p182',
-    'curr_design_appliedmusic': VIEW_URL + '#p184',
+    'curr_design_vd': page_url(165),
+    'curr_design_id': page_url(167),
+    'curr_design_metal': page_url(169),
+    'curr_design_ceramic': page_url(171),
+    'curr_design_wood': page_url(173),
+    'curr_design_textile': page_url(175),
+    'curr_design_musical': page_url(182),
+    'curr_design_appliedmusic': page_url(184),
 }
 
 TITLES = {
