@@ -1683,7 +1683,8 @@ export default function MapScreen() {
       return;
     }
     if (intent?.type === "routeTo") {
-      // 물어보기 답의 "여기서 가는 길"(11-09). 도착 = 그 건물(시설이면 그 건물·층), 출발 = 내 위치(권한·위치를 못 쓰면 출발은 비워 둬 고르게 한다).
+      // 물어보기 답의 길찾기 버튼(11-09). 도착 = 그 건물(시설이면 그 건물·층). 출발 = 질문의 출발 건물(11-15 '제4공학관에서 홍문관'),
+      // 없으면 내 위치(권한·위치를 못 쓰면 출발은 비워 둬 고르게 한다).
       stopPicker();
       clearPreview();
       setAskCard(null);
@@ -1699,7 +1700,11 @@ export default function MapScreen() {
       setSelectedPartner(null);
       setSelectedReport(null);
       commitTo(building, typeof facility?.floor === "number" ? facility.floor : null);
-      void selectMyLocationRef.current?.();
+      const fromBuilding = intent.from?.startsWith("building:")
+        ? buildings.find((b) => b.code === intent.from!.slice("building:".length))
+        : undefined;
+      if (fromBuilding && fromBuilding.code !== building.code) commitFrom(fromBuilding, null);
+      else void selectMyLocationRef.current?.();
       return;
     }
     if (intent?.type === "previewLocation") {
@@ -1714,7 +1719,7 @@ export default function MapScreen() {
       showPreviewPin(preview);
     }
   }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect,
-    clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo]);
+    clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo, commitFrom]);
 
   // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
   useEffect(() => {
