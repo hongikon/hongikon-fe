@@ -1011,7 +1011,7 @@ export default function MapScreen() {
             top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
             bottom: bottomInsetRef.current + 12 + (routeCardHeightRef.current || 90) + 24,
           },
-          routes[selectedIndex]?.indoorSegments ?? [],
+          routes,
           routes[selectedIndex]?.markers ?? [],
         );
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
@@ -1110,7 +1110,7 @@ export default function MapScreen() {
             routeStyleScript(
               index,
               undefined,
-              routeAlternativesRef.current[index]?.indoorSegments ?? [],
+              routeAlternativesRef.current,
               routeAlternativesRef.current[index]?.markers ?? [],
             ),
           ),

@@ -62,14 +62,45 @@ export function routeMarkerHtml(marker: Pick<RouteMarker, 'kind' | 'label'>): st
   return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:10px;background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-size:11px;font-weight:700;line-height:14px;font-family:-apple-system,sans-serif">${escapeHtml(marker.label)}</div></div>`
 }
 
+type LatLng = { lat: number; lng: number }
+
+/**
+ * 경로 점을 바깥(실선)·건물 안(점선) 구간으로 나눈다(11-16 사용자 요청 — 점선 밑 흰 바탕을 없애고, 고르지 않은 경로도 건물 안은 점선).
+ * 건물 안 구간의 이웃한 두 점 쌍과 같은 쌍이면 건물 안이다. 구간 끝점은 이웃 구간과 겹쳐 선이 끊기지 않는다.
+ */
+export function routeRuns(points: LatLng[], indoorSegments: LatLng[][] = []): { path: LatLng[]; indoor: boolean }[] {
+  const key = (a: LatLng, b: LatLng) => `${a.lat},${a.lng}|${b.lat},${b.lng}`
+  const inside = new Set<string>()
+  for (const seg of indoorSegments) {
+    for (let i = 0; i + 1 < seg.length; i++) {
+      inside.add(key(seg[i], seg[i + 1]))
+      inside.add(key(seg[i + 1], seg[i]))
+    }
+  }
+  const runs: { path: LatLng[]; indoor: boolean }[] = []
+  for (let i = 0; i + 1 < points.length; i++) {
+    const indoor = inside.has(key(points[i], points[i + 1]))
+    const last = runs[runs.length - 1]
+    if (last && last.indoor === indoor) last.path.push(points[i + 1])
+    else runs.push({ path: [points[i], points[i + 1]], indoor })
+  }
+  return runs
+}
+
 export function routeStyleScript(
   selectedIndex: number,
   fit?: { top: number; bottom: number },
-  /** 고른 경로의 건물 안 구간(건물 가운데 ↔ 계단·엘리베이터 ↔ 출입구). 흰 바탕 위 남색 점선으로 덮어 그린다. */
-  indoor: { lat: number; lng: number }[][] = [],
+  /**
+   * 지도에 올린 경로들(showRoute 와 같은 순서). 지도 페이지가 그린 선은 숨기고(맞추기·누르는 자리에만 쓴다) 바깥은 실선, 건물 안은 점선으로
+   * 다시 그린다. 고른 경로는 남색, 나머지는 회색.
+   */
+  routes: { points: LatLng[]; indoorSegments?: LatLng[][] }[] = [],
   /** 고른 경로의 층 바뀌는 곳(출구·입구·계단·엘리베이터). 점과 짧은 글로 찍는다. */
   markers: RouteMarker[] = [],
 ): string {
+  const runs = routes.map((route, index) =>
+    routeRuns(route.points ?? [], route.indoorSegments ?? []).map((run) => ({ ...run, index })),
+  ).flat()
   const markerItems = mergeRouteMarkers(markers).map((m) => ({ lat: m.lat, lng: m.lng, html: routeMarkerHtml(m) }))
   const fitJs = fit
     ? `
@@ -88,12 +119,15 @@ export function routeStyleScript(
   window.__hkRouteHits = [];
   (window.__hkIndoorLines || []).forEach(function (h) { h.setMap(null); });
   window.__hkIndoorLines = [];
-  ${JSON.stringify(indoor)}.forEach(function (seg) {
-    var path = seg.map(function (p) { return new naver.maps.LatLng(p.lat, p.lng); });
+  var drawn = ${JSON.stringify(runs)};
+  drawn.forEach(function (run) {
+    var path = run.path.map(function (p) { return new naver.maps.LatLng(p.lat, p.lng); });
     if (path.length < 2) return;
-    window.__hkIndoorLines.push(new naver.maps.Polyline({ map: map, path: path, strokeColor: '#FFFFFF', strokeWeight: 7, strokeOpacity: 1, zIndex: 210 }));
-    window.__hkIndoorLines.push(new naver.maps.Polyline({ map: map, path: path, strokeColor: '${NAVY}', strokeWeight: 4, strokeOpacity: 0.95,
-      strokeStyle: 'shortdash', strokeLineCap: 'round', zIndex: 211 }));
+    var on = run.index === ${selectedIndex};
+    window.__hkIndoorLines.push(new naver.maps.Polyline({ map: map, path: path, strokeColor: on ? '${NAVY}' : '${ROUTE_GRAY}',
+      strokeWeight: run.indoor ? (on ? 5 : 4) : (on ? 6 : 5), strokeOpacity: on ? 0.92 : 0.9,
+      strokeStyle: run.indoor ? 'shortdash' : 'solid', strokeLineCap: run.indoor ? 'round' : 'butt', strokeLineJoin: 'round',
+      zIndex: (on ? 200 : 100) + (run.indoor ? 1 : 0) }));
   });
   (window.__hkRouteMarkers || []).forEach(function (h) { h.setMap(null); });
   window.__hkRouteMarkers = [];
@@ -108,8 +142,9 @@ export function routeStyleScript(
   };
   routePolylines.forEach(function (poly, i) {
     var on = i === ${selectedIndex};
-    poly.setOptions({ strokeColor: on ? '${NAVY}' : '${ROUTE_GRAY}', strokeWeight: on ? 6 : 5, strokeOpacity: on ? 0.92 : 0.9,
-      strokeStyle: 'solid', zIndex: on ? 200 : 100 });
+    // 다시 그린 선이 있으면 지도 페이지의 선은 숨긴다(점선 밑에 실선이 깔리면 점선이 안 보인다). 없으면(예전 호출) 그대로 칠한다.
+    poly.setOptions({ strokeColor: on ? '${NAVY}' : '${ROUTE_GRAY}', strokeWeight: on ? 6 : 5,
+      strokeOpacity: drawn.length > 0 ? 0 : (on ? 0.92 : 0.9), strokeStyle: 'solid', zIndex: on ? 200 : 100 });
     if (on) return;
     var hit = new naver.maps.Polyline({ map: map, path: poly.getPath(), strokeColor: '#000000', strokeOpacity: 0.01, strokeWeight: 26,
       clickable: true, zIndex: 150 });

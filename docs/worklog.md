@@ -556,6 +556,7 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
   - `RouteAlternative.markers`(`src/apis/routes.ts`), `routeStyleScript(…, markers)` 가 고른 경로의 표시만 `window.__hkRouteMarkers` 로 그리고, 길찾기를 끝내면 `ROUTE_HITS_CLEAR_SCRIPT` 가 지운다. 12m 안에 붙은 표시는 한 말풍선으로 잇는다('R동 3층 입구 · 계단·엘리베이터 8층 ↑'). 글은 HTML escape.
   - 출구·입구·통과는 남색 바탕, 층 이동·계단은 흰 바탕 남색 글.
 - 학교 시설 필터 칩(열람실 등)을 켠 채 건물을 도착으로 고르면 그 건물에서 그 종류 시설이 있는 층을 도착 층으로: 한 층이면 바로 정하고, 여러 층이면 층 다이얼을 가장 아래 층에 맞춰 연다. 건물 층 목록에 없는 층은 쓰지 않는다(서버 400 → 직선 어림 방지).
-- 테스트 `scripts/test/routeMarkers.test.ts` 4. tsc 통과, 테스트 109/109.
+- (같은 날 추가 요청) 건물 안 점선 밑 흰 바탕을 없애고, 고르지 않은 경로(회색)도 건물 안은 점선으로. 지도 페이지가 그린 경로선은 숨기고(화면 맞추기·누르는 자리에만 씀) `routeRuns` 로 경로를 바깥 실선·건물 안 점선 구간으로 나눠 다시 그린다.
+- 테스트 `scripts/test/routeMarkers.test.ts` 5. tsc 통과, 테스트 110/110.
 - 확인(로컬 웹 + 로컬 서버): 열람실 칩 → 홍문관 R동 도착 → 'R동 8F'로 바로 정해지고, T동 1층 출발 경로에 층 표시가 보인다(`ui-shots/qa/route-floors-6.png`).
 - 개인정보: 위치·전송 변화 없음(경로 응답에 좌표 표시가 늘었을 뿐, 모두 학교 경로망 점).

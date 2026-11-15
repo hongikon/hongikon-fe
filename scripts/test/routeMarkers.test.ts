@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mergeRouteMarkers, routeMarkerHtml, routeStyleScript } from '../../src/utils/routeStyleScript'
+import { mergeRouteMarkers, routeMarkerHtml, routeRuns, routeStyleScript } from '../../src/utils/routeStyleScript'
 
 test('층 표시 글은 HTML 로 escape 한다', () => {
   const html = routeMarkerHtml({ kind: 'exit', label: 'T동 <3층> & "출구"' })
@@ -31,4 +31,12 @@ test('붙어 있는 표시는 한 말풍선으로 잇는다', () => {
   ])
   assert.deepEqual(merged.map((m) => m.label), ['I동 1층 입구 · 계단·엘리베이터 6층 ↑', '계단'])
   assert.equal(merged[0].kind, 'enter')
+})
+
+test('경로를 바깥 실선·건물 안 점선 구간으로 나눈다', () => {
+  const p = (n: number) => ({ lat: 37.55 + n / 10000, lng: 126.92 })
+  const runs = routeRuns([p(0), p(1), p(2), p(3), p(4)], [[p(1), p(2), p(3)]])
+  assert.deepEqual(runs.map((r) => [r.indoor, r.path.length]), [[false, 2], [true, 3], [false, 2]])
+  assert.deepEqual(runs[1].path[0], p(1))
+  assert.deepEqual(routeRuns([p(0), p(1)]).map((r) => r.indoor), [false])
 })
