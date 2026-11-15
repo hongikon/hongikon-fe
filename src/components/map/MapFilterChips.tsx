@@ -6,6 +6,7 @@ import { facilityCount } from '../../utils/facilities'
 import { useMapData } from '../../lib/mapData'
 import { chipStyles, useChipRowScrollStyle } from './chipStyles'
 import ChipIcon from './ChipIcon'
+import ChipRow from './ChipRow'
 import type { FacilityKind, MapLayer } from '../../types'
 import * as haptics from '../../lib/haptics'
 
@@ -95,12 +96,7 @@ export default function MapFilterChips({
       </ScrollView>
 
       {layer === '편의시설' && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={rowScroll}
-          contentContainerStyle={chipStyles.row}
-        >
+        <ChipRow style={rowScroll} contentContainerStyle={chipStyles.row} selection={facilityKind}>
           {!data && (
             <View style={chipStyles.chip} accessibilityRole="text">
               <Text style={[chipStyles.label, styles.pendingText]}>편의시설 정보를 불러오는 중이에요</Text>
@@ -131,7 +127,7 @@ export default function MapFilterChips({
               </TouchableOpacity>
             )
           })}
-        </ScrollView>
+        </ChipRow>
       )}
 
     </>
