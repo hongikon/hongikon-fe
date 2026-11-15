@@ -15,9 +15,18 @@ interface ChipRowProps {
 }
 
 /**
- * 지도 위 필터 칩 한 줄. 앱은 손가락으로 가로로 민다.
+ * 마우스로 쓰는 데스크톱 웹인지(주 포인터가 정밀하고 hover 가 된다). 휴대폰·태블릿 브라우저는 손가락으로 칩 줄을 밀 수 있어 아니다.
+ * 앱(iOS·Android)은 false.
+ */
+function isDesktopPointer(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+}
+
+/**
+ * 지도 위 필터 칩 한 줄. 앱과 휴대폰 브라우저는 손가락으로 가로로 민다.
  *
- * 웹은 마우스 휠·트랙패드가 없으면 가로로 넘길 수 없어(11-16 사용자 — 칩이 화면 밖에 남는다), 칩이 넘칠 때만 줄 끝에
+ * 데스크톱 웹은 마우스 휠·트랙패드가 없으면 가로로 넘길 수 없어(11-16 사용자 — 칩이 화면 밖에 남는다), 칩이 넘칠 때만 줄 끝에
  * '⋯ 더보기' 버튼을 두고 누르면 모든 칩을 여러 줄로 펼친다(카카오·네이버 지도 웹처럼). 칩을 고르거나 다시 누르면 접는다.
  */
 export default function ChipRow({ children, style, contentContainerStyle, selection }: ChipRowProps) {
@@ -29,7 +38,10 @@ export default function ChipRow({ children, style, contentContainerStyle, select
     setExpanded(false)
   }, [selection])
 
-  if (Platform.OS !== 'web') {
+  // 화면 동안 바뀌지 않는 값이라 처음 한 번만 잰다.
+  const [desktop] = useState(isDesktopPointer)
+
+  if (!desktop) {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={style} contentContainerStyle={contentContainerStyle}>
         {children}
