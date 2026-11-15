@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
   clipShrink: { flex: 1 },
   noRightPad: { paddingRight: 0 },
   moreSlot: { paddingLeft: 4, paddingRight: 16 },
-  more: { paddingHorizontal: 9, borderColor: COLORS.primary },
+  // 테두리는 다른 칩과 같게(chipStyles.chip) — 남색 테두리만 따로 튀어 보였다(11-16 사용자).
+  more: { paddingHorizontal: 9 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 7 },
 })
