@@ -12,6 +12,7 @@ import {
   preciseUpdate,
   onRegister,
   settle,
+  smoothFineFix,
   type NearbyAction,
   type NearbyPrefs,
   type NearbyState,
@@ -53,6 +54,8 @@ import {
 } from './debug'
 import { haversineMeters } from '../../utils/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
+import type { FilterState } from '../../utils/locationFilter'
+import { fieldRecording, recordField, setFieldRecording, type FieldFix } from './fieldRecord'
 import type { Partner, PartnerAffiliation } from '../../types'
 
 /**
@@ -411,6 +414,7 @@ async function stopPrecise(): Promise<void> {
       await pkg.Location.stopLocationUpdatesAsync(NEARBY_PRECISE_TASK)
       void nearbyLog('위치 갱신 끔(가게에서 멀어짐 또는 2시간 지남)')
     }
+    fineFilter = null
     await AsyncStorage.removeItem(PRECISE_SINCE_KEY).catch(() => {})
     await AsyncStorage.removeItem(PRECISE_MODE_KEY).catch(() => {})
     if (!preciseRecentlyFailed()) preciseNote = '꺼짐'
@@ -474,18 +478,32 @@ async function fineCheck(force = false): Promise<void> {
 const FIX_LOG_GAP_MS = 30_000
 let lastFixLogAt = 0
 
+/**
+ * GPS 위치를 다듬는 칼만 필터의 지금 추정(11-13, `smoothFineFix`). 메모리에만 두고 저장하지 않는다 — 앱이 꺼졌다 깨어나면
+ * 처음부터 다시 쌓는다. GPS 위치 갱신을 끄면(`stopPrecise`) 비운다.
+ */
+let fineFilter: FilterState | null = null
+
 /** 위치 하나를 판단에 넣고(`preciseUpdate`), 위치 갱신 단계를 맞추거나 끈다. 위치는 저장하지 않는다. */
 async function applyFix(
-  at: { lat: number; lng: number },
+  raw: { lat: number; lng: number },
   accuracy: number | null,
   mode: PreciseMode,
   source: string,
 ): Promise<{ stop: boolean; nextMode: PreciseMode; nearestMeters: number; needsFineCheck: boolean }> {
+  // GPS 위치만 다듬는다. Wi-Fi·기지국 위치는 오차가 커 그대로 '나감' 판단에만 쓴다.
+  let at = raw
+  if (mode === 'fine') {
+    const smoothed = smoothFineFix(fineFilter, raw, accuracy, Date.now())
+    fineFilter = smoothed.filter
+    at = smoothed.at
+  }
   const since = Number(await AsyncStorage.getItem(PRECISE_SINCE_KEY).catch(() => null)) || Date.now()
   let stop = Date.now() - since > PRECISE_MAX_MS
   let nextMode: PreciseMode = mode
   let nearestMeters = Infinity
   let needsFineCheck = false
+  let fieldFix: FieldFix | null = null
   await mutate((state, now) => {
     const outcome = preciseUpdate(state, now, { at, accuracy, mode }, {
       alert: partnerRadiusMeters(),
@@ -515,12 +533,58 @@ async function applyFix(
         )
       }
     }
+    // 현장 측정 기록용(측정 중일 때만 아래에서 남긴다): 판단에 넣은 위치 기준 가장 가까운 가게, 머무는 중인 가게, 새로 보낸 알림.
+    const near = outcome.state.targets
+      .map((t) => ({ id: t.id, name: t.name, meters: haversineMeters(at.lat, at.lng, t.lat, t.lng) }))
+      .sort((a, b) => a.meters - b.meters)[0]
+    const lastBefore = state.sent.at(-1)
+    const lastAfter = outcome.state.sent.at(-1)
+    fieldFix = {
+      k: 'fix',
+      t: now,
+      src: source,
+      lat: raw.lat,
+      lng: raw.lng,
+      acc: accuracy,
+      slat: at.lat,
+      slng: at.lng,
+      nearId: near?.id,
+      nearName: near?.name,
+      nearM: near?.meters,
+      inside: Object.entries(outcome.state.stays)
+        .filter(([, stay]) => stay.exitedAt === null)
+        .map(([id]) => id),
+      alert: lastAfter && (lastAfter.partnerId !== lastBefore?.partnerId || lastAfter.at !== lastBefore?.at) ? lastAfter.partnerId : undefined,
+    }
     return outcome
   })
+  // 현장 측정 중에는 위치를 끊지 않고 GPS 로 계속 받는다(정답과 맞춰 볼 연속 기록이 필요하다).
+  if (await fieldRecording()) {
+    stop = false
+    nextMode = 'fine'
+    if (fieldFix) void recordField(fieldFix)
+  }
   const running = await preciseMode()
   if (stop) await stopPrecise()
   else if (running !== null && nextMode !== running) await startPrecise(nextMode)
   return { stop, nextMode, nearestMeters, needsFineCheck }
+}
+
+/**
+ * 현장 측정 시작(11-13, 테스트 앱·관리자 계정): 기록을 켜고 GPS 위치 갱신을 바로 켠다. 측정 중에는 가게에서 멀어져도,
+ * 2시간이 지나도 끄지 않는다. 위치 갱신을 켜지 못하면(위치 '항상' 허용 없음 등) false.
+ */
+export async function startNearbyFieldRecording(): Promise<boolean> {
+  await setFieldRecording(true)
+  const ok = await startPrecise('fine')
+  void nearbyLog(ok ? '현장 측정 시작 — GPS 계속 켬' : '현장 측정 시작했지만 GPS 위치 갱신을 켜지 못함')
+  return ok
+}
+
+/** 현장 측정 끝: 기록을 끄고 GPS 위치 갱신을 끈다(다음 가게 근처에서 평소처럼 다시 켜진다). */
+export async function stopNearbyFieldRecording(): Promise<void> {
+  await setFieldRecording(false)
+  await stopPrecise()
 }
 
 /**
@@ -823,17 +887,32 @@ export async function getNearbyChecklist(): Promise<NearbyChecklist> {
 }
 
 /**
- * "앱 사용 중" → "항상" 순서로 묻는다. Android 11 이상은 "항상"을 앱 안 창으로 고를 수 없어
- * 시스템이 앱 위치 설정 화면을 연다 — 돌아온 뒤 `getNearbyPermission` 으로 다시 확인한다.
+ * 1단계: "앱 사용 중" 위치를 묻는다(이미 허용이면 창 없이 지금 상태). 위치 정보 사용 안내에서 '동의하고 계속' 바로 뒤에 부른다 —
+ * 그 사이에 다른 권한 창을 끼우지 않는다(Google Play: 권한 요청 바로 앞에 명시적 공개).
  */
-export async function requestNearbyPermission(): Promise<NearbyPermission> {
+export async function requestNearbyForeground(): Promise<NearbyPermission> {
   const pkg = packages()
   if (!pkg) return { status: 'unavailable' }
   try {
     const fg = await pkg.Location.requestForegroundPermissionsAsync()
     if (!fg.granted) return { status: 'denied', canAskAgain: fg.canAskAgain }
+    return getNearbyPermission()
+  } catch (error) {
+    logFailure('권한 요청', error)
+    return getNearbyPermission()
+  }
+}
+
+/**
+ * 2단계: "항상" 위치를 묻는다. Android 11 이상은 "항상"을 앱 안 창으로 고를 수 없어 시스템이 앱 위치 설정 화면을 연다 —
+ * 돌아온 뒤 `getNearbyPermission` 으로 다시 확인한다.
+ */
+export async function requestNearbyBackground(): Promise<NearbyPermission> {
+  const pkg = packages()
+  if (!pkg) return { status: 'unavailable' }
+  try {
     const bg = await pkg.Location.requestBackgroundPermissionsAsync()
-    return bg.granted ? { status: 'granted' } : { status: 'foregroundOnly', canAskAgain: bg.canAskAgain }
+    return bg.granted ? { status: 'granted' } : getNearbyPermission()
   } catch (error) {
     logFailure('권한 요청', error)
     return getNearbyPermission()

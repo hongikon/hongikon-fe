@@ -23,6 +23,15 @@ node scripts/ask/export-catalog.mjs # 흐름 → 백엔드 ask/catalog.json·sou
 - 학교 페이지가 바뀌면 crawl → extract → gen 을 다시 돌리고 `askPages.ts` 차이를 확인한다.
 - `ts-hooks.mjs`: 앱 소스(.ts)를 Node 로 바로 읽게 확장자 없는 import 를 잇는다(스크립트들이 내부에서 쓴다).
 
+## 중앙동아리(search_clubs)
+
+```sh
+python3 -I scripts/ask/clubs/crawl.py   # 총학생회 중앙동아리 66개 → data/clubs.json. 그대로 BE src/main/resources/ask/clubs.json 으로 복사
+```
+
+- 출처는 총학생회 사이트(hongikunion.com/clubs/central)의 공개 JSON 하나(robots 확인 후 요청 2번). 서버 `AskClubs` 가 읽고 `search_clubs` 도구가 쓴다. RAG 색인과 따로라 색인을 다시 만들 필요 없다.
+- **개인정보:** 회장 이름 칸은 버리고, 전화·이메일·오픈채팅 꼴 문자열은 지우고, 링크 추적 꼬리표(igsh·si·utm)는 뗀다. 이모지도 지운다(화면 규칙). 학교 옛 안내의 다른 이름은 `EXTRA_ALIASES` 에 적는다.
+
 ## RAG 색인용 원문(학과 홈페이지)
 
 ```sh
@@ -49,6 +58,7 @@ python3 -I scripts/ask/regs.py                # 규정집 학칙·학사내규 �
 | `cases-criteria/criteria.json` | 32 | 몇 과목·몇 학점·마감 같은 핵심 조건이 답에 있는지. 매번 전부 돈다 |
 | `cases-dept/dept.json` | 40 | 학과 공지를 찾아 답하는지(`board`·`must`). 돌리는 스크립트는 아직 저장소에 없다 — `eval-server.mjs` 에 붙일 몫 |
 | `cases-reason/reason.json` | 44 | 추론형 질문("어떻게·어떤 순서로·나는 어떻게 되나"). 아래 reason-eval |
+| `cases-reason/clubs.json` | 14 | 중앙동아리(search_clubs): 목록 66개·분야·동방·모임·링크·옛 호실을 쓰지 않는지. `run.mjs <label> <base> --cases clubs` |
 
 ```sh
 # 일반·범위·기준 정답표

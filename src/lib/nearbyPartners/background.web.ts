@@ -16,7 +16,11 @@ export async function getNearbyPermission(): Promise<NearbyPermission> {
   return { status: 'unavailable' }
 }
 
-export async function requestNearbyPermission(): Promise<NearbyPermission> {
+export async function requestNearbyForeground(): Promise<NearbyPermission> {
+  return { status: 'unavailable' }
+}
+
+export async function requestNearbyBackground(): Promise<NearbyPermission> {
   return { status: 'unavailable' }
 }
 
@@ -69,3 +73,10 @@ export function nearbyGeofencingUnsupported(): boolean {
 export async function getNearbyDebugInfo(): Promise<null> {
   return null
 }
+
+/** 웹에는 백그라운드 위치가 없어 현장 측정을 하지 않는다. */
+export async function startNearbyFieldRecording(): Promise<boolean> {
+  return false
+}
+
+export async function stopNearbyFieldRecording(): Promise<void> {}

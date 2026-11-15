@@ -1,5 +1,6 @@
 import { kstTodayYmd } from '../../utils/exhibitions'
 import { haversineMeters } from '../../utils/geo'
+import { filterFix, type FilterState } from '../../utils/locationFilter'
 import {
   ALERT_LEAD_MS,
   REENTRY_GRACE_MS,
@@ -276,6 +277,26 @@ export interface PreciseFix {
   accuracy: number | null
   /** 이 위치를 받은 단계: Wi-Fi·기지국(coarse) 또는 GPS(fine). */
   mode: PreciseMode
+}
+
+/** GPS 위치 하나를 칼만 필터로 다듬은 결과. `filter` 는 다음 위치에 넘길 추정(메모리에만 두고 저장하지 않는다). */
+export interface SmoothedFix {
+  filter: FilterState | null
+  at: Position
+}
+
+/**
+ * GPS 위치를 칼만 필터로 다듬는다(11-13, 길찾기 내 위치 점과 같은 `filterFix`). 가게 안에 가만히 있을 때 실내에서
+ * 수십 m 씩 튀는 위치를 여러 개 합쳐, 한 번 튄 값으로 옆 가게·밖으로 판단하지 않게 한다.
+ * - GPS 단계 위치에만 쓴다. Wi-Fi·기지국 위치(오차 수백 m)는 지금처럼 그대로 '나감' 판단에만 쓴다.
+ * - 오차가 커 필터가 버린 값(50m 넘음)은 받은 위치를 그대로 넘긴다 — 지난 추정을 지금 위치처럼 다시 확인하지 않게.
+ * - 반경에 더해 주는 오차 여유는 운영체제가 알려 준 오차 그대로 둔다. 실내 오차는 한쪽으로 밀리는 경우가 많아
+ *   평균을 내도 줄지 않는데, 다듬은 오차로 여유를 줄이면 가게 안인데 '밖'이 되던 11-10 문제가 다시 생긴다.
+ */
+export function smoothFineFix(prev: FilterState | null, at: Position, accuracy: number | null, now: number): SmoothedFix {
+  const next = filterFix(prev, { lat: at.lat, lng: at.lng, accuracy, at: now })
+  if (!next || next === prev) return { filter: prev, at }
+  return { filter: next, at: { lat: next.lat, lng: next.lng } }
 }
 
 /** 위치 갱신을 끌지 정할 때 빼 주는 오차의 한계(m). 이보다 더 멀리 찍히면 정말 멀어진 것으로 본다. */

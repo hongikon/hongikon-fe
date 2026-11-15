@@ -177,7 +177,7 @@ interface AskChatProps {
    */
   onShowOnMap?: (place: { target: string; title?: string; summary?: string }) => void;
   /** 답의 "여기서 가는 길"(11-09, 서버 'route' 조작). 없으면(길찾기 꺼짐·웹 미리보기) 버튼을 그리지 않는다. */
-  onRouteTo?: (place: { target: string }) => void;
+  onRouteTo?: (place: { target: string; from?: string }) => void;
   /** 설정 화면 열기(11-09 — '알림 설정 어떻게 해'). 없으면 열기 버튼 없이 안내만. */
   onOpenSettings?: (screen: "alerts" | "subscriptions") => void;
   /** 소식 탭 게시글 검색을 그 말로 열기(11-09 — '○○ 공지 찾아줘'). 없으면 버튼 없음. */
@@ -1183,17 +1183,22 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     const name = placeName(action.target);
     if (!name) return null;
     const title = action.label || name;
+    // 출발 건물이 있으면(11-15 '제4공학관에서 홍문관') 그 건물에서, 없으면 내 위치에서.
+    const from = action.from && /^building:./.test(action.from) ? action.from : undefined;
+    const fromName = from ? placeName(from) : null;
     return (
       <TouchableOpacity
         key={`route-${item.id}`}
         style={styles.mapButton}
         activeOpacity={0.7}
-        onPress={() => onRouteTo({ target: action.target })}
+        onPress={() => onRouteTo(fromName ? { target: action.target, from } : { target: action.target })}
         accessibilityRole="button"
-        accessibilityLabel={`내 위치에서 ${title} 가는 길`}
+        accessibilityLabel={fromName ? `${fromName}에서 ${title} 가는 길` : `내 위치에서 ${title} 가는 길`}
       >
         <Ionicons name="navigate-outline" size={15} color={COLORS.white} />
-        <Text style={styles.mapButtonText} numberOfLines={1}>여기서 가는 길 · {title}</Text>
+        <Text style={styles.mapButtonText} numberOfLines={1}>
+          {fromName ? `길찾기 · ${fromName} → ${title}` : `여기서 가는 길 · ${title}`}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -1556,8 +1561,11 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     </View>
   ) : null;
 
+  // Android 도 padding(11-14 핫픽스): 물어보기는 모달이 아니라 탭 화면이라, edge-to-edge(Android 15·Expo 기본)에서는 키보드가 떠도
+  // 창이 줄지 않아 입력칸이 키보드에 가렸다. KeyboardAvoidingView 는 키보드와 실제로 겹친 만큼만 띄우므로, 창이 줄어드는 기기에서도
+  // 두 번 띄우지 않는다. 다른 입력 화면(모달)은 자기 창이 줄어 그대로 둔다.
   return (
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "web" ? undefined : "padding"}>
         <View style={[styles.container, appMode && styles.containerApp, { paddingTop: insets.top + (appMode ? 0 : 8) }]}>
           <ContentColumn>
             <ScreenHeader

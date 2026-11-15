@@ -16,24 +16,23 @@
 """
 import sys
 
-from sites.curriculum import VIEW_URL, _pdf_pages, _verified
+from sites.curriculum import LABEL, page_url, _pdf_pages, _verified
 
-LABEL = '2026 교과과정책자(컴퓨터공학과 교과과정 게시판)'
 
 PAGES = {
-    'curr_conv_culture': VIEW_URL + '#p62',     # 문화예술경영전공 (융-1·2)
-    'curr_conv_archspace': VIEW_URL + '#p64',   # 건축공간예술전공 (융-3·4)
-    'curr_conv_perform': VIEW_URL + '#p66',     # 공연예술전공 (융-5·6)
-    'curr_conv_landscape': VIEW_URL + '#p68',   # 환경조경디자인전공 (융-7·8)
-    'curr_conv_iot': VIEW_URL + '#p26',         # 사물인터넷(공학)전공 (책자 24쪽, 융-9·10)
-    'curr_conv_robot': VIEW_URL + '#p27',       # 지능로봇공학전공 (책자 25쪽, 융-11·12)
-    'curr_conv_smartcity': VIEW_URL + '#p27',   # 스마트도시데이터사이언스전공 (책자 25쪽, 융-13·14)
-    'curr_conv_designeng': VIEW_URL + '#p26',   # 디자인엔지니어링전공 (책자 24쪽, 융-15·16)
-    'curr_conv_bigbiz': VIEW_URL + '#p78',      # 빅데이터비즈니스전공 (융-17·18)
-    'curr_conv_mobility': VIEW_URL + '#p80',    # 미래모빌리티전공 (융-19·20)
-    'curr_conv_datasci': VIEW_URL + '#p28',     # 데이터사이언스전공 (책자 26쪽, 융-21·22)
-    'curr_conv_medai': VIEW_URL + '#p84',       # 의료헬스케어AI전공 (융-23·24)
-    'curr_conv_healthsvc': VIEW_URL + '#p86',   # 헬스케어서비스전공 (융-25·26)
+    'curr_conv_culture': page_url(62),     # 문화예술경영전공 (융-1·2)
+    'curr_conv_archspace': page_url(64),   # 건축공간예술전공 (융-3·4)
+    'curr_conv_perform': page_url(66),     # 공연예술전공 (융-5·6)
+    'curr_conv_landscape': page_url(68),   # 환경조경디자인전공 (융-7·8)
+    'curr_conv_iot': page_url(26),         # 사물인터넷(공학)전공 (책자 24쪽, 융-9·10)
+    'curr_conv_robot': page_url(27),       # 지능로봇공학전공 (책자 25쪽, 융-11·12)
+    'curr_conv_smartcity': page_url(27),   # 스마트도시데이터사이언스전공 (책자 25쪽, 융-13·14)
+    'curr_conv_designeng': page_url(26),   # 디자인엔지니어링전공 (책자 24쪽, 융-15·16)
+    'curr_conv_bigbiz': page_url(78),      # 빅데이터비즈니스전공 (융-17·18)
+    'curr_conv_mobility': page_url(80),    # 미래모빌리티전공 (융-19·20)
+    'curr_conv_datasci': page_url(28),     # 데이터사이언스전공 (책자 26쪽, 융-21·22)
+    'curr_conv_medai': page_url(84),       # 의료헬스케어AI전공 (융-23·24)
+    'curr_conv_healthsvc': page_url(86),   # 헬스케어서비스전공 (융-25·26)
 }
 
 TITLES = {

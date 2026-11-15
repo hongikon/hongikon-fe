@@ -443,9 +443,9 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    }
   ],
   "nodes": {
-   "start": {
+   "more": {
     "kind": "answer",
-    "text": "학생예비군은 클래스넷 › 학사/학적 › 예비군전입신고 메뉴에서 신청할 수 있어요. 아래는 그 안내가 실린 복학 안내예요.",
+    "text": "학교 홈페이지 '복학' 안내예요.",
     "sections": [
      {
       "title": "복학신청 방법",
@@ -491,6 +491,10 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "phones": [
      {
+      "label": "예비군연대본부",
+      "phone": "02-320-1090"
+     },
+     {
       "label": "학사지원팀 · 휴학·복학·제적·전과·재입학",
       "phone": "02-320-1037"
      }
@@ -499,13 +503,129 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
      {
       "label": "학교 홈페이지 · 복학",
       "url": "https://www.hongik.ac.kr/kr/education/going-back-to-school.do"
-     },
-     {
-      "label": "학사지원팀 메일 · support@hongik.ac.kr",
-      "url": "mailto:support@hongik.ac.kr"
      }
     ],
-    "facilityId": "hi-mh-1f-office-01"
+    "facilityId": "hi-s-2f-office-03"
+   },
+   "start": {
+    "kind": "answer",
+    "text": "재학 중인 예비군 학생은 학교 예비군연대본부(강당 217호)에 학생예비군으로 편성돼요. 전입 신고는 클래스넷 › 학사/학적 › 예비군전입신고 메뉴에서 해요. 휴학·졸업·수료·자퇴·제적·학기 초과면 편성에서 빠지고, 연대본부가 주민등록상 주소지로 한꺼번에 전출 처리해요. 기본교육(8시간)은 4·5월 중 교내 공고와 홈페이지 공지로 알리고, 빠지면 2학기에 1차 보충교육, 또 빠지면 2차 보충교육이 잡혀요(그것도 빠지면 고발되고 교육이 다음 해로 넘어가요).",
+    "sections": [
+     {
+      "title": "부서 정보",
+      "items": [
+       "위치 : 강당 217호",
+       "전화 : 02-320-1090 ,02-320-1091",
+       "팩스 : 02-320-1092",
+       "09:00~17:30, 09:00~17:00(동절기)"
+      ]
+     },
+     {
+      "title": "주요업무",
+      "items": [
+       "예비군업무, 민방위업무, 비상계획 및 보안업무"
+      ]
+     },
+     {
+      "title": "예비군 업무",
+      "items": [
+       "가. 예비군 편성대상",
+       "1.편성 대상 : 본교에 재학 및 재직 중인 학생, 교직원 중 예비군인 자",
+       "2.예비군 신분이지만 편성 제외자 : 시간강사, 연구조교, 연구과정 학생, 졸업, 수료, 휴학, 자퇴, 제적자, 학기 초과자 등",
+       "나. 예비군 전출입 신고",
+       "2. 전출신고 : 연대본부에서 주민등록상 주소지로 일괄 전출 처리함(졸업, 수료, 휴학, 자퇴, 제적자 등)",
+       "다. 교육훈련시간(연간)",
+       "1. 교육훈련",
+       "* 직원 및 조교는 방침보류자가 아니기 때문에 지역예비군과 동일",
+       "2. 교육훈련과정",
+       "- 본 대학은 4,5월중 홍보수단(교내공고 및 홈페이지 공지)에 의해 기본교육(8H)이 실시되고",
+       "- 불참자는 2학기 복학생중 교육대상자 교육시 1차보충교육을 부과하며",
+       "- 1차 보충교육 불참자는 다시 2차 보충교육을 부과하여 또 불참시에는 자동 고발 됨과 동시에 다음해로 교육이 이월됨.",
+       "3. 교육 훈련시 준수사항 (위반시 퇴소됨)",
+       "- 훈련복장 준수(예비군복,모자,군화,군용요대,박클,고무링)",
+       "- 신분증 지참(학생증,주민등록증,운전면허증 중 택1)",
+       "- 입소시간 준수 (훈련통지서 또는 안내문에 명시)",
+       "4. 병력동원 소집통지서 수령",
+       "- 병력동원 소집통지서는 병무청에서 각 동원 지정자에게 우편으로 발송하여 통보한다.",
+       "- 병무청에서 통보되는 병력동원 소집통지서를 수령한 동원 지정자는 국가 유사시에 동원령 선포가 되면 통지서에 명시된 장소와 시간에 입소하여야 한다."
+      ]
+     },
+     {
+      "title": "민방위 업무",
+      "items": [
+       "가. 편성대상",
+       "1.교직원 중 만20세 ~ 40세의 제2국민역에 편입 된 자는 대학민방위대에 편성",
+       "2.대학생 및 주간 대학원(석사과정 4차 학기까지)학생은 편성면제 (거주지에서 민방위 훈련통지서 발급시 재학증명서 또는 학생증사본 제출)",
+       "3.야간대학원, 박사과정, 과정이수자는 타 직장 또는 지역에 편성됨.",
+       "나. 편성절차",
+       "1. 대상 : 신규 채용자 및 예비군 만료자 (교원/직원 대상)",
+       "2. 전입 : 예비군 연대본부에 전입신고",
+       "3. 전출 : 퇴직 또는 전직시 예비군연대본부에 편성제외 (거주지 또는 직장에 편성)",
+       "다. 교육훈련",
+       "1. 신규편성 : 신편교육 4시간(전반기)",
+       "2. 2-4년차 : 기본교육 또는 화생방교육 - 4시간",
+       "3. 5년차 이상 : 비상소집훈련 (년 1회 - 1시간)",
+       "라. 보충교육",
+       "1. 비상소집훈련 불참자",
+       "- 1차,2차 보충교육은 구청 주관하에 구청에서 지정한 훈련장소에서 구청단위로 실시함",
+       "2. 정당한 사유 없이 보충교육 포함 3회 불참 시 과태료 부과"
+      ]
+     },
+     {
+      "title": "담당정보",
+      "table": {
+       "head": [
+        "연락처",
+        "담당"
+       ],
+       "rows": [
+        [
+         "02-320-1093",
+         "예비군업무 총괄"
+        ],
+        [
+         "02-320-1336",
+         "언론3사, 온라인커뮤니케이션실업무 총괄 및 직장 민방위"
+        ],
+        [
+         "02-320-1542",
+         "기계설비"
+        ],
+        [
+         "02-320-3146",
+         "겸임,초빙교원 신규채용 및 인사, 정년트랙 전임교원 승진, 정년보장임용"
+        ],
+        [
+         "02-320-1090",
+         "예비군 업무"
+        ]
+       ]
+      }
+     }
+    ],
+    "phones": [
+     {
+      "label": "예비군연대본부",
+      "phone": "02-320-1090"
+     },
+     {
+      "label": "학사지원팀 · 휴학·복학·제적·전과·재입학",
+      "phone": "02-320-1037"
+     }
+    ],
+    "links": [
+     {
+      "label": "학교 홈페이지 · 예비군연대본부(서울)",
+      "url": "https://www.hongik.ac.kr/kr/introduction/subsidiary.do?mode=view&articleNo=78394&article.offset=0&articleLimit=1000&dept=AC1240"
+     }
+    ],
+    "facilityId": "hi-s-2f-office-03",
+    "followUps": [
+     {
+      "label": "복학",
+      "next": "more"
+     }
+    ]
    }
   },
   "checkedAt": "2026-10-15"
@@ -2765,9 +2885,1238 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    }
   ],
   "nodes": {
+   "more": {
+    "kind": "answer",
+    "text": "국제협력본부 홈페이지 '자매대학현황' 안내예요.",
+    "sections": [
+     {
+      "title": "대만",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "國立臺南藝術大學 Tainan National University of the Arts",
+         "http://www.tnnua.edu.tw",
+         "-"
+        ],
+        [
+         "國立臺北藝術大學 Taipei National University of the Arts",
+         "http://www.tnua.edu.tw",
+         "-"
+        ],
+        [
+         "National Yunlin University of Science and Technology",
+         "https://eng.yuntech.edu.tw",
+         "-"
+        ],
+        [
+         "Chinese Culture University",
+         "https://www.pccu.edu.tw",
+         "-"
+        ],
+        [
+         "Shih Chien University",
+         "https://www.usc.edu.tw/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "말레이시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Universiti Kuala Lumpur",
+         "http://www.unikl.edu.my",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "일본",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "武藏野美術大學 Musashino Art University",
+         "http://www.musabi.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "長岡造形大學 Nagaoka Institute of Design",
+         "http://www.nagaoka-id.ac.jp",
+         "-"
+        ],
+        [
+         "Osaka University of Arts",
+         "http://www.osaka-geidai.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "立命館大學 Ritsumeikan University",
+         "http://www.ritsumei.ac.jp",
+         "-"
+        ],
+        [
+         "多摩美術大學 Tama Arts University",
+         "http://www.tamabi.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "京都精華大學 Kyoto Seika University",
+         "http://www.kyoto-seika.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "京都造形藝術大學 Kyoto University of Art and Design",
+         "http://www.kyoto-art.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "創價大學 Soka University",
+         "http://www.soka.ac.jp",
+         "일본어 가능자"
+        ],
+        [
+         "筑波大學 The University of Tsukuba",
+         "http://www.tsukuba.ac.jp",
+         "일어/영어"
+        ],
+        [
+         "東北藝術工科大學 Tohoku University of Art & Design",
+         "http://www.tuad.ac.jp",
+         "-"
+        ],
+        [
+         "東京理科大學 Tokyo University of Science",
+         "http://www.tus.ac.jp",
+         "-"
+        ],
+        [
+         "Kanagawa University",
+         "www.kanagawa-u.ac.jp",
+         "-"
+        ],
+        [
+         "Nagasaki University of Foreign Studies",
+         "http://www.nagasaki-gaigo.ac.jp",
+         "-"
+        ],
+        [
+         "Nagoya University of the Arts",
+         "https://www.nua.ac.jp/en/",
+         "-"
+        ],
+        [
+         "Chiba University",
+         "https://www.chiba-u.ac.jp/e/",
+         "-"
+        ],
+        [
+         "Future University Hakodate",
+         "https://www.fun.ac.jp/en",
+         "-"
+        ],
+        [
+         "Seikei University",
+         "https://www.seikei.ac.jp/gakuen",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "중국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "渤海大學 Bohai University",
+         "http://www.bhu.edu.cn",
+         "-"
+        ],
+        [
+         "中央美術學院 Central Academy of Fine Arts",
+         "http://www.cafa.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "魯迅美術學院 Luxun Academy of Fine Arts",
+         "http://www.lumei.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "東北師範大學 Northeast Normal University",
+         "http://www.nenu.edu.cn",
+         "-"
+        ],
+        [
+         "對外經濟貿易大學 University of International Business & Economics",
+         "http:///www.uibe.edu.cn",
+         "-"
+        ],
+        [
+         "延邊大學 Yanbian University",
+         "http://www.ybu.edu.cn",
+         "-"
+        ],
+        [
+         "湖北美術學院 Hubei Institute of Fine Arts",
+         "http://www.hifa.edu.cn",
+         "중국어 가능자"
+        ],
+        [
+         "四川大學 Sichuan University (Law School)",
+         "http://www.scu.edu.cn",
+         "-"
+        ],
+        [
+         "西安交通大學 Xi'an Jiaotong University",
+         "http://www.xjtu.edu.cn",
+         "-"
+        ],
+        [
+         "哈爾濱工程大學 Harbin Engineering University",
+         "https://english.hrbeu.edu.cn/",
+         "-"
+        ],
+        [
+         "中國人民大學 Renmin University of China- IP Academy",
+         "http://www.ruc.edu.cn",
+         "-"
+        ],
+        [
+         "中國美術學院 China Academy of Art",
+         "https://en.caa.edu.cn/",
+         "-"
+        ],
+        [
+         "南京藝術學院 Nanjing University of the Arts",
+         "https://www.nua.edu.cn/",
+         "-"
+        ],
+        [
+         "广西师范大学 Guangxi Normal University-통번역전공",
+         "http://www.gxnu.edu.cn",
+         "-"
+        ],
+        [
+         "鄭州大學 Zhengzhou University-박사학위생 공동양성",
+         "http://www.zzu.edu.cn/",
+         "-"
+        ],
+        [
+         "清华大学 Tsinghua University, Academy of Arts & Design",
+         "https://www.enad.tsinghua.edu.cn/",
+         "-"
+        ],
+        [
+         "Minzu University of China",
+         "https://www.muc.edu.cn",
+         "-"
+        ],
+        [
+         "東北大學 Northeastern University",
+         "https://www.neu.edu.cn",
+         "-"
+        ],
+        [
+         "Qingdao University of Science and Technology",
+         "https://en.qust.edu.cn/",
+         "-"
+        ],
+        [
+         "Beijing University of Technology",
+         "https://english.bjut.edu.cn",
+         "-"
+        ],
+        [
+         "北京师范大学 Beijing Normal University",
+         "https://www.bnu.edu.cn/",
+         "-"
+        ],
+        [
+         "Wuhan University of Technology",
+         "https://english.whut.edu.cn/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이스라엘",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Bezalel Academy of Arts andDesign, Jerusalem",
+         "http://www.bezalel.ac.il",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "카자흐스탄",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Al-Farabi Kazakh National University",
+         "http://www.kaznu.kz",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "태국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "King Mongkut's University of Technology North Bangkok",
+         "http://www.kmutnb.ac.th/en/",
+         "-"
+        ],
+        [
+         "Silpakorn University",
+         "http://www.su.ac.th",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "몽골",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Mongolia International University",
+         "http://www.miu.edu.mn",
+         "-"
+        ],
+        [
+         "International University of Ulaanbaatar",
+         "https://iuu.edu.mn/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "베트남",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "FPT University",
+         "http://international.fpt.edu.vn",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "싱가포르",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Lasalle College of the Arts",
+         "http://www.lasalle.edu.sg",
+         "-"
+        ],
+        [
+         "Nanyang Technological University",
+         "https://www.ntu.edu.sg/hass/admissions/programmes",
+         "College of Humanities, Arts and Social Sciences"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이란",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Art University of Isfahan",
+         "http://aui.ac.ir",
+         "-"
+        ],
+        [
+         "University of Art, Tehran",
+         "http://www.art.ac.ir",
+         "-"
+        ],
+        [
+         "University of Tehran, I.R.IRAN",
+         "https://ut.ac.ir/fa",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "요르단",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Jordan University of Science and Technology",
+         "http://www.just.edu.jo",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "튀르키예",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Ondokuz Mayis University",
+         "http://www.omu.edu.tr",
+         "-"
+        ],
+        [
+         "KOC University",
+         "https://www.ku.edu.tr",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "인도네시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Faculty of Industrial Technology,Institut Teknologi Bandung",
+         "http://www.itb.ac.id",
+         "-"
+        ],
+        [
+         "BINUS University",
+         "https://binus.ac.id",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "우즈베키스탄",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Samarkand State Architectureand Civil Engineering Institute",
+         "http://www.samgasi.uz",
+         "-"
+        ],
+        [
+         "Tashkent University of Architecture and Civil Engineering",
+         "http://www.taqu.uz",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "인도",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Ajeenkya",
+         "https://adypu.edu.in",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "홍콩",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Hong Kong Design Institute(HKDI)",
+         "https://www.hkdi.edu.hk/en",
+         "-"
+        ],
+        [
+         "Hong Kong Polytechnic University",
+         "https://www.polyu.edu.hk/tc",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "네덜란드",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Design Academy Eindhoven",
+         "http://www.designacademy.nl",
+         "-"
+        ],
+        [
+         "Delft University of Technology",
+         "https://www.tudelft.nl",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "덴마크",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Aalborg University",
+         "http://www.aau.dk",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "독일",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Akademie Mode & Design",
+         "http://www.amdnet.de",
+         "-"
+        ],
+        [
+         "Staatlichen Akademie der Bildenden Künste Stuttgart (Stuttgart State Academy of Art and Design)",
+         "http://www.abk-stuttgart.de",
+         "-"
+        ],
+        [
+         "Hochschule Pforzheim University",
+         "http://www.hs-pforzheim.de",
+         "-"
+        ],
+        [
+         "RWTH Aachen University",
+         "http://www.rwth-aachen.de",
+         "-"
+        ],
+        [
+         "Hochschule für Gestaltung Schwäbisch Gmünd (University of Applied Sciences Schwabisch Gmünd)",
+         "http://www.hfg-gmuend.de",
+         "-"
+        ],
+        [
+         "Universität Gesamthochschule Essen",
+         "https://www.uni-due.de",
+         "-"
+        ],
+        [
+         "Merz AkademieHochschule für Gestaltung,Kunst und Medien, StuttgartMerz Akademie, University of Applied Art, Design and Media, Stuttgart",
+         "http://www.merz-akademie.de",
+         "-"
+        ],
+        [
+         "University of Wuppertal",
+         "https://www.uni-wuppertal.de/en",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "러시아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Russian State University of Design and Applied Arts (Stroganov University)",
+         "http://www.mghpu.ru",
+         "-"
+        ],
+        [
+         "Ivanovo State Power Engineering University",
+         "http://www.ispu.ru",
+         "-"
+        ],
+        [
+         "Moscow State University of Design & Technology (The Kosygin State University of Russia)",
+         "https://kosygin-rgu.ru",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스웨덴",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Umeå Institute of Design",
+         "http://www.umu.se/en/umea-institute-of-design",
+         "-"
+        ],
+        [
+         "Högskolan för design och konsthantverk - Göteborgs universitetAcademy of Design and Crafts,University of Gothenburg",
+         "http://www.hdk.gu.se",
+         "-"
+        ],
+        [
+         "Royal Institute of Art",
+         "https://kkh.se/en/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스위스",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Lucerne University of Applied Sciences and Arts",
+         "http://www.hslu.ch/design-kunst",
+         "-"
+        ],
+        [
+         "Zürcher Hochschule der Künste (Zurich University of the Arts)",
+         "http://www.zhdk.ch/",
+         "-"
+        ],
+        [
+         "Ecole Cantonale d’Art de Lausanne (ECAL)",
+         "https://ecal.ch/en/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "스페인",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Catedra Gaudi University Polytechnic Catalana",
+         "https://catedragaudi.upc.edu",
+         "-"
+        ],
+        [
+         "Design College of Barcelona",
+         "https://www.baued.es/en",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "영국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Architectural Association School of Architecture",
+         "http://www.aaschool.ac.uk",
+         "-"
+        ],
+        [
+         "Art University Bournemouth",
+         "http://www.aub.ac.uk",
+         "-"
+        ],
+        [
+         "Kingston University",
+         "http://www.kingston.ac.uk",
+         "-"
+        ],
+        [
+         "Northumbria University Newcastle",
+         "http://www.northumbria.ac.uk",
+         "-"
+        ],
+        [
+         "Royal College of Art",
+         "http://www.rca.ac.uk",
+         "-"
+        ],
+        [
+         "University of Dundee",
+         "http://www.dundee.ac.uk",
+         "-"
+        ],
+        [
+         "University of the Arts London",
+         "http://www.arts.ac.uk",
+         "-"
+        ],
+        [
+         "Loughborough University",
+         "http://www.lboro.ac.uk",
+         "-"
+        ],
+        [
+         "THE University of SHEFFIELD",
+         "https://www.sheffield.ac.uk",
+         "-"
+        ],
+        [
+         "University of Central Lancashire (University of Lancashire)",
+         "https://www.uclan.ac.uk",
+         "-"
+        ],
+        [
+         "University of Liverpool",
+         "https://www.liverpool.ac.uk",
+         "-"
+        ],
+        [
+         "University of Wolverhampton",
+         "https://www.wlv.ac.uk",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "이탈리아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Domus Academy",
+         "http://www.domusacademy.com",
+         "-"
+        ],
+        [
+         "Nuova Accademia diBelle Arti Milano",
+         "http://www.naba.it",
+         "-"
+        ],
+        [
+         "Istituto Europeo di Design spa: Design and Fashion school",
+         "http://www.ied.it",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "프랑스",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "L'école de Design Nantes Atlantique",
+         "http://www.lecolededesign.com",
+         "영어"
+        ],
+        [
+         "École de Management Bretagne Atlantique (EMBA-ISUGA)",
+         "http://www.isuga.fr/",
+         "-"
+        ],
+        [
+         "École Nationale Supérieure de Création Industrielle/Les Ateliers",
+         "http://www.ensci.com",
+         "-"
+        ],
+        [
+         "École Nationale Supérieure des Beaux-Arts (Beaux-Arts de Paris)",
+         "http://www.ensba.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Spéciale d’Architecture",
+         "http://www.esa-paris.fr",
+         "불어/영어"
+        ],
+        [
+         "Paris College of Art",
+         "http://www.paris.edu/",
+         "불어/영어"
+        ],
+        [
+         "Université de La Rochelle",
+         "http://www.univ-larochelle.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Supérieure des beaux-arts de Nantes Métropole (Beaux-Arts Nantes Saint-Nazaire)",
+         "http://beauxartsnantes.fr",
+         "-"
+        ],
+        [
+         "National Institute of Oriental Languages and Civilizations (INALCO)",
+         "http://www.inalco.fr",
+         "-"
+        ],
+        [
+         "Université Paris Cité (구. Université Paris Diderot)",
+         "http://u-paris.fr",
+         "-"
+        ],
+        [
+         "Université Bordeaux Montaigne",
+         "https://www.u-bordeaux-montaigne.fr",
+         "불어 가능자"
+        ],
+        [
+         "École Supérieure d’arts et Médias de Caen/Cherbourg",
+         "https://www.esam-c2.fr/",
+         "불어 가능자"
+        ],
+        [
+         "École Communication Visuelle",
+         "https://www.ecv.fr",
+         "불어 가능자"
+        ],
+        [
+         "EHESS(L'Ecole des hautes etudes en sciences sociales)",
+         "https://www.ehess.fr/fr",
+         "-"
+        ],
+        [
+         "Aix Marseille Universite",
+         "https://www.univ-amu.fr/",
+         "-"
+        ],
+        [
+         "Universite Jean-Moulin Lyon 3",
+         "https://www.univ-lyon3.fr/",
+         "-"
+        ],
+        [
+         "École Supérieure des Arts Appliques Duperré",
+         "https://duperre.org/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "핀란드",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Aalto University School of Art & Design (Taideteollinen Korkeakoulu)",
+         "https://www.aalto.fi/",
+         "-"
+        ],
+        [
+         "Haaga-Helia University of Applied Sciences",
+         "http://www.haaga-helia.fi",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "오스트리아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Innsbruck",
+         "http://www.uibk.ac.at",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "크로아티아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Zagreb",
+         "http://www.unizg.hr/homepage",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "슬로베니아",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of Ljubljana",
+         "https://www.uni-lj.si/university/",
+         "IDAS"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "미국",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "California Institute of the Arts",
+         "https://calarts.edu/",
+         "-"
+        ],
+        [
+         "California State University, Long Beach",
+         "http://www.csulb.edu",
+         "-"
+        ],
+        [
+         "California State University, Los Angeles",
+         "http://www.calstatela.edu",
+         "-"
+        ],
+        [
+         "Central Connecticut State University, New Britain",
+         "http://www.ccsu.edu",
+         "-"
+        ],
+        [
+         "Illinois Institute of Technology",
+         "http://www.iit.edu",
+         "방문/복수학위"
+        ],
+        [
+         "Indiana University, Maurer School of Law",
+         "http://www.law.indiana.edu",
+         "석사 복수학위"
+        ],
+        [
+         "Maryland Institute, College of Art",
+         "http://www.mica.edu",
+         "-"
+        ],
+        [
+         "Rhode Island School of Design",
+         "http://www.risd.edu",
+         "-"
+        ],
+        [
+         "Rutgers,the State University of New Jersey,New Brunswick",
+         "http://www.rutgers.edu/",
+         "-"
+        ],
+        [
+         "State University of New York at New Paltz",
+         "http://www.newpaltz.edu",
+         "-"
+        ],
+        [
+         "Suffolk University (Suffolk University of Law)",
+         "http://www.suffolk.edu",
+         "-"
+        ],
+        [
+         "Univeristy of Kansas",
+         "http://www.ku.edu",
+         "-"
+        ],
+        [
+         "University of North Carolina at Charlotte",
+         "http://www.uncc.edu",
+         "-"
+        ],
+        [
+         "Utah State University",
+         "http://www.usu.edu",
+         "-"
+        ],
+        [
+         "Washington State University",
+         "http://www.wsu.edu",
+         "-"
+        ],
+        [
+         "Emerson College",
+         "http://www.emerson.edu",
+         "-"
+        ],
+        [
+         "University of Michigan (Stamp School of Art & Design)",
+         "https://stamps.umich.edu/",
+         "-"
+        ],
+        [
+         "The New School (Parsons School of Design)",
+         "https://www.newschool.edu/parsons/",
+         "-"
+        ],
+        [
+         "Portland State University",
+         "https://www.pdx.edu/",
+         "복수학위"
+        ],
+        [
+         "University of Nevada, Reno",
+         "https://www.unr.edu/",
+         "-"
+        ],
+        [
+         "San Diego State University",
+         "https://www.sdsu.edu/",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "캐나다",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "University of British Columbia, Continuing Studies",
+         "https://www.ubc.ca/",
+         "-"
+        ],
+        [
+         "Emily Carr University of Art + Design",
+         "http://www.ecuad.ca",
+         "-"
+        ],
+        [
+         "OCAD University",
+         "https://www.ocadu.ca",
+         "-"
+        ],
+        [
+         "Trent University",
+         "https://www.trentu.ca",
+         "-"
+        ],
+        [
+         "Ontario Tech University",
+         "https://ontariotechu.ca",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "브라질",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Universidade do Vale do Rio dos Sinos",
+         "http://www.unisinos.br",
+         "-"
+        ]
+       ]
+      }
+     },
+     {
+      "title": "호주",
+      "table": {
+       "head": [
+        "대학명",
+        "홈페이지",
+        "비고"
+       ],
+       "rows": [
+        [
+         "Australian National University,Canberra School of Art",
+         "http://www.anu.edu.au",
+         "-"
+        ],
+        [
+         "Curtin University of Technology,Perth",
+         "http://www.curtin.edu.au/",
+         "-"
+        ],
+        [
+         "Swinburne University of Techology",
+         "http://www.swin.edu.au",
+         "-"
+        ],
+        [
+         "University of Melbourne",
+         "http://unimelb.edu.au",
+         "-"
+        ],
+        [
+         "Griffith University",
+         "http://griffith.edu.au",
+         "outbound 방문 only"
+        ]
+       ]
+      }
+     }
+    ],
+    "phones": [
+     {
+      "label": "국제교류실 · 교환학생(Outbound)",
+      "phone": "02-320-1042"
+     }
+    ],
+    "links": [
+     {
+      "label": "국제협력본부 홈페이지 · 자매대학현황",
+      "url": "https://oia.hongik.ac.kr/oia/content/3"
+     }
+    ],
+    "facilityId": "hi-q-1f-office-02"
+   },
    "start": {
     "kind": "answer",
-    "text": "본교와 협약한 국외 자매대학 목록이에요. 대학마다 학술교류(MoU)·교환학생(SEA)·방문학생(VSA)·복수학위(DDA) 중 어떤 교류를 하는지 적혀 있어요. 학기마다 실제로 파견할 수 있는 대학은 국제협력본부 홈페이지에서 따로 알려요.",
+    "text": "본교와 협약한 국외 자매대학 목록이에요. 대학마다 학술교류(MoU)·교환학생(SEA)·방문학생(VSA)·복수학위(DDA) 중 어떤 교류를 하는지 적혀 있어요. 국제협력본부 자매대학현황에는 35개 나라·지역 158곳이 나라별로 대학명·홈페이지·비고(언어 조건 등)와 함께 올라 있어요(아래 이어 보기). 학기마다 실제로 파견할 수 있는 대학은 국제협력본부 홈페이지에서 따로 알려요.",
     "sections": [
      {
       "title": "국제협력본부 조직 소개",
@@ -3156,7 +4505,13 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
       "url": "mailto:int_rel@hongik.ac.kr"
      }
     ],
-    "facilityId": "hi-q-1f-office-02"
+    "facilityId": "hi-q-1f-office-02",
+    "followUps": [
+     {
+      "label": "자매대학현황",
+      "next": "more"
+     }
+    ]
    }
   },
   "checkedAt": "2026-10-15"
@@ -3381,6 +4736,17 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     "text": "학기재수강은 성적이 안 좋은 학기를 통째로 지우고 같은 학년·학기를 다시 다니는 제도예요. 지우려는 학기부터 직전 학기까지 모두 신청해야 하고, 1학기 신청기간(1~2월)엔 1학기부터, 2학기 신청기간(7~8월)엔 2학기부터 지울 수 있어요.",
     "sections": [
      {
+      "title": "어느 학기부터 지울지 · 학교 학기재수강 신청 안내(2026-2) Q&A에서 정리",
+      "items": [
+       "학기를 맞춰 신청해야 해요. 1학기 신청기간에는 1학기부터, 2학기 신청기간에는 2학기부터 지울 수 있어요.",
+       "예: 3-2학기까지 이수했는데 2학년부터 다시 하려면 — 2-1학기부터면 1학기에 신청해요(필요하면 한 학기 휴학 → 1학기 복학 신청 → 학기재수강 신청).",
+       "같은 경우 2-2학기부터면 2학기 신청기간에 바로 신청하면 돼요.",
+       "삭제된 학기를 빼고 수업연한(4년제 8학기, 5년제 10학기)을 이수해야 해서 등록금을 더 낼 수 있어요. 삭제된 학기는 재학연한에는 들어가요.",
+       "학사학위취득유예자는 학기재수강을 신청할 수 없어요."
+      ],
+      "full": true
+     },
+     {
       "title": "제도안내",
       "items": [
        "학업이 미진했던 학기로 인해 상위학년(학기) 수업을 따라가는데 어려움이 있는 학생들에게 재수강의 기회를 제공하는 제도임. 해당 제도를 통해 학생은 동일 학년·학기로 돌아가 이전에 취득한 성적을 모두 포기하고 다시 수강할 수 있음.",
@@ -3432,6 +4798,10 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
      {
       "label": "학교 홈페이지 · 학기재수강",
       "url": "https://www.hongik.ac.kr/kr/education/semester-retake.do"
+     },
+     {
+      "label": "학기재수강 신청 안내(2026-2) · 학교 공지",
+      "url": "https://www.hongik.ac.kr/kr/education/notice-undergrad.do?mode=view&articleNo=154147"
      },
      {
       "label": "학사지원팀 메일 · support@hongik.ac.kr",
@@ -3664,6 +5034,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     "text": "C+ 이하 과목은 같은 과목을 다시 수강신청하면 자동으로 재수강이 돼요(계절학기는 성적과 상관없이 가능). 재수강은 과목당 한 번만 되지만, 재수강하고도 F면 횟수 제한 없이 다시 들을 수 있어요. 학기당 1과목까지(F 과목은 개수에서 빼요)이고, 최고 성적은 A0예요. 새 성적이 더 나빠도 새 성적이 남아요.",
     "sections": [
      {
+      "title": "졸업유예생은 · 학교 학사학위취득유예 신청 안내에서 정리",
+      "items": [
+       "학사학위취득유예가 확정된 학생은 재수강과 학점포기를 할 수 없어요. 새 과목을 더 듣고 싶으면 정규·계절학기 수강신청은 종전대로 할 수 있어요.",
+       "학기재수강도 학사학위취득유예자는 신청할 수 없어요."
+      ],
+      "full": true
+     },
+     {
       "title": "제도안내",
       "items": [
        "이전에 수강한 과목의 성적이 좋지 않아(F인 과목 포함) 동일교과목을 다시 수강함으로서 이전 과목을 삭제할 수 있는 제도로 과목당 1회만 허용함. 다만, 재수강에도 불구하고 취득 성적이 F인 경우 재수강 횟수 제한을 받지 아니함.",
@@ -3735,6 +5113,10 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
      {
       "label": "학교 홈페이지 · 재수강",
       "url": "https://www.hongik.ac.kr/kr/education/course-retake.do"
+     },
+     {
+      "label": "학사학위취득유예 신청 일정 안내 · 학교 공지",
+      "url": "https://www.hongik.ac.kr/kr/newscenter/notice.do?mode=view&articleNo=160321"
      },
      {
       "label": "학사지원팀 메일 · support@hongik.ac.kr",
@@ -7339,6 +8721,16 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     "text": "졸업요건을 다 채우고도 졸업을 미루고 싶으면 학사학위취득유예를 신청해요. 1학기는 5월 초~7월 말, 2학기는 11월 초~1월 말에 클래스넷에서 본인이 신청하고, 유예는 한 학기씩이라 더 미루려면 매 학기 다시 신청해요.",
     "sections": [
      {
+      "title": "유예가 확정되면 · 학교 학사학위취득유예 신청 안내(2027년 2월 졸업대상자)에서 정리",
+      "items": [
+       "유예 확정은 다음 학기부터 적용되고, 졸업사정 결과 졸업요건을 모두 채운 학생만 확정돼요.",
+       "휴학, 타 대학 교류, 복수·부·융합·미세전공 신청, 학과진입·주전공 신청·변경, 재수강, 학점포기를 할 수 없어요.",
+       "새 과목을 더 듣고 싶으면 정규·계절학기 수강신청은 종전대로 할 수 있고, 들은 학점만큼 수업료를 내요(등록금 납부 대상은 아니에요).",
+       "이런 것들을 하려고 유예를 철회할 수는 없어요. 졸업을 더 미루려면 매 학기 다시 유예를 신청해요."
+      ],
+      "full": true
+     },
+     {
       "title": "학사학위취득유예제",
       "items": [
        "정규 8학기 이상 등록(건축학전공 및 건축디자인전공은 정규 10학기 이상 등록) 하고, 학칙이 정하는 졸업에 필요한 요건을 모두 충족한 자는 학사학위취득 유예를 신청할 수 있음"
@@ -7465,6 +8857,10 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
      {
       "label": "학교 홈페이지 · 학사학위취득유예제",
       "url": "https://www.hongik.ac.kr/kr/education/deferred-system.do"
+     },
+     {
+      "label": "학사학위취득유예 신청 일정 안내 · 학교 공지",
+      "url": "https://www.hongik.ac.kr/kr/newscenter/notice.do?mode=view&articleNo=160321"
      },
      {
       "label": "학사지원팀 메일 · support@hongik.ac.kr",
@@ -15891,9 +17287,92 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    }
   ],
   "nodes": {
+   "more": {
+    "kind": "answer",
+    "text": "학교 홈페이지 '2025 창업장학금 신청(서울/세종)' 안내예요.",
+    "sections": [
+     {
+      "title": "안내",
+      "items": [
+       "산학협력단 창업교육센터에서는 창업 관련 활동을 한 학생들을 대상으로 평가를 거쳐 아래와 같이 2025학년도 학생창업장학금을 지원하고자 하오니 신청해 주시기 바랍니다.",
+       "1. 학생창업장학금 수혜 자격조건",
+       "가. 2025학년도 2학기 기준 재학 중인 학부생",
+       "나. 2025학년도 2학기 기준 직전학기에 15학점 이상을 취득하고, 성적경고를 받지 않은 학생",
+       "다. 2025학년도 2학기에 학기초과자인 경우, 등록금 전액납부 대상자만 가능 (10학점 이상 수강신청)",
+       "라. 2025.3.1.~접수마감일 동안 아래의 창업 관련 활동을 한 학생",
+       "- 재학 중 창업한 자",
+       "- 지식재산권을 활용하여 창업한 자",
+       "- 창업지원 사업에 참여한 자",
+       "- 창업동아리에 소속되어 활동한 자",
+       "- 창업경진대회에 참여 또는 수상한 자",
+       "- 기타 대내외 창업관련 행사에 참여한 자",
+       "※ 자세한 사항은 첨부된 체크리스트를 참고하시기 바랍니다.",
+       "마. 본 장학금은 타장학금과 중복이 가능하며 수업료를 초과하여 지급 가능함",
+       "2. 접수기간 : 2025년 12월 29일(월) ~ 2026년 1월 09일(금) 오후 15시까지",
+       "3. 접수방법",
+       "가. 이메일 접수 (주소는 공지 본문 참고)",
+       "나. 이메일 제목 : [학생창업장학금신청] 학번+이름 (예) [학생창업장학금신청] B****** 아무개",
+       "다. 파일형태 : 체크리스트 및 관련 증빙이 일괄 저장된 하나의 PDF 파일",
+       "증빙서류의 경우 번호를 달 것",
+       "라. 파일명 : 학번+이름",
+       "마. 비고: 상기의 안내드린 형식을 갖추어 제출",
+       "4. 문의처 (산학협력단 창업교육센터)",
+       "가. 산학협력단 창업교육센터 Tel.02-320-3117",
+       "5. 제출서류 (*순서를 맞춰주십시오)",
+       "가. 재학증명서(필수)",
+       "나. 성적증명서(필수)",
+       "다. 학생창업장학금 체크리스트(필수)",
+       "라. 본인명의의 통장사본(필수)",
+       "마. 사업자등록증(해당되는 경우)",
+       "바. 지식재산권 등록증 출원 번호 통지서, 특허등록증(해당되는 경우)",
+       "사. 그 외 증빙서류 (동아리 활동 증명서, 수료증, 참가확인서, 입상 확인서 등)"
+      ]
+     }
+    ],
+    "links": [
+     {
+      "label": "학교 홈페이지 · 2025 창업장학금 신청(서울/세종)",
+      "url": "https://www.hongik.ac.kr/kr/newscenter/notice.do?mode=view&articleNo=146777"
+     }
+    ],
+    "facilityId": "hi-mh-8f-office-04"
+   },
+   "more1": {
+    "kind": "answer",
+    "text": "학교 홈페이지 '[참가신청] 2026 홍익대학교 창업 동아리 모집(서울)' 안내예요.",
+    "sections": [
+     {
+      "title": "안내",
+      "items": [
+       "홍익대학교 산학협력단 창업교육센터에서는 캠퍼스 내 창업 분위기 확산을 위하여 창업 동아리를 지원합니다.",
+       "관심이 있으신 학생들은 많은 지원 부탁드립니다.",
+       "1. 신청방법: (이메일 접수) (주소는 공지 본문 참고)",
+       "2. 신청서류: 창업동아리 지원신청서 및 사업계획서 (첨부파일 참고)",
+       "재학증명서 (팀원 전원)",
+       "3. 신청기간: 2026. 03. 14.(토) ~ 2026. 03. 22.(일)",
+       "4. 심사기간: 2026. 03. 23.(월) ~ 2026. 03. 25.(수)",
+       "5. 결과발표: 2026. 03. 27.(금) (이메일 개별 통지)",
+       "6. 참가자격: 창업 아이디어 또는 아이템이 있는 서울캠퍼스 학부 재학생(휴학생 제외)",
+       "창업동아리 지도교수의 지도 필수",
+       "회원은 3인 이상으로, 전원이 4학년(건축대학은 5학년)인 경우 불가함",
+       "7. 신청분야: 제한없음",
+       "8. 혜택: 창업동아리 운영비 차등 지원(100~150만원)",
+       "창업장학생 선발시 가산점 부여",
+       "9.문의: 02-320-2348"
+      ]
+     }
+    ],
+    "links": [
+     {
+      "label": "학교 홈페이지 · [참가신청] 2026 홍익대학교 창업 동아리 모집(서울)",
+      "url": "https://www.hongik.ac.kr/kr/newscenter/notice.do?mode=view&articleNo=149675"
+     }
+    ],
+    "facilityId": "hi-mh-8f-office-04"
+   },
    "start": {
     "kind": "answer",
-    "text": "창업교육센터는 창업 교과목, 홍익인 창업페스티벌(창업경진대회), 창업동아리·창업캠프, 창업장학금, 창업특강을 운영해요.",
+    "text": "창업교육센터는 창업 교과목, 홍익인 창업페스티벌(창업경진대회), 창업동아리·창업캠프, 창업장학금, 창업특강을 운영해요. 학생창업장학금은 연 1회, 창업 관련 활동(재학 중 창업, 창업지원 사업 참여, 창업동아리 활동, 창업경진대회 참여·수상 등)을 한 학부생을 평가해 뽑고, 다른 장학금과 함께 받을 수 있어요(2025학년도 접수: 2025년 12월 29일~2026년 1월 9일, 이메일). 창업동아리로 뽑히면 운영비(100~150만원)를 받고 창업장학생 선발 때 가산점을 받아요. 자세한 자격·서류는 아래 공지에 있어요.",
     "sections": [
      {
       "title": "창업교육센터 개요",
@@ -15962,7 +17441,17 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
       "url": "mailto:hongik.startup@hongik.ac.kr"
      }
     ],
-    "facilityId": "hi-mh-8f-office-04"
+    "facilityId": "hi-mh-8f-office-04",
+    "followUps": [
+     {
+      "label": "2025 창업장학금 신청(서울/세종)",
+      "next": "more"
+     },
+     {
+      "label": "[참가신청] 2026 홍익대학교 창업 동아리 모집(서울)",
+      "next": "more1"
+     }
+    ]
    }
   },
   "checkedAt": "2026-10-15"
@@ -29724,7 +31213,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -29781,15 +31270,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -29868,8 +31357,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
@@ -29932,8 +31421,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교과과정 개정에 따른 적용원칙(필수과목 폐지·변경, 복수전공 동일과목)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p3"
+      "label": "2026 교과과정책자(학교 전자책) · 교과과정 개정에 따른 적용원칙(필수과목 폐지·변경, 복수전공 동일과목)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/3"
      }
     ],
     "facilityId": "hi-mh-1f-office-01",
@@ -31399,7 +32888,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '신소재공학전공 교과과정(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '신소재공학전공 교과과정(2026)' 안내예요.",
     "sections": [
      {
       "title": "1·2학년",
@@ -31429,14 +32918,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 신소재공학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p94"
+      "label": "2026 교과과정책자(학교 전자책) · 신소재공학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/94"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '화학공학전공 교과과정(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '화학공학전공 교과과정(2026)' 안내예요.",
     "sections": [
      {
       "title": "1·2학년",
@@ -31465,8 +32954,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 화학공학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p96"
+      "label": "2026 교과과정책자(학교 전자책) · 화학공학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/96"
      }
     ]
    },
@@ -31829,7 +33318,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "건축학전공(5년제) 2022학년도 입학생부터",
@@ -31894,8 +33383,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p22"
+      "label": "2026 교과과정책자(학교 전자책) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/22"
      }
     ]
    },
@@ -31935,8 +33424,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건축학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p106"
+      "label": "2026 교과과정책자(학교 전자책) · 건축학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/106"
      }
     ],
     "followUps": [
@@ -32181,7 +33670,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "건축학전공(5년제) 2022학년도 입학생부터",
@@ -32246,8 +33735,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p22"
+      "label": "2026 교과과정책자(학교 전자책) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/22"
      }
     ]
    },
@@ -32279,8 +33768,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 실내건축학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p109"
+      "label": "2026 교과과정책자(학교 전자책) · 실내건축학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/109"
      }
     ],
     "followUps": [
@@ -32531,7 +34020,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -32560,8 +34049,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -32591,8 +34080,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 도시공학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p111"
+      "label": "2026 교과과정책자(학교 전자책) · 도시공학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/111"
      }
     ],
     "followUps": [
@@ -32878,7 +34367,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '경영대학 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '경영대학 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -32929,8 +34418,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경영대학 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p21"
+      "label": "2026 교과과정책자(학교 전자책) · 경영대학 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/21"
      }
     ]
    },
@@ -32960,8 +34449,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경영학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p115"
+      "label": "2026 교과과정책자(학교 전자책) · 경영학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/115"
      }
     ],
     "followUps": [
@@ -33216,7 +34705,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -33267,8 +34756,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -33296,8 +34785,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경제학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p138"
+      "label": "2026 교과과정책자(학교 전자책) · 경제학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/138"
      }
     ],
     "followUps": [
@@ -33572,7 +35061,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -33623,8 +35112,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -33652,8 +35141,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 법학부 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p134"
+      "label": "2026 교과과정책자(학교 전자책) · 법학부 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/134"
      }
     ],
     "followUps": [
@@ -34135,8 +35624,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문화예술경영 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p62"
+      "label": "2026 교과과정책자(학교 전자책) · 문화예술경영 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/62"
      }
     ],
     "followUps": [
@@ -34576,8 +36065,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건축공간예술 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p64"
+      "label": "2026 교과과정책자(학교 전자책) · 건축공간예술 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/64"
      }
     ],
     "followUps": [
@@ -35067,8 +36556,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공연예술 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p66"
+      "label": "2026 교과과정책자(학교 전자책) · 공연예술 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/66"
      }
     ],
     "followUps": [
@@ -35510,8 +36999,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 환경조경디자인 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p68"
+      "label": "2026 교과과정책자(학교 전자책) · 환경조경디자인 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/68"
      }
     ],
     "followUps": [
@@ -35952,8 +37441,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 사물인터넷공학 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p26"
+      "label": "2026 교과과정책자(학교 전자책) · 사물인터넷공학 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/26"
      }
     ],
     "followUps": [
@@ -36395,8 +37884,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 지능로봇공학 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p27"
+      "label": "2026 교과과정책자(학교 전자책) · 지능로봇공학 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/27"
      }
     ],
     "followUps": [
@@ -36843,8 +38332,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 스마트도시데이터사이언스 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p27"
+      "label": "2026 교과과정책자(학교 전자책) · 스마트도시데이터사이언스 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/27"
      }
     ],
     "followUps": [
@@ -37289,8 +38778,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 디자인엔지니어링 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p26"
+      "label": "2026 교과과정책자(학교 전자책) · 디자인엔지니어링 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/26"
      }
     ],
     "followUps": [
@@ -37732,8 +39221,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 빅데이터비즈니스 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p78"
+      "label": "2026 교과과정책자(학교 전자책) · 빅데이터비즈니스 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/78"
      }
     ],
     "followUps": [
@@ -38304,8 +39793,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미래모빌리티 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p80"
+      "label": "2026 교과과정책자(학교 전자책) · 미래모빌리티 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/80"
      }
     ],
     "followUps": [
@@ -38762,8 +40251,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 데이터사이언스 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p28"
+      "label": "2026 교과과정책자(학교 전자책) · 데이터사이언스 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/28"
      }
     ],
     "followUps": [
@@ -39207,8 +40696,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 의료헬스케어AI 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p84"
+      "label": "2026 교과과정책자(학교 전자책) · 의료헬스케어AI 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/84"
      }
     ],
     "followUps": [
@@ -39636,8 +41125,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 헬스케어서비스 융합전공 이수요건(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p86"
+      "label": "2026 교과과정책자(학교 전자책) · 헬스케어서비스 융합전공 이수요건(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/86"
      }
     ],
     "followUps": [
@@ -39855,7 +41344,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -39898,8 +41387,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -39925,8 +41414,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 시각디자인전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p165"
+      "label": "2026 교과과정책자(학교 전자책) · 시각디자인전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/165"
      }
     ],
     "followUps": [
@@ -40157,7 +41646,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -40200,8 +41689,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -40226,8 +41715,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 산업디자인전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p167"
+      "label": "2026 교과과정책자(학교 전자책) · 산업디자인전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/167"
      }
     ],
     "followUps": [
@@ -40472,7 +41961,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -40515,8 +42004,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -40543,8 +42032,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 금속조형디자인과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p169"
+      "label": "2026 교과과정책자(학교 전자책) · 금속조형디자인과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/169"
      }
     ],
     "followUps": [
@@ -40790,7 +42279,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -40833,8 +42322,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -40859,8 +42348,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 도예·유리과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p171"
+      "label": "2026 교과과정책자(학교 전자책) · 도예·유리과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/171"
      }
     ],
     "followUps": [
@@ -41060,7 +42549,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -41103,8 +42592,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -41130,8 +42619,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 목조형가구학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p173"
+      "label": "2026 교과과정책자(학교 전자책) · 목조형가구학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/173"
      }
     ],
     "followUps": [
@@ -41357,7 +42846,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -41400,8 +42889,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -41427,8 +42916,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 섬유미술·패션디자인과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p175"
+      "label": "2026 교과과정책자(학교 전자책) · 섬유미술·패션디자인과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/175"
      }
     ],
     "followUps": [
@@ -41677,7 +43166,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공연예술학부 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공연예술학부 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -41712,8 +43201,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공연예술학부 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p25"
+      "label": "2026 교과과정책자(학교 전자책) · 공연예술학부 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/25"
      }
     ]
    },
@@ -41752,8 +43241,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 뮤지컬전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p182"
+      "label": "2026 교과과정책자(학교 전자책) · 뮤지컬전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/182"
      }
     ],
     "followUps": [
@@ -42010,7 +43499,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공연예술학부 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공연예술학부 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -42045,8 +43534,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공연예술학부 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p25"
+      "label": "2026 교과과정책자(학교 전자책) · 공연예술학부 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/25"
      }
     ]
    },
@@ -42087,8 +43576,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 실용음악전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p184"
+      "label": "2026 교과과정책자(학교 전자책) · 실용음악전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/184"
      }
     ],
     "followUps": [
@@ -42358,7 +43847,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -42409,14 +43898,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "교원자격증 무시험검정 요건 (입학기준년도가 2013년도 이후인 학생)",
@@ -42438,7 +43927,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -42446,8 +43939,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ]
    },
@@ -42478,8 +43971,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 수학교육과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p144"
+      "label": "2026 교과과정책자(학교 전자책) · 수학교육과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/144"
      }
     ],
     "followUps": [
@@ -42747,7 +44240,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -42798,14 +44291,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "교원자격증 무시험검정 요건 (입학기준년도가 2013년도 이후인 학생)",
@@ -42827,7 +44320,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -42835,8 +44332,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ]
    },
@@ -42867,8 +44364,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 국어교육과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p146"
+      "label": "2026 교과과정책자(학교 전자책) · 국어교육과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/146"
      }
     ],
     "followUps": [
@@ -43090,7 +44587,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -43141,14 +44638,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "교원자격증 무시험검정 요건 (입학기준년도가 2013년도 이후인 학생)",
@@ -43170,7 +44667,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -43178,8 +44679,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ]
    },
@@ -43209,8 +44710,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 영어교육과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p148"
+      "label": "2026 교과과정책자(학교 전자책) · 영어교육과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/148"
      }
     ],
     "followUps": [
@@ -43413,7 +44914,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -43464,14 +44965,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "교원자격증 무시험검정 요건 (입학기준년도가 2013년도 이후인 학생)",
@@ -43493,7 +44994,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -43501,8 +45006,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ]
    },
@@ -43534,8 +45039,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 역사교육과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p150"
+      "label": "2026 교과과정책자(학교 전자책) · 역사교육과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/150"
      }
     ],
     "followUps": [
@@ -43818,7 +45323,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -43869,14 +45374,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '교직과정 교원자격증 무시험검정 요건·교직과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "교원자격증 무시험검정 요건 (입학기준년도가 2013년도 이후인 학생)",
@@ -43898,7 +45403,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -43906,8 +45415,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ]
    },
@@ -43940,8 +45449,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교육학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p152"
+      "label": "2026 교과과정책자(학교 전자책) · 교육학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/152"
      }
     ],
     "followUps": [
@@ -44180,7 +45689,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -44231,8 +45740,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -44260,7 +45769,11 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
        "교직 이론(교육학개론, 교육사철학, 교육평가, 교육심리, 교육방법 및 교육공학, 교육행정 및 교육경영, 교육사회): 입학기준년도가 2013 이후인 학생: 6과목(12학점) 이상 이수",
        "교직 소양: 특수교육론(008503, 3학년 2학기 2학점), 교직실무(008710, 4학년 2학기 1학점), 디지털교육(053504, 3학년 1학기 1학점), 학교폭력예방및학생의이해(008733, 4학년 1학기 2학점)",
        "교육 실습: 교육봉사(P/N)(008725, 3학년 2학점), 학교현장의이해(008736, 2학년 2학기 1학점), 학교현장 실습(학점)(008726, 4학년 1학기 2학점)",
-       "현장교육역량실습(A)·(B): 교직과목이나, 선택가능",
+       "교직 이론 과목: 교육학개론(008301, 2학년 2학기 2학점), 교육사철학(008502, 2학년 1학기 2학점), 교육평가(008303, 2학년 1학기 2학점), 교육심리(008302, 2학년 1학기 2학점), 교육방법 및 교육공학(008403, 2학년 2학기 2학점), 교육행정 및 교육경영(008501, 3학년 1학기 2학점), 교육사회(008601, 3학년 2학기 2학점)",
+       "현장교육역량실습(A)(002100, 3학년 1학기 1학점)·현장교육역량실습(B)(002101, 3학년 2학기 1학점): 교직과목이나, 선택가능",
+       "교과교육 — 교과교육론(3학년 2학기 3학점): 공업교과교육론(008610) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교육론(008729) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교육론(008728) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교육론(008615) 경제학과 학생 이수 / 미술교과교육론(008616) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교육론(008734) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과교재 및 연구법(4학년 1학기 3학점): 공업교과교재 및 연구법(008711) 이공계 학생 이수(컴퓨터공학전공 제외) / 상업정보교과교재 및 연구법(008730) 경영대학, 컴퓨터공학전공 학생 이수 / 외국어교과교재 및 연구법(008732) 영어영문, 독어독문, 불어불문과 학생 이수 / 일반사회교과교재 및 연구법(008716) 경제학과 학생 이수 / 미술교과교재 및 연구법(008717) 동양화과, 회화과, 조소과 학생 이수 / 디자인교과교재 및 연구법(008735) 시각디자인전공, 산업디자인전공, 금속조형디자인과 학생 이수",
+       "교과교육 — 교과논리 및 논술(008731, 4학년 1학기 2학점·2학기 2학점): 공업·상업·영어·독어·불어·일반사회·미술교과논리및논술 과목을 한 과목으로 통합",
        "※ 교직과정 복수전공자 : 복수전공에 대하여 교과교육과목을 별도로 이수해야 하지만, 교과교육과목이 주전공과 동일한 과목일 경우(교과논리및논술, 외국어 어문계열의 외국어교과교육론, 외국어교과교재및연구법 등) 중복해서 이수가 불가 하므로 이에 해당하는 학점은 반드시 복수전공 학점으로 채워 이수해야 함.",
        "★ 영어영문학과 교직이수자의 경우, 반드시 교직과에서 개설하는 교과교육 과목을 이수하여야 함.(영어교육과 개설과목 이수 시 인정 불가)"
       ]
@@ -44268,8 +45781,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p143"
+      "label": "2026 교과과정책자(학교 전자책) · 교직과정 교원자격증 무시험검정 요건·교직과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/143"
      }
     ],
     "followUps": [
@@ -44670,7 +46183,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more3": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -44743,14 +46256,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more4": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -44779,8 +46292,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -44808,8 +46321,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건설환경공학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p90"
+      "label": "2026 교과과정책자(학교 전자책) · 건설환경공학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/90"
      }
     ],
     "followUps": [
@@ -45109,7 +46622,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -45182,14 +46695,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -45218,8 +46731,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -45246,8 +46759,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 전자·전기공학부 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p92"
+      "label": "2026 교과과정책자(학교 전자책) · 전자·전기공학부 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/92"
      }
     ],
     "followUps": [
@@ -46139,7 +47652,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -46212,14 +47725,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more3": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -46248,8 +47761,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -46279,8 +47792,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 신소재공학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p94"
+      "label": "2026 교과과정책자(학교 전자책) · 신소재공학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/94"
      }
     ],
     "followUps": [
@@ -46666,7 +48179,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -46739,14 +48252,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more3": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -46775,8 +48288,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -46805,8 +48318,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 화학공학전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p96"
+      "label": "2026 교과과정책자(학교 전자책) · 화학공학전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/96"
      }
     ],
     "followUps": [
@@ -47219,7 +48732,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -47292,14 +48805,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -47328,8 +48841,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -47357,8 +48870,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 산업·데이터공학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p100"
+      "label": "2026 교과과정책자(학교 전자책) · 산업·데이터공학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/100"
      }
     ],
     "followUps": [
@@ -47729,7 +49242,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -47802,14 +49315,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -47838,8 +49351,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -47871,8 +49384,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 기계·시스템디자인공학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p102"
+      "label": "2026 교과과정책자(학교 전자책) · 기계·시스템디자인공학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/102"
      }
     ],
     "followUps": [
@@ -48039,7 +49552,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -48112,14 +49625,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -48148,8 +49661,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -48173,8 +49686,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 공통 일반선택 및 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p89"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 공통 일반선택 및 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/89"
      }
     ],
     "followUps": [
@@ -48339,7 +49852,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -48382,8 +49895,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -48416,8 +49929,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p156"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/156"
      }
     ],
     "followUps": [
@@ -48665,7 +50178,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "전공기초(필수)",
@@ -48692,14 +50205,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p156"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/156"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -48742,8 +50255,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -48773,8 +50286,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 동양화과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p157"
+      "label": "2026 교과과정책자(학교 전자책) · 동양화과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/157"
      }
     ],
     "followUps": [
@@ -49149,7 +50662,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "전공기초(필수)",
@@ -49176,14 +50689,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p156"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/156"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -49226,8 +50739,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -49259,8 +50772,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 회화과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p159"
+      "label": "2026 교과과정책자(학교 전자책) · 회화과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/159"
      }
     ],
     "followUps": [
@@ -49627,7 +51140,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "전공기초(필수)",
@@ -49654,14 +51167,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p156"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/156"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -49704,8 +51217,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -49737,8 +51250,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 판화과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p161"
+      "label": "2026 교과과정책자(학교 전자책) · 판화과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/161"
      }
     ],
     "followUps": [
@@ -49994,7 +51507,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학 전공기초 및 공통 전공선택 과목(2026)' 안내예요.",
     "sections": [
      {
       "title": "전공기초(필수)",
@@ -50021,14 +51534,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p156"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학 전공기초 및 공통 전공선택 과목(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/156"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -50071,8 +51584,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ]
    },
@@ -50101,8 +51614,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 조소과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p163"
+      "label": "2026 교과과정책자(학교 전자책) · 조소과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/163"
      }
     ],
     "followUps": [
@@ -50455,7 +51968,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -50506,8 +52019,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -50535,8 +52048,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 예술학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p177"
+      "label": "2026 교과과정책자(학교 전자책) · 예술학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/177"
      }
     ],
     "followUps": [
@@ -50729,7 +52242,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -50780,8 +52293,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -50806,8 +52319,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 영어영문학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p124"
+      "label": "2026 교과과정책자(학교 전자책) · 영어영문학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/124"
      }
     ],
     "followUps": [
@@ -51005,7 +52518,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -51056,8 +52569,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -51084,8 +52597,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 독어독문학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p126"
+      "label": "2026 교과과정책자(학교 전자책) · 독어독문학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/126"
      }
     ],
     "followUps": [
@@ -51218,7 +52731,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -51269,8 +52782,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -51294,8 +52807,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 불어불문학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p128"
+      "label": "2026 교과과정책자(학교 전자책) · 불어불문학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/128"
      }
     ],
     "followUps": [
@@ -51418,7 +52931,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -51469,8 +52982,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -51496,8 +53009,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 국어국문학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p130"
+      "label": "2026 교과과정책자(학교 전자책) · 국어국문학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/130"
      }
     ],
     "followUps": [
@@ -51708,7 +53221,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -51759,8 +53272,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -51795,8 +53308,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 디자인·예술경영학부 디자인경영전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p119"
+      "label": "2026 교과과정책자(학교 전자책) · 디자인·예술경영학부 디자인경영전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/119"
      }
     ],
     "followUps": [
@@ -52005,7 +53518,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52056,8 +53569,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -52092,8 +53605,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 디자인·예술경영학부 예술경영전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p121"
+      "label": "2026 교과과정책자(학교 전자책) · 디자인·예술경영학부 예술경영전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/121"
      }
     ],
     "followUps": [
@@ -52271,7 +53784,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '디자인·예술경영학부 디자인경영전공 교과과정(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '디자인·예술경영학부 디자인경영전공 교과과정(2026)' 안내예요.",
     "sections": [
      {
       "title": "디자인경영융합학부 → 디자인·예술경영학부",
@@ -52300,14 +53813,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 디자인·예술경영학부 디자인경영전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p119"
+      "label": "2026 교과과정책자(학교 전자책) · 디자인·예술경영학부 디자인경영전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/119"
      }
     ]
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '디자인·예술경영학부 예술경영전공 교과과정(2026)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '디자인·예술경영학부 예술경영전공 교과과정(2026)' 안내예요.",
     "sections": [
      {
       "title": "디자인경영융합학부 → 디자인·예술경영학부",
@@ -52336,14 +53849,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 디자인·예술경영학부 예술경영전공 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p121"
+      "label": "2026 교과과정책자(학교 전자책) · 디자인·예술경영학부 예술경영전공 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/121"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52394,8 +53907,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    },
@@ -52575,8 +54088,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
@@ -52696,8 +54209,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
@@ -52758,7 +54271,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "p0": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52815,15 +54328,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "p1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '미술대학(예술학과 제외) 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52872,15 +54385,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 미술대학(예술학과 제외) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p19"
+      "label": "2026 교과과정책자(학교 전자책) · 미술대학(예술학과 제외) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/19"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "p2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '경영대학 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '경영대학 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52937,15 +54450,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경영대학 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p21"
+      "label": "2026 교과과정책자(학교 전자책) · 경영대학 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/21"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "p3": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공연예술학부 졸업학점 현황' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공연예술학부 졸업학점 현황' 안내예요.",
     "sections": [
      {
       "title": "2022학년도 입학생부터",
@@ -52980,15 +54493,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공연예술학부 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p25"
+      "label": "2026 교과과정책자(학교 전자책) · 공연예술학부 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/25"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "p4": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -53067,15 +54580,15 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
    },
    "p5": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -53110,8 +54623,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ],
     "facilityId": "hi-mh-1f-office-01"
@@ -53399,7 +54912,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
    },
    "more1": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -53472,14 +54985,14 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
    "more2": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -53508,8 +55021,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -53540,8 +55053,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 컴퓨터공학과 교과과정(2026)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p98"
+      "label": "2026 교과과정책자(학교 전자책) · 컴퓨터공학과 교과과정(2026)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/98"
      }
     ],
     "followUps": [
@@ -53628,7 +55141,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학 졸업학점 현황(공학교육인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2026학년도 입학생부터 (공학교육인증과정)",
@@ -53701,8 +55214,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ]
    },
@@ -53737,8 +55250,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ],
     "followUps": [
@@ -54075,7 +55588,7 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
   "nodes": {
    "more": {
     "kind": "answer",
-    "text": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
+    "text": "2026 교과과정책자(학교 전자책) '공과대학·도시공학과 졸업학점 현황(비인증과정)' 안내예요.",
     "sections": [
      {
       "title": "2024학년도 입학생부터 (비인증과정)",
@@ -54104,8 +55617,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p10"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학·도시공학과 졸업학점 현황(비인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/10"
      }
     ]
    },
@@ -54184,8 +55697,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 공과대학 졸업학점 현황(공학교육인증과정)",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p5"
+      "label": "2026 교과과정책자(학교 전자책) · 공과대학 졸업학점 현황(공학교육인증과정)",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/5"
      }
     ],
     "followUps": [
@@ -54371,8 +55884,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 경영대학 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p21"
+      "label": "2026 교과과정책자(학교 전자책) · 경영대학 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/21"
      }
     ]
    }
@@ -54556,8 +56069,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p22"
+      "label": "2026 교과과정책자(학교 전자책) · 건축학전공(5년제)·실내건축학전공(4년제) 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/22"
      }
     ]
    }
@@ -54757,8 +56270,8 @@ export const ASK_PAGE_FLOWS: readonly AskFlow[] = [
     ],
     "links": [
      {
-      "label": "2026 교과과정책자(컴퓨터공학과 교과과정 게시판) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
-      "url": "https://wwwce.hongik.ac.kr/wwwce/0302.do?mode=view&articleNo=149240#p17"
+      "label": "2026 교과과정책자(학교 전자책) · 문과대학·법과대학·경제학부·사범대학 등 졸업학점 현황",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum/17"
      }
     ]
    }

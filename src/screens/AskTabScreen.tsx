@@ -38,11 +38,11 @@ export default function AskTabScreen() {
     },
     [navigation],
   )
-  // 답의 "여기서 가는 길"(11-09): 지도 탭에서 그 곳을 도착으로, 내 위치를 출발로 길찾기를 연다.
+  // 답의 길찾기 버튼(11-09): 지도 탭에서 그 곳을 도착으로 길찾기를 연다. 출발은 질문의 출발 건물(11-15), 없으면 내 위치.
   const routeTo = useCallback(
-    (place: { target: string }) => {
+    (place: { target: string; from?: string }) => {
       Keyboard.dismiss()
-      requestMapIntent({ type: 'routeTo', target: place.target })
+      requestMapIntent({ type: 'routeTo', target: place.target, from: place.from })
       navigation.navigate('Map' as never)
     },
     [navigation],
