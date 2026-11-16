@@ -60,7 +60,7 @@ import { isCancelledError } from "../apis/client";
 import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
 import { myLocationScript } from "../utils/myLocationScript";
 import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
-import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
+import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
@@ -229,6 +229,9 @@ export default function MapScreen() {
   const [fromBuilding, setFromBuilding] = useState<Building | null>(null);
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
+  /** 길찾기 표시의 첫 층 이동을 '1F→3F' 로 쓰려고 그리는 함수에서 읽는다. */
+  const fromFloorRef = useRef<number | null>(null);
+  fromFloorRef.current = fromFloor;
   const [toFloor, setToFloor] = useState<number | null>(null);
   /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
   /** initialFloor: 다이얼을 열 때 먼저 골라 둘 층(필터 칩 시설이 여러 층에 있을 때 가장 아래 층, 11-16). */
@@ -265,6 +268,13 @@ export default function MapScreen() {
   const routeDrawn = (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
   const routeDrawnRef = useRef(false);
   routeDrawnRef.current = routeDrawn;
+  // 출발 건물만 고른 동안 그 건물에 '출발' 표시(11-16). 도착까지 고르면 지도 페이지가 경로와 함께 제 표시를 올리므로 지운다.
+  const pendingStart = fromBuilding && !toBuilding ? fromBuilding : null;
+  useEffect(() => {
+    webViewRef.current?.injectJavaScript(
+      pendingStartScript(pendingStart ? { lat: pendingStart.lat, lng: pendingStart.lng } : null),
+    );
+  }, [pendingStart]);
   const fromMyLocationRef = useRef(false);
   fromMyLocationRef.current = fromMyLocation;
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
@@ -1013,6 +1023,7 @@ export default function MapScreen() {
           },
           routes,
           routes[selectedIndex]?.markers ?? [],
+          fromFloorRef.current,
         );
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
         setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
@@ -1112,6 +1123,7 @@ export default function MapScreen() {
               undefined,
               routeAlternativesRef.current,
               routeAlternativesRef.current[index]?.markers ?? [],
+              fromFloorRef.current,
             ),
           ),
         ROUTE_STYLE_DELAY_MS,

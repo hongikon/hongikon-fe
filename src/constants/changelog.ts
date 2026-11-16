@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-11-16',
+    title: '길찾기 층 안내',
+    kind: 'ota',
+    items: [
+      '건물을 나가고 들어가는 출입구가 몇 층인지 지도에 동그라미로 보여 줘요.',
+      '건물 안에서 계단·엘리베이터로 층을 옮기는 곳에는 몇 층에서 몇 층으로 가는지 보여 줘요.',
+      '출발 건물을 고르면 지도에 출발로 표시돼요. 건물 안을 지나는 길은 점선으로 보여 줘요.',
+      '물어보기가 장학금·재수강·자매대학 같은 질문에 더 정확하게 답해요.',
+    ],
+  },
+  {
     // 날짜는 출시(스토어 승인·서버 스위치 켬)에 맞춰 고친다 — docs/nearby-store-submission-plan.md
     version: '1.1.0',
     date: '2026-11-09',
