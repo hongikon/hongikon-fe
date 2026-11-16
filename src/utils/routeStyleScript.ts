@@ -27,6 +27,19 @@ const MAX_FIT_ZOOM = 18
  * @param fit 있으면 모든 경로가 위 막대(top)와 아래 카드(bottom) 사이에 보이게 다시 맞춘다(px). 경로를 처음 그릴 때만 준다.
  */
 /** 길찾기를 끝낼 때 누르는 자리(보이지 않는 선)·실내 점선·층 표시를 지운다. 지도 페이지의 clearRoute 는 이걸 모른다. */
+/**
+ * 출발만 고르고 도착은 아직일 때 그 건물에 '출발' 표시(11-16 사용자 요청 — 어디를 출발로 골랐는지 보이게).
+ * 경로를 그리면 지도 페이지가 제 출발 표시를 올리므로 그때는 null 로 지운다. 지도 페이지(map.html)를 새로 배포하지 않으려고 주입한다.
+ */
+export function pendingStartScript(at: LatLng | null): string {
+  const clear = 'if (window.__hkPendingStart) { window.__hkPendingStart.setMap(null); window.__hkPendingStart = null; }'
+  if (!at || !Number.isFinite(at.lat) || !Number.isFinite(at.lng)) return `(function () { ${clear} })(); true;`
+  return `(function () { if (typeof naver === 'undefined' || typeof map === 'undefined') return; ${clear}
+  window.__hkPendingStart = new naver.maps.Marker({ position: new naver.maps.LatLng(${at.lat}, ${at.lng}), map: map, clickable: false, zIndex: 400,
+    icon: { content: ${JSON.stringify(marker('출발', false))}, size: new naver.maps.Size(34, 34), anchor: new naver.maps.Point(17, 17) } });
+})(); true;`
+}
+
 export const ROUTE_HITS_CLEAR_SCRIPT =
   '(function () { (window.__hkRouteHits || []).concat(window.__hkIndoorLines || [], window.__hkRouteMarkers || []).forEach(function (h) { h.setMap(null); }); window.__hkRouteHits = []; window.__hkIndoorLines = []; window.__hkRouteMarkers = []; })(); true;'
 

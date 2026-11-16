@@ -60,7 +60,7 @@ import { isCancelledError } from "../apis/client";
 import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
 import { myLocationScript } from "../utils/myLocationScript";
 import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
-import { ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
+import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
@@ -265,6 +265,13 @@ export default function MapScreen() {
   const routeDrawn = (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
   const routeDrawnRef = useRef(false);
   routeDrawnRef.current = routeDrawn;
+  // 출발 건물만 고른 동안 그 건물에 '출발' 표시(11-16). 도착까지 고르면 지도 페이지가 경로와 함께 제 표시를 올리므로 지운다.
+  const pendingStart = fromBuilding && !toBuilding ? fromBuilding : null;
+  useEffect(() => {
+    webViewRef.current?.injectJavaScript(
+      pendingStartScript(pendingStart ? { lat: pendingStart.lat, lng: pendingStart.lng } : null),
+    );
+  }, [pendingStart]);
   const fromMyLocationRef = useRef(false);
   fromMyLocationRef.current = fromMyLocation;
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
