@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import ChipRow from "./ChipRow";
 import { COLORS } from "../../constants/colors";
 import { chipStyles, useChipRowScrollStyle } from "./chipStyles";
 import ChipIcon from "./ChipIcon";
@@ -64,12 +65,7 @@ export default function PartnerChips({
 
   return (
     <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={rowScroll}
-        contentContainerStyle={styles.row}
-      >
+      <ChipRow style={rowScroll} contentContainerStyle={styles.row} selection={affiliation}>
         {affiliationCounts.map(({ key, count }) => {
           const isActive = affiliation === key;
           // 이미 골라둔 상태에서 다른 업종을 눌러 0곳이 된 경우는, 해제는 계속
@@ -107,14 +103,9 @@ export default function PartnerChips({
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </ChipRow>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={rowScroll}
-        contentContainerStyle={styles.row}
-      >
+      <ChipRow style={rowScroll} contentContainerStyle={styles.row} selection={category}>
         {categoryCounts.map(({ meta, count }) => {
           const isActive = category === meta.key;
           return (
@@ -144,7 +135,7 @@ export default function PartnerChips({
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </ChipRow>
     </>
   );
 }
