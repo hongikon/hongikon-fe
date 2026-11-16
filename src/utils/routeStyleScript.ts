@@ -8,6 +8,7 @@
  * - 출발: 흰 바탕에 남색 테두리 '출발', 도착: 남색 바탕 흰 글씨 '도착'
  */
 import type { RouteMarker } from '../apis/routes'
+import { formatFloor } from './floors'
 import { haversineMeters } from './geo'
 
 const NAVY = '#05014A'
@@ -54,25 +55,41 @@ function escapeHtml(text: string): string {
 /** 이만큼 안에 붙은 표시는 한 말풍선으로 잇는다('I동 1층 입구 · 계단·엘리베이터 6층 ↑'). 출입구 바로 안에서 층을 옮기면 겹쳐 보였다. */
 const MERGE_METERS = 12
 
-export function mergeRouteMarkers(markers: RouteMarker[]): RouteMarker[] {
-  const out: RouteMarker[] = []
+/** 이은 표시. floors 는 그 자리에서 거치는 층(이웃한 같은 층은 하나로) — 지도에는 이 숫자만 크게 쓴다. */
+export type MergedRouteMarker = RouteMarker & { floors: number[] }
+
+function pushFloor(floors: number[], floor: number | null | undefined): number[] {
+  if (typeof floor !== 'number' || !Number.isFinite(floor) || floors[floors.length - 1] === floor) return floors
+  return [...floors, floor]
+}
+
+export function mergeRouteMarkers(markers: RouteMarker[]): MergedRouteMarker[] {
+  const out: MergedRouteMarker[] = []
   for (const m of markers) {
     if (!Number.isFinite(m.lat) || !Number.isFinite(m.lng) || typeof m.label !== 'string' || m.label.length === 0) continue
     const last = out[out.length - 1]
     if (last && haversineMeters(last.lat, last.lng, m.lat, m.lng) < MERGE_METERS) {
-      out[out.length - 1] = { ...last, label: `${last.label} · ${m.label}` }
+      out[out.length - 1] = { ...last, label: `${last.label} · ${m.label}`, floors: pushFloor(last.floors, m.floor) }
     } else {
-      out.push(m)
+      out.push({ ...m, floors: pushFloor([], m.floor) })
     }
   }
   return out
 }
 
-export function routeMarkerHtml(marker: Pick<RouteMarker, 'kind' | 'label'>): string {
+/**
+ * 층을 아는 표시는 층 숫자만 크게('3F', 'B1', 한 자리에서 층을 옮기면 '1F→6F') — 11-16 사용자 요청, 긴 글은 읽기 어렵다.
+ * 출구·입구·통과는 남색 바탕, 층 이동은 흰 바탕 남색 글. 층을 모르는 바깥 계단만 예전처럼 짧은 글.
+ */
+export function routeMarkerHtml(marker: Pick<RouteMarker, 'kind' | 'label'> & { floors?: number[] }): string {
   const solid = marker.kind === 'exit' || marker.kind === 'enter' || marker.kind === 'pass'
   const background = solid ? NAVY : '#FFFFFF'
   const color = solid ? '#FFFFFF' : NAVY
-  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:10px;background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-size:11px;font-weight:700;line-height:14px;font-family:-apple-system,sans-serif">${escapeHtml(marker.label)}</div></div>`
+  const floors = marker.floors ?? []
+  const big = floors.length > 0
+  const text = big ? floors.map(formatFloor).join('→') : marker.label
+  const font = big ? 'padding:2px 9px;border-radius:12px;font-size:17px;font-weight:800;line-height:22px' : 'padding:3px 7px;border-radius:10px;font-size:11px;font-weight:700;line-height:14px'
+  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;${font};background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-family:-apple-system,sans-serif">${escapeHtml(text)}</div></div>`
 }
 
 type LatLng = { lat: number; lng: number }

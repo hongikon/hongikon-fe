@@ -40,3 +40,20 @@ test('경로를 바깥 실선·건물 안 점선 구간으로 나눈다', () => 
   assert.deepEqual(runs[1].path[0], p(1))
   assert.deepEqual(routeRuns([p(0), p(1)]).map((r) => r.indoor), [false])
 })
+
+test('층을 아는 표시는 층 숫자만 크게, 한 자리에서 옮기면 화살표로', () => {
+  const merged = mergeRouteMarkers([
+    { lat: 37.55, lng: 126.92, kind: 'floor', label: '계단·엘리베이터 3층 ↑', floor: 3 },
+    { lat: 37.55002, lng: 126.92, kind: 'exit', label: 'T동 3층 출구', floor: 3 },
+    { lat: 37.552, lng: 126.92, kind: 'enter', label: 'I동 1층 입구', floor: 1 },
+    { lat: 37.55203, lng: 126.92, kind: 'floor', label: '계단·엘리베이터 6층 ↑', floor: 6 },
+    { lat: 37.554, lng: 126.92, kind: 'enter', label: 'MH동 지하 1층 입구', floor: -1 },
+    { lat: 37.556, lng: 126.92, kind: 'stairs', label: '계단', floor: null },
+  ])
+  assert.deepEqual(merged.map((m) => m.floors), [[3], [1, 6], [-1], []])
+  const html = merged.map(routeMarkerHtml)
+  assert.ok(html[0].includes('>3F<') && html[0].includes('font-size:17px') && !html[0].includes('출구'))
+  assert.ok(html[1].includes('>1F→6F<'))
+  assert.ok(html[2].includes('>B1<'))
+  assert.ok(html[3].includes('>계단<') && html[3].includes('font-size:11px'))
+})
