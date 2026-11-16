@@ -58,6 +58,8 @@ const MERGE_METERS = 12
 /** 이은 표시. floors 는 그 자리에서 거치는 층(이웃한 같은 층은 하나로) — 지도에는 이 숫자만 크게 쓴다. */
 export type MergedRouteMarker = RouteMarker & { floors: number[] }
 
+const isDoor = (kind: RouteMarker['kind']) => kind === 'exit' || kind === 'enter' || kind === 'pass'
+
 function pushFloor(floors: number[], floor: number | null | undefined): number[] {
   if (typeof floor !== 'number' || !Number.isFinite(floor) || floors[floors.length - 1] === floor) return floors
   return [...floors, floor]
@@ -69,7 +71,9 @@ export function mergeRouteMarkers(markers: RouteMarker[]): MergedRouteMarker[] {
     if (!Number.isFinite(m.lat) || !Number.isFinite(m.lng) || typeof m.label !== 'string' || m.label.length === 0) continue
     const last = out[out.length - 1]
     if (last && haversineMeters(last.lat, last.lng, m.lat, m.lng) < MERGE_METERS) {
-      out[out.length - 1] = { ...last, label: `${last.label} · ${m.label}`, floors: pushFloor(last.floors, m.floor) }
+      // 출입구·통과와 층 이동이 한 자리면 출입구로 본다(남색 동그라미).
+      const kind = isDoor(last.kind) || !isDoor(m.kind) ? last.kind : m.kind
+      out[out.length - 1] = { ...last, kind, label: `${last.label} · ${m.label}`, floors: pushFloor(last.floors, m.floor) }
     } else {
       out.push({ ...m, floors: pushFloor([], m.floor) })
     }
@@ -86,10 +90,15 @@ export function routeMarkerHtml(marker: Pick<RouteMarker, 'kind' | 'label'> & { 
   const background = solid ? NAVY : '#FFFFFF'
   const color = solid ? '#FFFFFF' : NAVY
   const floors = marker.floors ?? []
-  const big = floors.length > 0
-  const text = big ? floors.map(formatFloor).join('→') : marker.label
-  const font = big ? 'padding:2px 9px;border-radius:12px;font-size:17px;font-weight:800;line-height:22px' : 'padding:3px 7px;border-radius:10px;font-size:11px;font-weight:700;line-height:14px'
-  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;${font};background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-family:-apple-system,sans-serif">${escapeHtml(text)}</div></div>`
+  if (floors.length > 0) {
+    // 점 자리에 바로 층 동그라미(점 대신). 가운데가 경로 위 그 자리. 한 자리에서 층을 옮겨 글이 길면('1F→6F') 알약 모양.
+    const text = floors.map(formatFloor).join('→')
+    const shape = floors.length === 1
+      ? `width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${text.length > 2 ? 11 : 13}px;line-height:1`
+      : 'padding:2px 8px;border-radius:14px;font-size:13px;line-height:22px'
+    return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:0;top:0;transform:translate(-50%,-50%);box-sizing:border-box;white-space:nowrap;${shape};background:${background};border:2.5px solid ${solid ? '#FFFFFF' : NAVY};box-shadow:0 2px 8px rgba(5,1,74,0.35);color:${color};font-weight:800;font-family:-apple-system,sans-serif">${escapeHtml(text)}</div></div>`
+  }
+  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:10px;background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-size:11px;font-weight:700;line-height:14px;font-family:-apple-system,sans-serif">${escapeHtml(marker.label)}</div></div>`
 }
 
 type LatLng = { lat: number; lng: number }
