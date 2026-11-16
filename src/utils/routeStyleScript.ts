@@ -44,61 +44,88 @@ export function pendingStartScript(at: LatLng | null): string {
 export const ROUTE_HITS_CLEAR_SCRIPT =
   '(function () { (window.__hkRouteHits || []).concat(window.__hkIndoorLines || [], window.__hkRouteMarkers || []).forEach(function (h) { h.setMap(null); }); window.__hkRouteHits = []; window.__hkIndoorLines = []; window.__hkRouteMarkers = []; })(); true;'
 
-/**
- * 층 바뀌는 곳 말풍선(11-16). 점(경로 위 그 자리) 위에 짧은 글 상자. 출구·입구·통과는 남색 바탕, 층 이동·계단은 흰 바탕 남색 글.
- * 글은 서버가 만든 짧은 말이지만 HTML 로 넣으니 escape 한다.
- */
+/** 글은 서버가 만든 짧은 말이지만 HTML 로 넣으니 escape 한다. */
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
 }
 
-/** 이만큼 안에 붙은 표시는 한 말풍선으로 잇는다('I동 1층 입구 · 계단·엘리베이터 6층 ↑'). 출입구 바로 안에서 층을 옮기면 겹쳐 보였다. */
+/** 이만큼 안에 붙은 같은 층 출입구는 한 동그라미로 잇는다. 바깥 계단도 앞 표시와 이 안이면 따로 안 찍는다. */
 const MERGE_METERS = 12
-
-/** 이은 표시. floors 는 그 자리에서 거치는 층(이웃한 같은 층은 하나로) — 지도에는 이 숫자만 크게 쓴다. */
-export type MergedRouteMarker = RouteMarker & { floors: number[] }
-
-const isDoor = (kind: RouteMarker['kind']) => kind === 'exit' || kind === 'enter' || kind === 'pass'
-
-function pushFloor(floors: number[], floor: number | null | undefined): number[] {
-  if (typeof floor !== 'number' || !Number.isFinite(floor) || floors[floors.length - 1] === floor) return floors
-  return [...floors, floor]
-}
-
-export function mergeRouteMarkers(markers: RouteMarker[]): MergedRouteMarker[] {
-  const out: MergedRouteMarker[] = []
-  for (const m of markers) {
-    if (!Number.isFinite(m.lat) || !Number.isFinite(m.lng) || typeof m.label !== 'string' || m.label.length === 0) continue
-    const last = out[out.length - 1]
-    if (last && haversineMeters(last.lat, last.lng, m.lat, m.lng) < MERGE_METERS) {
-      // 출입구·통과와 층 이동이 한 자리면 출입구로 본다(남색 동그라미).
-      const kind = isDoor(last.kind) || !isDoor(m.kind) ? last.kind : m.kind
-      out[out.length - 1] = { ...last, kind, label: `${last.label} · ${m.label}`, floors: pushFloor(last.floors, m.floor) }
-    } else {
-      out.push({ ...m, floors: pushFloor([], m.floor) })
-    }
-  }
-  return out
-}
+/**
+ * 층 이동이 출입구와 이만큼 붙어 있으면 경로망에 건물 안 계단·엘리베이터 자리가 없는 것이다(문 점에서 바로 층을 옮김).
+ * 어디서 옮기는지 모르니 따로 찍지 않고 출입구 층 동그라미만 둔다(11-16 사용자: 계단·엘베 없는 곳에 층 변화를 쓰면 알 수 없다).
+ */
+const SAME_SPOT_METERS = 3
 
 /**
- * 층을 아는 표시는 층 숫자만 크게('3F', 'B1', 한 자리에서 층을 옮기면 '1F→6F') — 11-16 사용자 요청, 긴 글은 읽기 어렵다.
- * 출구·입구·통과는 남색 바탕, 층 이동은 흰 바탕 남색 글. 층을 모르는 바깥 계단만 예전처럼 짧은 글.
+ * 지도에 찍는 길찾기 표시(11-16).
+ * - door: 출입구·통과. 그 문의 층을 남색 동그라미로('3F').
+ * - change: 건물 안 계단·엘리베이터 자리. '계단 1F→3F' 처럼 수단과 층 변화.
+ * - stairs: 층을 모르는 바깥 계단. 예전처럼 점 위 짧은 글.
  */
-export function routeMarkerHtml(marker: Pick<RouteMarker, 'kind' | 'label'> & { floors?: number[] }): string {
-  const solid = marker.kind === 'exit' || marker.kind === 'enter' || marker.kind === 'pass'
-  const background = solid ? NAVY : '#FFFFFF'
-  const color = solid ? '#FFFFFF' : NAVY
-  const floors = marker.floors ?? []
-  if (floors.length > 0) {
-    // 점 자리에 바로 층 동그라미(점 대신). 가운데가 경로 위 그 자리. 한 자리에서 층을 옮겨 글이 길면('1F→6F') 알약 모양.
-    const text = floors.map(formatFloor).join('→')
-    const shape = floors.length === 1
-      ? `width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${text.length > 2 ? 11 : 13}px;line-height:1`
+export interface RouteMapMark extends LatLng {
+  type: 'door' | 'change' | 'stairs'
+  text: string
+}
+
+const isDoor = (kind: RouteMarker['kind']) => kind === 'exit' || kind === 'enter' || kind === 'pass'
+const hasFloor = (m: RouteMarker): m is RouteMarker & { floor: number } => typeof m.floor === 'number' && Number.isFinite(m.floor)
+
+/** '계단·엘리베이터 3층 ↑' → '계단·엘베', '엘리베이터 1층 ↓' → '엘베', '계단 3층 ↑' → '계단' */
+function meansOf(label: string): string {
+  const stairs = label.includes('계단')
+  const elevator = label.includes('엘리베이터')
+  return stairs && elevator ? '계단·엘베' : elevator ? '엘베' : stairs ? '계단' : ''
+}
+
+export function routeMapMarks(markers: RouteMarker[], startFloor?: number | null): RouteMapMark[] {
+  const valid = markers.filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng) && typeof m.label === 'string' && m.label.length > 0)
+  const near = (a: LatLng, b: LatLng, meters: number) => haversineMeters(a.lat, a.lng, b.lat, b.lng) < meters
+  const out: (RouteMapMark & { floors?: number[] })[] = []
+  let current: number | null = typeof startFloor === 'number' && Number.isFinite(startFloor) ? startFloor : null
+  valid.forEach((m, i) => {
+    const last = out[out.length - 1]
+    if (m.kind === 'floor') {
+      const target = hasFloor(m) ? m.floor : null
+      const atDoor = [valid[i - 1], valid[i + 1]].some((d) => d && isDoor(d.kind) && near(d, m, SAME_SPOT_METERS))
+      if (!atDoor && target !== null) {
+        const means = meansOf(m.label)
+        const change = current !== null && current !== target ? `${formatFloor(current)}→${formatFloor(target)}` : formatFloor(target)
+        out.push({ lat: m.lat, lng: m.lng, type: 'change', text: means ? `${means} ${change}` : change })
+      }
+      if (target !== null) current = target
+      return
+    }
+    if (isDoor(m.kind)) {
+      if (hasFloor(m)) current = m.floor
+      // 붙은 두 문은 같은 층일 때만 한 동그라미로. 층이 다르면 각자 그 문의 층(문 자리에 층 변화를 쓰지 않는다).
+      if (last && last.type === 'door' && near(last, m, MERGE_METERS) && (last.floors ?? [])[0] === m.floor) return
+      if (last && last.type === 'stairs' && near(last, m, MERGE_METERS)) out.pop()
+      const floors = hasFloor(m) ? [m.floor] : []
+      out.push({ lat: m.lat, lng: m.lng, type: 'door', text: floors.length ? formatFloor(floors[0]) : m.label, floors })
+      return
+    }
+    // 바깥 계단: 바로 앞 표시와 붙어 있으면 그 표시에 맡긴다.
+    if (last && near(last, m, MERGE_METERS)) return
+    out.push({ lat: m.lat, lng: m.lng, type: 'stairs', text: m.label })
+  })
+  return out.map(({ lat, lng, type, text }) => ({ lat, lng, type, text }))
+}
+
+export function routeMarkerHtml(mark: Pick<RouteMapMark, 'type' | 'text'>): string {
+  const text = escapeHtml(mark.text)
+  const center = 'position:absolute;left:0;top:0;transform:translate(-50%,-50%);box-sizing:border-box;white-space:nowrap;font-weight:800;font-family:-apple-system,sans-serif'
+  if (mark.type === 'door') {
+    // 점 자리에 바로 층 동그라미. 층을 모르는 문(서버 글 그대로)처럼 글이 길면 알약 모양.
+    const shape = mark.text.length <= 4
+      ? `width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${mark.text.length > 2 ? 11 : 13}px;line-height:1`
       : 'padding:2px 8px;border-radius:14px;font-size:13px;line-height:22px'
-    return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:0;top:0;transform:translate(-50%,-50%);box-sizing:border-box;white-space:nowrap;${shape};background:${background};border:2.5px solid ${solid ? '#FFFFFF' : NAVY};box-shadow:0 2px 8px rgba(5,1,74,0.35);color:${color};font-weight:800;font-family:-apple-system,sans-serif">${escapeHtml(text)}</div></div>`
+    return `<div style="position:relative;width:0;height:0"><div style="${center};${shape};background:${NAVY};border:2.5px solid #FFFFFF;box-shadow:0 2px 8px rgba(5,1,74,0.35);color:#FFFFFF">${text}</div></div>`
   }
-  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:10px;background:${background};border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${color};font-size:11px;font-weight:700;line-height:14px;font-family:-apple-system,sans-serif">${escapeHtml(marker.label)}</div></div>`
+  if (mark.type === 'change') {
+    return `<div style="position:relative;width:0;height:0"><div style="${center};padding:2px 8px;border-radius:14px;font-size:12px;line-height:20px;background:#FFFFFF;border:2px solid ${NAVY};box-shadow:0 2px 8px rgba(5,1,74,0.35);color:${NAVY}">${text}</div></div>`
+  }
+  return `<div style="position:relative;width:0;height:0"><div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFFFFF;border:2.5px solid ${NAVY};box-sizing:border-box"></div><div style="position:absolute;left:0;bottom:9px;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;border-radius:10px;background:#FFFFFF;border:1.5px solid ${NAVY};box-shadow:0 1px 4px rgba(5,1,74,0.3);color:${NAVY};font-size:11px;font-weight:700;line-height:14px;font-family:-apple-system,sans-serif">${text}</div></div>`
 }
 
 type LatLng = { lat: number; lng: number }
@@ -134,13 +161,15 @@ export function routeStyleScript(
    * 다시 그린다. 고른 경로는 남색, 나머지는 회색.
    */
   routes: { points: LatLng[]; indoorSegments?: LatLng[][] }[] = [],
-  /** 고른 경로의 층 바뀌는 곳(출구·입구·계단·엘리베이터). 점과 짧은 글로 찍는다. */
+  /** 고른 경로의 층 바뀌는 곳(출구·입구·계단·엘리베이터). routeMapMarks 로 찍는다. */
   markers: RouteMarker[] = [],
+  /** 출발 층(고른 층). 첫 층 이동을 '1F→3F' 로 쓰려고. 모르면 '3F' 만. */
+  startFloor?: number | null,
 ): string {
   const runs = routes.map((route, index) =>
     routeRuns(route.points ?? [], route.indoorSegments ?? []).map((run) => ({ ...run, index })),
   ).flat()
-  const markerItems = mergeRouteMarkers(markers).map((m) => ({ lat: m.lat, lng: m.lng, html: routeMarkerHtml(m) }))
+  const markerItems = routeMapMarks(markers, startFloor).map((m) => ({ lat: m.lat, lng: m.lng, html: routeMarkerHtml(m) }))
   const fitJs = fit
     ? `
   var lats = [], lngs = [];

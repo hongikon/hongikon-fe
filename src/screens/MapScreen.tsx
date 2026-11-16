@@ -229,6 +229,9 @@ export default function MapScreen() {
   const [fromBuilding, setFromBuilding] = useState<Building | null>(null);
   const [toBuilding, setToBuilding] = useState<Building | null>(null);
   const [fromFloor, setFromFloor] = useState<number | null>(null);
+  /** 길찾기 표시의 첫 층 이동을 '1F→3F' 로 쓰려고 그리는 함수에서 읽는다. */
+  const fromFloorRef = useRef<number | null>(null);
+  fromFloorRef.current = fromFloor;
   const [toFloor, setToFloor] = useState<number | null>(null);
   /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
   /** initialFloor: 다이얼을 열 때 먼저 골라 둘 층(필터 칩 시설이 여러 층에 있을 때 가장 아래 층, 11-16). */
@@ -1020,6 +1023,7 @@ export default function MapScreen() {
           },
           routes,
           routes[selectedIndex]?.markers ?? [],
+          fromFloorRef.current,
         );
       for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
         setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
@@ -1119,6 +1123,7 @@ export default function MapScreen() {
               undefined,
               routeAlternativesRef.current,
               routeAlternativesRef.current[index]?.markers ?? [],
+              fromFloorRef.current,
             ),
           ),
         ROUTE_STYLE_DELAY_MS,
