@@ -2,6 +2,7 @@ import { apiRequest } from './client'
 import type { Building } from '../types'
 import type { RoutePoint } from '../utils/floors'
 import { haversineMeters } from '../utils/geo'
+import { pointInRing } from '../utils/pathSurveyV3/geo'
 import { WALKING_METERS_PER_MINUTE } from '../constants/route'
 
 /**
@@ -54,8 +55,19 @@ export interface RouteMarker {
  */
 export interface WalkApproach {
   nodes: { id: string; lat: number; lng: number }[]
-  starts: { node: number; routes: { path: number[]; route: Omit<RouteAlternative, 'points'> }[] }[]
+  starts: { node: number; routes: ApproachRoute[] }[]
+  /**
+   * 11-17: 건물마다 그 건물에서 나가는 길(path 첫 점은 건물 가운데). 내 위치가 건물 경계 안이면 이것을 쓴다 —
+   * 몇 층 어느 출구로 나가는지 지도에 찍힌다. 예전 서버는 보내지 않는다.
+   */
+  buildings?: { building: number; routes: ApproachRoute[] }[]
 }
+
+type ApproachRoute = { path: number[]; route: Omit<RouteAlternative, 'points'> }
+
+const validRoutes = (routes: unknown): routes is ApproachRoute[] =>
+  Array.isArray(routes) && routes.length > 0 &&
+  routes.every((r) => !!r && Array.isArray(r.path) && !!r.route && Number.isFinite(r.route.totalSeconds))
 
 const ROUTE_TIMEOUT_MS = 8000
 
@@ -111,14 +123,11 @@ export async function fetchWalkApproach({
   })
   // 길 점 번호로 서로 가리키므로 길 점은 거르지 않고(번호가 밀린다) 모양만 확인한다. 잘못된 번호는 고를 때 건너뛴다.
   const nodes = Array.isArray(body.nodes) && body.nodes.every((n) => !!n && typeof n.id === 'string' && isPoint(n)) ? body.nodes : []
-  const starts = Array.isArray(body.starts)
-    ? body.starts.filter(
-        (s) =>
-          !!s && Number.isInteger(s.node) && Array.isArray(s.routes) && s.routes.length > 0 &&
-          s.routes.every((r) => !!r && Array.isArray(r.path) && !!r.route && Number.isFinite(r.route.totalSeconds)),
-      )
+  const starts = Array.isArray(body.starts) ? body.starts.filter((s) => !!s && Number.isInteger(s.node) && validRoutes(s.routes)) : []
+  const buildings = Array.isArray(body.buildings)
+    ? body.buildings.filter((b) => !!b && Number.isInteger(b.building) && validRoutes(b.routes))
     : []
-  return { nodes, starts: nodes.length > 0 ? starts : [] }
+  return nodes.length > 0 ? { nodes, starts, buildings } : { nodes, starts: [], buildings: [] }
 }
 
 /** 내 위치를 이을 가까운 길 점 수와 최대 거리. 더 멀면 직선 어림으로 대신한다(서버 WalkRouterApproachParityTest 와 같은 값). */
@@ -130,7 +139,10 @@ const MY_LOCATION_MAX_METERS = 150
  * 가장 빠른 길이 맨 앞)를 낸다. 좌표는 이 계산에만 쓴다. 가장 빠른 길은 예전 앱 계산(내 위치를 그 3곳에 잇고 최단 경로)과 같다.
  * 이을 곳이 없으면 빈 배열.
  */
-export function pickApproachRoutes(approach: WalkApproach, me: RoutePoint): RouteAlternative[] {
+export function pickApproachRoutes(approach: WalkApproach, me: RoutePoint, campus: readonly Building[] = []): RouteAlternative[] {
+  const inside = campus.find((b) => isInsideBuilding(me, b))
+  const fromBuilding = inside?.id === undefined ? undefined : approach.buildings?.find((b) => b.building === inside.id)
+  if (fromBuilding) return buildingStartRoutes(approach, fromBuilding.routes, me)
   const near: { start: WalkApproach['starts'][number]; meters: number }[] = []
   for (const start of approach.starts) {
     const node = approach.nodes[start.node]
@@ -169,6 +181,38 @@ export function pickApproachRoutes(approach: WalkApproach, me: RoutePoint): Rout
       minutes: Math.max(1, Math.round(totalSeconds / 60)),
       isEstimate: false,
     })
+  }
+  return out
+}
+
+function isInsideBuilding(me: RoutePoint, building: Building): boolean {
+  const rings = [building.boundary, ...(building.extraBoundaries ?? [])]
+  return rings.some((ring) => !!ring && pointInRing(me.lat, me.lng, ring))
+}
+
+/**
+ * 내 위치가 건물 안일 때: 서버가 건물 가운데에서 계산한 나가는 길을 쓰되, 가운데 자리에 내 위치를 넣는다
+ * (건물 안 점선도 내 위치에서 시작). 시간은 서버 값 그대로 — 건물 안 걷는 시간은 서버도 세지 않는다.
+ */
+function buildingStartRoutes(approach: WalkApproach, routes: ApproachRoute[], me: RoutePoint): RouteAlternative[] {
+  const out: RouteAlternative[] = []
+  for (const candidate of routes) {
+    const points: RoutePoint[] = []
+    for (const index of candidate.path) {
+      const node = approach.nodes[index]
+      if (!node) continue
+      const last = points[points.length - 1]
+      if (!last || last.lat !== node.lat || last.lng !== node.lng) points.push({ lat: node.lat, lng: node.lng })
+    }
+    if (points.length < 2) continue
+    const center = points[0]
+    points[0] = { lat: me.lat, lng: me.lng }
+    const indoorSegments = candidate.route.indoorSegments?.map((segment) =>
+      segment.length > 0 && segment[0].lat === center.lat && segment[0].lng === center.lng
+        ? [{ lat: me.lat, lng: me.lng }, ...segment.slice(1)]
+        : segment,
+    )
+    out.push({ ...candidate.route, points, indoorSegments, isEstimate: false })
   }
   return out
 }

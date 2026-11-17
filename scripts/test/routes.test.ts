@@ -66,6 +66,46 @@ test('내 위치 출발: 150m 안 가까운 길 점 중 가장 빠른 곳의 후
   assert.deepEqual(pickApproachRoutes({ nodes: [], starts: [] }, me), [])
 })
 
+test('내 위치가 건물 경계 안이면 그 건물에서 나가는 길(가운데 자리에 내 위치, 나가는 층 표시 그대로)', () => {
+  const center = { lat: 37.55, lng: 126.92 }
+  const exit = { lat: 37.5502, lng: 126.92 }
+  const outside = { lat: 37.5505, lng: 126.92 }
+  const withBuildings: WalkApproach = {
+    nodes: [
+      { id: 'T::any', ...center },
+      { id: 'n1@t:3', ...exit },
+      { id: 'n2', ...outside },
+    ],
+    starts: [{ node: 2, routes: [{ path: [2], route: { ...approach.starts[0].routes[0].route, totalSeconds: 10 } }] }],
+    buildings: [
+      {
+        building: 19,
+        routes: [
+          {
+            path: [0, 1, 2],
+            route: {
+              ...approach.starts[0].routes[0].route,
+              totalSeconds: 60,
+              indoorSegments: [[center, exit]],
+              markers: [{ lat: exit.lat, lng: exit.lng, kind: 'exit', label: 'T동 3층 출구' }],
+            },
+          },
+        ],
+      },
+    ],
+  }
+  const t = { id: 19, name: 'T동', boundary: [[37.5498, 126.9198], [37.5498, 126.9202], [37.5503, 126.9202], [37.5503, 126.9198]] } as unknown as Building
+  const me = { lat: 37.5499, lng: 126.92 }
+  const routes = pickApproachRoutes(withBuildings, me, [t])
+  assert.equal(routes.length, 1)
+  assert.deepEqual(routes[0].points, [me, exit, outside])
+  assert.deepEqual(routes[0].indoorSegments, [[me, exit]])
+  assert.equal(routes[0].totalSeconds, 60)
+  assert.equal(routes[0].markers?.[0].label, 'T동 3층 출구')
+  // 건물 밖이면 예전처럼 가까운 길 점.
+  assert.equal(pickApproachRoutes(withBuildings, { lat: 37.5507, lng: 126.92 }, [t])[0].points.length, 2)
+})
+
 test('서버를 못 받을 때 직선 어림(층 이동 시간 더함)', () => {
   const a = { name: 'A', lat: 37.55, lng: 126.92, entrances: [{ label: 'HI_A_1F_ENTER', lat: 37.55, lng: 126.92, minFloor: 1, maxFloor: 1 }] } as Building
   const b = { name: 'B', lat: 37.551, lng: 126.92 } as Building

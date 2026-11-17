@@ -481,12 +481,12 @@ export default function MapScreen() {
   const routeAlternatives = useMemo<RouteAlternative[]>(() => {
     if (fromMyLocation && toBuilding) {
       if (!routeOrigin || approach?.key !== approachKey) return [];
-      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin) : [];
+      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin, buildings) : [];
       return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
     }
     if (!fromBuilding || !toBuilding || serverRoutes?.key !== routesKey) return [];
     return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey]);
+  }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey, buildings]);
 
   const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
