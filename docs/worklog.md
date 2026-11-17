@@ -576,3 +576,8 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - `scripts/ask/topics/academic.py` double-major: 학교 안내가 '학생공지 참조'로만 적은 학점 규칙을 학사내규 제49조·제51조·제9조에서 정리해 tips 2개로 앞에 둠(계열별 36학점, 겹치는 과목, 인정 절차·유보·철회). lead 에 36학점 한 줄.
 - `src/constants/askPages.ts` 다시 만듦(gen.py). 서버 카탈로그·색인·규정 그래프는 BE 같은 날 worklog.
 - 경로 정답표 `cases/academic.json` +4문항(공학+공학 최종이수학점, 공대끼리, 인정받으려면, 부전공 못 채우면). 2863/2863, 테스트 111/111.
+
+## 2026-11-17 — 물어보기: 홍익온 만든 사람 소개(about-team)
+
+- `scripts/ask/topics/ext_about.py`: "홍익온 누가 만들었어", "개발자 누구야", "최석훈" 등 → 개발팀장 소개(운영진 정리, 본인이 준 사실만, 문의는 hongikonsupport@gmail.com). 채용·교수·동아리·학과 등은 빼서 겹치지 않게.
+- `cases/ext_about.json` 5문항, 경로 정답표 2868/2868. 서버 카탈로그·프롬프트는 BE 같은 날 worklog.

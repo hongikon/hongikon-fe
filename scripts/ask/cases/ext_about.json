@@ -1,0 +1,7 @@
+[
+{"q": "홍익온 누가 만들었어?", "expect": "about-team"},
+{"q": "이 앱 개발자 누구야", "expect": "about-team"},
+{"q": "최석훈이 누구야", "expect": "about-team"},
+{"q": "물어보기 누가 만든거야", "expect": "about-team"},
+{"q": "홍익온 개발팀장", "expect": "about-team"}
+]
