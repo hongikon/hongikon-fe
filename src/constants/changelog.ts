@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.1.0',
+    date: '2026-11-18',
+    title: '건물 안에서 길찾기, 지도 흰 화면 고침',
+    kind: 'ota',
+    items: [
+      '건물 안에서 내 위치로 길찾기를 하면 그 건물 몇 층 출구로 나가는지 알려 줘요.',
+      '앱을 잠시 내렸다가 다시 열면 지도가 흰 화면으로 남던 문제를 고쳤어요.',
+    ],
+  },
+  {
+    version: '1.1.0',
     date: '2026-11-16',
     title: '길찾기 층 안내',
     kind: 'ota',
