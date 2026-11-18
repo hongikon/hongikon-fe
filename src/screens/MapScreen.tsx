@@ -1,10 +1,4 @@
-import {
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-  useEffect,
-} from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
@@ -17,7 +11,6 @@ import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
-import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
 import HotReportList from "../components/map/HotReportList";
 import RetryableError from "../components/common/RetryableError";
@@ -35,10 +28,8 @@ import FloorDialSheet from "../components/map/FloorDialSheet";
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
 import { canLocate } from "../lib/nearbyPartners/platform";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
-import { CAMPUS_CENTER, DEFAULT_ZOOM } from "../constants/map";
 import { buildMapHTML } from "../utils/mapHtml";
 import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/partners";
-import { CAMPUS_VIEW_BOX, viewBoundsScript } from "../utils/mapBounds";
 import { unresolvedFacilities } from "../utils/facilities";
 import { kstTodayYmd } from "../utils/exhibitions";
 import type { Facility, ReportListItem } from "../types";
@@ -73,6 +64,7 @@ import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
+import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { offscreenSummary } from "../utils/map/labels";
 
@@ -87,7 +79,6 @@ export default function MapScreen() {
     );
   }, []);
   const { accessToken, logout } = useAuth();
-  const navigation = useNavigation();
   // 위 검색바·칩 막대 높이(길찾기가 읽는다). 배치 값은 길찾기 뒤의 useMapLayout 에서.
   const { headerHeight, setHeaderHeight, headerCovered, headerFade, sheetHeaderCtx } = useMapHeader();
   /** 필터 없이 검색으로만 지도에 올린 업체 id. 그 시트가 닫히면 마커도 거둔다(아래 effect). */
@@ -131,30 +122,6 @@ export default function MapScreen() {
     },
     onCategoriesChange: () => setSelectedReport(null),
   });
-  /**
-   * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
-   * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
-   */
-  const handleRecenter = useCallback(() => {
-    // 먼 제휴 지점을 보던 중이어도 이동 범위를 캠퍼스 일대로 되돌린 뒤 옮긴다(범위가 좁으면 캠퍼스로 못 간다).
-    farViewPartnerIdRef.current = null;
-    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-    webViewRef.current?.injectJavaScript(
-      // 진행 중인 '눌러 보기' 확대가 늦게 끝나며 돌아온 화면을 옛 핀 19배로 덮지 않게 먼저 멈춘다(옛 map.html 엔 없어 확인하고 부른다).
-      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
-    );
-  }, []);
-
-  // 이미 지도 탭에 있을 때 하단 '지도' 탭을 다시 누르면 학사모 버튼처럼 캠퍼스로 돌아간다(10-08 요청).
-  // tabPress 는 다른 탭에서 넘어올 때도 오지만 그땐 아직 이 화면이 포커스가 아니라 건너뛴다.
-  useEffect(() => {
-    // 지도는 하단 탭의 화면이라 탭 바가 보내는 tabPress 가 이 화면의 navigation 으로 바로 온다.
-    const tabNavigation = navigation as unknown as { addListener: (type: "tabPress", cb: () => void) => () => void };
-    return tabNavigation.addListener("tabPress", () => {
-      if (navigation.isFocused()) handleRecenter();
-    });
-  }, [navigation, handleRecenter]);
-
   /**
    * 지도 데이터(건물·편의시설·제휴업체). 앱 시작 때 받기 시작해 기기에 저장해 둔다(`lib/mapData.ts`).
    * 아직 없으면 빈 배열이고, 지도 위에 "불러오는 중"/"다시 시도" 안내가 뜬다.
@@ -234,6 +201,8 @@ export default function MapScreen() {
     },
     onLeaveBuildingFacility: () => facilityNav.leave(),
   });
+  // 캠퍼스로 돌아가기(학사모 버튼·지도 탭 다시 누르기·먼 지점 시트 닫기).
+  const { recenter: handleRecenter } = useMapCamera({ webViewRef, farViewPartnerIdRef, selectedPartner });
   // 지도 위에 얹는 검토용 임시 핀과 물어보기 설명 카드.
   const preview = useMapPlaceCards({
     webViewRef,
@@ -451,12 +420,6 @@ export default function MapScreen() {
     () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
     [selectedBuilding, facilities],
   );
-
-  // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
-  useEffect(() => {
-    const farId = farViewPartnerIdRef.current;
-    if (farId !== null && selectedPartner?.id !== farId) handleRecenter();
-  }, [selectedPartner, handleRecenter]);
 
   const handleClosePartner = useCallback(() => {
     setSelectedPartner(null);
