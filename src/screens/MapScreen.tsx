@@ -25,7 +25,7 @@ import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import HotReportList from "../components/map/HotReportList";
 import RetryableError from "../components/common/RetryableError";
-import { promptLogin, toReportMarkers } from "../utils/reports";
+import { promptLogin } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -34,18 +34,17 @@ import NearbyFilterIntro from "../components/map/NearbyFilterIntro";
 import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
-import { toMarker } from "../utils/partnerMarker";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
 import { canLocate } from "../lib/nearbyPartners/platform";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
-import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
-import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
+import { CAMPUS_CENTER, DEFAULT_ZOOM } from "../constants/map";
+import { buildMapHTML } from "../utils/mapHtml";
 import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/partners";
-import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
-import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
-import { kstTodayYmd, withExhibitionHints } from "../utils/exhibitions";
+import { CAMPUS_VIEW_BOX, viewBoundsScript } from "../utils/mapBounds";
+import { unresolvedFacilities } from "../utils/facilities";
+import { kstTodayYmd } from "../utils/exhibitions";
 import type { Facility, ReportListItem } from "../types";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
@@ -78,6 +77,7 @@ import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
+import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -566,105 +566,39 @@ export default function MapScreen() {
 
   const handleSelectLayer = filters.selectLayer;
 
-  /**
-   * 지도 페이지가 (다시) 준비됐을 때 지금 화면 상태를 다시 그린다. 첫 로딩이 늦거나 실패해 자동으로
-   * 다시 불러오면 페이지가 새로 떠서, 그 사이 보낸 마커 명령이 사라지기 때문이다(NaverMapView 참고).
-   */
-  const resyncMap = useCallback(() => {
-    // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
-    // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다.
-    handleRecenter();
-    // 새 페이지는 시트가 닫힌 줄 안다. 열려 있으면 다시 알린다(건물 탭을 시트 닫기로만 쓰게).
-    postToMap({
-      type: "sheetOpen",
-      open: !!(selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current),
-    });
-    // 고른 건물은 setBuildings 보다 먼저 알려 준다 — setBuildings 가 그 이름을 지키며 핀을 그린다.
-    if (selectedBuildingRef.current) postToMap({ type: "selectBuilding", name: selectedBuildingRef.current.name });
-    // 지도 데이터가 있으면 새 페이지의 건물(구운 초기값)을 지금 데이터로 바꾼다. 없으면 구운 건물을 그대로 둔다.
-    if (mapData) postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
-    // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
-    const farPartner = selectedPartnerRef.current;
-    if (farPartner && isFarFromCampus(farPartner)) {
-      farViewPartnerIdRef.current = farPartner.id;
-      webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(farPartner)));
-      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
-      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
-    } else if (farPartner && !hasActiveFilter(activeFilter) && searchedPartnerIdRef.current === farPartner.id) {
-      // 캠퍼스 근처 업체를 검색해 보던 중이었으면 그 마커를 다시 올린다(필터가 없어 아래에서 다시 그려지지 않는다).
-      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
-      reassertPartnerSelection([farPartner]);
-      // 위 handleRecenter 가 캠퍼스로 옮겼으니 먼 지점처럼 그 업체로 다시 가져온다(마커를 올린 뒤라야 찾는다).
-      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
-    }
-    if (hasActiveFilter(activeFilter)) {
-      const partners = filterPartners(allPartners, activeFilter);
-      postToMap({
-        type: "setPartners",
-        partners: partners.map(toMarker),
-        bounds: null,
-      });
-      reassertPartnerSelection(partners);
-    }
-    if (facilityKind !== null) {
-      postToMap({
-        type: "setFacilities",
-        markers: withExhibitionHints(facilityMarkers(facilities, buildings, facilityKind), facilities, exhibitions),
-      });
-    }
-    if (reportsOn && shownReportData !== undefined) {
-      postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
-    }
-    // 내 위치 점도 다시 그린다 — 지도가 다시 뜨면 점이 사라지고, 가만히 있으면 새 위치가 오지 않아 다시 그려지지 않았다(11-10).
-    myLocation.redrawShown();
-    // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
-    if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
-    // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
-    preview.repin();
-    // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
-    const opened = selectedReportRef.current;
-    if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
-    // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
-    // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
-    picker.resync();
-  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, picker.resync, postToMap, handleRecenter, preview.repin, reassertPartnerSelection]);
-
-  // 경로가 그려진 동안 칩 핀을 흐리게, 길찾기를 끝내면 되돌린다(11-08).
-  useEffect(() => {
-    postToMap({ type: "setRouteFocus", on: routeDrawn });
-  }, [routeDrawn, postToMap]);
-
-  /**
-   * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
-   * 다시 그린다. 카메라는 옮기지 않는다(bounds 없음) — 보던 자리를 잃지 않게.
-   */
-  const mapDataSyncedRef = useRef<typeof mapData>(null);
-  useEffect(() => {
-    if (!mapData || mapDataSyncedRef.current === mapData) return;
-    mapDataSyncedRef.current = mapData;
-    postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
-    if (hasActiveFilter(activeFilter)) {
-      const partners = filterPartners(mapData.partners, activeFilter);
-      postToMap({ type: "setPartners", partners: partners.map(toMarker), bounds: null });
-      reassertPartnerSelection(partners);
-    }
-    if (facilityKind !== null) {
-      postToMap({
-        type: "setFacilities",
-        markers: withExhibitionHints(
-          facilityMarkers(mapData.facilities, mapData.buildings, facilityKind),
-          mapData.facilities,
-          mapData.exhibitions,
-        ),
-      });
-    }
-    // 고른 건물·업체 배너는 새 데이터의 같은 항목으로 바꾼다(없어졌으면 닫는다).
-    setSelectedBuilding((prev) => (prev ? mapData.buildings.find((b) => b.name === prev.name) ?? null : prev));
-    setSelectedPartner((prev) => (prev ? mapData.partners.find((p) => p.id === prev.id) ?? null : prev));
-    // 지도 데이터가 바뀔 때만 돈다. 필터 상태가 바뀌는 경우는 각 핸들러가 이미 다시 그린다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapData, postToMap]);
-
+  // 지도 페이지와 앱 상태 맞추기: 페이지가 (다시) 준비되면 화면 상태를 다시 그리고, 경로 흐림·지도 데이터 갱신도 반영한다.
+  const resyncMap = useMapPageSync({
+    webViewRef,
+    postToMap,
+    // 그릴 데이터
+    mapData,
+    partners: allPartners,
+    buildings,
+    facilities,
+    exhibitions,
+    activeFilter,
+    facilityKind,
+    reportsOn,
+    reports: shownReportData,
+    // 경로
+    routeDrawn,
+    routeDrawnRef,
+    // 고른 것
+    selectedBuildingRef,
+    selectedPartnerRef,
+    selectedReportRef,
+    selectedFacilityBuildingRef,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    setSelectedBuilding,
+    setSelectedPartner,
+    // 다시 맞출 부수 효과
+    recenter: handleRecenter,
+    reassertPartnerSelection,
+    redrawMyLocation: myLocation.redrawShown,
+    repinPreview: preview.repin,
+    resyncPicker: picker.resync,
+  });
 
   /**
    * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에

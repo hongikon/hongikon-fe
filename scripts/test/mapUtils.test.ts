@@ -4,6 +4,7 @@ import { routePinBuilding } from '../../src/utils/map/routePinBuilding'
 import { buildingLabel, offscreenSummary } from '../../src/utils/map/labels'
 import { searchPinnedSection } from '../../src/utils/map/searchPinned'
 import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
+import { overlayMarkerMessages } from '../../src/utils/map/mapSync'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
@@ -42,4 +43,35 @@ test('제휴 정보 수정 채우기: 위치·이름·주소(없으면 빈 칸)�
   const bare = partnerEditSuggestion({ lat: 1, lng: 2, name: '가게' } as never)
   assert.equal(bare.prefill.address, '')
   assert.equal(bare.prefill.affiliation, null)
+})
+
+test('칩 마커 메시지: 필터·시설 종류가 없으면 보낼 것이 없다', () => {
+  const r = overlayMarkerMessages({
+    partners: [], buildings: [], facilities: [], exhibitions: [],
+    activeFilter: { affiliation: null, category: null }, facilityKind: null,
+  })
+  assert.deepEqual(r, { filteredPartners: null, partnersMessage: null, facilitiesMessage: null })
+})
+
+test('칩 마커 메시지: 필터가 걸리면 맞는 업체만 setPartners(bounds 없음)', () => {
+  const p = (id: string, affiliations: string[]) => ({ id, name: id, lat: 37.55, lng: 126.92, affiliations, category: '카페' }) as never
+  const r = overlayMarkerMessages({
+    partners: [p('a', ['총학생회']), p('b', ['컴공'])], buildings: [], facilities: [], exhibitions: [],
+    activeFilter: { affiliation: '총학생회', category: null } as never, facilityKind: null,
+  })
+  assert.deepEqual(r.filteredPartners?.map((x) => x.id), ['a'])
+  const msg = r.partnersMessage as { type: string; partners: { id: string }[]; bounds: null }
+  assert.equal(msg.type, 'setPartners')
+  assert.deepEqual(msg.partners.map((x) => x.id), ['a'])
+  assert.equal(msg.bounds, null)
+  assert.equal(r.facilitiesMessage, null)
+})
+
+test('칩 마커 메시지: 시설 종류가 있으면 setFacilities', () => {
+  const r = overlayMarkerMessages({
+    partners: [], buildings: [], facilities: [], exhibitions: [],
+    activeFilter: { affiliation: null, category: null }, facilityKind: '프린터' as never,
+  })
+  assert.equal((r.facilitiesMessage as { type: string }).type, 'setFacilities')
+  assert.equal(r.partnersMessage, null)
 })
