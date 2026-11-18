@@ -18,7 +18,6 @@ import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
-import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
@@ -80,6 +79,7 @@ import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
 import { useMapFilters } from "../hooks/map/useMapFilters";
 import { useMapIntents, type AskCardContent, type PreviewTarget } from "../hooks/map/useMapIntents";
 import { useMyLocation } from "../hooks/map/useMyLocation";
+import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
 import { offscreenSummary } from "../utils/map/labels";
@@ -137,8 +137,6 @@ export default function MapScreen() {
   const bottomInsetRef = useRef(0);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-  /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
-  const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
   // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
   const {
     reportsOn,
@@ -286,6 +284,12 @@ export default function MapScreen() {
       setSelectedPartner(partner);
     },
   });
+  // 정보 제보 창(제휴·전시·행사 위치)과 제휴 시트의 '정보 수정'.
+  const infoSuggest = useInfoSuggest({
+    selectedPartnerRef,
+    closePartnerSheet: () => handleClosePartner(),
+    startPartnerLocationPick: (before) => picker.start("partner", { partnerLocationBefore: before }),
+  });
   // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
   const picker = useLocationPicker({
     postToMap,
@@ -298,10 +302,10 @@ export default function MapScreen() {
     },
     onConfirmReport: (center) => setReportTarget({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
     onConfirmPartner: (center) =>
-      setPartnerSuggest({ location: { lat: center.lat, lng: center.lng, buildingName: center.buildingName } }),
+      infoSuggest.open({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
     // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
     onConfirmRouteTo: (building) => beginTo(building),
-    onCancelPartner: (previous) => setPartnerSuggest({ location: previous }),
+    onCancelPartner: (previous) => infoSuggest.open(previous),
   });
   const pickingLocation = picker.picking;
   // 길찾기(출발·도착·층·후보 길). 출발·도착을 정하면 열린 건물·시설 시트를 닫는다.
@@ -785,7 +789,7 @@ export default function MapScreen() {
     hiddenAuthorKeys,
     stopPicker: picker.stop,
     startPartnerLocationPick: () => {
-      setPartnerSuggest(null);
+      infoSuggest.close();
       picker.start("partner", { partnerLocationBefore: null });
     },
     startReportPicker: handleStartReportPicker,
@@ -838,7 +842,7 @@ export default function MapScreen() {
    */
   const closeTopMapLayer = useCallback((): boolean => {
     // 검색·작성·길찾기 창이 떠 있으면 그 창이 먼저 닫혀야 한다(웹 Esc 가 아래 시트까지 닫지 않게).
-    if (search.visible || showRoute || reportTarget !== null || partnerSuggest !== null) return false;
+    if (search.visible || showRoute || reportTarget !== null || infoSuggest.visible) return false;
     if (pickingLocation) {
       handleCancelReportPicker();
       return true;
@@ -866,7 +870,7 @@ export default function MapScreen() {
     search.visible,
     showRoute,
     reportTarget,
-    partnerSuggest,
+    infoSuggest.visible,
     pickingLocation,
     selectedReport,
     selectedPartner,
@@ -922,32 +926,8 @@ export default function MapScreen() {
 
   // ---- 검색·제보·정보 제보 창 ----
   const handleCloseReportComposer = useCallback(() => setReportTarget(null), []);
-  const handleCloseInfoSuggest = useCallback(() => setPartnerSuggest(null), []);
-  /** 정보 제보 창의 '지도에서 위치 고르기': 창을 닫고 핀 고르기로. 취소하면 전 위치로 돌아가게 기억해 둔다. */
-  const partnerSuggestRef = useRef(partnerSuggest);
-  partnerSuggestRef.current = partnerSuggest;
-  const handleInfoSuggestPickOnMap = useCallback(() => {
-    setPartnerSuggest(null);
-    picker.start("partner", { partnerLocationBefore: partnerSuggestRef.current?.location ?? null });
-  }, [picker.start]);
 
   // ---- 아래 시트 ----
-  /** 제휴 시트의 '정보 수정': 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다. */
-  const handleSuggestPartnerEdit = useCallback(() => {
-    const partner = selectedPartnerRef.current;
-    if (!partner) return;
-    handleClosePartner();
-    setPartnerSuggest({
-      location: { lat: partner.lat, lng: partner.lng, buildingName: null },
-      prefill: {
-        type: "partner",
-        kind: "fix",
-        name: partner.name,
-        address: partner.address ?? "",
-        affiliation: partner.affiliations?.[0] ?? null,
-      },
-    });
-  }, [handleClosePartner]);
   /** 시설 시트에 보일 그 건물의 (지금 고른 종류) 시설. */
   const selectedFacilityItems = useMemo(
     () => facilities.filter((f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding),
@@ -1180,7 +1160,7 @@ export default function MapScreen() {
               key={selectedPartner.id}
               partner={selectedPartner}
               onClose={handleClosePartner}
-              onSuggestEdit={handleSuggestPartnerEdit}
+              onSuggestEdit={infoSuggest.suggestPartnerEdit}
             />
           )}
 
@@ -1269,11 +1249,11 @@ export default function MapScreen() {
       />
 
       <InfoSuggestModal
-        visible={partnerSuggest !== null}
-        location={partnerSuggest?.location ?? null}
-        prefill={partnerSuggest?.prefill ?? null}
-        onClose={handleCloseInfoSuggest}
-        onPickOnMap={handleInfoSuggestPickOnMap}
+        visible={infoSuggest.visible}
+        location={infoSuggest.state?.location ?? null}
+        prefill={infoSuggest.state?.prefill ?? null}
+        onClose={infoSuggest.close}
+        onPickOnMap={infoSuggest.pickOnMap}
       />
     </View>
   );

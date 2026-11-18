@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { routePinBuilding } from '../../src/utils/map/routePinBuilding'
 import { buildingLabel, offscreenSummary } from '../../src/utils/map/labels'
 import { searchPinnedSection } from '../../src/utils/map/searchPinned'
+import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
@@ -32,4 +33,13 @@ test('검색 창 맨 위 묶음: 근처 알림이 먼저, 그다음 안 보이�
   assert.equal(searchPinnedSection([], two)?.partners.length, 2)
   assert.equal(searchPinnedSection(null, []), undefined)
   assert.equal(searchPinnedSection(null, null), undefined)
+})
+
+test('제휴 정보 수정 채우기: 위치·이름·주소(없으면 빈 칸)·첫 소속', () => {
+  const full = partnerEditSuggestion({ lat: 1, lng: 2, name: '가게', address: '서울', affiliations: ['총학생회', '컴공'] } as never)
+  assert.deepEqual(full.location, { lat: 1, lng: 2, buildingName: null })
+  assert.deepEqual(full.prefill, { type: 'partner', kind: 'fix', name: '가게', address: '서울', affiliation: '총학생회' })
+  const bare = partnerEditSuggestion({ lat: 1, lng: 2, name: '가게' } as never)
+  assert.equal(bare.prefill.address, '')
+  assert.equal(bare.prefill.affiliation, null)
 })
