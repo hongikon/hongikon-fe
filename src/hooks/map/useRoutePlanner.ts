@@ -308,6 +308,30 @@ export function useRoutePlanner({
     stripHeightRef.current = height
   }, [])
 
+  /** 지도에서 경로를 누른 시각. 같은 손동작으로 뒤따르는 지도 탭을 거르는 데 쓴다. */
+  const routeTapAtRef = useRef(0)
+
+  /** 지도에서 회색(다른) 경로를 눌렀다(11-09) — 범위 안의 번호면 그 길로 바꾸고, 누른 시각을 적어 둔다. */
+  const handleRouteTap = useCallback(
+    (index: number) => {
+      routeTapAtRef.current = Date.now()
+      if (index >= 0 && index < alternativesRef.current.length) selectAlternative(index)
+    },
+    [selectAlternative],
+  )
+
+  /**
+   * 이 지도 탭 메시지를 무시해야 하는지. 경로를 누른 바로 그 손동작의 지도 탭은 무시한다. 경로를 보여 주는 동안에는 지도 탭 자체로
+   * 건물을 고르지 않는다(11-12) — 길(선)을 누른 탭이 경로 선이 아닌 건물 위로 들어와 건물 배너가 경로 카드를 가렸다.
+   * 위치 고르기 중에는 경로를 보여 주는 중이 아니다(pickingLocation).
+   */
+  const ignoresMapTap = useCallback(
+    (type: string, pickingLocation: boolean): boolean =>
+      ((type === 'buildingTap' || type === 'buildingDismiss') && Date.now() - routeTapAtRef.current < 500) ||
+      (type === 'buildingTap' && !pickingLocation && drawnRef.current),
+    [],
+  )
+
   return {
     fromBuilding,
     toBuilding,
@@ -325,6 +349,8 @@ export function useRoutePlanner({
     selectedIndex,
     selectedRouteRef,
     selectAlternative,
+    handleRouteTap,
+    ignoresMapTap,
     floorDial,
     floorDialInitial,
     confirmFloorDial,

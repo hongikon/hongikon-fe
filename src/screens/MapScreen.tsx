@@ -40,7 +40,6 @@ import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { type RouteAlternative } from "../apis/routes";
 
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
 import { canLocate, locateOnce } from "../lib/nearbyPartners/platform";
@@ -446,14 +445,9 @@ export default function MapScreen() {
    * 지도 메시지 처리기가 그보다 위에 있어 ref 로 부른다. 그렇게 연 시트가 아니면 false.
    */
   const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
-  /** 지도에서 경로를 누른 시각과, 메시지 처리기(위)에서 부를 경로 고르기(아래에서 채운다). */
-  const routeTapAtRef = useRef(0);
-  /** 출발·도착이 다 정해져 경로를 보여 주는 중인지(아래에서 채운다). 이때는 지도 탭으로 건물을 고르지 않는다. */
-  const routeShownRef = useRef(false);
-  routeShownRef.current = !pickingLocation && (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
-  const routeAlternativesRef = useRef<RouteAlternative[]>([]);
-  const handleSelectRouteAlternativeRef = useRef<(index: number) => void>(() => {});
-
+  const { handleRouteTap, ignoresMapTap } = route;
+  const { handleCenterMessage } = picker;
+  const handleNearbyCenter = nearbyDebug.handleCenter;
   const handleWebViewMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       try {
@@ -461,42 +455,36 @@ export default function MapScreen() {
 
         // 지도에서 회색(다른) 경로를 눌렀다(11-09) — 그 길로 바꾼다. 같은 손동작이 지도 탭으로도 들어와 건물 시트가 열렸으면 닫는다.
         if (msg.type === "routeTap" && typeof msg.index === "number") {
-          routeTapAtRef.current = Date.now();
-          if (msg.index >= 0 && msg.index < routeAlternativesRef.current.length) handleSelectRouteAlternativeRef.current(msg.index);
+          handleRouteTap(msg.index);
           setSelectedBuilding(null);
           postToMap({ type: "selectBuilding", name: null });
           return;
         }
-        // 경로를 누른 바로 그 손동작의 지도 탭은 무시한다. 경로를 보여 주는 동안에는 지도 탭 자체로 건물을 고르지 않는다(11-12) —
-        // 길(선)을 누른 탭이 경로 선이 아닌 건물 위로 들어와 건물 배너가 경로 카드를 가렸다.
-        if (
-          ((msg.type === "buildingTap" || msg.type === "buildingDismiss") && Date.now() - routeTapAtRef.current < 500) ||
-          (msg.type === "buildingTap" && routeShownRef.current)
-        ) {
+        // 경로를 누른 손동작의 지도 탭, 경로를 보여 주는 동안의 건물 탭은 무시한다.
+        if (ignoresMapTap(msg.type, pickingLocation)) {
           postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-
-        if (handleSelectionTap(msg)) return;
-
-        if (msg.type === "mapAuthFailure") {
-          setMapAuthFailed(true);
-        }
-
-        // 근처 알림 테스트 위치(개발 도구): 지도 가운데 좌표.
-        if (msg.type === "nearbyTestCenter" && typeof msg.lat === "number" && typeof msg.lng === "number") {
-          nearbyDebug.handleCenter({ lat: msg.lat, lng: msg.lng });
           return;
         }
 
         // 위치 선택 모드 중 지도가 멈출 때마다 온다. 화면 중앙 좌표를 갱신한다.
         if (msg.type === "pickerCenter") {
-          picker.handleCenterMessage(msg);
+          handleCenterMessage(msg);
           return;
         }
+        // 근처 알림 테스트 위치(개발 도구): 지도 가운데 좌표.
+        if (msg.type === "nearbyTestCenter" && typeof msg.lat === "number" && typeof msg.lng === "number") {
+          handleNearbyCenter({ lat: msg.lat, lng: msg.lng });
+          return;
+        }
+        if (msg.type === "mapAuthFailure") {
+          setMapAuthFailed(true);
+          return;
+        }
+        // 시트 열고 닫기(건물·제휴·제보·시설을 누름).
+        handleSelectionTap(msg);
       } catch {}
     },
-    [handleSelectionTap, postToMap],
+    [handleRouteTap, ignoresMapTap, handleCenterMessage, handleNearbyCenter, handleSelectionTap, pickingLocation, postToMap, setSelectedBuilding],
   );
 
 
@@ -649,8 +637,6 @@ export default function MapScreen() {
   }, [routeAlternatives, selectedRouteIndex, redrawLiveLocation]);
 
 
-  handleSelectRouteAlternativeRef.current = route.selectAlternative;
-  routeAlternativesRef.current = routeAlternatives;
   const closeRouteSearch = route.closeSearch;
 
 
