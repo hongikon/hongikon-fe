@@ -11,8 +11,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
-  Pressable,
   Animated,
   BackHandler,
   Platform,
@@ -116,6 +114,13 @@ import LocationPickerOverlay, { type PickerCenter, type PickerPurpose } from "..
 import MapCrosshair from "../components/map/picker/MapCrosshair";
 import RouteStrip from "../components/map/route/RouteStrip";
 import RouteResultCard from "../components/map/route/RouteResultCard";
+import MapNoticeStack from "../components/map/notices/MapNoticeStack";
+import MapDataStatusNotice from "../components/map/notices/MapDataStatusNotice";
+import MapAuthErrorNotice from "../components/map/notices/MapAuthErrorNotice";
+import ReportsLoadingNotice from "../components/map/notices/ReportsLoadingNotice";
+import AskPlaceCard from "../components/map/notices/AskPlaceCard";
+import ReviewPinNotice from "../components/map/notices/ReviewPinNotice";
+import DismissibleNotice from "../components/map/notices/DismissibleNotice";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -2012,6 +2017,28 @@ export default function MapScreen() {
   const handleRouteStripHeight = useCallback((height: number) => {
     routeStripHeightRef.current = height;
   }, []);
+  // ---- 지도 위 안내 줄 ----
+  const handleDismissMapAuthError = useCallback(() => setMapAuthFailed(false), []);
+  const handleAskCardClose = useCallback(() => setAskCard(null), []);
+  const handleAskCardBack = useCallback(() => {
+    setAskCard(null);
+    navigation.navigate("Ask" as never);
+  }, [navigation]);
+  /** 'HOT' 목록에서 제보를 고르면 그 제보 시트를 열고 지도를 그 자리로. */
+  const handleSelectHotReport = useCallback(
+    (report: ReportListItem) => {
+      openReport(report);
+      postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
+    },
+    [openReport, postToMap],
+  );
+  /** '지도에 안 보이는 N곳 · 보기' — 그 업체들을 검색 창 맨 위에 모아 연다. */
+  const handleShowOffscreenPartners = useCallback(() => {
+    setNearbyGroup(null);
+    setSearchPinned(offscreenPartners);
+    setShowSearch(true);
+  }, [offscreenPartners]);
+
   const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
   const handleChangeRouteTarget = useCallback((target: "from" | "to") => {
     setRouteTarget(target);
@@ -2050,63 +2077,12 @@ export default function MapScreen() {
           />
         </View>
 
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.bannerStack,
-            { top: headerHeight + 8 },
-            // 넓은 창에선 검색바·시트와 같은 칸에 둔다(10-07 요청). 좁으면 양옆 16.
-            sideGutter > 0 && { left: sideGutter, right: sideGutter, maxWidth: undefined },
-          ]}
-        >
-          {/* 지도 데이터(건물·편의시설·제휴업체)가 아직 하나도 없을 때만. 저장본이 있으면 그걸로 그리고 조용히 새로 받는다. */}
-          {!mapData && (
-            <View style={styles.offscreenNotice} accessibilityRole="alert" accessibilityLiveRegion="polite">
-              {mapDataStatus === "error" ? (
-                <>
-                  <Ionicons name="cloud-offline-outline" size={14} color={COLORS.primary} />
-                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오지 못했어요</Text>
-                  <TouchableOpacity
-                    onPress={reloadMapData}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityRole="button"
-                    accessibilityLabel="지도 정보 다시 불러오기"
-                  >
-                    <Text style={styles.mapDataRetryText}>다시 시도</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오는 중이에요</Text>
-                </>
-              )}
-            </View>
-          )}
+        <MapNoticeStack top={headerHeight + 8} side={sideGutter}>
+          {!mapData && <MapDataStatusNotice failed={mapDataStatus === "error"} onRetry={reloadMapData} />}
 
-          {mapAuthFailed && (
-            <View style={styles.mapErrorNotice}>
-              <Ionicons name="warning" size={15} color={COLORS.warningIcon} />
-              <Text style={styles.mapErrorText}>
-                지도를 불러오지 못했어요. 네이버 지도 인증에 실패했어요.
-              </Text>
-              <TouchableOpacity
-                onPress={() => setMapAuthFailed(false)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                accessibilityRole="button"
-                accessibilityLabel="닫기"
-              >
-                <Ionicons name="close" size={15} color={COLORS.warningIcon} />
-              </TouchableOpacity>
-            </View>
-          )}
+          {mapAuthFailed && <MapAuthErrorNotice onDismiss={handleDismissMapAuthError} />}
 
-          {reportsOn && showReportsLoading && reportsResource.errorMessage === null && (
-            <View style={styles.offscreenNotice}>
-              <ActivityIndicator size="small" color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>제보를 불러오는 중…</Text>
-            </View>
-          )}
+          {reportsOn && showReportsLoading && reportsResource.errorMessage === null && <ReportsLoadingNotice />}
 
           {reportsOn && reportsResource.errorMessage !== null && (
             <RetryableError
@@ -2126,62 +2102,16 @@ export default function MapScreen() {
           {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
           {/* 위치를 고르는 동안에는 아래 목록·안내 줄을 모두 숨긴다(고르기 안내 줄과 같은 자리에 겹친다). */}
           {!pickingLocation && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
-            <HotReportList
-              reports={reports}
-              selectedId={null}
-              onSelect={(report) => {
-                openReport(report);
-                postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
-              }}
-            />
+            <HotReportList reports={reports} selectedId={null} onSelect={handleSelectHotReport} />
           )}
 
           {!pickingLocation && askCard && (
-            <View style={styles.askCard} accessibilityLiveRegion="polite">
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.primary} style={styles.askCardIcon} />
-              <View style={styles.previewTextWrap}>
-                <Text style={styles.askCardTitle} numberOfLines={1}>{askCard.title}</Text>
-                {askCard.summary ? (
-                  <Text style={styles.askCardSummary} numberOfLines={3}>{askCard.summary}</Text>
-                ) : null}
-                <TouchableOpacity
-                  onPress={() => {
-                    setAskCard(null);
-                    navigation.navigate("Ask" as never);
-                  }}
-                  hitSlop={6}
-                  accessibilityRole="button"
-                  accessibilityLabel="물어보기로 돌아가기"
-                >
-                  <Text style={styles.askCardBack}>물어보기로 돌아가기</Text>
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity onPress={() => setAskCard(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="설명 닫기">
-                <Ionicons name="close" size={18} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
+            <AskPlaceCard title={askCard.title} summary={askCard.summary} onBack={handleAskCardBack} onClose={handleAskCardClose} />
           )}
 
           {!pickingLocation && previewTarget && (
-            <View style={styles.previewNotice}>
-              <Ionicons name="eye-outline" size={14} color={COLORS.white} />
-              <View style={styles.previewTextWrap}>
-                <Text style={styles.previewTitle} numberOfLines={1}>검토 중인 제보 · {previewTarget.label}</Text>
-                {previewTarget.detail ? (
-                  <Text style={styles.previewDetail} numberOfLines={1}>{previewTarget.detail}</Text>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                onPress={clearPreview}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="검토 위치 핀 닫기"
-              >
-                <Ionicons name="close" size={18} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
+            <ReviewPinNotice label={previewTarget.label} detail={previewTarget.detail} onClose={clearPreview} />
           )}
-
 
           {!pickingLocation && unresolvedCount > 0 && (
             <DismissibleNotice
@@ -2195,16 +2125,12 @@ export default function MapScreen() {
             <DismissibleNotice
               message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
               actionLabel="보기"
-              onPress={() => {
-                setNearbyGroup(null);
-                setSearchPinned(offscreenPartners);
-                setShowSearch(true);
-              }}
+              onPress={handleShowOffscreenPartners}
               dismissed={dismissedNotices}
               onDismiss={dismissNotice}
             />
           )}
-        </View>
+        </MapNoticeStack>
 
         {pickingNearbyTest && (
           <>
@@ -2530,50 +2456,6 @@ function offscreenSummary(partners: readonly Partner[]): string {
   return rest > 0 ? `${names.join(", ")} 외 ${rest}곳` : names.join(", ");
 }
 
-/**
- * 지도 위 안내 줄. 끝의 X 를 누르면 닫힌다. `onPress` 가 없으면 줄 어디를 눌러도 닫히고,
- * 있으면(예: 지도에 안 보이는 업체 보기) 줄을 누를 때 그 동작을 한다. 이미 닫은 문구면 그리지 않는다.
- */
-function DismissibleNotice({
-  message,
-  actionLabel,
-  onPress,
-  dismissed,
-  onDismiss,
-}: {
-  message: string;
-  /** `onPress` 가 있을 때 문구 끝에 붙는 행동 이름(예: '보기'). */
-  actionLabel?: string;
-  onPress?: () => void;
-  dismissed: ReadonlySet<string>;
-  onDismiss: (message: string) => void;
-}) {
-  if (dismissed.has(message)) return null;
-  const dismiss = () => onDismiss(message);
-  return (
-    <Pressable
-      onPress={onPress ?? dismiss}
-      style={({ pressed }) => [styles.offscreenNotice, pressed && styles.noticePressed]}
-      accessibilityRole="button"
-      accessibilityLabel={onPress ? `${message}. ${actionLabel ?? "열기"}` : `${message}. 탭하면 닫혀요`}
-    >
-      <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-      <Text style={[styles.offscreenText, styles.noticeText]} numberOfLines={1}>
-        {message}
-      </Text>
-      {onPress && actionLabel && <Text style={styles.noticeAction}>{actionLabel}</Text>}
-      <Pressable
-        onPress={dismiss}
-        hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="안내 닫기"
-      >
-        <Ionicons name="close" size={14} color={COLORS.textSecondary} />
-      </Pressable>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   // 등록 전 안내의 바로가기. 안내 칸 너비를 꽉 채운 남색 버튼(11-09 — 왼쪽 작은 칩이라 눈에 안 띄었다).
   nearbyOverlayNoteButton: {
@@ -2636,87 +2518,5 @@ const styles = StyleSheet.create({
   // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
   bottomSheetLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
-  bannerStack: {
-    position: "absolute",
-    top: 8,
-    left: 16,
-    right: 16,
-    maxWidth: 560,
-    gap: 6,
-  },
-  mapErrorNotice: {
-    backgroundColor: COLORS.warningSoft,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  mapErrorText: {
-    flex: 1,
-    fontSize: 12,
-    color: COLORS.warning,
-  },
-  offscreenNotice: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
-  // 문구가 남는 폭을 다 써서 X(와 보기)를 줄 오른쪽 끝에 붙인다.
-  noticeText: { flex: 1 },
-  noticeAction: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
-  noticePressed: { opacity: 0.6 },
-  mapDataNoticeText: { flex: 1, color: COLORS.primary },
-  mapDataRetryText: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
-  previewNotice: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 12,
-    paddingRight: 10,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "stretch",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  askCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 12,
-    paddingRight: 10,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    alignSelf: "stretch",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  askCardIcon: { marginTop: 1 },
-  askCardTitle: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
-  askCardSummary: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular, marginTop: 2, lineHeight: 18 },
-  askCardBack: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.semibold, marginTop: 6 },
-  previewTextWrap: { flex: 1 },
-  previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
-  previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */
 });

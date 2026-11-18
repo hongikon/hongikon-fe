@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -25,7 +25,7 @@ const EXPANDED = 10
 /**
  * '🔥 HOT' 칩을 켰을 때 지도 위에 뜨는 짧은 목록. 최근 60분 🔥 순(같으면 전체 🔥 순). 누르면 그 제보 시트를 열고 가운데로 옮긴다.
  */
-export default function HotReportList({ reports, selectedId, onSelect }: HotReportListProps) {
+function HotReportList({ reports, selectedId, onSelect }: HotReportListProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
   const [expanded, setExpanded] = useState(false)
@@ -161,3 +161,5 @@ const styles = StyleSheet.create({
   toggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: 32 },
   toggleText: { fontFamily: FONTS.medium, fontSize: 12, color: COLORS.textSecondary },
 })
+
+export default memo(HotReportList)
