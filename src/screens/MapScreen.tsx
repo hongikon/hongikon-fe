@@ -18,7 +18,7 @@ import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
@@ -77,7 +77,8 @@ import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
 import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
 import { useMapFilters } from "../hooks/map/useMapFilters";
-import { useMapIntents, type AskCardContent, type PreviewTarget } from "../hooks/map/useMapIntents";
+import { useMapIntents } from "../hooks/map/useMapIntents";
+import { useMapPlaceCards } from "../hooks/map/useMapPlaceCards";
 import { useMyLocation } from "../hooks/map/useMyLocation";
 import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useMapSearch } from "../hooks/map/useMapSearch";
@@ -120,12 +121,6 @@ export default function MapScreen() {
   // 폴드를 접고 펴면 앱이 다시 시작되지 않고 창 크기만 바뀌므로 매 렌더 다시 계산한다.
   const sideGutter = useCenteredGutter();
   const overlayInset = { left: 12 + sideGutter, right: 12 + sideGutter };
-  /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
-  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
-  /** 물어보기 "지도에서 보기"로 온 곳의 짧은 설명 카드(지도 위). 닫거나 그 곳 시트를 닫으면 사라진다(11-07). */
-  const [askCard, setAskCard] = useState<AskCardContent | null>(null);
-  const previewTargetRef = useRef(previewTarget);
-  previewTargetRef.current = previewTarget;
   /** 필터 없이 검색으로만 지도에 올린 업체 id. 그 시트가 닫히면 마커도 거둔다(아래 effect). */
   const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
@@ -269,6 +264,12 @@ export default function MapScreen() {
       setReportTarget(at);
     },
     onLeaveBuildingFacility: () => leaveBuildingFacilityRef.current(),
+  });
+  // 지도 위에 얹는 검토용 임시 핀과 물어보기 설명 카드.
+  const preview = useMapPlaceCards({
+    webViewRef,
+    postToMap,
+    placeSheetOpen: selectedBuilding !== null || selectedPartner !== null || selectedFacilityBuilding !== null,
   });
   // 제휴·편의시설 검색 창(열기·닫기·맨 위 업체 묶음·결과로 업체 고르기).
   const search = useMapSearch({
@@ -417,24 +418,6 @@ export default function MapScreen() {
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
   const sheetBottom = sheetOpen ? 0 : tabBarHeight;
-
-  const showPreviewPin = useCallback(
-    (preview: PreviewTarget) => {
-      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
-      postToMap({ type: "focusReport", lat: preview.lat, lng: preview.lng, zoom: FOCUS_ZOOM });
-      postToMap({ type: "previewPin", lat: preview.lat, lng: preview.lng, label: preview.label });
-    },
-    [postToMap],
-  );
-
-  /** 미리보기 핀과 안내 줄을 거둔다. 핀은 배포된 원격 map.html 에도 먹히게 페이지 전역을 직접 지운다. */
-  const clearPreview = useCallback(() => {
-    if (previewTargetRef.current === null) return;
-    setPreviewTarget(null);
-    webViewRef.current?.injectJavaScript(
-      "if (window.__previewPin) { window.__previewPin.setMap(null); window.__previewPin = null; } true;",
-    );
-  }, []);
 
   /**
    * 건물 시트 → '건물 안 시설'로 연 시설 시트를 정리한다(11-08). 아래 handleLeaveBuildingFacility 가 채운다 —
@@ -712,14 +695,14 @@ export default function MapScreen() {
     // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
     if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
     // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
-    if (previewTargetRef.current) showPreviewPin(previewTargetRef.current);
+    preview.repin();
     // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
     const opened = selectedReportRef.current;
     if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
     // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
     // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
     picker.resync();
-  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, picker.resync, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
+  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, picker.resync, postToMap, handleRecenter, preview.repin, reassertPartnerSelection]);
 
   // 경로가 그려진 동안 칩 핀을 흐리게, 길찾기를 끝내면 되돌린다(11-08).
   useEffect(() => {
@@ -805,16 +788,14 @@ export default function MapScreen() {
       setSelectedReport(null);
       setSelectedBuilding(building);
     },
-    setAskCard,
-    clearPreview,
-    showPreview: (preview) => {
+    setAskCard: preview.setAskCard,
+    clearPreview: preview.clearPreview,
+    showPreview: (target) => {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
-      setPreviewTarget(preview);
-      // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
-      showPreviewPin(preview);
+      preview.showPreview(target);
     },
     startRouteTo: ({ building, floor, from }) => {
       search.hide();
@@ -825,14 +806,6 @@ export default function MapScreen() {
       else void myLocation.selectForRoute();
     },
   });
-
-  // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
-  useEffect(() => {
-    if (askCard && !selectedBuilding && !selectedPartner && !selectedFacilityBuilding) setAskCard(null);
-  }, [askCard, selectedBuilding, selectedPartner, selectedFacilityBuilding]);
-
-  // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
-  useFocusEffect(useCallback(() => () => clearPreview(), [clearPreview]));
 
   const handleCancelReportPicker = picker.cancel;
 
@@ -946,11 +919,6 @@ export default function MapScreen() {
 
   // ---- 지도 위 안내 줄 ----
   const handleDismissMapAuthError = useCallback(() => setMapAuthFailed(false), []);
-  const handleAskCardClose = useCallback(() => setAskCard(null), []);
-  const handleAskCardBack = useCallback(() => {
-    setAskCard(null);
-    navigation.navigate("Ask" as never);
-  }, [navigation]);
   /** 'HOT' 목록에서 제보를 고르면 그 제보 시트를 열고 지도를 그 자리로. */
   const handleSelectHotReport = useCallback(
     (report: ReportListItem) => {
@@ -1034,12 +1002,12 @@ export default function MapScreen() {
             <HotReportList reports={reports} selectedId={null} onSelect={handleSelectHotReport} />
           )}
 
-          {showOverlayNotices && askCard && (
-            <AskPlaceCard title={askCard.title} summary={askCard.summary} onBack={handleAskCardBack} onClose={handleAskCardClose} />
+          {showOverlayNotices && preview.askCard && (
+            <AskPlaceCard title={preview.askCard.title} summary={preview.askCard.summary} onBack={preview.backToAsk} onClose={preview.closeAskCard} />
           )}
 
-          {showOverlayNotices && previewTarget && (
-            <ReviewPinNotice label={previewTarget.label} detail={previewTarget.detail} onClose={clearPreview} />
+          {showOverlayNotices && preview.previewTarget && (
+            <ReviewPinNotice label={preview.previewTarget.label} detail={preview.previewTarget.detail} onClose={preview.clearPreview} />
           )}
 
           {showOverlayNotices && unresolvedCount > 0 && (

@@ -7,20 +7,9 @@ import { ROUTE_FINDING_ENABLED } from '../../constants/route'
 import { consumeMapIntent, subscribeMapIntent } from '../../lib/mapIntents'
 import type { Building, Facility, Partner, ReportListItem } from '../../types'
 import { visibleReports } from '../../utils/reports'
+import type { AskCardContent, PreviewTarget } from './useMapPlaceCards'
 
-/** 관리 탭 "지도에서 보기"로 찍을 검토용 임시 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
-export interface PreviewTarget {
-  lat: number
-  lng: number
-  label: string
-  detail: string
-}
-
-/** 물어보기 "지도에서 보기"로 온 곳의 짧은 설명 카드. */
-export interface AskCardContent {
-  title: string
-  summary: string
-}
+export type { AskCardContent, PreviewTarget } from './useMapPlaceCards'
 
 interface Options {
   accessToken: string | null
