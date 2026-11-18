@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import type { ReactNode } from 'react'
 import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
@@ -66,7 +66,7 @@ interface MenuItem {
  * 이름표와 함께 펼쳐 보인다. 접기 버튼과 나머지 항목은 하단 탭 바와 같은 맑은 유리(FloatingTabBar pill)이고,
  * 제보하기만 앱의 주 기능이라 메인 컬러로 채워 맨 아래(손에 가까운 쪽)에 둔다(10-18 요청). 항목을 누르면 접힌다.
  */
-export default function MapActionMenu({
+function MapActionMenu({
   onReport,
   onRoute,
   onRecenter,
@@ -376,3 +376,5 @@ const styles = StyleSheet.create({
     ...glass,
   },
 })
+
+export default memo(MapActionMenu)

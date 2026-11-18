@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SheetHandle from "./SheetHandle";
 import {
@@ -119,7 +120,7 @@ function UsageNote({ note, color }: { note: string; color: string }) {
  * 제휴 업체 상세. 혜택이 가장 중요하므로 카드로 강조한다.
  * benefit / address / hours / contact / link 는 값이 있을 때만 렌더한다.
  */
-export default function PartnerSheet({ partner, onClose, onSuggestEdit }: PartnerSheetProps) {
+function PartnerSheet({ partner, onClose, onSuggestEdit }: PartnerSheetProps) {
   // 손잡이(회색 줄)로 머리줄만 → 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,
@@ -493,3 +494,5 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
+
+export default memo(PartnerSheet)

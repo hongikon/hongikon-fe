@@ -94,7 +94,6 @@ import type {
 import { REPORT_CATEGORIES } from "../constants/reportCategories";
 import { haversineMeters } from "../utils/geo";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
-import { SheetHeaderContext } from "../hooks/useResizableSheet";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
@@ -113,6 +112,7 @@ import DismissibleNotice from "../components/map/notices/DismissibleNotice";
 import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
 import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
+import MapSheets from "../components/map/sheets/MapSheets";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -1959,6 +1959,94 @@ export default function MapScreen() {
   const handleRouteStripHeight = useCallback((height: number) => {
     routeStripHeightRef.current = height;
   }, []);
+  // ---- 지도 메뉴(오른쪽 아래) ----
+  /** 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다. */
+  const mapMenuBottom =
+    20 + bottomInset + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0);
+  const mapMenuStyle = useMemo(() => [styles.mapControls, { bottom: mapMenuBottom }], [mapMenuBottom]);
+  /** 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지. */
+  const mapMenuMaxItemsHeight = Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12);
+  const mapMenuReportFilter = useMemo(
+    () => ({
+      categories: REPORT_CATEGORY_KEYS,
+      selected: reportCategories,
+      onToggleCategory: handleToggleReportCategory,
+      hotOn: hotOnly,
+      hotAvailable,
+      onToggleHot: handleToggleHot,
+    }),
+    [reportCategories, handleToggleReportCategory, hotOnly, hotAvailable, handleToggleHot],
+  );
+  /** '내 위치 켜기': 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다. */
+  const canShowMyLocationButton = canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM);
+
+  // ---- 검색·제보·정보 제보 창 ----
+  const handleCloseSearch = useCallback(() => {
+    setShowSearch(false);
+    setNearbyGroup(null);
+  }, []);
+  /** 검색 창 맨 위에 모아 보일 업체: 근처 알림으로 연 곳들, 또는 안내 줄의 '지도에 안 보이는 곳'. */
+  const searchPinnedSection = useMemo(
+    () =>
+      nearbyGroup && nearbyGroup.length > 0
+        ? {
+            title: "지금 계신 곳 근처 제휴",
+            hint: "알림을 보낸 순간 함께 잡힌 곳이에요. 가까운 순으로, 누르면 그 가게 혜택을 볼 수 있어요.",
+            partners: nearbyGroup,
+          }
+        : searchPinned && searchPinned.length > 0
+        ? {
+            title: `지도에 안 보이는 ${searchPinned.length}곳`,
+            hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
+            partners: searchPinned,
+          }
+        : undefined,
+    [nearbyGroup, searchPinned],
+  );
+  const handleCloseReportComposer = useCallback(() => setReportTarget(null), []);
+  const handleCloseInfoSuggest = useCallback(() => setPartnerSuggest(null), []);
+  /** 정보 제보 창의 '지도에서 위치 고르기': 창을 닫고 핀 고르기로. 취소하면 전 위치로 돌아가게 기억해 둔다. */
+  const partnerSuggestRef = useRef(partnerSuggest);
+  partnerSuggestRef.current = partnerSuggest;
+  const handleInfoSuggestPickOnMap = useCallback(() => {
+    partnerLocationBeforePickRef.current = partnerSuggestRef.current?.location ?? null;
+    setPartnerSuggest(null);
+    startPicker("partner");
+  }, [startPicker]);
+
+  // ---- 아래 시트 ----
+  /** 제휴 시트의 '정보 수정': 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다. */
+  const handleSuggestPartnerEdit = useCallback(() => {
+    const partner = selectedPartnerRef.current;
+    if (!partner) return;
+    handleClosePartner();
+    setPartnerSuggest({
+      location: { lat: partner.lat, lng: partner.lng, buildingName: null },
+      prefill: {
+        type: "partner",
+        kind: "fix",
+        name: partner.name,
+        address: partner.address ?? "",
+        affiliation: partner.affiliations?.[0] ?? null,
+      },
+    });
+  }, [handleClosePartner]);
+  /** 시설 시트에 보일 그 건물의 (지금 고른 종류) 시설. */
+  const selectedFacilityItems = useMemo(
+    () => facilities.filter((f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding),
+    [facilities, facilityKind, selectedFacilityBuilding],
+  );
+  /** 검색으로 찾아간 시설이 지금 시트의 것이면 그 줄을 강조한다. */
+  const highlightedFacilityId =
+    searchedFacility && searchedFacility.kind === facilityKind && searchedFacility.buildingName === selectedFacilityBuilding
+      ? searchedFacility.id
+      : null;
+  /** 시설 시트 닫기: 건물 시트에서 들어왔으면 그 건물 시트로 돌아가고, 아니면 닫는다. */
+  const handleCloseFacilitySheet = useCallback(() => {
+    if (!handleLeaveBuildingFacility()) setSelectedFacilityBuilding(null);
+  }, [handleLeaveBuildingFacility]);
+  const handleCloseReportSheet = useCallback(() => setSelectedReport(null), []);
+
   // ---- 지도 위 안내 줄 ----
   const handleDismissMapAuthError = useCallback(() => setMapAuthFailed(false), []);
   const handleAskCardClose = useCallback(() => setAskCard(null), []);
@@ -1995,6 +2083,25 @@ export default function MapScreen() {
     setSearchQuery("");
   }, []);
 
+  // ---- 화면에 무엇을 보일지 ----
+  // 위치를 고르는 동안에는 지도 위 안내 줄·카드·메뉴를 모두 숨긴다(고르기 안내 줄·카드와 같은 자리에 겹친다).
+  const routeHasFrom = fromBuilding !== null || fromMyLocation;
+  /** 검색바·칩. 길찾기 중에는 출발·도착 막대가 그 자리로 올라간다(routeMode). */
+  const showSearchAndChips = !pickingLocation && !routeMode;
+  /** 길찾기 출발·도착 막대: 한쪽이라도 정했으면. */
+  const showRouteStrip = !pickingLocation && (routeHasFrom || toBuilding !== null);
+  /** 길찾기 결과 카드: 두 끝을 다 정했고 아래 시트가 닫혀 있으면. */
+  const showRouteResultCard = !pickingLocation && !sheetOpen && routeHasFrom && toBuilding !== null;
+  /** 오른쪽 아래 지도 메뉴. 시트가 열려 있으면 시트 가장자리로 삐져나와 숨긴다. */
+  const showMapMenu = !pickingLocation && !sheetOpen && !nearbyDebug.picking;
+  const showOverlayNotices = !pickingLocation;
+  const showReportsLoadingNotice = reportsOn && showReportsLoading && reportsResource.errorMessage === null;
+  const showReportsError = reportsOn && reportsResource.errorMessage !== null;
+  /** HOT 제보 목록: HOT 을 켰고 그 목록을 받았을 때. 제보 시트를 연 동안에는 접어 지도를 덜 가린다. */
+  const showHotReportList =
+    showOverlayNotices && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport;
+  const showNearbyOverlayNote = nearbyDebug.overlayOn && !sheetOpen && !nearbyDebug.picking;
+
   return (
     <View style={styles.container}>
       <PartnerNoticeModal />
@@ -2003,13 +2110,8 @@ export default function MapScreen() {
       <LaunchNoticeModal />
 
       <View style={styles.mapArea}>
-        {/*
-          지도 탭은 탭바가 지도 위에 떠 있다(TabNavigator). 지도 자체는 탭바 위에서 끝나게 해,
-          지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
-          탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
-        */}
-        {/* 탭 바가 지도 위에 떠 있는 캡슐이라(FloatingTabBar) 지도는 화면 맨 아래까지 깐다. 캡슐은 가운데에 떠 있어
-            지도 아래 양 끝의 NAVER 로고·저작권 표시는 가리지 않는다. */}
+        {/* [지도] 탭 바가 지도 위에 떠 있는 캡슐이라(FloatingTabBar) 지도는 화면 맨 아래까지 깐다. 캡슐은 가운데에 떠 있어
+            지도 아래 양 끝의 NAVER 로고·저작권 표시는 가리지 않는다(네이버 지도 API 약관). */}
         <View style={styles.mapCanvas}>
           <NaverMapView
             ref={webViewRef}
@@ -2019,20 +2121,21 @@ export default function MapScreen() {
           />
         </View>
 
+        {/* [지도 위 안내 줄] 검색바·칩 아래에 쌓인다. */}
         <MapNoticeStack top={headerHeight + 8} side={sideGutter}>
           {!mapData && <MapDataStatusNotice failed={mapDataStatus === "error"} onRetry={reloadMapData} />}
 
           {mapAuthFailed && <MapAuthErrorNotice onDismiss={handleDismissMapAuthError} />}
 
-          {reportsOn && showReportsLoading && reportsResource.errorMessage === null && <ReportsLoadingNotice />}
+          {showReportsLoadingNotice && <ReportsLoadingNotice />}
 
-          {reportsOn && reportsResource.errorMessage !== null && (
+          {showReportsError && (
             <RetryableError
               variant="chip"
               message={
                 reportsResource.data !== undefined
                   ? "제보를 새로 불러오지 못했어요. 마지막으로 받은 제보를 보여주고 있어요."
-                  : reportsResource.errorMessage
+                  : (reportsResource.errorMessage ?? "")
               }
               isNetworkError={reportsResource.isNetworkError}
               onRetry={reportsResource.canRetry ? reportsResource.retry : undefined}
@@ -2041,21 +2144,19 @@ export default function MapScreen() {
             />
           )}
 
-          {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
-          {/* 위치를 고르는 동안에는 아래 목록·안내 줄을 모두 숨긴다(고르기 안내 줄과 같은 자리에 겹친다). */}
-          {!pickingLocation && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
+          {showHotReportList && (
             <HotReportList reports={reports} selectedId={null} onSelect={handleSelectHotReport} />
           )}
 
-          {!pickingLocation && askCard && (
+          {showOverlayNotices && askCard && (
             <AskPlaceCard title={askCard.title} summary={askCard.summary} onBack={handleAskCardBack} onClose={handleAskCardClose} />
           )}
 
-          {!pickingLocation && previewTarget && (
+          {showOverlayNotices && previewTarget && (
             <ReviewPinNotice label={previewTarget.label} detail={previewTarget.detail} onClose={clearPreview} />
           )}
 
-          {!pickingLocation && unresolvedCount > 0 && (
+          {showOverlayNotices && unresolvedCount > 0 && (
             <DismissibleNotice
               message={`건물을 찾지 못한 편의시설 ${unresolvedCount}곳은 지도에서 빠졌어요`}
               dismissed={dismissedNotices}
@@ -2063,7 +2164,7 @@ export default function MapScreen() {
             />
           )}
 
-          {!pickingLocation && offscreenCount > 0 && (
+          {showOverlayNotices && offscreenCount > 0 && (
             <DismissibleNotice
               message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
               actionLabel="보기"
@@ -2074,6 +2175,7 @@ export default function MapScreen() {
           )}
         </MapNoticeStack>
 
+        {/* [근처 알림 개발 도구] 테스트 위치 고르기·영역 보기 안내 */}
         {nearbyDebug.picking && (
           <NearbyTestPicker
             bottom={16 + bottomInset}
@@ -2082,7 +2184,7 @@ export default function MapScreen() {
             onCancel={nearbyDebug.cancelPicking}
           />
         )}
-        {nearbyDebug.overlayOn && nearbyDebug.note && !sheetOpen && !nearbyDebug.picking && (
+        {showNearbyOverlayNote && nearbyDebug.note && (
           <NearbyOverlayNote
             note={nearbyDebug.note}
             testLabel={nearbyDebug.label}
@@ -2090,36 +2192,24 @@ export default function MapScreen() {
             bottom={84 + bottomInset}
           />
         )}
-        {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
-        {!pickingLocation && !sheetOpen && !nearbyDebug.picking && (
+        {/* [지도 메뉴] 오른쪽 아래(제보 보기·내 위치·캠퍼스로·길찾기·제보하기) */}
+        {showMapMenu && (
           <MapActionMenu
-            style={[
-              styles.mapControls,
-              // 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다.
-              { bottom: 20 + bottomInset + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0) },
-            ]}
+            style={mapMenuStyle}
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
-            // 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다.
-            onMyLocation={canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
+            onMyLocation={canShowMyLocationButton ? handleToggleMyLocation : undefined}
             myLocationOn={myLocationOn}
             onToggleNearbyOverlay={nearbyDebug.menuAvailable ? nearbyDebug.toggleOverlay : undefined}
             onPickNearbyTestLocation={nearbyDebug.menuAvailable ? nearbyDebug.startPicking : undefined}
             nearbyOverlayOn={nearbyDebug.overlayOn}
-            // 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지.
-            maxItemsHeight={Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12)}
-            reportFilter={{
-              categories: REPORT_CATEGORY_KEYS,
-              selected: reportCategories,
-              onToggleCategory: handleToggleReportCategory,
-              hotOn: hotOnly,
-              hotAvailable,
-              onToggleHot: handleToggleHot,
-            }}
+            maxItemsHeight={mapMenuMaxItemsHeight}
+            reportFilter={mapMenuReportFilter}
           />
         )}
 
+        {/* [위치 고르기] 제보·정보 제보·길찾기 도착을 지도 가운데 핀으로 */}
         {pickingLocation && (
           <LocationPickerOverlay
             purpose={pickerPurpose}
@@ -2133,7 +2223,8 @@ export default function MapScreen() {
           />
         )}
 
-        {!pickingLocation && (fromBuilding || fromMyLocation || toBuilding) && (
+        {/* [길찾기] 위 출발·도착 막대, 아래 결과 카드 */}
+        {showRouteStrip && (
           <RouteStrip
             fromLabel={routeFromLabel}
             toLabel={routeToLabel}
@@ -2150,7 +2241,7 @@ export default function MapScreen() {
           />
         )}
 
-        {!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding && (
+        {showRouteResultCard && (
           <RouteResultCard
             routes={routeAlternatives}
             selectedIndex={selectedRouteIndex}
@@ -2162,19 +2253,8 @@ export default function MapScreen() {
           />
         )}
 
-        {/*
-          건물·제휴업체·제보 배너("하단 배너"). 각 배너는 자기 스타일에서 이미
-          position:absolute; bottom:0 을 쓰므로, 이 레이어는 화면 전체를 덮어
-          (position:absolute, 사방 0) 그 기준선을 그대로 유지해 준다.
-        */}
-        <SheetHeaderContext.Provider value={sheetHeaderCtx}>
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.bottomSheetLayer,
-            { bottom: sheetBottom, left: sideGutter, right: sideGutter },
-          ]}
-        >
+        {/* [아래 시트] 고른 건물·제휴·시설·제보 */}
+        <MapSheets headerContext={sheetHeaderCtx} bottom={sheetBottom} side={sideGutter}>
           {selectedBuilding && (
             <BuildingSheet
               key={selectedBuilding.name}
@@ -2194,21 +2274,7 @@ export default function MapScreen() {
               key={selectedPartner.id}
               partner={selectedPartner}
               onClose={handleClosePartner}
-              onSuggestEdit={() => {
-                // 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다.
-                const partner = selectedPartner;
-                handleClosePartner();
-                setPartnerSuggest({
-                  location: { lat: partner.lat, lng: partner.lng, buildingName: null },
-                  prefill: {
-                    type: "partner",
-                    kind: "fix",
-                    name: partner.name,
-                    address: partner.address ?? "",
-                    affiliation: partner.affiliations?.[0] ?? null,
-                  },
-                });
-              }}
+              onSuggestEdit={handleSuggestPartnerEdit}
             />
           )}
 
@@ -2217,20 +2283,10 @@ export default function MapScreen() {
               key={`${facilityKind}:${selectedFacilityBuilding}`}
               kind={facilityKind}
               buildingName={selectedFacilityBuilding}
-              items={facilities.filter(
-                (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
-              )}
+              items={selectedFacilityItems}
               exhibitions={exhibitions}
-              highlightId={
-                searchedFacility &&
-                searchedFacility.kind === facilityKind &&
-                searchedFacility.buildingName === selectedFacilityBuilding
-                  ? searchedFacility.id
-                  : null
-              }
-              onClose={() => {
-                if (!handleLeaveBuildingFacility()) setSelectedFacilityBuilding(null);
-              }}
+              highlightId={highlightedFacilityId}
+              onClose={handleCloseFacilitySheet}
               onBack={facilityFrom ? handleBackToBuilding : undefined}
               backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
               onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
@@ -2242,27 +2298,14 @@ export default function MapScreen() {
           {selectedReport && (
             // 제보마다 새로 그린다. 시트 안의 🔥·관심·신고 요청 중 상태와 늦게 온 응답·오류·메뉴가 다른 제보로
             // 넘어가지 않게(예전엔 마커만 바꿔 누르면 앞 제보의 응답이 뒤 제보 시트에 덮였다).
-            <ReportSheet
-              key={selectedReport.id}
-              report={selectedReport}
-              onClose={() => setSelectedReport(null)}
-              onChanged={refetchReports}
-            />
+            <ReportSheet key={selectedReport.id} report={selectedReport} onClose={handleCloseReportSheet} onChanged={refetchReports} />
           )}
-        </View>
-        </SheetHeaderContext.Provider>
+        </MapSheets>
       </View>
 
-      {/*
-        검색바·필터 칩을 지도 위에 뜨는 투명 오버레이로 띄운다. mapArea 뒤에
-        와야(later sibling) 그 위에 그려진다. pointerEvents="box-none" 이라
-        빈 공간(제목 옆, 칩 사이)은 터치가 그대로 지도로 전달되고, 안의
-        버튼·칩만 눌린다. onLayout 으로 잰 실제 높이를 배너·상단바 위치
-        계산에 쓴다(headerHeight, 위 선언부 주석 참고).
-      */}
+      {/* [위 막대] 검색바·칩. mapArea 뒤에 와야(later sibling) 지도 위에 그려진다. 빈 곳 터치는 지도로 간다. */}
       <MapTopBar topInset={insets.top} opacity={headerFade} covered={headerCovered} onHeight={setHeaderHeight}>
-        {/* 길찾기 중에는 검색바·칩을 숨긴다(routeMode) — 출발·도착 막대가 그 자리로 올라간다. */}
-        {!pickingLocation && !routeMode && (
+        {showSearchAndChips && (
           <>
             <MapSearchBar sideGutter={sideGutter} onPress={handleOpenSearch} />
             <FilterChipSection sideGutter={sideGutter}>
@@ -2285,6 +2328,7 @@ export default function MapScreen() {
         )}
       </MapTopBar>
 
+      {/* [창] 층 다이얼·길찾기 창·검색 창·제보 쓰기·정보 제보 */}
       {!showRoute && floorDialSheet}
       <RoutePlannerModal
         visible={showRoute}
@@ -2305,33 +2349,16 @@ export default function MapScreen() {
       <PartnerSearchModal
         visible={showSearch}
         topInset={insets.top}
-        onClose={() => {
-          setShowSearch(false);
-          setNearbyGroup(null);
-        }}
+        onClose={handleCloseSearch}
         onSelect={handleSearchSelect}
         onSelectFacility={handleSearchSelectFacility}
         autoFocus={!nearbyGroup}
-        pinned={
-          nearbyGroup && nearbyGroup.length > 0
-            ? {
-                title: "지금 계신 곳 근처 제휴",
-                hint: "알림을 보낸 순간 함께 잡힌 곳이에요. 가까운 순으로, 누르면 그 가게 혜택을 볼 수 있어요.",
-                partners: nearbyGroup,
-              }
-            : searchPinned && searchPinned.length > 0
-            ? {
-                title: `지도에 안 보이는 ${searchPinned.length}곳`,
-                hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
-                partners: searchPinned,
-              }
-            : undefined
-        }
+        pinned={searchPinnedSection}
       />
 
       <ReportComposerModal
         target={reportTarget}
-        onClose={() => setReportTarget(null)}
+        onClose={handleCloseReportComposer}
         onCreated={handleReportCreated}
       />
 
@@ -2339,12 +2366,8 @@ export default function MapScreen() {
         visible={partnerSuggest !== null}
         location={partnerSuggest?.location ?? null}
         prefill={partnerSuggest?.prefill ?? null}
-        onClose={() => setPartnerSuggest(null)}
-        onPickOnMap={() => {
-          partnerLocationBeforePickRef.current = partnerSuggest?.location ?? null;
-          setPartnerSuggest(null);
-          startPicker("partner");
-        }}
+        onClose={handleCloseInfoSuggest}
+        onPickOnMap={handleInfoSuggestPickOnMap}
       />
     </View>
   );
@@ -2368,8 +2391,6 @@ const styles = StyleSheet.create({
   mapCanvas: { flex: 1 },
   mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
-  // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
-  bottomSheetLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */
 });

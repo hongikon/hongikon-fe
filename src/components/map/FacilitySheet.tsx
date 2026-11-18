@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, memo } from "react";
 import SheetHandle from "./SheetHandle";
 import { KindIcon } from "./ChipIcon";
 import { Animated, View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, Linking, Platform } from "react-native";
@@ -58,7 +58,7 @@ interface FacilitySheetProps {
  * '행사·전시'면 줄마다 그 전시장의 지금 전시·다음 전시를 붙인다.
  * '식당'이면 학식 메뉴가 있는 줄(제2기숙사 학생식당·교직원식당) 아래에 주간 메뉴를 붙인다.
  */
-export default function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null, onSetFrom, onSetTo, routeNext = null }: FacilitySheetProps) {
+function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack, backLabel, officeDetails = ADMIN_OFFICE_DETAILS, highlightId = null, onSetFrom, onSetTo, routeNext = null }: FacilitySheetProps) {
   // 시트는 화면 맨 아래에 붙으므로 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
   const insets = useSafeAreaInsets();
   const meta = FACILITY_KINDS.find((k) => k.key === kind);
@@ -577,3 +577,5 @@ const styles = StyleSheet.create({
   upcomingBody: { flex: 1 },
   upcomingTitle: { fontSize: 13.5, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
 });
+
+export default memo(FacilitySheet)

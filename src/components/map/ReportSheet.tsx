@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, memo } from 'react'
 import type { LayoutChangeEvent } from 'react-native'
 import SheetHandle from './SheetHandle'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -83,7 +83,7 @@ type SheetPatch = ReportCommunityPatch & Partial<Pick<ReportListItem,
   days?: ReportDayHours[] | null
 }
 
-export default function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProps) {
+function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
@@ -710,3 +710,5 @@ function usePhotoTileSizes(urls: readonly string[]) {
     sizeOf: (url: string) => ({ width: Math.floor(height * ratioOf(url)), height: Math.round(height) }),
   }
 }
+
+export default memo(ReportSheet)

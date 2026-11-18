@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SheetHandle from "./SheetHandle";
 import {
@@ -69,7 +70,7 @@ function floorSummary(floors: number[]): string | null {
  * (종류·층수 / description / 건물 안 시설 / hours / contact / link)
  * '건물 안 시설'은 지도 데이터의 편의시설을 종류별로 묶어 보여 주고, 누르면 그 시설 시트로 간다(10-14 요청).
  */
-export default function BuildingSheet({
+function BuildingSheet({
   building,
   facilities,
   onOpenFacility,
@@ -315,3 +316,5 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
+
+export default memo(BuildingSheet)
