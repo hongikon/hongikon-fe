@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useCallback, useRef, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
@@ -8,12 +8,10 @@ import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
-import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import HotReportList from "../components/map/HotReportList";
 import RetryableError from "../components/common/RetryableError";
-import { promptLogin } from "../utils/reports";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -63,6 +61,8 @@ import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
+import { useReportComposer } from "../hooks/map/useReportComposer";
+import { useMapNotices } from "../hooks/map/useMapNotices";
 import { useSheetActions } from "../hooks/map/useSheetActions";
 import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
@@ -85,13 +85,10 @@ export default function MapScreen() {
   const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
   const farViewPartnerIdRef = useRef<string | null>(null);
-  // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
-  // 사용자가 앱이 멈춘 것으로 오해한다.
-  const [mapAuthFailed, setMapAuthFailed] = useState(false);
+  // 지도 위 안내 줄 상태(네이버 지도 인증 실패·닫은 안내 기록).
+  const { mapAuthFailed, reportMapAuthFailure, dismissMapAuthError, dismissedNotices, dismissNotice } = useMapNotices();
   /** 아래 탭바(또는 안전 영역) 높이. 경로를 화면에 맞출 때 읽는다(값은 useMapLayout 이 채운다). */
   const bottomInsetRef = useRef(0);
-  // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
-  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
   const {
     reportsOn,
@@ -189,20 +186,26 @@ export default function MapScreen() {
     searchedPartnerIdRef,
     onLongPress: (at) => {
       // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
-      if (!accessToken) {
-        promptLogin("제보를 남기려면 로그인해 주세요.", logout);
-        return;
-      }
+      if (!requireLogin()) return;
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
-      setReportTarget(at);
+      reportComposer.open(at);
     },
     onLeaveBuildingFacility: () => facilityNav.leave(),
   });
   // 캠퍼스로 돌아가기(학사모 버튼·지도 탭 다시 누르기·먼 지점 시트 닫기).
   const { recenter: handleRecenter } = useMapCamera({ webViewRef, farViewPartnerIdRef, selectedPartner });
+  // 제보 작성창(길게 누른 자리·핀으로 고른 자리)과 로그인 확인.
+  const reportComposer = useReportComposer({
+    accessToken,
+    logout,
+    reportsOn,
+    retryReports: reportsResource.retry,
+    startPicker: () => picker.start("report"),
+  });
+  const { reportTarget, requireLogin } = reportComposer;
   // 지도 위에 얹는 검토용 임시 핀과 물어보기 설명 카드.
   const preview = useMapPlaceCards({
     webViewRef,
@@ -257,7 +260,7 @@ export default function MapScreen() {
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
     },
-    onConfirmReport: (center) => setReportTarget({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
+    onConfirmReport: (center) => reportComposer.open({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
     onConfirmPartner: (center) =>
       infoSuggest.open({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
     // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
@@ -347,14 +350,6 @@ export default function MapScreen() {
   );
 
   /** 화면 맞춤 범위 밖이라 눈에 잘 안 띄는 지점 수. 안내 배지에 쓴다. */
-  /**
-   * 지도 위 안내 줄(캠퍼스 밖 N곳 등)을 탭하거나 X 로 닫은 기록. 문구 단위로 기억해, 숫자가 바뀌는 등
-   * 내용이 달라지면 다시 보여 준다. 앱을 다시 켜면 초기화된다.
-   */
-  const [dismissedNotices, setDismissedNotices] = useState<ReadonlySet<string>>(() => new Set());
-  const dismissNotice = useCallback((message: string) => {
-    setDismissedNotices((prev) => new Set(prev).add(message));
-  }, []);
   /** 지금 필터에 걸렸지만 지도 화면 범위 밖이라 핀이 잘 안 보이는 업체들(구로·강남·성수 등). */
   const offscreenPartners = useMemo(
     () => partnersOutsideFocus(visiblePartners),
@@ -427,7 +422,7 @@ export default function MapScreen() {
           return;
         }
         if (msg.type === "mapAuthFailure") {
-          setMapAuthFailed(true);
+          reportMapAuthFailure();
           return;
         }
         // 시트 열고 닫기(건물·제휴·제보·시설을 누름).
@@ -513,27 +508,6 @@ export default function MapScreen() {
     resyncPicker: picker.resync,
   });
 
-  /**
-   * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
-   * 뜨므로, 작성창이 그 안내를 보여 주고 사용자가 '확인'을 눌러 닫는다(onClose).
-   * 레이어가 켜져 있으면 목록은 새로 받아 둔다(그 사이 승인된 다른 제보 반영).
-   */
-  const handleReportCreated = useCallback(() => {
-    if (reportsOn) reportsResource.retry();
-  }, [reportsOn, reportsResource.retry]);
-
-
-  /** 제보는 로그인이 필요하다. 게스트는 위치를 고르고 작성창을 다 채운 뒤가 아니라 시작할 때 묻는다. */
-  const handleStartReportPicker = useCallback(() => {
-    if (!accessToken) {
-      promptLogin("제보를 남기려면 로그인해 주세요.", logout);
-      return;
-    }
-    picker.start("report");
-  }, [accessToken, logout, picker.start]);
-
-
-
   // 다른 화면에서 넘어온 지도 요청(제보 알림·물어보기·관리 탭 미리보기·정보 제보 위치 찍기 등).
   useMapIntents({
     accessToken,
@@ -547,7 +521,7 @@ export default function MapScreen() {
       infoSuggest.close();
       picker.start("partner", { partnerLocationBefore: null });
     },
-    startReportPicker: handleStartReportPicker,
+    startReportPicker: reportComposer.handleStartPicker,
     openReport,
     showAllReports,
     showNearbyGroup: search.showNearbyGroup,
@@ -634,12 +608,9 @@ export default function MapScreen() {
   const canShowMyLocationButton = canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM);
 
   // ---- 검색·제보·정보 제보 창 ----
-  const handleCloseReportComposer = useCallback(() => setReportTarget(null), []);
-
   // ---- 아래 시트 ----
 
   // ---- 지도 위 안내 줄 ----
-  const handleDismissMapAuthError = useCallback(() => setMapAuthFailed(false), []);
   /** 'HOT' 목록에서 제보를 고르면 그 제보 시트를 열고 지도를 그 자리로. */
   const handleSelectHotReport = useCallback(
     (report: ReportListItem) => {
@@ -700,7 +671,7 @@ export default function MapScreen() {
         <MapNoticeStack top={headerHeight + 8} side={sideGutter}>
           {!mapData && <MapDataStatusNotice failed={mapDataStatus === "error"} onRetry={reloadMapData} />}
 
-          {mapAuthFailed && <MapAuthErrorNotice onDismiss={handleDismissMapAuthError} />}
+          {mapAuthFailed && <MapAuthErrorNotice onDismiss={dismissMapAuthError} />}
 
           {showReportsLoadingNotice && <ReportsLoadingNotice />}
 
@@ -771,7 +742,7 @@ export default function MapScreen() {
         {showMapMenu && (
           <MapActionMenu
             style={mapMenuStyle}
-            onReport={handleStartReportPicker}
+            onReport={reportComposer.handleStartPicker}
             onRoute={ROUTE_FINDING_ENABLED ? route.openSearch : undefined}
             onRecenter={handleRecenter}
             onMyLocation={canShowMyLocationButton ? myLocation.toggle : undefined}
@@ -933,8 +904,8 @@ export default function MapScreen() {
 
       <ReportComposerModal
         target={reportTarget}
-        onClose={handleCloseReportComposer}
-        onCreated={handleReportCreated}
+        onClose={reportComposer.close}
+        onCreated={reportComposer.handleCreated}
       />
 
       <InfoSuggestModal
