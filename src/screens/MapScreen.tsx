@@ -113,6 +113,9 @@ import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
 import { requestSettingsIntent } from "../lib/settingsIntents";
 import { navigationRef } from "../navigation/navigationRef";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
+import MapTopBar from "../components/map/topbar/MapTopBar";
+import MapSearchBar from "../components/map/topbar/MapSearchBar";
+import FilterChipSection from "../components/map/topbar/FilterChipSection";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -1990,6 +1993,12 @@ export default function MapScreen() {
     [routeTarget, beginFrom, beginTo],
   );
 
+  /** 검색바로 연 검색 창 — 안내 줄·근처 알림에서 모아 둔 업체 없이 연다. */
+  const handleOpenSearch = useCallback(() => {
+    setSearchPinned(null);
+    setNearbyGroup(null);
+    setShowSearch(true);
+  }, []);
   const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
   const handleChangeRouteTarget = useCallback((target: "from" | "to") => {
     setRouteTarget(target);
@@ -2535,58 +2544,30 @@ export default function MapScreen() {
         버튼·칩만 눌린다. onLayout 으로 잰 실제 높이를 배너·상단바 위치
         계산에 쓴다(headerHeight, 위 선언부 주석 참고).
       */}
-      <Animated.View
-        style={[
-          styles.headerOverlay,
-          // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
-          // 검색바·칩은 지도처럼 창 너비를 다 쓴다 — 폴드를 펴거나 웹 창을 늘려도 지도와 같이 늘어난다.
-          { paddingTop: insets.top + 8, opacity: headerFade },
-        ]}
-        pointerEvents={headerCovered ? "none" : "box-none"}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
+      <MapTopBar topInset={insets.top} opacity={headerFade} covered={headerCovered} onHeight={setHeaderHeight}>
         {/* 길찾기 중에는 검색바·칩을 숨긴다(routeMode) — 출발·도착 막대가 그 자리로 올라간다. */}
         {!pickingLocation && !routeMode && (
           <>
-            {/* 넓은 창(웹·태블릿)에선 아래 시트와 같은 너비로 맞춘다(10-07 요청). 좁으면 시트가 화면을 꽉 채우니 16 만 띄운다. */}
-            <View style={[styles.searchBarWrap, sideGutter > 0 && { paddingHorizontal: sideGutter }]}>
-              <TouchableOpacity
-                style={styles.searchBar}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSearchPinned(null);
-                  setNearbyGroup(null);
-                  setShowSearch(true);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="제휴 업체·편의시설 검색"
-              >
-                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <Text style={styles.searchPlaceholder}>제휴 업체·편의시설 검색</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 칩도 검색바와 같은 왼쪽 끝에서 시작한다(10-07 요청). 칩 줄 안쪽 여백 16 을 빼고 띄운다. */}
-            <View style={sideGutter > 16 ? { paddingHorizontal: sideGutter - 16 } : null} pointerEvents="box-none">
-            <MapFilterChips
-              layer={layer}
-              facilityKind={facilityKind}
-              onSelectLayer={handleSelectLayer}
-              onSelectFacilityKind={handleSelectFacilityKind}
-            />
-
-            {layer === "제휴업체" && (
-              <PartnerChips
-                affiliation={selectedAffiliation}
-                category={selectedCategory}
-                onSelectAffiliation={handleSelectAffiliation}
-                onSelectCategory={handleSelectCategory}
+            <MapSearchBar sideGutter={sideGutter} onPress={handleOpenSearch} />
+            <FilterChipSection sideGutter={sideGutter}>
+              <MapFilterChips
+                layer={layer}
+                facilityKind={facilityKind}
+                onSelectLayer={handleSelectLayer}
+                onSelectFacilityKind={handleSelectFacilityKind}
               />
-            )}
-            </View>
+              {layer === "제휴업체" && (
+                <PartnerChips
+                  affiliation={selectedAffiliation}
+                  category={selectedCategory}
+                  onSelectAffiliation={handleSelectAffiliation}
+                  onSelectCategory={handleSelectCategory}
+                />
+              )}
+            </FilterChipSection>
           </>
         )}
-      </Animated.View>
+      </MapTopBar>
 
       {!showRoute && floorDialSheet}
       <RoutePlannerModal
@@ -2754,37 +2735,9 @@ const styles = StyleSheet.create({
   nearbyTestButtonText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   nearbyTestButtonPrimaryText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.white },
   container: { flex: 1, backgroundColor: COLORS.white },
-  // 지도 위에 뜨는 투명 오버레이. 빈 공간은 지도 터치를 그대로 통과시킨다
-  // (JSX 의 pointerEvents="box-none" 참고).
-  headerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-  },
   // 검색바 좌우에 지도가 비치는 여백이 남지 않도록, 알약 모양은 이 흰
   // 배경 안쪽 padding 으로만 띄운다(margin 이면 그 여백엔 배경이 없다).
   // 흰 배경을 깔지 않는다 — 검색바 알약 자체(아래 searchBar)만 흰색이고,
-  // 양옆은 지도가 그대로 비쳐야 네이버맵처럼 떠 있는 느낌이 난다.
-  searchBarWrap: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  searchBar: {
-    height: 44,
-    borderRadius: RADIUS.floating,
-    backgroundColor: COLORS.white,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   // 실제 지도가 그려지는 칸. 탭바가 떠 있는 캡슐이라 화면 전체를 덮는다(JSX 주석 참고).
   // 위치 고르기 중앙 핀(pickerMarkerWrap)도 같은 칸 전체 기준이어야 map.getCenter() 와 겹친다.

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { VISIBLE_FACILITY_KINDS, facilityChipLabel } from '../../constants/facilityKinds'
@@ -45,7 +45,7 @@ interface MapFilterChipsProps {
  * '제휴 업체' 를 골랐을 때의 하위 두 줄(소속·업종)은 `PartnerChips` 가 맡는다.
  * 여기서는 최상단 줄과 편의시설 종류 줄만 그린다.
  */
-export default function MapFilterChips({
+function MapFilterChips({
   layer,
   facilityKind,
   onSelectLayer,
@@ -143,3 +143,5 @@ const styles = StyleSheet.create({
   layerChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   pendingText: { color: COLORS.textSecondary },
 })
+
+export default memo(MapFilterChips)

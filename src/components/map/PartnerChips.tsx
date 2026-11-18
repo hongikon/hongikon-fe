@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import ChipRow from "./ChipRow";
 import { COLORS } from "../../constants/colors";
@@ -29,7 +29,7 @@ interface PartnerChipsProps {
  * 않는다. 다만 개수는 여전히 세어, 해당 조건에 업체가 없는 칩(count 0)만
  * 흐리게 처리하고 접근성 라벨에 쓴다.
  */
-export default function PartnerChips({
+function PartnerChips({
   affiliation,
   category,
   onSelectAffiliation,
@@ -158,3 +158,5 @@ const own = StyleSheet.create({
 });
 
 const styles = { ...chipStyles, ...own };
+
+export default memo(PartnerChips)
