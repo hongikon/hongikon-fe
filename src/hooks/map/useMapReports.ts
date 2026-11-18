@@ -219,6 +219,19 @@ export function useMapReports({ accessToken, postToMap, onToggleHot, onCategorie
     else setReportsOn(true)
   }, [reportsOn, refetch])
 
+  /** 지도 메뉴의 제보 보기 필터(종류·HOT 토글). */
+  const menuFilter = useMemo(
+    () => ({
+      categories: REPORT_CATEGORY_KEYS,
+      selected: reportCategories,
+      onToggleCategory: toggleCategory,
+      hotOn: hotOnly,
+      hotAvailable,
+      onToggleHot: toggleHot,
+    }),
+    [reportCategories, toggleCategory, hotOnly, hotAvailable, toggleHot],
+  )
+
   return {
     reportsOn,
     hotOnly,
@@ -237,5 +250,6 @@ export function useMapReports({ accessToken, postToMap, onToggleHot, onCategorie
     toggleCategory,
     showAll,
     refetch,
+    menuFilter,
   }
 }

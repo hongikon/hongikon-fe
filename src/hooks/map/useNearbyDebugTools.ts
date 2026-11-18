@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useIsAdmin } from '../../admin/AdminAccess'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
@@ -22,9 +22,11 @@ const testLabel = (at: LatLng) => `테스트 위치 ${at.lat.toFixed(5)}, ${at.l
  * - 테스트 위치: 지도 가운데 십자를 맞춰 '여기로 정하기'를 누르면 그 좌표를 가짜 GPS 로 쓴다(근처 알림 판단만).
  *
  * @param webViewRef 지도 페이지(원 그리기·가운데 좌표 묻기)
- * @param sourceRef 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치)
+ * @param source 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치). 최신 값을 ref 로 읽는다
  */
-export function useNearbyDebugTools(webViewRef: RefObject<NaverMapViewHandle | null>, sourceRef: RefObject<NearbySource>) {
+export function useNearbyDebugTools(webViewRef: RefObject<NaverMapViewHandle | null>, source: NearbySource) {
+  const sourceRef = useRef(source)
+  sourceRef.current = source
   const isAdmin = useIsAdmin()
   /** 개발 도구를 보일 수 있는 빌드·계정. 메뉴의 '내 위치 켜기'를 날짜 전에도 보이는 데도 쓴다. */
   const enabled = SHOW_DEVELOPER_TOOLS || isAdmin

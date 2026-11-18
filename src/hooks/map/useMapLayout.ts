@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Animated, useWindowDimensions } from 'react-native'
+import { Animated, StyleSheet, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
@@ -24,6 +24,10 @@ export function useMapHeader() {
   const sheetHeaderCtx = useMemo(() => ({ headerHeight, onCoverHeader: setHeaderCovered }), [headerHeight])
   return { headerHeight, setHeaderHeight, headerCovered, headerFade, sheetHeaderCtx }
 }
+
+const styles = StyleSheet.create({
+  mapControls: { position: 'absolute', right: 12, bottom: 20, gap: 8 },
+})
 
 interface LayoutOptions {
   /** 아래 탭바(또는 안전 영역) 높이를 담는 ref. 경로를 화면에 맞출 때 길찾기가 읽으므로 호출하는 쪽이 먼저 만들어 넘긴다. */
@@ -104,8 +108,9 @@ export function useMapLayout(options: LayoutOptions) {
   /** 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다. */
   const mapMenuBottom =
     20 + bottomInset + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0)
+  const mapMenuStyle = useMemo(() => [styles.mapControls, { bottom: mapMenuBottom }], [mapMenuBottom])
   /** 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지. */
   const mapMenuMaxItemsHeight = Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12)
 
-  return { insets, sideGutter, sheetOpen, routeMode, bottomInset, sheetBottom, mapMenuBottom, mapMenuMaxItemsHeight }
+  return { insets, sideGutter, sheetOpen, routeMode, bottomInset, sheetBottom, mapMenuStyle, mapMenuMaxItemsHeight }
 }

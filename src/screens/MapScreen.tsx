@@ -26,10 +26,8 @@ import FloorDialSheet from "../components/map/FloorDialSheet";
 import { canLocate } from "../lib/nearbyPartners/platform";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { buildMapHTML } from "../utils/mapHtml";
-import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/partners";
-import { unresolvedFacilities } from "../utils/facilities";
 import { kstTodayYmd } from "../utils/exhibitions";
-import type { Facility, ReportListItem } from "../types";
+import type { ReportListItem } from "../types";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
 import MapSearchBar from "../components/map/topbar/MapSearchBar";
@@ -48,7 +46,7 @@ import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
 import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 import MapSheets from "../components/map/sheets/MapSheets";
-import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
+import { useMapReports } from "../hooks/map/useMapReports";
 import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
 import { useMapHeader, useMapLayout } from "../hooks/map/useMapLayout";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
@@ -65,6 +63,7 @@ import { useReportComposer } from "../hooks/map/useReportComposer";
 import { useMapNotices } from "../hooks/map/useMapNotices";
 import { useSheetActions } from "../hooks/map/useSheetActions";
 import { useMapCamera } from "../hooks/map/useMapCamera";
+import { useMapMessages } from "../hooks/map/useMapMessages";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { mapVisibility } from "../utils/map/visibility";
 import { offscreenSummary } from "../utils/map/labels";
@@ -86,8 +85,6 @@ export default function MapScreen() {
   const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
   const farViewPartnerIdRef = useRef<string | null>(null);
-  // 지도 위 안내 줄 상태(네이버 지도 인증 실패·닫은 안내 기록).
-  const { mapAuthFailed, reportMapAuthFailure, dismissMapAuthError, dismissedNotices, dismissNotice } = useMapNotices();
   /** 아래 탭바(또는 안전 영역) 높이. 경로를 화면에 맞출 때 읽는다(값은 useMapLayout 이 채운다). */
   const bottomInsetRef = useRef(0);
   // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
@@ -107,6 +104,7 @@ export default function MapScreen() {
     toggleCategory: handleToggleReportCategory,
     showAll: showAllReports,
     refetch: refetchReports,
+    menuFilter,
   } = useMapReports({
     accessToken,
     postToMap,
@@ -333,10 +331,12 @@ export default function MapScreen() {
     beginFrom,
     beginTo,
   });
-  // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
-  const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
-  nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
-  const nearbyDebug = useNearbyDebugTools(webViewRef, nearbySourceRef);
+  // 근처 알림 개발 도구. 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치)를 넘긴다.
+  const nearbyDebug = useNearbyDebugTools(webViewRef, {
+    partners: allPartners,
+    campusPoints: buildings,
+    serverEnabled: mapData?.nearbyAlertsEnabled === true,
+  });
 
   // 웹은 이 문서를 처음 한 번만 넣는다(NaverMapView.web). 그때 있는 건물로 굽고, 그 뒤 바뀐 건물은 setBuildings 로 보낸다.
   // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
@@ -345,38 +345,12 @@ export default function MapScreen() {
 
 
 
-  const visiblePartners = useMemo(
-    () => (hasActiveFilter(activeFilter) ? filterPartners(allPartners, activeFilter) : []),
-    [allPartners, activeFilter],
-  );
-
-  /** 화면 맞춤 범위 밖이라 눈에 잘 안 띄는 지점 수. 안내 배지에 쓴다. */
-  /** 지금 필터에 걸렸지만 지도 화면 범위 밖이라 핀이 잘 안 보이는 업체들(구로·강남·성수 등). */
-  const offscreenPartners = useMemo(
-    () => partnersOutsideFocus(visiblePartners),
-    [visiblePartners],
-  );
+  // 지도 위 안내 줄 상태(네이버 지도 인증 실패·닫은 안내·안 보이는 업체 수).
+  const { offscreenPartners, unresolvedCount, mapAuthFailed, reportMapAuthFailure, dismissMapAuthError, dismissedNotices, dismissNotice } =
+    useMapNotices({ partners: allPartners, activeFilter, facilities, buildings, facilityKind });
   const offscreenCount = offscreenPartners.length;
 
-  /**
-   * 건물명이 지도 데이터의 건물과 안 맞아 좌표를 못 찾은 편의시설 수.
-   * 조용히 빠지면 데이터를 넣었는데 지도에 안 뜨는 이유를 알 수 없어 알린다.
-   */
-  const unresolvedCount = useMemo(
-    () =>
-      facilityKind === null
-        ? 0
-        : unresolvedFacilities(facilities, buildings).filter((f) => f.kind === facilityKind).length,
-    [facilities, buildings, facilityKind],
-  );
-
-  /** 필터는 걸었는데 걸리는 업체가 없는 상태. 빈 지도만 보여주지 않고 알려준다. */
-  const isEmptyResult =
-    hasActiveFilter(activeFilter) && visiblePartners.length === 0;
-
-
-
-  const { insets, sideGutter, sheetOpen, routeMode, bottomInset, sheetBottom, mapMenuBottom, mapMenuMaxItemsHeight } = useMapLayout({
+  const { insets, sideGutter, sheetOpen, routeMode, bottomInset, sheetBottom, mapMenuStyle, mapMenuMaxItemsHeight } = useMapLayout({
     bottomInsetRef,
     selectedBuilding,
     selectedPartner,
@@ -391,57 +365,18 @@ export default function MapScreen() {
     routeCardHeight,
   });
 
-  const { handleRouteTap, ignoresMapTap } = route;
-  const { handleCenterMessage } = picker;
-  const handleNearbyCenter = nearbyDebug.handleCenter;
-  const handleWebViewMessage = useCallback(
-    (event: { nativeEvent: { data: string } }) => {
-      try {
-        const msg = JSON.parse(event.nativeEvent.data);
-
-        // 지도에서 회색(다른) 경로를 눌렀다(11-09) — 그 길로 바꾼다. 같은 손동작이 지도 탭으로도 들어와 건물 시트가 열렸으면 닫는다.
-        if (msg.type === "routeTap" && typeof msg.index === "number") {
-          handleRouteTap(msg.index);
-          setSelectedBuilding(null);
-          postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-        // 경로를 누른 손동작의 지도 탭, 경로를 보여 주는 동안의 건물 탭은 무시한다.
-        if (ignoresMapTap(msg.type, pickingLocation)) {
-          postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-
-        // 위치 선택 모드 중 지도가 멈출 때마다 온다. 화면 중앙 좌표를 갱신한다.
-        if (msg.type === "pickerCenter") {
-          handleCenterMessage(msg);
-          return;
-        }
-        // 근처 알림 테스트 위치(개발 도구): 지도 가운데 좌표.
-        if (msg.type === "nearbyTestCenter" && typeof msg.lat === "number" && typeof msg.lng === "number") {
-          handleNearbyCenter({ lat: msg.lat, lng: msg.lng });
-          return;
-        }
-        if (msg.type === "mapAuthFailure") {
-          reportMapAuthFailure();
-          return;
-        }
-        // 시트 열고 닫기(건물·제휴·제보·시설을 누름).
-        handleSelectionTap(msg);
-      } catch {}
-    },
-    [handleRouteTap, ignoresMapTap, handleCenterMessage, handleNearbyCenter, handleSelectionTap, pickingLocation, postToMap, setSelectedBuilding],
-  );
-
-
-  const handleSelectAffiliation = filters.selectAffiliation;
-
-  const handleSelectCategory = filters.selectCategory;
-
-  const handleSearchSelectFacility = useCallback(
-    (facility: Facility) => facilityNav.openSheet(facility.kind, facility.buildingName, facility),
-    [facilityNav.openSheet],
-  );
+  // 지도 페이지가 보내는 메시지(경로 탭·위치 고르기·근처 테스트·인증 실패·시트 열고 닫기)를 나눠 처리한다.
+  const handleWebViewMessage = useMapMessages({
+    postToMap,
+    pickingLocation,
+    handleRouteTap: route.handleRouteTap,
+    ignoresMapTap: route.ignoresMapTap,
+    handlePickerCenter: picker.handleCenterMessage,
+    handleNearbyCenter: nearbyDebug.handleCenter,
+    reportMapAuthFailure,
+    handleSelectionTap,
+    clearSelectedBuilding: () => setSelectedBuilding(null),
+  });
 
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
@@ -527,7 +462,7 @@ export default function MapScreen() {
     showAllReports,
     showNearbyGroup: search.showNearbyGroup,
     selectPartner: search.selectPartner,
-    openFacility: (facility) => facilityNav.openSheet(facility.kind, facility.buildingName, facility),
+    openFacility: facilityNav.openFacility,
     openBuilding: (building) => {
       search.hide();
       setSelectedPartner(null);
@@ -593,18 +528,6 @@ export default function MapScreen() {
   const handleRouteEndpointPress = route.pressEndpoint;
   const handleRouteStripHeight = route.onStripHeight;
   // ---- 지도 메뉴(오른쪽 아래) ----
-  const mapMenuStyle = useMemo(() => [styles.mapControls, { bottom: mapMenuBottom }], [mapMenuBottom]);
-  const mapMenuReportFilter = useMemo(
-    () => ({
-      categories: REPORT_CATEGORY_KEYS,
-      selected: reportCategories,
-      onToggleCategory: handleToggleReportCategory,
-      hotOn: hotOnly,
-      hotAvailable,
-      onToggleHot: handleToggleHot,
-    }),
-    [reportCategories, handleToggleReportCategory, hotOnly, hotAvailable, handleToggleHot],
-  );
   /** '내 위치 켜기': 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다. */
   const canShowMyLocationButton = canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM);
 
@@ -763,7 +686,7 @@ export default function MapScreen() {
             onPickNearbyTestLocation={nearbyDebug.menuAvailable ? nearbyDebug.startPicking : undefined}
             nearbyOverlayOn={nearbyDebug.overlayOn}
             maxItemsHeight={mapMenuMaxItemsHeight}
-            reportFilter={mapMenuReportFilter}
+            reportFilter={menuFilter}
           />
         )}
 
@@ -877,8 +800,8 @@ export default function MapScreen() {
                 <PartnerChips
                   affiliation={selectedAffiliation}
                   category={selectedCategory}
-                  onSelectAffiliation={handleSelectAffiliation}
-                  onSelectCategory={handleSelectCategory}
+                  onSelectAffiliation={filters.selectAffiliation}
+                  onSelectCategory={filters.selectCategory}
                 />
               )}
             </FilterChipSection>
@@ -909,7 +832,7 @@ export default function MapScreen() {
         topInset={insets.top}
         onClose={search.close}
         onSelect={search.selectPartner}
-        onSelectFacility={handleSearchSelectFacility}
+        onSelectFacility={facilityNav.openFacility}
         autoFocus={!search.nearbyGroup}
         pinned={search.pinnedSection}
       />
@@ -941,7 +864,6 @@ const styles = StyleSheet.create({
   // 실제 지도가 그려지는 칸. 탭바가 떠 있는 캡슐이라 화면 전체를 덮는다(JSX 주석 참고).
   // 위치 고르기 중앙 핀(pickerMarkerWrap)도 같은 칸 전체 기준이어야 map.getCenter() 와 겹친다.
   mapCanvas: { flex: 1 },
-  mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */

@@ -131,5 +131,8 @@ export function useFacilityNavigation(options: Options) {
     if (!leave()) optionsRef.current.setSelectedFacilityBuilding(null)
   }, [leave])
 
-  return { facilityFrom, openSheet, openFromBuilding, backToBuilding, leave, closeSheet }
+  /** 검색 결과·물어보기에서 고른 시설 줄로 시설 시트를 연다. */
+  const openFacility = useCallback((facility: Facility) => openSheet(facility.kind, facility.buildingName, facility), [openSheet])
+
+  return { facilityFrom, openSheet, openFacility, openFromBuilding, backToBuilding, leave, closeSheet }
 }
