@@ -8,9 +8,7 @@ import {
 } from "react";
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   Animated,
   BackHandler,
   Platform,
@@ -50,7 +48,6 @@ import PartnerSearchModal from "../components/map/PartnerSearchModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
 import NearbyFilterIntro from "../components/map/NearbyFilterIntro";
 import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
@@ -96,22 +93,14 @@ import type {
 } from "../types";
 import { REPORT_CATEGORIES } from "../constants/reportCategories";
 import { haversineMeters } from "../utils/geo";
-import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
-import { RADIUS } from "../constants/spacing";
 import { SheetHeaderContext } from "../hooks/useResizableSheet";
-import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
-import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
-import { useIsAdmin } from "../admin/AdminAccess";
-import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
-import { requestSettingsIntent } from "../lib/settingsIntents";
-import { navigationRef } from "../navigation/navigationRef";
+import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
 import MapSearchBar from "../components/map/topbar/MapSearchBar";
 import FilterChipSection from "../components/map/topbar/FilterChipSection";
 import LocationPickerOverlay, { type PickerCenter, type PickerPurpose } from "../components/map/picker/LocationPickerOverlay";
-import MapCrosshair from "../components/map/picker/MapCrosshair";
 import RouteStrip from "../components/map/route/RouteStrip";
 import RouteResultCard from "../components/map/route/RouteResultCard";
 import MapNoticeStack from "../components/map/notices/MapNoticeStack";
@@ -121,6 +110,9 @@ import ReportsLoadingNotice from "../components/map/notices/ReportsLoadingNotice
 import AskPlaceCard from "../components/map/notices/AskPlaceCard";
 import ReviewPinNotice from "../components/map/notices/ReviewPinNotice";
 import DismissibleNotice from "../components/map/notices/DismissibleNotice";
+import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
+import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
+import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -145,49 +137,6 @@ function buildingLabel(building: Building, floor: number | null): string {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
-  // 근처 알림 영역 보기(개발·현장 테스트 빌드, 운영 앱은 관리자 계정만 — 11-10): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
-  const isAdmin = useIsAdmin();
-  const nearbyTools = NEARBY_DEBUG_TOOLS || isAdmin;
-  const showNearbyOverlayMenu = nearbyTools && nearbyAlertsAvailable();
-  const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
-  const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
-  /** 근처 알림이 아직 등록 전(설정에서 켜지 않음). 안내 줄에 설정으로 가는 버튼을 단다(11-09). */
-  const [nearbyUnregistered, setNearbyUnregistered] = useState(false);
-  // 테스트 위치 정하기: 지도 가운데 십자 → "여기로 정하기"를 누르면 그 좌표를 가짜 GPS 로 쓴다(근처 알림 판단만).
-  const [pickingNearbyTest, setPickingNearbyTest] = useState(false);
-  const [nearbyTestLabel, setNearbyTestLabel] = useState<string | null>(null);
-  useEffect(() => {
-    if (!nearbyOverlayOn) {
-      webViewRef.current?.injectJavaScript(nearbyOverlayScript(null));
-      return;
-    }
-    let cancelled = false;
-    let focused = false;
-    const draw = async () => {
-      const overlay = await getNearbyOverlay();
-      if (cancelled) return;
-      // 링크(at=)로 바꾼 테스트 위치도 안내 줄에 보이게 그릴 때마다 다시 읽는다.
-      const fake = nearbyTestLocation();
-      setNearbyTestLabel(fake ? `테스트 위치 ${fake.lat.toFixed(5)}, ${fake.lng.toFixed(5)}` : null);
-      // 처음 그릴 때만 등록한 자리로 옮긴다(그 뒤에는 사용자가 지도를 움직일 수 있게).
-      webViewRef.current?.injectJavaScript(nearbyOverlayScript(overlay, { focus: !focused && !!overlay }));
-      if (overlay) focused = true;
-      setNearbyUnregistered(!overlay);
-      setNearbyOverlayNote(
-        overlay?.error
-          ? `등록 실패(원은 계획만 표시): ${overlay.error}\n파란 원: 업체 인식 반경 · 점선: 다시 고르기 원 · 남색 점: 기준 위치`
-          : overlay
-          ? `등록 ${overlay.regions.length}곳 · 안에 있음 ${overlay.regions.filter((r) => r.inside).length}곳 · 다시 고르기 원 ${overlay.reselectMeters}m\n파란 원: 업체 인식 반경 · 주황: 알림 예약 · 점선: 다시 고르기 원 · 남색 점: 등록한 자리`
-          : "아직 등록 전이에요. 근처 제휴 알림을 켜고 앱을 다시 열면 원이 보여요.",
-      );
-    };
-    void draw();
-    const id = setInterval(() => void draw(), 4000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [nearbyOverlayOn]);
   const { accessToken, logout } = useAuth();
   // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
@@ -446,10 +395,7 @@ export default function MapScreen() {
   // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
   const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
   nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
-  useEffect(() => {
-    const fake = nearbyTestLocation();
-    if (fake) setNearbyTestLabel(`테스트 위치 ${fake.lat.toFixed(5)}, ${fake.lng.toFixed(5)}`);
-  }, []);
+  const nearbyDebug = useNearbyDebugTools(webViewRef, nearbySourceRef);
 
   // 웹은 이 문서를 처음 한 번만 넣는다(NaverMapView.web). 그때 있는 건물로 굽고, 그 뒤 바뀐 건물은 setBuildings 로 보낸다.
   // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
@@ -823,11 +769,7 @@ export default function MapScreen() {
 
         // 근처 알림 테스트 위치(개발 도구): 지도 가운데 좌표.
         if (msg.type === "nearbyTestCenter" && typeof msg.lat === "number" && typeof msg.lng === "number") {
-          const at = { lat: msg.lat, lng: msg.lng };
-          setPickingNearbyTest(false);
-          setNearbyOverlayOn(true);
-          setNearbyTestLabel(`테스트 위치 ${at.lat.toFixed(5)}, ${at.lng.toFixed(5)}`);
-          void applyNearbyTestLocation(at, nearbySourceRef.current);
+          nearbyDebug.handleCenter({ lat: msg.lat, lng: msg.lng });
           return;
         }
 
@@ -2132,65 +2074,24 @@ export default function MapScreen() {
           )}
         </MapNoticeStack>
 
-        {pickingNearbyTest && (
-          <>
-            <MapCrosshair lineStyle={styles.nearbyTestCross} />
-            <View style={[styles.nearbyTestBar, { bottom: 16 + bottomInset }]}>
-              <Text style={styles.nearbyOverlayNoteText}>
-                지도를 움직여 십자를 테스트할 자리에 맞추세요. 근처 알림만 이 자리를 내 위치로 보고, 실제 GPS 는 쓰지 않아요.
-              </Text>
-              <View style={styles.nearbyTestButtons}>
-                <TouchableOpacity
-                  style={[styles.nearbyTestButton, styles.nearbyTestButtonPrimary]}
-                  onPress={() =>
-                    webViewRef.current?.injectJavaScript(
-                      'if (window.map && window.ReactNativeWebView) { var c = map.getCenter(); window.ReactNativeWebView.postMessage(JSON.stringify({ type: "nearbyTestCenter", lat: c.lat(), lng: c.lng() })); } true;',
-                    )
-                  }
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.nearbyTestButtonPrimaryText}>여기로 정하기</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.nearbyTestButton}
-                  onPress={() => {
-                    setPickingNearbyTest(false);
-                    setNearbyTestLabel(null);
-                    void applyNearbyTestLocation(null, nearbySourceRef.current);
-                  }}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.nearbyTestButtonText}>실제 위치로</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.nearbyTestButton} onPress={() => setPickingNearbyTest(false)} accessibilityRole="button">
-                  <Text style={styles.nearbyTestButtonText}>취소</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+        {nearbyDebug.picking && (
+          <NearbyTestPicker
+            bottom={16 + bottomInset}
+            onConfirm={nearbyDebug.requestCenter}
+            onUseRealLocation={nearbyDebug.resetToRealLocation}
+            onCancel={nearbyDebug.cancelPicking}
+          />
         )}
-        {nearbyOverlayOn && nearbyOverlayNote && !sheetOpen && !pickingNearbyTest && (
-          <View pointerEvents={nearbyUnregistered ? "box-none" : "none"} style={[styles.nearbyOverlayNote, { bottom: 84 + bottomInset }]}>
-            <Text style={styles.nearbyOverlayNoteText}>{nearbyTestLabel ? `${nearbyTestLabel} (빨간 점)\n${nearbyOverlayNote}` : nearbyOverlayNote}</Text>
-            {/* 등록 전이면 바로 설정 > 근처 제휴 알림 창으로(제휴 시트의 안내와 같은 길, 11-09). */}
-            {nearbyUnregistered && (
-              <TouchableOpacity
-                style={styles.nearbyOverlayNoteButton}
-                onPress={() => {
-                  requestSettingsIntent({ type: "openNearbyAlerts" });
-                  if (navigationRef.isReady()) navigationRef.navigate("Main", { screen: "Settings" });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="근처 제휴 알림 켜러 가기, 설정의 근처 제휴 알림 창이 열려요"
-              >
-                <Ionicons name="navigate" size={15} color={COLORS.white} />
-                <Text style={styles.nearbyOverlayNoteButtonText}>근처 제휴 알림 켜러 가기</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {nearbyDebug.overlayOn && nearbyDebug.note && !sheetOpen && !nearbyDebug.picking && (
+          <NearbyOverlayNote
+            note={nearbyDebug.note}
+            testLabel={nearbyDebug.label}
+            unregistered={nearbyDebug.unregistered}
+            bottom={84 + bottomInset}
+          />
         )}
         {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
-        {!pickingLocation && !sheetOpen && !pickingNearbyTest && (
+        {!pickingLocation && !sheetOpen && !nearbyDebug.picking && (
           <MapActionMenu
             style={[
               styles.mapControls,
@@ -2201,11 +2102,11 @@ export default function MapScreen() {
             onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
             onRecenter={handleRecenter}
             // 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다.
-            onMyLocation={canLocate() && (nearbyTools || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
+            onMyLocation={canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
             myLocationOn={myLocationOn}
-            onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
-            onPickNearbyTestLocation={showNearbyOverlayMenu ? () => setPickingNearbyTest(true) : undefined}
-            nearbyOverlayOn={nearbyOverlayOn}
+            onToggleNearbyOverlay={nearbyDebug.menuAvailable ? nearbyDebug.toggleOverlay : undefined}
+            onPickNearbyTestLocation={nearbyDebug.menuAvailable ? nearbyDebug.startPicking : undefined}
+            nearbyOverlayOn={nearbyDebug.overlayOn}
             // 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지.
             maxItemsHeight={Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12)}
             reportFilter={{
@@ -2457,54 +2358,6 @@ function offscreenSummary(partners: readonly Partner[]): string {
 }
 
 const styles = StyleSheet.create({
-  // 등록 전 안내의 바로가기. 안내 칸 너비를 꽉 채운 남색 버튼(11-09 — 왼쪽 작은 칩이라 눈에 안 띄었다).
-  nearbyOverlayNoteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "stretch",
-    gap: 6,
-    marginTop: 8,
-    minHeight: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-  },
-  nearbyOverlayNoteButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
-  nearbyOverlayNote: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-  },
-  nearbyOverlayNoteText: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textPrimary },
-  nearbyTestCross: { width: 2, height: 36, opacity: 0.9 },
-  nearbyTestBar: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    padding: 12,
-    gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-  },
-  nearbyTestButtons: { flexDirection: "row", gap: 8 },
-  nearbyTestButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.fill,
-  },
-  nearbyTestButtonPrimary: { backgroundColor: COLORS.primary },
-  nearbyTestButtonText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  nearbyTestButtonPrimaryText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.white },
   container: { flex: 1, backgroundColor: COLORS.white },
   // 검색바 좌우에 지도가 비치는 여백이 남지 않도록, 알약 모양은 이 흰
   // 배경 안쪽 padding 으로만 띄운다(margin 이면 그 여백엔 배경이 없다).
