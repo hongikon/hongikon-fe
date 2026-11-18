@@ -77,7 +77,6 @@ const ROUTE_STYLE_DELAY_MS = 300;
 const ROUTE_PIN_MAX_METERS = 150;
 import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
-import RouteOptions from "../components/map/RouteOptions";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
@@ -115,6 +114,8 @@ import MapSearchBar from "../components/map/topbar/MapSearchBar";
 import FilterChipSection from "../components/map/topbar/FilterChipSection";
 import LocationPickerOverlay, { type PickerCenter, type PickerPurpose } from "../components/map/picker/LocationPickerOverlay";
 import MapCrosshair from "../components/map/picker/MapCrosshair";
+import RouteStrip from "../components/map/route/RouteStrip";
+import RouteResultCard from "../components/map/route/RouteResultCard";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -492,7 +493,6 @@ export default function MapScreen() {
     return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
   }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey, buildings]);
 
-  const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
   const activeFilter = useMemo<PartnerFilter>(
     () => ({ affiliation: selectedAffiliation, category: selectedCategory }),
@@ -1994,6 +1994,24 @@ export default function MapScreen() {
     setNearbyGroup(null);
     setShowSearch(true);
   }, []);
+  /** 출발·도착 막대의 줄: 건물이면 그 건물 층 바꾸기, 아니면 길찾기 창에서 그쪽을 고른다. */
+  const handleRouteEndpointPress = useCallback(
+    (endpoint: "from" | "to") => {
+      const building = endpoint === "from" ? fromBuilding : toBuilding;
+      if (building) {
+        if (endpoint === "from") beginFrom(building);
+        else beginTo(building);
+        return;
+      }
+      setRouteTarget(endpoint);
+      setSearchQuery("");
+      setShowRoute(true);
+    },
+    [fromBuilding, toBuilding, beginFrom, beginTo],
+  );
+  const handleRouteStripHeight = useCallback((height: number) => {
+    routeStripHeightRef.current = height;
+  }, []);
   const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
   const handleChangeRouteTarget = useCallback((target: "from" | "to") => {
     setRouteTarget(target);
@@ -2289,87 +2307,32 @@ export default function MapScreen() {
         )}
 
         {!pickingLocation && (fromBuilding || fromMyLocation || toBuilding) && (
-          <View
-            style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}
-            onLayout={(e) => {
-              routeStripHeightRef.current = e.nativeEvent.layout.height;
-            }}
-          >
-            <View style={styles.routeStripRows}>
-              <TouchableOpacity
-                style={styles.routeStripRow}
-                onPress={() => (fromBuilding ? beginFrom(fromBuilding) : (setRouteTarget("from"), setSearchQuery(""), setShowRoute(true)))}
-                accessibilityRole="button"
-                accessibilityLabel={fromBuilding ? `출발 ${buildingLabel(fromBuilding, fromFloor)}, 층 바꾸기` : "출발지 고르기"}
-              >
-                <View style={styles.routeDotFrom} />
-                <Text style={fromBuilding || fromMyLocation ? styles.routeStripLabel : styles.routeStripPlaceholder} numberOfLines={1}>
-                  {fromBuilding ? buildingLabel(fromBuilding, fromFloor) : fromMyLocation ? "내 위치" : "출발 — 지도에서 건물을 눌러요"}
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.routeStripDivider} />
-              <TouchableOpacity
-                style={styles.routeStripRow}
-                onPress={() => (toBuilding ? beginTo(toBuilding) : (setRouteTarget("to"), setSearchQuery(""), setShowRoute(true)))}
-                accessibilityRole="button"
-                accessibilityLabel={toBuilding ? `도착 ${buildingLabel(toBuilding, toFloor)}, 층 바꾸기` : "도착지 고르기"}
-              >
-                <View style={styles.routeDotTo} />
-                <Text style={toBuilding ? styles.routeStripLabel : styles.routeStripPlaceholder} numberOfLines={1}>
-                  {toBuilding ? buildingLabel(toBuilding, toFloor) : "도착 — 지도에서 건물을 눌러요"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.routeStripActions}>
-              <TouchableOpacity
-                onPress={handleOpenRoute}
-                style={styles.routeStripIcon}
-                accessibilityRole="button"
-                accessibilityLabel="건물 검색"
-              >
-                <Ionicons name="search" size={18} color={COLORS.primary} />
-              </TouchableOpacity>
-              {fromBuilding && toBuilding && !fromMyLocation ? (
-                <TouchableOpacity
-                  onPress={handleSwapRoute}
-                  style={styles.routeStripIcon}
-                  accessibilityRole="button"
-                  accessibilityLabel="출발 도착 바꾸기"
-                >
-                  <Ionicons name="swap-vertical" size={18} color={COLORS.primary} />
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                onPress={handleClearRoute}
-                style={[styles.routeStripIcon, styles.routeStripClose]}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="길찾기 끝내기"
-              >
-                <Ionicons name="close" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <RouteStrip
+            fromLabel={routeFromLabel}
+            toLabel={routeToLabel}
+            fromIsBuilding={fromBuilding !== null}
+            toIsBuilding={toBuilding !== null}
+            canSwap={fromBuilding !== null && toBuilding !== null && !fromMyLocation}
+            onPressEndpoint={handleRouteEndpointPress}
+            onSearch={handleOpenRoute}
+            onSwap={handleSwapRoute}
+            onClose={handleClearRoute}
+            top={headerHeight + 8}
+            side={sideGutter}
+            onHeight={handleRouteStripHeight}
+          />
         )}
 
         {!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding && (
-          <View
-            style={[styles.routeCardWrap, overlayInset, { bottom: 8 + bottomInset }]}
-            onLayout={(e) => setRouteCardHeight(e.nativeEvent.layout.height)}
-          >
-            {selectedRoute ? (
-              <RouteOptions
-                routes={routeAlternatives}
-                selectedIndex={selectedRouteIndex}
-                onSelect={handleSelectRouteAlternative}
-                onClose={handleClearRoute}
-              />
-            ) : (
-              <View style={styles.routeCard}>
-                <Text style={styles.routeCardNote}>내 위치를 찾고 있어요</Text>
-              </View>
-            )}
-          </View>
+          <RouteResultCard
+            routes={routeAlternatives}
+            selectedIndex={selectedRouteIndex}
+            onSelect={handleSelectRouteAlternative}
+            onClose={handleClearRoute}
+            bottom={8 + bottomInset}
+            side={sideGutter}
+            onHeight={setRouteCardHeight}
+          />
         )}
 
         {/*
@@ -2755,50 +2718,5 @@ const styles = StyleSheet.create({
   previewTextWrap: { flex: 1 },
   previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
   previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
-  routeStrip: {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    right: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  routeStripRows: { flex: 1 },
-  routeStripRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 36 },
-  routeStripDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginLeft: 20 },
-  routeStripLabel: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
-  routeStripPlaceholder: { flex: 1, fontSize: 14, color: COLORS.textTertiary, fontFamily: FONTS.regular },
-  routeStripActions: { flexDirection: "row", alignItems: "center" },
-  routeStripIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19 },
-  /** 길찾기 끝내기(오른쪽 위 X, 11-09) — 눈에 띄게 남색 옅은 바탕. */
-  routeStripClose: { backgroundColor: COLORS.primarySoft, marginLeft: 2 },
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */
-  routeDotFrom: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: COLORS.primary, backgroundColor: COLORS.white },
-  routeDotTo: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  routeCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  /** 경로 카드 자리(카드는 RouteOptions 가 그린다). 높이를 재 지도 맞춤·오른쪽 아래 메뉴 위치에 쓴다. */
-  routeCardWrap: { position: "absolute" },
-  routeCardNote: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular },
 });

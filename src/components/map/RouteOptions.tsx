@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -35,7 +35,7 @@ const SETTLE_MS = 140;
  * 길 흐름·조사 메모 글은 ROUTE_DIRECTIONS_TEXT_ENABLED 가 켜졌을 때만 보인다(11-11 끔).
  * 옆으로 넘기면 그 길을 고른 것으로 보고(`onSelect`) 지도에서 그 길이 굵어진다. 아래 점이 몇 번째인지 보여 준다.
  */
-export default function RouteOptions({
+function RouteOptions({
   routes,
   selectedIndex,
   onSelect,
@@ -280,3 +280,5 @@ const styles = StyleSheet.create({
   },
   dotOn: { width: 16, backgroundColor: COLORS.primary },
 });
+
+export default memo(RouteOptions)
