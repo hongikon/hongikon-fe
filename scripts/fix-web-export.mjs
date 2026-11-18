@@ -90,11 +90,40 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   // iPhone Safari 가 주소창 아래에 띄우는 'App Store 에서 받기' 기본 배너(Smart App Banner). 다른 브라우저는
   // 앱 안의 WebAppInstallBanner 가 맡는다. id 는 src/constants/storeLinks.ts 의 APP_STORE_ID 와 같아야 한다.
   const smartBanner = '<meta name="apple-itunes-app" content="app-id=6818954901"/>'
+  // 검색 결과·링크 미리보기에 쓰이는 소개(11-18). 없으면 검색 엔진이 아래 <noscript> 의 Expo 기본 영어 문구
+  // ("You need to enable JavaScript to run this app.")를 소개로 가져갔다.
+  const description =
+    '홍익대 생활을 한 곳에서. 학교·학과 공지 알림, 캠퍼스 지도와 건물 길찾기, 학식, 제휴 혜택을 볼 수 있어요. ' +
+    '홍익대학교 학생이 만든 비공식 서비스예요.'
+  const meta =
+    `<meta name="description" content="${description}"/>` +
+    '<meta property="og:type" content="website"/>' +
+    '<meta property="og:site_name" content="홍익온"/>' +
+    '<meta property="og:title" content="홍익온 — 홍익대 공지·캠퍼스 지도·학식"/>' +
+    `<meta property="og:description" content="${description}"/>` +
+    '<meta property="og:url" content="https://hongikon.com/"/>' +
+    '<meta property="og:image" content="https://hongikon.com/og-image.png"/>' +
+    '<meta property="og:locale" content="ko_KR"/>' +
+    '<meta name="twitter:card" content="summary_large_image"/>'
+  // 자바스크립트를 끈 브라우저·검색 로봇에 보이는 안내. 앱 설명과 정적 안내 페이지로 가는 링크를 둔다.
+  const noscript =
+    '<noscript><div style="max-width:420px;margin:48px auto;padding:0 20px;font-family:-apple-system,\'Apple SD Gothic Neo\',\'Noto Sans KR\',sans-serif;line-height:1.6;color:#111">' +
+    '<h1 style="color:#05014A;font-size:24px">홍익온</h1>' +
+    `<p>${description}</p>` +
+    '<p>웹에서 쓰려면 브라우저에서 자바스크립트를 켜 주세요. 앱은 App Store와 Google Play에서 받을 수 있어요.</p>' +
+    '<p><a href="/app">앱 받기</a> · <a href="/support">고객 지원</a> · <a href="/privacy">개인정보 처리방침</a> · <a href="/terms">이용약관</a></p>' +
+    '</div></noscript>'
   const html = readFileSync(indexHtml, 'utf8')
     .replace(/<link rel="icon" href="\/favicon\.ico"\/>/g, `<link rel="icon" href="/favicon.ico?v=${version}" sizes="any"/>${links}`)
-    .replace('</head>', `${smartBanner}</head>`)
+    .replace('</head>', `${smartBanner}${meta}</head>`)
+    .replace('<html lang="en">', '<html lang="ko">')
+    .replace(/<noscript>[\s\S]*?<\/noscript>/, noscript)
   if (!html.includes('apple-touch-icon') || !html.includes('apple-itunes-app')) {
     console.error('[fix-web-export] index.html 에서 파비콘 링크를 찾지 못함 — Expo 템플릿이 바뀌었는지 확인')
+    process.exit(1)
+  }
+  if (!html.includes('name="description"') || html.includes('You need to enable JavaScript') || !html.includes('lang="ko"')) {
+    console.error('[fix-web-export] index.html 에 소개·noscript·lang 을 넣지 못함 — Expo 템플릿이 바뀌었는지 확인')
     process.exit(1)
   }
   writeFileSync(indexHtml, html)
