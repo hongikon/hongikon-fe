@@ -668,54 +668,23 @@ export default function MapScreen() {
 
   const handleCancelReportPicker = picker.cancel;
 
-  /**
-   * 안드로이드 뒤로가기(웹은 Esc)는 위치 고르기·열린 시트부터 닫는다. 시트·고르기는 화면 안 상태라 내비게이션이
-   * 모르고, 지도가 첫 탭이라 그냥 두면 앱이 꺼진다. 닫기(X)와 똑같은 처리를 쓴다. 닫을 게 없으면 기본 동작에 맡긴다.
-   */
-  const closeTopMapLayer = useCallback((): boolean => {
-    // 검색·작성·길찾기 창이 떠 있으면 그 창이 먼저 닫혀야 한다(웹 Esc 가 아래 시트까지 닫지 않게).
-    if (search.visible || showRoute || reportTarget !== null || infoSuggest.visible) return false;
-    if (pickingLocation) {
-      handleCancelReportPicker();
-      return true;
-    }
-    if (selectedReport) {
-      setSelectedReport(null);
-      return true;
-    }
-    if (selectedPartner) {
-      handleClosePartner();
-      return true;
-    }
-    if (selectedFacilityBuilding !== null && facilityKind !== null) {
-      // 건물에서 들어간 시설 시트면 '뒤로'는 그 건물 시트로(시트의 '<'와 같다, 11-08).
-      if (facilityNav.facilityFrom) facilityNav.backToBuilding();
-      else setSelectedFacilityBuilding(null);
-      return true;
-    }
-    if (selectedBuilding) {
-      handleCloseBuilding();
-      return true;
-    }
-    return false;
-  }, [
-    search.visible,
-    showRoute,
-    reportTarget,
-    infoSuggest.visible,
+  // 안드로이드 뒤로가기(웹은 Esc): 열린 창·위치 고르기·시트를 위에서부터 하나씩 닫는다.
+  useMapBackHandler({
+    windowOpen: search.visible || showRoute || reportTarget !== null || infoSuggest.visible,
     pickingLocation,
+    cancelPicker: handleCancelReportPicker,
     selectedReport,
     selectedPartner,
+    selectedBuilding,
     selectedFacilityBuilding,
     facilityKind,
-    facilityNav.facilityFrom,
-    facilityNav.backToBuilding,
-    selectedBuilding,
-    handleCancelReportPicker,
-    handleClosePartner,
-    handleCloseBuilding,
-  ]);
-  useMapBackHandler(closeTopMapLayer);
+    facilityFrom: facilityNav.facilityFrom,
+    closeReportSheet: () => setSelectedReport(null),
+    closePartnerSheet: handleClosePartner,
+    closeBuildingSheet: handleCloseBuilding,
+    closeFacilitySheet: () => setSelectedFacilityBuilding(null),
+    backToBuilding: facilityNav.backToBuilding,
+  });
 
 
   /** 도착 검색 창의 "지도에서 핀으로 고르기". 검색 창을 닫고 화면 가운데 핀으로 도착 건물을 고르게 한다. */
