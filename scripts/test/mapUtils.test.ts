@@ -5,6 +5,7 @@ import { buildingLabel, offscreenSummary } from '../../src/utils/map/labels'
 import { searchPinnedSection } from '../../src/utils/map/searchPinned'
 import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
 import { overlayMarkerMessages } from '../../src/utils/map/mapSync'
+import { mapVisibility } from '../../src/utils/map/visibility'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
@@ -74,4 +75,52 @@ test('칩 마커 메시지: 시설 종류가 있으면 setFacilities', () => {
   })
   assert.equal((r.facilitiesMessage as { type: string }).type, 'setFacilities')
   assert.equal(r.partnersMessage, null)
+})
+
+test('화면 요소 보임: 위치를 고르는 동안은 안내·메뉴·길찾기 카드가 모두 숨는다', () => {
+  const base = {
+    pickingLocation: false, routeMode: false, sheetOpen: false, routeHasFrom: false, hasTo: false,
+    nearbyPicking: false, nearbyOverlayOn: false, reportsOn: false, reportsLoading: false, reportsErrored: false,
+    hotOnly: false, reportsMatchHot: false, reportsEmpty: false, reportsLoaded: false, reportSheetOpen: false,
+  }
+  const idle = mapVisibility(base)
+  assert.equal(idle.showSearchAndChips, true)
+  assert.equal(idle.showMapMenu, true)
+  assert.equal(idle.showRouteStrip, false)
+  const picking = mapVisibility({ ...base, pickingLocation: true, routeHasFrom: true, hasTo: true })
+  assert.deepEqual(
+    [picking.showSearchAndChips, picking.showRouteStrip, picking.showRouteResultCard, picking.showMapMenu, picking.showOverlayNotices],
+    [false, false, false, false, false],
+  )
+})
+
+test('길찾기 카드는 두 끝을 정하고 시트가 닫혔을 때만, 길찾기 중엔 검색바가 숨는다', () => {
+  const base = {
+    pickingLocation: false, routeMode: true, sheetOpen: false, routeHasFrom: true, hasTo: false,
+    nearbyPicking: false, nearbyOverlayOn: false, reportsOn: false, reportsLoading: false, reportsErrored: false,
+    hotOnly: false, reportsMatchHot: false, reportsEmpty: false, reportsLoaded: false, reportSheetOpen: false,
+  }
+  assert.equal(mapVisibility(base).showSearchAndChips, false)
+  assert.equal(mapVisibility(base).showRouteStrip, true)
+  assert.equal(mapVisibility(base).showRouteResultCard, false)
+  assert.equal(mapVisibility({ ...base, hasTo: true }).showRouteResultCard, true)
+  assert.equal(mapVisibility({ ...base, hasTo: true, sheetOpen: true }).showRouteResultCard, false)
+  assert.equal(mapVisibility({ ...base, sheetOpen: true }).showMapMenu, false)
+})
+
+test('제보 안내: 불러오는 중·오류·HOT 목록 조건', () => {
+  const base = {
+    pickingLocation: false, routeMode: false, sheetOpen: false, routeHasFrom: false, hasTo: false,
+    nearbyPicking: false, nearbyOverlayOn: false, reportsOn: true, reportsLoading: true, reportsErrored: false,
+    hotOnly: true, reportsMatchHot: true, reportsEmpty: false, reportsLoaded: true, reportSheetOpen: false,
+  }
+  const v = mapVisibility(base)
+  assert.equal(v.showReportsLoadingNotice, true)
+  assert.equal(v.showHotReportList, true)
+  assert.equal(mapVisibility({ ...base, reportsErrored: true }).showReportsLoadingNotice, false)
+  assert.equal(mapVisibility({ ...base, reportsErrored: true }).showReportsError, true)
+  assert.equal(mapVisibility({ ...base, reportSheetOpen: true }).showHotReportList, false)
+  assert.equal(mapVisibility({ ...base, reportsOn: false }).showReportsError, false)
+  assert.equal(mapVisibility({ ...base, nearbyOverlayOn: true }).showNearbyOverlayNote, true)
+  assert.equal(mapVisibility({ ...base, nearbyOverlayOn: true, nearbyPicking: true }).showNearbyOverlayNote, false)
 })

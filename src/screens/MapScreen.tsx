@@ -66,6 +66,7 @@ import { useMapNotices } from "../hooks/map/useMapNotices";
 import { useSheetActions } from "../hooks/map/useSheetActions";
 import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
+import { mapVisibility } from "../utils/map/visibility";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -630,23 +631,34 @@ export default function MapScreen() {
   const handleCloseRoute = route.closeSearch;
 
   // ---- 화면에 무엇을 보일지 ----
-  // 위치를 고르는 동안에는 지도 위 안내 줄·카드·메뉴를 모두 숨긴다(고르기 안내 줄·카드와 같은 자리에 겹친다).
   const routeHasFrom = fromBuilding !== null || fromMyLocation;
-  /** 검색바·칩. 길찾기 중에는 출발·도착 막대가 그 자리로 올라간다(routeMode). */
-  const showSearchAndChips = !pickingLocation && !routeMode;
-  /** 길찾기 출발·도착 막대: 한쪽이라도 정했으면. */
-  const showRouteStrip = !pickingLocation && (routeHasFrom || toBuilding !== null);
-  /** 길찾기 결과 카드: 두 끝을 다 정했고 아래 시트가 닫혀 있으면. */
-  const showRouteResultCard = !pickingLocation && !sheetOpen && routeHasFrom && toBuilding !== null;
-  /** 오른쪽 아래 지도 메뉴. 시트가 열려 있으면 시트 가장자리로 삐져나와 숨긴다. */
-  const showMapMenu = !pickingLocation && !sheetOpen && !nearbyDebug.picking;
-  const showOverlayNotices = !pickingLocation;
-  const showReportsLoadingNotice = reportsOn && showReportsLoading && reportsResource.errorMessage === null;
-  const showReportsError = reportsOn && reportsResource.errorMessage !== null;
-  /** HOT 제보 목록: HOT 을 켰고 그 목록을 받았을 때. 제보 시트를 연 동안에는 접어 지도를 덜 가린다. */
-  const showHotReportList =
-    showOverlayNotices && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport;
-  const showNearbyOverlayNote = nearbyDebug.overlayOn && !sheetOpen && !nearbyDebug.picking;
+  const {
+    showSearchAndChips,
+    showRouteStrip,
+    showRouteResultCard,
+    showMapMenu,
+    showOverlayNotices,
+    showReportsLoadingNotice,
+    showReportsError,
+    showHotReportList,
+    showNearbyOverlayNote,
+  } = mapVisibility({
+    pickingLocation,
+    routeMode,
+    sheetOpen,
+    routeHasFrom,
+    hasTo: toBuilding !== null,
+    nearbyPicking: nearbyDebug.picking,
+    nearbyOverlayOn: nearbyDebug.overlayOn,
+    reportsOn,
+    reportsLoading: showReportsLoading,
+    reportsErrored: reportsResource.errorMessage !== null,
+    hotOnly,
+    reportsMatchHot,
+    reportsEmpty,
+    reportsLoaded: shownReportData !== undefined,
+    reportSheetOpen: selectedReport !== null,
+  });
 
   return (
     <View style={styles.container}>
