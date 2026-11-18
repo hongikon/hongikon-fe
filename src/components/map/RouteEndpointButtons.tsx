@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { COLORS } from "../../constants/colors";
 import { FONTS } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
+import { withRo } from "../../utils/josa";
 
 export type RouteNext = "from" | "to" | null;
 
@@ -35,7 +36,7 @@ export default function RouteEndpointButtons({ name, routeNext, onSetFrom, onSet
         style={[styles.action, next === "to" && styles.actionStrong]}
         onPress={onSetTo}
         accessibilityRole="button"
-        accessibilityLabel={`${name}로 도착`}
+        accessibilityLabel={`${withRo(name)} 도착`}
       >
         <View style={[styles.dotTo, next === "to" && styles.dotToStrong]} />
         <Text style={[styles.text, next === "to" && styles.textStrong]}>도착</Text>

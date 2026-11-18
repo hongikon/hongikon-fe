@@ -66,6 +66,7 @@ import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapMessages } from "../hooks/map/useMapMessages";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { mapVisibility } from "../utils/map/visibility";
+import { withRo } from "../utils/josa";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -769,7 +770,7 @@ export default function MapScreen() {
               highlightId={highlightedFacilityId}
               onClose={facilityNav.closeSheet}
               onBack={facilityNav.facilityFrom ? facilityNav.backToBuilding : undefined}
-              backLabel={facilityNav.facilityFrom ? `${facilityNav.facilityFrom.building.name}로 돌아가기` : undefined}
+              backLabel={facilityNav.facilityFrom ? `${withRo(facilityNav.facilityFrom.building.name)} 돌아가기` : undefined}
               onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
               onSetTo={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetTo : undefined}
               routeNext={routeNext}

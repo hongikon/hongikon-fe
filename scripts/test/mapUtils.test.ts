@@ -6,6 +6,7 @@ import { searchPinnedSection } from '../../src/utils/map/searchPinned'
 import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
 import { overlayMarkerMessages } from '../../src/utils/map/mapSync'
 import { mapVisibility } from '../../src/utils/map/visibility'
+import { withRo } from '../../src/utils/josa'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
@@ -123,4 +124,20 @@ test('제보 안내: 불러오는 중·오류·HOT 목록 조건', () => {
   assert.equal(mapVisibility({ ...base, reportsOn: false }).showReportsError, false)
   assert.equal(mapVisibility({ ...base, nearbyOverlayOn: true }).showNearbyOverlayNote, true)
   assert.equal(mapVisibility({ ...base, nearbyOverlayOn: true, nearbyPicking: true }).showNearbyOverlayNote, false)
+})
+
+test('방향 조사: 받침 있으면 으로, 없거나 ㄹ 받침이면 로', () => {
+  assert.equal(withRo('홍문관 R동'), '홍문관 R동으로')
+  assert.equal(withRo('체육관'), '체육관으로')
+  assert.equal(withRo('운동장'), '운동장으로')
+  assert.equal(withRo('제2기숙사'), '제2기숙사로')
+  assert.equal(withRo('과학관 I동'), '과학관 I동으로')
+  assert.equal(withRo('서울'), '서울로')
+  assert.equal(withRo('제4공학관 T동'), '제4공학관 T동으로')
+  assert.equal(withRo('강당 S동'), '강당 S동으로')
+  assert.equal(withRo('정문'), '정문으로')
+  assert.equal(withRo('Z2'), 'Z2로')
+  assert.equal(withRo('센터 R'), '센터 R로')
+  assert.equal(withRo('A3'), 'A3으로')
+  assert.equal(withRo('학생회관(G)'), '학생회관(G)로')
 })
