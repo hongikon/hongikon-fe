@@ -52,7 +52,6 @@ import type {
   Facility,
   FacilityKind,
   MapLayer,
-  Partner,
   ReportListItem,
 } from "../types";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
@@ -81,6 +80,7 @@ import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
 import { useMapFilters } from "../hooks/map/useMapFilters";
 import { useMapIntents, type AskCardContent, type PreviewTarget } from "../hooks/map/useMapIntents";
 import { useMyLocation } from "../hooks/map/useMyLocation";
+import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
 import { offscreenSummary } from "../utils/map/labels";
 
@@ -169,12 +169,6 @@ export default function MapScreen() {
     },
     onCategoriesChange: () => setSelectedReport(null),
   });
-  const [showSearch, setShowSearch] = useState(false);
-  /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
-  const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
-  /** 근처 제휴 알림(여러 곳)을 눌러 띄운 "지금 계신 곳 근처 제휴" 목록. 검색 창 맨 위에 둔다. */
-  const [nearbyGroup, setNearbyGroup] = useState<Partner[] | null>(null);
-
   /**
    * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
    * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
@@ -277,6 +271,20 @@ export default function MapScreen() {
       setReportTarget(at);
     },
     onLeaveBuildingFacility: () => leaveBuildingFacilityRef.current(),
+  });
+  // 제휴·편의시설 검색 창(열기·닫기·맨 위 업체 묶음·결과로 업체 고르기).
+  const search = useMapSearch({
+    webViewRef,
+    postToMap,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    clearPartnerFilter: filters.clearPartnerFilter,
+    openPartnerSheet: (partner) => {
+      setSelectedBuilding(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+      setSelectedPartner(partner);
+    },
   });
   // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
   const picker = useLocationPicker({
@@ -477,48 +485,13 @@ export default function MapScreen() {
   const handleSelectCategory = filters.selectCategory;
 
   /**
-   * 검색 결과를 고르면 그 업체만 지도에 올리고 화면 가운데로 가져온다.
-   * 칩 필터는 모두 해제한다. 검색 결과가 칩 조건에 안 맞으면
-   * 칩은 켜져 있는데 다른 업체가 떠 있는 어긋난 상태가 되기 때문이다.
-   */
-  const handleSearchSelect = useCallback(
-    (partner: Partner) => {
-      setShowSearch(false);
-      filters.clearPartnerFilter();
-      setSelectedBuilding(null);
-      setSelectedReport(null);
-      setSelectedFacilityBuilding(null);
-      setSelectedPartner(partner);
-      searchedPartnerIdRef.current = partner.id;
-
-      // 캠퍼스에서 먼 지점은 검색으로만 찾아간다 — 옮기기 전에 이동 범위를 그 지점 둘레로 바꾼다(캠퍼스 범위로는 못 간다).
-      // 시트를 닫거나 다른 것을 고르면 아래 effect 가 캠퍼스로 되돌린다.
-      if (isFarFromCampus(partner)) {
-        farViewPartnerIdRef.current = partner.id;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(partner)));
-      } else if (farViewPartnerIdRef.current !== null) {
-        farViewPartnerIdRef.current = null;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-      }
-
-      postToMap({
-        type: "setPartners",
-        partners: [toMarker(partner)],
-        bounds: null,
-      });
-      postToMap({ type: "focusPartner", id: partner.id, zoom: FOCUS_ZOOM });
-    },
-    [postToMap, filters.clearPartnerFilter],
-  );
-
-  /**
    * 검색이나 건물 시트에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면
    * 그 지점)로 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
    * `facility` 가 있으면(검색) 시트에서 그 줄을 강조한다.
    */
   const openFacilitySheet = useCallback(
     (kind: FacilityKind, buildingName: string, facility: Facility | null) => {
-      setShowSearch(false);
+      search.hide();
       // 갈래 전환과 같은 정리: 학교 시설 갈래로 바꿔 그 종류 핀을 켜고, 제휴·제보 선택과 마커를 지운다.
       setSelectedPartner(null);
       setSelectedBuilding(null);
@@ -818,15 +791,11 @@ export default function MapScreen() {
     startReportPicker: handleStartReportPicker,
     openReport,
     showAllReports,
-    showNearbyGroup: (group) => {
-      setSearchPinned(null);
-      setNearbyGroup(group);
-      setShowSearch(true);
-    },
-    selectPartner: handleSearchSelect,
+    showNearbyGroup: search.showNearbyGroup,
+    selectPartner: search.selectPartner,
     openFacility: (facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
     openBuilding: (building) => {
-      setShowSearch(false);
+      search.hide();
       setSelectedPartner(null);
       setSelectedFacilityBuilding(null);
       setSelectedReport(null);
@@ -844,7 +813,7 @@ export default function MapScreen() {
       showPreviewPin(preview);
     },
     startRouteTo: ({ building, floor, from }) => {
-      setShowSearch(false);
+      search.hide();
       setSelectedPartner(null);
       setSelectedReport(null);
       route.commitTo(building, floor);
@@ -869,7 +838,7 @@ export default function MapScreen() {
    */
   const closeTopMapLayer = useCallback((): boolean => {
     // 검색·작성·길찾기 창이 떠 있으면 그 창이 먼저 닫혀야 한다(웹 Esc 가 아래 시트까지 닫지 않게).
-    if (showSearch || showRoute || reportTarget !== null || partnerSuggest !== null) return false;
+    if (search.visible || showRoute || reportTarget !== null || partnerSuggest !== null) return false;
     if (pickingLocation) {
       handleCancelReportPicker();
       return true;
@@ -894,7 +863,7 @@ export default function MapScreen() {
     }
     return false;
   }, [
-    showSearch,
+    search.visible,
     showRoute,
     reportTarget,
     partnerSuggest,
@@ -928,12 +897,6 @@ export default function MapScreen() {
 
   const handleSelectRouteBuilding = route.selectSearchBuilding;
 
-  /** 검색바로 연 검색 창 — 안내 줄·근처 알림에서 모아 둔 업체 없이 연다. */
-  const handleOpenSearch = useCallback(() => {
-    setSearchPinned(null);
-    setNearbyGroup(null);
-    setShowSearch(true);
-  }, []);
   const handleRouteEndpointPress = route.pressEndpoint;
   const handleRouteStripHeight = route.onStripHeight;
   // ---- 지도 메뉴(오른쪽 아래) ----
@@ -958,28 +921,6 @@ export default function MapScreen() {
   const canShowMyLocationButton = canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM);
 
   // ---- 검색·제보·정보 제보 창 ----
-  const handleCloseSearch = useCallback(() => {
-    setShowSearch(false);
-    setNearbyGroup(null);
-  }, []);
-  /** 검색 창 맨 위에 모아 보일 업체: 근처 알림으로 연 곳들, 또는 안내 줄의 '지도에 안 보이는 곳'. */
-  const searchPinnedSection = useMemo(
-    () =>
-      nearbyGroup && nearbyGroup.length > 0
-        ? {
-            title: "지금 계신 곳 근처 제휴",
-            hint: "알림을 보낸 순간 함께 잡힌 곳이에요. 가까운 순으로, 누르면 그 가게 혜택을 볼 수 있어요.",
-            partners: nearbyGroup,
-          }
-        : searchPinned && searchPinned.length > 0
-        ? {
-            title: `지도에 안 보이는 ${searchPinned.length}곳`,
-            hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
-            partners: searchPinned,
-          }
-        : undefined,
-    [nearbyGroup, searchPinned],
-  );
   const handleCloseReportComposer = useCallback(() => setReportTarget(null), []);
   const handleCloseInfoSuggest = useCallback(() => setPartnerSuggest(null), []);
   /** 정보 제보 창의 '지도에서 위치 고르기': 창을 닫고 핀 고르기로. 취소하면 전 위치로 돌아가게 기억해 둔다. */
@@ -1039,11 +980,7 @@ export default function MapScreen() {
     [openReport, postToMap],
   );
   /** '지도에 안 보이는 N곳 · 보기' — 그 업체들을 검색 창 맨 위에 모아 연다. */
-  const handleShowOffscreenPartners = useCallback(() => {
-    setNearbyGroup(null);
-    setSearchPinned(offscreenPartners);
-    setShowSearch(true);
-  }, [offscreenPartners]);
+  const handleShowOffscreenPartners = useCallback(() => search.showPinned(offscreenPartners), [search.showPinned, offscreenPartners]);
 
   const handleSelectMyLocationPress = useCallback(() => void myLocation.selectForRoute(), [myLocation.selectForRoute]);
   const handleChangeRouteTarget = route.changeSearchTarget;
@@ -1276,7 +1213,7 @@ export default function MapScreen() {
       <MapTopBar topInset={insets.top} opacity={headerFade} covered={headerCovered} onHeight={setHeaderHeight}>
         {showSearchAndChips && (
           <>
-            <MapSearchBar sideGutter={sideGutter} onPress={handleOpenSearch} />
+            <MapSearchBar sideGutter={sideGutter} onPress={search.open} />
             <FilterChipSection sideGutter={sideGutter}>
               <MapFilterChips
                 layer={layer}
@@ -1316,13 +1253,13 @@ export default function MapScreen() {
       />
 
       <PartnerSearchModal
-        visible={showSearch}
+        visible={search.visible}
         topInset={insets.top}
-        onClose={handleCloseSearch}
-        onSelect={handleSearchSelect}
+        onClose={search.close}
+        onSelect={search.selectPartner}
         onSelectFacility={handleSearchSelectFacility}
-        autoFocus={!nearbyGroup}
-        pinned={searchPinnedSection}
+        autoFocus={!search.nearbyGroup}
+        pinned={search.pinnedSection}
       />
 
       <ReportComposerModal

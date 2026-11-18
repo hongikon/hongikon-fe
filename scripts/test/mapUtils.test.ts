@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { routePinBuilding } from '../../src/utils/map/routePinBuilding'
 import { buildingLabel, offscreenSummary } from '../../src/utils/map/labels'
+import { searchPinnedSection } from '../../src/utils/map/searchPinned'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
@@ -21,4 +22,14 @@ test('건물 이름에 층, 업체 줄임', () => {
   assert.equal(buildingLabel(b(1, '홍문관 R동', 0, 0), 3), '홍문관 R동 3F')
   assert.equal(offscreenSummary([{ name: 'a' }, { name: 'b' }, { name: 'c' }] as never), 'a, b 외 1곳')
   assert.equal(offscreenSummary([{ name: 'a' }] as never), 'a')
+})
+
+test('검색 창 맨 위 묶음: 근처 알림이 먼저, 그다음 안 보이는 곳, 둘 다 없으면 없음', () => {
+  const a = [{ id: 'a' }] as never
+  const two = [{ id: 'x' }, { id: 'y' }] as never
+  assert.equal(searchPinnedSection(a, two)?.title, '지금 계신 곳 근처 제휴')
+  assert.equal(searchPinnedSection(null, two)?.title, '지도에 안 보이는 2곳')
+  assert.equal(searchPinnedSection([], two)?.partners.length, 2)
+  assert.equal(searchPinnedSection(null, []), undefined)
+  assert.equal(searchPinnedSection(null, null), undefined)
 })
