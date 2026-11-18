@@ -30,7 +30,6 @@ import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
-import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
 import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
 import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
@@ -42,7 +41,6 @@ import { getLiveReports } from "../apis/reports";
 import { getHotReports, hasCommunityFields } from "../apis/community";
 import HotReportList from "../components/map/HotReportList";
 import { useApiResource } from "../hooks/useApiResource";
-import Button from "../components/common/Button";
 import RetryableError from "../components/common/RetryableError";
 import { useToast } from "../components/common/Toast";
 import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
@@ -100,7 +98,6 @@ import type {
   ReportListItem,
 } from "../types";
 import { REPORT_CATEGORIES } from "../constants/reportCategories";
-import { REPORT_OFF_CAMPUS_MAX_METERS } from "../constants/report";
 import { haversineMeters } from "../utils/geo";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
@@ -116,6 +113,8 @@ import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
 import MapSearchBar from "../components/map/topbar/MapSearchBar";
 import FilterChipSection from "../components/map/topbar/FilterChipSection";
+import LocationPickerOverlay, { type PickerCenter, type PickerPurpose } from "../components/map/picker/LocationPickerOverlay";
+import MapCrosshair from "../components/map/picker/MapCrosshair";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -296,14 +295,10 @@ export default function MapScreen() {
   const [pickingLocation, setPickingLocation] = useState(false);
   /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
   /** report: 제보, partner: 정보 제보, routeTo: 길찾기 도착 건물을 핀으로(11-12). */
-  const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner" | "routeTo">("report");
+  const [pickerPurpose, setPickerPurpose] = useState<PickerPurpose>("report");
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
   const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
-  const [pickerCenter, setPickerCenter] = useState<{
-    lat: number;
-    lng: number;
-    buildingName: string | null;
-  } | null>(null);
+  const [pickerCenter, setPickerCenter] = useState<PickerCenter | null>(null);
   // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
   // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
   // 지도 탭에선 늘 켜 둔다 — 제보가 앱의 주 기능이라(10-18). 끄는 스위치는 없고 메뉴에서 종류·HOT 만 고른다(10-27).
@@ -1573,7 +1568,7 @@ export default function MapScreen() {
 
   /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
   const startPicker = useCallback(
-    (purpose: "report" | "partner" | "routeTo") => {
+    (purpose: PickerPurpose) => {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
@@ -2195,10 +2190,7 @@ export default function MapScreen() {
 
         {pickingNearbyTest && (
           <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
-              <View style={[styles.pickerCrosshairV, styles.nearbyTestCross]} />
-              <View style={[styles.pickerCrosshairH, styles.nearbyTestCross]} />
-            </View>
+            <MapCrosshair lineStyle={styles.nearbyTestCross} />
             <View style={[styles.nearbyTestBar, { bottom: 16 + bottomInset }]}>
               <Text style={styles.nearbyOverlayNoteText}>
                 지도를 움직여 십자를 테스트할 자리에 맞추세요. 근처 알림만 이 자리를 내 위치로 보고, 실제 GPS 는 쓰지 않아요.
@@ -2284,82 +2276,16 @@ export default function MapScreen() {
         )}
 
         {pickingLocation && (
-          <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
-              <View style={styles.pickerCrosshairV} />
-              <View style={styles.pickerCrosshairH} />
-              <View style={styles.pickerPinAnchor}>
-                <View style={styles.pickerPinBubble}>
-                  {pickerPurpose === "routeTo" ? (
-                    <Ionicons name="flag" size={18} color={COLORS.white} />
-                  ) : (
-                    <ReportMegaphoneIcon size={18} color={COLORS.white} />
-                  )}
-                </View>
-                <View style={styles.pickerPinTail} />
-              </View>
-              <View style={styles.pickerDot} />
-            </View>
-
-            <View style={[styles.pickerTopBar, overlayInset, { top: headerHeight + 8 }]}>
-              <Text style={styles.pickerTopText} numberOfLines={2}>
-                {pickerPurpose === "partner"
-                  ? "지도를 움직여 가게 위치에 핀을 맞춰 주세요"
-                  : pickerPurpose === "routeTo"
-                    ? "지도를 움직여 도착할 건물에 핀을 맞춰 주세요"
-                    : "지도를 움직여 제보할 위치를 맞춰 주세요"}
-              </Text>
-              <TouchableOpacity
-                onPress={handleCancelReportPicker}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="위치 선택 취소"
-              >
-                <Ionicons name="close" size={18} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
-            <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + bottomInset }]}>
-              <View style={styles.pickerLocationRow}>
-                <Ionicons name="location" size={16} color={COLORS.primary} />
-                <Text style={styles.pickerLocationText} numberOfLines={1}>
-                  {pickerPurpose === "routeTo" && pickerCenter
-                    ? routePinBuilding
-                      ? `도착: ${routePinBuilding.name}`
-                      : "근처에 길찾기할 수 있는 건물이 없어요"
-                    : pickerCenter
-                    ? pickerCenter.buildingName
-                      ? `${pickerCenter.buildingName} 근처`
-                      : pickerPurpose === "report"
-                        ? // 캠퍼스 밖 제보(10-27): 홍대 생활권 안이면 장소를 직접 적어 올리고, 더 멀면 올릴 수 없다고 미리 알린다.
-                          haversineMeters(CAMPUS_CENTER.lat, CAMPUS_CENTER.lng, pickerCenter.lat, pickerCenter.lng) <=
-                          REPORT_OFF_CAMPUS_MAX_METERS
-                          ? "캠퍼스 밖 · 다음 화면에서 장소를 적어 주세요"
-                          : `캠퍼스에서 ${REPORT_OFF_CAMPUS_MAX_METERS / 1000}km 밖은 제보할 수 없어요`
-                        : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
-                    : "위치 확인 중..."}
-                </Text>
-                {/* 위쪽 안내 줄의 X 까지 손을 뻗지 않아도 되게 아래 카드에도 취소를 둔다(10-27 요청).
-                    오른손 엄지가 닿는 오른쪽, 위치 문구와 같은 줄. */}
-                <TouchableOpacity
-                  onPress={handleCancelReportPicker}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="위치 선택 취소"
-                >
-                  <Ionicons name="close" size={20} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-              </View>
-              <Button
-                label={
-                  pickerPurpose === "partner" ? "이 위치로 정보 제보" : pickerPurpose === "routeTo" ? "여기로 도착" : "이 위치 제보하기"
-                }
-                onPress={handleConfirmReportPicker}
-                disabled={!pickerCenter || (pickerPurpose === "routeTo" && !routePinBuilding)}
-              />
-            </View>
-          </>
+          <LocationPickerOverlay
+            purpose={pickerPurpose}
+            center={pickerCenter}
+            routeBuildingName={routePinBuilding?.name ?? null}
+            top={headerHeight + 8}
+            bottom={20 + bottomInset}
+            side={sideGutter}
+            onCancel={handleCancelReportPicker}
+            onConfirm={handleConfirmReportPicker}
+          />
         )}
 
         {!pickingLocation && (fromBuilding || fromMyLocation || toBuilding) && (
@@ -2746,116 +2672,6 @@ const styles = StyleSheet.create({
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
   // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
   bottomSheetLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  pickerMarkerWrap: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pickerCrosshairV: {
-    position: "absolute",
-    width: 1,
-    height: 22,
-    backgroundColor: COLORS.danger,
-    opacity: 0.5,
-  },
-  pickerCrosshairH: {
-    position: "absolute",
-    width: 22,
-    height: 1,
-    backgroundColor: COLORS.danger,
-    opacity: 0.5,
-  },
-  pickerDot: {
-    position: "absolute",
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: COLORS.danger,
-    borderWidth: 1.5,
-    borderColor: COLORS.white,
-  },
-  pickerPinAnchor: {
-    position: "absolute",
-    alignItems: "center",
-    transform: [{ translateY: -25 }],
-  },
-  pickerPinBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: COLORS.white,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  pickerPinTail: {
-    width: 2,
-    height: 9,
-    backgroundColor: COLORS.primary,
-    marginTop: -1,
-  },
-  pickerTopBar: {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    right: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pickerTopText: {
-    flex: 1,
-    fontFamily: FONTS.medium,
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    lineHeight: 18,
-  },
-  pickerBottomBar: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 20,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    padding: 12,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pickerLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  pickerLocationText: {
-    flex: 1,
-    fontFamily: FONTS.regular,
-    fontSize: 14.5,
-    color: COLORS.textPrimary,
-  },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
   bannerStack: {
     position: "absolute",
