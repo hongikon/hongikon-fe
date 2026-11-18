@@ -39,15 +39,11 @@ import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
-import { buildFloorOptions, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 import { type RouteAlternative } from "../apis/routes";
-import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
-/** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
-const ROUTE_STYLE_DELAY_MS = 300;
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
-import { canLocate, locateOnce, type LivePosition } from "../lib/nearbyPartners/platform";
+import { canLocate, locateOnce } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
@@ -88,12 +84,12 @@ import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 import MapSheets from "../components/map/sheets/MapSheets";
 import { useLiveLocation } from "../hooks/map/useLiveLocation";
-import { useRouteData } from "../hooks/map/useRouteData";
 import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
 import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
 import { useAppForeground } from "../hooks/useAppForeground";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
-import { buildingLabel, offscreenSummary } from "../utils/map/labels";
+import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
+import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 
@@ -166,56 +162,8 @@ export default function MapScreen() {
   // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
   // 사용자가 앱이 멈춘 것으로 오해한다.
   const [mapAuthFailed, setMapAuthFailed] = useState(false);
-  const [fromBuilding, setFromBuilding] = useState<Building | null>(null);
-  const [toBuilding, setToBuilding] = useState<Building | null>(null);
-  const [fromFloor, setFromFloor] = useState<number | null>(null);
-  /** 길찾기 표시의 첫 층 이동을 '1F→3F' 로 쓰려고 그리는 함수에서 읽는다. */
-  const fromFloorRef = useRef<number | null>(null);
-  fromFloorRef.current = fromFloor;
-  const [toFloor, setToFloor] = useState<number | null>(null);
-  /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
-  /** initialFloor: 다이얼을 열 때 먼저 골라 둘 층(필터 칩 시설이 여러 층에 있을 때 가장 아래 층, 11-16). */
-  const [floorDial, setFloorDial] = useState<
-    { role: "출발" | "도착"; building: Building; initialFloor?: number | null } | null
-  >(null);
-  /**
-   * 출발지 "내 위치"(11-03). 위치는 길찾기를 보는 동안만 휴대폰에서 읽어 경로 계산과 지도 점에만 쓰고,
-   * 저장하거나 서버로 보내지 않는다(처리방침 11-09판 "길찾기 화면을 보는 동안에만").
-   */
-  const [fromMyLocation, setFromMyLocation] = useState(false);
-  /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
-  const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
-  /** 경로를 다시 계산하는 기준 위치. 15m 넘게 움직였을 때만 바꿔 경로가 자꾸 바뀌지 않게 한다. */
-  const [routeOrigin, setRouteOrigin] = useState<LivePosition | null>(null);
-  // handleOpenRoute 는 위쪽에서 만들어져 최신 출발 상태를 ref 로 본다.
-  const fromBuildingRef = useRef<Building | null>(null);
-  fromBuildingRef.current = fromBuilding;
-  const [routeCardHeight, setRouteCardHeight] = useState(0);
-  /**
-   * 경로를 화면에 맞출 때 쓰는 실측 높이(11-08). 전에는 막대 100px·카드 90px 어림값이라 기기·글자 크기에 따라 경로가 카드나
-   * 막대에 가렸다. 맞추는 스크립트를 넣는 순간 값을 읽도록 ref 에 둔다(높이가 바뀔 때마다 경로를 다시 그리지 않게).
-   */
-  const routeStripHeightRef = useRef(0);
-  const routeCardHeightRef = useRef(0);
-  routeCardHeightRef.current = routeCardHeight;
-  /**
-   * 길찾기 한쪽 끝만 정한 채 나머지를 고르는 중. 이때 칩을 눌러도 건물 시트를 닫지 않는다(11-08 — 도착을 고르러 연 건물 시트가
-   * 칩 때문에 사라져 처음부터 다시 찾아야 했다).
-   */
-  const routePicking = (fromBuilding !== null || fromMyLocation) !== (toBuilding !== null);
-  /** 두 끝이 다 정해져 경로가 지도에 그려진 상태. 칩 핀을 흐리게 해 경로가 묻히지 않게 한다. */
-  const routeDrawn = (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
-  const routeDrawnRef = useRef(false);
-  routeDrawnRef.current = routeDrawn;
-  // 출발 건물만 고른 동안 그 건물에 '출발' 표시(11-16). 도착까지 고르면 지도 페이지가 경로와 함께 제 표시를 올리므로 지운다.
-  const pendingStart = fromBuilding && !toBuilding ? fromBuilding : null;
-  useEffect(() => {
-    webViewRef.current?.injectJavaScript(
-      pendingStartScript(pendingStart ? { lat: pendingStart.lat, lng: pendingStart.lng } : null),
-    );
-  }, [pendingStart]);
-  const fromMyLocationRef = useRef(false);
-  fromMyLocationRef.current = fromMyLocation;
+  /** 아래 탭바(또는 안전 영역) 높이. 경로를 화면에 맞출 때 읽는다(값은 아래 bottomInset 에서 채운다). */
+  const bottomInsetRef = useRef(0);
   // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
   const [layer, setLayer] = useState<MapLayer | null>(null);
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
@@ -265,17 +213,6 @@ export default function MapScreen() {
   const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
   /** 근처 제휴 알림(여러 곳)을 눌러 띄운 "지금 계신 곳 근처 제휴" 목록. 검색 창 맨 위에 둔다. */
   const [nearbyGroup, setNearbyGroup] = useState<Partner[] | null>(null);
-  const [showRoute, setShowRoute] = useState(false);
-  const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  /** 길찾기 버튼. 기능이 꺼져 있으면(ROUTE_FINDING_ENABLED) 버튼 자체를 그리지 않는다. */
-  /** 길찾기 버튼: 정하지 않은 쪽(출발 먼저)을 검색 창으로 고른다. */
-  const handleOpenRoute = useCallback(() => {
-    setSearchQuery("");
-    setRouteTarget(fromBuildingRef.current || fromMyLocationRef.current ? "to" : "from");
-    setShowRoute(true);
-  }, []);
 
   /**
    * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
@@ -332,6 +269,41 @@ export default function MapScreen() {
     onCancelPartner: (previous) => setPartnerSuggest({ location: previous }),
   });
   const pickingLocation = picker.picking;
+  // 길찾기(출발·도착·층·후보 길). 출발·도착을 정하면 열린 건물·시설 시트를 닫는다.
+  const route = useRoutePlanner({
+    webViewRef,
+    postToMap,
+    buildings,
+    headerHeight,
+    bottomInsetRef,
+    facilityKind,
+    facilities,
+    onCommitEndpoint: () => {
+      setSelectedBuilding(null);
+      setSelectedFacilityBuilding(null);
+    },
+  });
+  const {
+    fromBuilding,
+    toBuilding,
+    fromFloor,
+    toFloor,
+    fromMyLocation,
+    picking: routePicking,
+    drawn: routeDrawn,
+    drawnRef: routeDrawnRef,
+    alternatives: routeAlternatives,
+    selectedIndex: selectedRouteIndex,
+    showSearch: showRoute,
+    searchTarget: routeTarget,
+    searchQuery,
+    setSearchQuery,
+    beginFrom,
+    beginTo,
+    cardHeight: routeCardHeight,
+  } = route;
+  /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
+  const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
   // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
   const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
   nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
@@ -341,8 +313,6 @@ export default function MapScreen() {
   // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
   const mapHTML = useMemo(() => buildMapHTML(getMapDataSnapshot()?.buildings ?? []), []);
 
-  // 길찾기 후보 길(서버 계산, 내 위치 출발은 길 묶음을 받아 휴대폰에서 고른다).
-  const routeAlternatives = useRouteData({ fromBuilding, fromFloor, toBuilding, toFloor, fromMyLocation, routeOrigin, buildings });
 
 
   const activeFilter = useMemo<PartnerFilter>(
@@ -473,7 +443,6 @@ export default function MapScreen() {
   }, [navigation, tabBarHidden]);
   /** 지도 위 아래쪽 버튼·카드의 기준선. 탭바가 숨으면 홈 인디케이터 여백만. */
   const bottomInset = tabBarHidden ? insets.bottom : tabBarHeight;
-  const bottomInsetRef = useRef(bottomInset);
   bottomInsetRef.current = bottomInset;
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
@@ -833,34 +802,6 @@ export default function MapScreen() {
     postToMap({ type: "selectPartner", id: null });
   }, [postToMap]);
 
-  /** 대안 경로들을 지도에 올린다. 고른 것을 굵게, 나머지는 옅게 그린다. */
-  const drawRoute = useCallback(
-    (routes: RouteAlternative[], selectedIndex: number) => {
-      postToMap({
-        type: "showRoute",
-        routes: routes.map((route) => ({ points: route.points })),
-        selectedIndex,
-      });
-      // 그린 뒤 위 경로 막대와 아래 결과 카드 사이에 맞춘다. 높이는 실측값이고, 아직 재지 못했으면 어림값(막대 100·카드 90)을 쓴다.
-      // 지도 페이지는 메시지를 조금 늦게 처리해서, 바로 넣으면 경로가 아직 없다 — 잠깐 뒤에 칠하고 맞춘다.
-      // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다. 두 번째에는 카드 높이가 잡혀 있다.
-      const fitScript = () =>
-        routeStyleScript(
-          selectedIndex,
-          {
-            top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
-            bottom: bottomInsetRef.current + 12 + (routeCardHeightRef.current || 90) + 24,
-          },
-          routes,
-          routes[selectedIndex]?.markers ?? [],
-          fromFloorRef.current,
-        );
-      for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
-        setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
-      }
-    },
-    [postToMap, headerHeight],
-  );
 
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
@@ -883,16 +824,13 @@ export default function MapScreen() {
     else if (NEARBY_DEBUG_TOOLS && !myLocationUserOffRef.current) setMyLocationOn(true);
   }, [mapFocused]);
   const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused));
-  /** 지금 고른 경로(내 위치 점을 경로선에 붙일 때 쓴다). */
-  const selectedRouteRef = useRef<RouteAlternative | null>(null);
-  selectedRouteRef.current = routeAlternatives[selectedRouteIndex] ?? null;
   // 내 위치 점: GPS 값마다 지도에 점만 그리고 화면은 다시 그리지 않는다(useLiveLocation).
   const liveLocation = useLiveLocation({
     active: locationActive,
     webViewRef,
-    selectedRouteRef,
+    selectedRouteRef: route.selectedRouteRef,
     trackRouteOrigin: fromMyLocation,
-    setRouteOrigin,
+    setRouteOrigin: route.setRouteOrigin,
   });
   // 고른 경로가 바뀌면 점을 새 경로선에 다시 붙인다.
   const redrawLiveLocation = liveLocation.redraw;
@@ -900,125 +838,19 @@ export default function MapScreen() {
     redrawLiveLocation();
   }, [routeAlternatives, selectedRouteIndex, redrawLiveLocation]);
 
-  // fromBuilding/toBuilding/fromFloor/toFloor 가 바뀌어 routeAlternatives 가
-  // 새로 계산될 때마다(둘 다 골랐을 때만 채워진다) 첫 번째 대안으로 다시 그린다.
-  useEffect(() => {
-    setSelectedRouteIndex(0);
-    if (routeAlternatives.length > 0) drawRoute(routeAlternatives, 0);
-  }, [routeAlternatives, drawRoute]);
 
-  /** 대안 목록에서 다른 경로를 고르면, 다시 그리지 않고 스타일만 바꾼다. */
-  const handleSelectRouteAlternative = useCallback(
-    (index: number) => {
-      setSelectedRouteIndex(index);
-      postToMap({ type: "selectRouteAlternative", index });
-      setTimeout(
-        () =>
-          webViewRef.current?.injectJavaScript(
-            routeStyleScript(
-              index,
-              undefined,
-              routeAlternativesRef.current,
-              routeAlternativesRef.current[index]?.markers ?? [],
-              fromFloorRef.current,
-            ),
-          ),
-        ROUTE_STYLE_DELAY_MS,
-      );
-    },
-    [postToMap],
-  );
-  handleSelectRouteAlternativeRef.current = handleSelectRouteAlternative;
+  handleSelectRouteAlternativeRef.current = route.selectAlternative;
   routeAlternativesRef.current = routeAlternatives;
+  const closeRouteSearch = route.closeSearch;
 
-  /** 길찾기 창(검색)을 닫는다. 출발·도착을 고르면 지도로 돌아가 경로 막대·결과 카드로 이어 간다(11-03). */
-  const closeRouteSearch = useCallback(() => {
-    setShowRoute(false);
-    setRouteTarget(null);
-    setSearchQuery("");
-  }, []);
 
-  const commitFrom = useCallback(
-    (building: Building, floor: number | null) => {
-      setFromMyLocation(false);
-      setFromBuilding(building);
-      setFromFloor(floor);
-      setSelectedBuilding(null);
-      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
-      setSelectedFacilityBuilding(null);
-      closeRouteSearch();
-    },
-    [closeRouteSearch],
-  );
-
-  const commitTo = useCallback(
-    (building: Building, floor: number | null) => {
-      setToBuilding(building);
-      setToFloor(floor);
-      setSelectedBuilding(null);
-      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
-      setSelectedFacilityBuilding(null);
-      closeRouteSearch();
-    },
-    [closeRouteSearch],
-  );
-
-  /** 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다. */
-  const beginFrom = useCallback(
-    (building: Building) => {
-      if (hasFloorData(building)) setFloorDial({ role: "출발", building });
-      else commitFrom(building, null);
-    },
-    [commitFrom],
-  );
-
-  /**
-   * 도착 정하기. 학교 시설 필터 칩(열람실 등)을 켠 채 건물을 도착으로 고르면 그 시설이 있는 층을 도착 층으로 쓴다(11-16 사용자 요청).
-   * 한 층에만 있으면 바로 정하고, 여러 층이면 층 다이얼을 가장 아래 층에 맞춰 연다.
-   */
-  const beginTo = useCallback(
-    (building: Building) => {
-      const options = buildFloorOptions(building).map((o) => o.value);
-      if (options.length === 0) {
-        commitTo(building, null);
-        return;
-      }
-      // 건물 층 목록에 있는 층만(없는 층을 보내면 서버가 400 — 직선 어림으로 떨어진다).
-      const kindFloors = facilityKind
-        ? [...new Set(facilities
-            .filter((f) => f.kind === facilityKind && f.buildingName === building.name && typeof f.floor === "number")
-            .map((f) => f.floor as number))].filter((floor) => options.includes(floor)).sort((a, b) => a - b)
-        : [];
-      if (kindFloors.length === 1) commitTo(building, kindFloors[0]);
-      else setFloorDial({ role: "도착", building, initialFloor: kindFloors[0] ?? null });
-    },
-    [commitTo, facilityKind, facilities],
-  );
-
-  const handleFloorDialConfirm = useCallback(
-    (floor: number) => {
-      const dial = floorDial;
-      setFloorDial(null);
-      if (!dial) return;
-      if (dial.role === "출발") commitFrom(dial.building, floor);
-      else commitTo(dial.building, floor);
-    },
-    [floorDial, commitFrom, commitTo],
-  );
-
-  const floorDialInitial =
-    floorDial?.initialFloor != null
-      ? floorDial.initialFloor
-      : floorDial?.role === "출발"
-      ? fromBuilding === floorDial.building ? fromFloor : null
-      : floorDial && toBuilding === floorDial.building ? toFloor : null;
   const floorDialSheet = (
     <FloorDialSheet
-      building={floorDial?.building ?? null}
-      role={floorDial?.role ?? "출발"}
-      initialFloor={floorDialInitial}
-      onCancel={() => setFloorDial(null)}
-      onConfirm={handleFloorDialConfirm}
+      building={route.floorDial?.building ?? null}
+      role={route.floorDial?.role ?? "출발"}
+      initialFloor={route.floorDialInitial}
+      onCancel={route.cancelFloorDial}
+      onConfirm={route.confirmFloorDial}
     />
   );
 
@@ -1400,11 +1232,11 @@ export default function MapScreen() {
       setShowSearch(false);
       setSelectedPartner(null);
       setSelectedReport(null);
-      commitTo(building, typeof facility?.floor === "number" ? facility.floor : null);
+      route.commitTo(building, typeof facility?.floor === "number" ? facility.floor : null);
       const fromBuilding = intent.from?.startsWith("building:")
         ? buildings.find((b) => b.code === intent.from!.slice("building:".length))
         : undefined;
-      if (fromBuilding && fromBuilding.code !== building.code) commitFrom(fromBuilding, null);
+      if (fromBuilding && fromBuilding.code !== building.code) route.commitFrom(fromBuilding, null);
       else void selectMyLocationRef.current?.();
       return;
     }
@@ -1420,7 +1252,7 @@ export default function MapScreen() {
       showPreviewPin(preview);
     }
   }, [picker.start, focusReportFromNotification, handleStartReportPicker, showPreviewPin, picker.stop, allPartners, handleSearchSelect,
-    clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo, commitFrom]);
+    clearPreview, facilities, buildings, openFacilitySheet, postToMap, route.commitTo, route.commitFrom]);
 
   // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
   useEffect(() => {
@@ -1500,10 +1332,7 @@ export default function MapScreen() {
     if (located.status === "ok") {
       const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
       liveLocation.setPosition(first, { origin: true });
-      setFromMyLocation(true);
-      setFromBuilding(null);
-      setFromFloor(null);
-      closeRouteSearch();
+      route.startFromMyLocation();
       return;
     }
     if (located.status === "denied") {
@@ -1553,32 +1382,11 @@ export default function MapScreen() {
     );
   }, [myLocationOn]);
 
-  /** 출발·도착 바꾸기. 내 위치는 도착이 될 수 없어 그때는 바꾸지 않는다. */
-  const handleSwapRoute = useCallback(() => {
-    if (fromMyLocation || !fromBuilding || !toBuilding) return;
-    setFromBuilding(toBuilding);
-    setFromFloor(toFloor);
-    setToBuilding(fromBuilding);
-    setToFloor(fromFloor);
-  }, [fromMyLocation, fromBuilding, toBuilding, fromFloor, toFloor]);
+  const handleSwapRoute = route.swap;
 
-  const handleClearRoute = useCallback(() => {
-    setFromMyLocation(false);
-    setFromBuilding(null);
-    setToBuilding(null);
-    setFromFloor(null);
-    setToFloor(null);
-    postToMap({ type: "clearRoute" });
-    webViewRef.current?.injectJavaScript(ROUTE_HITS_CLEAR_SCRIPT);
-  }, [postToMap]);
+  const handleClearRoute = route.clear;
 
-  const handleSelectRouteBuilding = useCallback(
-    (building: Building) => {
-      if (routeTarget === "from") beginFrom(building);
-      else if (routeTarget === "to") beginTo(building);
-    },
-    [routeTarget, beginFrom, beginTo],
-  );
+  const handleSelectRouteBuilding = route.selectSearchBuilding;
 
   /** 검색바로 연 검색 창 — 안내 줄·근처 알림에서 모아 둔 업체 없이 연다. */
   const handleOpenSearch = useCallback(() => {
@@ -1586,24 +1394,8 @@ export default function MapScreen() {
     setNearbyGroup(null);
     setShowSearch(true);
   }, []);
-  /** 출발·도착 막대의 줄: 건물이면 그 건물 층 바꾸기, 아니면 길찾기 창에서 그쪽을 고른다. */
-  const handleRouteEndpointPress = useCallback(
-    (endpoint: "from" | "to") => {
-      const building = endpoint === "from" ? fromBuilding : toBuilding;
-      if (building) {
-        if (endpoint === "from") beginFrom(building);
-        else beginTo(building);
-        return;
-      }
-      setRouteTarget(endpoint);
-      setSearchQuery("");
-      setShowRoute(true);
-    },
-    [fromBuilding, toBuilding, beginFrom, beginTo],
-  );
-  const handleRouteStripHeight = useCallback((height: number) => {
-    routeStripHeightRef.current = height;
-  }, []);
+  const handleRouteEndpointPress = route.pressEndpoint;
+  const handleRouteStripHeight = route.onStripHeight;
   // ---- 지도 메뉴(오른쪽 아래) ----
   /** 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다. */
   const mapMenuBottom =
@@ -1714,18 +1506,11 @@ export default function MapScreen() {
   }, [offscreenPartners]);
 
   const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
-  const handleChangeRouteTarget = useCallback((target: "from" | "to") => {
-    setRouteTarget(target);
-    setSearchQuery("");
-  }, []);
-  const routeFromLabel = fromBuilding ? buildingLabel(fromBuilding, fromFloor) : fromMyLocation ? "내 위치" : null;
-  const routeToLabel = toBuilding ? buildingLabel(toBuilding, toFloor) : null;
+  const handleChangeRouteTarget = route.changeSearchTarget;
+  const routeFromLabel = route.fromLabel;
+  const routeToLabel = route.toLabel;
 
-  const handleCloseRoute = useCallback(() => {
-    setShowRoute(false);
-    setRouteTarget(null);
-    setSearchQuery("");
-  }, []);
+  const handleCloseRoute = route.closeSearch;
 
   // ---- 화면에 무엇을 보일지 ----
   // 위치를 고르는 동안에는 지도 위 안내 줄·카드·메뉴를 모두 숨긴다(고르기 안내 줄·카드와 같은 자리에 겹친다).
@@ -1841,7 +1626,7 @@ export default function MapScreen() {
           <MapActionMenu
             style={mapMenuStyle}
             onReport={handleStartReportPicker}
-            onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
+            onRoute={ROUTE_FINDING_ENABLED ? route.openSearch : undefined}
             onRecenter={handleRecenter}
             onMyLocation={canShowMyLocationButton ? handleToggleMyLocation : undefined}
             myLocationOn={myLocationOn}
@@ -1876,7 +1661,7 @@ export default function MapScreen() {
             toIsBuilding={toBuilding !== null}
             canSwap={fromBuilding !== null && toBuilding !== null && !fromMyLocation}
             onPressEndpoint={handleRouteEndpointPress}
-            onSearch={handleOpenRoute}
+            onSearch={route.openSearch}
             onSwap={handleSwapRoute}
             onClose={handleClearRoute}
             top={headerHeight + 8}
@@ -1889,11 +1674,11 @@ export default function MapScreen() {
           <RouteResultCard
             routes={routeAlternatives}
             selectedIndex={selectedRouteIndex}
-            onSelect={handleSelectRouteAlternative}
+            onSelect={route.selectAlternative}
             onClose={handleClearRoute}
             bottom={8 + bottomInset}
             side={sideGutter}
-            onHeight={setRouteCardHeight}
+            onHeight={route.setCardHeight}
           />
         )}
 
