@@ -1,5 +1,7 @@
 # 브랜치 전략 (2026-10-06 정리)
 
+> 브랜치 이름·커밋 메시지·PR 쓰는 법은 [`GIT_CONVENTION.md`](GIT_CONVENTION.md).
+
 `main` ← `dev` ← 작업 브랜치. **모든 작업 브랜치는 `dev` 에서 갈라 `dev` 로 합치고, `main` 은 `dev` 를 합칠 때만 바뀐다.**
 `main` 에 올리면 곧바로 운영(hongikon.com, Netlify 자동 배포)에 나가므로, 확인 전 작업은 `dev` 에 모은다.
 
