@@ -19,7 +19,7 @@ import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
-import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
@@ -39,8 +39,7 @@ import { toMarker } from "../utils/partnerMarker";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
-import { canLocate, locateOnce } from "../lib/nearbyPartners/platform";
-import { notify } from "../utils/dialog";
+import { canLocate } from "../lib/nearbyPartners/platform";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
@@ -57,7 +56,6 @@ import type {
   ReportListItem,
 } from "../types";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
-import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
 import MapSearchBar from "../components/map/topbar/MapSearchBar";
@@ -76,14 +74,13 @@ import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
 import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 import MapSheets from "../components/map/sheets/MapSheets";
-import { useLiveLocation } from "../hooks/map/useLiveLocation";
 import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
 import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
-import { useAppForeground } from "../hooks/useAppForeground";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
 import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
 import { useMapFilters } from "../hooks/map/useMapFilters";
 import { useMapIntents, type AskCardContent, type PreviewTarget } from "../hooks/map/useMapIntents";
+import { useMyLocation } from "../hooks/map/useMyLocation";
 import { useMapSelection } from "../hooks/map/useMapSelection";
 import { offscreenSummary } from "../utils/map/labels";
 
@@ -332,8 +329,6 @@ export default function MapScreen() {
     beginTo,
     cardHeight: routeCardHeight,
   } = route;
-  /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
-  const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
   // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
   const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
   nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
@@ -593,38 +588,17 @@ export default function MapScreen() {
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
-  // 테스트 앱(현장 테스트·개발 빌드)은 근처 알림을 실제 위치로 확인하려고 지도에 내 위치를 늘 보여 준다(11-03 운영진 요청).
-  // 운영 앱은 길찾기를 볼 때만 위치를 읽는다(처리방침 11-09판).
-  // 앱이 화면에 떠 있을 때만 읽는다 — 내리면 바로 멈춰 위치 표시(다이나믹 아일랜드)가 남지 않게(11-03).
-  const appForeground = useAppForeground();
-  /**
-   * 지도 메뉴의 "내 위치 켜기"(11-06). 켜 둔 동안 지도 화면에서만 위치를 읽어 점을 보여 주고, 다시 누르거나 지도 탭을 떠나면
-   * 끈다. 길찾기와 같이 휴대폰 안에서만 쓰고 저장하거나 보내지 않는다(처리방침 "지도에서 '내 위치 켜기'를 누를 때").
-   */
-  // 테스트 앱은 켠 채로 시작한다(11-03 운영진 요청). 다만 '내 위치 끄기'를 누르면 정말 끈다 — 전에는 테스트 앱이면
-  // 메뉴와 상관없이 늘 위치를 읽어 끄기가 먹지 않았다(11-09 버그). 직접 끈 뒤에는 지도 탭에 돌아와도 다시 켜지 않는다.
-  const [myLocationOn, setMyLocationOn] = useState(NEARBY_DEBUG_TOOLS);
-  const myLocationUserOffRef = useRef(false);
-  const mapFocused = useIsFocused();
-  useEffect(() => {
-    if (!mapFocused) setMyLocationOn(false);
-    else if (NEARBY_DEBUG_TOOLS && !myLocationUserOffRef.current) setMyLocationOn(true);
-  }, [mapFocused]);
-  const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused));
-  // 내 위치 점: GPS 값마다 지도에 점만 그리고 화면은 다시 그리지 않는다(useLiveLocation).
-  const liveLocation = useLiveLocation({
-    active: locationActive,
+  const myLocation = useMyLocation({
     webViewRef,
+    routeActive,
     selectedRouteRef: route.selectedRouteRef,
-    trackRouteOrigin: fromMyLocation,
+    alternatives: routeAlternatives,
+    selectedIndex: selectedRouteIndex,
+    fromMyLocation,
     setRouteOrigin: route.setRouteOrigin,
+    startRouteFromMyLocation: route.startFromMyLocation,
+    farViewPartnerIdRef,
   });
-  // 고른 경로가 바뀌면 점을 새 경로선에 다시 붙인다.
-  const redrawLiveLocation = liveLocation.redraw;
-  useEffect(() => {
-    redrawLiveLocation();
-  }, [routeAlternatives, selectedRouteIndex, redrawLiveLocation]);
-
 
   const closeRouteSearch = route.closeSearch;
 
@@ -757,7 +731,7 @@ export default function MapScreen() {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
     // 내 위치 점도 다시 그린다 — 지도가 다시 뜨면 점이 사라지고, 가만히 있으면 새 위치가 오지 않아 다시 그려지지 않았다(11-10).
-    liveLocation.redrawShown();
+    myLocation.redrawShown();
     // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
     if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
     // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
@@ -875,7 +849,7 @@ export default function MapScreen() {
       setSelectedReport(null);
       route.commitTo(building, floor);
       if (from) route.commitFrom(from, null);
-      else void selectMyLocationRef.current?.();
+      else void myLocation.selectForRoute();
     },
   });
 
@@ -947,63 +921,6 @@ export default function MapScreen() {
 
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = picker.confirm;
-
-  /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
-  const handleSelectMyLocation = useCallback(async () => {
-    const located = await locateOnce("route");
-    if (located.status === "declined") return;
-    if (located.status === "ok") {
-      const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
-      liveLocation.setPosition(first, { origin: true });
-      route.startFromMyLocation();
-      return;
-    }
-    if (located.status === "denied") {
-      notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 내 위치에서 출발할 수 있어요.");
-    } else if (located.status === "servicesOff") {
-      notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
-    } else {
-      notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보거나 건물을 골라 주세요.");
-    }
-  }, [closeRouteSearch]);
-  selectMyLocationRef.current = handleSelectMyLocation;
-
-  /**
-   * 지도 메뉴 "내 위치 켜기". 처음 누를 때 "앱 사용 중" 위치 권한을 묻고, 켜져 있으면 끈다. 지도는 캠퍼스 일대만 움직일 수 있어
-   * 그 밖이면 켜지 않는다. 캠퍼스 안일 때만 지도를 내 위치로 옮긴다(지도 그림 요청으로 드러나는 범위가 처음 화면과 같다).
-   */
-  const handleToggleMyLocation = useCallback(async () => {
-    if (myLocationOn) {
-      myLocationUserOffRef.current = true;
-      setMyLocationOn(false);
-      return;
-    }
-    myLocationUserOffRef.current = false;
-    const located = await locateOnce("myLocation");
-    if (located.status === "declined") return;
-    if (located.status !== "ok") {
-      if (located.status === "denied") {
-        notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 지도에서 내 위치를 볼 수 있어요.");
-      } else if (located.status === "servicesOff") {
-        notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
-      } else {
-        notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보세요.");
-      }
-      return;
-    }
-    const { south, north, west, east } = CAMPUS_VIEW_BOX;
-    if (located.lat < south || located.lat > north || located.lng < west || located.lng > east) {
-      notify("지도 범위 밖에 있어요", "학교 근처에 오면 지도에서 내 위치를 볼 수 있어요.");
-      return;
-    }
-    liveLocation.setPosition({ lat: located.lat, lng: located.lng, accuracy: located.accuracy });
-    setMyLocationOn(true);
-    farViewPartnerIdRef.current = null;
-    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-    webViewRef.current?.injectJavaScript(
-      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.panTo(new naver.maps.LatLng(${located.lat}, ${located.lng})); } true;`,
-    );
-  }, [myLocationOn]);
 
   const handleSwapRoute = route.swap;
 
@@ -1128,7 +1045,7 @@ export default function MapScreen() {
     setShowSearch(true);
   }, [offscreenPartners]);
 
-  const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
+  const handleSelectMyLocationPress = useCallback(() => void myLocation.selectForRoute(), [myLocation.selectForRoute]);
   const handleChangeRouteTarget = route.changeSearchTarget;
   const routeFromLabel = route.fromLabel;
   const routeToLabel = route.toLabel;
@@ -1251,8 +1168,8 @@ export default function MapScreen() {
             onReport={handleStartReportPicker}
             onRoute={ROUTE_FINDING_ENABLED ? route.openSearch : undefined}
             onRecenter={handleRecenter}
-            onMyLocation={canShowMyLocationButton ? handleToggleMyLocation : undefined}
-            myLocationOn={myLocationOn}
+            onMyLocation={canShowMyLocationButton ? myLocation.toggle : undefined}
+            myLocationOn={myLocation.on}
             onToggleNearbyOverlay={nearbyDebug.menuAvailable ? nearbyDebug.toggleOverlay : undefined}
             onPickNearbyTestLocation={nearbyDebug.menuAvailable ? nearbyDebug.startPicking : undefined}
             nearbyOverlayOn={nearbyDebug.overlayOn}
