@@ -73,7 +73,7 @@ import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
 import MapSearchBar from "../components/map/topbar/MapSearchBar";
 import FilterChipSection from "../components/map/topbar/FilterChipSection";
-import LocationPickerOverlay, { type PickerCenter, type PickerPurpose } from "../components/map/picker/LocationPickerOverlay";
+import LocationPickerOverlay from "../components/map/picker/LocationPickerOverlay";
 import RouteStrip from "../components/map/route/RouteStrip";
 import RouteResultCard from "../components/map/route/RouteResultCard";
 import MapNoticeStack from "../components/map/notices/MapNoticeStack";
@@ -92,7 +92,7 @@ import { useRouteData } from "../hooks/map/useRouteData";
 import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
 import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
 import { useAppForeground } from "../hooks/useAppForeground";
-import { routePinBuilding } from "../utils/map/routePinBuilding";
+import { useLocationPicker } from "../hooks/map/useLocationPicker";
 import { buildingLabel, offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -221,15 +221,8 @@ export default function MapScreen() {
   const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-  // 제보 위치 선택 모드. 켜져 있으면 화면 중앙에 고정된 핀 아래로 지도를
-  // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
-  const [pickingLocation, setPickingLocation] = useState(false);
-  /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
-  /** report: 제보, partner: 정보 제보, routeTo: 길찾기 도착 건물을 핀으로(11-12). */
-  const [pickerPurpose, setPickerPurpose] = useState<PickerPurpose>("report");
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
   const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
-  const [pickerCenter, setPickerCenter] = useState<PickerCenter | null>(null);
   // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
   const {
     reportsOn,
@@ -321,6 +314,24 @@ export default function MapScreen() {
     status: mapDataStatus,
     reload: reloadMapData,
   } = useMapData();
+  // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
+  const picker = useLocationPicker({
+    postToMap,
+    buildings,
+    onStart: () => {
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+    },
+    onConfirmReport: (center) => setReportTarget({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
+    onConfirmPartner: (center) =>
+      setPartnerSuggest({ location: { lat: center.lat, lng: center.lng, buildingName: center.buildingName } }),
+    // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
+    onConfirmRouteTo: (building) => beginTo(building),
+    onCancelPartner: (previous) => setPartnerSuggest({ location: previous }),
+  });
+  const pickingLocation = picker.picking;
   // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
   const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
   nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
@@ -651,11 +662,7 @@ export default function MapScreen() {
 
         // 위치 선택 모드 중 지도가 멈출 때마다 온다. 화면 중앙 좌표를 갱신한다.
         if (msg.type === "pickerCenter") {
-          setPickerCenter({
-            lat: msg.lat,
-            lng: msg.lng,
-            buildingName: msg.buildingName ?? null,
-          });
+          picker.handleCenterMessage(msg);
           return;
         }
       } catch {}
@@ -1182,11 +1189,8 @@ export default function MapScreen() {
     if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
     // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
     // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
-    if (pickingLocation) {
-      setPickerCenter(null);
-      postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
-    }
-  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
+    picker.resync();
+  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, picker.resync, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
 
   // 경로가 그려진 동안 칩 핀을 흐리게, 길찾기를 끝내면 되돌린다(11-08).
   useEffect(() => {
@@ -1251,20 +1255,6 @@ export default function MapScreen() {
     if (reportsOn) reportsResource.retry();
   }, [reportsOn, reportsResource.retry]);
 
-  /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
-  const startPicker = useCallback(
-    (purpose: PickerPurpose) => {
-      setSelectedBuilding(null);
-      setSelectedPartner(null);
-      setSelectedReport(null);
-      setSelectedFacilityBuilding(null);
-      setPickerCenter(null);
-      setPickerPurpose(purpose);
-      setPickingLocation(true);
-      postToMap({ type: "startLocationPicker", purpose });
-    },
-    [postToMap],
-  );
 
   /** 제보는 로그인이 필요하다. 게스트는 위치를 고르고 작성창을 다 채운 뒤가 아니라 시작할 때 묻는다. */
   const handleStartReportPicker = useCallback(() => {
@@ -1272,18 +1262,10 @@ export default function MapScreen() {
       promptLogin("제보를 남기려면 로그인해 주세요.", logout);
       return;
     }
-    startPicker("report");
-  }, [accessToken, logout, startPicker]);
+    picker.start("report");
+  }, [accessToken, logout, picker.start]);
 
-  /** 위치 고르기 모드를 끈다. 취소 버튼과, 고르는 중에 다른 지도 요청(알림 제보·검토 핀)이 들어올 때 쓴다. */
-  const stopPicker = useCallback(() => {
-    setPickingLocation(false);
-    setPickerCenter(null);
-    postToMap({ type: "stopLocationPicker" });
-  }, [postToMap]);
 
-  /** 정보 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
-  const partnerLocationBeforePickRef = useRef<InfoSuggestLocation | null>(null);
 
   const toast = useToast();
   /** 알림발 제보 포커스 요청 순번. 연달아 탭했을 때 늦게 도착한 이전 요청 결과를 버린다. */
@@ -1298,7 +1280,7 @@ export default function MapScreen() {
     async (reportId: number) => {
       const request = ++focusRequestRef.current;
       // 위치를 고르던 중이면 그 모드부터 끈다 — 안 그러면 지도가 탭을 막은 채 제보 시트만 뜬다.
-      stopPicker();
+      picker.stop();
       openReport(null);
       // 제보는 갈래(제휴·학교 시설)와 따로라 보던 칩은 그대로 둔다(10-27).
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
@@ -1323,7 +1305,7 @@ export default function MapScreen() {
         toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
       }
     },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, stopPicker, openReport],
+    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, picker.stop, openReport],
   );
 
   /**
@@ -1335,9 +1317,8 @@ export default function MapScreen() {
   const handleMapIntent = useCallback(() => {
     const intent = consumeMapIntent();
     if (intent?.type === "pickPartnerLocation") {
-      partnerLocationBeforePickRef.current = null;
       setPartnerSuggest(null);
-      startPicker("partner");
+      picker.start("partner", { partnerLocationBefore: null });
       return;
     }
     if (intent?.type === "focusReport") {
@@ -1367,7 +1348,7 @@ export default function MapScreen() {
     }
     if (intent?.type === "focusPlace") {
       // 물어보기 답의 "지도에서 보기"(11-07). 앱 지도 데이터에 있는 곳만 — 없으면 지도만 연다(카드도 없음).
-      stopPicker();
+      picker.stop();
       clearPreview();
       const split = intent.target.indexOf(":");
       const kind = intent.target.slice(0, split);
@@ -1405,7 +1386,7 @@ export default function MapScreen() {
     if (intent?.type === "routeTo") {
       // 물어보기 답의 길찾기 버튼(11-09). 도착 = 그 건물(시설이면 그 건물·층). 출발 = 질문의 출발 건물(11-15 '제4공학관에서 홍문관'),
       // 없으면 내 위치(권한·위치를 못 쓰면 출발은 비워 둬 고르게 한다).
-      stopPicker();
+      picker.stop();
       clearPreview();
       setAskCard(null);
       const split = intent.target.indexOf(":");
@@ -1428,7 +1409,7 @@ export default function MapScreen() {
       return;
     }
     if (intent?.type === "previewLocation") {
-      stopPicker();
+      picker.stop();
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
@@ -1438,7 +1419,7 @@ export default function MapScreen() {
       // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
       showPreviewPin(preview);
     }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect,
+  }, [picker.start, focusReportFromNotification, handleStartReportPicker, showPreviewPin, picker.stop, allPartners, handleSearchSelect,
     clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo, commitFrom]);
 
   // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
@@ -1451,13 +1432,7 @@ export default function MapScreen() {
   useFocusEffect(useCallback(() => () => clearPreview(), [clearPreview]));
   useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
 
-  const handleCancelReportPicker = useCallback(() => {
-    stopPicker();
-    // 정보 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
-    if (pickerPurpose === "partner") {
-      setPartnerSuggest({ location: partnerLocationBeforePickRef.current });
-    }
-  }, [pickerPurpose, stopPicker]);
+  const handleCancelReportPicker = picker.cancel;
 
   /**
    * 안드로이드 뒤로가기(웹은 Esc)는 위치 고르기·열린 시트부터 닫는다. 시트·고르기는 화면 안 상태라 내비게이션이
@@ -1508,45 +1483,15 @@ export default function MapScreen() {
   ]);
   useMapBackHandler(closeTopMapLayer);
 
-  /** 길찾기 도착을 핀으로 고를 때 그 핀이 가리키는 건물(핀 아래, 없으면 150m 안 가장 가까운 건물). */
-  const routePinTarget = useMemo(
-    () => (pickerPurpose === "routeTo" && pickerCenter ? routePinBuilding(pickerCenter, buildings) : null),
-    [pickerPurpose, pickerCenter, buildings],
-  );
 
   /** 도착 검색 창의 "지도에서 핀으로 고르기". 검색 창을 닫고 화면 가운데 핀으로 도착 건물을 고르게 한다. */
   const handlePickRouteDestinationOnMap = useCallback(() => {
     closeRouteSearch();
-    startPicker("routeTo");
-  }, [closeRouteSearch, startPicker]);
+    picker.start("routeTo");
+  }, [closeRouteSearch, picker.start]);
 
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
-  const handleConfirmReportPicker = useCallback(() => {
-    if (!pickerCenter) return;
-    if (pickerPurpose === "routeTo" && !routePinTarget) return;
-    setPickingLocation(false);
-    postToMap({ type: "stopLocationPicker" });
-    if (pickerPurpose === "routeTo") {
-      // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
-      beginTo(routePinTarget!);
-      return;
-    }
-    if (pickerPurpose === "partner") {
-      setPartnerSuggest({
-        location: {
-          lat: pickerCenter.lat,
-          lng: pickerCenter.lng,
-          buildingName: pickerCenter.buildingName,
-        },
-      });
-      return;
-    }
-    setReportTarget({
-      lat: pickerCenter.lat,
-      lng: pickerCenter.lng,
-      buildingName: pickerCenter.buildingName,
-    });
-  }, [pickerCenter, pickerPurpose, postToMap, routePinTarget, beginTo]);
+  const handleConfirmReportPicker = picker.confirm;
 
   /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
   const handleSelectMyLocation = useCallback(async () => {
@@ -1709,10 +1654,9 @@ export default function MapScreen() {
   const partnerSuggestRef = useRef(partnerSuggest);
   partnerSuggestRef.current = partnerSuggest;
   const handleInfoSuggestPickOnMap = useCallback(() => {
-    partnerLocationBeforePickRef.current = partnerSuggestRef.current?.location ?? null;
     setPartnerSuggest(null);
-    startPicker("partner");
-  }, [startPicker]);
+    picker.start("partner", { partnerLocationBefore: partnerSuggestRef.current?.location ?? null });
+  }, [picker.start]);
 
   // ---- 아래 시트 ----
   /** 제휴 시트의 '정보 수정': 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다. */
@@ -1912,9 +1856,9 @@ export default function MapScreen() {
         {/* [위치 고르기] 제보·정보 제보·길찾기 도착을 지도 가운데 핀으로 */}
         {pickingLocation && (
           <LocationPickerOverlay
-            purpose={pickerPurpose}
-            center={pickerCenter}
-            routeBuildingName={routePinTarget?.name ?? null}
+            purpose={picker.purpose}
+            center={picker.center}
+            routeBuildingName={picker.routeTarget?.name ?? null}
             top={headerHeight + 8}
             bottom={20 + bottomInset}
             side={sideGutter}
