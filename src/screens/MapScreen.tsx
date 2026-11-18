@@ -3,7 +3,6 @@ import { View, StyleSheet } from "react-native";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import BuildingSheet from "../components/map/BuildingSheet";
-import { nextRouteEndpoint } from "../components/map/RouteEndpointButtons";
 import FacilitySheet from "../components/map/FacilitySheet";
 import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
@@ -64,6 +63,7 @@ import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
 import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
+import { useSheetActions } from "../hooks/map/useSheetActions";
 import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { offscreenSummary } from "../utils/map/labels";
@@ -298,6 +298,37 @@ export default function MapScreen() {
     beginTo,
     cardHeight: routeCardHeight,
   } = route;
+  // 아래 시트에 넘기는 값(시설 목록·출발·도착 버튼)과 시트 닫기.
+  const {
+    selectedBuildingFacilities,
+    selectedFacilityItems,
+    highlightedFacilityId,
+    facilitySheetBuilding,
+    routeNext,
+    handleSetFrom,
+    handleSetTo,
+    handleFacilitySetFrom,
+    handleFacilitySetTo,
+    handleCloseBuilding,
+    handleClosePartner,
+    handleCloseReportSheet,
+  } = useSheetActions({
+    postToMap,
+    buildings,
+    facilities,
+    facilityKind,
+    selectedBuilding,
+    selectedFacilityBuilding,
+    searchedFacility,
+    fromBuilding,
+    fromMyLocation,
+    toBuilding,
+    setSelectedBuilding,
+    setSelectedPartner,
+    setSelectedReport,
+    beginFrom,
+    beginTo,
+  });
   // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
   const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
   nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
@@ -416,17 +447,6 @@ export default function MapScreen() {
     [facilityNav.openSheet],
   );
 
-  const selectedBuildingFacilities = useMemo(
-    () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
-    [selectedBuilding, facilities],
-  );
-
-  const handleClosePartner = useCallback(() => {
-    setSelectedPartner(null);
-    postToMap({ type: "selectPartner", id: null });
-  }, [postToMap]);
-
-
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
@@ -454,39 +474,6 @@ export default function MapScreen() {
       onConfirm={route.confirmFloorDial}
     />
   );
-
-  const handleSetFrom = useCallback(() => {
-    if (selectedBuilding) beginFrom(selectedBuilding);
-  }, [selectedBuilding, beginFrom]);
-
-  const handleSetTo = useCallback(() => {
-    if (selectedBuilding) beginTo(selectedBuilding);
-  }, [selectedBuilding, beginTo]);
-
-  /** 시설 시트의 출발·도착. 그 시설이 있는 건물로 정한다(11-08). 지도 데이터에 그 건물이 없으면 버튼을 그리지 않는다. */
-  const facilitySheetBuilding = useMemo(
-    () => (selectedFacilityBuilding ? (buildings.find((b) => b.name === selectedFacilityBuilding) ?? null) : null),
-    [buildings, selectedFacilityBuilding],
-  );
-
-  const handleFacilitySetFrom = useCallback(() => {
-    if (facilitySheetBuilding) beginFrom(facilitySheetBuilding);
-  }, [facilitySheetBuilding, beginFrom]);
-
-  const handleFacilitySetTo = useCallback(() => {
-    if (facilitySheetBuilding) beginTo(facilitySheetBuilding);
-  }, [facilitySheetBuilding, beginTo]);
-
-  /** 시트의 출발·도착 버튼 중 다음에 고를 쪽(건물 시트·시설 시트가 함께 쓴다). */
-  const routeNext = nextRouteEndpoint(Boolean(fromBuilding || fromMyLocation), Boolean(toBuilding));
-
-  const handleCloseBuilding = useCallback(() => {
-    setSelectedBuilding(null);
-    // 배너만 닫고 핀은 그대로 둔다. 켜 둔 핀이 배너를 닫을 때마다 사라지면
-    // 다시 켜야 해서 번거롭다. 강조 표시만 되돌린다.
-    postToMap({ type: "selectBuilding", name: null });
-  }, [postToMap]);
-
 
   const handleSelectFacilityKind = filters.selectFacilityKind;
 
@@ -605,7 +592,7 @@ export default function MapScreen() {
     selectedFacilityBuilding,
     facilityKind,
     facilityFrom: facilityNav.facilityFrom,
-    closeReportSheet: () => setSelectedReport(null),
+    closeReportSheet: handleCloseReportSheet,
     closePartnerSheet: handleClosePartner,
     closeBuildingSheet: handleCloseBuilding,
     closeFacilitySheet: () => setSelectedFacilityBuilding(null),
@@ -650,17 +637,6 @@ export default function MapScreen() {
   const handleCloseReportComposer = useCallback(() => setReportTarget(null), []);
 
   // ---- 아래 시트 ----
-  /** 시설 시트에 보일 그 건물의 (지금 고른 종류) 시설. */
-  const selectedFacilityItems = useMemo(
-    () => facilities.filter((f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding),
-    [facilities, facilityKind, selectedFacilityBuilding],
-  );
-  /** 검색으로 찾아간 시설이 지금 시트의 것이면 그 줄을 강조한다. */
-  const highlightedFacilityId =
-    searchedFacility && searchedFacility.kind === facilityKind && searchedFacility.buildingName === selectedFacilityBuilding
-      ? searchedFacility.id
-      : null;
-  const handleCloseReportSheet = useCallback(() => setSelectedReport(null), []);
 
   // ---- 지도 위 안내 줄 ----
   const handleDismissMapAuthError = useCallback(() => setMapAuthFailed(false), []);
