@@ -6,15 +6,7 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
-import {
-  View,
-  StyleSheet,
-  Animated,
-  BackHandler,
-  Platform,
-  AppState,
-  useWindowDimensions,
-} from "react-native";
+import { View, StyleSheet, Animated, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import NaverMapView from "../components/map/NaverMapView";
@@ -47,7 +39,7 @@ import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
-import { buildFloorOptions, formatFloor, hasFloorData } from "../utils/floors";
+import { buildFloorOptions, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
 import { type RouteAlternative } from "../apis/routes";
 import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
@@ -55,7 +47,6 @@ import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from ".
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
-const ROUTE_PIN_MAX_METERS = 150;
 import { canLocate, locateOnce, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
@@ -76,7 +67,6 @@ import type {
   PartnerCategory,
   ReportListItem,
 } from "../types";
-import { haversineMeters } from "../utils/geo";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
@@ -100,6 +90,10 @@ import MapSheets from "../components/map/sheets/MapSheets";
 import { useLiveLocation } from "../hooks/map/useLiveLocation";
 import { useRouteData } from "../hooks/map/useRouteData";
 import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
+import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
+import { useAppForeground } from "../hooks/useAppForeground";
+import { routePinBuilding } from "../utils/map/routePinBuilding";
+import { buildingLabel, offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 
@@ -111,11 +105,6 @@ interface PreviewTarget {
   detail: string;
 }
 
-function buildingLabel(building: Building, floor: number | null): string {
-  return floor === null
-    ? building.name
-    : `${building.name} ${formatFloor(floor)}`;
-}
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
@@ -872,11 +861,7 @@ export default function MapScreen() {
   // 테스트 앱(현장 테스트·개발 빌드)은 근처 알림을 실제 위치로 확인하려고 지도에 내 위치를 늘 보여 준다(11-03 운영진 요청).
   // 운영 앱은 길찾기를 볼 때만 위치를 읽는다(처리방침 11-09판).
   // 앱이 화면에 떠 있을 때만 읽는다 — 내리면 바로 멈춰 위치 표시(다이나믹 아일랜드)가 남지 않게(11-03).
-  const [appForeground, setAppForeground] = useState(AppState.currentState === "active");
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => setAppForeground(state === "active"));
-    return () => subscription.remove();
-  }, []);
+  const appForeground = useAppForeground();
   /**
    * 지도 메뉴의 "내 위치 켜기"(11-06). 켜 둔 동안 지도 화면에서만 위치를 읽어 점을 보여 주고, 다시 누르거나 지도 탭을 떠나면
    * 끈다. 길찾기와 같이 휴대폰 안에서만 쓰고 저장하거나 보내지 않는다(처리방침 "지도에서 '내 위치 켜기'를 누를 때").
@@ -1521,47 +1506,13 @@ export default function MapScreen() {
     handleClosePartner,
     handleCloseBuilding,
   ]);
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS === "android") {
-        const sub = BackHandler.addEventListener("hardwareBackPress", closeTopMapLayer);
-        return () => sub.remove();
-      }
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        const onKey = (e: KeyboardEvent) => {
-          // 입력 중인 칸의 Esc 나 모달(검색·작성창)이 떠 있을 때는 건드리지 않는다.
-          if (e.key !== "Escape" || e.defaultPrevented) return;
-          const target = e.target as HTMLElement | null;
-          if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-          if (closeTopMapLayer()) e.preventDefault();
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-      }
-      return undefined;
-    }, [closeTopMapLayer]),
-  );
+  useMapBackHandler(closeTopMapLayer);
 
-  /**
-   * 길찾기 도착을 핀으로 고를 때 그 핀이 가리키는 건물(11-12). 길은 서버가 건물(id)끼리만 계산해, 핀 아래(지도가 알려 준 가까운
-   * 건물) 건물을 쓰고, 없으면 핀에서 ROUTE_PIN_MAX_METERS 안의 가장 가까운 건물을 쓴다. 그것도 없으면 null.
-   */
-  const routePinBuilding = useMemo(() => {
-    if (pickerPurpose !== "routeTo" || !pickerCenter) return null;
-    const routable = buildings.filter((b) => b.id !== undefined);
-    const named = pickerCenter.buildingName ? routable.find((b) => b.name === pickerCenter.buildingName) : undefined;
-    if (named) return named;
-    let best: Building | null = null;
-    let bestMeters = ROUTE_PIN_MAX_METERS;
-    for (const b of routable) {
-      const meters = haversineMeters(pickerCenter.lat, pickerCenter.lng, b.lat, b.lng);
-      if (meters <= bestMeters) {
-        best = b;
-        bestMeters = meters;
-      }
-    }
-    return best;
-  }, [pickerPurpose, pickerCenter, buildings]);
+  /** 길찾기 도착을 핀으로 고를 때 그 핀이 가리키는 건물(핀 아래, 없으면 150m 안 가장 가까운 건물). */
+  const routePinTarget = useMemo(
+    () => (pickerPurpose === "routeTo" && pickerCenter ? routePinBuilding(pickerCenter, buildings) : null),
+    [pickerPurpose, pickerCenter, buildings],
+  );
 
   /** 도착 검색 창의 "지도에서 핀으로 고르기". 검색 창을 닫고 화면 가운데 핀으로 도착 건물을 고르게 한다. */
   const handlePickRouteDestinationOnMap = useCallback(() => {
@@ -1572,12 +1523,12 @@ export default function MapScreen() {
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
   const handleConfirmReportPicker = useCallback(() => {
     if (!pickerCenter) return;
-    if (pickerPurpose === "routeTo" && !routePinBuilding) return;
+    if (pickerPurpose === "routeTo" && !routePinTarget) return;
     setPickingLocation(false);
     postToMap({ type: "stopLocationPicker" });
     if (pickerPurpose === "routeTo") {
       // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
-      beginTo(routePinBuilding!);
+      beginTo(routePinTarget!);
       return;
     }
     if (pickerPurpose === "partner") {
@@ -1595,7 +1546,7 @@ export default function MapScreen() {
       lng: pickerCenter.lng,
       buildingName: pickerCenter.buildingName,
     });
-  }, [pickerCenter, pickerPurpose, postToMap, routePinBuilding, beginTo]);
+  }, [pickerCenter, pickerPurpose, postToMap, routePinTarget, beginTo]);
 
   /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
   const handleSelectMyLocation = useCallback(async () => {
@@ -1963,7 +1914,7 @@ export default function MapScreen() {
           <LocationPickerOverlay
             purpose={pickerPurpose}
             center={pickerCenter}
-            routeBuildingName={routePinBuilding?.name ?? null}
+            routeBuildingName={routePinTarget?.name ?? null}
             top={headerHeight + 8}
             bottom={20 + bottomInset}
             side={sideGutter}
@@ -2122,12 +2073,6 @@ export default function MapScreen() {
   );
 }
 
-/** 업체 이름 두 곳까지 보여 주고 나머지는 "외 N곳" 으로 줄인다. */
-function offscreenSummary(partners: readonly Partner[]): string {
-  const names = partners.slice(0, 2).map((partner) => partner.name);
-  const rest = partners.length - names.length;
-  return rest > 0 ? `${names.join(", ")} 외 ${rest}곳` : names.join(", ");
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
