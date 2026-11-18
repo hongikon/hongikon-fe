@@ -1,11 +1,16 @@
-import { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
-  FlatList,
   ActivityIndicator,
   Pressable,
   Animated,
@@ -14,7 +19,7 @@ import {
   AppState,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
@@ -55,7 +60,13 @@ import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import { buildFloorOptions, formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlternative, type WalkApproach } from "../apis/routes";
+import {
+  fetchWalkApproach,
+  fetchWalkRoutes,
+  pickApproachRoutes,
+  type RouteAlternative,
+  type WalkApproach,
+} from "../apis/routes";
 import { isCancelledError } from "../apis/client";
 import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
 import { myLocationScript } from "../utils/myLocationScript";
@@ -72,11 +83,7 @@ import RouteOptions from "../components/map/RouteOptions";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
-import {
-  filterPartners,
-  hasActiveFilter,
-  partnersOutsideFocus,
-} from "../utils/partners";
+import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/partners";
 import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
@@ -92,21 +99,20 @@ import type {
   ReportCategory,
   ReportListItem,
 } from "../types";
-import { REPORT_CATEGORIES, reportCategoryMeta } from "../constants/reportCategories";
+import { REPORT_CATEGORIES } from "../constants/reportCategories";
 import { REPORT_OFF_CAMPUS_MAX_METERS } from "../constants/report";
 import { haversineMeters } from "../utils/geo";
 import { FONTS } from "../constants/typography";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { RADIUS } from "../constants/spacing";
 import { SheetHeaderContext } from "../hooks/useResizableSheet";
-import ContentColumn from "../components/common/ContentColumn";
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
 import { useIsAdmin } from "../admin/AdminAccess";
 import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
 import { requestSettingsIntent } from "../lib/settingsIntents";
 import { navigationRef } from "../navigation/navigationRef";
-import SwipeBackModal from "../components/common/SwipeBackModal";
+import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -539,10 +545,6 @@ export default function MapScreen() {
     reportsResource.data !== undefined &&
     reportsResource.errorMessage === null &&
     reports.length === 0;
-
-  const filteredBuildings = searchQuery.trim()
-    ? buildings.filter((b) => b.name.includes(searchQuery.trim()))
-    : buildings;
 
   // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
   const postToMap = useCallback((msg: object) => {
@@ -1988,6 +1990,14 @@ export default function MapScreen() {
     [routeTarget, beginFrom, beginTo],
   );
 
+  const handleSelectMyLocationPress = useCallback(() => void handleSelectMyLocation(), [handleSelectMyLocation]);
+  const handleChangeRouteTarget = useCallback((target: "from" | "to") => {
+    setRouteTarget(target);
+    setSearchQuery("");
+  }, []);
+  const routeFromLabel = fromBuilding ? buildingLabel(fromBuilding, fromFloor) : fromMyLocation ? "내 위치" : null;
+  const routeToLabel = toBuilding ? buildingLabel(toBuilding, toFloor) : null;
+
   const handleCloseRoute = useCallback(() => {
     setShowRoute(false);
     setRouteTarget(null);
@@ -2579,148 +2589,21 @@ export default function MapScreen() {
       </Animated.View>
 
       {!showRoute && floorDialSheet}
-      <SwipeBackModal visible={showRoute} onRequestClose={handleCloseRoute}>
-        {/* 길찾기 창 안에서 고른 건물의 층 팝업은 이 창 위에 떠야 해서 창 안에 둔다. */}
-        {showRoute && floorDialSheet}
-        {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
-        <SafeAreaProvider>
-        <SafeAreaView style={styles.routeModal} edges={["top"]}>
-          <ContentColumn>
-          <View style={styles.routeModalHeader}>
-            <TouchableOpacity
-              onPress={handleCloseRoute}
-              accessibilityRole="button"
-              accessibilityLabel="뒤로 가기"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color={COLORS.textPrimary}
-              />
-            </TouchableOpacity>
-            <Text style={styles.routeModalTitle}>길찾기</Text>
-            <View style={{ width: 22 }} />
-          </View>
-
-          <View style={styles.routeInputs}>
-            <TouchableOpacity
-              style={[
-                styles.routeInputRow,
-                routeTarget === "from" && styles.routeInputActive,
-              ]}
-              onPress={() => {
-                setRouteTarget("from");
-                setSearchQuery("");
-              }}
-            >
-              <View style={styles.routeDotFrom} />
-              <Text
-                style={
-                  fromBuilding || fromMyLocation ? styles.inputFilled : styles.inputPlaceholder
-                }
-              >
-                {fromBuilding
-                  ? buildingLabel(fromBuilding, fromFloor)
-                  : fromMyLocation
-                    ? "내 위치"
-                    : "출발지 입력"}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.inputDivider} />
-            <TouchableOpacity
-              style={[
-                styles.routeInputRow,
-                routeTarget === "to" && styles.routeInputActive,
-              ]}
-              onPress={() => {
-                setRouteTarget("to");
-                setSearchQuery("");
-              }}
-            >
-              <View style={styles.routeDotTo} />
-              <Text
-                style={
-                  toBuilding ? styles.inputFilled : styles.inputPlaceholder
-                }
-              >
-                {toBuilding ? buildingLabel(toBuilding, toFloor) : "도착지 입력"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {routeTarget && (
-            <View style={styles.routeSearch}>
-              <View style={styles.routeSearchBar}>
-                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <TextInput
-                  style={styles.routeSearchInput}
-                  placeholder="건물 검색"
-                  placeholderTextColor={COLORS.textPlaceholder}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoFocus
-                />
-              </View>
-              <FlatList
-                data={filteredBuildings}
-                keyExtractor={(item) => item.name}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.buildingItem}
-                    onPress={() => handleSelectRouteBuilding(item)}
-                  >
-                    {/* 건물별 색 대신 앱 메인 컬러로 통일(buildingItemDot). */}
-                    <View style={styles.buildingItemDot} />
-                    <View style={styles.buildingItemInfo}>
-                      <Text style={styles.buildingItemName}>{item.name}</Text>
-                      {item.type && item.type !== "확인 필요" ? (
-                        <Text style={styles.buildingItemType}>{item.type}</Text>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                  </TouchableOpacity>
-                )}
-                ListHeaderComponent={
-                  routeTarget === "to" ? (
-                    <TouchableOpacity
-                      style={styles.buildingItem}
-                      onPress={handlePickRouteDestinationOnMap}
-                      accessibilityRole="button"
-                      accessibilityLabel="지도에서 핀으로 도착 건물 고르기"
-                    >
-                      <Ionicons name="flag" size={18} color={COLORS.primary} />
-                      <View style={styles.buildingItemInfo}>
-                        <Text style={styles.buildingItemName}>지도에서 핀으로 고르기</Text>
-                        <Text style={styles.buildingItemType}>지도를 움직여 도착할 건물에 핀을 맞춰요</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                    </TouchableOpacity>
-                  ) : routeTarget === "from" && canLocate() ? (
-                    <TouchableOpacity
-                      style={styles.buildingItem}
-                      onPress={() => void handleSelectMyLocation()}
-                      accessibilityRole="button"
-                      accessibilityLabel="내 위치에서 출발"
-                    >
-                      <Ionicons name="navigate" size={18} color={COLORS.primary} />
-                      <View style={styles.buildingItemInfo}>
-                        <Text style={styles.buildingItemName}>내 위치</Text>
-                        <Text style={styles.buildingItemType}>위치는 휴대폰 안에서만 써요</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                    </TouchableOpacity>
-                  ) : null
-                }
-                contentContainerStyle={styles.buildingList}
-              />
-            </View>
-          )}
-
-          </ContentColumn>
-        </SafeAreaView>
-        </SafeAreaProvider>
-      </SwipeBackModal>
+      <RoutePlannerModal
+        visible={showRoute}
+        onClose={handleCloseRoute}
+        overlay={showRoute ? floorDialSheet : null}
+        target={routeTarget}
+        fromLabel={routeFromLabel}
+        toLabel={routeToLabel}
+        onChangeTarget={handleChangeRouteTarget}
+        query={searchQuery}
+        onChangeQuery={setSearchQuery}
+        buildings={buildings}
+        onSelectBuilding={handleSelectRouteBuilding}
+        onPickDestinationOnMap={handlePickRouteDestinationOnMap}
+        onSelectMyLocation={canLocate() ? handleSelectMyLocationPress : undefined}
+      />
 
       <PartnerSearchModal
         visible={showSearch}
@@ -3149,95 +3032,4 @@ const styles = StyleSheet.create({
   /** 경로 카드 자리(카드는 RouteOptions 가 그린다). 높이를 재 지도 맞춤·오른쪽 아래 메뉴 위치에 쓴다. */
   routeCardWrap: { position: "absolute" },
   routeCardNote: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular },
-  routeModal: { flex: 1, backgroundColor: COLORS.white },
-  routeModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.border,
-  },
-  routeModalTitle: {
-    fontSize: 16,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-  routeInputs: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: COLORS.fill,
-    borderRadius: RADIUS.floating,
-    overflow: "hidden",
-  },
-  routeInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  routeInputActive: { backgroundColor: COLORS.primarySoft },
-  inputDot: { width: 10, height: 10, borderRadius: 5 },
-  inputPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
-  inputFilled: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.medium },
-  inputDivider: {
-    height: 0.5,
-    backgroundColor: COLORS.border,
-    marginHorizontal: 14,
-  },
-  routeSearch: { flex: 1, marginTop: 12 },
-  routeSearchBar: {
-    marginHorizontal: 16,
-    height: 38,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.fill,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    gap: 8,
-    marginBottom: 8,
-  },
-  routeSearchInput: { fontFamily: FONTS.regular, flex: 1, minWidth: 0, fontSize: 14, color: COLORS.textPrimary },
-  buildingList: { paddingHorizontal: 16 },
-  buildingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.border,
-    gap: 10,
-  },
-  buildingItemDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  buildingItemInfo: { flex: 1 },
-  buildingItemName: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: COLORS.textPrimary,
-  },
-  buildingItemType: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
-  routeResultCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: COLORS.fill,
-    borderRadius: RADIUS.floating,
-    padding: 16,
-  },
-  routeResultRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  routeResultRowSpaced: { marginTop: 14 },
-  routeResultName: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: COLORS.textPrimary,
-  },
-  routeStartBtn: {
-    marginTop: 14,
-    height: 42,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  routeStartText: { fontSize: 14, color: COLORS.white, fontFamily: FONTS.semibold },
 });
