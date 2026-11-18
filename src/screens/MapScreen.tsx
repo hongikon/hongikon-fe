@@ -62,15 +62,13 @@ import {
 } from "../apis/routes";
 import { isCancelledError } from "../apis/client";
 import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
-import { myLocationScript } from "../utils/myLocationScript";
-import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
 import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300;
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
 const ROUTE_PIN_MAX_METERS = 150;
-import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
+import { canLocate, locateOnce, type LivePosition } from "../lib/nearbyPartners/platform";
 import { notify } from "../utils/dialog";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
 import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
@@ -113,6 +111,7 @@ import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
 import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 import MapSheets from "../components/map/sheets/MapSheets";
+import { useLiveLocation } from "../hooks/map/useLiveLocation";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
 /** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
@@ -208,7 +207,6 @@ export default function MapScreen() {
   const [fromMyLocation, setFromMyLocation] = useState(false);
   /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
   const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
-  const [myLocation, setMyLocation] = useState<LivePosition | null>(null);
   /** 경로를 다시 계산하는 기준 위치. 15m 넘게 움직였을 때만 바꿔 경로가 자꾸 바뀌지 않게 한다. */
   const [routeOrigin, setRouteOrigin] = useState<LivePosition | null>(null);
   // handleOpenRoute 는 위쪽에서 만들어져 최신 출발 상태를 ref 로 본다.
@@ -1004,51 +1002,22 @@ export default function MapScreen() {
     else if (NEARBY_DEBUG_TOOLS && !myLocationUserOffRef.current) setMyLocationOn(true);
   }, [mapFocused]);
   const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused));
-  /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
-  const locationFilterRef = useRef<FilterState | null>(null);
+  /** 지금 고른 경로(내 위치 점을 경로선에 붙일 때 쓴다). */
+  const selectedRouteRef = useRef<RouteAlternative | null>(null);
+  selectedRouteRef.current = routeAlternatives[selectedRouteIndex] ?? null;
+  // 내 위치 점: GPS 값마다 지도에 점만 그리고 화면은 다시 그리지 않는다(useLiveLocation).
+  const liveLocation = useLiveLocation({
+    active: locationActive,
+    webViewRef,
+    selectedRouteRef,
+    trackRouteOrigin: fromMyLocation,
+    setRouteOrigin,
+  });
+  // 고른 경로가 바뀌면 점을 새 경로선에 다시 붙인다.
+  const redrawLiveLocation = liveLocation.redraw;
   useEffect(() => {
-    if (!locationActive) {
-      locationFilterRef.current = null;
-      setMyLocation(null);
-      return;
-    }
-    let stop: (() => void) | null = null;
-    let cancelled = false;
-    void watchLocation((position) => {
-      const next = filterFix(locationFilterRef.current, { ...position, at: Date.now() });
-      if (!next || next === locationFilterRef.current) return; // 오차가 커서 버린 값
-      locationFilterRef.current = next;
-      setMyLocation({ lat: next.lat, lng: next.lng, accuracy: filterAccuracy(next) });
-    }).then((unsubscribe) => {
-      if (cancelled) unsubscribe();
-      else stop = unsubscribe;
-    });
-    return () => {
-      cancelled = true;
-      stop?.();
-    };
-  }, [locationActive]);
-
-  // 고른 경로에서 20m 안이면 점을 경로선 위에 붙여 보여 준다(길 맞추기). 직선 어림 경로에는 붙이지 않는다.
-  const shownLocationRef = useRef<LivePosition | null>(null);
-  const shownLocation = useMemo(() => {
-    if (!myLocation) return null;
-    const route = routeAlternatives[selectedRouteIndex];
-    const snapped = route && !route.isEstimate ? snapToRoute(myLocation, route.points) : null;
-    return snapped ? { ...myLocation, ...snapped } : myLocation;
-  }, [myLocation, routeAlternatives, selectedRouteIndex]);
-
-  useEffect(() => {
-    shownLocationRef.current = shownLocation;
-    webViewRef.current?.injectJavaScript(myLocationScript(shownLocation));
-  }, [shownLocation]);
-
-  useEffect(() => {
-    if (!fromMyLocation || !myLocation) return;
-    setRouteOrigin((prev) =>
-      prev && haversineMeters(prev.lat, prev.lng, myLocation.lat, myLocation.lng) < 15 ? prev : myLocation,
-    );
-  }, [fromMyLocation, myLocation]);
+    redrawLiveLocation();
+  }, [routeAlternatives, selectedRouteIndex, redrawLiveLocation]);
 
   // fromBuilding/toBuilding/fromFloor/toFloor 가 바뀌어 routeAlternatives 가
   // 새로 계산될 때마다(둘 다 골랐을 때만 채워진다) 첫 번째 대안으로 다시 그린다.
@@ -1329,7 +1298,7 @@ export default function MapScreen() {
       postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
     }
     // 내 위치 점도 다시 그린다 — 지도가 다시 뜨면 점이 사라지고, 가만히 있으면 새 위치가 오지 않아 다시 그려지지 않았다(11-10).
-    if (shownLocationRef.current) webViewRef.current?.injectJavaScript(myLocationScript(shownLocationRef.current));
+    liveLocation.redrawShown();
     // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
     if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
     // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
@@ -1853,8 +1822,7 @@ export default function MapScreen() {
     if (located.status === "declined") return;
     if (located.status === "ok") {
       const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
-      setMyLocation(first);
-      setRouteOrigin(first);
+      liveLocation.setPosition(first, { origin: true });
       setFromMyLocation(true);
       setFromBuilding(null);
       setFromFloor(null);
@@ -1899,7 +1867,7 @@ export default function MapScreen() {
       notify("지도 범위 밖에 있어요", "학교 근처에 오면 지도에서 내 위치를 볼 수 있어요.");
       return;
     }
-    setMyLocation({ lat: located.lat, lng: located.lng, accuracy: located.accuracy });
+    liveLocation.setPosition({ lat: located.lat, lng: located.lng, accuracy: located.accuracy });
     setMyLocationOn(true);
     farViewPartnerIdRef.current = null;
     webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
