@@ -46,13 +46,7 @@ import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/
 import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { kstTodayYmd, withExhibitionHints } from "../utils/exhibitions";
-import type {
-  Building,
-  Facility,
-  FacilityKind,
-  MapLayer,
-  ReportListItem,
-} from "../types";
+import type { Facility, ReportListItem } from "../types";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
 import MapTopBar from "../components/map/topbar/MapTopBar";
@@ -81,6 +75,7 @@ import { useMapIntents } from "../hooks/map/useMapIntents";
 import { useMapPlaceCards } from "../hooks/map/useMapPlaceCards";
 import { useMyLocation } from "../hooks/map/useMyLocation";
 import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
+import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
 import { useMapSearch } from "../hooks/map/useMapSearch";
 import { useMapSelection } from "../hooks/map/useMapSelection";
 import { offscreenSummary } from "../utils/map/labels";
@@ -263,7 +258,7 @@ export default function MapScreen() {
       setSelectedFacilityBuilding(null);
       setReportTarget(at);
     },
-    onLeaveBuildingFacility: () => leaveBuildingFacilityRef.current(),
+    onLeaveBuildingFacility: () => facilityNav.leave(),
   });
   // 지도 위에 얹는 검토용 임시 핀과 물어보기 설명 카드.
   const preview = useMapPlaceCards({
@@ -290,6 +285,24 @@ export default function MapScreen() {
     selectedPartnerRef,
     closePartnerSheet: () => handleClosePartner(),
     startPartnerLocationPick: (before) => picker.start("partner", { partnerLocationBefore: before }),
+  });
+  // 학교 시설 시트 열기와 건물 시트 ↔ 시설 시트 오가기.
+  const facilityNav = useFacilityNavigation({
+    postToMap,
+    buildings,
+    layer,
+    facilityKind,
+    setLayer,
+    applyFacilityKind,
+    showFacilityKind: filters.showFacilityKind,
+    selectedBuilding,
+    selectedFacilityBuilding,
+    setSelectedBuilding,
+    setSelectedPartner,
+    setSelectedReport,
+    setSelectedFacilityBuilding,
+    setSearchedFacility,
+    hideSearch: search.hide,
   });
   // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
   const picker = useLocationPicker({
@@ -419,11 +432,6 @@ export default function MapScreen() {
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
   const sheetBottom = sheetOpen ? 0 : tabBarHeight;
 
-  /**
-   * 건물 시트 → '건물 안 시설'로 연 시설 시트를 정리한다(11-08). 아래 handleLeaveBuildingFacility 가 채운다 —
-   * 지도 메시지 처리기가 그보다 위에 있어 ref 로 부른다. 그렇게 연 시트가 아니면 false.
-   */
-  const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
   const { handleRouteTap, ignoresMapTap } = route;
   const { handleCenterMessage } = picker;
   const handleNearbyCenter = nearbyDebug.handleCenter;
@@ -471,62 +479,10 @@ export default function MapScreen() {
 
   const handleSelectCategory = filters.selectCategory;
 
-  /**
-   * 검색이나 건물 시트에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면
-   * 그 지점)로 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
-   * `facility` 가 있으면(검색) 시트에서 그 줄을 강조한다.
-   */
-  const openFacilitySheet = useCallback(
-    (kind: FacilityKind, buildingName: string, facility: Facility | null) => {
-      search.hide();
-      // 갈래 전환과 같은 정리: 학교 시설 갈래로 바꿔 그 종류 핀을 켜고, 제휴·제보 선택과 마커를 지운다.
-      setSelectedPartner(null);
-      setSelectedBuilding(null);
-      // 제보는 갈래와 따로라 끄지 않는다(10-27). 열려 있던 제보 시트만 닫는다.
-      setSelectedReport(null);
-      filters.showFacilityKind(kind);
-      const building = buildings.find((b) => b.name === buildingName);
-      const lat = facility?.lat ?? building?.lat;
-      const lng = facility?.lng ?? building?.lng;
-      // 핀을 직접 누를 때와 같은 배율·자리(FOCUS_ZOOM, 시트 위 가운데)로 간다. 전에는 ±70m 범위 맞춤(fitBounds)이라
-      // 화면 크기에 따라 한두 단계 덜 확대돼, 직접 누를 때(19)와 배율이 달랐다(10-14). 'focusReport' 는 이름과 달리
-      // 좌표로 가는 일반 이동이다 — 배포된 지도 페이지에 이미 있는 메시지라 페이지를 다시 올리지 않아도 된다.
-      // 검색으로 찾아왔을 때만 확대한다. 건물 시트에서 '건물 안 시설'을 누른 것은 핀을 누를 때처럼 지금 배율로 가운데만 옮긴다(10-27).
-      if (lat !== undefined && lng !== undefined)
-        postToMap({ type: "focusReport", lat, lng, ...(facility ? { zoom: FOCUS_ZOOM } : {}) });
-      setSelectedFacilityBuilding(buildingName);
-      setSearchedFacility(facility);
-    },
-    [buildings, postToMap, filters.showFacilityKind],
-  );
-
   const handleSearchSelectFacility = useCallback(
-    (facility: Facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
-    [openFacilitySheet],
+    (facility: Facility) => facilityNav.openSheet(facility.kind, facility.buildingName, facility),
+    [facilityNav.openSheet],
   );
-
-  /** 건물 시트의 '건물 안 시설' 줄을 눌렀다. 검색과 같은 길로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다(강조할 줄은 없음). */
-  /**
-   * 건물 시트에서 넘어온 시설 시트면 그 건물과 넘어오기 전 칩 상태를 기억한다. 시설 시트의 '<'로 그 건물 시트에 돌아간다(10-15 요청 —
-   * 문헌관 → 프린터를 누르면 프린터 칩이 켜지며 시설 시트로 바뀌어, 문헌관 정보로 돌아갈 길이 없었다).
-   */
-  const [facilityFrom, setFacilityFrom] = useState<{ building: Building; layer: MapLayer | null; kind: FacilityKind | null } | null>(null);
-
-  const handleOpenBuildingFacility = useCallback(
-    (kind: FacilityKind) => {
-      if (!selectedBuilding) return;
-      const from = { building: selectedBuilding, layer, kind: facilityKind };
-      openFacilitySheet(kind, selectedBuilding.name, null);
-      setFacilityFrom(from);
-    },
-    [selectedBuilding, layer, facilityKind, openFacilitySheet],
-  );
-
-  // 시설 시트가 닫히거나 다른 건물·검색으로 바뀌면 돌아갈 곳을 잊는다.
-  useEffect(() => {
-    if (facilityFrom && selectedFacilityBuilding !== facilityFrom.building.name) setFacilityFrom(null);
-  }, [facilityFrom, selectedFacilityBuilding]);
-
 
   const selectedBuildingFacilities = useMemo(
     () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
@@ -605,37 +561,6 @@ export default function MapScreen() {
     postToMap({ type: "selectBuilding", name: null });
   }, [postToMap]);
 
-
-  const handleBackToBuilding = useCallback(() => {
-    const from = facilityFrom;
-    if (!from) return;
-    setFacilityFrom(null);
-    setSearchedFacility(null);
-    // 넘어오기 전 칩으로 되돌린다(같은 종류면 그대로 두고 시트만 닫는다). 제휴·제보에서 왔으면 그 갈래 칩만 다시 보인다.
-    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
-    else setSelectedFacilityBuilding(null);
-    setLayer(from.layer);
-    setSelectedBuilding(from.building);
-    postToMap({ type: "selectBuilding", name: from.building.name });
-  }, [facilityFrom, facilityKind, applyFacilityKind, postToMap]);
-
-  /**
-   * 건물 시트에서 '건물 안 시설'(예: 스터디룸)로 들어간 시설 시트를 지도 빈 곳이나 X 로 닫았다(11-08 요청).
-   * 사용자는 그 건물을 보던 중이었지 캠퍼스 전체의 스터디룸을 보려던 게 아니므로, 그 때문에 켜진 칩·핀을 거두고
-   * 들어오기 전 지도(보통 아무것도 고르지 않은 지도)로 돌아간다. 칩을 직접 눌러 켠 핀은 지금처럼 남는다.
-   */
-  const handleLeaveBuildingFacility = useCallback((): boolean => {
-    const from = facilityFrom;
-    if (!from) return false;
-    setFacilityFrom(null);
-    setSearchedFacility(null);
-    // 같은 종류 칩을 이미 켜 두고 들어왔으면 그 핀은 남기고 시트만 닫는다.
-    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
-    else setSelectedFacilityBuilding(null);
-    setLayer(from.layer);
-    return true;
-  }, [facilityFrom, facilityKind, applyFacilityKind]);
-  leaveBuildingFacilityRef.current = handleLeaveBuildingFacility;
 
   const handleSelectFacilityKind = filters.selectFacilityKind;
 
@@ -780,7 +705,7 @@ export default function MapScreen() {
     showAllReports,
     showNearbyGroup: search.showNearbyGroup,
     selectPartner: search.selectPartner,
-    openFacility: (facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
+    openFacility: (facility) => facilityNav.openSheet(facility.kind, facility.buildingName, facility),
     openBuilding: (building) => {
       search.hide();
       setSelectedPartner(null);
@@ -830,7 +755,7 @@ export default function MapScreen() {
     }
     if (selectedFacilityBuilding !== null && facilityKind !== null) {
       // 건물에서 들어간 시설 시트면 '뒤로'는 그 건물 시트로(시트의 '<'와 같다, 11-08).
-      if (facilityFrom) handleBackToBuilding();
+      if (facilityNav.facilityFrom) facilityNav.backToBuilding();
       else setSelectedFacilityBuilding(null);
       return true;
     }
@@ -849,8 +774,8 @@ export default function MapScreen() {
     selectedPartner,
     selectedFacilityBuilding,
     facilityKind,
-    facilityFrom,
-    handleBackToBuilding,
+    facilityNav.facilityFrom,
+    facilityNav.backToBuilding,
     selectedBuilding,
     handleCancelReportPicker,
     handleClosePartner,
@@ -911,10 +836,6 @@ export default function MapScreen() {
     searchedFacility && searchedFacility.kind === facilityKind && searchedFacility.buildingName === selectedFacilityBuilding
       ? searchedFacility.id
       : null;
-  /** 시설 시트 닫기: 건물 시트에서 들어왔으면 그 건물 시트로 돌아가고, 아니면 닫는다. */
-  const handleCloseFacilitySheet = useCallback(() => {
-    if (!handleLeaveBuildingFacility()) setSelectedFacilityBuilding(null);
-  }, [handleLeaveBuildingFacility]);
   const handleCloseReportSheet = useCallback(() => setSelectedReport(null), []);
 
   // ---- 지도 위 안내 줄 ----
@@ -1114,7 +1035,7 @@ export default function MapScreen() {
               key={selectedBuilding.name}
               building={selectedBuilding}
               facilities={selectedBuildingFacilities}
-              onOpenFacility={handleOpenBuildingFacility}
+              onOpenFacility={facilityNav.openFromBuilding}
               onClose={handleCloseBuilding}
               routeFindingEnabled={ROUTE_FINDING_ENABLED}
               onSetFrom={handleSetFrom}
@@ -1140,9 +1061,9 @@ export default function MapScreen() {
               items={selectedFacilityItems}
               exhibitions={exhibitions}
               highlightId={highlightedFacilityId}
-              onClose={handleCloseFacilitySheet}
-              onBack={facilityFrom ? handleBackToBuilding : undefined}
-              backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
+              onClose={facilityNav.closeSheet}
+              onBack={facilityNav.facilityFrom ? facilityNav.backToBuilding : undefined}
+              backLabel={facilityNav.facilityFrom ? `${facilityNav.facilityFrom.building.name}로 돌아가기` : undefined}
               onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
               onSetTo={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetTo : undefined}
               routeNext={routeNext}
