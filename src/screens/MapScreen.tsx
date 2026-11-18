@@ -50,7 +50,6 @@ import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
 import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
 import { filterPartners, hasActiveFilter, partnersOutsideFocus } from "../utils/partners";
 import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
-import type { PartnerFilter } from "../utils/partners";
 import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
 import { kstTodayYmd, withExhibitionHints } from "../utils/exhibitions";
 import type {
@@ -59,8 +58,6 @@ import type {
   FacilityKind,
   MapLayer,
   Partner,
-  PartnerAffiliation,
-  PartnerCategory,
   ReportListItem,
 } from "../types";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
@@ -89,6 +86,7 @@ import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
 import { useAppForeground } from "../hooks/useAppForeground";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
 import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
+import { useMapFilters } from "../hooks/map/useMapFilters";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -139,11 +137,6 @@ export default function MapScreen() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
-  // 1단(소속) · 2단(업종) 필터. 둘 다 null 이면 지도에 마커를 그리지 않는다.
-  const [selectedAffiliation, setSelectedAffiliation] =
-    useState<PartnerAffiliation | null>(null);
-  const [selectedCategory, setSelectedCategory] =
-    useState<PartnerCategory | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
@@ -164,9 +157,6 @@ export default function MapScreen() {
   const [mapAuthFailed, setMapAuthFailed] = useState(false);
   /** 아래 탭바(또는 안전 영역) 높이. 경로를 화면에 맞출 때 읽는다(값은 아래 bottomInset 에서 채운다). */
   const bottomInsetRef = useRef(0);
-  // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
-  const [layer, setLayer] = useState<MapLayer | null>(null);
-  const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
   // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
@@ -251,6 +241,32 @@ export default function MapScreen() {
     status: mapDataStatus,
     reload: reloadMapData,
   } = useMapData();
+  // 지도 칩 거르기(갈래·제휴 소속/업종·학교 시설 종류). 칩을 바꾸면 열린 시트를 닫는다(길찾기 한쪽만 정한 동안 건물 시트는 남긴다).
+  const filters = useMapFilters({
+    webViewRef,
+    postToMap,
+    partners: allPartners,
+    facilities,
+    buildings,
+    exhibitions,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    onPartnerFilterChange: (active) => {
+      setSelectedPartner(null);
+      if (active && !routePicking) setSelectedBuilding(null);
+    },
+    onFacilityKindChange: () => {
+      setSelectedFacilityBuilding(null);
+      setSearchedFacility(null);
+    },
+    onLayerChange: () => {
+      setSelectedPartner(null);
+      if (!routePicking) setSelectedBuilding(null);
+      // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
+      setSelectedReport(null);
+    },
+  });
+  const { layer, setLayer, facilityKind, selectedAffiliation, selectedCategory, activeFilter, applyFacilityKind } = filters;
   // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
   const picker = useLocationPicker({
     postToMap,
@@ -315,10 +331,6 @@ export default function MapScreen() {
 
 
 
-  const activeFilter = useMemo<PartnerFilter>(
-    () => ({ affiliation: selectedAffiliation, category: selectedCategory }),
-    [selectedAffiliation, selectedCategory],
-  );
 
   const visiblePartners = useMemo(
     () => (hasActiveFilter(activeFilter) ? filterPartners(allPartners, activeFilter) : []),
@@ -639,52 +651,10 @@ export default function MapScreen() {
     [reports, accessToken, logout, buildings, allPartners, postToMap, openReport],
   );
 
-  /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
-  const applyFilter = useCallback(
-    (filter: PartnerFilter) => {
-      setSelectedPartner(null);
-      searchedPartnerIdRef.current = null;
 
-      if (!hasActiveFilter(filter)) {
-        postToMap({ type: "clearPartners" });
-        return;
-      }
+  const handleSelectAffiliation = filters.selectAffiliation;
 
-      if (!routePicking) setSelectedBuilding(null);
-      // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에 갇혀 칩 결과를 둘러볼 수 없고,
-      // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮긴다. 칩만으로는 카메라를 옮기지 않는다(10-09 요청).
-      if (farViewPartnerIdRef.current !== null) {
-        farViewPartnerIdRef.current = null;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-      }
-      const partners = filterPartners(allPartners, filter);
-      postToMap({
-        type: "setPartners",
-        partners: partners.map(toMarker),
-        bounds: null,
-      });
-    },
-    [allPartners, postToMap, routePicking],
-  );
-
-  /** 같은 칩을 다시 누르면 그 단계만 해제한다. */
-  const handleSelectAffiliation = useCallback(
-    (affiliation: PartnerAffiliation) => {
-      const next = selectedAffiliation === affiliation ? null : affiliation;
-      setSelectedAffiliation(next);
-      applyFilter({ affiliation: next, category: selectedCategory });
-    },
-    [selectedAffiliation, selectedCategory, applyFilter],
-  );
-
-  const handleSelectCategory = useCallback(
-    (category: PartnerCategory) => {
-      const next = selectedCategory === category ? null : category;
-      setSelectedCategory(next);
-      applyFilter({ affiliation: selectedAffiliation, category: next });
-    },
-    [selectedAffiliation, selectedCategory, applyFilter],
-  );
+  const handleSelectCategory = filters.selectCategory;
 
   /**
    * 검색 결과를 고르면 그 업체만 지도에 올리고 화면 가운데로 가져온다.
@@ -694,8 +664,7 @@ export default function MapScreen() {
   const handleSearchSelect = useCallback(
     (partner: Partner) => {
       setShowSearch(false);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
+      filters.clearPartnerFilter();
       setSelectedBuilding(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
@@ -719,7 +688,7 @@ export default function MapScreen() {
       });
       postToMap({ type: "focusPartner", id: partner.id, zoom: FOCUS_ZOOM });
     },
-    [postToMap],
+    [postToMap, filters.clearPartnerFilter],
   );
 
   /**
@@ -730,32 +699,25 @@ export default function MapScreen() {
   const openFacilitySheet = useCallback(
     (kind: FacilityKind, buildingName: string, facility: Facility | null) => {
       setShowSearch(false);
-      // 갈래 전환(handleSelectLayer)과 같은 정리: 제휴·제보 선택과 마커를 지운다.
-      setLayer("편의시설");
+      // 갈래 전환과 같은 정리: 학교 시설 갈래로 바꿔 그 종류 핀을 켜고, 제휴·제보 선택과 마커를 지운다.
       setSelectedPartner(null);
       setSelectedBuilding(null);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
-      postToMap({ type: "clearPartners" });
       // 제보는 갈래와 따로라 끄지 않는다(10-27). 열려 있던 제보 시트만 닫는다.
       setSelectedReport(null);
-
-      setFacilityKind(kind);
-      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, kind), facilities, exhibitions);
+      filters.showFacilityKind(kind);
       const building = buildings.find((b) => b.name === buildingName);
       const lat = facility?.lat ?? building?.lat;
       const lng = facility?.lng ?? building?.lng;
       // 핀을 직접 누를 때와 같은 배율·자리(FOCUS_ZOOM, 시트 위 가운데)로 간다. 전에는 ±70m 범위 맞춤(fitBounds)이라
       // 화면 크기에 따라 한두 단계 덜 확대돼, 직접 누를 때(19)와 배율이 달랐다(10-14). 'focusReport' 는 이름과 달리
       // 좌표로 가는 일반 이동이다 — 배포된 지도 페이지에 이미 있는 메시지라 페이지를 다시 올리지 않아도 된다.
-      postToMap({ type: "setFacilities", markers, bounds: null });
       // 검색으로 찾아왔을 때만 확대한다. 건물 시트에서 '건물 안 시설'을 누른 것은 핀을 누를 때처럼 지금 배율로 가운데만 옮긴다(10-27).
       if (lat !== undefined && lng !== undefined)
         postToMap({ type: "focusReport", lat, lng, ...(facility ? { zoom: FOCUS_ZOOM } : {}) });
       setSelectedFacilityBuilding(buildingName);
       setSearchedFacility(facility);
     },
-    [facilities, buildings, exhibitions, postToMap],
+    [buildings, postToMap, filters.showFacilityKind],
   );
 
   const handleSearchSelectFacility = useCallback(
@@ -886,22 +848,6 @@ export default function MapScreen() {
     postToMap({ type: "selectBuilding", name: null });
   }, [postToMap]);
 
-  /** 편의시설 핀을 지도에 반영한다. null 이면 모두 지운다. */
-  const applyFacilityKind = useCallback(
-    (next: FacilityKind | null) => {
-      setFacilityKind(next);
-      setSelectedFacilityBuilding(null);
-      setSearchedFacility(null);
-      if (next === null) {
-        postToMap({ type: "clearFacilities" });
-        return;
-      }
-      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, next), facilities, exhibitions);
-      // 칩을 눌러도 카메라는 옮기지 않는다(10-09 요청 — 네이버·카카오 지도처럼 보던 자리를 지킨다).
-      postToMap({ type: "setFacilities", markers, bounds: null });
-    },
-    [facilities, buildings, exhibitions, postToMap],
-  );
 
   const handleBackToBuilding = useCallback(() => {
     const from = facilityFrom;
@@ -934,32 +880,9 @@ export default function MapScreen() {
   }, [facilityFrom, facilityKind, applyFacilityKind]);
   leaveBuildingFacilityRef.current = handleLeaveBuildingFacility;
 
-  /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
-  const handleSelectFacilityKind = useCallback(
-    (kind: FacilityKind) => {
-      applyFacilityKind(facilityKind === kind ? null : kind);
-    },
-    [facilityKind, applyFacilityKind],
-  );
+  const handleSelectFacilityKind = filters.selectFacilityKind;
 
-  /**
-   * 최상단 칩. 갈래를 바꾸면 반대편 선택과 마커를 모두 정리한다.
-   * 안 그러면 칩은 편의 시설인데 지도에는 제휴 마커가 떠 있는 어긋난 상태가 된다.
-   */
-  const handleSelectLayer = useCallback(
-    (next: MapLayer) => {
-      setLayer(layer === next ? null : next);
-      setSelectedPartner(null);
-      if (!routePicking) setSelectedBuilding(null);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
-      postToMap({ type: "clearPartners" });
-      applyFacilityKind(null);
-      // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
-      setSelectedReport(null);
-    },
-    [layer, postToMap, applyFacilityKind, routePicking],
-  );
+  const handleSelectLayer = filters.selectLayer;
 
   /**
    * 지도 페이지가 (다시) 준비됐을 때 지금 화면 상태를 다시 그린다. 첫 로딩이 늦거나 실패해 자동으로
