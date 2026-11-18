@@ -33,6 +33,30 @@ const MAX_AUTO_RELOADS = 2
 const MAX_CRASH_RELOADS = 3
 const CRASH_WINDOW_MS = 60_000
 const READY_MESSAGE = '__hongikonMapReady'
+const ALIVE_MESSAGE = '__hongikonMapAlive'
+/** 앱이 앞으로 돌아온 뒤 지도 페이지가 이 시간 안에 대답하지 않으면 죽은 것으로 보고 다시 불러온다. */
+const ALIVE_TIMEOUT_MS = 2_500
+
+/**
+ * 앱이 앞으로 돌아왔을 때 지도가 아직 그려져 있는지 묻는 스크립트. WebView 프로세스가 죽었으면 실행되지 않아 대답이 없고,
+ * 페이지는 살아 있는데 지도 칸이 비었으면(크기 0, 받아 둔 타일 그림 0장) ok: false 로 대답한다.
+ */
+const ALIVE_PROBE_JS = `
+(function () {
+  try {
+    var ok = false;
+    var el = window.map && window.map.getElement && window.map.getElement();
+    if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
+      var imgs = el.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        if (imgs[i].complete && imgs[i].naturalWidth >= 64) { ok = true; break; }
+      }
+    }
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: '${ALIVE_MESSAGE}', ok: ok }));
+  } catch (e) {}
+})();
+true;
+`
 
 /**
  * 페이지 안에서 지도가 실제로 만들어졌는지 확인해 알려 주는 스크립트. map.html 을 고치지 않아도
@@ -73,6 +97,7 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
   const autoReloadsRef = useRef(0)
   const crashTimesRef = useRef<number[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aliveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [failed, setFailed] = useState(false)
   const [reloading, setReloading] = useState(false)
 
@@ -86,6 +111,10 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
+    }
+    if (aliveTimerRef.current) {
+      clearTimeout(aliveTimerRef.current)
+      aliveTimerRef.current = null
     }
   }, [])
 
@@ -141,6 +170,14 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
 
   const handleMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
+      if (event.nativeEvent.data.includes(ALIVE_MESSAGE)) {
+        if (aliveTimerRef.current) {
+          clearTimeout(aliveTimerRef.current)
+          aliveTimerRef.current = null
+        }
+        if (!event.nativeEvent.data.includes('"ok":true')) reload(true)
+        return
+      }
       if (event.nativeEvent.data.includes(READY_MESSAGE)) {
         if (!readyRef.current) {
           readyRef.current = true
@@ -154,13 +191,26 @@ const NaverMapView = forwardRef<NaverMapViewHandle, Props>(({ onMessage, onReady
       }
       onMessage(event)
     },
-    [clearTimer, onMessage, onReady],
+    [clearTimer, onMessage, onReady, reload],
   )
 
   // 백그라운드에 있다 돌아왔는데 아직 지도가 없으면 한 번 더 시도한다.
+  // 이미 떠 있던 지도도 백그라운드에 있는 동안 WebView 프로세스가 죽거나(iOS 메모리 정리, 안드로이드 렌더러 종료)
+  // 지도 칸이 비어 흰 화면만 남을 수 있다. 종료 알림이 늘 오지는 않아서, 돌아올 때마다 페이지에 물어보고
+  // 대답이 없거나 지도가 비었으면 다시 불러온다(11-18 버그).
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && !readyRef.current) reload(true)
+      if (state !== 'active') return
+      if (!readyRef.current) {
+        reload(true)
+        return
+      }
+      if (aliveTimerRef.current) clearTimeout(aliveTimerRef.current)
+      aliveTimerRef.current = setTimeout(() => {
+        aliveTimerRef.current = null
+        if (readyRef.current) reload(true)
+      }, ALIVE_TIMEOUT_MS)
+      webViewRef.current?.injectJavaScript(ALIVE_PROBE_JS)
     })
     return () => sub.remove()
   }, [reload])
