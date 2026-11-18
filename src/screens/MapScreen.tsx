@@ -19,7 +19,7 @@ import MapActionMenu from "../components/map/MapActionMenu";
 import ReportComposerModal from "../components/map/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
 import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
-import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
+import { consumeMapIntent, subscribeMapIntent } from "../lib/mapIntents";
 import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
 import type { ReportTarget } from "../components/map/ReportComposerModal";
@@ -87,6 +87,7 @@ import { useAppForeground } from "../hooks/useAppForeground";
 import { useLocationPicker } from "../hooks/map/useLocationPicker";
 import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
 import { useMapFilters } from "../hooks/map/useMapFilters";
+import { useMapSelection } from "../hooks/map/useMapSelection";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
@@ -134,20 +135,12 @@ export default function MapScreen() {
   // 폴드를 접고 펴면 앱이 다시 시작되지 않고 창 크기만 바뀌므로 매 렌더 다시 계산한다.
   const sideGutter = useCenteredGutter();
   const overlayInset = { left: 12 + sideGutter, right: 12 + sideGutter };
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
-    null,
-  );
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
   /** 물어보기 "지도에서 보기"로 온 곳의 짧은 설명 카드(지도 위). 닫거나 그 곳 시트를 닫으면 사라진다(11-07). */
   const [askCard, setAskCard] = useState<{ title: string; summary: string } | null>(null);
   const previewTargetRef = useRef(previewTarget);
   previewTargetRef.current = previewTarget;
-  const selectedPartnerRef = useRef(selectedPartner);
-  selectedPartnerRef.current = selectedPartner;
-  const selectedBuildingRef = useRef(selectedBuilding);
-  selectedBuildingRef.current = selectedBuilding;
   /** 필터 없이 검색으로만 지도에 올린 업체 id. 그 시트가 닫히면 마커도 거둔다(아래 effect). */
   const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
@@ -191,13 +184,6 @@ export default function MapScreen() {
     },
     onCategoriesChange: () => setSelectedReport(null),
   });
-  const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
-    null,
-  );
-  /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
-  const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
-  /** 검색으로 찾아간 편의시설. 그 시설 시트에서 해당 줄을 강조한다. 핀을 직접 누르거나 칩을 바꾸면 지운다. */
-  const [searchedFacility, setSearchedFacility] = useState<Facility | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
   const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
@@ -267,6 +253,46 @@ export default function MapScreen() {
     },
   });
   const { layer, setLayer, facilityKind, selectedAffiliation, selectedCategory, activeFilter, applyFacilityKind } = filters;
+  // 고른 건물·제휴·제보·학교 시설과 아래 시트(열고 닫기·지도 강조 거두기). 시트는 한 번에 하나만 연다.
+  const {
+    selectedBuilding,
+    setSelectedBuilding,
+    selectedPartner,
+    setSelectedPartner,
+    selectedReport,
+    setSelectedReport,
+    selectedFacilityBuilding,
+    setSelectedFacilityBuilding,
+    searchedFacility,
+    setSearchedFacility,
+    selectedBuildingRef,
+    selectedPartnerRef,
+    selectedReportRef,
+    selectedFacilityBuildingRef,
+    openReport,
+    reassertPartnerSelection,
+    handleTap: handleSelectionTap,
+  } = useMapSelection({
+    postToMap,
+    buildings,
+    partners: allPartners,
+    reports: shownReportData,
+    activeFilter,
+    searchedPartnerIdRef,
+    onLongPress: (at) => {
+      // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
+      if (!accessToken) {
+        promptLogin("제보를 남기려면 로그인해 주세요.", logout);
+        return;
+      }
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+      setReportTarget(at);
+    },
+    onLeaveBuildingFacility: () => leaveBuildingFacilityRef.current(),
+  });
   // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
   const picker = useLocationPicker({
     postToMap,
@@ -372,69 +398,6 @@ export default function MapScreen() {
 
 
   /**
-   * 건물 배너가 닫히면(제보·제휴·편의시설을 누르거나 HOT 목록·링크로 제보를 열어서) 지도 페이지의 건물 강조도 거둔다.
-   * 앱 쪽 상태만 비우면 페이지에는 전에 누른 건물 핀(예: 인문사회관 A동)이 선택된 채 남아, 다른 제보를 보는 중에도
-   * 그 건물이 눌린 것처럼 보였다. 기존 `selectBuilding` 메시지라 이미 배포된 map.html 에도 먹힌다.
-   */
-  const prevSelectedBuildingRef = useRef<Building | null>(null);
-  useEffect(() => {
-    const prev = prevSelectedBuildingRef.current;
-    prevSelectedBuildingRef.current = selectedBuilding;
-    if (prev !== null && selectedBuilding === null) postToMap({ type: "selectBuilding", name: null });
-  }, [selectedBuilding, postToMap]);
-
-  /**
-   * 업체 시트가 닫히면(제보·편의시설·건물을 누르거나, 칩·제보 위치 고르기·알림 등 어떤 경로로든) 페이지의 업체 강조도 거둔다.
-   * 필터 없이 검색으로만 올린 마커였으면 시트와 함께 마커도 내린다 — 안 그러면 시트 없이 핀 하나만 지도에 남는다.
-   * 필터가 켜져 있으면 마커는 그대로 둔다. 모두 기존 메시지라 이미 배포된 map.html 에도 먹힌다.
-   */
-  const prevSelectedPartnerRef = useRef<Partner | null>(null);
-  useEffect(() => {
-    const prev = prevSelectedPartnerRef.current;
-    prevSelectedPartnerRef.current = selectedPartner;
-    if (prev === null || selectedPartner !== null) return;
-    if (!hasActiveFilter(activeFilter) && searchedPartnerIdRef.current !== null) {
-      searchedPartnerIdRef.current = null;
-      postToMap({ type: "clearPartners" });
-      return;
-    }
-    postToMap({ type: "selectPartner", id: null });
-  }, [selectedPartner, activeFilter, postToMap]);
-
-  /**
-   * 제휴·편의시설·제보 시트가 열려 있는지 페이지에 알린다. 열린 채 건물을 누르면 페이지가 건물로 날아가 확대하지 않고
-   * 시트 닫기로만 쓰게 한다(sheetDismiss). 옛 map.html 은 이 메시지를 모르니 무시한다.
-   */
-  const otherSheetOpen = selectedReport !== null || selectedPartner !== null || selectedFacilityBuilding !== null;
-  useEffect(() => {
-    postToMap({ type: "sheetOpen", open: otherSheetOpen });
-  }, [otherSheetOpen, postToMap]);
-
-  /** 지도 페이지가 마커를 새로 받으면(setPartners) 선택이 풀린다. 고른 업체가 그 목록에 아직 있으면 다시 강조한다. */
-  const reassertPartnerSelection = useCallback(
-    (partnersOnPage: Partner[]) => {
-      const current = selectedPartnerRef.current;
-      if (current && partnersOnPage.some((p) => p.id === current.id)) {
-        postToMap({ type: "selectPartner", id: current.id });
-      }
-    },
-    [postToMap],
-  );
-
-  /** 제보 시트를 연다. 배너는 모두 같은 자리(아래)에 겹쳐 그려지므로 건물·업체·편의시설 배너는 닫는다. */
-  const openReport = useCallback((report: ReportListItem | null) => {
-    setSelectedBuilding(null);
-    setSelectedFacilityBuilding(null);
-    setSelectedPartner(null);
-    setSelectedReport(report);
-    // 같은 손동작으로 바로 뒤따르는 건물 탭(buildingTap)이 렌더 전에 와도 '방금 제보를 열었다'를 알 수 있게 바로 적어 둔다.
-    if (report) {
-      selectedReportRef.current = report;
-      reportOpenedAtRef.current = Date.now();
-    }
-  }, []);
-
-  /**
    * 건물·제휴·편의시설·제보 시트를 여는 동안에는 아래 탭 막대를 잠시 숨겨 시트를 화면 맨 아래까지 내린다.
    * 시트를 읽는 중엔 탭을 옮길 일이 거의 없고, 탭바가 시트 아래를 받쳐 지도를 더 가렸다. 닫으면 다시 보인다.
    */
@@ -459,25 +422,6 @@ export default function MapScreen() {
   // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
   // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
   const sheetBottom = sheetOpen ? 0 : tabBarHeight;
-
-  /**
-   * 제보 시트가 열려 있는 동안엔 건물 핀이 지도에 남지 않게 한다. 제보 마커(또는 그 이름표)를 누른 손동작이 지도 탭으로도
-   * 넘어가 아래 건물(강당 S동 등) 핀이 같이 켜지는 경우가 있었다. 제보가 열리거나 바뀔 때마다 건물 강조를 거둔다.
-   * 다음 프레임에도 한 번 더 보내, 같은 손동작으로 페이지가 뒤늦게 켠 핀까지 지운다(배포된 map.html 도 아는 메시지).
-   */
-  const selectedReportId = selectedReport?.id ?? null;
-  const reportOpenedAtRef = useRef(0);
-  // 지금 열린 제보를 알려 둔다 — 게스트가 로그인 안내로 떠났다 돌아오면 이 제보를 다시 띄운다(lib/mapIntents).
-  useEffect(() => {
-    setOpenReport(selectedReportId);
-  }, [selectedReportId]);
-  useEffect(() => {
-    if (selectedReportId === null) return;
-    reportOpenedAtRef.current = Date.now();
-    postToMap({ type: "selectBuilding", name: null });
-    const timer = setTimeout(() => postToMap({ type: "selectBuilding", name: null }), 120);
-    return () => clearTimeout(timer);
-  }, [selectedReportId, postToMap]);
 
   const showPreviewPin = useCallback(
     (preview: PreviewTarget) => {
@@ -533,103 +477,7 @@ export default function MapScreen() {
           return;
         }
 
-        if (msg.type === "buildingTap") {
-          // 제보를 연 바로 그 손동작이 건물 탭으로도 들어온 것 — 제보 시트는 두고 건물 핀만 거둔다.
-          if (selectedReportRef.current && Date.now() - reportOpenedAtRef.current < 400) {
-            postToMap({ type: "selectBuilding", name: null });
-            return;
-          }
-          // 제보·제휴·편의시설 시트가 열린 채 지도를 누르면 그 탭은 '시트 닫기'로만 쓴다. 바로 건물 배너까지
-          // 열면 시트가 내려가지 않고 엉뚱한 건물이 눌린 것처럼 보였다. 건물을 보려면 한 번 더 누른다.
-          if (selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current) {
-            setSelectedReport(null);
-            setSelectedPartner(null);
-            setSelectedFacilityBuilding(null);
-            postToMap({ type: "selectBuilding", name: null });
-            return;
-          }
-          const building = buildings.find((b) => b.name === msg.name) ?? null;
-          setSelectedPartner(null);
-          setSelectedFacilityBuilding(null);
-          // 배너는 모두 같은 자리(아래)에 겹쳐 그려진다. 제보 시트를 닫지 않으면 새 건물 배너가 그 밑에 가려진다.
-          setSelectedReport(null);
-          setSelectedBuilding(building);
-          // 앱 데이터에 없는 건물이면 배너가 안 뜬다. 페이지에 핀만 남지 않게 강조도 거둔다.
-          if (!building) postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-
-        if (msg.type === "partnerTap") {
-          const partner = allPartners.find((p) => p.id === msg.id) ?? null;
-          setSelectedBuilding(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedReport(null);
-          setSelectedPartner(partner);
-          // 앱 데이터에 없는 업체면 시트가 안 뜬다. 페이지에 강조만 남지 않게 거둔다.
-          if (!partner) postToMap({ type: "selectPartner", id: null });
-          return;
-        }
-
-        if (msg.type === "reportTap") {
-          openReport(reports.find((r) => r.id === msg.id) ?? null);
-          return;
-        }
-
-        // 지도를 길게 누르면 그 자리에 제보를 남기는 작성창이 열린다.
-        // 좌표는 건물로 스냅되지 않은 원본이고, 근처 건물명은 참고용이다.
-        if (msg.type === "reportLongPress") {
-          // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
-          if (!accessToken) {
-            promptLogin("제보를 남기려면 로그인해 주세요.", logout);
-            return;
-          }
-          setSelectedBuilding(null);
-          setSelectedPartner(null);
-          setSelectedReport(null);
-          setSelectedFacilityBuilding(null);
-          setReportTarget({
-            lat: msg.lat,
-            lng: msg.lng,
-            buildingName: msg.buildingName ?? null,
-          });
-          return;
-        }
-
-        // 편의시설 핀: 건물 소개가 아니라 그 시설이 몇 층 어디에 있는지 보여 준다(FacilitySheet).
-        if (msg.type === "facilityTap") {
-          setSearchedFacility(null);
-          setSelectedPartner(null);
-          setSelectedBuilding(null);
-          setSelectedReport(null);
-          setSelectedFacilityBuilding(msg.buildingName ?? null);
-          return;
-        }
-
-        // 제휴·편의시설·제보 시트가 열린 채 건물을 눌렀다. 그 탭은 시트 닫기로만 쓴다(페이지는 건물 선택·이동을 하지 않았다).
-        if (msg.type === "sheetDismiss") {
-          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
-          leaveBuildingFacilityRef.current();
-          setSelectedReport(null);
-          setSelectedPartner(null);
-          setSelectedFacilityBuilding(null);
-          return;
-        }
-
-        // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
-        if (msg.type === "buildingDismiss") {
-          // 지도 빈 곳을 누르면 열린 시트를 모두 내린다(제보 시트 포함).
-          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
-          leaveBuildingFacilityRef.current();
-          setSelectedBuilding(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedReport(null);
-          return;
-        }
-
-        if (msg.type === "partnerDismiss") {
-          setSelectedPartner(null);
-          return;
-        }
+        if (handleSelectionTap(msg)) return;
 
         if (msg.type === "mapAuthFailure") {
           setMapAuthFailed(true);
@@ -648,7 +496,7 @@ export default function MapScreen() {
         }
       } catch {}
     },
-    [reports, accessToken, logout, buildings, allPartners, postToMap, openReport],
+    [handleSelectionTap, postToMap],
   );
 
 
@@ -983,23 +831,6 @@ export default function MapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData, postToMap]);
 
-
-  /**
-   * 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다.
-   * 목록이 새로 왔을 때만 본다 — 시트를 연 순간에 보면 알림 탭(focusReportFromNotification)이 따로 받아 연
-   * 방금 승인된 제보가, 아직 도착하지 않은 레이어 새 목록 대신 이전 목록과 비교돼 바로 닫힌다.
-   */
-  const selectedReportRef = useRef(selectedReport);
-  selectedReportRef.current = selectedReport;
-  const selectedFacilityBuildingRef = useRef(selectedFacilityBuilding);
-  selectedFacilityBuildingRef.current = selectedFacilityBuilding;
-  useEffect(() => {
-    const current = selectedReportRef.current;
-    if (!current || shownReportData === undefined) return;
-    if (!shownReportData.some((r) => r.id === current.id)) {
-      setSelectedReport(null);
-    }
-  }, [shownReportData]);
 
   /**
    * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
