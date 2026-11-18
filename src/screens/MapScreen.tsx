@@ -34,14 +34,10 @@ import type { ReportTarget } from "../components/map/ReportComposerModal";
 import ReportSheet from "../components/map/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
 import { getLiveReports } from "../apis/reports";
-import { getHotReports, hasCommunityFields } from "../apis/community";
 import HotReportList from "../components/map/HotReportList";
-import { useApiResource } from "../hooks/useApiResource";
 import RetryableError from "../components/common/RetryableError";
 import { useToast } from "../components/common/Toast";
 import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
-import { parseServerTime } from "../utils/serverTime";
-import { useHiddenAuthorKeys, withoutHiddenAuthors } from "../lib/hiddenAuthors";
 import PartnerChips from "../components/map/PartnerChips";
 import PartnerSheet from "../components/map/PartnerSheet";
 import PartnerSearchModal from "../components/map/PartnerSearchModal";
@@ -53,15 +49,7 @@ import { getMapDataSnapshot, useMapData } from "../lib/mapData";
 import { toMarker } from "../utils/partnerMarker";
 import { buildFloorOptions, formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import {
-  fetchWalkApproach,
-  fetchWalkRoutes,
-  pickApproachRoutes,
-  type RouteAlternative,
-  type WalkApproach,
-} from "../apis/routes";
-import { isCancelledError } from "../apis/client";
-import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
+import { type RouteAlternative } from "../apis/routes";
 import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
@@ -86,10 +74,8 @@ import type {
   Partner,
   PartnerAffiliation,
   PartnerCategory,
-  ReportCategory,
   ReportListItem,
 } from "../types";
-import { REPORT_CATEGORIES } from "../constants/reportCategories";
 import { haversineMeters } from "../utils/geo";
 import { useCenteredGutter } from "../hooks/useCenteredGutter";
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from "../lib/nearbyPartners/debug";
@@ -112,13 +98,10 @@ import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
 import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
 import MapSheets from "../components/map/sheets/MapSheets";
 import { useLiveLocation } from "../hooks/map/useLiveLocation";
+import { useRouteData } from "../hooks/map/useRouteData";
+import { REPORT_CATEGORY_KEYS, useMapReports } from "../hooks/map/useMapReports";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
-/** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
-const EMPTY_REPORTS: ReportListItem[] = [];
-/** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
-const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key);
-const ALL_REPORT_CATEGORIES: ReadonlySet<ReportCategory> = new Set(REPORT_CATEGORY_KEYS);
 
 /** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
 interface PreviewTarget {
@@ -136,6 +119,12 @@ function buildingLabel(building: Building, floor: number | null): string {
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
+  // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
+  const postToMap = useCallback((msg: object) => {
+    webViewRef.current?.injectJavaScript(
+      `if (typeof window.handleNativeMessage === "function") window.handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
+    );
+  }, []);
   const { accessToken, logout } = useAuth();
   // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
   // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
@@ -252,83 +241,36 @@ export default function MapScreen() {
   /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
   const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
   const [pickerCenter, setPickerCenter] = useState<PickerCenter | null>(null);
-  // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
-  // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
-  // 지도 탭에선 늘 켜 둔다 — 제보가 앱의 주 기능이라(10-18). 끄는 스위치는 없고 메뉴에서 종류·HOT 만 고른다(10-27).
-  const [reportsOn, setReportsOn] = useState(true);
-  /**
-   * '🔥 HOT' 칩. 켜면 제보 레이어를 HOT·인기 제보(`GET /reports?sort=hot`, 최근 60분 🔥 순)로만 채우고 위에 짧은 목록을 띄운다.
-   * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
-   */
-  const [hotOnly, setHotOnly] = useState(false);
-  /** 지도에 보일 제보 종류(메뉴의 종류 칩, 여러 개 고름). 처음엔 전부. 받아 온 목록을 기기에서 좁힌다. */
-  const [reportCategories, setReportCategories] = useState<ReadonlySet<ReportCategory>>(ALL_REPORT_CATEGORIES);
-  const reportsNarrowed = reportCategories.size < ALL_REPORT_CATEGORIES.size;
-  /** 서버가 🔥 를 아는지(목록 항목에 fireCount 가 오는지). 모르면 HOT 칩을 숨긴다(커뮤니티 기능 배포 전). */
-  const [hotAvailable, setHotAvailable] = useState(false);
-  // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
-  const reportsResource = useApiResource(
-    async (signal) =>
-      hotOnly
-        ? visibleReports(await getHotReports({ accessToken, signal }))
-        : // 3일(72시간) 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
-          visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
-    [accessToken, hotOnly],
-    { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
-  );
-  useEffect(() => {
-    if (!hotOnly && hasCommunityFields(reportsResource.data)) setHotAvailable(true);
-  }, [reportsResource.data, hotOnly]);
-  // 숨긴 사용자(기기 저장)의 제보는 지도에서 뺀다. 숨기는 순간 마커도 다시 그린다.
-  const hiddenAuthorKeys = useHiddenAuthorKeys();
-  const fetchedReportData = useMemo(
-    () =>
-      reportsResource.data === undefined
-        ? undefined
-        : withoutHiddenAuthors(reportsResource.data, hiddenAuthorKeys),
-    [reportsResource.data, hiddenAuthorKeys],
-  );
-  /**
-   * 지금 들고 있는 제보 목록이 어느 HOT 상태로 받은 것인지. HOT 을 켜고 끄면 새 목록이 오기 전까지 앞 목록이 남아,
-   * HOT 목록에 HOT 이 아닌 제보가 잠깐 끼거나 '제보가 없어요' 안내가 반짝였다. 상태가 맞을 때만 목록·안내를 그린다.
-   */
-  const hotOnlyRef = useRef(hotOnly);
-  hotOnlyRef.current = hotOnly;
-  const [reportsDataHotOnly, setReportsDataHotOnly] = useState(hotOnly);
-  useEffect(() => {
-    setReportsDataHotOnly(hotOnlyRef.current);
-  }, [reportsResource.data]);
-  const reportsMatchHot = reportsDataHotOnly === hotOnly;
-  /**
-   * '제보를 불러오는 중…' 줄은 0.4초 넘게 걸릴 때만 띄운다. 금방 오는 경우엔 이 줄이 한 번 반짝이고
-   * 바로 'HOT 제보가 없어요' 같은 결과 안내로 바뀌어, 문구가 두 번 뜨는 것처럼 보였다.
-   */
-  const reportsLoading = reportsResource.loading;
-  const [showReportsLoading, setShowReportsLoading] = useState(false);
-  useEffect(() => {
-    if (!reportsLoading) {
-      setShowReportsLoading(false);
-      return;
-    }
-    const timer = setTimeout(() => setShowReportsLoading(true), 400);
-    return () => clearTimeout(timer);
-  }, [reportsLoading]);
-  // HOT 을 켰는데 아직 전체 목록뿐이면, HOT 목록이 오기 전에도 HOT 인 제보만 남긴다(HOT 아닌 마커가 잠깐 남았다 사라지지 않게).
-  const hotReportData = useMemo(
-    () =>
-      fetchedReportData !== undefined && hotOnly && !reportsMatchHot
-        ? fetchedReportData.filter((report) => report.hot === true)
-        : fetchedReportData,
-    [fetchedReportData, hotOnly, reportsMatchHot],
-  );
-  const shownReportData = useMemo(
-    () =>
-      hotReportData !== undefined && reportsNarrowed
-        ? hotReportData.filter((report) => reportCategories.has(report.category))
-        : hotReportData,
-    [hotReportData, reportsNarrowed, reportCategories],
-  );
-  const reports = shownReportData ?? EMPTY_REPORTS;
+  // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
+  const {
+    reportsOn,
+    hotOnly,
+    hotAvailable,
+    reportCategories,
+    resource: reportsResource,
+    hiddenAuthorKeys,
+    shown: shownReportData,
+    reports,
+    matchesHot: reportsMatchHot,
+    showLoading: showReportsLoading,
+    empty: reportsEmpty,
+    toggleHot: handleToggleHot,
+    toggleCategory: handleToggleReportCategory,
+    showAll: showAllReports,
+    refetch: refetchReports,
+  } = useMapReports({
+    accessToken,
+    postToMap,
+    onToggleHot: (next) => {
+      setSelectedReport(null);
+      if (next) {
+        setSelectedPartner(null);
+        setSelectedBuilding(null);
+        setSelectedFacilityBuilding(null);
+      }
+    },
+    onCategoriesChange: () => setSelectedReport(null),
+  });
   const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
     null,
   );
@@ -399,48 +341,8 @@ export default function MapScreen() {
   // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
   const mapHTML = useMemo(() => buildMapHTML(getMapDataSnapshot()?.buildings ?? []), []);
 
-  /**
-   * 길찾기는 서버가 계산한다(11-09, GET /map/routes). 받기 전에는 비어 있고, 받지 못하면(오프라인·오류) 직선 어림 하나로 대신한다.
-   * 내 위치 출발은 위치를 보내지 않는다 — 도착까지의 길 묶음(GET /map/routes/approach)을 받아 휴대폰이 내 위치에서 가까운 길 점을 골라 잇는다.
-   */
-  const routesKey =
-    !fromMyLocation && fromBuilding && toBuilding ? `${fromBuilding.id}|${fromFloor}|${toBuilding.id}|${toFloor}` : null;
-  const approachKey = fromMyLocation && toBuilding ? `${toBuilding.id}|${toFloor}` : null;
-  const [serverRoutes, setServerRoutes] = useState<{ key: string; routes: RouteAlternative[] | null } | null>(null);
-  const [approach, setApproach] = useState<{ key: string; data: WalkApproach | null } | null>(null);
-  useEffect(() => {
-    if (!routesKey || !fromBuilding || !toBuilding) return;
-    const controller = new AbortController();
-    fetchWalkRoutes({ from: fromBuilding, fromFloor, to: toBuilding, toFloor, signal: controller.signal })
-      .then((routes) => setServerRoutes({ key: routesKey, routes: routes.length > 0 ? routes : null }))
-      .catch((error) => {
-        if (!isCancelledError(error) && !controller.signal.aborted) setServerRoutes({ key: routesKey, routes: null });
-      });
-    return () => controller.abort();
-    // routesKey 가 건물 id·층을 모두 담는다(같은 건물이 새로 받아져도 다시 묻지 않게).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routesKey]);
-  useEffect(() => {
-    if (!approachKey || !toBuilding) return;
-    const controller = new AbortController();
-    fetchWalkApproach({ to: toBuilding, toFloor, signal: controller.signal })
-      .then((data) => setApproach({ key: approachKey, data }))
-      .catch((error) => {
-        if (!isCancelledError(error) && !controller.signal.aborted) setApproach({ key: approachKey, data: null });
-      });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [approachKey]);
-
-  const routeAlternatives = useMemo<RouteAlternative[]>(() => {
-    if (fromMyLocation && toBuilding) {
-      if (!routeOrigin || approach?.key !== approachKey) return [];
-      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin, buildings) : [];
-      return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
-    }
-    if (!fromBuilding || !toBuilding || serverRoutes?.key !== routesKey) return [];
-    return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey, buildings]);
+  // 길찾기 후보 길(서버 계산, 내 위치 출발은 길 묶음을 받아 휴대폰에서 고른다).
+  const routeAlternatives = useRouteData({ fromBuilding, fromFloor, toBuilding, toFloor, fromMyLocation, routeOrigin, buildings });
 
 
   const activeFilter = useMemo<PartnerFilter>(
@@ -485,20 +387,7 @@ export default function MapScreen() {
   const isEmptyResult =
     hasActiveFilter(activeFilter) && visiblePartners.length === 0;
 
-  /** 제보 레이어를 켰는데 지금 진행 중인 제보가 하나도 없는 상태. */
-  const reportsEmpty =
-    reportsOn &&
-    reportsMatchHot &&
-    reportsResource.data !== undefined &&
-    reportsResource.errorMessage === null &&
-    reports.length === 0;
 
-  // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
-  const postToMap = useCallback((msg: object) => {
-    webViewRef.current?.injectJavaScript(
-      `if (typeof window.handleNativeMessage === "function") window.handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
-    );
-  }, []);
 
   /**
    * 건물 배너가 닫히면(제보·제휴·편의시설을 누르거나 HOT 목록·링크로 제보를 열어서) 지도 페이지의 건물 강조도 거둔다.
@@ -1350,111 +1239,6 @@ export default function MapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData, postToMap]);
 
-  /**
-   * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
-   * 새로 받은 목록에 또 예정 제보가 있으면 다음 시작 시각으로 다시 맞춰진다.
-   */
-  const nextUpcomingStart = useMemo(() => {
-    const now = Date.now();
-    let next = Infinity;
-    for (const report of shownReportData ?? EMPTY_REPORTS) {
-      const start = parseServerTime(report.startsAt);
-      if (start > now && start < next) next = start;
-    }
-    return Number.isFinite(next) ? next : null;
-  }, [shownReportData]);
-  const retryReports = reportsResource.retry;
-  useEffect(() => {
-    if (!reportsOn || nextUpcomingStart === null) return;
-    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(3일 안).
-    const timer = setTimeout(() => retryReports(), Math.max(0, nextUpcomingStart - Date.now()) + 5000);
-    return () => clearTimeout(timer);
-  }, [reportsOn, nextUpcomingStart, retryReports]);
-
-  /**
-   * 제보 핀 둘째 줄('오늘 14:00 시작'·'운영 중'·'곧 종료', 11-08)은 시간이 흐르며 바뀐다. 1분마다 다시 만들어 보고
-   * 달라졌을 때만 다시 그린다(같으면 핀을 다시 그리지 않아 깜빡이지 않는다).
-   */
-  const [reportClock, setReportClock] = useState(() => Date.now());
-  useEffect(() => {
-    if (!reportsOn) return;
-    const timer = setInterval(() => setReportClock(Date.now()), 60_000);
-    return () => clearInterval(timer);
-  }, [reportsOn]);
-  const lastReportMarkersRef = useRef<string | null>(null);
-
-  /** 제보를 새로 받을 때마다(그리고 핀 글이 바뀔 때) 지도에 올린다. */
-  useEffect(() => {
-    if (!reportsOn || shownReportData === undefined) {
-      // 다시 켰을 때 같은 목록이어도 그리도록 잊는다.
-      lastReportMarkersRef.current = null;
-      return;
-    }
-    const markers = toReportMarkers(shownReportData, reportClock);
-    const key = JSON.stringify(markers);
-    if (key === lastReportMarkersRef.current) return;
-    lastReportMarkersRef.current = key;
-    postToMap({ type: "setReports", markers });
-  }, [reportsOn, shownReportData, reportClock, postToMap]);
-
-  /**
-   * 'HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 전체 제보 보기로 돌아간다('제보' 칩이 켜진 상태).
-   * 예전엔 다시 누르면 제보 레이어까지 꺼져 지도가 텅 비었다(10-06). 마커는 지우지 않고 새 목록이 오면 바꿔 그린다 —
-   * 미리 지우면 같은 데이터가 다시 올 때 그리기 효과가 돌지 않아 지도가 빈 채로 남을 수 있다.
-   */
-  const handleToggleHot = useCallback(() => {
-    const next = !hotOnly;
-    setHotOnly(next);
-    setReportsOn(true);
-    setSelectedReport(null);
-    if (next) {
-      setSelectedPartner(null);
-      setSelectedBuilding(null);
-      setSelectedFacilityBuilding(null);
-    }
-  }, [hotOnly]);
-
-  /**
-   * 메뉴의 제보 종류 칩(여러 개 고름). 누를 때마다 그 종류만 넣고 뺀다. 제보는 지도에 늘 켜 두므로(10-27)
-   * 마지막 하나는 뺄 수 없다 — 다 빼면 지도가 비어 고장처럼 보인다. 열려 있던 제보 시트는 닫는다(목록에서 빠질 수 있다).
-   */
-  const handleToggleReportCategory = useCallback(
-    (category: ReportCategory) => {
-      if (reportCategories.size === 1 && reportCategories.has(category)) return;
-      setSelectedReport(null);
-      const next = new Set(reportCategories);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      setReportCategories(next);
-    },
-    [reportCategories],
-  );
-
-  /** 제보를 켜 두면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
-  useEffect(() => {
-    if (!reportsOn || hotAvailable) return;
-    const controller = new AbortController();
-    getLiveReports({ accessToken, signal: controller.signal })
-      .then((list) => {
-        if (!controller.signal.aborted && hasCommunityFields(list)) setHotAvailable(true);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [reportsOn, hotAvailable, accessToken]);
-
-  /**
-   * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
-   * 서버 목록에서 빠지는데, 예전엔 앱을 백그라운드에 보냈다 와야만 다시 받아서 지도에 계속 남았다.
-   */
-  const refetchReports = reportsResource.retry;
-  useFocusEffect(
-    useCallback(() => {
-      if (!reportsOn) return;
-      refetchReports();
-      const timer = setInterval(refetchReports, 60_000);
-      return () => clearInterval(timer);
-    }, [reportsOn, refetchReports]),
-  );
 
   /**
    * 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다.
@@ -1534,10 +1318,7 @@ export default function MapScreen() {
       // 제보는 갈래(제휴·학교 시설)와 따로라 보던 칩은 그대로 둔다(10-27).
       // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
       // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다). 종류도 같은 까닭으로 전부 켠다.
-      setHotOnly(false);
-      setReportCategories(ALL_REPORT_CATEGORIES);
-      if (reportsOn) reportsResource.retry();
-      else setReportsOn(true);
+      showAllReports();
       try {
         const live = visibleReports(await getLiveReports({ accessToken, includeUpcoming: true }));
         if (request !== focusRequestRef.current) return;
