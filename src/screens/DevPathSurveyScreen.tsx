@@ -1,69 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { useMemo, useRef, useState } from 'react'
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
 import { buildMapHTML } from '../utils/mapHtml'
 import { useMapData } from '../lib/mapData'
 import { PATH_WAYPOINTS } from '../constants/pathNodes'
-import {
-  addCustomColor,
-  addEdge,
-  addNode,
-  createModule,
-  deleteModule,
-  findModule,
-  finishModule,
-  hasModuleEdge,
-  loadStore,
-  moveNode,
-  moveNodeOntoEdge,
-  NODE_KIND_INFO,
-  removeEdgeBetween,
-  referenceSpecialNode,
-  removeNode,
-  reopenModule,
-  saveStore,
-  setEdgeKind,
-  setNodeKind,
-  setEdgeMemo,
-  setNodeMemo,
-  updateModule,
-  type SurveyModule,
-  type SurveyNodeKind,
-  type SurveyStore,
-} from '../utils/pathSurveyStore'
-import {
-  applyImport,
-  describePlan,
-  dropLocallyDeleted,
-  fetchGistBundle,
-  hasUnsyncedChanges,
-  loadGistMeta,
-  loadGistSettings,
-  metaAfterSync,
-  parseBundle,
-  planImport,
-  pushConflicts,
-  pushGistBundle,
-  saveGistMeta,
-  saveGistSettings,
-  type GistMeta,
-  type GistSettings,
-  type ImportPlan,
-} from '../utils/pathSurveySync'
+import { addCustomColor, findModule, loadStore, setEdgeKind, setEdgeMemo, setNodeKind, setNodeMemo, updateModule } from '../utils/pathSurveyStore'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
+import { useGistSync } from '../hooks/pathSurvey/useGistSync'
+import { useModuleActions } from '../hooks/pathSurvey/useModuleActions'
+import { useNoIndexPage, useSurveyV2Edits, useSurveyV2MapRender, useSurveyV2Selection } from '../hooks/pathSurvey/useSurveyV2Map'
+import { useSurveyV2Store } from '../hooks/pathSurvey/useSurveyV2Store'
 import { buildLegacyOverlay } from './pathSurvey/legacyOverlay'
-import EdgePanel from './pathSurvey/EdgePanel'
+import EditTab from './pathSurvey/EditTab'
 import ModulePanel from './pathSurvey/ModulePanel'
 import ModuleProps from './pathSurvey/ModuleProps'
 import TransferPanel from './pathSurvey/TransferPanel'
 import GistPanel from './pathSurvey/GistPanel'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
-import Legend from './pathSurvey/Legend'
-import { parseSurveyMessage, SETUP_JS } from './pathSurvey/mapBridge'
-import { bootNotice, buildSurveyRenderState, MODES, TABS, type Mode, type Tab } from './pathSurvey/screenModel'
-import { Btn, Check, confirmAction, Row, Section, shortId, ui } from './pathSurvey/ui'
+import { bootNotice, TABS, type Tab } from './pathSurvey/screenModel'
+import { Btn } from './pathSurvey/ui'
 
 const initialLoad = () => loadStore(PATH_WAYPOINTS)
 
@@ -71,6 +28,7 @@ const initialLoad = () => loadStore(PATH_WAYPOINTS)
  * 개발용 `/dev/path-survey` — 현장에서 지도를 보며 경로망을 '모듈'(한 층위의 지점·간선 묶음) 단위로 찍는다.
  * 기존 경로망(pathNodes.ts)은 보기 전용 회색 오버레이다. 편집 중인 모듈만 진하게, 나머지는 흐리게 그린다.
  * 조사 내용은 웹 localStorage(hongikon.pathSurvey.v2)에 자동 저장된다. 예전 v1 초안은 처음 열 때 '미분류' 모듈로 옮겨진다.
+ * 상태와 핸들러는 hooks/pathSurvey/* 에, 지도 스크립트·그리기 상태는 pathSurvey/mapBridge·screenModel 에 있다.
  */
 export default function DevPathSurveyScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null)
@@ -80,434 +38,63 @@ export default function DevPathSurveyScreen() {
   const wide = width >= 900
 
   const [boot] = useState(initialLoad)
-  const [store, setStore] = useState<SurveyStore>(boot.store)
-  const storeRef = useRef(store)
-  const historyRef = useRef<SurveyStore[]>([])
-  const [mode, setMode] = useState<Mode>('add')
   const [tab, setTab] = useState<Tab>('edit')
-  const [chain, setChain] = useState(true)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [pending, setPending] = useState<string | null>(null)
-  const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
-  const [hidden, setHidden] = useState<Record<string, boolean>>({})
-  const [detailId, setDetailId] = useState<string | null>(() => boot.store.activeModuleId ?? boot.store.modules[0]?.id ?? null)
   const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(DEFAULT_LEGACY)
-  const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState(() => bootNotice(boot))
-  const [gistSettings, setGistSettings] = useState<GistSettings>(() => loadGistSettings())
-  const [gistMeta, setGistMeta] = useState<GistMeta>(() => loadGistMeta())
-  const [online, setOnline] = useState(() => (globalThis as any).navigator?.onLine !== false)
-  const [gistBusy, setGistBusy] = useState(false)
-  const [gistStatus, setGistStatus] = useState('')
-  const [gistError, setGistError] = useState('')
-  /** v2 를 읽지 못했으면 이 탭에서는 저장하지 않는다(사람이 확인하기 전에 덮어쓰지 않게). */
-  const saveBlocked = boot.corrupt
 
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const meta = document.createElement('meta')
-    meta.name = 'robots'
-    meta.content = 'noindex, nofollow'
-    document.head.appendChild(meta)
-    document.title = '경로망 조사 | 홍익온'
-    return () => {
-      meta.remove()
-    }
-  }, [])
+  const { store, storeRef, commit, editActive, undo } = useSurveyV2Store({ boot, setNotice })
+  const selection = useSurveyV2Selection()
+  const { mode, setMode, chain, setChain, selected, setSelected, pending, setPending, selectedEdge, setSelectedEdge, clearSelection } = selection
+  const modules = useModuleActions({
+    storeRef,
+    commit,
+    initialDetailId: boot.store.activeModuleId ?? boot.store.modules[0]?.id ?? null,
+    clearSelection,
+    setTab,
+    setNotice,
+  })
+  const { hidden, detailId } = modules
+  const sync = useGistSync({ store, storeRef, commit, clearSelection, setNotice })
+
+  useNoIndexPage('경로망 조사 | 홍익온')
 
   const overlay = useMemo(() => buildLegacyOverlay(buildings), [buildings])
   const active = findModule(store, store.activeModuleId)
 
-  /** 되돌리기 기록을 남기며 저장소를 바꾼다. */
-  const commit = useCallback(
-    (next: SurveyStore, record = true) => {
-      if (next === storeRef.current) return
-      if (record) historyRef.current = [...historyRef.current.slice(-49), storeRef.current]
-      storeRef.current = next
-      setStore(next)
-      if (!saveBlocked) saveStore(next)
-    },
-    [saveBlocked],
-  )
-
-  /** 편집 중인 모듈만 바꾼다. 없으면 안내만 한다. */
-  const editActive = (fn: (m: SurveyModule) => SurveyModule, record = true): boolean => {
-    const s = storeRef.current
-    if (!findModule(s, s.activeModuleId)) {
-      setNotice('편집 중인 모듈이 없어요. "모듈" 탭에서 새 모듈을 시작하거나 이어서 편집할 모듈을 고르세요.')
-      return false
-    }
-    commit(updateModule(s, s.activeModuleId!, fn), record)
-    return true
-  }
-
-  const undo = () => {
-    const prev = historyRef.current.pop()
-    if (!prev) return setNotice('되돌릴 게 없어요')
-    commit(prev, false)
-    setNotice('')
-  }
-
-  const onTap = (lat: number, lng: number) => {
-    let newId = ''
-    const linkFrom = chain ? selected : null
-    const ok = editActive((m) => {
-      const r = addNode(m, lat, lng, linkFrom)
-      newId = r.id
-      return r.module
-    })
-    if (!ok) return
-    setSelected(newId)
-    setSelectedEdge(null)
-    setNotice(`${shortId(newId)} 추가${linkFrom ? ` · ${shortId(linkFrom)}와 이었어요` : ''}`)
-  }
-
-  const onNodePress = (id: string, moduleId: string) => {
-    const current = storeRef.current
-    if (!current.activeModuleId) return
-    const wasPlain = moduleId !== current.activeModuleId && !findModule(current, moduleId)?.nodes.find((n) => n.id === id)?.kind
-    const referenced = referenceSpecialNode(current, current.activeModuleId, moduleId, id, Date.now(), mode === 'link')
-    if (!referenced) return
-    let next = referenced.store
-    const localId = referenced.id
-    setSelected(localId)
-    setSelectedEdge(null)
-    setTab('edit')
-    if (mode === 'link') {
-      if (pending && pending !== localId) {
-        next = updateModule(next, current.activeModuleId, (m) => {
-          if (!m.nodes.some((n) => n.id === pending)) return m
-          return hasModuleEdge(m, pending, localId) ? removeEdgeBetween(m, pending, localId) : addEdge(m, pending, localId)
-        })
-        setNotice(`${shortId(pending)} — ${shortId(localId)} 간선을 변경했어요`)
-      } else if (next !== current && wasPlain) setNotice('다른 모듈의 지점을 계단 끝으로 표시하고 이 모듈에서 참조해요. 다음 지점을 눌러 잇고, 그 간선을 계단으로 바꾸세요.')
-      else if (next !== current) setNotice('특수 지점을 이 모듈에서 참조해요. 다음 지점을 누르면 간선으로 이어져요.')
-      setPending(pending === localId ? null : localId)
-    }
-    commit(next)
-  }
-
-  const deleteSelected = () => {
-    if (!selected) return
-    editActive((m) => removeNode(m, selected))
-    setNotice(`${shortId(selected)}의 지점 또는 참조와 이 모듈의 연결 간선을 지웠어요`)
-    setSelected(null)
-    setPending(null)
-  }
-
-  const onEdgePress = (id: string) => {
-    setSelectedEdge(id)
-    setSelected(null)
-    setPending(null)
-    setTab('edit')
-  }
-
-  const deleteEdge = (id: string) => {
-    editActive((m) => ({ ...m, edges: m.edges.filter((e) => e.id !== id) }))
-    setSelectedEdge(null)
-    setNotice('간선을 지웠어요')
-  }
-
-  const clearSelection = () => {
-    setSelected(null)
-    setSelectedEdge(null)
-    setPending(null)
-  }
-
-  const startModule = () => {
-    const { store: next, module } = createModule(storeRef.current)
-    commit(next)
-    clearSelection()
-    setDetailId(module.id)
-    setTab('edit')
-    setNotice(`'${module.name}' 를 시작했어요. 지도를 눌러 지점을 찍으세요. 이름·장소는 "모듈" 탭에서 정해요.`)
-  }
-
-  /** 모듈 마치기: 이어 찍기를 끊고(선택 해제) done 으로. 장소가 없으면 바꾸지 않고 이유를 알린다. */
-  const finish = (id: string) => {
-    const { store: next, problems } = finishModule(storeRef.current, id)
-    if (problems.length) {
-      setDetailId(id)
-      setTab('modules')
-      return setNotice(`아직 마칠 수 없어요 · ${problems.join(' · ')}`)
-    }
-    commit(next)
-    clearSelection()
-    setNotice(`'${findModule(next, id)?.name}' 를 마쳤어요. 고치려면 "다시 편집"을 누르세요.`)
-  }
-
-  const reopen = (id: string) => {
-    commit(reopenModule(storeRef.current, id))
-    setHidden((h) => ({ ...h, [id]: false }))
-    clearSelection()
-    setDetailId(id)
-    setNotice(`'${findModule(storeRef.current, id)?.name}' 를 편집해요`)
-  }
-
-  const rename = (id: string, name: string) => commit(updateModule(storeRef.current, id, (m) => ({ ...m, name })), false)
-
-  const removeModule = (id: string) => {
-    const m = findModule(storeRef.current, id)
-    if (!m) return
-    if (!confirmAction(`'${m.name}' 모듈을 지울까요? 지점 ${m.nodes.length} · 간선 ${m.edges.length} 이 함께 지워져요. (되돌리기로 살릴 수 있어요)`)) return
-    const wasActive = id === storeRef.current.activeModuleId
-    commit(deleteModule(storeRef.current, id))
-    if (wasActive) clearSelection()
-    setDetailId(storeRef.current.modules[0]?.id ?? null)
-    setNotice(`'${m.name}' 를 지웠어요`)
-  }
-
-  /** 계획을 적용한다. 같은 id 가 더 최신이면 덮어쓰기 전에 묻는다(취소하면 새 모듈만). 적용한 저장소를 돌려준다. */
-  const applyPlan = (plan: ImportPlan, extra = ''): SurveyStore | null => {
-    if (plan.added.length === 0 && plan.newer.length === 0) {
-      setNotice(`가져올 새 내용이 없어요 · ${describePlan(plan)}${extra}`)
-      return null
-    }
-    const overwrite =
-      plan.newer.length > 0 &&
-      confirmAction(`${describePlan(plan)}${extra}\n\n더 최신인 모듈로 이 기기의 같은 모듈을 덮어쓸까요? 취소하면 새 모듈만 추가해요.`)
-    const next = applyImport(storeRef.current, plan, overwrite)
-    if (!findModule(next, next.activeModuleId)) clearSelection()
-    commit(next)
-    setNotice(`가져왔어요 · 새 모듈 ${plan.added.length}${plan.newer.length ? ` · 덮어쓴 모듈 ${overwrite ? plan.newer.length : 0}` : ''}${extra}`)
-    return next
-  }
-
-  /** 내보낸 JSON 가져오기. */
-  const runImport = (text: string) => {
-    let incoming
-    try {
-      incoming = parseBundle(text)
-    } catch (e) {
-      return setNotice(`가져오지 못했어요 · ${(e as Error).message}`)
-    }
-    applyPlan(planImport(storeRef.current, incoming))
-  }
-
-  const saveSettings = (next: GistSettings) => {
-    saveGistSettings(next)
-    setGistSettings(next)
-    setGistError('')
-    setGistStatus(next.token ? '설정을 이 기기에 저장했어요' : '이 기기에서 토큰과 gist id 를 지웠어요')
-  }
-
-  /**
-   * Gist 로 올리기. 먼저 원격을 읽어 모듈별 updatedAt 을 비교하고, 원격이 더 최신이거나 다른 기기에서 만든 모듈이 있으면
-   * 덮어쓰기 전에 확인한다. 실패하면 사유만 보여 주고 이 기기의 조사 내용(localStorage)은 그대로 둔다.
-   */
-  const pushGist = async () => {
-    if (!online) return setGistError('오프라인이에요. 변경은 이 기기에 저장돼 있으니 온라인이 되면 다시 눌러 주세요.')
-    setGistBusy(true)
-    setGistError('')
-    setGistStatus('')
-    try {
-      const local = storeRef.current
-      if (gistSettings.gistId) {
-        const remote = await fetchGistBundle(gistSettings)
-        const c = pushConflicts(local, remote?.modules ?? [], gistMeta)
-        if (c.remoteNewer.length || c.remoteOnly.length) {
-          const lines = [
-            ...(c.remoteNewer.length ? [`Gist 쪽이 더 최신인 모듈 ${c.remoteNewer.length}: ${c.remoteNewer.map((m) => m.name).join(', ')}`] : []),
-            ...(c.remoteOnly.length ? [`Gist 에만 있는 모듈 ${c.remoteOnly.length}: ${c.remoteOnly.map((m) => m.name).join(', ')}`] : []),
-          ]
-          if (!confirmAction(`${lines.join('\n')}\n\n올리면 Gist 의 이 내용이 이 기기 것으로 바뀌어 사라져요. 먼저 "불러오기"를 권해요. 그래도 올릴까요?`)) {
-            setGistStatus('올리기를 멈췄어요. 불러오기로 먼저 합쳐 주세요.')
-            return
-          }
-        }
-      }
-      const id = await pushGistBundle(gistSettings, local)
-      if (id !== gistSettings.gistId) {
-        const next = { ...gistSettings, gistId: id }
-        saveGistSettings(next)
-        setGistSettings(next)
-      }
-      const meta = metaAfterSync(local)
-      saveGistMeta(meta)
-      setGistMeta(meta)
-      setGistStatus(`올렸어요 · 모듈 ${local.modules.length}${id !== gistSettings.gistId ? ' · 비공개 Gist 를 새로 만들었어요' : ''}`)
-    } catch (e) {
-      setGistError(`올리지 못했어요 · ${(e as Error).message}`)
-    } finally {
-      setGistBusy(false)
-    }
-  }
-
-  /** Gist 에서 불러와 합치기. 마지막 동기화 뒤 이 기기에서 지운 모듈은 되살리지 않는다. */
-  const pullGist = async () => {
-    if (!online) return setGistError('오프라인이에요. 온라인이 되면 다시 눌러 주세요.')
-    setGistBusy(true)
-    setGistError('')
-    setGistStatus('')
-    try {
-      const remote = await fetchGistBundle(gistSettings)
-      if (!remote) return setGistStatus('Gist 에 아직 조사 파일이 없어요. 먼저 올려 주세요.')
-      const { plan, skipped } = dropLocallyDeleted(planImport(storeRef.current, remote), gistMeta)
-      const extra = skipped.length ? ` · 이 기기에서 지운 모듈 ${skipped.length}개는 되살리지 않았어요` : ''
-      const next = applyPlan(plan, extra) ?? storeRef.current
-      const remoteById = new Map(remote.modules.map((m) => [m.id, m]))
-      const localAhead = next.modules.some((m) => (remoteById.get(m.id)?.updatedAt ?? -1) < m.updatedAt)
-      const meta = { ...metaAfterSync(next, remote.modules), syncedStoreUpdatedAt: localAhead ? gistMeta.syncedStoreUpdatedAt : next.updatedAt }
-      saveGistMeta(meta)
-      setGistMeta(meta)
-      setGistStatus(`불러왔어요 · Gist 모듈 ${remote.modules.length}${localAhead ? ' · 이 기기에 더 최신인 모듈이 있어 올리기가 필요해요' : ''}`)
-    } catch (e) {
-      setGistError(`불러오지 못했어요 · ${(e as Error).message}`)
-    } finally {
-      setGistBusy(false)
-    }
-  }
-
-  const dirty = hasUnsyncedChanges(store, gistMeta)
-  const dirtyRef = useRef(dirty)
-  dirtyRef.current = dirty
-
-  // 오프라인이면 변경 표시만 남기고, 온라인으로 돌아오면 올리지 않은 변경이 있을 때 안내한다.
-  useEffect(() => {
-    const w = globalThis as any
-    if (typeof w.addEventListener !== 'function') return
-    const on = () => {
-      setOnline(true)
-      if (dirtyRef.current && loadGistSettings().token) setNotice('다시 온라인이에요. 올리지 않은 변경이 있어요 — "동기화" 탭에서 올리기를 눌러 주세요.')
-    }
-    const off = () => setOnline(false)
-    w.addEventListener('online', on)
-    w.addEventListener('offline', off)
-    return () => {
-      w.removeEventListener('online', on)
-      w.removeEventListener('offline', off)
-    }
-  }, [])
-
-  // 지도에서 온 이벤트. 최신 상태를 보게 매번 갱신한 함수를 ref 로 부른다.
-  const handlerRef = useRef<(event: unknown) => void>(() => {})
-  handlerRef.current = (event) => {
-    const msg = parseSurveyMessage(event)
-    if (!msg) return
-    if (msg.type === 'tap' && mode === 'add') onTap(msg.lat, msg.lng)
-    else if (msg.type === 'node') onNodePress(msg.id, msg.moduleId ?? storeRef.current.activeModuleId)
-    else if (msg.type === 'edge') onEdgePress(msg.id)
-    else if (msg.type === 'move' && mode === 'move' && Number.isFinite(msg.lat) && Number.isFinite(msg.lng)) {
-      const current = storeRef.current
-      if (!current.activeModuleId) return
-      const referenced = referenceSpecialNode(current, current.activeModuleId, msg.moduleId ?? current.activeModuleId, msg.id)
-      if (!referenced) return
-      const id = referenced.id
-      let split = false
-      const next = updateModule(referenced.store, current.activeModuleId, (m) => {
-        if (msg.edgeId) {
-          const result = moveNodeOntoEdge(m, id, msg.edgeId, msg.lat, msg.lng)
-          split = result !== m
-          if (split) return result
-        }
-        return moveNode(m, id, msg.lat, msg.lng)
-      })
-      commit(next)
-      setSelected(id)
-      setSelectedEdge(null)
-      setPending(null)
-      setNotice(split ? `${shortId(id)}를 간선 위로 옮기고 간선을 둘로 나눴어요` : `${shortId(id)}의 위치를 옮겼어요${referenced.store.modules.find((m) => m.id === current.activeModuleId)?.nodes.find((n) => n.id === id)?.sharedId ? ' · 공유 모듈에도 반영했어요' : ''}`)
-    }
-  }
-
-  const lastRenderRef = useRef('')
-  const handleReady = useCallback(() => {
-    webViewRef.current?.injectJavaScript(SETUP_JS)
-    lastRenderRef.current = ''
-    setReady(true)
-  }, [])
-
-  // 상태가 바뀔 때마다 지도에 다시 그린다.
-  useEffect(() => {
-    if (!ready) return
-    const state = JSON.stringify(buildSurveyRenderState({ store, active, hidden, legacyToggles, overlay, selected, pending, selectedEdge, mode }))
-    // 메모·이름을 칠 때마다 저장소가 바뀌지만 지도에 그릴 내용은 그대로라 다시 그리지 않는다(폰에서 글자 입력이 끊기지 않게).
-    if (state === lastRenderRef.current) return
-    lastRenderRef.current = state
-    webViewRef.current?.injectJavaScript(`window.__surveyRender && window.__surveyRender(${state}); true;`)
-  }, [ready, store, selected, pending, selectedEdge, mode, hidden, legacyToggles, overlay])
+  const { handlerRef, deleteSelected, deleteEdge } = useSurveyV2Edits({ storeRef, commit, editActive, selection, setTab, setNotice })
+  const { handleReady } = useSurveyV2MapRender({ webViewRef, store, active, hidden, legacyToggles, overlay, selected, pending, selectedEdge, mode })
 
   const selectedNode = active && selected ? active.nodes.find((n) => n.id === selected) : undefined
-  const activeMode = MODES.find((m) => m.key === mode)!
 
   const editTab = (
-    <>
-      {!active ? <Text style={ui.warn}>편집 중인 모듈이 없어요. 아래 "새 모듈 시작"을 누르거나 "모듈" 탭에서 이어서 편집할 모듈을 고르세요.</Text> : null}
-      <View style={styles.modeRow}>
-        {MODES.map((m) => (
-          <Btn
-            key={m.key}
-            label={m.label}
-            kind={mode === m.key ? 'active' : 'default'}
-            onPress={() => {
-              setMode(m.key)
-              setPending(null)
-            }}
-            style={{ flex: 1 }}
-          />
-        ))}
-      </View>
-      <Text style={ui.hint}>{activeMode.help}</Text>
-      {mode === 'add' ? <Check label="이어 찍기 (직전에 고른 지점과 간선으로 잇기)" checked={chain} onToggle={() => setChain((v) => !v)} /> : null}
-      {mode === 'link' && pending ? <Text style={styles.pending}>{`${shortId(pending)} 에서 시작 — 이을 지점을 누르세요`}</Text> : null}
-
-      <Section title={selectedNode ? `선택 지점: ${shortId(selectedNode.id)}` : '선택한 지점 없음'}>
-        {selectedNode ? (
-          <>
-            <Text style={ui.sectionHelp}>{`${selectedNode.id} · ${selectedNode.lat.toFixed(7)}, ${selectedNode.lng.toFixed(7)}${
-              selectedNode.ref ? ` · 기존 지점 ${selectedNode.ref} 복사본(v1 변환)` : ''
-            }`}</Text>
-            <TextInput
-              key={selectedNode.id}
-              defaultValue={selectedNode.memo ?? ''}
-              onChangeText={(text) => editActive((m) => setNodeMemo(m, selectedNode.id, text), false)}
-              placeholder="메모 (예: 계단 5칸, 휠체어 불가, 공사 중)"
-              multiline
-              style={ui.memoInput}
-            />
-            {selectedNode.sharedId ? <Text style={ui.hint}>공유 특수 지점이에요. 위치 변경은 모든 참조 모듈에 반영되고, 아래 삭제는 이 모듈의 참조와 연결만 제거해요. 공유를 시작한 지점의 성질은 고정돼요.</Text> : null}
-            <Text style={ui.sectionHelp}>지점 성질</Text>
-            {selectedNode.sharedId ? (
-              <Text style={ui.sectionHelp}>{NODE_KIND_INFO[selectedNode.kind!].label}</Text>
-            ) : (
-              (Object.keys(NODE_KIND_INFO) as SurveyNodeKind[]).map((kind) => (
-                <Check
-                  key={kind}
-                  label={NODE_KIND_INFO[kind].label}
-                  checked={selectedNode.kind === kind}
-                  onToggle={() => editActive((m) => setNodeKind(m, selectedNode.id, selectedNode.kind === kind ? undefined : kind))}
-                  color={NODE_KIND_INFO[kind].color}
-                />
-              ))
-            )}
-            <Btn label={selectedNode.sharedId ? '이 모듈의 참조와 연결 간선 지우기' : '이 지점과 연결 간선 지우기'} kind="danger" onPress={deleteSelected} />
-          </>
-        ) : (
-          <Text style={ui.empty}>편집 중인 모듈의 점을 누르면 메모를 달 수 있어요</Text>
-        )}
-      </Section>
-      <Row>
-        <Btn label="되돌리기" onPress={undo} />
-        {active ? <Btn label="모듈 마치기" onPress={() => finish(active.id)} /> : null}
-        <Btn label="새 모듈 시작" onPress={startModule} />
-      </Row>
-      {active ? (
-        <EdgePanel
-          module={active}
-          selectedEdge={selectedEdge}
-          onSelect={(id) => {
-            setSelectedEdge(id)
-            if (id) setSelected(null)
-          }}
-          onMemo={(id, text) => editActive((m) => setEdgeMemo(m, id, text), false)}
-          onKind={(id, kind) => {
-            if (editActive((m) => setEdgeKind(m, id, kind))) setNotice(kind === 'stairs' ? '계단 간선으로 바꿨어요(되돌리기 가능)' : '일반 간선으로 바꿨어요(되돌리기 가능)')
-          }}
-          onDelete={deleteEdge}
-        />
-      ) : null}
-      <Legend color={active?.color} />
-    </>
+    <EditTab
+      active={active}
+      mode={mode}
+      onMode={(key) => {
+        setMode(key)
+        setPending(null)
+      }}
+      chain={chain}
+      onToggleChain={() => setChain((v) => !v)}
+      pending={pending}
+      selectedNode={selectedNode}
+      onNodeMemo={(id, text) => editActive((m) => setNodeMemo(m, id, text), false)}
+      onNodeKind={(id, kind) => editActive((m) => setNodeKind(m, id, kind))}
+      onDeleteSelected={deleteSelected}
+      onUndo={undo}
+      onFinish={modules.finish}
+      onStart={modules.startModule}
+      selectedEdge={selectedEdge}
+      onSelectEdge={(id) => {
+        setSelectedEdge(id)
+        if (id) setSelected(null)
+      }}
+      onEdgeMemo={(id, text) => editActive((m) => setEdgeMemo(m, id, text), false)}
+      onEdgeKind={(id, kind) => {
+        if (editActive((m) => setEdgeKind(m, id, kind))) setNotice(kind === 'stairs' ? '계단 간선으로 바꿨어요(되돌리기 가능)' : '일반 간선으로 바꿨어요(되돌리기 가능)')
+      }}
+      onDeleteEdge={deleteEdge}
+    />
   )
 
   const detailModule = findModule(store, detailId)
@@ -516,13 +103,13 @@ export default function DevPathSurveyScreen() {
       store={store}
       hidden={hidden}
       detailId={detailId}
-      onDetail={setDetailId}
-      onToggleHidden={(id) => setHidden((h) => ({ ...h, [id]: !h[id] }))}
-      onStart={startModule}
-      onFinish={finish}
-      onReopen={reopen}
-      onRename={rename}
-      onDelete={removeModule}
+      onDetail={modules.setDetailId}
+      onToggleHidden={modules.toggleHidden}
+      onStart={modules.startModule}
+      onFinish={modules.finish}
+      onReopen={modules.reopen}
+      onRename={modules.rename}
+      onDelete={modules.removeModule}
     >
       {detailModule ? (
         <ModuleProps
@@ -555,19 +142,19 @@ export default function DevPathSurveyScreen() {
       {tab === 'legacy' ? <LegacyPanel overlay={overlay} toggles={legacyToggles} onChange={setLegacyToggles} /> : null}
       {tab === 'sync' ? (
         <GistPanel
-          settings={gistSettings}
-          meta={gistMeta}
-          online={online}
-          dirty={dirty}
-          busy={gistBusy}
-          status={gistStatus}
-          error={gistError}
-          onSaveSettings={saveSettings}
-          onPush={pushGist}
-          onPull={pullGist}
+          settings={sync.gistSettings}
+          meta={sync.gistMeta}
+          online={sync.online}
+          dirty={sync.dirty}
+          busy={sync.gistBusy}
+          status={sync.gistStatus}
+          error={sync.gistError}
+          onSaveSettings={sync.saveSettings}
+          onPush={sync.pushGist}
+          onPull={sync.pullGist}
         />
       ) : null}
-      {tab === 'transfer' ? <TransferPanel store={store} initialModuleId={detailId ?? store.activeModuleId} onImport={runImport} onNotice={setNotice} /> : null}
+      {tab === 'transfer' ? <TransferPanel store={store} initialModuleId={detailId ?? store.activeModuleId} onImport={sync.runImport} onNotice={setNotice} /> : null}
     </ScrollView>
   )
 
@@ -603,10 +190,8 @@ const styles = StyleSheet.create({
   panelBody: { padding: 16, gap: 12 },
   title: { fontFamily: FONTS.bold, fontSize: 16, color: COLORS.textPrimary },
   summary: { fontFamily: FONTS.medium, fontSize: 12.5, color: COLORS.textSecondary, marginTop: -6 },
-  modeRow: { flexDirection: 'row', gap: 6 },
   tabRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   /** 폰에서 탭 다섯 개가 한 줄에 끼면 글자가 잘려 3 + 2 줄로 나눈다. */
   tab: { minWidth: '30%' },
-  pending: { fontFamily: FONTS.semibold, fontSize: 12.5, color: '#EA580C' },
   notice: { fontFamily: FONTS.medium, fontSize: 12.5, color: '#1D4ED8' },
-  })
+})
