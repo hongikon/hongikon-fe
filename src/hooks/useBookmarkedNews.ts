@@ -25,7 +25,7 @@ const sharedCache = new Map<string, NewsItem | null>()
  * 요청이 끊겨도 그때까지 받은 것은 버리지 않는다. 동시에 `MAX_CONCURRENT_FETCHES` 개까지만 보낸다.
  * 지워진 글(404)은 조용히 빼고, 로컬 목데이터 시절의 숫자가 아닌 id("n1" 등)는 건너뛴다.
  */
-export function useBookmarkedNews(ids: readonly string[]): Omit<ApiResource<NewsItem[]>, 'data'> & {
+export function useBookmarkedNews(ids: readonly string[]): Omit<ApiResource<NewsItem[]>, 'data' | 'setData'> & {
   items: NewsItem[]
 } {
   // 공유 캐시가 바뀐 것을 화면에 반영하려고 버전만 올린다.
@@ -75,6 +75,6 @@ export function useBookmarkedNews(ids: readonly string[]): Omit<ApiResource<News
     [ids, cacheVersion],
   )
 
-  const { data: _data, ...rest } = resource
+  const { data: _data, setData: _setData, ...rest } = resource
   return { ...rest, loading: resource.loading && items.length === 0, items }
 }
