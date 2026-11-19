@@ -4,7 +4,7 @@ import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import type { RouteAlternative } from '../../../apis/routes'
-import RouteOptions from '../RouteOptions'
+import RouteOptions from './RouteOptions'
 
 interface Props {
   routes: RouteAlternative[]

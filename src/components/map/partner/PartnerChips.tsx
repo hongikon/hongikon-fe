@@ -1,15 +1,15 @@
 import { useMemo, memo } from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import ChipRow from "./ChipRow";
-import { COLORS } from "../../constants/colors";
-import { chipStyles, useChipRowScrollStyle } from "./chipStyles";
-import ChipIcon from "./ChipIcon";
-import { PARTNER_AFFILIATIONS } from "../../constants/partnerAffiliations";
-import { PARTNER_CATEGORIES } from "../../constants/partnerCategories";
-import { partnerCount } from "../../utils/partners";
-import { useMapData } from "../../lib/mapData";
-import type { PartnerAffiliation, PartnerCategory } from "../../types";
-import * as haptics from "../../lib/haptics";
+import ChipRow from "../ChipRow";
+import { COLORS } from "../../../constants/colors";
+import { chipStyles, useChipRowScrollStyle } from "../chipStyles";
+import ChipIcon from "../ChipIcon";
+import { PARTNER_AFFILIATIONS } from "../../../constants/partnerAffiliations";
+import { PARTNER_CATEGORIES } from "../../../constants/partnerCategories";
+import { partnerCount } from "../../../utils/partners";
+import { useMapData } from "../../../lib/mapData";
+import type { PartnerAffiliation, PartnerCategory } from "../../../types";
+import * as haptics from "../../../lib/haptics";
 
 interface PartnerChipsProps {
   /** 1단: 제휴 주체. 고르지 않았으면 null. */

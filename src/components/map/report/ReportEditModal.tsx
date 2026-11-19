@@ -3,18 +3,18 @@ import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
-import { SHEET_MAX_WIDTH } from '../../constants/layout'
-import { RADIUS } from '../../constants/spacing'
-import { REPORT_CATEGORIES } from '../../constants/reportCategories'
-import { REPORT_CONTENT_MAX_LENGTH, REPORT_CUSTOM_CATEGORY_MAX_LENGTH, REPORT_TITLE_MAX_LENGTH } from '../../constants/report'
-import ScreenHeader from '../common/ScreenHeader'
-import Button from '../common/Button'
-import TextField from '../common/TextField'
-import { chipStyles } from './chipStyles'
+import { COLORS } from '../../../constants/colors'
+import { FONTS } from '../../../constants/typography'
+import { SHEET_MAX_WIDTH } from '../../../constants/layout'
+import { RADIUS } from '../../../constants/spacing'
+import { REPORT_CATEGORIES } from '../../../constants/reportCategories'
+import { REPORT_CONTENT_MAX_LENGTH, REPORT_CUSTOM_CATEGORY_MAX_LENGTH, REPORT_TITLE_MAX_LENGTH } from '../../../constants/report'
+import ScreenHeader from '../../common/ScreenHeader'
+import Button from '../../common/Button'
+import TextField from '../../common/TextField'
+import { chipStyles } from '../chipStyles'
 import ReportScheduleEditModal from './ReportScheduleEditModal'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../../contexts/AuthContext'
 import {
   REPORT_IMAGE_MAX_BYTES,
   ReportImageUploadError,
@@ -22,13 +22,13 @@ import {
   updateReport,
   uploadReportImage,
   type PickedReportImage,
-} from '../../apis/reports'
-import { ApiError, isNetworkError } from '../../apis/client'
-import { REPORT_MAX_IMAGES } from '../../utils/reports'
-import { formatClock, formatDay, type ReportDayHours } from '../../utils/reportSchedule'
-import { parseServerTime } from '../../utils/serverTime'
-import * as haptics from '../../lib/haptics'
-import type { Report, ReportCategory, ReportListItem } from '../../types'
+} from '../../../apis/reports'
+import { ApiError, isNetworkError } from '../../../apis/client'
+import { REPORT_MAX_IMAGES } from '../../../utils/reports'
+import { formatClock, formatDay, type ReportDayHours } from '../../../utils/reportSchedule'
+import { parseServerTime } from '../../../utils/serverTime'
+import * as haptics from '../../../lib/haptics'
+import type { Report, ReportCategory, ReportListItem } from '../../../types'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 const PLACE_MAX_LENGTH = 60

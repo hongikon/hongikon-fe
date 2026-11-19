@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
-import Button from '../common/Button'
+import { COLORS } from '../../../constants/colors'
+import { FONTS } from '../../../constants/typography'
+import Button from '../../common/Button'
 import ReportTimeSheet from './ReportTimeSheet'
 import { menuStyles } from './ModerationMenu'
 import {
@@ -20,8 +20,8 @@ import {
   nextStepAfter,
   parseReportDays,
   type ReportDayHours,
-} from '../../utils/reportSchedule'
-import { parseServerTime } from '../../utils/serverTime'
+} from '../../../utils/reportSchedule'
+import { parseServerTime } from '../../../utils/serverTime'
 import ReportDaysEditor, { reportDaysFor, type EditableDay } from './ReportDaysEditor'
 
 const DAY_MS = 24 * 60 * 60 * 1000

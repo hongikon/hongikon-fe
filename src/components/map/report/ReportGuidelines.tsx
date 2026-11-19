@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
-import { RADIUS } from '../../constants/spacing'
+import { COLORS } from '../../../constants/colors'
+import { FONTS } from '../../../constants/typography'
+import { RADIUS } from '../../../constants/spacing'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)

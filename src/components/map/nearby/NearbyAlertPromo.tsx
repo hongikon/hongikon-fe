@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
-import { RADIUS } from "../../constants/spacing";
-import { useAuth } from "../../contexts/AuthContext";
-import { getNearbySettings, nearbyAlertsAvailable } from "../../lib/nearbyPartners/background";
-import { requestSettingsIntent } from "../../lib/settingsIntents";
-import { navigationRef } from "../../navigation/navigationRef";
+import { COLORS } from "../../../constants/colors";
+import { FONTS } from "../../../constants/typography";
+import { RADIUS } from "../../../constants/spacing";
+import { useAuth } from "../../../contexts/AuthContext";
+import { getNearbySettings, nearbyAlertsAvailable } from "../../../lib/nearbyPartners/background";
+import { requestSettingsIntent } from "../../../lib/settingsIntents";
+import { navigationRef } from "../../../navigation/navigationRef";
 
 const DISMISSED_KEY = "hongikon_nearby_promo_dismissed_v1";
 

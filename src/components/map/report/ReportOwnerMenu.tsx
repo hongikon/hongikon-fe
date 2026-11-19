@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native'
-import { COLORS } from '../../constants/colors'
+import { COLORS } from '../../../constants/colors'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MenuRow, menuStyles } from './ModerationMenu'
 

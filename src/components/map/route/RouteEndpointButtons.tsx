@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
-import { RADIUS } from "../../constants/spacing";
-import { withRo } from "../../utils/josa";
+import { COLORS } from "../../../constants/colors";
+import { FONTS } from "../../../constants/typography";
+import { RADIUS } from "../../../constants/spacing";
+import { withRo } from "../../../utils/josa";
 
 export type RouteNext = "from" | "to" | null;
 

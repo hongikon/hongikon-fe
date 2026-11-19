@@ -21,11 +21,11 @@ import {
 } from "../../utils/exhibitions";
 import { isSafeExternalUrl, openExternalUrl } from "../../utils/openExternalUrl";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
-import CafeteriaMenu from "./CafeteriaMenu";
+import CafeteriaMenu from "./facility/CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeDetail } from "../../constants/adminOffices";
 import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
-import RouteEndpointButtons, { type RouteNext } from "./RouteEndpointButtons";
+import RouteEndpointButtons, { type RouteNext } from "./route/RouteEndpointButtons";
 
 interface FacilitySheetProps {
   kind: FacilityKind;

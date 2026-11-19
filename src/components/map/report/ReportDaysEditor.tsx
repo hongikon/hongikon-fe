@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react'
 import { Text, TouchableOpacity, StyleSheet, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
-import { RADIUS } from '../../constants/spacing'
+import { COLORS } from '../../../constants/colors'
+import { FONTS } from '../../../constants/typography'
+import { RADIUS } from '../../../constants/spacing'
 import {
   REPORT_MAX_DURATION_DAYS,
   REPORT_TIME_STEP_MINUTES,
@@ -17,7 +17,7 @@ import {
   toReportDayHours,
   type ReportDayHours,
   type ReportDaySpan,
-} from '../../utils/reportSchedule'
+} from '../../../utils/reportSchedule'
 import ReportTimeSheet from './ReportTimeSheet'
 
 const DAY_MS = 24 * 60 * 60 * 1000

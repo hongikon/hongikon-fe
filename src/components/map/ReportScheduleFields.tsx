@@ -21,8 +21,8 @@ import {
 } from '../../utils/reportSchedule'
 import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
-import ReportTimeSheet from './ReportTimeSheet'
-import ReportDaysEditor, { effectiveDays, pinDailyHours, reportDaysFor, type EditableDay } from './ReportDaysEditor'
+import ReportTimeSheet from './report/ReportTimeSheet'
+import ReportDaysEditor, { effectiveDays, pinDailyHours, reportDaysFor, type EditableDay } from './report/ReportDaysEditor'
 import { RADIUS } from '../../constants/spacing'
 
 const MINUTE_MS = 60 * 1000

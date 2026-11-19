@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
-import { partnerCategoryMeta } from "../../constants/partnerCategories";
-import { formatDistance, partnersNear, type PartnerDistance } from "../../lib/nearbyPartners/rules";
+import { COLORS } from "../../../constants/colors";
+import { FONTS } from "../../../constants/typography";
+import { partnerCategoryMeta } from "../../../constants/partnerCategories";
+import { formatDistance, partnersNear, type PartnerDistance } from "../../../lib/nearbyPartners/rules";
 import {
   CAN_OPEN_LOCATION_SETTINGS,
   CAN_TURN_ON_LOCATION_SERVICES,
@@ -14,9 +14,9 @@ import {
   openLocationSettings,
   turnOnLocationServices,
   type LocateResult,
-} from "../../lib/nearbyPartners/platform";
-import Button from "../common/Button";
-import type { Partner } from "../../types";
+} from "../../../lib/nearbyPartners/platform";
+import Button from "../../common/Button";
+import type { Partner } from "../../../types";
 
 /** 걸어서 6~7분. 이보다 먼 곳은 "근처"라고 보기 어렵다. */
 const NEARBY_RADIUS_METERS = 500;

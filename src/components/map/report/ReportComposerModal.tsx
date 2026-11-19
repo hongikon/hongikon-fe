@@ -17,30 +17,30 @@ import {
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { COLORS } from '../../constants/colors'
-import { FONTS, TYPE } from '../../constants/typography'
-import { SHEET_MAX_WIDTH } from '../../constants/layout'
-import ScreenHeader from '../common/ScreenHeader'
-import Button from '../common/Button'
+import { COLORS } from '../../../constants/colors'
+import { FONTS, TYPE } from '../../../constants/typography'
+import { SHEET_MAX_WIDTH } from '../../../constants/layout'
+import ScreenHeader from '../../common/ScreenHeader'
+import Button from '../../common/Button'
 import ReportGuidelines from './ReportGuidelines'
-import TextField from '../common/TextField'
-import * as haptics from '../../lib/haptics'
-import { REPORT_CATEGORIES } from '../../constants/reportCategories'
+import TextField from '../../common/TextField'
+import * as haptics from '../../../lib/haptics'
+import { REPORT_CATEGORIES } from '../../../constants/reportCategories'
 import {
   REPORT_CONTENT_MAX_LENGTH,
   REPORT_CUSTOM_CATEGORY_MAX_LENGTH,
   REPORT_DEFAULT_DURATION_HOURS,
   REPORT_OFF_CAMPUS_MAX_METERS,
   REPORT_TITLE_MAX_LENGTH,
-} from '../../constants/report'
+} from '../../../constants/report'
 import ReportScheduleFields, {
   initialReportSchedule,
   resolveSchedule,
   scheduleDaysFor,
   type ReportSchedule,
-} from './ReportScheduleFields'
-import { formatClock, formatDay, scheduleError } from '../../utils/reportSchedule'
-import { useAuth } from '../../contexts/AuthContext'
+} from '../ReportScheduleFields'
+import { formatClock, formatDay, scheduleError } from '../../../utils/reportSchedule'
+import { useAuth } from '../../../contexts/AuthContext'
 import {
   REPORT_IMAGE_MAX_BYTES,
   ReportImageUploadError,
@@ -48,20 +48,20 @@ import {
   reportImageContentType,
   uploadReportImage,
   type PickedReportImage,
-} from '../../apis/reports'
-import { getServerBuildingId } from '../../apis/buildings'
-import { CAMPUS_CENTER } from '../../constants/map'
-import { haversineMeters } from '../../utils/geo'
-import { ApiError, isNetworkError, isRetryableError } from '../../apis/client'
-import { useMapData } from '../../lib/mapData'
-import RetryableError from '../common/RetryableError'
-import { REPORT_MAX_IMAGES, promptLogin } from '../../utils/reports'
-import { ToastViewport, useToast } from '../common/Toast'
-import { chipStyles } from './chipStyles'
-import { useAttentionFlash } from '../../hooks/useAttentionFlash'
-import WheelPicker, { type WheelItem } from '../common/WheelPicker'
-import type { Report, ReportCategory } from '../../types'
-import { RADIUS } from '../../constants/spacing'
+} from '../../../apis/reports'
+import { getServerBuildingId } from '../../../apis/buildings'
+import { CAMPUS_CENTER } from '../../../constants/map'
+import { haversineMeters } from '../../../utils/geo'
+import { ApiError, isNetworkError, isRetryableError } from '../../../apis/client'
+import { useMapData } from '../../../lib/mapData'
+import RetryableError from '../../common/RetryableError'
+import { REPORT_MAX_IMAGES, promptLogin } from '../../../utils/reports'
+import { ToastViewport, useToast } from '../../common/Toast'
+import { chipStyles } from '../chipStyles'
+import { useAttentionFlash } from '../../../hooks/useAttentionFlash'
+import WheelPicker, { type WheelItem } from '../../common/WheelPicker'
+import type { Report, ReportCategory } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 const REPORT_PLACE_MAX_LENGTH = 60

@@ -1,6 +1,6 @@
 import { View } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
-import { COLORS } from '../../../constants/colors'
+import { COLORS } from '../../../../constants/colors'
 
 /**
  * 작성자 기본 프로필: 연한 메인 컬러 동그라미 안에 사람 모양(자체 경로). 프로필 사진 기능이 없어 모두 같은 모양이다.

@@ -8,25 +8,25 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
-import { partnerCategoryMeta } from "../../constants/partnerCategories";
-import { browsePartnersByCategory, searchPartners } from "../../utils/partnerSearch";
-import { searchFacilities, type FacilitySearchResult } from "../../utils/facilitySearch";
-import { facilityKindMeta } from "../../constants/facilityKinds";
-import { KindIcon } from "./ChipIcon";
-import { partnersOutsideFocus } from "../../utils/partners";
-import type { Facility, Partner, PartnerCategory } from "../../types";
-import ContentColumn from "../common/ContentColumn";
-import ScreenHeader from "../common/ScreenHeader";
-import { ModalPanel } from "../settings/ModalHeader";
-import EmptyState from "../common/EmptyState";
-import SearchBar from "../news/SearchBar";
-import Button from "../common/Button";
-import { useMapData } from "../../lib/mapData";
+import { COLORS } from "../../../constants/colors";
+import { FONTS } from "../../../constants/typography";
+import { partnerCategoryMeta } from "../../../constants/partnerCategories";
+import { browsePartnersByCategory, searchPartners } from "../../../utils/partnerSearch";
+import { searchFacilities, type FacilitySearchResult } from "../../../utils/facilitySearch";
+import { facilityKindMeta } from "../../../constants/facilityKinds";
+import { KindIcon } from "../ChipIcon";
+import { partnersOutsideFocus } from "../../../utils/partners";
+import type { Facility, Partner, PartnerCategory } from "../../../types";
+import ContentColumn from "../../common/ContentColumn";
+import ScreenHeader from "../../common/ScreenHeader";
+import { ModalPanel } from "../../settings/ModalHeader";
+import EmptyState from "../../common/EmptyState";
+import SearchBar from "../../news/SearchBar";
+import Button from "../../common/Button";
+import { useMapData } from "../../../lib/mapData";
 import NearbyPartners, { INITIAL_NEARBY_STATE, type NearbyState } from "./NearbyPartners";
-import { RADIUS } from '../../constants/spacing';
-import SwipeBackModal from "../common/SwipeBackModal";
+import { RADIUS } from '../../../constants/spacing';
+import SwipeBackModal from "../../common/SwipeBackModal";
 
 interface PartnerSearchModalProps {
   visible: boolean;

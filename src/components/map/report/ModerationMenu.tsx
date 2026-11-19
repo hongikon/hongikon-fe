@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { COLORS } from '../../constants/colors'
-import { FONTS } from '../../constants/typography'
-import { REPORT_FLAG_REASONS } from '../../constants/report'
-import type { ReportFlagReason } from '../../types'
-import { RADIUS } from '../../constants/spacing'
+import { COLORS } from '../../../constants/colors'
+import { FONTS } from '../../../constants/typography'
+import { REPORT_FLAG_REASONS } from '../../../constants/report'
+import type { ReportFlagReason } from '../../../types'
+import { RADIUS } from '../../../constants/spacing'
 
 interface ModerationMenuProps {
   visible: boolean

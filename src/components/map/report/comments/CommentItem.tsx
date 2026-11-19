@@ -1,14 +1,14 @@
 import { memo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../../constants/colors'
-import { FONTS } from '../../../constants/typography'
-import { formatCommentTime } from '../../../utils/comments'
+import { COLORS } from '../../../../constants/colors'
+import { FONTS } from '../../../../constants/typography'
+import { formatCommentTime } from '../../../../utils/comments'
 import CommentAvatar from './CommentAvatar'
-import ThumbIcon from '../../common/ThumbIcon'
-import OfficialBadge from '../../common/OfficialBadge'
-import type { ReportComment } from '../../../types'
-import { RADIUS } from '../../../constants/spacing'
+import ThumbIcon from '../../../common/ThumbIcon'
+import OfficialBadge from '../../../common/OfficialBadge'
+import type { ReportComment } from '../../../../types'
+import { RADIUS } from '../../../../constants/spacing'
 
 export interface CommentItemHandlers {
   onReply: (target: ReportComment) => void

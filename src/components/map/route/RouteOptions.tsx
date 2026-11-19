@@ -9,12 +9,12 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { RADIUS } from "../../constants/spacing";
-import { FONTS } from "../../constants/typography";
-import { ROUTE_DIRECTIONS_TEXT_ENABLED } from "../../constants/route";
-import { describeRoutes } from "../../utils/routeLabels";
-import type { RouteAlternative } from "../../apis/routes";
+import { COLORS } from "../../../constants/colors";
+import { RADIUS } from "../../../constants/spacing";
+import { FONTS } from "../../../constants/typography";
+import { ROUTE_DIRECTIONS_TEXT_ENABLED } from "../../../constants/route";
+import { describeRoutes } from "../../../utils/routeLabels";
+import type { RouteAlternative } from "../../../apis/routes";
 
 interface RouteOptionsProps {
   routes: readonly RouteAlternative[];

@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '../../../constants/colors'
-import { FONTS } from '../../../constants/typography'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
-import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
+import { COLORS } from '../../../../constants/colors'
+import { FONTS } from '../../../../constants/typography'
+import { useAuth } from '../../../../contexts/AuthContext'
+import { useHiddenAuthorKeys } from '../../../../lib/hiddenAuthors'
+import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../../apis/client'
 import {
   COMMENTS_PREVIEW_SIZE,
   getReportComments,
   isCommentsApiKnownMissing,
   isCommentsApiMissing,
-} from '../../../apis/comments'
-import { formatCommentTime, withoutHiddenCommentAuthors } from '../../../utils/comments'
-import { promptLogin } from '../../../utils/reports'
-import RetryableError from '../../common/RetryableError'
+} from '../../../../apis/comments'
+import { formatCommentTime, withoutHiddenCommentAuthors } from '../../../../utils/comments'
+import { promptLogin } from '../../../../utils/reports'
+import RetryableError from '../../../common/RetryableError'
 import CommentAvatar from './CommentAvatar'
-import type { ReportComment, ReportListItem } from '../../../types'
-import { RADIUS } from '../../../constants/spacing'
+import type { ReportComment, ReportListItem } from '../../../../types'
+import { RADIUS } from '../../../../constants/spacing'
 
 /** 숨긴 사용자·지운 댓글 자리를 빼고도 미리보기를 채우도록 조금 더 받는다. */
 const PREVIEW_FETCH_SIZE = COMMENTS_PREVIEW_SIZE + 3

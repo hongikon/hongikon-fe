@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import SheetHandle from "./SheetHandle";
+import SheetHandle from "../SheetHandle";
 import {
   Animated,
   View,
@@ -9,20 +9,20 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { partnerCategoryMeta } from "../../constants/partnerCategories";
-import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../constants/partnerAffiliations";
-import type { Partner } from "../../types";
-import { FONTS, TYPE } from "../../constants/typography";
-import IconButton from "../common/IconButton";
-import { sheetCloseStyle } from "./chipStyles";
-import { useSheetSizing } from "../../hooks/useResizableSheet";
-import { openExternalUrl } from "../../utils/openExternalUrl";
-import { openNaverMapPlace } from "../../utils/openNaverMap";
-import { RADIUS } from "../../constants/spacing";
-import { formatUntilYmd } from "../../utils/exhibitions";
-import SheetScrollBody from "./SheetScrollBody";
-import NearbyAlertPromo from "./NearbyAlertPromo";
+import { COLORS } from "../../../constants/colors";
+import { partnerCategoryMeta } from "../../../constants/partnerCategories";
+import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../../constants/partnerAffiliations";
+import type { Partner } from "../../../types";
+import { FONTS, TYPE } from "../../../constants/typography";
+import IconButton from "../../common/IconButton";
+import { sheetCloseStyle } from "../chipStyles";
+import { useSheetSizing } from "../../../hooks/useResizableSheet";
+import { openExternalUrl } from "../../../utils/openExternalUrl";
+import { openNaverMapPlace } from "../../../utils/openNaverMap";
+import { RADIUS } from "../../../constants/spacing";
+import { formatUntilYmd } from "../../../utils/exhibitions";
+import SheetScrollBody from "../SheetScrollBody";
+import NearbyAlertPromo from "../nearby/NearbyAlertPromo";
 
 interface PartnerSheetProps {
   partner: Partner;

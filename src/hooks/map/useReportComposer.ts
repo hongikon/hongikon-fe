@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { ReportTarget } from '../../components/map/ReportComposerModal'
+import type { ReportTarget } from '../../components/map/report/ReportComposerModal'
 import { promptLogin } from '../../utils/reports'
 
 interface Options {

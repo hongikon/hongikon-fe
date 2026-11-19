@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { FONTS } from "../../constants/typography";
-import { RADIUS } from "../../constants/spacing";
-import { SELECTED_PILL_BG } from "../common/Chip";
+import { COLORS } from "../../../constants/colors";
+import { FONTS } from "../../../constants/typography";
+import { RADIUS } from "../../../constants/spacing";
+import { SELECTED_PILL_BG } from "../../common/Chip";
 import {
   CAFETERIA_FACILITY_IDS,
   isCafeteriaApiMissing,
   type CafeteriaDay,
   type CafeteriaMeal,
   type CafeteriaWeek,
-} from "../../apis/cafeteria";
-import type { ApiResource } from "../../hooks/useApiResource";
-import { formatYmdShort, ymdToDayIndex } from "../../utils/exhibitions";
-import { formatCommentTime } from "../../utils/comments";
-import { isSafeExternalUrl, openExternalUrl } from "../../utils/openExternalUrl";
+} from "../../../apis/cafeteria";
+import type { ApiResource } from "../../../hooks/useApiResource";
+import { formatYmdShort, ymdToDayIndex } from "../../../utils/exhibitions";
+import { formatCommentTime } from "../../../utils/comments";
+import { isSafeExternalUrl, openExternalUrl } from "../../../utils/openExternalUrl";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 /** 화면이 이보다 넓으면(태블릿·넓은 웹) 반찬을 두 칸으로 나눠 보여 준다. 폰은 한 칸. */
