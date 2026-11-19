@@ -6,20 +6,16 @@ import {
   PanResponder,
   Platform,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
   useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
-import { FONTS } from '../constants/typography'
 import { TREE_DATA } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
 import { useTreeSearch } from '../hooks/useTreeSearch'

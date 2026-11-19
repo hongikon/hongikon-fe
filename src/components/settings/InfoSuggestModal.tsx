@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   KeyboardAvoidingView,
   ScrollView,
   Platform,

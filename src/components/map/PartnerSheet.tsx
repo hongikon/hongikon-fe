@@ -3,12 +3,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SheetHandle from "./SheetHandle";
 import {
   Animated,
-  useWindowDimensions,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";

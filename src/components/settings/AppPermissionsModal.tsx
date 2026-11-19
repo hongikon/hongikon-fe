@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   AppState,
   Linking,
-  Modal,
   Platform,
   Pressable,
   ScrollView,

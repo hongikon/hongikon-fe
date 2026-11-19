@@ -20,7 +20,6 @@ import {
   kstTodayIndex,
 } from "../../utils/exhibitions";
 import { isSafeExternalUrl, openExternalUrl } from "../../utils/openExternalUrl";
-import { CAFETERIA_FACILITY_IDS } from "../../apis/cafeteria";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";
@@ -69,10 +68,6 @@ function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack
   // 식당 시트를 열 때만 학식 메뉴를 부른다(주간 메뉴를 한 번 받아 앱을 켜 둔 동안 메모리에 둔다).
   const isRestaurant = kind === "식당";
   const cafeteriaWeek = useCafeteriaWeek(isRestaurant);
-  const hasMenu =
-    isRestaurant &&
-    (items.some((item) => CAFETERIA_FACILITY_IDS.has(item.id)) ||
-      !!cafeteriaWeek.data?.days.some((d) => d.restaurants.some((r) => items.some((i) => i.id === r.facilityId))));
   // 손잡이(회색 줄)로 작게 → 보통 → 화면 위 끝까지 크기 조절(useSheetSizing).
   const { translateY, bodyHeight, panHandlers, chromeHandlers, onChromeLayout, onContentSizeChange, bodyGesture } = useSheetSizing(onClose, {
     smallRatio: 0.22,

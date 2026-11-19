@@ -7,12 +7,6 @@ export const WALKING_METERS_PER_MINUTE = 80
 /** 한 개 층을 오르내리는 데 걸리는 시간(초). 계단 수직 간선과, 조사되지 않은 층의 출입구 어림에 쓴다. */
 export const FLOOR_TRANSIT_SECONDS = 20
 
-/** 엘리베이터를 한 번 타는 데 드는 고정 시간(기다림·타고 내림, 초). TODO: 실측 필요. */
-export const ELEVATOR_WAIT_SECONDS = 30
-
-/** 엘리베이터가 한 층 움직이는 데 걸리는 시간(초). TODO: 실측 필요. */
-export const ELEVATOR_SECONDS_PER_FLOOR = 4
-
 /**
  * 길찾기 기능 공개 여부. 꺼져 있으면 지도 길찾기 버튼과 건물 시트의 출발/도착을 아예 그리지 않는다
  * ("다음 업데이트" 같은 미완성 안내는 심사 2.1 거절 사유라 띄우지 않는다).
