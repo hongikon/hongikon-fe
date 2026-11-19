@@ -133,12 +133,7 @@ export function actionsFor(status: ReportStatus): ActionKind[] {
   }
 }
 
-/** 알림으로 연 항목을 맨 위로(나머지 순서는 그대로). */
-export function withFocusedFirst<T extends { id: number }>(items: T[], focusId: number | null): T[] {
-  if (focusId === null) return items
-  const focused = items.find((item) => item.id === focusId)
-  return focused ? [focused, ...items.filter((item) => item !== focused)] : items
-}
+export { withFocusedFirst } from './focus'
 
 /** 처리 결과를 목록에 반영한다. 삭제는 빼고, 나머지는 그 자리에서 바꾼다(탭이 달라져도 '방금 처리함'으로 남긴다). */
 export function applyReportUpdate(prev: AdminReport[] | null, updated: AdminReport): AdminReport[] | null {
