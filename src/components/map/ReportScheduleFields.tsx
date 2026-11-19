@@ -1,97 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Animated, View, Text, StyleSheet } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { REPORT_DURATION_OPTIONS_HOURS } from '../../constants/report'
 import {
   REPORT_MAX_DURATION_DAYS,
   REPORT_START_MAX_DAYS,
-  REPORT_TIME_STEP_MINUTES,
   canRunDaily,
   dayChipLabel,
   formatClock,
   formatDaysRange,
-  type ReportDayHours,
   formatDay,
   formatDurationMinutes,
   formatScheduleRange,
   kstMidnight,
   nextStepAfter,
 } from '../../utils/reportSchedule'
-import { chipStyles } from './chipStyles'
 import { useAttentionFlash } from '../../hooks/useAttentionFlash'
-import ReportTimeSheet from './ReportTimeSheet'
-import ReportDaysEditor, { effectiveDays, pinDailyHours, reportDaysFor, type EditableDay } from './ReportDaysEditor'
+import ReportTimeSheet from './report/ReportTimeSheet'
+import ReportDaysEditor from './report/ReportDaysEditor'
+import { effectiveDays, pinDailyHours } from '../../utils/map/reportDays'
+import {
+  DAY_MS,
+  MAX_DURATION_MS,
+  MINUTE_MS,
+  STEP_MS,
+  clampEnd,
+  defaultScheduledStart,
+  resolveSchedule,
+  type ReportSchedule,
+} from '../../utils/map/reportScheduleState'
+import { Chip, SummaryRow } from './report/schedule/ScheduleParts'
 import { RADIUS } from '../../constants/spacing'
 
-const MINUTE_MS = 60 * 1000
-const HOUR_MS = 60 * MINUTE_MS
-const DAY_MS = 24 * HOUR_MS
-const STEP_MS = REPORT_TIME_STEP_MINUTES * MINUTE_MS
-const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
-
-/**
- * 제보 시각. 시작은 '지금' 또는 고른 시각(오늘부터 14일 안, 10분 단위), 끝은 진행 시간 프리셋 또는 직접 고른 날짜·시각
- * (시작부터 최대 7일 — 여러 날 행사).
- * 고른 시작·종료는 epoch ms(UTC)로 들고 있고 화면엔 한국 시간으로 보인다.
- */
-export interface ReportSchedule {
-  startMode: 'now' | 'scheduled'
-  /** startMode 가 scheduled 일 때의 시작(10분 단위). */
-  scheduledStartMs: number
-  endMode: 'duration' | 'custom'
-  durationHours: number
-  /** endMode 가 custom 일 때의 종료(10분 단위). */
-  customEndMs: number
-  /**
-   * '매일 정해진 시간에만 운영'(11-08). 켜도 `scheduleDaysFor` 가 쓸 수 있다고 볼 때(이틀 이상에 걸침)만 보낸다 —
-   * 시각을 바꿔 조건이 깨지면 체크는 남아도 한 번짜리로 올라간다(체크 줄도 사라진다). 시작이 '지금'이어도 된다(11-09).
-   */
-  daily: boolean
-  /** 날짜별로 고친 운영 시간·쉬는 날(`ReportDaysEditor`). 고르지 않은 날은 시작 시각~끝 시각이다. */
-  editedDays: EditableDay[]
-}
-
-/** 지금 고른 값으로 보낼 날짜별 운영 시간. 쓸 수 없으면 null(한 번짜리). */
-export function scheduleDaysFor(
-  schedule: ReportSchedule,
-  resolved: { startMs: number; endMs: number },
-): ReportDayHours[] | null {
-  return reportDaysFor(schedule.daily, resolved.startMs, resolved.endMs, schedule.editedDays)
-}
-
-export function initialReportSchedule(defaultDurationHours: number, now: number = Date.now()): ReportSchedule {
-  const start = defaultScheduledStart(now)
-  return {
-    startMode: 'now',
-    scheduledStartMs: start,
-    endMode: 'duration',
-    durationHours: defaultDurationHours,
-    customEndMs: start + defaultDurationHours * HOUR_MS,
-    daily: false,
-    editedDays: [],
-  }
-}
-
-/** '날짜·시간 선택'을 처음 눌렀을 때의 시작: 30분 뒤 이후의 첫 정각. */
-function defaultScheduledStart(now: number): number {
-  return Math.ceil((now + 30 * MINUTE_MS) / HOUR_MS) * HOUR_MS
-}
-
-/** 지금 보이는 시작·종료(ms). '지금'이면 now 가 시작이다. */
-export function resolveSchedule(schedule: ReportSchedule, now: number = Date.now()): { startMs: number; endMs: number } {
-  const startMs = schedule.startMode === 'now' ? now : schedule.scheduledStartMs
-  const endMs = schedule.endMode === 'duration' ? startMs + schedule.durationHours * HOUR_MS : schedule.customEndMs
-  return { startMs, endMs }
-}
-
-/** 시작 이후, 최대 7일 안의 가장 가까운 10분 단위 종료로 맞춘다. */
-function clampEnd(endMs: number, startMs: number): number {
-  const earliest = Math.ceil((startMs + 1) / STEP_MS) * STEP_MS
-  const latest = Math.floor((startMs + MAX_DURATION_MS) / STEP_MS) * STEP_MS
-  return Math.min(Math.max(endMs, earliest), latest)
-}
+// 시각 계산은 utils/map/reportScheduleState 로 옮겼다. 바깥(TempChangesPreviewScreen 등)이 이 경로로 import 해서 다시 내보낸다.
+export { initialReportSchedule, resolveSchedule, scheduleDaysFor } from '../../utils/map/reportScheduleState'
+export type { ReportSchedule } from '../../utils/map/reportScheduleState'
 
 interface ReportScheduleFieldsProps {
   value: ReportSchedule
@@ -344,79 +288,9 @@ export default function ReportScheduleFields({
   )
 }
 
-function SummaryRow({
-  label,
-  value,
-  onPress,
-  disabled,
-  accessibilityLabel,
-}: {
-  label: string
-  value: string
-  onPress: () => void
-  disabled?: boolean
-  accessibilityLabel: string
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.summaryRow}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-    >
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-    </TouchableOpacity>
-  )
-}
-
-function Chip({
-  label,
-  active,
-  disabled,
-  onPress,
-  icon,
-  compact,
-  accessibilityLabel,
-}: {
-  label: string
-  active: boolean
-  disabled?: boolean
-  onPress: () => void
-  icon?: keyof typeof Ionicons.glyphMap
-  compact?: boolean
-  accessibilityLabel?: string
-}) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active, disabled: !!disabled }}
-      accessibilityLabel={accessibilityLabel ?? label}
-      style={[
-        chipStyles.chip,
-        compact && styles.compactChip,
-        active && styles.chipActive,
-        disabled && !active && styles.chipDisabled,
-      ]}
-    >
-      {icon ? <Ionicons name={icon} size={13} color={active ? COLORS.white : COLORS.primary} /> : null}
-      <Text style={[chipStyles.label, active && chipStyles.labelActive]}>{label}</Text>
-    </TouchableOpacity>
-  )
-}
-
 const styles = StyleSheet.create({
   subLabel: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginBottom: 6, marginTop: 4 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 8 },
-  compactChip: { paddingHorizontal: 9 },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipDisabled: { opacity: 0.4 },
   // 테두리(평소엔 바탕색과 같아 안 보임)는 시간이 맞지 않을 때 빨갛게 깜빡이는 자리. 그 1px 만큼 안쪽 여백을 줄였다.
   summary: {
     paddingHorizontal: 11,
@@ -428,9 +302,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primarySoft,
     marginTop: 2,
   },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 8 },
-  summaryLabel: { width: 32, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
-  summaryValue: { flex: 1, fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.primary },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.chipBorder },
   summaryText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, marginTop: 6 },
   autoFit: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.primary, marginTop: 8 },
