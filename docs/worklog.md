@@ -570,3 +570,9 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - 앱(iOS·Android)은 예전처럼 가로로 민다(같은 컴포넌트가 ScrollView 를 그린다).
 - 쓰는 곳: 학교 시설 종류 줄(`MapFilterChips`), 제휴 소속·업종 두 줄(`PartnerChips`). 최상단 두 칩 줄은 넘치지 않아 그대로.
 - 확인: 로컬 웹 800px 폭에서 접힘·펼침·칩 고르면 접힘·제휴 줄, 휴대폰 흉내(390px·터치)에서는 ⋯ 없이 가로 줄(`ui-shots/qa/chiprow-web-4.png`, `-7.png`). tsc 통과, 테스트 110/110.
+
+## 2026-11-17 — 물어보기 복수전공 안내: 학점 규칙·인정 절차 정리(tips)
+
+- `scripts/ask/topics/academic.py` double-major: 학교 안내가 '학생공지 참조'로만 적은 학점 규칙을 학사내규 제49조·제51조·제9조에서 정리해 tips 2개로 앞에 둠(계열별 36학점, 겹치는 과목, 인정 절차·유보·철회). lead 에 36학점 한 줄.
+- `src/constants/askPages.ts` 다시 만듦(gen.py). 서버 카탈로그·색인·규정 그래프는 BE 같은 날 worklog.
+- 경로 정답표 `cases/academic.json` +4문항(공학+공학 최종이수학점, 공대끼리, 인정받으려면, 부전공 못 채우면). 2863/2863, 테스트 111/111.
