@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from "react-native";
-import { COLORS } from "../../../constants/colors";
 import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../../constants/partnerAffiliations";
 import { RADIUS } from "../../../constants/spacing";
 import { FONTS } from "../../../constants/typography";
