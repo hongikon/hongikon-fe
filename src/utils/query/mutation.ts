@@ -20,7 +20,12 @@ export interface MutationCallbacks<TVars, TResult, TSnapshot> {
 export type MutationOutcome<TResult> =
   | { status: 'success'; result: TResult }
   | { status: 'error'; error: unknown }
-  /** 화면이 닫혔거나 끊었다. 결과는 버렸다. */
+  /**
+   * 서버는 성공했지만 그 사이 화면이 닫혔거나 끊었다. 닫힌 화면의 콜백은 부르지 않지만, 서버에는 반영됐으니
+   * 다른 화면의 목록은 새로 불러야 한다(예: 내 제보 창을 닫은 뒤 삭제가 끝나도 지도에서 그 제보가 내려가야 한다).
+   */
+  | { status: 'detached'; result: TResult }
+  /** 요청이 끊겼거나 실패했는데 화면이 이미 닫혔다. 결과는 버렸다. */
   | { status: 'cancelled' }
 
 export interface RunMutationOptions<TVars, TResult, TSnapshot> extends MutationCallbacks<TVars, TResult, TSnapshot> {
@@ -45,7 +50,7 @@ export async function runMutation<TVars, TResult, TSnapshot>(
   const snapshot = onMutate ? onMutate(vars) : undefined
   try {
     const result = await mutationFn(vars, signal)
-    if (signal.aborted || !isAlive()) return { status: 'cancelled' }
+    if (signal.aborted || !isAlive()) return { status: 'detached', result }
     onSuccess?.(result, vars, snapshot)
     onSettled?.(vars, snapshot)
     return { status: 'success', result }

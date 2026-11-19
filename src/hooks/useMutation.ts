@@ -69,7 +69,8 @@ export function useMutation<TVars = void, TResult = unknown, TSnapshot = undefin
       onSettled: (v, snapshot) => optionsRef.current.onSettled?.(v, snapshot),
     })
     controllersRef.current.delete(controller)
-    if (outcome.status === 'success' && invalidates?.length) invalidateQueries(invalidates)
+    // 화면이 닫힌 뒤 성공한 저장(detached)도 서버에는 반영됐으니 다른 화면의 목록은 새로 부른다.
+    if ((outcome.status === 'success' || outcome.status === 'detached') && invalidates?.length) invalidateQueries(invalidates)
     if (aliveRef.current && token === latestRef.current) setPendingState(null)
     return outcome
   }, [])

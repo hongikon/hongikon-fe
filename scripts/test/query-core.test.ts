@@ -87,7 +87,8 @@ test('화면이 닫히면(끊으면) 응답 뒤 콜백을 부르지 않는다', 
   alive = false
   controller.abort()
   pending.resolve('late')
-  assert.deepEqual(await run, { status: 'cancelled' })
+  // 서버는 성공했으니 detached 로 알린다(다른 화면 새로 고침용). 닫힌 화면의 콜백은 부르지 않는다.
+  assert.deepEqual(await run, { status: 'detached', result: 'late' })
   assert.deepEqual(calls, [])
 
   const abortError = Object.assign(new Error('aborted'), { name: 'AbortError' })
