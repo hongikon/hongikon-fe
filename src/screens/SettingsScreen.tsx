@@ -1,102 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Linking,
-  Pressable,
-} from 'react-native'
+import { useCallback, useRef, useState } from 'react'
+import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
-import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native'
+import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
-import { useSettings, ALL_CATEGORIES } from '../contexts/SettingsContext'
+import { useSettings } from '../contexts/SettingsContext'
 import { useAuth } from '../contexts/AuthContext'
-import SubscriptionManagerModal from '../components/settings/SubscriptionManagerModal'
-import BoardAlertsModal from '../components/settings/BoardAlertsModal'
-import ToggleSwitch from '../components/settings/ToggleSwitch'
-import NearbyAlertSettings from '../components/settings/NearbyAlertSettings'
-import { nearbyAlertsAvailable } from '../lib/nearbyPartners/background'
-import NoticeListModal from '../components/settings/NoticeListModal'
-import PartnerSourcesModal from '../components/settings/PartnerSourcesModal'
-import TermsModal from '../components/settings/TermsModal'
-import LicensesModal from '../components/settings/LicensesModal'
-import SupportModal from '../components/settings/SupportModal'
-import WithdrawConfirmDialog from '../components/settings/WithdrawConfirmDialog'
-import PrivacyModal from '../components/settings/PrivacyModal'
-import FeedbackModal from '../components/settings/FeedbackModal'
-import OfficialRequestModal from '../components/settings/OfficialRequestModal'
-import InfoSuggestModal from '../components/settings/InfoSuggestModal'
-import AppPermissionsModal from '../components/settings/AppPermissionsModal'
-import KeywordAlertsModal from '../components/settings/KeywordAlertsModal'
-import ReportKeywordAlerts from '../components/settings/ReportKeywordAlerts'
-import { useReportKeywordAlerts } from '../hooks/useReportKeywordAlerts'
-import { isReportKeywordsMock } from '../apis/reportKeywords'
-import NicknameModal from '../components/settings/NicknameModal'
-import HiddenUsersModal from '../components/settings/HiddenUsersModal'
-import MyReportsModal from '../components/settings/MyReportsModal'
-import { UpdateHistoryRow } from '../components/settings/UpdateHistoryModal'
 import { useHiddenAuthors } from '../lib/hiddenAuthors'
-import * as haptics from '../lib/haptics'
-import { useIsAdmin } from '../admin/AdminAccess'
-import { useAdminAlertSetting } from '../hooks/useAdminAlertSetting'
-import { getUserIdFromToken } from '../lib/jwt'
-import ListRow from '../components/common/ListRow'
 import TabHeaderCard from '../components/common/TabHeaderCard'
-import { SELECTED_PILL_BG } from '../components/common/Chip'
-import ReportMegaphoneIcon from '../components/common/ReportMegaphoneIcon'
-import {
-  getMyMemberCode,
-  getMyProfile,
-  isMemberCodeApiKnownMissing,
-  isNicknameApiKnownMissing,
-  type MyProfile,
-} from '../apis/users'
-import { useApiResource } from '../hooks/useApiResource'
-import { getMyReportCount, isMyReportsApiKnownMissing, type MyReportCount } from '../apis/myReports'
-import { consumeSettingsIntent, subscribeSettingsIntent } from '../lib/settingsIntents'
 import { useToast } from '../components/common/Toast'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
-import { requestMapIntent } from '../lib/mapIntents'
-import { SHOW_DEVELOPER_TOOLS } from '../lib/appVariant'
-import { confirmAction, notify } from '../utils/dialog'
-import { promptLogin } from '../utils/reports'
-import { requestNotificationPermission, useNotificationPermission } from '../lib/notificationPermission'
 import { useAppNotices } from '../lib/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
-import { PARTNER_SOURCES } from '../constants/partnerSources'
-import { FONTS, TYPE } from '../constants/typography'
-import { RADIUS, SPACING } from '../constants/spacing'
+import { TYPE } from '../constants/typography'
+import { SPACING } from '../constants/spacing'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
 import { useTabBarInset } from '../hooks/useTabBarInset'
+import type { SettingsModalType } from '../hooks/settings/types'
+import { useSettingsGroups } from '../hooks/settings/useSettingsGroups'
+import { useAccountActions } from '../hooks/settings/useAccountActions'
+import { useSettingsAlerts } from '../hooks/settings/useSettingsAlerts'
+import { useSettingsAccount } from '../hooks/settings/useSettingsAccount'
+import { useNearbySettingHighlight } from '../hooks/settings/useNearbySettingHighlight'
+import { useSettingsIntents } from '../hooks/settings/useSettingsIntents'
+import GroupHeader from '../components/settings/screen/GroupHeader'
+import ProfileCard from '../components/settings/screen/ProfileCard'
+import SuspendedNotice from '../components/settings/screen/SuspendedNotice'
+import AccountGroup from '../components/settings/screen/AccountGroup'
+import AlertsGroup from '../components/settings/screen/AlertsGroup'
+import GeneralGroup from '../components/settings/screen/GeneralGroup'
+import SupportGroup from '../components/settings/screen/SupportGroup'
+import PoliciesGroup from '../components/settings/screen/PoliciesGroup'
+import SettingsModals from '../components/settings/screen/SettingsModals'
+import { settingsStyles } from '../components/settings/screen/styles'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
-/** 설정 묶음(10-31·11-01). 누르면 그 자리에서 아래로 펼친다(여러 개를 함께 펼칠 수 있다). */
-type SettingsGroup = 'account' | 'alerts' | 'general' | 'support' | 'policies'
-
-type ModalType =
-  | 'notices'
-  | 'sources'
-  | 'terms'
-  | 'licenses'
-  | 'support'
-  | 'privacy'
-  | 'feedback'
-  | 'infoSuggest'
-  | 'permissions'
-  | 'keywords'
-  | 'nickname'
-  | 'hiddenUsers'
-  | 'myReports'
-  | 'official'
-  | null
-
+/**
+ * 설정 탭. 묶음(계정·알림·구독 게시판·일반·고객 지원·약관)을 누르면 그 자리에서 펼친다.
+ * 상태와 동작은 hooks/settings/*, 묶음별 화면은 components/settings/screen/* 에 있다.
+ */
 export default function SettingsScreen() {
   const tabInset = useTabBarInset()
   const appNotices = useAppNotices()
@@ -123,633 +68,94 @@ export default function SettingsScreen() {
   const { status, loginProvider, logout, deleteAccount, accessToken } = useAuth()
   const navigation = useNavigation<NavProp>()
 
-  const [activeModal, setActiveModal] = useState<ModalType>(null)
-  const [expanded, setExpanded] = useState<ReadonlySet<SettingsGroup>>(new Set())
-  // 설정 탭에 있을 때 하단 '설정'을 다시 누르면 맨 위로(11-01 — useScrollToTop 만으로는 올라가지 않았다).
-  useEffect(() => {
-    const unsubscribe = (navigation as unknown as { addListener: (type: 'tabPress', cb: () => void) => () => void }).addListener(
-      'tabPress',
-      () => {
-        if (navigation.isFocused()) scrollRef.current?.scrollTo({ y: 0, animated: true })
-      },
-    )
-    return unsubscribe
-  }, [navigation])
-  const toggleGroup = useCallback((group: SettingsGroup) => {
-    haptics.selection()
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(group)) next.delete(group)
-      else next.add(group)
-      return next
-    })
-  }, [])
+  const [activeModal, setActiveModal] = useState<SettingsModalType>(null)
+  const { expanded, toggleGroup, expandGroup } = useSettingsGroups(navigation, scrollRef)
   const [subManagerVisible, setSubManagerVisible] = useState(false)
   const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
+  const closeModal = useCallback(() => setActiveModal(null), [])
+  const openSubscriptions = useCallback(() => setSubManagerVisible(true), [])
 
-  const handleLogout = () => {
-    confirmAction({
-      title: '로그아웃',
-      message: '로그아웃할까요?',
-      confirmLabel: '로그아웃',
-      destructive: true,
-      onConfirm: () => {
-        void logout()
-      },
-    })
-  }
+  const actions = useAccountActions({ logout, deleteAccount, resetSettings, closeModal })
 
-  // 게스트는 로그인된 게 없으니 확인 없이 바로 웰컴 화면으로 보낸다.
-  // logout() 이 토큰·게스트 플래그를 함께 지워 signedOut 상태로 돌려놓는다.
-  const handleGoToLogin = () => {
-    logout()
-  }
-
-  // 탈퇴 확인은 WithdrawConfirmDialog(빨간 경고, '아니요'가 메인 컬러). 설정 맨 아래 링크와 고객 지원 › 계정 삭제 안내가 같이 쓴다.
-  const [withdrawVisible, setWithdrawVisible] = useState(false)
-  const handleDeleteAccount = () => setWithdrawVisible(true)
-
-  const withdraw = async () => {
-    try {
-      await deleteAccount()
-      setWithdrawVisible(false)
-      setActiveModal(null)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '탈퇴 처리 중 오류가 생겼어요.'
-      notify('탈퇴 실패', message)
-    }
-  }
-
-  // 회원 번호. 서버가 주는 공개 번호(K7Q2M9XA4D)를 보여 주고, 서버 배포 전에는 예전처럼 토큰 sub(= userId)를 #123 으로 보여 준다.
-  // 누르는 동작 없이 보여 주기만 한다. 토큰이 이상하면 줄을 숨긴다.
-  const memberId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
-
-  const handleReset = () => {
-    confirmAction({
-      title: '설정 초기화',
-      message: '모든 설정이 기본값으로 되돌아가요. 계속할까요?',
-      confirmLabel: '초기화',
-      destructive: true,
-      onConfirm: () => {
-        void resetSettings()
-      },
-    })
-  }
-
-  const permission = useNotificationPermission()
-  // 휴대폰 설정에서 알림이 막혀 있으면 앱 안 스위치가 켜져 있어도 알림이 오지 않는다.
-  const systemBlocked = permission.status === 'denied' || permission.status === 'undetermined'
-
-  /** 앱 알림을 켤 때 휴대폰 권한을 아직 묻지 않았으면 그때 시스템 창을 띄운다. */
-  const handleToggleSubscriptionAlert = () => {
-    if (status !== 'authenticated') {
-      promptLogin('알림은 로그인 후 받을 수 있어요.', logout)
-      return
-    }
-    const turningOn = !settings.subscriptionAlert
-    toggleSubscriptionAlert() // 진동은 ToggleSwitch 가 켤 때만 낸다(두 번 울리지 않게).
-    toast.show(
-      turningOn
-        ? { message: '알림을 켰어요' }
-        : { message: '알림을 껐어요', tone: 'info' },
-    )
-    if (turningOn && permission.status === 'undetermined' && permission.canAskAgain && status === 'authenticated') {
-      void requestNotificationPermission()
-    }
-  }
-
-  /** 거절된 뒤에는 앱이 다시 물을 수 없어(iOS) 휴대폰 설정 화면으로 보낸다. 아직 물을 수 있으면 바로 묻는다. */
-  const handleFixSystemPermission = () => {
-    if ((permission.status === 'undetermined' || permission.status === 'denied') && permission.canAskAgain) {
-      void requestNotificationPermission()
-      return
-    }
-    Linking.openSettings().catch(() => notify('설정을 열지 못했어요', '휴대폰 설정 > 홍익온 > 알림에서 허용해 주세요.'))
-  }
-
-  const { subscribedDepts } = settings
-  // 게스트에게는 알림 값을 모두 꺼짐으로 보여 준다(위 promptAlertLogin 주석). 저장값은 건드리지 않는다.
-  const loggedIn = status === 'authenticated'
-  const subscriptionAlert = loggedIn && settings.subscriptionAlert
-  const reportStatusAlert = loggedIn && settings.reportStatusAlert
-  const newReportAlert = loggedIn && settings.newReportAlert
-  const alertCategories = loggedIn ? settings.alertCategories : []
-  // 알림 권한이 꺼져 있으면 '앱 권한' 줄에 바로 보여 찾아 들어가게 한다.
-  const permissionSummary =
-    permission.status === 'granted'
-      ? undefined
-      : permission.status === 'denied'
-        ? '알림 꺼짐'
-        : permission.status === 'undetermined'
-          ? '알림 확인 필요'
-          : undefined
   const isGuest = status !== 'authenticated'
-  /**
-   * 알림은 로그인해야 받는다(푸시 기기 등록·알림 설정 모두 계정에 저장). 게스트에게는 알림 스위치를 모두 꺼짐으로
-   * 흐리게 보여 주고, 누르면 로그인을 권한다. 기기에 남은 값(게스트 기본값)은 보여 주지 않는다 — 로그인하면
-   * 계정에 저장된 알림 설정을 불러온다.
-   */
-  const promptAlertLogin = () => promptLogin('알림은 로그인 후 받을 수 있어요.', logout)
-  const guarded = (action: () => void) => (isGuest ? promptAlertLogin : action)
-  // 관리자 알림 스위치 — 관리자 계정에만, 서버가 이 설정을 알 때만(모르면 숨김) 보인다.
-  const isAdmin = useIsAdmin()
-  const adminAlert = useAdminAlertSetting(isAdmin)
-  // 새 제보 알림 범위·제보 키워드. 로그인 + 스위치 켜짐일 때만 불러와 보여 준다.
-  // 개발 웹 `?mock=1` 에선 로그인 없이도 목업으로 보여 준다(운영 빌드는 늘 false).
-  const [reportKeywordMock] = useState(isReportKeywordsMock)
-  const showReportKeywords = newReportAlert || reportKeywordMock
-  const reportKeywords = useReportKeywordAlerts(
-    showReportKeywords,
-    reportKeywordMock && !accessToken ? 'mock' : accessToken,
-  )
-  const keywordScopeOn = showReportKeywords && reportKeywords.status === 'ready' && reportKeywords.scope === 'KEYWORDS'
+  const alerts = useSettingsAlerts({
+    status,
+    accessToken,
+    logout,
+    settings,
+    toggleSubscriptionAlert,
+    isDeptAlertOn,
+    toggleDeptAlert,
+    toast,
+    openSubscriptions,
+  })
+  const account = useSettingsAccount({ isGuest, accessToken })
+  const { profile } = account
 
-  // 앱 닉네임. 백엔드에 API 가 아직 없으면(배포 전) 줄을 숨긴다.
-  // 토큰은 ref 로 읽는다. deps 에 넣으면 401 → 재발급으로 토큰이 바뀔 때마다 다시 불러, 배포 전 서버(없는 경로에 401)에서
-  // 재발급이 꼬리를 문다. 재발급 뒤 재요청은 client 가 알아서 한다.
-  const accessTokenRef = useRef(accessToken)
-  accessTokenRef.current = accessToken
-  // 다시 부르는 기준은 토큰 안의 회원 번호 — 로그인한 채로 계정이 바뀌면(토큰 교체) 바로 다시 부른다(10-08).
-  // 토큰 재발급(같은 회원)으로는 바뀌지 않아 재발급마다 다시 부르지 않는다.
-  const profileResource = useApiResource<MyProfile>(
-    (signal) => getMyProfile(accessTokenRef.current as string, signal),
-    [isGuest, memberId],
-    { enabled: !isGuest && !!accessToken && !isNicknameApiKnownMissing(), refetchOnForeground: false },
-  )
-  // 저장 직후 응답을 바로 보여 주고, 다음 조회 결과가 오면 그걸 따른다.
-  const [savedProfile, setSavedProfile] = useState<MyProfile | null>(null)
-  useEffect(() => setSavedProfile(null), [profileResource.data])
-  // 지금 토큰의 회원과 다른 회원의 프로필(이전 계정 값)은 절대 보여 주지 않는다 — 새 응답이 올 때까지 '불러오는 중'.
-  // 예전엔 계정이 바뀐 뒤 새 응답 전까지 이전 계정 닉네임이 잠깐 보였다(10-08 제보).
-  const rawProfile = savedProfile ?? profileResource.data
-  const profile = rawProfile && (memberId == null || rawProfile.id === memberId) ? rawProfile : undefined
-  const nicknameApiMissing = !profile && isNicknameApiKnownMissing()
-  // 계정 정보를 받아 왔을 때만(구서버라 닉네임 API 가 없으면 예전처럼) 닉네임·내 제보 내역을 보인다.
-  // 토큰이 만료됐거나 서버에 닿지 않아 못 받아 오면 두 줄을 숨긴다('불러오지 못함' 줄을 남기지 않는다).
-  const accountLoaded = profile != null || nicknameApiMissing
-
-  // 공개 회원 번호. 닉네임과 같은 이유로 토큰은 ref 로 읽고, API 가 없으면(배포 전) 다시 부르지 않는다.
-  // 받은 번호가 어느 회원 것인지 함께 둔다 — 계정이 바뀐 직후 이전 회원 번호가 보이지 않게(10-08).
-  const memberCodeResource = useApiResource<{ ownerId: number | null; code: string | null }>(
-    (signal) => {
-      const ownerId = memberId
-      return getMyMemberCode(accessTokenRef.current as string, signal).then((code) => ({ ownerId, code }))
-    },
-    [isGuest, memberId],
-    { enabled: !isGuest && !!accessToken && !isMemberCodeApiKnownMissing(), refetchOnForeground: false },
-  )
-  const ownMemberCode =
-    memberCodeResource.data && memberCodeResource.data.ownerId === memberId ? memberCodeResource.data.code : null
-  const memberCode = ownMemberCode ?? profile?.memberCode ?? null
-  // 서버에 회원 번호가 없을 때(배포 전·빈 값)만 예전 #id 표시로 돌아간다. 불러오는 중·일시 오류에는 id 를 내보이지 않는다.
-  const memberCodeFallback =
-    !memberCode &&
-    (isMemberCodeApiKnownMissing() || (memberCodeResource.data?.ownerId === memberId && memberCodeResource.data.code === null))
-  const memberNumber = memberCode ?? (memberCodeFallback && memberId !== null ? `#${memberId}` : null)
-
-  // 내 제보 내역. 개수(승인 대기 배지)를 먼저 받아, 서버에 API 가 없으면(배포 전 404/405/재발급 뒤 401) 줄을 숨긴다.
-  const myReportCountResource = useApiResource<MyReportCount>(
-    (signal) => getMyReportCount(accessTokenRef.current as string, signal),
-    [isGuest],
-    { enabled: !isGuest && !!accessToken && !isMyReportsApiKnownMissing() },
-  )
-  const myReportsApiMissing = isMyReportsApiKnownMissing()
-  const myReportPending = myReportCountResource.data?.pending ?? 0
   /** 반려 알림으로 들어왔을 때 내역에서 강조할 제보 */
   const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
-  /** 올라갈 때마다 근처 제휴 알림 창을 연다(제휴 시트의 안내 줄 → `openNearbyAlerts`). */
-  const [nearbyOpenSignal, setNearbyOpenSignal] = useState(0)
-  /**
-   * 지도(근처 알림 영역·제휴 시트)에서 '근처 제휴 알림 켜러 가기'로 넘어왔을 때(11-09).
-   * ① 알림 묶음을 펼치고 '근처 제휴' 칸으로 바로 스크롤해 남색으로 강조한다 — 어디 있는지 먼저 보이게.
-   * ② 탭 전환이 끝난 뒤(0.7초) 그 설정 창을 연다. 전에는 화면이 붙는 순간 창을 열어 iOS 에서 창이 안 뜨는 때가 있었고,
-   *    강조도 창을 닫은 뒤에만 해 아무 표시 없이 설정 탭만 보였다.
-   * 강조는 창을 닫고 3초 뒤(창이 안 떴으면 8초 뒤) 사라진다.
-   */
-  const [nearbyHighlight, setNearbyHighlight] = useState(false)
-  /** '근처 제휴' 칸 위치 = 알림 묶음 y + 펼친 내용 y + 칸 y(각각 부모 기준 onLayout). */
-  const nearbyYRef = useRef({ section: 0, body: 0, block: 0 })
-  const nearbyTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
-  useEffect(() => () => nearbyTimersRef.current.forEach(clearTimeout), [])
-  const showNearbySetting = useCallback(() => {
-    nearbyTimersRef.current.forEach(clearTimeout)
-    setNearbyHighlight(true)
-    const scroll = setTimeout(() => {
-      const { section, body, block } = nearbyYRef.current
-      scrollRef.current?.scrollTo({ y: Math.max(0, section + body + block - 120), animated: true })
-    }, 250)
-    const open = setTimeout(() => setNearbyOpenSignal((n) => n + 1), 700)
-    const off = setTimeout(() => setNearbyHighlight(false), 8000)
-    nearbyTimersRef.current = [scroll, open, off]
-  }, [])
-  const handleNearbyModalClose = useCallback(() => {
-    nearbyTimersRef.current.forEach(clearTimeout)
-    nearbyTimersRef.current = [setTimeout(() => setNearbyHighlight(false), 3000)]
-  }, [])
-
-  // 알림(반려) 탭 → 설정 탭으로 넘어와 내 제보 내역을 연다(`lib/settingsIntents.ts`). 게스트면 무시한다.
-  const handleSettingsIntent = useCallback(() => {
-    const intent = consumeSettingsIntent()
-    if (!intent) return
-    if (intent.type === 'openAlerts') {
-      setExpanded((prev) => new Set(prev).add('alerts'))
-      return
-    }
-    if (intent.type === 'openSubscriptions') {
-      setSubManagerVisible(true)
-      return
-    }
-    if (intent.type === 'openNearbyAlerts') {
-      // 근처 알림 줄은 알림 묶음 안에 있다 — 묶음을 펼친 뒤 창을 띄운다.
-      setExpanded((prev) => new Set(prev).add('alerts'))
-      if (isGuest) {
-        // 게스트는 근처 알림 줄이 없다. 그냥 설정 탭만 보이면 왜 왔는지 몰라 한 줄 알린다.
-        notify('근처 제휴 알림', '근처 제휴 알림은 로그인한 뒤 알림 > 근처 제휴에서 켤 수 있어요.')
-        return
-      }
-      showNearbySetting()
-      return
-    }
-    if (isGuest) return
-    setHighlightReportId(intent.reportId)
+  const openMyReports = useCallback((reportId: number | null) => {
+    setHighlightReportId(reportId)
     setActiveModal('myReports')
-  }, [isGuest, showNearbySetting])
-  useFocusEffect(handleSettingsIntent)
-  useEffect(() => subscribeSettingsIntent(handleSettingsIntent), [handleSettingsIntent])
+  }, [])
+  const nearby = useNearbySettingHighlight(scrollRef)
+  useSettingsIntents({ isGuest, expandGroup, openSubscriptions, showNearbySetting: nearby.show, openMyReports })
 
-  const goToMap = (afterClose: () => void) => {
-    setActiveModal(null)
-    afterClose()
-    // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
-    ;(navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
-  }
-  // 전체 알림이 꺼져 있으면 아래 세부 설정은 지금 효과가 없다. 미리 고를 수 있게 누를 수는 두고 흐리게만 보인다.
-  // 게스트는 subscriptionAlert 가 늘 false 라 함께 흐려진다.
-  const detailDimmed = !subscriptionAlert
+  // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
+  const navigateToMap = () => (navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
 
-  const alertOnCount = loggedIn ? subscribedDepts.filter(isDeptAlertOn).length : 0
-  // '구독 알림'(알림 설정 아래 첫 줄): 구독한 게시판 알림을 한 번에 켜고 끈다 — 게시판별 알림 창의 "모두 켜기/끄기"와 같다.
-  // 하나라도 켜져 있으면 켜짐으로 본다. 구독한 게시판이 없으면 구독 관리를 연다.
-  const subscriptionNewsOn = alertOnCount > 0
-  const handleToggleSubscriptionNews = () => {
-    if (subscribedDepts.length === 0) {
-      setSubManagerVisible(true)
-      return
-    }
-    const next = !subscriptionNewsOn
-    const targets = subscribedDepts.filter((id) => isDeptAlertOn(id) !== next)
-    for (const id of targets) toggleDeptAlert(id)
-    haptics.tapLight()
-    toast.show(next ? { message: '구독 알림을 켰어요' } : { message: '구독 알림을 껐어요', tone: 'info' })
-  }
+  const { subscribedDepts } = settings
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={[layoutStyles.readable, tabInset > 0 && { paddingBottom: tabInset }]}>
         {/* 설정은 목록이 길어 머리 카드를 위에 고정하지 않고 같이 스크롤한다(10-07 요청). */}
         <TabHeaderCard title="설정">
-          {/* 프로필 줄. 사진 올리기는 아직 없어 모두 같은 기본 프로필(앱 아이콘 — 남색 원 안 흰 확성기)을 쓴다(10-07). */}
-          <Pressable
-            style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}
+          <ProfileCard
+            authenticated={status === 'authenticated'}
+            displayName={profile?.displayName}
             onPress={
               status !== 'authenticated'
-                ? handleGoToLogin
-                : profile && !nicknameApiMissing
+                ? actions.handleGoToLogin
+                : profile && !account.nicknameApiMissing
                   ? () => setActiveModal('nickname')
                   : undefined
             }
-            accessibilityRole="button"
-            accessibilityLabel={
-              status === 'authenticated'
-                ? `프로필 ${profile?.displayName ?? ''}, 닉네임 변경`
-                : '로그인하기'
-            }
-          >
-            <View style={styles.avatar}>
-              <ReportMegaphoneIcon size={24} color={COLORS.white} />
-            </View>
-            <View style={styles.profileBody}>
-              <Text style={styles.profileName} numberOfLines={1}>
-                {status === 'authenticated' ? (profile?.displayName ?? '불러오는 중') : '게스트'}
-              </Text>
-              <Text style={styles.profileSub} numberOfLines={1}>
-                {status === 'authenticated' ? '홍익대학교 · 닉네임 변경' : '로그인하고 닉네임을 정해 보세요'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
-          </Pressable>
+          />
         </TabHeaderCard>
 
-        {/* 이용 제한(약관 제10조): 사유와 이의 제기 방법을 맨 위에 알린다. 서버가 정지 알림 푸시도 보낸다. */}
-        {status === 'authenticated' && profile?.status === 'SUSPENDED' && (
-          <View style={styles.suspendedBox} accessibilityRole="alert">
-            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
-            <View style={styles.suspendedBody}>
-              <Text style={styles.suspendedTitle}>이용이 제한된 계정이에요</Text>
-              <Text style={styles.suspendedText}>
-                {profile.suspendedReason ? `사유: ${profile.suspendedReason}\n` : ''}
-                제보·신고·문의를 할 수 없어요. 이의가 있으면 제한 알림을 받은 날부터 14일 안에 hongikonsupport@gmail.com 으로 알려 주세요.
-              </Text>
-            </View>
-          </View>
-        )}
+        {status === 'authenticated' && profile?.status === 'SUSPENDED' && <SuspendedNotice reason={profile.suspendedReason} />}
 
         {/* 묶음(10-31·11-01): 묶음마다 따로 둥근 카드(소식 > 전체의 단과대 카드처럼). 누르면 그 자리에서 아래로 펼친다. */}
-          {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
-          {status === 'authenticated' && (
-          <View style={styles.section}>
-            <GroupHeader
-              icon="person-outline"
-              label="계정"
-              value={loginProvider === 'apple' ? 'Apple' : loginProvider === 'demo' ? '심사용' : '카카오'}
-              badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-              expanded={expanded.has('account')}
-              onPress={() => toggleGroup('account')}
-            />
-            {expanded.has('account') && (
-            <View style={styles.groupBody}>
-              <ListRow
-                icon="person-circle-outline"
-                label={
-                  loginProvider === 'apple'
-                    ? 'Apple 계정으로 로그인됨'
-                    : loginProvider === 'demo'
-                      ? '심사용 데모 계정으로 로그인됨'
-                      : '카카오 계정으로 로그인됨'
-                }
-              />
-              {/* 닉네임은 첫 화면 맨 위 프로필 줄에서 바꾼다. */}
-              {memberId !== null && (
-                <ListRow
-                  icon="id-card-outline"
-                  label="회원 번호"
-                  value={memberNumber ?? (memberCodeResource.loading ? '불러오는 중' : '불러오지 못함')}
-                  accessibilityLabel={memberNumber ? `회원 번호 ${memberNumber.replace(/^#/, '')}` : '회원 번호'}
-                />
-              )}
-              {/* 공식 계정(학생회 등)의 이름·신청은 닉네임 창 안에 있다(NicknameModal). */}
-              {accountLoaded && !myReportsApiMissing && (
-                <ListRow
-                  icon="megaphone-outline"
-                  label="내 제보 내역"
-                  badge={myReportPending > 0 ? `승인 대기 ${myReportPending > 99 ? '99+' : myReportPending}` : undefined}
-                  onPress={() => {
-                    setHighlightReportId(null)
-                    setActiveModal('myReports')
-                  }}
-                  accessibilityLabel={myReportPending > 0 ? `내 제보 내역, 승인 대기 ${myReportPending}건` : '내 제보 내역'}
-                />
-              )}
-              <ListRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
-              {/* 누르면 WithdrawConfirmDialog 가 뜬다. */}
-              <ListRow icon="person-remove-outline" label="회원 탈퇴" danger last onPress={handleDeleteAccount} />
-            </View>
-            )}
-          </View>
-          )}
-        <View style={styles.section} onLayout={(e) => (nearbyYRef.current.section = e.nativeEvent.layout.y)}>
-          <GroupHeader
-            icon="notifications-outline"
-            label="알림"
-            value={isGuest ? '로그인 후 사용' : subscriptionAlert ? '켜짐' : '꺼짐'}
-            badge={subscriptionAlert && systemBlocked ? '권한 필요' : undefined}
-            expanded={expanded.has('alerts')}
-            onPress={() => toggleGroup('alerts')}
+        {/* 게스트는 맨 위 프로필 줄이 '로그인하기' 를 맡아 계정 묶음을 그리지 않는다. */}
+        {status === 'authenticated' && (
+          <AccountGroup
+            loginProvider={loginProvider}
+            expanded={expanded.has('account')}
+            onToggle={() => toggleGroup('account')}
+            memberId={account.memberId}
+            memberNumber={account.memberNumber}
+            memberCodeLoading={account.memberCodeLoading}
+            showMyReports={account.accountLoaded && !account.myReportsApiMissing}
+            myReportPending={account.myReportPending}
+            onOpenMyReports={() => openMyReports(null)}
+            onLogout={actions.handleLogout}
+            onDeleteAccount={actions.handleDeleteAccount}
           />
-          {expanded.has('alerts') && (
-              <View style={styles.groupBody} onLayout={(e) => (nearbyYRef.current.body = e.nativeEvent.layout.y)}>
-                <View style={styles.subBlockFirst}>
-                  {isGuest && (
-                    <View style={styles.guestNotice}>
-                      <Ionicons name="lock-closed-outline" size={15} color={COLORS.primary} />
-                      <View style={styles.guestNoticeBody}>
-                        <Text style={styles.guestNoticeTitle}>알림은 로그인 후 받을 수 있어요</Text>
-                        <Text style={styles.guestNoticeText}>
-                          로그인하면 계정에 저장된 알림 설정을 불러와요. 구독한 게시판은 로그인하지 않아도 소식 탭에서 볼 수 있어요.
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                  <ListRow
-                    icon="notifications-outline"
-                    label="알림 받기"
-                    description={
-                      isGuest
-                        ? '로그인하면 켤 수 있어요'
-                        : subscriptionAlert
-                          ? '아래에서 켜 둔 알림을 이 기기로 보내드려요'
-                          : '꺼져 있어 아래 설정과 관계없이 알림이 오지 않아요'
-                    }
-                    last
-                    right={
-                      <ToggleSwitch
-                        value={subscriptionAlert}
-                        dimmed={isGuest}
-                        onToggle={handleToggleSubscriptionAlert}
-                        locked={isGuest}
-                        accessibilityLabel="알림 받기"
-                      />
-                    }
-                  />
-                  {subscriptionAlert && status === 'authenticated' && systemBlocked && (
-                    <View style={styles.permissionCard}>
-                      <Ionicons name="alert-circle-outline" size={18} color={COLORS.warningIcon} />
-                      <Text style={styles.permissionText}>
-                        {permission.status === 'denied'
-                          ? '휴대폰 설정에서 홍익온 알림이 꺼져 있어 알림이 오지 않아요.'
-                          : '알림을 받으려면 휴대폰 알림 권한을 허용해 주세요.'}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={handleFixSystemPermission}
-                        accessibilityRole="button"
-                        accessibilityLabel={permission.status === 'denied' && !permission.canAskAgain ? '휴대폰 설정 열기' : '알림 허용하기'}
-                      >
-                        <Text style={styles.permissionAction}>
-                          {permission.status === 'denied' && !permission.canAskAgain ? '설정 열기' : '허용하기'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-
-                {/* 공지(구독 게시판) 알림. 전체 스위치가 꺼져 있으면 흐리게. */}
-                <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
-                  <Text style={styles.subHeader}>공지 알림</Text>
-                  <ListRow
-                    icon="newspaper-outline"
-                    label="구독 알림"
-                    description={
-                      isGuest
-                        ? '로그인하면 켤 수 있어요'
-                        : subscribedDepts.length === 0
-                          ? '구독한 게시판이 없어요. 눌러서 게시판을 구독해 보세요'
-                          : `구독한 게시판의 새 소식을 알려드려요 · ${alertOnCount}/${subscribedDepts.length}개 켜짐`
-                    }
-                    right={
-                      <ToggleSwitch
-                        value={!isGuest && subscriptionNewsOn}
-                        onToggle={guarded(handleToggleSubscriptionNews)}
-                        locked={isGuest}
-                        accessibilityLabel={`구독 알림 ${subscriptionNewsOn ? '켜짐' : '꺼짐'}`}
-                      />
-                    }
-                  />
-                  {/* 분야는 구독 알림을 거르는 설정이라 구독 알림 바로 아래(11-01). */}
-                  <View style={styles.categoryHead}>
-                    <Text style={styles.categoryTitle}>알림 받을 분야</Text>
-                    <Text style={styles.categoryMeta}>
-                      {isGuest ? '로그인 후 사용' : `${alertCategories.length}/${ALL_CATEGORIES.length}`}
-                    </Text>
-                  </View>
-                  <Text style={styles.categoryHint}>구독한 게시판의 새 소식 중 고른 분야만 알려드려요</Text>
-                  <View style={styles.categoryGrid}>
-                    {ALL_CATEGORIES.map((cat) => {
-                      const isOn = alertCategories.includes(cat)
-                      // 켜진 분야는 분야별 색 대신 앱 기본색(남색)으로 통일한다.
-                      return (
-                        <TouchableOpacity
-                          key={cat}
-                          style={[styles.categoryChip, isOn ? styles.categoryChipOn : styles.categoryChipOff]}
-                          onPress={guarded(() => toggleAlertCategory(cat))}
-                          activeOpacity={0.7}
-                          accessibilityRole="switch"
-                          accessibilityLabel={`${cat} 분야 알림 ${isOn ? '켜짐' : '꺼짐'}`}
-                          accessibilityState={{ checked: isOn }}
-                        >
-                          <Ionicons
-                            name={isOn ? 'checkmark-circle' : 'ellipse-outline'}
-                            size={14}
-                            color={isOn ? COLORS.primary : COLORS.textSecondary}
-                          />
-                          <Text style={[styles.categoryChipText, { color: isOn ? COLORS.primary : COLORS.textSecondary }]}>
-                            {cat}
-                          </Text>
-                        </TouchableOpacity>
-                      )
-                    })}
-                  </View>
-                  {loggedIn && alertCategories.length === 0 && (
-                    <View style={styles.warnRow}>
-                      <Ionicons name="alert-circle-outline" size={14} color={COLORS.danger} />
-                      <Text style={styles.warnText}>선택한 분야가 없어 새 소식 알림이 오지 않아요</Text>
-                    </View>
-                  )}
-                  {/* 구독이 많으면 목록이 끝없이 길어져 게시판별 알림은 따로 연다(BoardAlertsModal). 게스트는 로그인을 권한다. */}
-                  <ListRow
-                    icon="notifications-circle-outline"
-                    label="게시판별 알림"
-                    value={
-                      isGuest
-                        ? '로그인 후 사용'
-                        : subscribedDepts.length > 0
-                          ? `${alertOnCount}/${subscribedDepts.length} 켜짐`
-                          : '구독한 게시판 없음'
-                    }
-                    onPress={isGuest ? promptAlertLogin : () => setBoardAlertsVisible(true)}
-                  />
-                  {/* 키워드는 서버에만 저장해 게스트는 열지 않고 로그인 안내만 한다. */}
-                  <ListRow
-                    icon="pricetag-outline"
-                    label="키워드 알림"
-                    value={isGuest ? '로그인 후 사용' : undefined}
-                    onPress={() =>
-                      isGuest ? notify('키워드 알림', '키워드 알림은 로그인 후 쓸 수 있어요.') : setActiveModal('keywords')
-                    }
-                  />
-                </View>
-
-                {/* 근처 알림 빌드 + 로그인일 때만(컴포넌트가 스스로 숨는다). 공지와 제보 사이(11-01). */}
-                {nearbyAlertsAvailable() && !isGuest && (
-                  <View
-                    style={[styles.subBlock, nearbyHighlight && styles.subBlockHighlight]}
-                    onLayout={(e) => (nearbyYRef.current.block = e.nativeEvent.layout.y)}
-                  >
-                    <Text style={[styles.subHeader, nearbyHighlight && styles.subHeaderHighlight]}>
-                      {nearbyHighlight ? '근처 제휴 · 여기서 켜고 꺼요' : '근처 제휴'}
-                    </Text>
-                    <NearbyAlertSettings openSignal={nearbyOpenSignal} onModalClose={handleNearbyModalClose} />
-                  </View>
-                )}
-
-                {/* 제보 알림. 제보는 기기 위치(GPS)를 쓰지 않아 "근처" 대신 캠퍼스 전체 단위로 받는다. */}
-                <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
-                  <Text style={styles.subHeader}>제보 알림</Text>
-                  <ListRow
-                    icon="checkmark-done-outline"
-                    label="내 제보 결과 알림"
-                    description="올린 제보가 지도에 올라가거나 반려되면, 내 제보에 댓글이나 내 댓글에 답글이 달리거나 공감이 모이면 알려드려요"
-                    right={
-                      <ToggleSwitch
-                        value={reportStatusAlert}
-                        onToggle={guarded(toggleReportStatusAlert)}
-                        locked={isGuest}
-                        accessibilityLabel={`내 제보 결과 알림 ${reportStatusAlert ? '켜짐' : '꺼짐'}`}
-                      />
-                    }
-                  />
-                  <ListRow
-                    icon="megaphone-outline"
-                    label="캠퍼스 새 제보 알림"
-                    description={
-                      keywordScopeOn
-                        ? '운영진이 확인한 새 제보 중 내 키워드가 들어간 제보가 지도에 올라오면 바로 알려드려요.'
-                        : '운영진이 확인한 새 제보가 지도에 올라오면 알려드려요. 여러 건이 몰리면 30분에 한 번 모아서 보내고, 밤 11시~아침 8시엔 쉬었다가 아침에 모아 보내요.'
-                    }
-                    last={!showReportKeywords}
-                    right={
-                      <ToggleSwitch
-                        value={newReportAlert}
-                        onToggle={guarded(toggleNewReportAlert)}
-                        locked={isGuest}
-                        accessibilityLabel={`캠퍼스 새 제보 알림 ${newReportAlert ? '켜짐' : '꺼짐'}`}
-                      />
-                    }
-                  />
-                  {showReportKeywords && (
-                    <ReportKeywordAlerts
-                      status={reportKeywords.status}
-                      scope={reportKeywords.scope}
-                      keywords={reportKeywords.keywords}
-                      onRetry={reportKeywords.retry}
-                      onChangeScope={reportKeywords.changeScope}
-                      onAdd={reportKeywords.addKeyword}
-                      onRemove={reportKeywords.removeKeyword}
-                    />
-                  )}
-                </View>
-
-                {isAdmin && adminAlert.state.status !== 'unsupported' && (
-                  <View style={[styles.subBlock, detailDimmed && styles.dimmed]}>
-                    <Text style={styles.subHeader}>관리자</Text>
-                    <ListRow
-                      icon="shield-checkmark-outline"
-                      label="관리자 알림"
-                      description="새 제보 승인 대기·새 문의·신고로 자동 숨김된 제보를 알려드려요. 몰리면 2분에 한 번 묶어서 와요."
-                      value={
-                        adminAlert.state.status === 'loading'
-                          ? '불러오는 중'
-                          : adminAlert.state.status === 'error'
-                            ? '다시 시도'
-                            : undefined
-                      }
-                      onPress={adminAlert.state.status === 'error' ? adminAlert.retry : undefined}
-                      last
-                      right={
-                        adminAlert.state.status === 'ready' ? (
-                          <ToggleSwitch
-                            value={adminAlert.state.enabled}
-                            onToggle={adminAlert.toggle}
-                            accessibilityLabel={`관리자 알림 ${adminAlert.state.enabled ? '켜짐' : '꺼짐'}`}
-                          />
-                        ) : undefined
-                      }
-                    />
-                  </View>
-                )}
-              </View>
-          )}
-        </View>
-        <View style={styles.section}>
+        )}
+        <AlertsGroup
+          alerts={alerts}
+          nearby={nearby}
+          expanded={expanded.has('alerts')}
+          onToggle={() => toggleGroup('alerts')}
+          subscribedCount={subscribedDepts.length}
+          onToggleCategory={toggleAlertCategory}
+          onToggleReportStatus={toggleReportStatusAlert}
+          onToggleNewReport={toggleNewReportAlert}
+          onOpenBoardAlerts={() => setBoardAlertsVisible(true)}
+          onOpenKeywords={() => setActiveModal('keywords')}
+        />
+        <View style={settingsStyles.section}>
           <GroupHeader
             icon="bookmarks-outline"
             label="구독 게시판"
@@ -758,60 +164,17 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <GroupHeader icon="options-outline" label="일반" expanded={expanded.has('general')} onPress={() => toggleGroup('general')} />
-          {expanded.has('general') && (
-              <View style={styles.groupBody}>
-                <ListRow icon="key-outline" label="앱 권한" value={permissionSummary} onPress={() => setActiveModal('permissions')} />
-                <ListRow icon="megaphone-outline" label="공지사항" onPress={() => setActiveModal('notices')} />
-                <UpdateHistoryRow />
-                <ListRow
-                  icon="eye-off-outline"
-                  label="숨긴 사용자"
-                  value={hiddenAuthors.length > 0 ? `${hiddenAuthors.length}명` : undefined}
-                  onPress={() => setActiveModal('hiddenUsers')}
-                />
-                <ListRow icon="school-outline" label="학교" value="홍익대학교" />
-                {/* 개발자용 화면이라 운영 빌드에서는 숨긴다(개발 서버·개발/테스트 빌드에서만 보임). */}
-                {SHOW_DEVELOPER_TOOLS && (
-                  <ListRow icon="pulse-outline" label="앱 상태 확인" onPress={() => navigation.navigate('AppStatus')} />
-                )}
-                <ListRow icon="refresh-outline" label="설정 초기화" danger last onPress={handleReset} />
-              </View>
-          )}
-        </View>
-        <View style={styles.section}>
-          <GroupHeader icon="help-buoy-outline" label="고객 지원" expanded={expanded.has('support')} onPress={() => toggleGroup('support')} />
-          {expanded.has('support') && (
-              <View style={styles.groupBody}>
-                <ListRow icon="help-buoy-outline" label="자주 묻는 질문·계정 삭제 안내" onPress={() => setActiveModal('support')} />
-                <ListRow icon="chatbubble-ellipses-outline" label="문의하기" onPress={() => setActiveModal('feedback')} />
-                <ListRow icon="storefront-outline" label="정보 제보하기" onPress={() => setActiveModal('infoSuggest')} />
-                <ListRow
-                  icon="logo-instagram"
-                  label="제휴 출처"
-                  value={`${PARTNER_SOURCES.length}개 소속`}
-                  onPress={() => setActiveModal('sources')}
-                  last
-                />
-              </View>
-          )}
-        </View>
-        <View style={styles.section}>
-          <GroupHeader
-            icon="document-text-outline"
-            label="약관 및 정책"
-            expanded={expanded.has('policies')}
-            onPress={() => toggleGroup('policies')}
-          />
-          {expanded.has('policies') && (
-              <View style={styles.groupBody}>
-                <ListRow icon="document-text-outline" label="이용약관" onPress={() => setActiveModal('terms')} />
-                <ListRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => setActiveModal('privacy')} />
-                <ListRow icon="code-slash-outline" label="오픈소스 라이선스" onPress={() => setActiveModal('licenses')} last />
-              </View>
-          )}
-        </View>
+        <GeneralGroup
+          expanded={expanded.has('general')}
+          onToggle={() => toggleGroup('general')}
+          permissionSummary={alerts.permissionSummary}
+          hiddenCount={hiddenAuthors.length}
+          openModal={setActiveModal}
+          onOpenAppStatus={() => navigation.navigate('AppStatus')}
+          onReset={actions.handleReset}
+        />
+        <SupportGroup expanded={expanded.has('support')} onToggle={() => toggleGroup('support')} openModal={setActiveModal} />
+        <PoliciesGroup expanded={expanded.has('policies')} onToggle={() => toggleGroup('policies')} openModal={setActiveModal} />
 
         <View style={styles.brandFooter} accessibilityLabel="HONGIK ON">
           <LogotypeHorizontal width={112} height={20} />
@@ -821,99 +184,24 @@ export default function SettingsScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <NoticeListModal
-        visible={activeModal === 'notices'}
-        notices={appNotices}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <PartnerSourcesModal
-        visible={activeModal === 'sources'}
-        onClose={() => setActiveModal(null)}
-      />
-
-      <TermsModal visible={activeModal === 'terms'} onClose={() => setActiveModal(null)} />
-      <LicensesModal visible={activeModal === 'licenses'} onClose={() => setActiveModal(null)} />
-
-      <PrivacyModal visible={activeModal === 'privacy'} onClose={() => setActiveModal(null)} />
-
-      <HiddenUsersModal visible={activeModal === 'hiddenUsers'} onClose={() => setActiveModal(null)} />
-
-      {!isGuest && (
-        <MyReportsModal
-          visible={activeModal === 'myReports'}
-          onClose={() => setActiveModal(null)}
-          highlightReportId={highlightReportId}
-          onChanged={myReportCountResource.retry}
-          onShowOnMap={(reportId) => goToMap(() => requestMapIntent({ type: 'focusReport', reportId }))}
-          onStartReport={() => goToMap(() => requestMapIntent({ type: 'startReport' }))}
-        />
-      )}
-
-      <InfoSuggestModal
-        visible={activeModal === 'infoSuggest'}
-        onClose={() => setActiveModal(null)}
-        onPickOnMap={() => {
-          // 창을 닫고 지도 탭으로 옮겨 핀을 고르게 한다. 지도 화면이 요청을 받아 같은 제보 창을 다시 연다.
-          setActiveModal(null)
-          requestMapIntent({ type: 'pickPartnerLocation' })
-          // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
-          ;(navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
-        }}
-      />
-
-      <FeedbackModal visible={activeModal === 'feedback'} onClose={() => setActiveModal(null)} />
-      <OfficialRequestModal
-        visible={activeModal === 'official'}
-        onClose={() => setActiveModal(null)}
-        memberNumber={memberNumber}
-        currentName={profile?.displayName ?? null}
-      />
-      {/* 고객 지원 › 앱에서 문의 보내기는 이 창을 닫고 문의하기 창을 연다(공지 목록 › 상세와 같은 방식). */}
-      <SupportModal
-        visible={activeModal === 'support'}
-        onClose={() => setActiveModal(null)}
-        onOpenFeedback={() => setActiveModal('feedback')}
-        isMember={status === 'authenticated'}
-        onWithdraw={withdraw}
-      />
-      <WithdrawConfirmDialog
-        visible={withdrawVisible && activeModal !== 'support'}
-        onCancel={() => setWithdrawVisible(false)}
-        onConfirm={withdraw}
-      />
-
-      <AppPermissionsModal visible={activeModal === 'permissions'} onClose={() => setActiveModal(null)} />
-
-      <KeywordAlertsModal visible={activeModal === 'keywords'} onClose={() => setActiveModal(null)} />
-
-      {profile && (
-        <NicknameModal
-          visible={activeModal === 'nickname'}
-          profile={profile}
-          onClose={() => setActiveModal(null)}
-          onSaved={setSavedProfile}
-          onRequestOfficial={() => {
-            // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
-            setActiveModal(null)
-            setTimeout(() => setActiveModal('official'), 400)
-          }}
-        />
-      )}
-
-      <BoardAlertsModal
-        visible={boardAlertsVisible}
-        onClose={() => setBoardAlertsVisible(false)}
-        onOpenSubscriptions={() => {
-          // 네이티브 Modal 은 앞 창이 닫히는 중에 다음 창을 띄우면(iOS) 무시될 수 있어 닫힌 뒤에 연다.
-          setBoardAlertsVisible(false)
-          setTimeout(() => setSubManagerVisible(true), 400)
-        }}
-      />
-
-      <SubscriptionManagerModal
-        visible={subManagerVisible}
-        onClose={() => setSubManagerVisible(false)}
+      <SettingsModals
+        activeModal={activeModal}
+        setActiveModal={setActiveModal}
+        appNotices={appNotices}
+        isGuest={isGuest}
+        highlightReportId={highlightReportId}
+        onMyReportsChanged={account.refreshMyReportCount}
+        navigateToMap={navigateToMap}
+        memberNumber={account.memberNumber}
+        profile={profile}
+        onProfileSaved={account.setSavedProfile}
+        withdrawVisible={actions.withdrawVisible}
+        setWithdrawVisible={actions.setWithdrawVisible}
+        onWithdraw={actions.withdraw}
+        boardAlertsVisible={boardAlertsVisible}
+        setBoardAlertsVisible={setBoardAlertsVisible}
+        subManagerVisible={subManagerVisible}
+        setSubManagerVisible={setSubManagerVisible}
         subscribedDepts={subscribedDepts}
         onToggleDept={toggleSubscribedDept}
       />
@@ -925,143 +213,6 @@ const styles = StyleSheet.create({
   // SafeAreaView 상단 인셋·큰 제목 줄은 흰색, 그룹 리스트의 회색 배경은 scroll 이 직접 칠한다.
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1, backgroundColor: COLORS.background },
-  profile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingVertical: SPACING.sm + 2,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.floating,
-    backgroundColor: COLORS.background,
-  },
-  profilePressed: { opacity: 0.7 },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileBody: { flex: 1, gap: 2 },
-  profileName: { ...TYPE.subhead, color: COLORS.textPrimary },
-  profileSub: { ...TYPE.caption, color: COLORS.textSecondary },
-  // 묶음마다 둥근 카드(10-07 A안 — 머리 카드·하단 탭 캡슐과 같은 곡률 계열).
-  section: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.sm,
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-  },
-  // 펼친 묶음의 내용(머리 줄 아래). 옅은 바탕으로 머리 줄과 구분한다.
-  // 아래 여백은 두지 않는다 — 마지막 흰 줄이 카드 아래 끝까지 닿아야 아래 모서리도 위(머리 줄)와 같은 곡률로 보인다
-  // (11-08: 아래에 옅은 바탕 4pt 가 남아 '설정 초기화' 아래 모서리가 덜 둥글어 보였다).
-  groupBody: { backgroundColor: COLORS.background, paddingTop: SPACING.xs },
-  subBlockFirst: { backgroundColor: COLORS.white },
-  subHeader: { fontFamily: FONTS.semibold, fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
-  categoryHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
-  categoryTitle: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, lineHeight: 22, color: COLORS.textPrimary },
-  categoryMeta: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textTertiary },
-  categoryHint: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, paddingTop: 2, paddingBottom: SPACING.md },
-  subBlock: { backgroundColor: COLORS.white, marginTop: SPACING.xs },
-  // 지도에서 근처 알림을 켜러 왔을 때 잠깐 강조(11-09).
-  // 칸 전체를 남색 테두리로 감싼다(11-09 — 왼쪽 막대만으로는 어느 칸인지 덜 보였다). 테두리만큼 안쪽 여백을 줄여
-  // 내용이 옆으로 밀리지 않게 하고, 둥근 모서리가 보이게 양옆을 조금 띄운다.
-  subBlockHighlight: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    marginHorizontal: SPACING.xs,
-    overflow: 'hidden',
-  },
-  subHeaderHighlight: { color: COLORS.primary },
-  groupHeader: {
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
-  },
-  groupHeaderPressed: { backgroundColor: COLORS.fill },
-  groupLabel: { flex: 1, fontFamily: FONTS.semibold, fontSize: 17, lineHeight: 23, color: COLORS.textPrimary },
-  groupValue: { fontFamily: FONTS.regular, fontSize: 15, color: COLORS.textTertiary, maxWidth: '45%' },
-  groupBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: RADIUS.pill, backgroundColor: COLORS.warningSoft },
-  groupBadgeText: { ...TYPE.label, fontSize: 13, color: COLORS.warning },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    height: 34,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-  },
-  // 켜짐: 회색 알약 + 남색 글자·체크(10-08, 앱 전체 선택 표시와 같게). 꺼짐: 흰 바탕 + 테두리 + 회색 글자.
-  categoryChipOn: {
-    backgroundColor: SELECTED_PILL_BG,
-    borderColor: 'transparent',
-  },
-  categoryChipOff: {
-    backgroundColor: COLORS.white,
-    borderColor: COLORS.border,
-  },
-  categoryChipText: { ...TYPE.label, fontSize: 15, lineHeight: 20 },
-  dimmed: { opacity: 0.45 },
-  subGroup: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
-  subGroupTitle: {
-    ...TYPE.caption,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textTertiary,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-  },
-  guestNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.xs,
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
-  },
-  guestNoticeBody: { flex: 1, gap: SPACING.xxs },
-  guestNoticeTitle: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  guestNoticeText: { ...TYPE.caption, color: COLORS.textSecondary },
-  // 다른 묶음 카드와 같은 바깥 여백·곡률·안쪽 여백(10-08).
-  suspendedBox: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    alignItems: 'flex-start',
-    backgroundColor: COLORS.dangerSoft,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.sm,
-  },
-  suspendedBody: { flex: 1, gap: 4 },
-  suspendedTitle: { ...TYPE.subhead, color: COLORS.danger },
-  suspendedText: { ...TYPE.caption, color: COLORS.danger },
-  warnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    marginTop: -SPACING.xs,
-  },
-  warnText: { ...TYPE.caption, color: COLORS.danger },
   brandFooter: { alignItems: 'center', paddingTop: SPACING.lg, opacity: 0.35 },
   unofficialNotice: {
     ...TYPE.caption,
@@ -1070,63 +221,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xxxl,
     marginTop: SPACING.sm,
   },
-  permissionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.warningSoft,
-  },
-  permissionText: { ...TYPE.caption, flex: 1, color: COLORS.warning },
-  permissionAction: { ...TYPE.callout, fontFamily: FONTS.semibold, color: COLORS.primary },
   bottomSpacer: { height: SPACING.lg },
 })
-
-/** 묶음 머리 줄: 아이콘(배경 없이) · 이름 · 값 · 펼침 표시. expanded 가 없으면(구독 게시판) 창을 여는 줄이라 > 를 둔다. */
-function GroupHeader({
-  icon,
-  label,
-  value,
-  badge,
-  expanded,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap
-  label: string
-  value?: string
-  badge?: string
-  expanded?: boolean
-  onPress: () => void
-}) {
-  const collapsible = expanded !== undefined
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.groupHeader, pressed && styles.groupHeaderPressed]}
-      accessibilityRole="button"
-      accessibilityState={collapsible ? { expanded } : undefined}
-      accessibilityLabel={[label, badge, value].filter(Boolean).join(', ')}
-    >
-      <Ionicons name={icon} size={24} color={COLORS.primary} />
-      <Text style={styles.groupLabel}>{label}</Text>
-      {badge !== undefined && (
-        <View style={styles.groupBadge}>
-          <Text style={styles.groupBadgeText}>{badge}</Text>
-        </View>
-      )}
-      {value !== undefined && (
-        <Text style={styles.groupValue} numberOfLines={1}>
-          {value}
-        </Text>
-      )}
-      <Ionicons
-        name={collapsible ? (expanded ? 'chevron-up' : 'chevron-down') : 'chevron-forward'}
-        size={18}
-        color={COLORS.chevron}
-      />
-    </Pressable>
-  )
-}
