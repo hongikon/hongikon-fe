@@ -10,6 +10,7 @@ import { COMMENT_MAX_LENGTH, commentWriteErrorMessage, createReportComment } fro
 import { commentLength } from '../../../../utils/comments'
 import { promptLogin } from '../../../../utils/reports'
 import type { ReportComment } from '../../../../types'
+import { useMutation } from '../../../../hooks/useMutation'
 import { RADIUS } from '../../../../constants/spacing'
 
 /** 답글 모드: 어느 최상위 댓글에, 누구에게 답하는지(칩에 이름을 보인다). */
@@ -46,13 +47,32 @@ export default function CommentComposer({
 }: CommentComposerProps) {
   const { accessToken, logout } = useAuth()
   const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<TextInput>(null)
 
   useEffect(() => {
     if (focusKey > 0) inputRef.current?.focus()
   }, [focusKey])
+
+  /** 댓글 쓰기는 서버가 만든 댓글(id·작성자 이름)을 받아 목록에 넣는다(낙관적 반영 없음). */
+  const postMutation = useMutation(
+    ({ body, token, parentId }: { body: string; token: string; parentId?: number }) =>
+      createReportComment(reportId, body, token, parentId),
+    {
+      onMutate: () => setError(null),
+      onSuccess: (created) => {
+        haptics.success()
+        setText('')
+        Keyboard.dismiss()
+        onPosted(created)
+      },
+      onError: (caught) => {
+        setError(commentWriteErrorMessage(caught) ?? getErrorMessage(caught, '댓글을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.'))
+      },
+    },
+  )
+
+  const sending = postMutation.pending
 
   if (!accessToken) {
     return (
@@ -74,19 +94,7 @@ export default function CommentComposer({
 
   const send = async () => {
     if (!canSend || !accessToken) return
-    setSending(true)
-    setError(null)
-    try {
-      const created = await createReportComment(reportId, text.trim(), accessToken, replyTo?.parentId)
-      haptics.success()
-      setText('')
-      Keyboard.dismiss()
-      onPosted(created)
-    } catch (caught) {
-      setError(commentWriteErrorMessage(caught) ?? getErrorMessage(caught, '댓글을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.'))
-    } finally {
-      setSending(false)
-    }
+    await postMutation.mutate({ body: text.trim(), token: accessToken, parentId: replyTo?.parentId })
   }
 
   return (
