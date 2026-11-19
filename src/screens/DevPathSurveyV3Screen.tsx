@@ -53,7 +53,6 @@ import {
   setNodeScope,
   splitEdgeAt,
   STORE_KEY_V3,
-  type SplitRefusal,
   type BulkChange,
   type StoreV3,
 } from '../utils/pathSurveyV3/store'
@@ -80,7 +79,7 @@ import {
   type SurveySettings,
   type WorkContext,
 } from '../utils/pathSurveyV3/transfer'
-import { buildLegacyOverlay, floorKeyOf } from './pathSurvey/legacyOverlay'
+import { buildLegacyOverlay } from './pathSurvey/legacyOverlay'
 import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
 import { Btn, confirmAction, ui } from './pathSurvey/ui'
 import BackupPanel from './pathSurveyV3/BackupPanel'
@@ -127,31 +126,21 @@ import NodeSheet from './pathSurveyV3/NodeSheet'
 import SaveBar, { clockText } from './pathSurveyV3/SaveBar'
 import ServerPanel, { type RouteLine } from './pathSurveyV3/ServerPanel'
 import SnapshotPanel from './pathSurveyV3/SnapshotPanel'
-
-type Tab = 'edit' | 'check' | 'convert' | 'backup' | 'server' | 'snapshots' | 'legacy'
-
-const MODES: { key: MapMode; label: string; help: string }[] = [
-  { key: 'add', label: '점 찍기', help: '지도를 누르면 위의 설정대로 점이 생겨요. 이어 찍기를 켜면 직전 점과 간선으로 이어요.' },
-  { key: 'link', label: '잇기', help: '점 두 개를 차례로 누르면 간선이 생겨요. 이어서 누르면 계속 이어지고, 같은 점을 다시 누르면 끊겨요. 이미 있는 간선을 다시 이으면 지워져요.' },
-  { key: 'move', label: '옮기기', help: '점을 끌어서 옮겨요. 다른 간선 위에 놓으면 그 간선을 둘로 나눠요.' },
-  { key: 'select', label: '여러 점', help: '점을 눌러 여러 개 고른 뒤 같은 건물, 층, 종류를 한 번에 넣어요.' },
-]
-
-const LABEL_MODES: { key: LabelMode; label: string }[] = [
-  { key: 'none', label: '없음' },
-  { key: 'number', label: '번호' },
-  { key: 'full', label: '번호+동' },
-  { key: 'selected', label: '선택한 점만' },
-]
-
-const BACKUP_VIA: Record<BackupVia, string> = { file: '파일', copy: '코드 복사', gist: 'Gist' }
-
-const SPLIT_REFUSED: Record<SplitRefusal, string> = {
-  missing: '간선이나 양 끝 점을 찾지 못해 나누지 않았어요.',
-  pairs: '층 짝이 있는 간선이라 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
-  mixed: '양 끝 점의 위치(외부/내부, 건물, 층)가 달라서 나누지 않았어요. 점을 따로 찍어 이어 주세요.',
-  end: '끝점과 같은 자리라 나누지 않았어요.',
-}
+import {
+  BACKUP_VIA,
+  CORRUPT_TEXT,
+  LABEL_MODES,
+  latestRollingSnapshot,
+  legacyRenderPayload,
+  LOCKED_TEXT,
+  MODES,
+  openManualCount,
+  OTHER_TAB_TEXT,
+  parseSurveyMessage,
+  placedNotice,
+  SPLIT_REFUSED,
+  type Tab,
+} from './pathSurveyV3/screenModel'
 
 /** The overlay starts hidden here: the new graph is the main thing on this screen. */
 const LEGACY_OFF: LegacyToggles = {
@@ -161,18 +150,6 @@ const LEGACY_OFF: LegacyToggles = {
   nodeEdges: false,
   anchorEdges: false,
   unconnectedEntrances: false,
-}
-
-/** Passes only messages sent by this screen's map script. */
-function parseMessage(event: unknown): any | null {
-  const e = event as any
-  const raw = e?.nativeEvent?.data ?? e?.data ?? e
-  try {
-    const msg = typeof raw === 'string' ? JSON.parse(raw) : raw
-    return msg && msg.src === 'surveyV3' ? msg : null
-  } catch {
-    return null
-  }
 }
 
 const initialLoad = () => loadStoreV3()
@@ -240,9 +217,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // Bumped by undo so that memo boxes, which keep their own text, show the restored text.
   const [undoTick, setUndoTick] = useState(0)
   const [ready, setReady] = useState(false)
-  const [notice, setNotice] = useState(() =>
-    boot.corrupt ? '저장된 조사 내용(v3)을 읽지 못했어요. 덮어쓰지 않도록 저장을 멈췄어요. 개발자 도구로 값을 확인해 주세요.' : '',
-  )
+  const [notice, setNotice] = useState(() => (boot.corrupt ? CORRUPT_TEXT : ''))
 
   const index = useMemo(() => {
     const raw = buildings.length ? (buildings as RawBuilding[]) : loadBuildingCache()
@@ -273,18 +248,13 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // Base of "show changes": the newest save button point (rolling slot). Read only while the box is on, again after each save.
   const changeBase = useMemo((): Snapshot | null => {
     if (!showChanges) return null
-    return loadSnapshots()
-      .filter((s) => s.kind === 'rolling')
-      .reduce<Snapshot | null>((best, s) => (!best || s.createdAt > best.createdAt ? s : best), null)
+    return latestRollingSnapshot(loadSnapshots())
   }, [showChanges, snapshotTick])
   const changeDiff = useMemo(() => (changeBase ? diffStores(changeBase, deferredStore) : null), [changeBase, deferredStore])
   const marks = useMemo(() => (changeDiff ? changeMarks(changeDiff) : null), [changeDiff])
   // undefined: the box is off. null: no save point to compare with.
   const changeCounts = !showChanges ? undefined : changeDiff ? changeDiff.total : null
-  const openManual = useMemo(() => {
-    const byId = new Map(store.nodes.map((n) => [n.id, n]))
-    return (report?.manual ?? []).filter((item) => isManualItemOpen(item, byId.get(item.nodeId), report?.dismissed)).length
-  }, [store, report])
+  const openManual = useMemo(() => openManualCount(store, report), [store, report])
 
   /** Another tab writing the same key would be overwritten by this tab, so this tab stops saving. */
   useEffect(() => {
@@ -293,7 +263,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     const onStorage = (event: any) => {
       if (event?.key !== STORE_KEY_V3) return
       blockedRef.current = true
-      setNotice('다른 탭에서 조사 내용을 저장했어요. 서로 덮어쓰지 않도록 이 탭은 저장을 멈췄어요. 새로고침해 주세요.')
+      setNotice(OTHER_TAB_TEXT)
     }
     w.addEventListener('storage', onStorage)
     return () => w.removeEventListener('storage', onStorage)
@@ -446,8 +416,6 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     setMultiFromAll(multiFromAll && kept.multi.length > 0)
     setNotice('필터 밖이 된 선택은 풀었어요')
   }
-
-  const lockedText = "필터 밖이라 고칠 수 없어요. 필터를 바꾸거나 '선택한 필터만 수정'을 꺼 주세요."
 
   const runConvert = (source: V2Source) => {
     if (index.list.length === 0) return setNotice('건물 목록이 아직 없어요. 온라인에서 한 번 연 뒤 다시 해 주세요.')
@@ -649,7 +617,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   /** One point opens its sheet with the boundary building ready. Many points go to the bulk panel. */
   const makeIndoor = (all: string[]) => {
     const ids = editableNodeIds(storeRef.current, all, filter, onlyFilter)
-    if (ids.length === 0) return setNotice(lockedText)
+    if (ids.length === 0) return setNotice(LOCKED_TEXT)
     if (ids.length === 1) {
       change((s) => setNodeScope(s, ids[0], 'indoor'))
       focusNode(ids[0])
@@ -667,7 +635,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
 
   const applyBulk = (bulk: BulkChange) => {
     const ids = editableNodeIds(storeRef.current, multi, filter, onlyFilter)
-    if (ids.length === 0) return setNotice(lockedText)
+    if (ids.length === 0) return setNotice(LOCKED_TEXT)
     const count = ids.length
     const mixed = multiFromAll ? selectionBuildings(storeRef.current.nodes, ids, index) : []
     if (mixed.length > 1 && !confirmAction(`여러 건물의 점이 섞여 있어요. 건물 ${mixed.length}곳, 점 ${count}개에 같은 값을 넣을까요?`)) return
@@ -683,13 +651,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     pickNode(id)
     setSelectedEdge(null)
     const made = findNode(next, id)!
-    const crossing = from && (from.scope === 'indoor') !== (made.scope === 'indoor') && (from.scope === 'indoor' ? from : made).type !== 'entrance'
-    const notes = [`${id} 추가${from ? `, ${from.id} 와 이었어요` : ''}`]
-    if (crossing) notes.push('외부 점과 내부 점은 출입구로만 이을 수 있어 이 간선은 점검에서 오류로 나와요')
-    if (made.type === 'entrance') notes.push('아래에서 건물, 층, 이름을 고르세요. 비워 두면 점검 오류로 나와요')
-    else if (made.scope === 'indoor' && !made.levels?.length) notes.push('건물과 층이 없어 점검 오류로 나와요')
-    if (!isNodeStrong(made, filter)) notes.push(`지금 층 필터 밖의 점이라 흐리게 보여요${onlyFilter ? '. 다른 점을 고르면 이 점은 잠겨요' : ''}`)
-    setNotice(notes.join('. '))
+    setNotice(placedNotice(made, from, isNodeStrong(made, filter), onlyFilter))
     panelRef.current?.scrollTo({ y: 0, animated: false })
   }
 
@@ -718,7 +680,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
     const shortcut = clickShortcut({ kind: 'node', id }, mods)
     if (shortcut?.kind === 'link') return linkByClick(shortcut.from, shortcut.to)
     if (shortcut?.kind === 'blocked') {
-      return setNotice(shortcut.why === 'exists' ? `${selected} 와 ${id} 는 이미 이어져 있어요. 지우려면 간선을 눌러 지워 주세요.` : lockedText)
+      return setNotice(shortcut.why === 'exists' ? `${selected} 와 ${id} 는 이미 이어져 있어요. 지우려면 간선을 눌러 지워 주세요.` : LOCKED_TEXT)
     }
     if (!canEditNode(id)) return
     if (mode === 'select') {
@@ -757,7 +719,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   const onEdgePress = (id: string, mods: ClickMods = NO_MODS, at: { lat?: unknown; lng?: unknown } = {}) => {
     const shortcut = clickShortcut({ kind: 'edge', id }, mods)
     if (shortcut?.kind === 'split') return splitByClick(shortcut.edgeId, at.lat, at.lng)
-    if (shortcut?.kind === 'blocked') return setNotice(lockedText)
+    if (shortcut?.kind === 'blocked') return setNotice(LOCKED_TEXT)
     if (mode === 'select' || !canEditEdgeId(id)) return
     setSelectedEdge(id)
     setSelected(null)
@@ -870,7 +832,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // Events from the map. The ref always sees the latest state.
   const handlerRef = useRef<(event: unknown) => void>(() => {})
   handlerRef.current = (event) => {
-    const msg = parseMessage(event)
+    const msg = parseSurveyMessage(event)
     if (!msg) return
     if (msg.type === 'scale') {
       if (Number.isFinite(msg.worldPx) && msg.worldPx > 0) worldPxRef.current = msg.worldPx
@@ -891,22 +853,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
   // Redraw when something the map shows has changed. Typing a memo does not change the drawn state, so it does not redraw.
   useEffect(() => {
     if (!ready) return
-    const t = legacyToggles
-    const legacy = {
-      nodes: [
-        ...(t.plainNodes ? overlay.plainNodes.map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, label: n.id })) : []),
-        ...(t.namedNodes
-          ? overlay.namedNodes
-              .filter((n) => t.namedFloors[floorKeyOf(n.floor)] !== false)
-              .map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, label: `${n.id} (${floorKeyOf(n.floor)})` }))
-          : []),
-        ...(t.unconnectedEntrances ? overlay.unconnectedEntrances.map((n) => ({ id: n.id, lat: n.lat, lng: n.lng, label: n.id })) : []),
-      ],
-      lines: [
-        ...(t.nodeEdges ? overlay.nodeEdges.map((l) => [...l, 0]) : []),
-        ...(t.anchorEdges ? overlay.anchorEdges.flatMap((e) => (e.line ? [[...e.line, 1]] : [])) : []),
-      ],
-    }
+    const legacy = legacyRenderPayload(overlay, legacyToggles)
     const drawn = buildRenderState(store, { index, filter, mode, selected, pending, selectedEdge, multi, labelMode, anchor: chain && mode === 'add' ? anchor : null, onlyFilter, changes: marks })
     const state = JSON.stringify({ legacy, ...drawn })
     if (state === lastRenderRef.current) return
@@ -1114,7 +1061,7 @@ export default function DevPathSurveyV3Screen({ devKey }: { devKey?: string } = 
           onFocus={focusNode}
           onNotice={setNotice}
           onToggleMulti={(id) => {
-            if (!multi.includes(id) && !canEditNode(id)) return setNotice(lockedText)
+            if (!multi.includes(id) && !canEditNode(id)) return setNotice(LOCKED_TEXT)
             setMulti((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
           }}
           onSelectMany={selectMany}
