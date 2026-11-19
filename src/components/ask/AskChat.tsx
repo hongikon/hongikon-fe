@@ -22,8 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { FONTS, TYPE } from "../../constants/typography";
 import { RADIUS } from "../../constants/spacing";
-import { ALL_ASK_FLOWS, askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
-import { type AskAnswerNode, type AskLink, type AskQuestionNode, type AskSection } from "../../constants/askAnswers";
+import { askOffices, matchAskFlow, type OfficeAskResult } from "../../utils/officeAsk";
+import { type AskLink, type AskSection } from "../../constants/askAnswers";
 import {
   ASK_FEEDBACK_REASONS,
   getPopularGuides,
@@ -32,128 +32,27 @@ import {
   sendFlowFeedback,
   streamAsk,
   type AskAuth,
-  type AskAction,
   type AskFeedbackReason,
   type AskRouteResult,
-  type AskRouteTurn,
-  type AskStreamEvent,
 } from "../../apis/ask";
 import { submitFeedback } from "../../apis/feedback";
 import { pickAttachImages, ATTACH_MAX_IMAGES } from "../../utils/attachImages";
-import { uploadReportImage, type PickedReportImage } from "../../apis/reports";
-import { ApiError, getErrorMessage } from "../../apis/client";
+import { uploadReportImage } from "../../apis/reports";
+import { getErrorMessage } from "../../apis/client";
 import ContentColumn from "../common/ContentColumn";
-import { formatFloor } from "../../utils/floors";
 import ScreenHeader from "../common/ScreenHeader";
 import { useMapData } from "../../lib/mapData";
 import * as haptics from "../../lib/haptics";
 import { defaultGuides, guidesFromIds, isGreeting, type GreetingGuide } from "../../utils/askGreeting";
-import { newsSearchQuery, parseAskAppCommand, type AskAppCommand } from "../../utils/askAppCommand";
+import { newsSearchQuery, parseAskAppCommand } from "../../utils/askAppCommand";
 import { useOptionalSettings } from "../../contexts/SettingsContext";
-
-/** 처음 열었을 때 눌러 볼 수 있는 질문. 모두 답이 있는 것만 둔다. */
-
-
-/**
- * 대화 한 줄. 고객센터 챗봇처럼 봇이 버튼으로 되묻고(question), 고른 버튼은 사용자 말풍선으로 남는다.
- * 끝 답(answer) 뒤에는 '해결됐나요?'(feedback)를 붙이고, 아니라고 하면 맡은 부서(offices)를 이어 보여 준다.
- */
-type ChatMessage =
-  | { id: number; role: "user"; text: string }
-  | { id: number; role: "question"; node: AskQuestionNode; flowId: string; nodeId: string; chosen: string | null; viaServer: boolean }
-  | {
-      id: number;
-      role: "answer";
-      node: AskAnswerNode;
-      flowId: string;
-      nodeId: string;
-      checkedAt: string;
-      question: string;
-      followed: boolean;
-      viaServer: boolean;
-    }
-  | {
-      id: number;
-      role: "feedback";
-      question: string;
-      resolved: boolean | null;
-      logId?: number | null;
-      /** 앱 안내 흐름 답이면 그 흐름(서버 기록 logId 가 없을 때 /ask/feedback 으로 남긴다). */
-      flowRef?: { flowId: string; nodeId: string } | null;
-      /** 이 응답 한 번의 임의 값 — 이유를 고르며 다시 보내면 서버가 같은 행을 고친다. */
-      clientId?: string;
-      /** '해결 안 됨'의 이유(한 번 누름). */
-      reason?: AskFeedbackReason | null;
-    }
-  | { id: number; role: "offices"; intro: string; offices: OfficeAskResult[] }
-  /** 서버가 안내 원문 안에서만 쓴 답. sources 는 근거 안내('근거 안내 보기'로 원문을 펼친다). */
-  | {
-      id: number;
-      role: "reply";
-      text: string;
-      found: boolean;
-      sources: { flowId: string; nodeId: string }[];
-      /** 근거로 쓴 학교 공지·학식 — 근거 목록에 링크로 붙는다. */
-      links: { title: string; url: string | null; date: string | null }[];
-      /** 서버가 정해 보낸 버튼(학교 페이지·전화·위치). null 이면 옛 서버 — 앱의 안내 데이터에서 찾는다. */
-      buttons: { pages: { title: string; url: string }[]; phones: { label: string; phone: string }[]; facilityId: string | null } | null;
-      /** 서버가 보낸 앱 조작 버튼(11-07, 지금은 'map'). 옛 서버면 빈 목록 — 위치는 buttons.facilityId·안내 데이터에서. */
-      appActions: AskAction[];
-      question: string;
-      /** 서버가 아직 답을 만들고 있다(진행 단계와 답 글자가 실시간으로 바뀐다). */
-      streaming: boolean;
-      /** 지금 하는 일 한 줄(흘러나오는 동안 제자리에서 바뀐다). 쉬운 말만 — 안내 id·검색어·문장 조각은 보이지 않는다. */
-      status: string;
-      /** 학생이 멈춤을 눌러 중간에 끊긴 답. */
-      stopped: boolean;
-      /** 서버 기록 id('해결됐나요' 응답을 붙인다). */
-      logId: number | null;
-      /** 서버가 실제로 한 일(관련 안내 확인·공지 읽음·답 정리 …). 끝나면 '살펴본 과정'으로 접는다. */
-      steps: string[];
-      stepsOpen: boolean;
-      /** 서버가 구조로 준 목록·표. null 이면(흘러나오는 중·옛 서버) text 를 잘라 그린다. */
-      sections: AskSection[] | null;
-      /** 접어 둔 연락처·링크 버튼을 펼쳤는지. */
-      moreOpen: boolean;
-    }
-  | { id: number; role: "text"; text: string }
-  /** 인사(하이·ㅎㅇ)에 앱이 바로 하는 답 — 요즘 많이 찾는 안내(없으면 기본 안내) 칩. 누르면 앱 안 안내를 연다(서버·한도 안 씀). */
-  | { id: number; role: "greeting"; guides: GreetingGuide[]; popular: boolean; chosen: string | null }
-  /**
-   * 앱 설정 바꾸기·화면 열기(11-09 — '화학공학과 구독해줘', '알림 설정 어떻게 해'). 앱이 알아듣고(서버·한도 안 씀) 확인 버튼을 띄운다 —
-   * 학생이 눌러야만 바뀐다. done: 누른 뒤 결과 한 줄.
-   */
-  | { id: number; role: "command"; command: AskAppCommand; done: string | null }
-  /**
-   * 해결이 안 됐을 때 운영진에게 넘기기(기존 문의하기 /feedback, 게스트). 보낼 내용(질문·홍익온 답·근거)을 미리 보여 주고,
-   * 학생이 더 알고 싶은 점·답 받을 이메일(선택)을 적어 직접 보내기를 눌러야만 보낸다.
-   */
-  | {
-      id: number;
-      role: "handoff";
-      question: string;
-      answer: string;
-      sources: string[];
-      note: string;
-      contact: string;
-      status: "editing" | "sending" | "sent";
-      error: string | null;
-      /** 참고 사진(선택, 최대 3장, 로그인 필요). 보낼 때 올린다. */
-      images?: PickedReportImage[];
-      /** 이 문의가 나온 답 기록('route:123' / 'flow:{clientId}'). 관리자 '물어보기 피드백'에 붙는다. */
-      askRef?: string | null;
-    };
-
-/** 지도 위 설명 카드에 쓸 첫 문장(마크다운 굵게 표시는 뗀다, 90자까지). */
-function firstSentence(text: string | undefined): string | undefined {
-  if (!text) return undefined;
-  const plain = text.replace(/\*\*/g, "").trim();
-  const match = plain.match(/^[\s\S]*?(?:[.?!](?=\s|$)|\n)/);
-  const first = (match ? match[0] : plain).trim();
-  return first.length > 90 ? `${first.slice(0, 89).trimEnd()}…` : first || undefined;
-}
-
-type NewMessage = ChatMessage extends infer M ? (M extends { id: number } ? Omit<M, "id"> : never) : never;
+import type { ChatMessage, NewMessage } from "../../utils/ask/chatTypes";
+import { briefSections, firstSentence, parseReply, splitItemLabel } from "../../utils/ask/replyText";
+import { appendStep, askFailureText, stepInfo } from "../../utils/ask/streamStatus";
+import { findStep, followTarget, followUpMatch, lastUserText, randomId, recentTurns, replyButtons, stepMessages } from "../../utils/ask/conversation";
+import { handoffAfterFeedback, handoffContent, isContactValid } from "../../utils/ask/handoff";
+import { boardCommandVerb, commandText } from "../../utils/ask/appCommandText";
+import { facilityPlaceLine, placeName as placeNameIn } from "../../utils/ask/places";
 
 interface AskChatProps {
   /** 있으면 머리에 뒤로 가기 버튼을 단다. */
@@ -186,61 +85,6 @@ interface AskChatProps {
   onAsked?: () => void;
 }
 
-/**
- * 서버 답 없이 안내 원문을 그대로 보일 때의 상한. 학교 페이지를 통째로 옮긴 안내(교내장학금 등)는 수십 줄이고
- * 같은 소제목이 두 번 나오기도 해서(10-25 운영진 제보) 앞부분만 보이고 나머지는 아래 학교 페이지 버튼으로 넘긴다.
- */
-/** 이어 묻는 말로 보는 짧은 질문(공백 뺀 글자 수)과 말투. */
-const FOLLOW_UP_MAX = 20;
-const FOLLOW_UP_WORDS = ["어떻게", "신청", "서류", "언제", "어디", "얼마", "방법", "기간", "그럼", "그거", "이거", "거기", "필요", "내야", "되나", "돼", "가능", "누가", "대상", "마감"];
-
-const BRIEF_SECTIONS = 3;
-const BRIEF_ITEMS = 4;
-const BRIEF_TOTAL_ITEMS = 8;
-const BRIEF_TABLE_ROWS = 8;
-
-function briefSections(sections: readonly AskSection[] | undefined): { shown: AskSection[]; cut: boolean } {
-  const shown: AskSection[] = [];
-  const titles = new Set<string>();
-  let total = 0;
-  let cut = false;
-  for (const section of sections ?? []) {
-    // 운영진 정리(tips)는 이미 짧게 쓴 것이라 통째로 보이고, 학교 원문 줄 수에 세지 않는다.
-    if (section.full) {
-      shown.push(section);
-      continue;
-    }
-    if (section.title && titles.has(section.title)) {
-      cut = true;
-      continue;
-    }
-    if (shown.filter((item) => !item.full).length >= BRIEF_SECTIONS || total >= BRIEF_TOTAL_ITEMS) {
-      cut = true;
-      break;
-    }
-    const room = Math.min(BRIEF_ITEMS, BRIEF_TOTAL_ITEMS - total);
-    const items = section.items?.slice(0, room);
-    const table = section.table ? { ...section.table, rows: section.table.rows.slice(0, BRIEF_TABLE_ROWS) } : undefined;
-    if ((section.items?.length ?? 0) > room || (section.table?.rows.length ?? 0) > BRIEF_TABLE_ROWS) cut = true;
-    total += items?.length ?? 0;
-    titles.add(section.title);
-    shown.push({ ...section, items, table });
-  }
-  return { shown, cut };
-}
-
-/** 서버 답이 실패했을 때 알릴 말. 상태 코드는 routeAsk(ApiError)에서만 알 수 있다 — 흘려받기 도중 끊기면 일반 문구. */
-function askFailureText(error: unknown, app: boolean): string {
-  const status = error instanceof ApiError ? error.status : null;
-  // 앱 탭: 하루 한도·로그인 안내는 서버 문구를 그대로(계정 한도인지 전체 상한인지 서버만 안다).
-  if (app && (status === 429 || status === 403) && error instanceof ApiError && error.serverMessage) return error.serverMessage;
-  if (status === 429) return "질문이 많아 잠시 쉬고 있어요. 조금 뒤에 다시 물어봐 주세요.";
-  if (status === 403) {
-    return app ? "로그인하면 물어볼 수 있어요." : "암호키가 맞지 않아 답할 수 없어요. /dev 화면에서 암호키를 다시 넣어 주세요.";
-  }
-  if (status === 404) return "지금은 물어보기 서버가 꺼져 있어 답할 수 없어요.";
-  return "지금은 답을 만들 수 없어요. 잠시 뒤에 다시 물어봐 주세요.";
-}
 
 /**
  * '물어보기' 챗봇 화면. 고객센터 챗봇처럼 묻고 답한다.
@@ -286,17 +130,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
    * 이 화면(탭)의 대화 id — 서버 기록에서 같은 대화의 질문끼리만 잇는다. 사람·계정과는 잇지 않는 임의 값이고 저장하지 않는다
    * (새로 열면 새 대화).
    */
-  const conversationId = useRef(
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
-  ).current;
+  const conversationId = useRef(randomId("c")).current;
   const nextId = useRef(1);
-  /** '해결됐나요' 응답 한 번의 임의 값(사람·기기와 잇지 않는다). */
-  const newClientId = () =>
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const listRef = useRef<FlatList<ChatMessage>>(null);
   /** 맨 아래 근처를 보고 있는지(새 글자가 오면 따라 내릴지). */
   const atBottomRef = useRef(true);
@@ -324,96 +159,6 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     return added.map((item) => item.id);
   };
 
-  /**
-   * 흘려받기 진행 이벤트 → 지금 하는 일 한 줄(status)과 '살펴본 과정' 한 줄(step). 쉬운 말만 쓴다 — 안내 id·검색어·안내 첫 문장 조각을
-   * 그대로 보였더니 알아보기 힘들었다(10-16 사용자 지적). 사람이 읽을 수 있는 공지 제목·학식 날짜만 과정에 남긴다.
-   */
-  const stepInfo = (event: AskStreamEvent): { status: string; step: string | null } | null => {
-    switch (event.event) {
-      case "picked":
-        return { status: "관련 문서를 읽고 있어요", step: `관련 안내 ${event.data.titles.length}개 확인` };
-      case "search":
-        return { status: "관련 문서를 더 찾고 있어요", step: "다른 안내 찾아봄" };
-      case "read":
-        return { status: "찾은 문서를 읽고 있어요", step: "안내 원문 읽음" };
-      case "noticeSearch":
-        return { status: "학교 공지를 찾고 있어요", step: "학교 공지 찾아봄" };
-      case "noticeRead":
-        return { status: "공지를 읽고 있어요", step: `공지 읽음 · ${event.data.title}` };
-      case "cafeteria":
-        return { status: "학식 메뉴를 확인하고 있어요", step: `학식 확인 · ${event.data.date}` };
-      case "thinking":
-        // 답 쓰기 호출부터 첫 글자까지 수 초(모델이 원문을 따지는 중) — 문구만 바꾸고 과정 줄은 늘리지 않는다(11-01).
-        return { status: event.data.afterTools ? "찾은 내용으로 답을 준비하고 있어요" : "원문을 따져 보며 답을 준비하고 있어요", step: null };
-      case "writing":
-        return { status: "답을 정리하고 있어요", step: "답 정리" };
-      default:
-        return null;
-    }
-  };
-
-  /** 흐름의 한 단계를 대화에 잇는다. 끝 답이면 '해결됐나요?'를 붙인다. */
-  const stepMessages = (flowId: string, nodeId: string, question: string, viaServer = false, logId: number | null = null): NewMessage[] => {
-    const flow = ALL_ASK_FLOWS.find((item) => item.id === flowId);
-    const node = flow?.nodes[nodeId];
-    if (!flow || !node) return [{ role: "text", text: "안내를 불러오지 못했어요. 다시 물어봐 주세요." }];
-    if (node.kind === "question") return [{ role: "question", node, flowId, nodeId, chosen: null, viaServer }];
-    return [
-      { role: "answer", node, flowId, nodeId, checkedAt: flow.checkedAt, question, followed: false, viaServer },
-      { role: "feedback", question, resolved: null, logId, flowRef: { flowId, nodeId }, clientId: newClientId() },
-    ];
-  };
-
-  /** 서버에 넘길 앞 대화(최근 3턴) — 사용자 말, 그 뒤에 처음 열린 안내, 서버가 써 준 답. */
-  const recentTurns = (): AskRouteTurn[] => {
-    const turns: AskRouteTurn[] = [];
-    for (const item of messages) {
-      const last = turns[turns.length - 1];
-      if (item.role === "user") turns.push({ question: item.text.slice(0, 200) });
-      else if (last && !last.nodeId && (item.role === "question" || item.role === "answer")) {
-        last.nodeId = `${item.flowId}/${item.nodeId}`;
-      } else if (last && !last.answer && item.role === "reply") {
-        if (!last.nodeId && item.sources[0]) last.nodeId = `${item.sources[0].flowId}/${item.sources[0].nodeId}`;
-        last.answer = item.text.slice(0, 1000);
-      }
-    }
-    return turns.slice(-3);
-  };
-
-  /**
-   * 이어 묻는 말('어떻게 신청해?', '서류는?')은 낱말만으로 흐름을 못 찾는다 — 앞 질문과 합쳐 다시 찾고, 그래도 없으면 이어 묻는
-   * 말투의 짧은 질문은 바로 앞에 본 안내로 간다(10-25 '학생포상 신청' 뒤 '어떻게 신청해?'가 엉뚱한 부서로 가던 것).
-   * 서버 답이 없을 때(낱말 찾기)와 서버에 넘기는 후보(hint) 둘 다 이것을 쓴다.
-   */
-  const followUpMatch = (question: string): ReturnType<typeof matchAskFlow> => {
-    let lastQuestion: string | null = null;
-    let lastStep: { flowId: string; nodeId: string } | null = null;
-    for (let i = messages.length - 1; i >= 0 && (!lastQuestion || !lastStep); i--) {
-      const item = messages[i];
-      if (item.role === "user") lastQuestion ??= item.text;
-      else if (item.role === "answer" || item.role === "question") lastStep ??= { flowId: item.flowId, nodeId: item.nodeId };
-      else if (item.role === "reply" && item.sources[0]) lastStep ??= item.sources[0];
-    }
-    if (lastQuestion) {
-      const joined = matchAskFlow(`${lastQuestion} ${question}`);
-      if (joined) return joined;
-    }
-    const flow = lastStep ? ALL_ASK_FLOWS.find((item) => item.id === lastStep.flowId) : undefined;
-    const squashed = question.replace(/\s/g, "");
-    if (flow && lastStep && flow.nodes[lastStep.nodeId] && squashed.length <= FOLLOW_UP_MAX && FOLLOW_UP_WORDS.some((word) => squashed.includes(word))) {
-      return { flow, nodeId: lastStep.nodeId };
-    }
-    return null;
-  };
-
-  /** 서버가 고른 '흐름/단계' id 를 앱의 흐름에서 찾는다. 'none' 이거나 앱이 모르는 id(서버 목록이 더 새것)면 null. */
-  const findStep = (id: string): { flowId: string; nodeId: string } | null => {
-    const slash = id.indexOf("/");
-    if (slash < 0) return null;
-    const flowId = id.slice(0, slash);
-    const nodeId = id.slice(slash + 1);
-    return ALL_ASK_FLOWS.find((flow) => flow.id === flowId)?.nodes[nodeId] ? { flowId, nodeId } : null;
-  };
 
   const ask = async (raw: string) => {
     const question = raw.trim();
@@ -436,8 +181,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       push({ role: "user", text: question }, { role: "command", command, done: null });
       return;
     }
-    const matched = matchAskFlow(question) ?? followUpMatch(question);
-    const history = recentTurns();
+    const matched = matchAskFlow(question) ?? followUpMatch(messages, question);
+    const history = recentTurns(messages);
     push({ role: "user", text: question });
     if (!auth) {
       // 낱말 찾기로 답하지 않는다(10-27 운영진 요청) — 낱말만 겹치는 엉뚱한 안내나 긴 원문이 서버 답처럼 보였다.
@@ -492,7 +237,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
                 // 같은 일이 잇따르면(공지를 여러 번 찾기 등) 과정에는 한 번만 남긴다.
                 patchLive((item) => ({
                   status: info.status,
-                  steps: info.step === null || item.steps[item.steps.length - 1] === info.step ? item.steps : [...item.steps, info.step],
+                  steps: appendStep(item.steps, info.step),
                 }));
               }
             }
@@ -591,7 +336,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     if (message.chosen !== null) return;
     haptics.selection();
     // '해결 안 됨'일 때 부서를 찾을 수 있게 처음 질문 글을 넘긴다(버튼 글자로는 부서가 잘 안 걸린다).
-    const lastQuestion = [...messages].reverse().find((item) => item.role === "user")?.text ?? label;
+    const lastQuestion = lastUserText(messages, label);
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, chosen: label } : item)));
     push({ role: "user", text: label }, ...stepMessages(message.flowId, next, lastQuestion));
   };
@@ -629,28 +374,6 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, done } : item)));
   };
 
-  const commandText = (command: AskAppCommand): string => {
-    switch (command.kind) {
-      case "subscribe":
-        if (command.on) {
-          return command.boards.length > 1
-            ? "어느 게시판을 구독할까요? 구독하면 소식 탭에 그 게시판 공지가 모이고 알림을 받을 수 있어요."
-            : `${command.boards[0].name} 게시판을 구독할까요? 구독하면 소식 탭에 공지가 모이고 알림을 받을 수 있어요.`;
-        }
-        return command.boards.length > 1 ? "어느 게시판 구독을 해제할까요?" : `${command.boards[0].name} 게시판 구독을 해제할까요?`;
-      case "boardAlert":
-        return `${command.boards.map((b) => b.name).join(", ")} 게시판 알림을 ${command.on ? "켤" : "끌"}까요?`;
-      case "alertAll":
-        return command.on ? "앱 알림을 다시 켤까요?" : "앱 알림을 모두 끌까요? 끄면 구독한 게시판·분야 소식 알림이 오지 않아요.";
-      case "alertCategory":
-        return `${command.category} 분야 알림을 ${command.on ? "켤" : "끌"}까요?`;
-      case "open":
-        return command.screen === "alerts"
-          ? "알림은 설정 탭 > 알림에서 바꿔요. 전체 알림, 분야별 알림(공지·장학·행사·수강·시설·취업·상담), 게시판별 알림, 제보 알림을 켜고 끌 수 있어요. 여기서 '장학 알림 꺼 줘'처럼 말해도 돼요."
-          : "게시판 구독은 소식 탭이나 설정 탭 > 구독 관리에서 해요. 여기서 '화학공학과 구독해 줘'처럼 말해도 돼요.";
-    }
-  };
-
   const renderCommand = (item: Extract<ChatMessage, { role: "command" }>) => {
     const { command } = item;
     const button = (key: string, label: string, onPress: () => void) => (
@@ -662,7 +385,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     if (item.done === null) {
       if (command.kind === "subscribe" || command.kind === "boardAlert") {
         buttons = command.boards.map((board) => {
-          const verb = command.kind === "subscribe" ? (command.on ? "구독하기" : "구독 해제") : command.on ? "알림 켜기" : "알림 끄기";
+          const verb = boardCommandVerb(command);
           return button(board.id, `${verb} · ${board.name}`, () => applyCommand(item, board.id));
         });
       } else if (command.kind === "alertAll" || command.kind === "alertCategory") {
@@ -689,38 +412,13 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     push({ role: "user", text: guide.label }, ...stepMessages(guide.flowId, guide.nodeId, guide.label));
   };
 
-  /**
-   * 서버 답 아래 '출처' — 답에 실제로 쓴 안내를 학교 홈페이지 페이지로 묶어(같은 페이지는 한 줄) 실제 페이지 이름으로 보이고,
-   * 근거로 쓴 공지·학식을 잇는다. 누르면 원문 페이지가 열린다. 안내 첫 문장을 제목으로 쓰거나 근거 원문을 대화에 펼치던 것은
-   * 와닿지 않고 답이 연달아 나온 것처럼 보여 뺐다(10-16 사용자 지적).
-   */
-  const sourceLinks = (message: Extract<ChatMessage, { role: "reply" }>) => {
-    const seen = new Set<string>();
-    const out: { key: string; title: string; url: string | null; date: string | null; kind: "page" | "notice" | "menu" }[] = [];
-    for (const source of message.sources) {
-      const node = ALL_ASK_FLOWS.find((flow) => flow.id === source.flowId)?.nodes[source.nodeId];
-      const link = node?.kind === "answer" ? node.links?.[0] : undefined;
-      if (!link || seen.has(link.url)) continue;
-      seen.add(link.url);
-      out.push({ key: link.url, title: link.label, url: link.url, date: null, kind: "page" });
-    }
-    for (const link of message.links) {
-      const key = link.url ?? link.title;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ key, title: link.title, url: link.url, date: link.date, kind: link.title.startsWith("학식 ") ? "menu" : "notice" });
-    }
-    return out;
-  };
-
   /** 답 아래 '이어서 물어보기' 버튼. 한 번 누르면 그 답의 버튼은 접는다. */
   const follow = (message: Extract<ChatMessage, { role: "answer" }>, label: string, next: string) => {
     if (message.followed) return;
     haptics.selection();
     setMessages((prev) => prev.map((item) => (item.id === message.id ? { ...message, followed: true } : item)));
     // 'course-table/start' 처럼 흐름 id 가 붙은 버튼은 다른 안내로 넘어간다(주제표 see).
-    const slash = next.indexOf("/");
-    const [flowId, nodeId] = slash < 0 ? [message.flowId, next] : [next.slice(0, slash), next.slice(slash + 1)];
+    const { flowId, nodeId } = followTarget(message.flowId, next);
     push({ role: "user", text: label }, ...stepMessages(flowId, nodeId, message.question));
   };
 
@@ -767,52 +465,15 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
 
   /** '라벨: 내용' 항목은 라벨을 굵게(서버 답이 '- 자격·조건: …'처럼 쓴다). */
   const itemLabel = (itemText: string) => {
-    const match = itemText.match(/^([^:：\n]{1,16})[:：]\s+([\s\S]+)$/);
+    const match = splitItemLabel(itemText);
     return match ? (
       <>
-        <Text style={styles.itemLabel}>{match[1]}: </Text>
-        {match[2]}
+        <Text style={styles.itemLabel}>{match[0]}: </Text>
+        {match[1]}
       </>
     ) : (
       itemText
     );
-  };
-
-  /**
-   * 서버 답 글을 안내 카드 모양으로 — 첫 단락은 요약, '[소제목]' 줄은 소제목, '- '·'1. ' 줄은 항목. 흘러나오는 도중에도 같은 모양으로 그린다.
-   * 처음엔 글을 통째로 보여 줬더니 예전 안내 카드보다 읽기 힘들었다(10-16 사용자 지적).
-   */
-  const parseReply = (text: string): { lead: string; sections: AskSection[]; tail: string } => {
-    const lead: string[] = [];
-    const tail: string[] = [];
-    const sections: { title: string; items: string[]; ordered?: boolean }[] = [];
-    let current: { title: string; items: string[]; ordered?: boolean } | null = null;
-    for (const raw of text.split("\n")) {
-      const line = raw.trim();
-      if (!line) continue;
-      const heading = line.match(/^\[(.+)\]$/);
-      if (heading) {
-        tail.length = 0;
-        current = { title: heading[1], items: [] };
-        sections.push(current);
-        continue;
-      }
-      const bullet = line.match(/^[-•·]\s+([\s\S]*)$/);
-      const numbered = line.match(/^\d+[.)]\s+([\s\S]*)$/);
-      if (bullet || numbered) {
-        if (!current) {
-          current = { title: "", items: [] };
-          sections.push(current);
-        }
-        if (numbered && current.items.length === 0) current.ordered = true;
-        current.items.push((bullet ?? numbered)![1]);
-        continue;
-      }
-      // 소제목 뒤에 '- ' 없이 온 줄은 그 소제목의 항목이 아니라 카드 끝 문장('다친 곳을 알려 주시면 …' 같은 되묻기).
-      if (current) tail.push(line);
-      else lead.push(line);
-    }
-    return { lead: lead.join(" "), sections, tail: tail.join(" ") };
   };
 
   /** 서버 답 — 예전 안내 카드처럼 요약·소제목·항목, 그 아래 근거 안내의 위치·담당 전화·학교 페이지와 공지 버튼. */
@@ -830,27 +491,7 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
     }
     // 서버가 목록·표를 구조로 줬으면 그대로 그린다(text 는 요약만). 옛 서버·흘러나오는 중이면 글을 잘라 그린다.
     const { lead, sections, tail } = item.sections ? { lead: item.text, sections: item.sections, tail: "" } : parseReply(item.text);
-    const nodes = item.streaming
-      ? []
-      : item.sources
-          .map((source) => ALL_ASK_FLOWS.find((flow) => flow.id === source.flowId)?.nodes[source.nodeId])
-          .filter((node): node is AskAnswerNode => node?.kind === "answer");
-    // 버튼은 서버가 보낸 것을 쓴다(링크 순서·전화를 서버만 고쳐 바꿀 수 있게). 옛 서버면 앱의 안내 데이터에서.
-    const phones = item.buttons
-      ? item.buttons.phones
-      : nodes
-          .flatMap((node) => node.phones ?? [])
-          .filter((phone, index, all) => all.findIndex((other) => other.phone === phone.phone) === index)
-          .slice(0, 3);
-    const place = item.buttons ? item.buttons.facilityId : nodes.find((node) => node.facilityId)?.facilityId;
-    const links = item.streaming
-      ? []
-      : item.buttons
-        ? [
-            ...item.buttons.pages.map((page) => ({ key: page.url, title: page.title, url: page.url as string | null, date: null as string | null })),
-            ...item.links.filter((link) => link.url).map((link) => ({ key: link.url ?? link.title, title: link.title, url: link.url, date: link.date })),
-          ]
-        : sourceLinks(item).filter((source) => source.url);
+    const { phones, place, links } = replyButtons(item);
     const cursor = item.streaming ? <Text style={styles.cursor}>▍</Text> : null;
     // 전화·학교 페이지·공지 버튼은 앞의 몇 개만 보이고 나머지는 접는다 — 한 답에 버튼이 줄줄이 붙어 답이 묻혔다(10-24 지적).
     const actions = [
@@ -951,34 +592,8 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       push({ role: "text", text: "다행이에요. 다른 것도 궁금하면 언제든 물어보세요." });
       return;
     }
-    // 바로 위 답에 담당 부서 전화가 있으면 그 부서로 안내한다. 질문 글로 부서를 다시 찾으면 엉뚱한 곳이 걸린다
-    // ('아이디는 뭘로?'의 '아이디'가 연구소 소개의 '아이디어'에 걸려 미술디자인문화연구소가 나왔다, 10-15).
-    const answer = [...messages].reverse().find((item) => (item.role === "answer" || item.role === "reply") && item.id < message.id);
-    const answerNode =
-      answer?.role === "answer"
-        ? answer.node
-        : answer?.role === "reply" && answer.sources[0]
-          ? ALL_ASK_FLOWS.find((flow) => flow.id === answer.sources[0].flowId)?.nodes[answer.sources[0].nodeId]
-          : undefined;
-    const phone = answerNode?.kind === "answer" ? answerNode.phones?.[0] : undefined;
-    // 해결이 안 됐으면 운영진에게 이 대화를 넘길 수 있게 한다 — 챗봇에서 막혔을 때 다음 길이 없다는 게 가장 큰 불만이라(10-16 조사).
-    const handoff: NewMessage = {
-      role: "handoff",
-      question: message.question,
-      answer: answer?.role === "reply" ? answer.text : answer?.role === "answer" ? answer.node.text : "",
-      sources:
-        answer?.role === "reply"
-          ? answer.sources.map((source) => `${source.flowId}/${source.nodeId}`)
-          : answer?.role === "answer"
-            ? [`${answer.flowId}/${answer.nodeId}`]
-            : [],
-      note: "",
-      contact: "",
-      status: "editing",
-      error: null,
-      images: [],
-      askRef: feedbackRef(message),
-    };
+    // 바로 위 답에 담당 부서 전화가 있으면 그 부서로 안내하고, 해결이 안 됐으면 운영진에게 이 대화를 넘길 수 있게 한다.
+    const { handoff, phone } = handoffAfterFeedback(messages, message);
     if (phone) {
       push({ role: "text", text: `위 안내의 담당 부서(${phone.label} ${phone.phone})에 물어보면 가장 정확해요.` }, handoff);
       return;
@@ -991,10 +606,6 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
       handoff,
     );
   };
-
-  /** 이 응답이 어느 답 기록인지 — 운영진 문의를 그 답에 잇는다. */
-  const feedbackRef = (message: Extract<ChatMessage, { role: "feedback" }>): string | null =>
-    message.logId ? `route:${message.logId}` : message.flowRef && message.clientId ? `flow:${message.clientId}` : null;
 
   const reportFeedback = (message: Extract<ChatMessage, { role: "feedback" }>, resolved: boolean, reason?: AskFeedbackReason) => {
     if (message.logId && auth) {
@@ -1050,23 +661,10 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
   const updateHandoff = (id: number, patch: Partial<Extract<ChatMessage, { role: "handoff" }>>) =>
     setMessages((prev) => prev.map((item) => (item.id === id && item.role === "handoff" ? { ...item, ...patch } : item)));
 
-  /** 운영진에게 보낼 문의 글(1000자 안). 질문·홍익온 답(앞부분)·근거 안내 id·학생이 더 적은 말. */
-  const handoffContent = (message: Extract<ChatMessage, { role: "handoff" }>) => {
-    const answer = message.answer.replace(/\s+/g, " ").trim();
-    const lines = [
-      "[물어보기에서 넘어온 문의]",
-      `질문: ${message.question}`,
-      answer ? `홍익온 답: ${answer.length > 350 ? `${answer.slice(0, 350)}…` : answer}` : null,
-      message.sources.length ? `근거: ${message.sources.join(", ")}` : null,
-      `더 알고 싶은 점: ${message.note.trim() || "(없음)"}`,
-    ].filter((line): line is string => line !== null);
-    return lines.join("\n").slice(0, 1000);
-  };
-
   const sendHandoff = async (message: Extract<ChatMessage, { role: "handoff" }>) => {
     if (message.status !== "editing") return;
     const contact = message.contact.trim();
-    if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+    if (!isContactValid(contact)) {
       updateHandoff(message.id, { error: "이메일 주소를 다시 확인해 주세요." });
       return;
     }
@@ -1144,30 +742,17 @@ export default function AskChat({ onClose, serverKey, accessToken, beta = false,
 
   /** 찾아갈 부서 위치(건물·층). /dev/ask 는 지도와 떨어진 화면이라 글로만 보여 준다. 지도 데이터에 없으면 그리지 않는다. */
   const renderPlace = (facilityId: string) => {
-    const facility = facilities.find((item) => item.id === facilityId);
-    if (!facility) return null;
-    const place = [facility.buildingName, facility.floor !== undefined ? formatFloor(facility.floor) : null].filter(Boolean).join(" ");
+    const line = facilityPlaceLine(facilities, facilityId);
+    if (line === null) return null;
     return (
       <View style={styles.placeRow}>
         <Ionicons name="location" size={14} color={COLORS.primary} />
-        <Text style={styles.placeText}>{[facility.note, place].filter(Boolean).join(" · ")}</Text>
+        <Text style={styles.placeText}>{line}</Text>
       </View>
     );
   };
 
-  /** 지도 대상 이름 — 앱 지도 데이터에 있는 곳만(없으면 버튼을 그리지 않는다). */
-  const placeName = (target: string): string | null => {
-    const split = target.indexOf(":");
-    const kind = target.slice(0, split);
-    const id = target.slice(split + 1);
-    if (kind === "building") return buildings.find((b) => b.code === id)?.name ?? null;
-    if (kind === "partner") return partners.find((p) => p.id === id)?.name ?? null;
-    if (kind === "facility") {
-      const facility = facilities.find((f) => f.id === id);
-      return facility ? [facility.note, facility.buildingName].filter(Boolean).join(" · ") : null;
-    }
-    return null;
-  };
+  const placeName = (target: string): string | null => placeNameIn(target, { buildings, facilities, partners });
 
   /** 답의 지도 버튼 — 서버가 보낸 'map' 조작이 먼저, 없으면(옛 서버·앱 안내) 근거 안내의 위치. */
   const mapButtonFor = (item: Extract<ChatMessage, { role: "reply" }>, place: string | null) => {
