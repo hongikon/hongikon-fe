@@ -65,7 +65,7 @@ function PartnerChips({
 
   return (
     <>
-      <ChipRow style={rowScroll} contentContainerStyle={styles.row} selection={affiliation}>
+      <ChipRow style={rowScroll} contentContainerStyle={styles.row}>
         {affiliationCounts.map(({ key, count }) => {
           const isActive = affiliation === key;
           // 이미 골라둔 상태에서 다른 업종을 눌러 0곳이 된 경우는, 해제는 계속
@@ -105,7 +105,7 @@ function PartnerChips({
         })}
       </ChipRow>
 
-      <ChipRow style={rowScroll} contentContainerStyle={styles.row} selection={category}>
+      <ChipRow style={rowScroll} contentContainerStyle={styles.row}>
         {categoryCounts.map(({ meta, count }) => {
           const isActive = category === meta.key;
           return (

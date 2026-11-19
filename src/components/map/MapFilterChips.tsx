@@ -96,7 +96,7 @@ function MapFilterChips({
       </ScrollView>
 
       {layer === '편의시설' && (
-        <ChipRow style={rowScroll} contentContainerStyle={chipStyles.row} selection={facilityKind}>
+        <ChipRow style={rowScroll} contentContainerStyle={chipStyles.row}>
           {!data && (
             <View style={chipStyles.chip} accessibilityRole="text">
               <Text style={[chipStyles.label, styles.pendingText]}>편의시설 정보를 불러오는 중이에요</Text>
