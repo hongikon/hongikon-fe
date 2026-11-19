@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { SHEET_MAX_WIDTH } from '../../../constants/layout'
@@ -14,29 +12,11 @@ import Button from '../../common/Button'
 import TextField from '../../common/TextField'
 import { chipStyles } from '../chipStyles'
 import ReportScheduleEditModal from './ReportScheduleEditModal'
-import { useAuth } from '../../../contexts/AuthContext'
-import {
-  REPORT_IMAGE_MAX_BYTES,
-  ReportImageUploadError,
-  reportImageContentType,
-  updateReport,
-  uploadReportImage,
-  type PickedReportImage,
-} from '../../../apis/reports'
-import { ApiError, isNetworkError } from '../../../apis/client'
 import { REPORT_MAX_IMAGES } from '../../../utils/reports'
-import { formatClock, formatDay, type ReportDayHours } from '../../../utils/reportSchedule'
-import { parseServerTime } from '../../../utils/serverTime'
-import * as haptics from '../../../lib/haptics'
-import type { Report, ReportCategory, ReportListItem } from '../../../types'
-
-/** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
-const PLACE_MAX_LENGTH = 60
-const MIN_FLOOR = -10
-const MAX_FLOOR = 30
-
-/** 사진 한 칸: 지금 붙은 사진(서버 번호 index) 또는 새로 고른 사진. */
-type PhotoItem = { kind: 'existing'; index: number; url: string } | { kind: 'new'; picked: PickedReportImage }
+import { formatClock, formatDay } from '../../../utils/reportSchedule'
+import type { Report, ReportListItem } from '../../../types'
+import { MAX_FLOOR, MIN_FLOOR, PLACE_MAX_LENGTH, formatEditFloor, stepFloor } from '../../../utils/map/reportEdit'
+import { useReportEditForm } from '../../../hooks/map/report/useReportEditForm'
 
 interface ReportEditModalProps {
   /** null 이면 닫힘. 열 때마다 이 제보 값으로 새로 채운다. */
@@ -46,155 +26,43 @@ interface ReportEditModalProps {
   onSaved: (report: Report) => void
 }
 
-function formatFloor(floor: number): string {
-  return floor < 0 ? `B${-floor}` : `${floor}F`
-}
-
-/** 층 −/+ 한 칸(0층은 없다: B1 ↔ 1F). */
-function stepFloor(floor: number, delta: 1 | -1): number {
-  const next = floor + delta
-  if (next === 0) return delta
-  return Math.max(MIN_FLOOR, Math.min(MAX_FLOOR, next))
-}
-
-function saveErrorMessage(error: unknown): string {
-  if (error instanceof ReportImageUploadError) return error.message
-  if (isNetworkError(error)) return '인터넷 연결이 불안정해 고치지 못했어요. 연결을 확인하고 다시 시도해 주세요.'
-  if (error instanceof ApiError) {
-    if (error.status === 404 || error.status === 405) {
-      return error.serverMessage && error.status === 404 ? '이미 지워진 제보예요.' : '아직 제보 수정을 쓸 수 없어요. 잠시 뒤 다시 시도해 주세요.'
-    }
-    if (error.serverMessage && error.status < 500) return error.serverMessage
-    if (error.status === 401) return '로그인이 만료됐어요. 다시 로그인한 뒤 고쳐 주세요.'
-    if (error.status >= 500) return '서버에 일시적인 문제가 있어 고치지 못했어요. 잠시 뒤 다시 시도해 주세요.'
-  }
-  return '제보를 고치지 못했어요. 잠시 뒤 다시 시도해 주세요.'
-}
-
 /**
  * 내 제보 고치기(11-09 요청 — 지도 카드 ⋯ > 수정). 카테고리·제목·장소 설명·층·내용·사진·시간을 고친다. 핀 위치는 그대로다
  * (옮기려면 지우고 다시 올린다). 공개된 제보도 고친 내용이 바로 지도에 보이고 시트에 '수정됨'이 붙는다(서버 editedAt).
  * 시간은 공식 계정 시간 수정과 같은 시트(ReportScheduleEditModal)로 고르고, 저장을 누를 때 함께 보낸다.
  */
 export default function ReportEditModal({ report, onClose, onSaved }: ReportEditModalProps) {
-  const { accessToken } = useAuth()
-  const [category, setCategory] = useState<ReportCategory>('EVENT')
-  const [customLabel, setCustomLabel] = useState('')
-  const [title, setTitle] = useState('')
-  const [placeLabel, setPlaceLabel] = useState('')
-  const [floor, setFloor] = useState(1)
-  const [content, setContent] = useState('')
-  const [photos, setPhotos] = useState<PhotoItem[]>([])
-  const [schedule, setSchedule] = useState<{ startsAt: string; endsAt: string; days?: ReportDayHours[] | null }>({
-    startsAt: '',
-    endsAt: '',
-  })
-  const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // 열 때(닫힘 → 열림, 또는 다른 제보)만 새로 채운다. 시트는 1분마다 다시 그려 report 객체가 새로 오는데, 그때마다 채우면
-  // 쓰던 내용이 지워진다.
-  const openId = report?.id ?? null
-  useEffect(() => {
-    if (!report) return
-    setCategory(report.category)
-    setCustomLabel(report.customCategoryLabel ?? '')
-    setTitle(report.title)
-    setPlaceLabel(report.placeLabel ?? '')
-    setFloor(report.floor ?? 1)
-    setContent(report.content ?? '')
-    // 서버 번호(index)는 imageUrls 원래 순서다 — 못 만든 URL(null)은 건너뛰되 번호는 그대로 둔다.
-    const urls: (string | null)[] = Array.isArray(report.imageUrls) ? report.imageUrls : report.imageUrl ? [report.imageUrl] : []
-    setPhotos(
-      urls.flatMap((url, index) => (url ? [{ kind: 'existing' as const, index, url }] : [])).slice(0, REPORT_MAX_IMAGES),
-    )
-    setSchedule({ startsAt: report.startsAt, endsAt: report.endsAt, days: report.days ?? null })
-    setScheduleOpen(false)
-    setSaving(false)
-    setError(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openId])
+  const {
+    category,
+    setCategory,
+    customLabel,
+    setCustomLabel,
+    title,
+    setTitle,
+    placeLabel,
+    setPlaceLabel,
+    floor,
+    setFloor,
+    content,
+    setContent,
+    photos,
+    setPhotos,
+    schedule,
+    setSchedule,
+    scheduleOpen,
+    setScheduleOpen,
+    saving,
+    error,
+    inBuilding,
+    isEtc,
+    problem,
+    startMs,
+    endMs,
+    pickPhotos,
+    save,
+  } = useReportEditForm(report, onSaved)
 
   if (!report) return null
-  const inBuilding = report.buildingId !== null && report.buildingId !== undefined
-  const trimmedTitle = title.trim()
-  const trimmedPlace = placeLabel.trim()
-  const isEtc = category === 'ETC'
-  const problem =
-    trimmedTitle.length === 0
-      ? '제목을 입력해 주세요.'
-      : !inBuilding && trimmedPlace.length === 0
-        ? '캠퍼스 밖 제보는 장소를 적어 주세요.'
-        : null
-  const startMs = parseServerTime(schedule.startsAt)
-  const endMs = parseServerTime(schedule.endsAt)
-
-  const pickPhotos = async () => {
-    setError(null)
-    const remaining = REPORT_MAX_IMAGES - photos.length
-    if (remaining <= 0) return
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.7,
-        allowsEditing: false,
-        preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-        ...(remaining > 1 ? { allowsMultipleSelection: true, selectionLimit: remaining, orderedSelection: true } : {}),
-      })
-      if (result.canceled) return
-      const accepted: PhotoItem[] = []
-      let rejected = 0
-      for (const asset of result.assets) {
-        const picked: PickedReportImage = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.fileSize }
-        if (reportImageContentType(picked) === null || (picked.fileSize && picked.fileSize > REPORT_IMAGE_MAX_BYTES)) {
-          rejected += 1
-          continue
-        }
-        if (accepted.length < remaining) accepted.push({ kind: 'new', picked })
-      }
-      if (accepted.length) setPhotos((prev) => [...prev, ...accepted].slice(0, REPORT_MAX_IMAGES))
-      if (rejected) setError(`JPEG·PNG 이고 5MB 이하인 사진만 붙일 수 있어 ${rejected}장은 뺐어요.`)
-    } catch {
-      setError('사진을 불러오지 못했어요.')
-    }
-  }
-
-  const save = async () => {
-    if (saving || problem || !accessToken) return
-    setSaving(true)
-    setError(null)
-    try {
-      const imageKeys: string[] = []
-      for (const photo of photos) {
-        if (photo.kind === 'new') imageKeys.push(await uploadReportImage(photo.picked, accessToken))
-      }
-      const saved = await updateReport(
-        report.id,
-        {
-          floor: inBuilding ? floor : undefined,
-          category,
-          customCategoryLabel: isEtc && customLabel.trim() ? customLabel.trim() : undefined,
-          title: trimmedTitle,
-          content: content.trim() || undefined,
-          placeLabel: trimmedPlace || undefined,
-          // 서버는 남긴 사진을 앞에, 새 사진을 뒤에 둔다 — 화면도 같은 순서다(새 사진은 늘 뒤에 붙는다).
-          keepImageIndexes: photos.flatMap((photo) => (photo.kind === 'existing' ? [photo.index] : [])),
-          imageKeys: imageKeys.length ? imageKeys : undefined,
-          startsAt: schedule.startsAt,
-          endsAt: schedule.endsAt,
-          ...(schedule.days && schedule.days.length >= 2 ? { days: schedule.days } : {}),
-        },
-        accessToken,
-      )
-      haptics.success()
-      onSaved(saved)
-    } catch (caught) {
-      setError(saveErrorMessage(caught))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <Modal transparent visible animationType="slide" onRequestClose={onClose}>
@@ -254,7 +122,7 @@ export default function ReportEditModal({ report, onClose, onSaved }: ReportEdit
                   <View style={styles.floorRow}>
                     <StepButton icon="remove" label="한 층 아래" disabled={floor <= MIN_FLOOR} onPress={() => setFloor((f) => stepFloor(f, -1))} />
                     <Text style={styles.floorText} accessibilityLiveRegion="polite">
-                      {formatFloor(floor)}
+                      {formatEditFloor(floor)}
                     </Text>
                     <StepButton icon="add" label="한 층 위" disabled={floor >= MAX_FLOOR} onPress={() => setFloor((f) => stepFloor(f, 1))} />
                   </View>
