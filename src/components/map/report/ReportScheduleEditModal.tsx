@@ -22,7 +22,8 @@ import {
   type ReportDayHours,
 } from '../../../utils/reportSchedule'
 import { parseServerTime } from '../../../utils/serverTime'
-import ReportDaysEditor, { reportDaysFor, type EditableDay } from './ReportDaysEditor'
+import ReportDaysEditor from './ReportDaysEditor'
+import { reportDaysFor, type EditableDay } from '../../../utils/map/reportDays'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS

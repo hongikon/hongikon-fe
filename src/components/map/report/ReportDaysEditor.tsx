@@ -1,91 +1,13 @@
-import { useCallback, useState } from 'react'
 import { Text, TouchableOpacity, StyleSheet, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { RADIUS } from '../../../constants/spacing'
-import {
-  REPORT_MAX_DURATION_DAYS,
-  REPORT_TIME_STEP_MINUTES,
-  canRunDaily,
-  defaultReportDays,
-  formatClock,
-  formatDay,
-  kstDateKey,
-  kstMidnight,
-  kstMinutesOfDay,
-  toReportDayHours,
-  type ReportDayHours,
-  type ReportDaySpan,
-} from '../../../utils/reportSchedule'
+import { formatClock, formatDay } from '../../../utils/reportSchedule'
+import { MINUTE_MS, STEP_MS, type EditableDay, type ReportDaysPatch } from '../../../utils/map/reportDays'
+import { useReportDaysEditor } from '../../../hooks/map/report/useReportDaysEditor'
 import ReportTimeSheet from './ReportTimeSheet'
-
-const DAY_MS = 24 * 60 * 60 * 1000
-const MINUTE_MS = 60 * 1000
-const STEP_MS = REPORT_TIME_STEP_MINUTES * MINUTE_MS
-const MAX_DURATION_MS = REPORT_MAX_DURATION_DAYS * DAY_MS
-
-/** 고칠 수 있는 하루. off 면 그날은 쉰다(첫날·마지막 날은 쉴 수 없다 — 기간을 줄이면 된다). */
-export interface EditableDay extends ReportDaySpan {
-  off?: boolean
-}
-
-/**
- * 고른 시작·종료와 고친 날들로 지금 보일 날짜 목록. 날마다 처음엔 시작 시각~끝 시각이고, 고친 날·쉬는 날은 남긴다.
- * 첫날 시작·마지막 날 끝은 언제나 위에서 고른 시작·종료 시각이다.
- */
-export function effectiveDays(startMs: number, endMs: number, edited: readonly EditableDay[]): EditableDay[] {
-  const off = new Set(edited.filter((day) => day.off).map((day) => day.date))
-  const days = defaultReportDays(startMs, endMs, edited)
-  return days.map((day, index) => ({ ...day, off: index > 0 && index < days.length - 1 && off.has(day.date) }))
-}
-
-/**
- * 시작을 바꿀 때(예: '지금'으로) 날마다의 시각이 새 시작 시각을 따라가지 않게, 지금 보이는 '매일' 시작 시각으로
- * 아직 고치지 않은 날을 모두 채워 둔다. 고친 날·쉬는 날은 그대로.
- */
-export function pinDailyHours(
-  startMs: number,
-  endMs: number,
-  edited: readonly EditableDay[],
-  nextStartMs: number,
-  nextEndMs: number,
-): EditableDay[] {
-  const days = effectiveDays(startMs, endMs, edited)
-  const open = kstMinutesOfDay(days[days.length - 1].startMs)
-  const close = kstMinutesOfDay(endMs)
-  const kept = new Map(edited.map((day) => [day.date, day]))
-  const out: EditableDay[] = []
-  for (let midnight = kstMidnight(nextStartMs); midnight <= kstMidnight(nextEndMs); midnight += DAY_MS) {
-    const date = kstDateKey(midnight)
-    out.push(kept.get(date) ?? { date, startMs: midnight + open * MINUTE_MS, endMs: midnight + close * MINUTE_MS })
-  }
-  return out
-}
-
-/** 서버로 보낼 날짜별 운영 시간. 켜지 않았거나 쓸 수 없으면 null(한 번짜리). */
-export function reportDaysFor(
-  enabled: boolean,
-  startMs: number,
-  endMs: number,
-  edited: readonly EditableDay[],
-): ReportDayHours[] | null {
-  if (!enabled || !canRunDaily(startMs, endMs)) return null
-  const open = effectiveDays(startMs, endMs, edited).filter((day) => !day.off)
-  return open.length >= 2 ? toReportDayHours(open) : null
-}
-
-/** 편집기가 부모에게 한 번에 넘기는 바뀐 값. 여러 값이 같이 바뀌어도 한 번에 넘겨야 부모가 앞의 값을 덮어쓰지 않는다. */
-export interface ReportDaysPatch {
-  daily?: boolean
-  edited?: EditableDay[]
-  /** 첫날 시작(=제보 시작)을 이 시각으로. */
-  startMs?: number
-  /** 마지막 날 끝(=제보 종료)을 이 시각으로. */
-  endMs?: number
-}
-
-type DaysMode = 'same' | 'each'
+import { OffButton, StepButton, TimeButton } from './days/DaysEditorButtons'
 
 interface ReportDaysEditorProps {
   /** 고른 시작(첫날 시작)·종료(마지막 날 끝). */
@@ -102,30 +24,6 @@ interface ReportDaysEditorProps {
   /** 첫날 시작을 바꿀 수 없으면(이미 시작한 제보의 시간 수정) true. */
   startLocked?: boolean
   disabled?: boolean
-}
-
-const LAST_SLOT_MINUTES = 24 * 60 - REPORT_TIME_STEP_MINUTES
-
-/** 체크를 처음 켤 때의 매일 운영 시간: 고른 시작 시각(지금이면 지금 시각의 정각)~종료 시각. 끝이 시작보다 이르면 4시간짜리로. */
-function initialHours(startMs: number, endMs: number, startIsNow: boolean): { open: number; close: number } {
-  const startMinutes = kstMinutesOfDay(startMs)
-  const open = startIsNow ? Math.floor(startMinutes / 60) * 60 : startMinutes
-  const endMinutes = kstMinutesOfDay(endMs)
-  const close = endMinutes > open ? endMinutes : Math.min(open + 4 * 60, LAST_SLOT_MINUTES)
-  return { open: Math.min(open, close - REPORT_TIME_STEP_MINUTES), close }
-}
-
-/** 날마다 같은 시간인지(첫날이 '지금'이면 첫날 시작은 보지 않는다, 쉬는 날은 뺀다). */
-function allSameHours(days: readonly EditableDay[], startIsNow: boolean): boolean {
-  const open = days.filter((day) => !day.off)
-  if (open.length < 2) return true
-  const ref = open[open.length - 1]
-  const refStart = kstMinutesOfDay(ref.startMs)
-  const refEnd = kstMinutesOfDay(ref.endMs)
-  return open.every(
-    (day, index) =>
-      (index === 0 && startIsNow ? true : kstMinutesOfDay(day.startMs) === refStart) && kstMinutesOfDay(day.endMs) === refEnd,
-  )
 }
 
 /**
@@ -146,122 +44,32 @@ export default function ReportDaysEditor({
   startLocked = false,
   disabled,
 }: ReportDaysEditorProps) {
-  // 체크는 켜 있어도 시각을 바꿔 하루짜리가 되면 꺼진 것으로 보인다(부모도 그때는 한 번짜리로 올린다).
-  const multiDay = canRunDaily(startMs, endMs)
-  const on = enabled && multiDay
-  const days = effectiveDays(startMs, endMs, edited)
-  const [mode, setMode] = useState<DaysMode>(() => (allSameHours(days, startIsNow) ? 'same' : 'each'))
-  const [picker, setPicker] = useState<{ index: number; side: 'start' | 'end' } | null>(null)
-  const [hoursPicker, setHoursPicker] = useState<'open' | 'close' | null>(null)
-  const firstFixed = startIsNow || startLocked
-
-  // '매일 같은 시간'의 시각: 마지막 날 시작(첫날이 지금일 수 있어서)~종료 시각.
-  const last = days[days.length - 1]
-  const open = kstMinutesOfDay(last.startMs)
-  const close = kstMinutesOfDay(endMs)
-
-  /** 모든 날을 open~close 로 맞춘다(쉬는 날은 그대로). 첫날 시작·마지막 날 끝은 제보 시작·종료도 같이 옮긴다. */
-  const applySame = (nextOpen: number, nextClose: number, extra: ReportDaysPatch = {}) => {
-    const firstMidnight = kstMidnight(startMs)
-    const lastMidnight = kstMidnight(endMs)
-    const wantStart = firstMidnight + nextOpen * MINUTE_MS
-    const nextStart = !firstFixed && wantStart >= earliestStart ? wantStart : startMs
-    const nextEnd = lastMidnight + nextClose * MINUTE_MS
-    const nextEdited = days.map((day, index) => {
-      const midnight = kstMidnight(day.startMs)
-      return {
-        date: day.date,
-        startMs: index === 0 ? nextStart : midnight + nextOpen * MINUTE_MS,
-        endMs: midnight + nextClose * MINUTE_MS,
-        off: day.off,
-      }
-    })
-    onChange({
-      ...extra,
-      edited: nextEdited,
-      ...(nextStart !== startMs ? { startMs: nextStart } : {}),
-      ...(nextEnd !== endMs ? { endMs: nextEnd } : {}),
-    })
-  }
-
-  const toggle = () => {
-    if (on) return onChange({ daily: false })
-    const hours = initialHours(startMs, endMs, startIsNow)
-    setMode('same')
-    if (multiDay) return applySame(hours.open, hours.close, { daily: true })
-    // 하루 안에서 끝나는 시간이면 내일까지 같은 시간으로 늘린다(첫날은 고른 시작부터).
-    const firstMidnight = kstMidnight(startMs)
-    const nextMidnight = firstMidnight + DAY_MS
-    const firstEnd = Math.max(firstMidnight + hours.close * MINUTE_MS, startMs + STEP_MS)
-    const nextEnd = nextMidnight + hours.close * MINUTE_MS
-    onChange({
-      daily: true,
-      endMs: nextEnd,
-      edited: [
-        { date: kstDateKey(firstMidnight), startMs, endMs: firstEnd },
-        { date: kstDateKey(nextMidnight), startMs: nextMidnight + hours.open * MINUTE_MS, endMs: nextEnd },
-      ],
-    })
-  }
-
-  /** 마지막 날을 하루 늘이거나 줄인다. 고친 날·쉬는 날은 그대로, 새 날은 '매일' 시각으로. */
-  const moveLastDay = (delta: 1 | -1) => {
-    const nextEnd = endMs + delta * DAY_MS
-    onChange({ endMs: nextEnd, edited: pinDailyHours(startMs, endMs, edited, startMs, nextEnd) })
-  }
-  const canShorten = days.length > 2
-  const canExtend = endMs + DAY_MS - startMs <= MAX_DURATION_MS
-
-  const chooseMode = (next: DaysMode) => {
-    if (next === mode) return
-    setMode(next)
-    // 날마다 다르게 고쳐 둔 것을 '매일 같은 시간'으로 돌리면 마지막 날 시간으로 모두 맞춘다.
-    if (next === 'same' && !allSameHours(days, startIsNow)) applySame(open, close)
-  }
-
-  const replaceDay = (index: number, next: EditableDay) => {
-    const others = days.filter((_, i) => i !== index)
-    onChange({ edited: [...others, next] })
-  }
-
-  const pickedDay = picker ? days[picker.index] : null
-  const pickedMidnight = pickedDay ? kstMidnight(pickedDay.startMs) : 0
-  const isValid = useCallback(
-    (ms: number) => {
-      if (!pickedDay || !picker) return false
-      if (ms < pickedMidnight || ms >= pickedMidnight + DAY_MS) return false
-      if (picker.side === 'start') return ms < pickedDay.endMs && (picker.index > 0 || ms >= earliestStart)
-      return ms > pickedDay.startMs
-    },
-    [pickedDay, picker, pickedMidnight, earliestStart],
-  )
-
-  const confirm = (ms: number) => {
-    if (!picker || !pickedDay) return
-    const { index, side } = picker
-    setPicker(null)
-    if (side === 'start' && index === 0) return onChange({ startMs: ms })
-    if (side === 'end' && index === days.length - 1) return onChange({ endMs: ms })
-    replaceDay(index, side === 'start' ? { ...pickedDay, startMs: ms } : { ...pickedDay, endMs: ms })
-  }
-
-  // 매일 시각 다이얼은 마지막 날(언제나 고를 수 있는 날) 위에서 고른다.
-  const hoursMidnight = kstMidnight(last.startMs)
-  const hoursValid = useCallback(
-    (ms: number) => {
-      const minutes = Math.round((ms - hoursMidnight) / MINUTE_MS)
-      if (minutes < 0 || minutes >= 24 * 60) return false
-      return hoursPicker === 'open' ? minutes < close : minutes > open
-    },
-    [hoursMidnight, hoursPicker, open, close],
-  )
-  const confirmHours = (ms: number) => {
-    const minutes = Math.round((ms - hoursMidnight) / MINUTE_MS)
-    const side = hoursPicker
-    setHoursPicker(null)
-    if (side === 'open') applySame(minutes, close)
-    else if (side === 'close') applySame(open, minutes)
-  }
+  const {
+    multiDay,
+    on,
+    days,
+    mode,
+    picker,
+    setPicker,
+    hoursPicker,
+    setHoursPicker,
+    firstFixed,
+    open,
+    close,
+    toggle,
+    moveLastDay,
+    canShorten,
+    canExtend,
+    chooseMode,
+    replaceDay,
+    pickedDay,
+    pickedMidnight,
+    isValid,
+    confirm,
+    hoursMidnight,
+    hoursValid,
+    confirmHours,
+  } = useReportDaysEditor({ startMs, endMs, enabled, edited, onChange, earliestStart, startIsNow, startLocked })
 
   const firstRange = `${formatClock(startMs)}~${formatClock(endMs)}`
   return (
@@ -451,71 +259,6 @@ export default function ReportDaysEditor({
   )
 }
 
-function StepButton({
-  icon,
-  disabled,
-  onPress,
-  accessibilityLabel,
-}: {
-  icon: 'add' | 'remove'
-  disabled?: boolean
-  onPress: () => void
-  accessibilityLabel: string
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.stepButton, disabled && styles.disabled]}
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
-      accessibilityLabel={accessibilityLabel}
-    >
-      <Ionicons name={icon} size={18} color={COLORS.primary} />
-    </TouchableOpacity>
-  )
-}
-
-function OffButton({ day, disabled, onPress }: { day: EditableDay; disabled?: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={styles.offButton}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={day.off ? `${formatDay(day.startMs)} 운영하기` : `${formatDay(day.startMs)} 쉬는 날로`}
-    >
-      <Text style={styles.offButtonText}>{day.off ? '운영' : '쉬는 날'}</Text>
-    </TouchableOpacity>
-  )
-}
-
-function TimeButton({
-  label,
-  disabled,
-  onPress,
-  accessibilityLabel,
-}: {
-  label: string
-  disabled?: boolean
-  onPress: () => void
-  accessibilityLabel: string
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.time, disabled && styles.disabled]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-    >
-      <Text style={styles.timeText}>{label}</Text>
-    </TouchableOpacity>
-  )
-}
-
 const styles = StyleSheet.create({
   toggle: {
     flexDirection: 'row',
@@ -555,14 +298,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontVariant: ['tabular-nums'],
   },
-  stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   hoursLabel: { width: 72, fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },
   sectionNote: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 8 },
   compactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 },
@@ -572,19 +307,7 @@ const styles = StyleSheet.create({
   date: { width: 72, fontFamily: FONTS.semibold, fontSize: 13.5, color: COLORS.textPrimary },
   offText: { color: COLORS.textTertiary },
   times: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  time: {
-    minWidth: 64,
-    minHeight: 36,
-    paddingHorizontal: 10,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeText: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.primary, fontVariant: ['tabular-nums'] },
   dash: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textSecondary },
   offLabel: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, color: COLORS.textTertiary },
-  offButton: { minHeight: 36, paddingHorizontal: 8, justifyContent: 'center' },
-  offButtonText: { fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.textSecondary, textDecorationLine: 'underline' },
   offButtonSpacer: { width: 52 },
 })
