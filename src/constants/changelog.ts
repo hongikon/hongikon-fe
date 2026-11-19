@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.1.0',
+    date: '2026-11-19',
+    title: '소식·지도 사용성 다듬기',
+    kind: 'ota',
+    items: [
+      '소식 상세에서 원문 보기 버튼 폭을 본문에 맞췄어요.',
+      '지도에서 칩을 펼친 뒤 종류를 골라도 자동으로 접히지 않아요.',
+    ],
+  },
+  {
+    version: '1.1.0',
     date: '2026-11-18',
     title: '건물 안에서 길찾기, 지도 흰 화면 고침',
     kind: 'ota',

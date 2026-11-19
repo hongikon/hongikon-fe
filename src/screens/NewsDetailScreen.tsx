@@ -201,16 +201,14 @@ function NewsDetailBody({
       </View>
 
       {/* 원문 보기는 화면 아래에 하나만 고정해 둔다 — 본문을 어디까지 읽었든 바로 누를 수 있다(예전엔 위·아래 두 개였다). */}
-      <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
-        <View style={layoutStyles.readable}>
-          <Button
-            icon="open-outline"
-            label={originalLabel}
-            onPress={openOriginal}
-            accessibilityRole="link"
-            accessibilityLabel={originalA11yLabel}
-          />
-        </View>
+      <View style={[layoutStyles.readable, styles.footer, { paddingBottom: 12 + insets.bottom }]}>
+        <Button
+          icon="open-outline"
+          label={originalLabel}
+          onPress={openOriginal}
+          accessibilityRole="link"
+          accessibilityLabel={originalA11yLabel}
+        />
       </View>
     </SafeAreaView>
   )
