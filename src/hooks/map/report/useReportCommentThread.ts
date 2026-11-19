@@ -1,0 +1,263 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FlatList } from 'react-native'
+import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../apis/client'
+import { getCommentReplies, getReportComments, type CommentOrder } from '../../../apis/comments'
+import { useToast } from '../../../components/common/Toast'
+import type { ReplyTarget } from '../../../components/map/report/comments/CommentComposer'
+import { useAuth } from '../../../contexts/AuthContext'
+import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
+import type { ReportComment } from '../../../types'
+import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
+import {
+  appendReply,
+  commentRemovalCounts,
+  nextCommentPage,
+  removeCommentFromThreads,
+  visibleThreads,
+} from '../../../utils/map/commentThreads'
+import { promptLogin } from '../../../utils/reports'
+import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
+
+/**
+ * 처음에 보여 줄 최상위 댓글 수. 더 있으면 목록 끝에 '이전 댓글 N개 보기'(인기순은 '댓글 N개 더 보기') 버튼을 두고,
+ * 누르면 나머지를 한 번에 모두 펼친다 — 처음 열 땐 최근 대화만 짧게, 원하면 전부 본다.
+ */
+const COMMENTS_MODAL_PAGE_SIZE = 10
+/** 댓글은 작성된 순서(오래된 순)로 고정한다(10-09 요청 — 최신순·인기순 고르기를 없앴다). */
+const COMMENT_ORDER: CommentOrder = 'oldest'
+/** '나머지 보기'로 한 번에 받는 최대 페이지 수(10개 × 30 = 300개). 이보다 많으면 버튼이 다시 남는다. */
+const LOAD_REST_MAX_PAGES = 30
+
+export type CommentsLoadState =
+  | { kind: 'loading' }
+  | { kind: 'ready' }
+  | { kind: 'error'; message: string; network: boolean; retryable: boolean }
+
+/**
+ * 제보 본문 창의 댓글 목록: 페이지로 받기·나머지 펼치기·새로고침, 답글 더 받기, 쓰기·지우기·숨기기 반영, 답글 대상.
+ * 창이 열릴 때마다(`visible`) 처음부터 다시 받는다.
+ */
+export function useReportCommentThread(reportId: number, visible: boolean, focusInput: boolean) {
+  const { accessToken, logout } = useAuth()
+  const toast = useToast()
+  const hiddenKeys = useHiddenAuthorKeys()
+  const [items, setItems] = useState<ReportComment[]>([])
+  const [count, setCount] = useState(0)
+  const [state, setState] = useState<CommentsLoadState>({ kind: 'loading' })
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingReplies, setLoadingReplies] = useState<number | null>(null)
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null)
+  const [focusKey, setFocusKey] = useState(0)
+  const [menuFor, setMenuFor] = useState<ReportComment | null>(null)
+  /** 서버가 좋아요를 아는지(likeCount 가 옴). 새로 쓴 댓글의 좋아요 0 표시에 쓴다. */
+  const [likesSupported, setLikesSupported] = useState(false)
+  const pageRef = useRef(0)
+  const hasNextRef = useRef(false)
+  /** 더 받을 댓글이 있는지 — '이전 댓글 보기' 버튼을 그릴지(ref 는 화면을 다시 그리지 않아 따로 둔다). */
+  const [hasNext, setHasNext] = useState(false)
+  /** 최상위 댓글 전체 수(답글 제외) — 버튼의 '나머지 N개' 계산용. */
+  const [topTotal, setTopTotal] = useState(0)
+  /**
+   * 마지막으로 받은 페이지 뒤에 목록에서 빠진 최상위 댓글 수(지움·신고 숨김). 서버는 page·size 오프셋으로 끊어 주는데,
+   * 앞쪽 댓글이 빠지면 뒤 댓글이 한 칸씩 당겨져 다음 페이지를 그대로 받으면 경계의 댓글을 건너뛴다.
+   * 0 보다 크면 그만큼 앞에서부터 다시 받는다(`nextPageToLoad`) — 겹친 댓글은 mergeComments 가 id 로 걸러 준다.
+   * "삭제된 댓글" 자리로 남긴 것도 센다 — 서버 목록에 남아 있었다면 한 페이지를 더 겹쳐 받을 뿐 건너뛰지는 않는다.
+   */
+  const removedTopRef = useRef(0)
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+  const controllerRef = useRef<AbortController | null>(null)
+  const listRef = useRef<FlatList<ReportComment>>(null)
+  const tokenRef = useRef(accessToken)
+  tokenRef.current = accessToken
+
+  /** 받아 넣었으면 true. 실패·취소, 정렬을 바꿔 처음부터 다시 받으러 간 경우는 false. */
+  const load = useCallback(
+    async (page: number, mode: 'initial' | 'refresh' | 'more'): Promise<boolean> => {
+      if (mode !== 'more') controllerRef.current?.abort()
+      const controller = new AbortController()
+      controllerRef.current = controller
+      if (mode === 'initial') setState({ kind: 'loading' })
+      if (mode === 'refresh') setRefreshing(true)
+      if (mode === 'more') setLoadingMore(true)
+      // 이 요청을 보낼 때까지 빠진 수. 응답을 받는 사이 또 빠진 것은 다음 요청 몫으로 남긴다.
+      const removedAtRequest = removedTopRef.current
+      try {
+        const result = await getReportComments(reportId, {
+          page,
+          size: COMMENTS_MODAL_PAGE_SIZE,
+          order: COMMENT_ORDER,
+          accessToken: tokenRef.current,
+          signal: controller.signal,
+        })
+        if (controller.signal.aborted) return false
+        // 좋아요를 아는 서버면 좋아요 수를 보인다. 정렬은 작성된 순서(오래된 순)로 고정한다(10-09 요청).
+        if (page === 0 && supportsCommentLikes(result.content)) setLikesSupported(true)
+        // 처음·새로고침은 갈아 끼우고, 더 받기는 합친다(빠진 댓글 때문에 0쪽을 다시 받을 때도 합친다).
+        setItems((prev) => (mode !== 'more' ? result.content : mergeComments(prev, result.content, COMMENT_ORDER)))
+        setCount(result.commentCount ?? result.totalElements)
+        setTopTotal(result.totalElements)
+        removedTopRef.current = mode === 'more' ? Math.max(0, removedTopRef.current - removedAtRequest) : 0
+        pageRef.current = page
+        hasNextRef.current = result.hasNext
+        setHasNext(result.hasNext)
+        setState({ kind: 'ready' })
+        return true
+      } catch (error) {
+        if (controller.signal.aborted || isCancelledError(error)) return false
+        if (mode === 'more') {
+          toast.show({ message: getErrorMessage(error, '댓글을 더 불러오지 못했어요.'), tone: 'warning' })
+        } else {
+          setState({
+            kind: 'error',
+            message: getErrorMessage(error, '댓글을 불러오지 못했어요.'),
+            network: isNetworkError(error),
+            retryable: isRetryableError(error),
+          })
+        }
+        return false
+      } finally {
+        if (mode === 'refresh') setRefreshing(false)
+        if (mode === 'more') setLoadingMore(false)
+      }
+    },
+    [reportId, toast],
+  )
+
+  /**
+   * 다음에 받을 페이지. 받은 뒤 빠진 최상위 댓글이 없으면 바로 다음 쪽, 있으면 서버 목록에서 아직 못 본 첫 댓글
+   * (지금까지 받은 수 − 빠진 수 번째)이 든 쪽을 다시 받는다. 예: 10개씩 2쪽(20개)을 받고 1개를 지웠으면 19번째가
+   * 든 1쪽을 다시 받아 당겨진 1개를 얻는다(이미 있는 9개는 id 로 합쳐진다).
+   */
+  const nextPageToLoad = useCallback(
+    () => nextCommentPage(pageRef.current, removedTopRef.current, COMMENTS_MODAL_PAGE_SIZE),
+    [],
+  )
+
+  /** 나머지 댓글을 한 번에 모두 펼친다(10개씩 페이지를 이어 받음). 실패하면 그때까지 받은 것만 두고 버튼이 남는다. */
+  const loadingRestRef = useRef(false)
+  const loadRest = useCallback(async () => {
+    if (loadingRestRef.current) return
+    loadingRestRef.current = true
+    try {
+      for (let i = 0; i < LOAD_REST_MAX_PAGES && hasNextRef.current; i += 1) {
+        // 실패(토스트가 이미 떴음)면 멈춘다 — 같은 페이지를 다시 시도하지 않는다.
+        if (!(await load(nextPageToLoad(), 'more'))) break
+      }
+    } finally {
+      loadingRestRef.current = false
+    }
+  }, [load, nextPageToLoad])
+
+  useEffect(() => {
+    if (!visible) {
+      controllerRef.current?.abort()
+      return
+    }
+    setItems([])
+    setReplyTo(null)
+    setLikesSupported(false)
+    pageRef.current = 0
+    removedTopRef.current = 0
+    hasNextRef.current = false
+    setHasNext(false)
+    void load(0, 'initial')
+    if (focusInput) setFocusKey((key) => key + 1)
+  }, [visible, load, focusInput])
+
+  /**
+   * 지웠거나 신고로 숨겨진 댓글을 목록에서 정리한다. 답글이 남은 최상위 댓글은 자리로 바꾼다 — 지움이면 "삭제된 댓글",
+   * 신고 누적 자동 숨김이면 "운영 정책에 따라 숨겨진 댓글"(서버가 다시 줄 때의 placeholder 와 같게).
+   */
+  const handleRemoved = useCallback((commentId: number, reason: CommentRemovedReason = 'DELETED') => {
+    // 최상위 댓글이 빠지면 다음 페이지 경계가 당겨진다(removedTopRef). 자리까지 없어지면 '나머지 N개' 계산의 전체 수도 줄인다.
+    const removal = commentRemovalCounts(itemsRef.current, commentId)
+    if (removal.top) {
+      removedTopRef.current += 1
+      if (removal.total) setTopTotal((prev) => Math.max(0, prev - 1))
+    }
+    setItems((prev) => removeCommentFromThreads(prev, commentId, reason))
+    setCount((prev) => Math.max(0, prev - 1))
+  }, [])
+  const handleUpdated = useCallback((commentId: number, patch: Partial<ReportComment>) => {
+    setItems((prev) => patchComment(prev, commentId, patch))
+  }, [])
+  const actions = useCommentActions(reportId, handleRemoved, handleUpdated)
+
+  const likesSupportedRef = useRef(likesSupported)
+  likesSupportedRef.current = likesSupported
+  const handlePosted = useCallback((comment: ReportComment) => {
+    setCount((prev) => prev + 1)
+    if (comment.parentId) {
+      setItems((prev) => appendReply(prev, comment))
+      setReplyTo(null)
+      return
+    }
+    // 새 최상위 댓글은 목록에도 전체 수에도 하나씩 더해 '나머지 N개'가 그대로 맞게 한다.
+    setTopTotal((prev) => prev + 1)
+    const fresh = { ...comment, replies: [], replyCount: 0, likeCount: comment.likeCount ?? (likesSupportedRef.current ? 0 : undefined) }
+    setItems((prev) => mergeComments(prev, [fresh], COMMENT_ORDER))
+    // 작성된 순서라 새 댓글은 맨 아래 — 끝으로 내린다.
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)
+  }, [])
+
+  const handleReply = useCallback((target: ReportComment) => {
+    if (!tokenRef.current) {
+      promptLogin('답글을 달려면 로그인해 주세요.', logout)
+      return
+    }
+    // 답글에 답해도 같은 최상위 댓글에 붙는다(한 단계만).
+    const parentId = target.parentId ?? target.id
+    setReplyTo({ parentId, name: target.authorDisplayName ?? '' })
+    setFocusKey((key) => key + 1)
+  }, [logout])
+
+  const loadMoreReplies = useCallback(
+    async (parent: ReportComment) => {
+      setLoadingReplies(parent.id)
+      try {
+        // 답글은 많아야 수십 개라 한 번에 넉넉히 받는다.
+        const result = await getCommentReplies(reportId, parent.id, { size: 50, accessToken: tokenRef.current })
+        setItems((prev) =>
+          prev.map((top) =>
+            top.id === parent.id
+              ? { ...top, replies: mergeComments(top.replies ?? [], result.content), replyCount: result.totalElements }
+              : top,
+          ),
+        )
+      } catch (error) {
+        toast.show({ message: getErrorMessage(error, '답글을 불러오지 못했어요.'), tone: 'warning' })
+      } finally {
+        setLoadingReplies(null)
+      }
+    },
+    [reportId, toast],
+  )
+
+  const shown = useMemo(() => visibleThreads(items, hiddenKeys), [items, hiddenKeys])
+
+  return {
+    items,
+    shown,
+    count,
+    state,
+    refreshing,
+    loadingMore,
+    loadingReplies,
+    replyTo,
+    setReplyTo,
+    focusKey,
+    menuFor,
+    setMenuFor,
+    hasNext,
+    topTotal,
+    listRef,
+    load,
+    loadRest,
+    handlePosted,
+    handleReply,
+    loadMoreReplies,
+    actions,
+  }
+}
