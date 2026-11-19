@@ -5,16 +5,13 @@ import {
   StyleSheet,
   TextInput,
   SectionList,
-  TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
-import { partnerCategoryMeta } from "../../../constants/partnerCategories";
 import { browsePartnersByCategory, searchPartners } from "../../../utils/partnerSearch";
-import { searchFacilities, type FacilitySearchResult } from "../../../utils/facilitySearch";
-import { facilityKindMeta } from "../../../constants/facilityKinds";
-import { KindIcon } from "../ChipIcon";
+import { searchFacilities } from "../../../utils/facilitySearch";
+import { pinnedPartnerGroup, searchResultSections, type PinnedPartnerGroup } from "../../../utils/map/partnerSearchSections";
+import { CategoryHeader, FacilityRow, FarPartnersBlock, PartnerRow } from "./search/SearchRows";
 import { partnersOutsideFocus } from "../../../utils/partners";
 import type { Facility, Partner, PartnerCategory } from "../../../types";
 import ContentColumn from "../../common/ContentColumn";
@@ -25,7 +22,6 @@ import SearchBar from "../../news/SearchBar";
 import Button from "../../common/Button";
 import { useMapData } from "../../../lib/mapData";
 import NearbyPartners, { INITIAL_NEARBY_STATE, type NearbyState } from "./NearbyPartners";
-import { RADIUS } from '../../../constants/spacing';
 import SwipeBackModal from "../../common/SwipeBackModal";
 
 interface PartnerSearchModalProps {
@@ -40,14 +36,10 @@ interface PartnerSearchModalProps {
    * 검색어가 없을 때 목록 맨 위에 따로 모아 보여 줄 업체들. 지도 위 "지도에 안 보이는 N곳" 안내에서
    * 열 때 그 업체들을 바로 고르게 하려고 쓴다.
    */
-  pinned?: { title: string; hint?: string; partners: readonly Partner[] };
+  pinned?: PinnedPartnerGroup;
   /** 열 때 검색창에 커서를 둘지(키보드). 근처 알림 목록처럼 고르기만 하면 될 때는 false. */
   autoFocus?: boolean;
 }
-
-type SearchRow =
-  | { type: "facility"; key: string; item: FacilitySearchResult }
-  | { type: "partner"; key: string; item: Partner };
 
 /**
  * 지도 검색(제휴 업체 + 편의시설).
@@ -77,23 +69,7 @@ export default function PartnerSearchModal({
   const results = useMemo(() => searchPartners(partners, query), [partners, query]);
   const facilityResults = useMemo(() => searchFacilities(facilities, query), [facilities, query]);
   // 편의시설 결과는 '제휴 업체' 위에 따로 묶는다(둘 다 있을 때만 구획 머리줄을 단다).
-  const resultSections = useMemo(() => {
-    const sections: { title: string | null; data: SearchRow[] }[] = [];
-    const both = facilityResults.length > 0 && results.length > 0;
-    if (facilityResults.length > 0) {
-      sections.push({
-        title: both ? "편의시설" : null,
-        data: facilityResults.map((item) => ({ type: "facility" as const, key: `f:${item.facility.id}`, item })),
-      });
-    }
-    if (results.length > 0) {
-      sections.push({
-        title: both ? "제휴 업체" : null,
-        data: results.map((item) => ({ type: "partner" as const, key: `p:${item.id}`, item })),
-      });
-    }
-    return sections;
-  }, [facilityResults, results]);
+  const resultSections = useMemo(() => searchResultSections(facilityResults, results), [facilityResults, results]);
   const resultCount = results.length + facilityResults.length;
   const hasQuery = query.trim().length > 0;
   // 목록 자체는 검색어와 무관하게 데이터가 바뀔 때만 다시 계산한다.
@@ -101,16 +77,7 @@ export default function PartnerSearchModal({
   // 맨 위 "지도에 안 보이는 곳" 묶음. 지도 안내 줄에서 열면 그때 필터에 걸린 업체들,
   // 검색창으로 열면 캠퍼스에서 멀어 지도 핀이 안 보이는 업체 전체.
   const farPartners = useMemo(() => partnersOutsideFocus(partners), [partners]);
-  const pinnedGroup =
-    pinned && pinned.partners.length > 0
-      ? pinned
-      : farPartners.length > 0
-        ? {
-            title: "지도에 안 보이는 곳",
-            hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
-            partners: farPartners,
-          }
-        : null;
+  const pinnedGroup = pinnedPartnerGroup(pinned, farPartners);
   // 접힌 카테고리 집합. 기본은 전부 펼친 상태(빈 집합).
   // 지도에 안 보이는 곳 묶음 접기. 안내 줄('보기')로 열었으면 그 업체들을 보러 온 것이라 맨 위에 펼쳐 두고,
   // 검색창으로 열었으면 카테고리 목록 맨 아래에 둔다(카테고리처럼 머리줄을 눌러 접고 편다).
@@ -152,105 +119,14 @@ export default function PartnerSearchModal({
     onSelectFacility(facility);
   };
 
-  const renderFacilityRow = ({ facility, title, subtitle }: FacilitySearchResult) => {
-    const meta = facilityKindMeta(facility.kind);
-    return (
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        onPress={() => handleSelectFacility(facility)}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}, ${subtitle}`}
-      >
-        <View style={styles.facilityIcon}>
-          <KindIcon name={meta.icon} size={15} color={meta.color} />
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.address} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-      </TouchableOpacity>
-    );
-  };
-
-  // 카테고리별로 묶인 목록(browseSections)에서는 구획 제목이 이미 카테고리를
-  // 보여주므로, 각 줄에서는 뱃지를 또 반복하지 않는다(showCategory=false).
-  const renderPartnerRow = (partner: Partner, showCategory = true) => {
-    const meta = partnerCategoryMeta(partner.category);
-    return (
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        onPress={() => handleSelect(partner)}
-        accessibilityRole="button"
-      >
-        <View style={[styles.dot, { backgroundColor: meta.color }]} />
-        <View style={styles.info}>
-          <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={1}>
-              {partner.name}
-            </Text>
-            {showCategory && (
-              <Text style={[styles.category, { color: meta.color }]}>
-                {partner.category}
-              </Text>
-            )}
-          </View>
-          {partner.affiliations && partner.affiliations.length > 0 && (
-            <View style={styles.affiliationRow}>
-              {partner.affiliations.map((affiliation) => (
-                <View key={affiliation} style={styles.affiliationChip}>
-                  <Text style={styles.affiliationChipText}>{affiliation}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-          {partner.benefit && (
-            <Text style={styles.benefit} numberOfLines={2}>
-              {partner.benefit}
-            </Text>
-          )}
-          {partner.address && (
-            <Text style={styles.address} numberOfLines={1}>
-              {partner.address}
-            </Text>
-          )}
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-      </TouchableOpacity>
-    );
-  };
-
   const farBlock = pinnedGroup ? (
-    <View style={[styles.pinnedBox, farOnTop ? styles.pinnedBoxTop : styles.pinnedBoxBottom]}>
-      <TouchableOpacity
-        style={styles.sectionHeader}
-        activeOpacity={0.6}
-        onPress={() => setFarCollapsed((v) => !v)}
-        accessibilityRole="button"
-        accessibilityLabel={`${pinnedGroup.title} ${farCollapsed ? "펼치기" : "접기"}`}
-      >
-        <View style={styles.sectionHeaderTitle}>
-          <Ionicons name="navigate-circle-outline" size={20} color={COLORS.primary} />
-          <Text style={[styles.sectionHeaderText, { color: COLORS.primary }]}>{pinnedGroup.title}</Text>
-          <Text style={styles.sectionHeaderCount}>{pinnedGroup.partners.length}곳</Text>
-        </View>
-        <Ionicons name={farCollapsed ? "chevron-forward" : "chevron-down"} size={19} color={COLORS.primary} />
-      </TouchableOpacity>
-      {!farCollapsed && (
-        <>
-          {pinnedGroup.hint && <Text style={styles.pinnedHint}>{pinnedGroup.hint}</Text>}
-          {pinnedGroup.partners.map((partner) => (
-            <View key={partner.id}>{renderPartnerRow(partner)}</View>
-          ))}
-        </>
-      )}
-    </View>
+    <FarPartnersBlock
+      group={pinnedGroup}
+      onTop={farOnTop}
+      collapsed={farCollapsed}
+      onToggle={() => setFarCollapsed((v) => !v)}
+      onSelect={handleSelect}
+    />
   ) : null;
 
   return (
@@ -303,7 +179,11 @@ export default function PartnerSearchModal({
               section.title ? <Text style={styles.resultHeader}>{section.title}</Text> : null
             }
             renderItem={({ item: row }) =>
-              row.type === "facility" ? renderFacilityRow(row.item) : renderPartnerRow(row.item)
+              row.type === "facility" ? (
+                <FacilityRow result={row.item} onSelect={handleSelectFacility} />
+              ) : (
+                <PartnerRow partner={row.item} onSelect={handleSelect} />
+              )
             }
           />
         ) : (
@@ -323,36 +203,16 @@ export default function PartnerSearchModal({
               </>
             }
             ListFooterComponent={farOnTop ? null : farBlock}
-            renderSectionHeader={({ section }) => {
-              const meta = partnerCategoryMeta(section.category);
-              // section.data는 접혔을 때 비워 두므로 개수는 원본(browseSections)에서 찾는다.
-              const total =
-                browseSections.find((s) => s.category === section.category)?.data.length ?? 0;
-              const collapsed = collapsedCategories.has(section.category);
-              return (
-                <TouchableOpacity
-                  style={styles.sectionHeader}
-                  activeOpacity={0.6}
-                  onPress={() => toggleCategory(section.category)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${section.category} ${collapsed ? "펼치기" : "접기"}`}
-                >
-                  <View style={styles.sectionHeaderTitle}>
-                    <Ionicons name={meta.icon} size={20} color={meta.color} />
-                    <Text style={[styles.sectionHeaderText, { color: meta.color }]}>
-                      {section.category}
-                    </Text>
-                    <Text style={styles.sectionHeaderCount}>{total}곳</Text>
-                  </View>
-                  <Ionicons
-                    name={collapsed ? "chevron-forward" : "chevron-down"}
-                    size={19}
-                    color={meta.color}
-                  />
-                </TouchableOpacity>
-              );
-            }}
-            renderItem={({ item }) => renderPartnerRow(item, false)}
+            renderSectionHeader={({ section }) => (
+              <CategoryHeader
+                category={section.category}
+                // section.data는 접혔을 때 비워 두므로 개수는 원본(browseSections)에서 찾는다.
+                total={browseSections.find((s) => s.category === section.category)?.data.length ?? 0}
+                collapsed={collapsedCategories.has(section.category)}
+                onToggle={toggleCategory}
+              />
+            )}
+            renderItem={({ item }) => <PartnerRow partner={item} onSelect={handleSelect} showCategory={false} />}
           />
         )}
         </ModalPanel>
@@ -367,16 +227,6 @@ const styles = StyleSheet.create({
   // 카드 안 검색창은 회색 알약(카드와 같은 흰색이면 경계가 안 보인다).
   searchBar: { flex: 1, marginRight: 4, backgroundColor: COLORS.background, borderWidth: 0 },
   hintBox: { minHeight: 200 },
-  pinnedBox: { paddingBottom: 4 },
-  pinnedBoxTop: { marginTop: 4, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  pinnedBoxBottom: { marginTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border },
-  pinnedHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontFamily: FONTS.regular,
-    color: COLORS.textTertiary,
-    marginTop: 4,
-  },
   browseHint: {
     fontSize: 12,
     lineHeight: 17,
@@ -385,15 +235,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 6,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: COLORS.white,
-    paddingTop: 18,
-    paddingBottom: 8,
-  },
-  sectionHeaderTitle: { flexDirection: "row", alignItems: "center", gap: 7 },
   resultHeader: {
     fontSize: 13,
     fontFamily: FONTS.semibold,
@@ -402,49 +243,5 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 4,
   },
-  facilityIcon: { width: 20, alignItems: "center", marginTop: 1 },
-  sectionHeaderText: { fontSize: 20, fontFamily: FONTS.bold },
-  sectionHeaderCount: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-    color: COLORS.textTertiary,
-  },
   list: { paddingHorizontal: 16 },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-  },
-  dot: { width: 9, height: 9, borderRadius: 4.5, marginTop: 6 },
-  info: { flex: 1, gap: 4 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  name: {
-    fontSize: 15,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-  category: { fontSize: 12, fontFamily: FONTS.semibold },
-  affiliationRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
-  affiliationChip: {
-    borderWidth: 1,
-    borderColor: COLORS.chipBorder,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  affiliationChipText: { fontSize: 11, fontFamily: FONTS.medium, color: COLORS.textSecondary },
-  benefit: {
-    fontSize: 13,
-    fontFamily: FONTS.regular,
-    color: COLORS.textPrimary,
-    lineHeight: 18,
-  },
-  address: {
-    fontSize: 12,
-    fontFamily: FONTS.regular,
-    color: COLORS.textTertiary,
-  },
 });
