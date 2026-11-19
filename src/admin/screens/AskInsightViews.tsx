@@ -1,28 +1,16 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
-import { RADIUS } from '../../constants/spacing'
 import { FONTS } from '../../constants/typography'
-import { createAskNote, fetchAskNotes, fetchAskReport, updateAskNote } from '../api'
+import { fetchAskNotes, fetchAskReport, updateAskNote } from '../api'
 import { formatDateTime } from '../format'
 import type { AdminAskNote, AdminAskReport } from '../types'
+import { AskNoteForm } from '../components/ask/AskNoteForm'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading } from '../ui'
+import { askReasonText, upsertAskNote } from '../utils/askFeedback'
 
-const REASON_LABELS: Record<string, string> = {
-  WRONG: '틀린 정보',
-  OUTDATED: '지난 정보',
-  OFF_TOPIC: '질문과 다름',
-  NOT_ENOUGH: '부족함',
-  NONE: '이유 안 고름',
-}
-
-const reasonText = (reasons: Record<string, number>) =>
-  Object.entries(reasons)
-    .filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1])
-    .map(([code, n]) => `${REASON_LABELS[code] ?? code} ${n}`)
-    .join(' · ')
+export { AskNoteForm } from '../components/ask/AskNoteForm'
 
 /**
  * 주간 요약(11-06): 기간 동안 '해결 안 됨'을 같은 안내끼리, 안내를 못 고른 질문은 비슷한 것끼리 묶어 많은 순으로 보여 준다.
@@ -71,7 +59,7 @@ export function AskReportView({ onWriteNote }: { onWriteNote: (question: string)
               <Text style={styles.strong}>{report.resolvedNo}</Text>건
               {answered > 0 ? ` (${Math.round((100 * report.resolvedNo) / answered)}%)` : ''}
             </Text>
-            {report.resolvedNo > 0 ? <Text style={styles.meta}>이유: {reasonText(report.reasons)}</Text> : null}
+            {report.resolvedNo > 0 ? <Text style={styles.meta}>이유: {askReasonText(report.reasons)}</Text> : null}
           </Card>
           {report.groups.length === 0 ? (
             <EmptyState message="이 기간에 해결 안 됨이 없습니다." />
@@ -92,7 +80,7 @@ export function AskReportView({ onWriteNote }: { onWriteNote: (question: string)
                     {group.key}
                   </Text>
                 ) : null}
-                <Text style={styles.meta}>{reasonText(group.reasons)}</Text>
+                <Text style={styles.meta}>{askReasonText(group.reasons)}</Text>
                 {group.questions.map((q) => (
                   <Text key={q} selectable style={styles.question}>
                     · {q}
@@ -106,78 +94,6 @@ export function AskReportView({ onWriteNote }: { onWriteNote: (question: string)
           )}
         </>
       )}
-    </View>
-  )
-}
-
-/**
- * 운영진 확인 안내 쓰기. 물어보기가 비슷한 질문에 답할 때 이 글을 근거로 함께 읽는다.
- * 학생 개인 정보(휴대전화·주민번호·학번)는 서버가 거절한다.
- */
-export function AskNoteForm({
-  initialQuestion = '',
-  askRef = null,
-  note = null,
-  onSaved,
-  onCancel,
-}: {
-  initialQuestion?: string
-  askRef?: string | null
-  note?: AdminAskNote | null
-  onSaved: (note: AdminAskNote) => void
-  onCancel: () => void
-}) {
-  const [question, setQuestion] = useState(note?.question ?? initialQuestion)
-  const [answer, setAnswer] = useState(note?.answer ?? '')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const save = () => {
-    if (!question.trim() || !answer.trim()) {
-      setError('질문과 답을 모두 적어 주세요.')
-      return
-    }
-    setPending(true)
-    setError(null)
-    const request = note
-      ? updateAskNote(note.id, { question: question.trim(), answer: answer.trim() })
-      : createAskNote({ question: question.trim(), answer: answer.trim(), askRef })
-    request
-      .then(onSaved)
-      .catch((err: unknown) => setError(getErrorMessage(err, '저장하지 못했습니다.')))
-      .finally(() => setPending(false))
-  }
-
-  return (
-    <View style={styles.form}>
-      <Text style={styles.formTitle}>{note ? '안내 고치기' : '운영진 확인 안내로 등록'}</Text>
-      <Text style={styles.meta}>
-        비슷한 질문이 오면 물어보기가 이 답을 근거로 써요. 여러 학생에게 똑같이 맞는 답만 적고, 학생 이름·학번·연락처 같은 개인 정보는 빼 주세요.
-      </Text>
-      <TextInput
-        value={question}
-        onChangeText={setQuestion}
-        placeholder="질문 (예: T동 강의실 마이크는 어디서 빌려요?)"
-        placeholderTextColor={COLORS.textPlaceholder}
-        maxLength={200}
-        style={styles.input}
-        accessibilityLabel="안내 질문"
-      />
-      <TextInput
-        value={answer}
-        onChangeText={setAnswer}
-        placeholder="답 (확인한 사실만, 필요하면 담당 부서·전화)"
-        placeholderTextColor={COLORS.textPlaceholder}
-        maxLength={2000}
-        multiline
-        style={[styles.input, styles.inputTall]}
-        accessibilityLabel="안내 답"
-      />
-      {error ? <InlineError message={error} /> : null}
-      <View style={styles.actions}>
-        <Button label="취소" onPress={onCancel} small />
-        <Button label="저장" icon="checkmark" variant="primary" onPress={save} loading={pending} small />
-      </View>
     </View>
   )
 }
@@ -206,7 +122,7 @@ export function AskNotesView({ draftQuestion, onDraftDone }: { draftQuestion: st
   }, [reloadKey])
 
   const saved = (note: AdminAskNote) => {
-    setNotes((prev) => (prev ? [note, ...prev.filter((item) => item.id !== note.id)].sort((a, b) => b.id - a.id) : [note]))
+    setNotes((prev) => upsertAskNote(prev, note))
     setEditing(null)
     onDraftDone()
   }
@@ -293,18 +209,4 @@ const styles = StyleSheet.create({
   question: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: COLORS.textSecondary },
   meta: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 18, color: COLORS.textSecondary },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  form: { gap: 8 },
-  formTitle: { fontFamily: FONTS.semibold, fontSize: 14, color: COLORS.textPrimary },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.white,
-  },
-  inputTall: { minHeight: 110, textAlignVertical: 'top' },
 })
