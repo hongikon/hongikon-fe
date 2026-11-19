@@ -8,6 +8,7 @@ import { confirmAction } from '../../utils/dialog'
 import { deleteConfirmMessage } from '../../utils/settings/myReports'
 import type { useToast } from '../../components/common/Toast'
 import { useMutation } from '../useMutation'
+import { QUERY_KEYS } from '../../constants/queryKeys'
 
 export type MyReportsLoadState =
   | { kind: 'loading' }
@@ -130,6 +131,8 @@ export function useMyReports({ visible, toast, onChanged }: Options) {
           next.delete(reportId)
           return next
         }),
+      // 지운 제보가 지도에 남아 있지 않게 지도 제보 레이어도 다시 받는다.
+      invalidates: [QUERY_KEYS.reports],
     },
   )
   const sendDelete = deleteMutation.mutate
