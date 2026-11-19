@@ -4,11 +4,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
-import type { TreeChild, TreeNode } from '../../types'
+import type { TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
 import { useTabBarInset } from '../../hooks/useTabBarInset'
 import { RADIUS } from '../../constants/spacing'
 import SubscribeBell from '../common/SubscribeBell'
+import TreeLeafRow from './tree/TreeLeafRow'
+import TreeSubGroup from './tree/TreeSubGroup'
 
 interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
@@ -24,85 +26,6 @@ interface DeptTreeListProps {
   scrollRef?: Ref<ScrollView>
   /** 손을 뗄 때(검색 화면이 맨 위에서 끌어내려 닫기에 쓴다). */
   onScrollEndDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
-}
-
-/** 구독 단위 한 줄. 이름을 누르면 소식 목록, 벨을 누르면 구독 토글. */
-function TreeLeafRow({
-  child,
-  indented,
-  onSelectDept,
-  subscribed,
-  onToggleSubscribe,
-}: {
-  child: TreeChild
-  indented?: boolean
-  onSelectDept: (id: string, name: string) => void
-  subscribed: boolean
-  onToggleSubscribe: () => void
-}) {
-  return (
-    <View style={[styles.treeChild, indented && styles.treeGrandChild]}>
-      <Text style={styles.treeChildPrefix}>ㄴ</Text>
-      <TouchableOpacity
-        style={styles.treeChildTap}
-        onPress={() => onSelectDept(child.id, child.name)}
-        accessibilityRole="button"
-      >
-        <Text style={styles.treeChildName}>{child.name}</Text>
-        <Ionicons name="chevron-forward" size={14} color={COLORS.chevron} />
-      </TouchableOpacity>
-      <SubscribeBell name={child.name} subscribed={subscribed} onToggle={onToggleSubscribe} />
-    </View>
-  )
-}
-
-/**
- * 전공이 나뉜 학부처럼 한 단계 더 들어가는 묶음.
- * 이 줄 자체는 구독 단위가 아니라서 벨 대신 펼치기 화살표만 둔다.
- */
-function TreeSubGroup({
-  group,
-  forceOpen,
-  onSelectDept,
-  subscribedDepts,
-  onToggleSubscribe,
-}: {
-  group: TreeChild
-  /** 검색 중에는 결과가 접혀 있으면 안 되므로 강제로 펼친다. */
-  forceOpen?: boolean
-  onSelectDept: (id: string, name: string) => void
-  subscribedDepts: string[]
-  onToggleSubscribe: (id: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const isOpen = forceOpen || open
-
-  return (
-    <View>
-      <TouchableOpacity
-        style={styles.treeChild}
-        onPress={() => setOpen((prev) => !prev)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: isOpen }}
-      >
-        <Text style={styles.treeChildPrefix}>ㄴ</Text>
-        <Text style={styles.treeSubGroupName}>{group.name}</Text>
-        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textTertiary} />
-      </TouchableOpacity>
-
-      {isOpen &&
-        group.children?.map((child) => (
-          <TreeLeafRow
-            key={child.id}
-            child={child}
-            indented
-            onSelectDept={onSelectDept}
-            subscribed={subscribedDepts.includes(child.id)}
-            onToggleSubscribe={() => onToggleSubscribe(child.id)}
-          />
-        ))}
-    </View>
-  )
 }
 
 /**
@@ -230,20 +153,5 @@ const styles = StyleSheet.create({
   },
   treeParentName: { fontSize: 17, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
   treeChildren: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.divider },
-  treeChild: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minHeight: 46,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.divider,
-    gap: 7,
-  },
-  // 학부 아래 전공 줄. 한 단계 더 들어갔다는 걸 들여쓰기와 배경으로 보여준다.
-  treeGrandChild: { paddingLeft: 32, backgroundColor: '#FAFAFA' },
-  treeSubGroupName: { flex: 1, fontFamily: FONTS.medium, fontSize: 16, color: COLORS.textPrimary },
-  treeChildTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  treeChildPrefix: { fontFamily: FONTS.regular, fontSize: 13, color: COLORS.iconMuted, width: 14 },
-  treeChildName: { fontFamily: FONTS.regular, fontSize: 16, color: COLORS.textPrimary, flex: 1 },
+  // 하위 줄(학과·학부 묶음) 모양은 tree/treeStyles.ts, tree/TreeLeafRow.tsx, tree/TreeSubGroup.tsx 에 있다.
 })
