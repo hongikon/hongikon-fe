@@ -124,12 +124,22 @@ export function FormErrors({ errors }: { errors: readonly string[] }) {
   )
 }
 
-/** 폼 맨 아래 '취소'·'저장' 버튼 줄. */
-export function FormActions({ saving, onCancel, onSave }: { saving: boolean; onCancel: () => void; onSave: () => void }) {
+/** 폼 맨 아래 '취소'·'저장' 버튼 줄. 저장 버튼 글자는 바꿀 수 있다(공지 새로 쓰기는 '등록'). */
+export function FormActions({
+  saving,
+  onCancel,
+  onSave,
+  saveLabel = '저장',
+}: {
+  saving: boolean
+  onCancel: () => void
+  onSave: () => void
+  saveLabel?: string
+}) {
   return (
     <View style={formStyles.actions}>
       <Button label="취소" onPress={onCancel} disabled={saving} small />
-      <Button label="저장" variant="primary" onPress={onSave} loading={saving} small />
+      <Button label={saveLabel} variant="primary" onPress={onSave} loading={saving} small />
     </View>
   )
 }
