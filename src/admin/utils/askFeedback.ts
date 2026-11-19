@@ -1,5 +1,5 @@
 import type { Tone } from '../ui/theme'
-import type { AdminAskFeedbackItem, AdminAskFeedbackResponse, AskFeedbackReasonCode } from '../types'
+import type { AdminAskFeedbackItem, AdminAskFeedbackResponse, AdminAskNote, AskFeedbackReasonCode } from '../types'
 
 /**
  * 물어보기 피드백(AskFeedbackScreen)의 이유 표시·거르기와 '확인함' 반영(순수 함수).
@@ -62,4 +62,19 @@ export function applyReviewed(
         ),
       }
     : prev
+}
+
+/** '틀린 정보 3 · 부족함 1' 처럼 이유별 건수(많은 순, 0건은 뺀다). */
+export function askReasonText(reasons: Record<string, number>): string {
+  const labels: Record<string, string> = ASK_REASON_LABELS
+  return Object.entries(reasons)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([code, n]) => `${labels[code] ?? code} ${n}`)
+    .join(' · ')
+}
+
+/** 저장·켜고 끈 안내를 목록에 반영한다(같은 id 는 바꾸고, id 큰 순). */
+export function upsertAskNote(prev: AdminAskNote[] | null, note: AdminAskNote): AdminAskNote[] {
+  return prev ? [note, ...prev.filter((item) => item.id !== note.id)].sort((a, b) => b.id - a.id) : [note]
 }
