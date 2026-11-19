@@ -1,0 +1,26 @@
+name: main-pr-source
+
+# main으로 가는 PR은 dev에서 온 것만 허용한다.
+# 이 잡(check)은 main ruleset의 필수 상태 검사로 걸려 있다.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  require-dev-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check head branch is dev
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ] || [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::main 으로는 이 저장소의 dev 브랜치에서만 PR을 올릴 수 있어요. (지금: $HEAD_REPO:$HEAD_REF)"
+            exit 1
+          fi
+          echo "OK: dev -> main"
