@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { nextRouteEndpoint } from '../../components/map/route/RouteEndpointButtons'
-import type { Building, Facility, FacilityKind } from '../../types'
+import type { Building, Facility, FacilityKind, ReportListItem } from '../../types'
+import { reportRouteBuilding } from '../../utils/map/routePinBuilding'
 
 interface Options {
   postToMap: (msg: object) => void
@@ -9,6 +10,8 @@ interface Options {
   facilityKind: FacilityKind | null
   selectedBuilding: Building | null
   selectedFacilityBuilding: string | null
+  /** 열린 제보 시트의 제보. 그 제보로 가는 출발·도착 버튼에 쓴다. */
+  selectedReport: ReportListItem | null
   searchedFacility: Facility | null
   fromBuilding: Building | null
   fromMyLocation: boolean
@@ -70,6 +73,24 @@ export function useSheetActions(options: Options) {
     if (facilitySheetBuilding) latestRef.current.beginTo(facilitySheetBuilding)
   }, [facilitySheetBuilding])
 
+  /**
+   * 제보 시트의 출발·도착. 제보가 있는 건물, 없으면 제보 위치에서 가까운(150m 안) 건물로 정한다 — 길은 서버가 건물끼리만
+   * 계산한다. 그런 건물이 없으면 버튼을 그리지 않는다.
+   */
+  const selectedReport = options.selectedReport
+  const reportSheetBuilding = useMemo(
+    () => (selectedReport ? reportRouteBuilding(selectedReport, buildings) : null),
+    [selectedReport, buildings],
+  )
+
+  const handleReportSetFrom = useCallback(() => {
+    if (reportSheetBuilding) latestRef.current.beginFrom(reportSheetBuilding)
+  }, [reportSheetBuilding])
+
+  const handleReportSetTo = useCallback(() => {
+    if (reportSheetBuilding) latestRef.current.beginTo(reportSheetBuilding)
+  }, [reportSheetBuilding])
+
   /** 시트의 출발·도착 버튼 중 다음에 고를 쪽(건물 시트·시설 시트가 함께 쓴다). */
   const routeNext = nextRouteEndpoint(Boolean(fromBuilding || fromMyLocation), Boolean(toBuilding))
 
@@ -97,6 +118,9 @@ export function useSheetActions(options: Options) {
     handleSetTo,
     handleFacilitySetFrom,
     handleFacilitySetTo,
+    reportSheetBuilding,
+    handleReportSetFrom,
+    handleReportSetTo,
     handleCloseBuilding,
     handleClosePartner,
     handleCloseReportSheet,

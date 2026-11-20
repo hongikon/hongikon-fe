@@ -30,6 +30,7 @@ import type { ReportListItem } from '../../../types'
 import { useMapData } from '../../../lib/mapData'
 import { RADIUS } from '../../../constants/spacing'
 import SheetScrollBody from '../SheetScrollBody'
+import RouteEndpointButtons, { type RouteNext } from '../route/RouteEndpointButtons'
 import { usePhotoTileSizes } from '../../../hooks/map/report/usePhotoTileSizes'
 import { useReportOwnerActions } from '../../../hooks/map/report/useReportOwnerActions'
 import { useReportModeration } from '../../../hooks/map/report/useReportModeration'
@@ -44,6 +45,14 @@ interface ReportSheetProps {
   onClose: () => void
   /** 내 제보를 고치거나 지운 뒤 — 지도 목록을 다시 받는다. */
   onChanged?: () => void
+  /**
+   * 이 제보로 가는 길찾기에 쓸 건물 이름(제보가 있는 건물, 없으면 가까운 건물). 출발·도착 버튼과 함께 넘기면
+   * 제목 아래에 버튼 줄을 그린다. 길찾기가 꺼져 있거나 가까운 건물이 없으면 넘기지 않는다.
+   */
+  routeBuildingName?: string | null
+  onSetFrom?: () => void
+  onSetTo?: () => void
+  routeNext?: RouteNext
 }
 
 /**
@@ -54,7 +63,7 @@ interface ReportSheetProps {
  *
  * 내 제보 메뉴(⋯)는 `useReportOwnerActions`, 남의 제보 숨기기·신고(⋮)는 `useReportModeration` 이 맡는다.
  */
-function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProps) {
+function ReportSheet({ report: reportProp, onClose, onChanged, routeBuildingName = null, onSetFrom, onSetTo, routeNext = null }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
@@ -177,6 +186,15 @@ function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProp
       {phase.text && phase.kind !== 'upcoming' ? (
         <View style={[styles.phase, phase.kind === 'ending' && styles.phaseEnding, phase.kind === 'later' && styles.phaseLater]}>
           <Text style={[styles.phaseText, phase.kind === 'ending' && styles.phaseTextEnding]}>{phase.text}</Text>
+        </View>
+      ) : null}
+      {/* 이 제보로 가는 길찾기. 길은 건물끼리만 계산해서, 건물 밖 제보는 가까운 건물까지 안내한다. */}
+      {routeBuildingName && onSetFrom && onSetTo ? (
+        <View style={styles.route}>
+          {typeof reportProp.buildingId !== 'number' ? (
+            <Text style={styles.routeHint}>가까운 {routeBuildingName}까지 길을 안내해요</Text>
+          ) : null}
+          <RouteEndpointButtons name={routeBuildingName} routeNext={routeNext} onSetFrom={onSetFrom} onSetTo={onSetTo} />
         </View>
       ) : null}
       </View>
@@ -355,6 +373,8 @@ const styles = StyleSheet.create({
   placeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   errorBox: { marginTop: 8 },
+  route: { marginTop: 10 },
+  routeHint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginBottom: 6 },
 })
 
 
