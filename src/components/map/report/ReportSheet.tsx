@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
   // 오늘 운영 상태(11-08). 운영 중은 옅은 남색, 곧 종료는 남색으로 채움, 운영 시간 밖은 테두리만.
-  phase: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: COLORS.primarySoft },
+  phase: { alignSelf: 'flex-start', marginTop: 6, marginBottom: 8, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: COLORS.primarySoft },
   phaseEnding: { backgroundColor: COLORS.primary },
   phaseLater: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.chipBorder },
   phaseText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.primary },
