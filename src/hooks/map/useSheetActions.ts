@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { nextRouteEndpoint } from '../../components/map/route/RouteEndpointButtons'
 import type { Building, Facility, FacilityKind, ReportListItem } from '../../types'
-import { reportRouteBuilding } from '../../utils/map/routePinBuilding'
+import { reportRouteBuilding, reportRouteFloor } from '../../utils/map/routePinBuilding'
+import { buildFloorOptions } from '../../utils/floors'
 
 interface Options {
   postToMap: (msg: object) => void
@@ -19,8 +20,8 @@ interface Options {
   setSelectedBuilding: (building: Building | null) => void
   setSelectedPartner: (partner: null) => void
   setSelectedReport: (report: null) => void
-  beginFrom: (building: Building) => void
-  beginTo: (building: Building) => void
+  beginFrom: (building: Building, floor?: number | null) => void
+  beginTo: (building: Building, floor?: number | null) => void
 }
 
 /**
@@ -83,13 +84,22 @@ export function useSheetActions(options: Options) {
     [selectedReport, buildings],
   )
 
+  /** 제보가 그 건물 안의 층에 적혀 있으면 그 층(층 다이얼 없이 바로 정한다). 아니면 null — 다이얼로 묻는다. */
+  const reportSheetFloor = useMemo(
+    () =>
+      selectedReport && reportSheetBuilding
+        ? reportRouteFloor(selectedReport, reportSheetBuilding, buildFloorOptions(reportSheetBuilding).map((o) => o.value))
+        : null,
+    [selectedReport, reportSheetBuilding],
+  )
+
   const handleReportSetFrom = useCallback(() => {
-    if (reportSheetBuilding) latestRef.current.beginFrom(reportSheetBuilding)
-  }, [reportSheetBuilding])
+    if (reportSheetBuilding) latestRef.current.beginFrom(reportSheetBuilding, reportSheetFloor)
+  }, [reportSheetBuilding, reportSheetFloor])
 
   const handleReportSetTo = useCallback(() => {
-    if (reportSheetBuilding) latestRef.current.beginTo(reportSheetBuilding)
-  }, [reportSheetBuilding])
+    if (reportSheetBuilding) latestRef.current.beginTo(reportSheetBuilding, reportSheetFloor)
+  }, [reportSheetBuilding, reportSheetFloor])
 
   /** 시트의 출발·도착 버튼 중 다음에 고를 쪽(건물 시트·시설 시트가 함께 쓴다). */
   const routeNext = nextRouteEndpoint(Boolean(fromBuilding || fromMyLocation), Boolean(toBuilding))

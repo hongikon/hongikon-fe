@@ -191,10 +191,14 @@ export function useRoutePlanner({
     [closeSearch],
   )
 
-  /** 출발 정하기. 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다. */
+  /**
+   * 출발 정하기. 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다.
+   * `floor` 를 주면(제보 시트 — 제보가 적힌 층) 다이얼 없이 그 층으로 바로 정한다. 부르는 쪽이 건물 층 목록에 있는 층만 넘긴다.
+   */
   const beginFrom = useCallback(
-    (building: Building) => {
-      if (hasFloorData(building)) setFloorDial({ role: '출발', building })
+    (building: Building, floor?: number | null) => {
+      if (typeof floor === 'number') commitFrom(building, floor)
+      else if (hasFloorData(building)) setFloorDial({ role: '출발', building })
       else commitFrom(building, null)
     },
     [commitFrom],
@@ -205,7 +209,12 @@ export function useRoutePlanner({
    * 한 층에만 있으면 바로 정하고, 여러 층이면 층 다이얼을 가장 아래 층에 맞춰 연다.
    */
   const beginTo = useCallback(
-    (building: Building) => {
+    (building: Building, floor?: number | null) => {
+      // 제보 시트에서 제보가 적힌 층을 넘기면 다이얼 없이 그 층으로 정한다(11-20 사용자).
+      if (typeof floor === 'number') {
+        commitTo(building, floor)
+        return
+      }
       const options = buildFloorOptions(building).map((o) => o.value)
       if (options.length === 0) {
         commitTo(building, null)

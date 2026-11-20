@@ -43,3 +43,18 @@ export function reportRouteBuilding(
   }
   return routePinBuilding({ lat: report.lat, lng: report.lng, buildingName: null }, buildings, maxMeters)
 }
+
+/**
+ * 제보 시트의 출발·도착에서 쓸 층(11-20 사용자). 제보가 그 건물 안에 적힌 것이고 그 층이 건물 층 목록에 있으면
+ * 그 층을 돌려줘 층 다이얼 없이 바로 정한다. 가까운 건물로 대신 정한 경우(제보가 건물 밖)나 목록에 없는 층이면 null —
+ * 그때는 지금처럼 층 다이얼로 묻는다.
+ */
+export function reportRouteFloor(
+  report: { buildingId?: number | null; floor?: number | null },
+  building: Pick<Building, 'id'>,
+  floorOptions: readonly number[],
+): number | null {
+  if (report.buildingId !== building.id) return null
+  if (typeof report.floor !== 'number') return null
+  return floorOptions.includes(report.floor) ? report.floor : null
+}
