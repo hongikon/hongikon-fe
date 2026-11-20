@@ -5,13 +5,12 @@ import { reportRouteBuilding, reportRouteFloor } from '../../src/utils/map/route
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 
-test('제보 길찾기: 제보 건물 → 150m 안 가장 가까운 건물 → 없음', () => {
-  const list = [b(1, 'A', 37.55, 126.92), b(2, 'B', 37.5504, 126.92), b(undefined, 'id 없음', 37.5501, 126.92)]
-  assert.equal((reportRouteBuilding({ lat: 0, lng: 0, buildingId: 1 }, list) as { name: string }).name, 'A')
-  assert.equal((reportRouteBuilding({ lat: 37.5503, lng: 126.92, buildingId: null }, list) as { name: string }).name, 'B')
-  // 서버 건물 id 가 지도 데이터에 없으면 가까운 건물로
-  assert.equal((reportRouteBuilding({ lat: 37.55, lng: 126.92, buildingId: 99 }, list) as { name: string }).name, 'A')
-  assert.equal(reportRouteBuilding({ lat: 37.56, lng: 126.93 }, list), null)
+test('제보 길찾기: 캠퍼스 건물 안 제보만, 캠퍼스 밖·건물 밖은 없음', () => {
+  const list = [b(1, 'A', 37.55, 126.92), b(2, 'B', 37.5504, 126.92)]
+  assert.equal((reportRouteBuilding({ buildingId: 1 }, list) as { name: string }).name, 'A')
+  assert.equal(reportRouteBuilding({ buildingId: null }, list), null, '캠퍼스 밖 제보는 버튼 없음(가까운 건물로 대신하지 않는다)')
+  assert.equal(reportRouteBuilding({}, list), null)
+  assert.equal(reportRouteBuilding({ buildingId: 99 }, list), null, '지도 데이터에 없는 건물이면 없음')
 })
 
 test('제보 길찾기 층: 제보 건물의 목록에 있는 층만 바로 쓴다', () => {

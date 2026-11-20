@@ -46,8 +46,8 @@ interface ReportSheetProps {
   /** 내 제보를 고치거나 지운 뒤 — 지도 목록을 다시 받는다. */
   onChanged?: () => void
   /**
-   * 이 제보로 가는 길찾기에 쓸 건물 이름(제보가 있는 건물, 없으면 가까운 건물). 출발·도착 버튼과 함께 넘기면
-   * 제목 아래에 버튼 줄을 그린다. 길찾기가 꺼져 있거나 가까운 건물이 없으면 넘기지 않는다.
+   * 이 제보로 가는 길찾기에 쓸 건물 이름(제보가 있는 캠퍼스 건물). 출발·도착 버튼과 함께 넘기면
+   * 제목 아래에 버튼 줄을 그린다. 길찾기가 꺼져 있거나 캠퍼스 밖·건물 밖 제보면 넘기지 않는다.
    */
   routeBuildingName?: string | null
   onSetFrom?: () => void
@@ -188,12 +188,9 @@ function ReportSheet({ report: reportProp, onClose, onChanged, routeBuildingName
           <Text style={[styles.phaseText, phase.kind === 'ending' && styles.phaseTextEnding]}>{phase.text}</Text>
         </View>
       ) : null}
-      {/* 이 제보로 가는 길찾기. 길은 건물끼리만 계산해서, 건물 밖 제보는 가까운 건물까지 안내한다. */}
+      {/* 이 제보로 가는 길찾기. 캠퍼스 건물 안 제보만(캠퍼스 밖·건물 밖 제보는 부르는 쪽이 넘기지 않는다, 11-20). */}
       {routeBuildingName && onSetFrom && onSetTo ? (
         <View style={styles.route}>
-          {typeof reportProp.buildingId !== 'number' ? (
-            <Text style={styles.routeHint}>가까운 {routeBuildingName}까지 길을 안내해요</Text>
-          ) : null}
           <RouteEndpointButtons name={routeBuildingName} routeNext={routeNext} onSetFrom={onSetFrom} onSetTo={onSetTo} />
         </View>
       ) : null}
@@ -374,7 +371,6 @@ const styles = StyleSheet.create({
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   errorBox: { marginTop: 8 },
   route: { marginTop: 10 },
-  routeHint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginBottom: 6 },
 })
 
 

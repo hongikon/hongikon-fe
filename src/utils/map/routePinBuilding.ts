@@ -29,19 +29,15 @@ export function routePinBuilding(
 }
 
 /**
- * 제보로 가는 길찾기의 건물. 제보에 서버 건물(buildingId)이 있으면 그 건물, 없으면(캠퍼스 밖·건물 밖 제보) 제보 위치에서
- * maxMeters 안의 가장 가까운 건물. 길은 서버가 건물끼리만 계산해서, 그 건물까지 안내한다. 둘 다 없으면 null(버튼을 그리지 않는다).
+ * 제보로 가는 길찾기의 건물. 제보에 서버 건물(buildingId)이 있고 지도 데이터에 그 건물이 있을 때만 그 건물(11-20 사용자 —
+ * 캠퍼스 밖·건물 밖 제보는 길찾기 버튼을 보이지 않는다. 예전에는 가까운 건물로 대신 안내했다). 없으면 null(버튼을 그리지 않는다).
  */
 export function reportRouteBuilding(
-  report: { lat: number; lng: number; buildingId?: number | null },
+  report: { buildingId?: number | null },
   buildings: readonly Building[],
-  maxMeters = ROUTE_PIN_MAX_METERS,
 ): Building | null {
-  if (typeof report.buildingId === 'number') {
-    const own = buildings.find((b) => b.id === report.buildingId)
-    if (own) return own
-  }
-  return routePinBuilding({ lat: report.lat, lng: report.lng, buildingName: null }, buildings, maxMeters)
+  if (typeof report.buildingId !== 'number') return null
+  return buildings.find((b) => b.id === report.buildingId) ?? null
 }
 
 /**
