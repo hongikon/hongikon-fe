@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
-import { FONTS, TYPE } from '../../constants/typography'
-import { RADIUS, SPACING } from '../../constants/spacing'
+import { TYPE } from '../../constants/typography'
+import { SPACING } from '../../constants/spacing'
 import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
 import IconButton from '../common/IconButton'
 import TermsModal from '../settings/TermsModal'
 import PrivacyModal from '../settings/PrivacyModal'
+import ConsentCheckRow from './consent/ConsentCheckRow'
+import PrivacyProcessingNotice from './consent/PrivacyProcessingNotice'
 
 interface SignupConsentSheetProps {
   visible: boolean
@@ -68,13 +69,6 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
     setChecked({ terms: next, privacy: next, age: next })
   }
 
-  const accountInfo =
-    provider === 'apple'
-      ? 'Apple 사용자 식별자와 공유한 경우 이름'
-      : provider === 'kakao'
-        ? '카카오 회원번호와 닉네임'
-        : '카카오 회원번호·닉네임(Apple 로그인은 사용자 식별자, 공유한 경우 이름)'
-
   // 네이티브 Modal 을 쓰지 않고 웰컴 화면 위에 덮는 층으로 그린다(10-06). iOS 에서 Modal 이 내려가는 사이에
   // Apple 로그인 창(ASAuthorizationController)이 떠, 로그인 뒤 보이지 않는 Modal 창이 남아 화면 전체가 터치를 받지 않았다.
   if (!visible) return null
@@ -91,10 +85,10 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
           </View>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} bounces={false}>
-            <CheckRow label="모두 확인하고 동의해요" checked={allChecked} onPress={toggleAll} strong />
+            <ConsentCheckRow label="모두 확인하고 동의해요" checked={allChecked} onPress={toggleAll} strong />
             <View style={styles.divider} />
 
-            <CheckRow
+            <ConsentCheckRow
               tag="필수"
               label="이용약관 동의"
               checked={checked.terms}
@@ -103,7 +97,7 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
               viewLabel="이용약관 보기"
             />
 
-            <CheckRow
+            <ConsentCheckRow
               tag="필수"
               label="개인정보 처리방침을 확인했어요"
               checked={checked.privacy}
@@ -111,26 +105,9 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
               onView={() => setLegal('privacy')}
               viewLabel="개인정보 처리방침 보기"
             />
-            <View style={styles.notice}>
-              <Text style={styles.noticeTitle}>개인정보 처리 안내</Text>
-              <Text style={styles.noticeText}>
-                · 회원 식별·로그인 유지: {accountInfo}. 탈퇴하면 바로 지워요.
-              </Text>
-              <Text style={styles.noticeText}>
-                · 직접 올리는 정보: 앱 닉네임, 제보(사진·위치·내용)와 댓글, 문의 내용과 남긴 연락처.
-              </Text>
-              <Text style={styles.noticeText}>
-                · 알림을 켜면: 알림을 보낼 기기 정보(푸시 토큰).
-              </Text>
-              <Text style={styles.noticeText}>
-                · 알림·앱 업데이트·웹 화면 등 일부 정보는 미국의 서비스(Expo·Apple·Google·Netlify)를 거쳐 처리돼요.
-              </Text>
-              <Text style={styles.noticeText}>
-                · 서비스 제공에 꼭 필요한 정보만 처리해 따로 동의를 받지 않아요. 자세한 내용은 처리방침에 있어요.
-              </Text>
-            </View>
+            <PrivacyProcessingNotice provider={provider} />
 
-            <CheckRow tag="필수" label="만 14세 이상이에요" checked={checked.age} onPress={() => toggle('age')} />
+            <ConsentCheckRow tag="필수" label="만 14세 이상이에요" checked={checked.age} onPress={() => toggle('age')} />
             <Text style={styles.ageNote}>만 14세 미만은 가입할 수 없어요.</Text>
           </ScrollView>
 
@@ -141,58 +118,6 @@ export default function SignupConsentSheet({ visible, provider, onAgree, onClose
       {/* 약관·처리방침 전문은 시트 위에 겹쳐 뜬다(이 둘은 Modal 이지만 로그인 창을 띄우기 전에 닫힌다). */}
       <TermsModal visible={legal === 'terms'} onClose={() => setLegal(null)} />
       <PrivacyModal visible={legal === 'privacy'} onClose={() => setLegal(null)} />
-    </View>
-  )
-}
-
-function CheckRow({
-  tag,
-  label,
-  checked,
-  onPress,
-  onView,
-  viewLabel,
-  strong = false,
-}: {
-  tag?: string
-  label: string
-  checked: boolean
-  onPress: () => void
-  onView?: () => void
-  viewLabel?: string
-  strong?: boolean
-}) {
-  return (
-    <View style={styles.row}>
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked }}
-        accessibilityLabel={tag ? `${tag}, ${label}` : label}
-        hitSlop={{ top: 4, bottom: 4 }}
-      >
-        <Ionicons
-          name={checked ? 'checkmark-circle' : 'ellipse-outline'}
-          size={24}
-          color={checked ? COLORS.primary : COLORS.iconMuted}
-        />
-        <Text style={[styles.rowLabel, strong && styles.rowLabelStrong]}>
-          {tag && <Text style={styles.tag}>[{tag}] </Text>}
-          {label}
-        </Text>
-      </Pressable>
-      {onView && (
-        <Pressable
-          onPress={onView}
-          hitSlop={8}
-          style={({ pressed }) => [styles.view, pressed && styles.pressed]}
-          accessibilityRole="link"
-          accessibilityLabel={viewLabel}
-        >
-          <Text style={styles.viewText}>보기</Text>
-        </Pressable>
-      )}
     </View>
   )
 }
@@ -214,23 +139,5 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   scrollContent: { paddingBottom: SPACING.lg },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginVertical: SPACING.xs },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
-  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: SPACING.sm },
-  rowLabel: { flex: 1, ...TYPE.body, color: COLORS.textPrimary },
-  rowLabelStrong: { fontFamily: FONTS.semibold },
-  tag: { fontFamily: FONTS.semibold, color: COLORS.primary },
-  view: { paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm },
-  viewText: { ...TYPE.callout, fontFamily: FONTS.medium, color: COLORS.textSecondary, textDecorationLine: 'underline' },
-  notice: {
-    marginLeft: 32,
-    marginBottom: SPACING.sm,
-    padding: SPACING.md,
-    gap: SPACING.xxs,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.fill,
-  },
-  noticeTitle: { ...TYPE.label, color: COLORS.textSecondary, marginBottom: SPACING.xxs },
-  noticeText: { ...TYPE.caption, color: COLORS.textSecondary },
   ageNote: { ...TYPE.caption, color: COLORS.textTertiary, marginLeft: 32 },
-  pressed: { opacity: 0.6 },
 })

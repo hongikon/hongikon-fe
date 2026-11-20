@@ -21,7 +21,7 @@ import { useSheetSizing } from "../../hooks/useResizableSheet";
 import { openExternalUrl } from "../../utils/openExternalUrl";
 import { RADIUS } from "../../constants/spacing";
 import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
-import RouteEndpointButtons, { type RouteNext } from "./RouteEndpointButtons";
+import RouteEndpointButtons, { type RouteNext } from "./route/RouteEndpointButtons";
 
 interface BuildingSheetProps {
   building: Building;

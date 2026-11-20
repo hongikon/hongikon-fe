@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import Constants from 'expo-constants'

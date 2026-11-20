@@ -60,11 +60,7 @@ export function confirmAction(message: string): boolean {
   return typeof w.confirm === 'function' ? !!w.confirm(message) : true
 }
 
-/** 지점 id 를 짧게: 'mabc12-n7' → 'n7'. 다른 모양은 그대로. */
-export const shortId = (id: string) => {
-  const i = id.lastIndexOf('-')
-  return i > 0 ? id.slice(i + 1) : id
-}
+export { shortId } from './ids'
 
 export const ui = StyleSheet.create({
   section: { gap: 8 },

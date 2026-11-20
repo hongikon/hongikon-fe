@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { getErrorMessage, isCancelledError, isNetworkError, ApiError } from '../apis/client'
+import { useCallback, useEffect, useState } from 'react'
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { getErrorMessage, isNetworkError, ApiError } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { completeLogin, fetchOverview, logout, setMockMode, subscribeAdminAuth } from './api'
+import { completeLogin, logout, setMockMode, subscribeAdminAuth } from './api'
 import { clearMockMode, getTokens, resolveMockMode, type MockMode } from './session'
-import type { AdminOverview, AdminSection, OverviewState } from './types'
+import { ConsoleNav, LogoutButton, MockBadge } from './components/shell/ConsoleNav'
+import { useConsoleOverview } from './hooks/useConsoleOverview'
+import { useSectionRoute } from './hooks/useSectionRoute'
 import { ADMIN_COLORS, Loading } from './ui'
 import LoginScreen from './screens/LoginScreen'
 import ForbiddenScreen from './screens/ForbiddenScreen'
@@ -41,42 +42,8 @@ type Phase =
   | 'forbidden'
   | 'ready'
 
-const SECTION_PATHS: Record<AdminSection, string> = {
-  dashboard: '/admin',
-  reports: '/admin/reports',
-  comments: '/admin/comments',
-  users: '/admin/users',
-  feedback: '/admin/feedback',
-  askFeedback: '/admin/ask-feedback',
-  partners: '/admin/partners',
-  facilities: '/admin/facilities',
-  exhibitions: '/admin/exhibitions',
-  notices: '/admin/notices',
-  tools: '/admin/tools',
-}
-
-const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
-  { section: 'dashboard', label: '대시보드', icon: 'speedometer-outline' },
-  { section: 'reports', label: '제보 검토', icon: 'flag-outline' },
-  { section: 'comments', label: '신고 댓글', icon: 'chatbubbles-outline' },
-  { section: 'users', label: '회원', icon: 'people-outline' },
-  { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
-  { section: 'askFeedback', label: '물어보기 피드백', icon: 'thumbs-down-outline' },
-  { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
-  { section: 'facilities', label: '편의시설', icon: 'business-outline' },
-  { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
-  { section: 'notices', label: '앱 공지', icon: 'megaphone-outline' },
-  { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
-]
-
 /** 이 너비부터 왼쪽 사이드바, 그보다 좁으면 위쪽 가로 메뉴. */
 const WIDE_BREAKPOINT = 860
-
-function sectionFromPath(pathname: string): AdminSection {
-  const path = pathname.replace(/\/+$/, '')
-  const match = (Object.keys(SECTION_PATHS) as AdminSection[]).find((key) => SECTION_PATHS[key] === path)
-  return match ?? 'dashboard'
-}
 
 /** 검색엔진에 잡히지 않게 하고 탭 제목을 바꾼다. 관리자 화면을 떠나면(전체 새로고침) 원래대로 돌아간다. */
 function useAdminDocumentHead() {
@@ -122,7 +89,7 @@ export default function AdminApp() {
   const [phase, setPhase] = useState<Phase>('booting')
   const [mockMode, setMockModeState] = useState<MockMode | null>(null)
   const [loginMessage, setLoginMessage] = useState<string | null>(null)
-  const [section, setSection] = useState<AdminSection>(() => sectionFromPath(window.location.pathname))
+  const { section, navigate } = useSectionRoute()
 
   // ── 시작: 목업 / ?code= / 저장된 토큰 ──
   useEffect(() => {
@@ -168,50 +135,8 @@ export default function AdminApp() {
     [],
   )
 
-  // ── 뒤로/앞으로 가기 ──
-  useEffect(() => {
-    const onPopState = () => setSection(sectionFromPath(window.location.pathname))
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
-  }, [])
-
-  const navigate = useCallback((next: AdminSection) => {
-    setSection(next)
-    const path = SECTION_PATHS[next]
-    if (window.location.pathname !== path) window.history.pushState(null, '', path)
-  }, [])
-
   // ── 대시보드 수치 + 메뉴 배지. 처리 작업 뒤 각 화면이 refresh 를 부른다 ──
-  const [overview, setOverview] = useState<AdminOverview | null>(null)
-  const [overviewLoading, setOverviewLoading] = useState(false)
-  const [overviewError, setOverviewError] = useState<string | null>(null)
-  const [overviewUpdatedAt, setOverviewUpdatedAt] = useState<number | null>(null)
-  const overviewAbort = useRef<AbortController | null>(null)
-
-  const refreshOverview = useCallback(() => {
-    overviewAbort.current?.abort()
-    const controller = new AbortController()
-    overviewAbort.current = controller
-    setOverviewLoading(true)
-    fetchOverview(controller.signal)
-      .then((data) => {
-        setOverview(data)
-        setOverviewError(null)
-        setOverviewUpdatedAt(Date.now())
-      })
-      .catch((error: unknown) => {
-        if (isCancelledError(error)) return
-        setOverviewError(getErrorMessage(error, '대시보드 정보를 불러오지 못했습니다.'))
-      })
-      .finally(() => {
-        if (overviewAbort.current === controller) setOverviewLoading(false)
-      })
-  }, [])
-
-  useEffect(() => {
-    if (phase === 'ready') refreshOverview()
-    return () => overviewAbort.current?.abort()
-  }, [phase, refreshOverview])
+  const { overview, setOverview, overviewState, refreshOverview } = useConsoleOverview(phase === 'ready')
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -236,75 +161,10 @@ export default function AdminApp() {
   if (phase === 'signedOut') return <LoginScreen message={loginMessage} />
   if (phase === 'forbidden') return <ForbiddenScreen onLogout={handleLogout} />
 
-  const overviewState: OverviewState = {
-    data: overview,
-    loading: overviewLoading,
-    error: overviewError,
-    updatedAt: overviewUpdatedAt,
-    refresh: refreshOverview,
-  }
-  const badgeFor = (item: AdminSection): number => {
-    if (!overview) return 0
-    if (item === 'reports') return overview.reports.pending
-    if (item === 'feedback') return overview.feedback.open
-    if (item === 'comments') return overview.comments?.flaggedPending ?? 0
-    return 0
-  }
-
-  const navItems = NAV_ITEMS.map((item) => {
-    const selected = item.section === section
-    const badge = badgeFor(item.section)
-    return (
-      <Pressable
-        key={item.section}
-        onPress={() => navigate(item.section)}
-        accessibilityRole="link"
-        accessibilityState={{ selected }}
-        style={[wide ? styles.sideItem : styles.topItem, selected && (wide ? styles.sideItemSelected : styles.topItemSelected)]}
-      >
-        <Ionicons
-          name={item.icon}
-          size={wide ? 18 : 16}
-          color={wide ? (selected ? COLORS.white : ADMIN_COLORS.sidebarText) : selected ? COLORS.primary : COLORS.textSecondary}
-        />
-        <Text
-          style={[
-            wide ? styles.sideItemText : styles.topItemText,
-            selected && (wide ? styles.sideItemTextSelected : styles.topItemTextSelected),
-          ]}
-        >
-          {item.label}
-        </Text>
-        {badge > 0 ? (
-          <View style={styles.navBadge}>
-            <Text style={styles.navBadgeText}>{badge > 99 ? '99+' : badge}</Text>
-          </View>
-        ) : null}
-      </Pressable>
-    )
-  })
-
-  // 좁은 화면은 메뉴가 8개라 한 줄에 다 들어가지 않아 가로로 넘긴다.
-  const nav = wide ? (
-    <View style={styles.sideNav}>{navItems}</View>
-  ) : (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topNav}>
-      {navItems}
-    </ScrollView>
-  )
-
-  const mockBadge = mockMode ? (
-    <View style={styles.mockBadge}>
-      <Text style={styles.mockBadgeText}>목업 데이터</Text>
-    </View>
-  ) : null
-
-  const logoutButton = (
-    <Pressable onPress={handleLogout} accessibilityRole="button" style={wide ? styles.sideLogout : styles.topLogout}>
-      <Ionicons name="log-out-outline" size={16} color={wide ? ADMIN_COLORS.sidebarText : COLORS.textSecondary} />
-      <Text style={wide ? styles.sideLogoutText : styles.topLogoutText}>로그아웃</Text>
-    </Pressable>
-  )
+  // 좁은 화면은 메뉴가 많아 한 줄에 다 들어가지 않아 가로로 넘긴다.
+  const nav = <ConsoleNav wide={wide} section={section} overview={overview} onNavigate={navigate} />
+  const mockBadge = mockMode ? <MockBadge /> : null
+  const logoutButton = <LogoutButton wide={wide} onPress={handleLogout} />
 
   let content
   if (section === 'reports') content = <ReportsScreen onChanged={refreshOverview} overview={overview} />
@@ -367,44 +227,10 @@ const styles = StyleSheet.create({
   brand: { paddingHorizontal: 10, marginBottom: 8, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   brandTitle: { fontFamily: FONTS.bold, fontSize: 20, color: COLORS.white },
   brandSubtitle: { fontFamily: FONTS.medium, fontSize: 14, color: ADMIN_COLORS.sidebarText },
-  sideNav: { gap: 4 },
-  sideItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 10, borderRadius: RADIUS.md },
-  sideItemSelected: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  sideItemText: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: ADMIN_COLORS.sidebarText },
-  sideItemTextSelected: { color: COLORS.white, fontFamily: FONTS.semibold },
   sidebarSpacer: { flex: 1 },
-  sideLogout: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10 },
-  sideLogoutText: { fontFamily: FONTS.medium, fontSize: 13, color: ADMIN_COLORS.sidebarText },
-  navBadge: { minWidth: 20, paddingHorizontal: 6, borderRadius: RADIUS.pill, backgroundColor: COLORS.danger, alignItems: 'center' },
-  navBadgeText: { fontFamily: FONTS.bold, fontSize: 11, lineHeight: 20, color: COLORS.white },
-  mockBadge: {
-    alignSelf: 'flex-start',
-    marginHorizontal: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
-    backgroundColor: ADMIN_COLORS.warningBg,
-  },
-  mockBadgeText: { fontFamily: FONTS.semibold, fontSize: 11, color: ADMIN_COLORS.warning },
   topBar: { backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingTop: 10 },
   topBarRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 4 },
   topBrand: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.primary },
-  topLogout: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingLeft: 8 },
-  topLogoutText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textSecondary },
-  topNav: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 6 },
-  topItem: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  topItemSelected: { borderBottomColor: COLORS.primary },
-  topItemText: { fontFamily: FONTS.medium, fontSize: 13, color: COLORS.textSecondary },
-  topItemTextSelected: { fontFamily: FONTS.semibold, color: COLORS.primary },
   main: { flex: 1 },
   mainContent: { padding: 32 },
   mainContentNarrow: { padding: 16 },

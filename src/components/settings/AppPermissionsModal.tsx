@@ -1,48 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
-import {
-  AppState,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import * as ImagePicker from 'expo-image-picker'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import {
-  requestNotificationPermission,
-  useNotificationPermission,
-  type NotificationPermission,
-} from '../../lib/notificationPermission'
-import { notify } from '../../utils/dialog'
-import * as haptics from '../../lib/haptics'
-import {
-  canLocate,
-  getLocationPermission,
-  requestLocationPermission,
-  type LocationPermissionState,
-} from '../../lib/nearbyPartners/platform'
+import { requestNotificationPermission, useNotificationPermission } from '../../lib/notificationPermission'
+import { canLocate } from '../../lib/nearbyPartners/platform'
 import ModalHeader from './ModalHeader'
 import { nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
-import Button from '../common/Button'
 import { layoutStyles } from '../../constants/layout'
 import { RADIUS, SPACING } from '../../constants/spacing'
-import { MY_LOCATION_BUTTON_FROM } from '../../constants/route'
 import { kstTodayYmd } from '../../utils/exhibitions'
-
-/** 위치를 지도에 보여 주는 때. 지도 "내 위치 켜기"는 처리방침 11-16판 적용일부터 보인다(MapScreen 과 같은 날짜). */
-function mapLocationUse(): string {
-  return kstTodayYmd() >= MY_LOCATION_BUTTON_FROM
-    ? '길찾기 화면을 보는 동안이나 지도에서 "내 위치 켜기"를 켜 둔 동안 지도에 내 위치(와 경로)를 보여 줘요.'
-    : '길찾기 화면을 보는 동안 지도에 내 위치와 경로를 보여 줘요.'
-}
+import { useCameraPermission, useLocationPermission, useMediaLibraryPermission } from '../../hooks/settings/usePermissionStates'
+import { fromNotification, locationPurpose, mapLocationUse, unusedPermissionsCopy } from '../../utils/settings/permissions'
+import PermissionRow from './permissions/PermissionRow'
 
 interface AppPermissionsModalProps {
   visible: boolean
@@ -57,135 +28,8 @@ interface AppPermissionsModalProps {
  * - 카메라·사진: 제보 작성(ReportComposerModal)에서 [카메라로 찍기]·[앨범에서 고르기]를 누를 때만 쓴다.
  * - 위치: 지도 검색의 "내 주변 제휴 보기"(앱 사용 중, `lib/nearbyPartners/platform.ts`)와, 근처 알림 빌드에서 사용자가 켠
  *   근처 제휴 알림("항상")에 쓴다. 위치 모듈이 없는 예전 빌드(OTA)에서는 줄을 그리지 않는다. 제보 위치는 여전히 지도에서 직접 고른다.
- * 휴대폰 설정에서 바꾸고 돌아오면(앱이 다시 앞으로 오면) 상태를 다시 읽는다.
+ * 휴대폰 설정에서 바꾸고 돌아오면(앱이 다시 앞으로 오면) 상태를 다시 읽는다(hooks/settings/usePermissionStates).
  */
-
-/** 화면에 보여줄 권한 상태. 알림·사진을 같은 모양으로 맞춘다. */
-type PermissionView =
-  | { kind: 'loading' }
-  | { kind: 'granted'; limited?: boolean }
-  | { kind: 'undetermined'; canAskAgain: boolean }
-  | { kind: 'denied'; canAskAgain: boolean }
-  /** 이 기기에선 권한 없이 동작한다(Android 사진 선택기). */
-  | { kind: 'notNeeded' }
-
-function fromNotification(p: NotificationPermission): PermissionView {
-  if (p.status === 'unknown' || p.status === 'unsupported') return { kind: 'loading' }
-  if (p.status === 'granted') return { kind: 'granted' }
-  return { kind: p.status, canAskAgain: p.canAskAgain }
-}
-
-function fromCamera(res: ImagePicker.CameraPermissionResponse): PermissionView {
-  if (res.granted) return { kind: 'granted' }
-  return { kind: res.status === 'denied' ? 'denied' : 'undetermined', canAskAgain: res.canAskAgain }
-}
-
-/** 카메라 권한. 사진 보관함과 같은 방식으로 앱 복귀 때 다시 읽는다. */
-function useCameraPermission(enabled: boolean) {
-  const [state, setState] = useState<PermissionView>({ kind: 'loading' })
-
-  const refresh = useCallback(async () => {
-    try {
-      setState(fromCamera(await ImagePicker.getCameraPermissionsAsync()))
-    } catch {
-      // 읽지 못하면 이전 값을 둔다.
-    }
-  }, [])
-
-  const request = useCallback(async () => {
-    try {
-      setState(fromCamera(await ImagePicker.requestCameraPermissionsAsync()))
-    } catch {
-      await refresh()
-    }
-  }, [refresh])
-
-  useEffect(() => {
-    if (!enabled) return
-    void refresh()
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void refresh()
-    })
-    return () => sub.remove()
-  }, [enabled, refresh])
-
-  return { state, request }
-}
-
-function fromMedia(res: ImagePicker.MediaLibraryPermissionResponse): PermissionView {
-  if (res.granted) return { kind: 'granted', limited: res.accessPrivileges === 'limited' }
-  return { kind: res.status === 'denied' ? 'denied' : 'undetermined', canAskAgain: res.canAskAgain }
-}
-
-/** 사진 보관함 권한. 화면이 떠 있는 동안 앱이 앞으로 돌아오면 다시 읽는다. */
-function useMediaLibraryPermission(enabled: boolean) {
-  const [state, setState] = useState<PermissionView>({ kind: 'loading' })
-
-  const refresh = useCallback(async () => {
-    try {
-      setState(fromMedia(await ImagePicker.getMediaLibraryPermissionsAsync()))
-    } catch {
-      // 읽지 못하면 이전 값을 둔다.
-    }
-  }, [])
-
-  const request = useCallback(async () => {
-    try {
-      setState(fromMedia(await ImagePicker.requestMediaLibraryPermissionsAsync()))
-    } catch {
-      await refresh()
-    }
-  }, [refresh])
-
-  useEffect(() => {
-    if (!enabled) return
-    void refresh()
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void refresh()
-    })
-    return () => sub.remove()
-  }, [enabled, refresh])
-
-  return { state, request }
-}
-
-function fromLocation(res: LocationPermissionState | null): PermissionView {
-  if (!res) return { kind: 'loading' }
-  if (res.status === 'granted') return { kind: 'granted' }
-  return { kind: res.status, canAskAgain: res.canAskAgain }
-}
-
-/** 위치(앱 사용 중) 권한. 카메라와 같이 앱 복귀 때 다시 읽는다. */
-function useLocationPermission(enabled: boolean) {
-  const [state, setState] = useState<PermissionView>({ kind: 'loading' })
-
-  const refresh = useCallback(async () => {
-    const res = await getLocationPermission()
-    if (res) setState(fromLocation(res))
-  }, [])
-
-  const request = useCallback(async () => {
-    setState(fromLocation(await requestLocationPermission()))
-  }, [])
-
-  useEffect(() => {
-    if (!enabled) return
-    void refresh()
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void refresh()
-    })
-    return () => sub.remove()
-  }, [enabled, refresh])
-
-  return { state, request }
-}
-
-function openPhoneSettings(what: string) {
-  Linking.openSettings().catch(() =>
-    notify('설정을 열지 못했어요', `휴대폰 설정 > 홍익온 > ${what}에서 바꿀 수 있어요.`),
-  )
-}
-
 export default function AppPermissionsModal({ visible, onClose }: AppPermissionsModalProps) {
   const isWeb = Platform.OS === 'web'
   // Android 는 시스템 사진 선택기를 써서 사진 권한 자체가 없다(app.json blockedPermissions).
@@ -195,6 +39,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
   const camera = useCameraPermission(visible && !isWeb)
   const hasLocation = !isWeb && canLocate()
   const location = useLocationPermission(visible && hasLocation)
+  const unused = unusedPermissionsCopy(hasLocation, nearbyAlertsAvailable())
 
   return (
     <SwipeBackModal visible={visible} onRequestClose={onClose}>
@@ -260,11 +105,7 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                     <PermissionRow
                       icon="navigate-outline"
                       title="위치"
-                      purpose={
-                        nearbyAlertsAvailable()
-                          ? `(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, ${mapLocationUse()} 근처 제휴 알림을 켰다면 앱을 닫아 둬도("항상") 제휴 가게에 머무는지 확인해요. 위치는 휴대폰 안에서만 쓰고 서버로 보내거나 저장하지 않아요`
-                          : `(선택) 지도 검색의 '내 주변 제휴 보기'를 누를 때 가까운 제휴 업체를 보여 주고, ${mapLocationUse()} 저장하거나 서버로 보내지 않아요`
-                      }
+                      purpose={locationPurpose(nearbyAlertsAvailable(), mapLocationUse(kstTodayYmd()))}
                       state={location.state}
                       onRequest={() => {
                         void location.request()
@@ -281,120 +122,15 @@ export default function AppPermissionsModal({ visible, onClose }: AppPermissions
                 <Ionicons name="location-outline" size={17} color={COLORS.textSecondary} />
               </View>
               <View style={styles.infoBody}>
-                <Text style={styles.infoTitle}>
-                  {/* 근처 알림 빌드는 알림을 켜면 "항상" 위치를 쓴다 — 그때는 "백그라운드 위치를 안 쓴다"고 하지 않는다(11-03). */}
-                  {hasLocation && nearbyAlertsAvailable()
-                    ? '마이크·연락처는 사용하지 않아요'
-                    : hasLocation
-                      ? '백그라운드 위치·마이크·연락처는 사용하지 않아요'
-                      : '위치(GPS)·마이크·연락처는 사용하지 않아요'}
-                </Text>
-                <Text style={styles.infoText}>
-                  {hasLocation && nearbyAlertsAvailable()
-                    ? '앱을 쓰지 않을 때의 위치는 근처 제휴 알림을 직접 켠 경우에만 휴대폰 안에서 써요. 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'
-                    : hasLocation
-                    ? '앱을 쓰지 않을 때의 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'
-                    : '기기 위치, 마이크, 연락처, Face ID 같은 권한은 요청하지 않아요. 제보 위치는 지도에서 직접 고른 곳만 써요.'}
-                </Text>
+                {/* 근처 알림 빌드는 알림을 켜면 "항상" 위치를 쓴다 — 그때는 "백그라운드 위치를 안 쓴다"고 하지 않는다(11-03). */}
+                <Text style={styles.infoTitle}>{unused.title}</Text>
+                <Text style={styles.infoText}>{unused.text}</Text>
               </View>
             </View>
           </ScrollView>
         </SafeAreaView>
       </SafeAreaProvider>
     </SwipeBackModal>
-  )
-}
-
-const PILL = {
-  granted: { label: '허용됨', bg: COLORS.successSoft, fg: COLORS.success },
-  limited: { label: '일부 허용', bg: COLORS.warningSoft, fg: COLORS.warning },
-  denied: { label: '꺼짐', bg: COLORS.dangerSoft, fg: '#B91C1C' },
-  undetermined: { label: '아직 묻지 않음', bg: COLORS.fill, fg: COLORS.textSecondary },
-  loading: { label: '확인 중', bg: COLORS.fill, fg: COLORS.textTertiary },
-  notNeeded: { label: '권한 필요 없음', bg: COLORS.fill, fg: COLORS.textSecondary },
-} as const
-
-function pillFor(state: PermissionView) {
-  if (state.kind === 'granted') return state.limited ? PILL.limited : PILL.granted
-  return PILL[state.kind]
-}
-
-function PermissionRow({
-  icon,
-  title,
-  purpose,
-  state,
-  onRequest,
-  settingsName,
-}: {
-  icon: keyof typeof Ionicons.glyphMap
-  title: string
-  purpose: string
-  state: PermissionView
-  onRequest: () => void
-  /** 휴대폰 설정에서 찾아갈 항목 이름(설정을 못 열 때 안내에 쓴다). */
-  settingsName: string
-}) {
-  const pill = pillFor(state)
-  const canAsk = (state.kind === 'undetermined' || state.kind === 'denied') && state.canAskAgain
-  const blocked = (state.kind === 'undetermined' || state.kind === 'denied') && !state.canAskAgain
-
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowHead}>
-        <View style={styles.rowIcon}>
-          <Ionicons name={icon} size={18} color={COLORS.primary} />
-        </View>
-        <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          <Text style={styles.rowPurpose}>{purpose}</Text>
-        </View>
-        <View
-          style={[styles.pill, { backgroundColor: pill.bg }]}
-          accessible
-          accessibilityLabel={`${title} 권한 ${pill.label}`}
-        >
-          <Text style={[styles.pillText, { color: pill.fg }]}>{pill.label}</Text>
-        </View>
-      </View>
-
-      {canAsk && (
-        <Button
-          label="허용하기"
-          size="md"
-          onPress={() => {
-            haptics.tapLight()
-            onRequest()
-          }}
-          accessibilityLabel={`${title} 권한 허용하기`}
-        />
-      )}
-      {blocked && (
-        <Button
-          label="설정 열기"
-          variant="secondary"
-          size="md"
-          icon="open-outline"
-          iconPosition="right"
-          onPress={() => openPhoneSettings(settingsName)}
-          accessibilityLabel={`휴대폰 설정에서 ${title} 권한 켜기`}
-        />
-      )}
-      {state.kind === 'granted' && (
-        <Pressable
-          style={styles.linkBtn}
-          onPress={() => openPhoneSettings(settingsName)}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={`휴대폰 설정에서 ${title} 권한 바꾸기`}
-        >
-          <Text style={styles.linkBtnText}>
-            {state.limited ? '휴대폰 설정에서 전체 허용으로 바꾸기' : '휴대폰 설정에서 바꾸기'}
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={COLORS.textTertiary} />
-        </Pressable>
-      )}
-    </View>
   )
 }
 
@@ -414,23 +150,6 @@ const styles = StyleSheet.create({
   },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.floating, paddingHorizontal: 16 },
   separator: { height: 0.5, backgroundColor: COLORS.border },
-  row: { paddingVertical: 16, gap: 12 },
-  rowHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBody: { flex: 1, gap: 3 },
-  rowTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.textPrimary },
-  rowPurpose: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
-  pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: RADIUS.pill },
-  pillText: { fontFamily: FONTS.semibold, fontSize: 12 },
-  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 50, marginTop: -4 },
-  linkBtnText: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textTertiary },
   webNote: {
     flexDirection: 'row',
     alignItems: 'center',

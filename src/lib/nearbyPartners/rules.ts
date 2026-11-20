@@ -44,8 +44,6 @@ export const CAMPUS_CLEARANCE_METERS = ALERT_RADIUS_METERS + ACCURACY_ALLOWANCE_
  */
 export const MIN_RESELECT_RADIUS_METERS = 150
 export const MAX_RESELECT_RADIUS_METERS = 1000
-/** @deprecated 고정 반경 대신 `reselectRadius` 를 쓴다. */
-export const RESELECT_REGION_RADIUS_METERS = 500
 /**
  * 등록 직후 운영체제가 원마다 지금 상태(안·밖)를 한꺼번에 알려 준다. 이 안에 온 신호는 '움직였다'로 보지 않는다(11-11 현장:
  * 다시 등록할 때마다 '다시 고르기 원 나감'이 와서 1초마다 다시 등록하는 고리에 빠졌다).

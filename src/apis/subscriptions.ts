@@ -89,8 +89,3 @@ export function isSubscriptionApiMissing(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false
   return error.status === 404 || (error.status === 401 && error.afterTokenRefresh === true)
 }
-
-/** 검증용: 판정을 처음 상태로 되돌린다. */
-export function resetSubscriptionApiProbe(): void {
-  apiMissing = false
-}

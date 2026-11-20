@@ -4,41 +4,16 @@ import { ApiError, getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { isAdminMapMissing } from './api'
-import { useAdminHost } from './ui'
+import { Button, useAdminHost } from './ui'
 import { RADIUS } from '../constants/spacing'
 
 /**
  * 제휴업체·편의시설 관리 화면이 함께 쓰는 입력 부품과 검증 도우미.
  * 검증 규칙은 서버(지도 데이터 계약)와 같게 맞춰, 보내기 전에 화면에서 먼저 알려 준다. 서버도 같은 규칙으로 한 번 더 막는다.
+ * 순수 검증 함수는 utils/mapFormRules.ts 에 있고 여기서 다시 내보낸다.
  */
 
-/** 좌표 범위(서버와 같다). 한국 밖 값이나 위도·경도를 뒤바꿔 넣은 실수를 막는다. */
-export const LAT_RANGE = [33, 39] as const
-export const LNG_RANGE = [124, 132] as const
-
-/**
- * 입력한 좌표 문자열을 숫자로. 사용자가 확인해 준 값이라 반올림·자르기를 하지 않는다(Number 로만 바꾼다).
- * 비었으면 null, 숫자가 아니거나 범위 밖이면 오류 문구.
- */
-export function parseCoordinate(text: string, range: readonly [number, number], label: string): number | null | string {
-  const trimmed = text.trim()
-  if (!trimmed) return null
-  const value = Number(trimmed)
-  if (!Number.isFinite(value)) return `${label}는 숫자로 입력해 주세요.`
-  if (value < range[0] || value > range[1]) return `${label}는 ${range[0]}~${range[1]} 사이여야 해요.`
-  return value
-}
-
-/** 빈 문자열은 보내지 않는다(서버에 NULL 로 저장된다). */
-export function optional(text: string): string | undefined {
-  const trimmed = text.trim()
-  return trimmed ? trimmed : undefined
-}
-
-/** 길이 초과면 오류 문구. */
-export function tooLong(text: string, max: number, label: string): string | null {
-  return text.trim().length > max ? `${label}은(는) ${max}자까지 쓸 수 있어요.` : null
-}
+export { LAT_RANGE, LNG_RANGE, optional, parseCoordinate, tooLong } from './utils/mapFormRules'
 
 /** 저장·삭제 실패 문구. 서버가 준 짧은 안내(검증 실패·중복 등)가 있으면 그걸 보여 준다. */
 export function mapWriteErrorMessage(error: unknown, fallback: string): string {
@@ -131,6 +106,40 @@ export function OptionChips<T extends string>({
           </Pressable>
         )
       })}
+    </View>
+  )
+}
+
+/** 폼 검증·저장 오류 목록. 없으면 아무것도 그리지 않는다. */
+export function FormErrors({ errors }: { errors: readonly string[] }) {
+  if (!errors.length) return null
+  return (
+    <View style={formStyles.errors} accessibilityRole="alert">
+      {errors.map((message) => (
+        <Text key={message} style={formStyles.errorText}>
+          {message}
+        </Text>
+      ))}
+    </View>
+  )
+}
+
+/** 폼 맨 아래 '취소'·'저장' 버튼 줄. 저장 버튼 글자는 바꿀 수 있다(공지 새로 쓰기는 '등록'). */
+export function FormActions({
+  saving,
+  onCancel,
+  onSave,
+  saveLabel = '저장',
+}: {
+  saving: boolean
+  onCancel: () => void
+  onSave: () => void
+  saveLabel?: string
+}) {
+  return (
+    <View style={formStyles.actions}>
+      <Button label="취소" onPress={onCancel} disabled={saving} small />
+      <Button label={saveLabel} variant="primary" onPress={onSave} loading={saving} small />
     </View>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import { nextRouteEndpoint } from '../../components/map/RouteEndpointButtons'
+import { nextRouteEndpoint } from '../../components/map/route/RouteEndpointButtons'
 import type { Building, Facility, FacilityKind } from '../../types'
 
 interface Options {

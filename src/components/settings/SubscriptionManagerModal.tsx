@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
 } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
@@ -16,7 +15,6 @@ import { SUBSCRIBABLE_ITEMS, groupSubscribableItems } from '../../constants/news
 import { TYPE } from '../../constants/typography'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSettings } from '../../contexts/SettingsContext'
-import { useFeedbackToggles } from '../../hooks/useFeedbackToggles'
 import { ToastViewport } from '../common/Toast'
 import ContentColumn from '../common/ContentColumn'
 import EmptyState from '../common/EmptyState'

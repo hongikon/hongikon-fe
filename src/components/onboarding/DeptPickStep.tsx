@@ -1,30 +1,14 @@
-import { memo, useCallback, useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import {
-  SUBSCRIBABLE_ITEMS,
-  groupSubscribableItems,
-  type SubscribableItem,
-} from '../../constants/news'
 import { useSettings } from '../../contexts/SettingsContext'
-import { normalize } from '../../utils/normalize'
+import { filterSubscribableGroups, universityAllSubscribed, universityToggleIds } from '../../utils/news/deptPick'
 import SearchBar from '../news/SearchBar'
-import { SELECTED_PILL_BG } from '../common/Chip'
-import { RADIUS } from '../../constants/spacing'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
-
-/**
- * 같은 '대학' 묶음이지만 일부 학생만 보는 국제협력본부·취업진로지원센터 게시판은 한 번에 켜지 않는다.
- * (채용정보는 하루 10~20건씩 올라와 원하는 사람만 고르게 한다.)
- */
-const BULK_EXCLUDED_BOARD_IDS: readonly string[] = ['국제교류실', '글로벌역량지원사업', '취업진로공지', '채용정보']
-
-/** '대학' 묶음(학사·장학 등 학교 전체 게시판 6개). "학교 공지 함께 받기"가 한 번에 켠다. */
-const UNIVERSITY_BOARD_IDS: readonly string[] = SUBSCRIBABLE_ITEMS.filter(
-  (item) => item.group === '대학' && !BULK_EXCLUDED_BOARD_IDS.includes(item.id),
-).map((item) => item.id)
+import DeptRow from './dept/DeptRow'
+import UniversityNoticeChip from './dept/UniversityNoticeChip'
 
 interface DeptPickStepProps {
   /** 고른 게 있든 없든 다음 단계로. 구독은 고르는 즉시 이미 저장돼 있다. */
@@ -42,24 +26,14 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
   const subscribed = settings.subscribedDepts
   const subscribedSet = useMemo(() => new Set(subscribed), [subscribed])
 
-  const groups = useMemo(() => {
-    const keyword = normalize(query)
-    const filtered = keyword
-      ? SUBSCRIBABLE_ITEMS.filter(
-          (item) => normalize(item.name).includes(keyword) || normalize(item.group).includes(keyword),
-        )
-      : SUBSCRIBABLE_ITEMS
-    return groupSubscribableItems(filtered)
-  }, [query])
+  const groups = useMemo(() => filterSubscribableGroups(query), [query])
 
-  const universityAllOn = UNIVERSITY_BOARD_IDS.every((id) => subscribedSet.has(id))
+  const universityAllOn = universityAllSubscribed(subscribedSet)
 
   const toggleUniversity = useCallback(() => {
     // 다 켜져 있으면 모두 끄고, 하나라도 꺼져 있으면 꺼진 것만 켠다.
-    for (const id of UNIVERSITY_BOARD_IDS) {
-      if (universityAllOn || !subscribedSet.has(id)) toggleSubscribedDept(id)
-    }
-  }, [universityAllOn, subscribedSet, toggleSubscribedDept])
+    for (const id of universityToggleIds(subscribedSet)) toggleSubscribedDept(id)
+  }, [subscribedSet, toggleSubscribedDept])
 
   const count = subscribed.length
 
@@ -77,24 +51,7 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
           accessibilityLabel="학과 검색"
           style={styles.search}
         />
-        <Pressable
-          onPress={toggleUniversity}
-          style={({ pressed }) => [styles.chip, universityAllOn && styles.chipOn, pressed && styles.pressed]}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: universityAllOn }}
-          // react-native-web 0.21 은 accessibilityState 를 DOM 에 옮기지 않아 웹은 aria-* 로 따로 준다.
-          aria-checked={universityAllOn}
-          accessibilityLabel="학교 공지(학사·장학 등) 함께 받기"
-        >
-          <Ionicons
-            name={universityAllOn ? 'checkmark-circle' : 'add-circle-outline'}
-            size={17}
-            color={universityAllOn ? COLORS.primary : COLORS.textSecondary}
-          />
-          <Text style={[styles.chipText, universityAllOn && styles.chipTextOn]} numberOfLines={1}>
-            학교 공지(학사·장학 등) 함께 받기
-          </Text>
-        </Pressable>
+        <UniversityNoticeChip allOn={universityAllOn} onToggle={toggleUniversity} />
       </View>
 
       <ScrollView
@@ -136,56 +93,12 @@ export default function DeptPickStep({ onNext }: DeptPickStepProps) {
   )
 }
 
-interface DeptRowProps {
-  item: SubscribableItem
-  selected: boolean
-  onToggle: (id: string) => void
-}
-
-const DeptRow = memo(function DeptRow({ item, selected, onToggle }: DeptRowProps) {
-  return (
-    <Pressable
-      onPress={() => onToggle(item.id)}
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      accessibilityLabel={item.name}
-    >
-      <Text style={[styles.rowName, selected && styles.rowNameOn]}>{item.name}</Text>
-      <View style={[styles.check, selected && styles.checkOn]}>
-        {selected && <Ionicons name="checkmark" size={15} color={COLORS.white} />}
-      </View>
-    </Pressable>
-  )
-})
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   head: { paddingHorizontal: 20, paddingTop: 8 },
   title: { fontSize: 24, lineHeight: 33, fontFamily: FONTS.bold, color: COLORS.textPrimary, letterSpacing: -0.4 },
   subtitle: { marginTop: 8, fontSize: 14, lineHeight: 21, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   search: { marginTop: 20 },
-  chip: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    // 폴드 커버(≈344dp)처럼 좁은 화면에서 글자가 칩 밖으로 넘치지 않게 줄 너비에서 멈춘다.
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
-  // 켜짐: 회색 알약 + 남색 글자·체크(10-08, 앱 전체 선택 표시와 같게). 꺼짐은 흰 바탕 + 회색 글자.
-  chipOn: { backgroundColor: SELECTED_PILL_BG, borderColor: 'transparent' },
-  chipText: { flexShrink: 1, fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textSecondary },
-  chipTextOn: { color: COLORS.primary },
-  pressed: { opacity: 0.75 },
   list: { flex: 1, marginTop: 12 },
   listContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
   group: { marginBottom: 14 },
@@ -196,29 +109,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     marginTop: 4,
   },
-  row: {
-    minHeight: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    marginHorizontal: -8,
-    paddingHorizontal: 8,
-    borderRadius: RADIUS.md,
-  },
-  rowPressed: { backgroundColor: COLORS.fill },
-  rowName: { flex: 1, marginRight: 12, fontSize: 16, fontFamily: FONTS.regular, color: COLORS.textPrimary },
-  rowNameOn: { fontFamily: FONTS.semibold, color: COLORS.primary },
-  check: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.toggleOff,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   empty: { paddingVertical: 64, alignItems: 'center', gap: 10 },
   emptyText: { fontSize: 14, fontFamily: FONTS.regular, color: COLORS.textSecondary },
   bottom: {

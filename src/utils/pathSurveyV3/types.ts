@@ -115,7 +115,6 @@ export const isNodeType = (value: unknown): value is NodeType => (NODE_TYPES as 
 export const isValidFloor = (floor: unknown): floor is number =>
   typeof floor === 'number' && Number.isFinite(floor) && Number.isInteger(floor * 2)
 
-export const levelKey = (level: LevelRef) => `${level.building}:${level.floor}`
 export const sameLevel = (x: LevelRef, y: LevelRef) => x.building === y.building && x.floor === y.floor
 export const hasLevel = (levels: readonly LevelRef[] | undefined, level: LevelRef) => !!levels?.some((l) => sameLevel(l, level))
 export const vertexId = (nodeId: string, level: LevelRef) => `${nodeId}@${level.building}:${level.floor}`

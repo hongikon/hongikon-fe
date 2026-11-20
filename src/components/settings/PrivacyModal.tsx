@@ -1,4 +1,4 @@
-import { Text, StyleSheet, ScrollView, Modal } from 'react-native'
+import { Text, StyleSheet, ScrollView } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'

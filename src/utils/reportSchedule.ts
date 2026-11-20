@@ -129,11 +129,6 @@ export function isUpcomingReport(report: { startsAt: string }, now: number = Dat
   return parseServerTime(report.startsAt) > now
 }
 
-/** 서버 시각 문자열 두 개 → `10/3(토) 11:00 ~ 15:00`. */
-export function formatServerSchedule(startsAt: string, endsAt: string): string {
-  return formatScheduleRange(parseServerTime(startsAt), parseServerTime(endsAt))
-}
-
 /** 예정 제보 마커·시트에 붙이는 짧은 시작 표시: 오늘이면 `11:00`, 내일이면 `내일 11:00`, 그 뒤면 `10/5(월) 11:00`. */
 export function formatStartShort(startMs: number, now: number = Date.now()): string {
   const diff = kstParts(startMs).dayIndex - kstParts(now).dayIndex
