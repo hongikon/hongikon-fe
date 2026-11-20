@@ -280,6 +280,8 @@ export default function MapScreen() {
     onCommitEndpoint: () => {
       setSelectedBuilding(null);
       setSelectedFacilityBuilding(null);
+      // 제보 시트의 출발·도착으로 정했을 때도 시트를 닫아 경로가 가려지지 않게 한다(11-20 사용자).
+      setSelectedReport(null);
     },
   });
   const {
