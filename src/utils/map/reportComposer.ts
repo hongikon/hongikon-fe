@@ -1,6 +1,8 @@
 import { ApiError, isNetworkError } from '../../apis/client'
 import { REPORT_IMAGE_MAX_BYTES, reportImageContentType, type PickedReportImage } from '../../apis/reports'
 import { REPORT_OFF_CAMPUS_MAX_METERS } from '../../constants/report'
+import type { Building } from '../../types'
+import { buildFloorOptions } from '../floors'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 export const REPORT_PLACE_MAX_LENGTH = 60
@@ -15,6 +17,25 @@ export const BASEMENT_NUMBERS = FLOOR_NUMBERS.slice(0, MAX_BASEMENT)
 /** 층 표시: 지상 3층 = '3F', 지하 1층 = 'B1'. */
 export function formatFloor(basement: boolean, floorNumber: number): string {
   return basement ? `B${floorNumber}` : `${floorNumber}F`
+}
+
+/**
+ * 로비층(L, 0층)이 있는 건물(홍문관 R동)의 층 다이얼 항목(위층 → 아래층). 일반 다이얼(지상/지하 · 1~30)로는 L 을 고를 수 없어,
+ * 이런 건물은 길찾기 층 다이얼과 같은 그 건물의 층 목록 하나로 고른다. 1.5F 같은 중간층 출입구는 제보 층이 아니라 뺀다.
+ * L 이 없는 건물은 null — 일반 다이얼을 쓴다.
+ */
+export function buildingFloorDialItems(building: Building | null): { value: number; label: string }[] | null {
+  if (!building) return null
+  const options = buildFloorOptions(building).filter((option) => Number.isInteger(option.value))
+  if (!options.some((option) => option.value === 0)) return null
+  return [...options].reverse().map((option) => ({ value: option.value, label: option.label }))
+}
+
+/** 층 목록 다이얼에서 처음 고를 층: 1F, 없으면 L, 그것도 없으면 맨 위 층. */
+export function defaultBuildingFloor(items: readonly { value: number }[]): number {
+  if (items.some((item) => item.value === 1)) return 1
+  if (items.some((item) => item.value === 0)) return 0
+  return items[0]?.value ?? 1
 }
 
 export function formatCoord(value: number): string {

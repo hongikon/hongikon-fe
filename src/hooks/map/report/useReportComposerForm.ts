@@ -11,7 +11,9 @@ import {
   BASEMENT_NUMBERS,
   FLOOR_NUMBERS,
   MAX_BASEMENT,
+  buildingFloorDialItems,
   composerMissingFields,
+  defaultBuildingFloor,
   formatFloor,
 } from '../../../utils/map/reportComposer'
 import { scheduleError } from '../../../utils/reportSchedule'
@@ -62,7 +64,16 @@ export function useReportComposerForm(target: ReportTarget | null) {
     target !== null &&
     haversineMeters(CAMPUS_CENTER.lat, CAMPUS_CENTER.lng, target.lat, target.lng) <= REPORT_OFF_CAMPUS_MAX_METERS
   const [floorNumber, setFloorNumber] = useState(1)
-  const floor = basement ? -floorNumber : floorNumber
+  /** 로비층(L)이 있는 건물(홍문관 R동)은 그 건물의 층 목록 하나로 고른다(`buildingFloorDialItems`). 없으면 null. */
+  const buildingFloorItems = useMemo(() => buildingFloorDialItems(building), [building])
+  const [buildingFloor, setBuildingFloor] = useState(1)
+  // 건물이 바뀌어 고른 층이 그 건물 목록에 없으면 기본 층(1F)으로 맞춘다.
+  useEffect(() => {
+    if (buildingFloorItems && !buildingFloorItems.some((item) => item.value === buildingFloor)) {
+      setBuildingFloor(defaultBuildingFloor(buildingFloorItems))
+    }
+  }, [buildingFloorItems, buildingFloor])
+  const floor = buildingFloorItems ? buildingFloor : basement ? -floorNumber : floorNumber
   const floorItems = useMemo<WheelItem<number>[]>(
     () => (basement ? BASEMENT_NUMBERS : FLOOR_NUMBERS).map((value) => ({ value, label: formatFloor(basement, value) })),
     [basement],
@@ -100,6 +111,7 @@ export function useReportComposerForm(target: ReportTarget | null) {
     setNow(Date.now())
     setFloorNumber(1)
     setBasement(false)
+    setBuildingFloor(1)
   }
 
   /** '+' 칩을 누르면 입력 칸을 연다. 이미 직접 입력을 확정해 뒀으면 그 값부터 고쳐 쓰게 한다. */
@@ -157,6 +169,9 @@ export function useReportComposerForm(target: ReportTarget | null) {
     setBasement,
     floorNumber,
     setFloorNumber,
+    buildingFloorItems,
+    buildingFloor,
+    setBuildingFloor,
     floor,
     floorItems,
     trimmedTitle,

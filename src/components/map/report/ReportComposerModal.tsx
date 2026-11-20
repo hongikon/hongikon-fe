@@ -133,6 +133,9 @@ export default function ReportComposerModal({
                     floorItems={form.floorItems}
                     floorNumber={form.floorNumber}
                     onChangeFloorNumber={form.setFloorNumber}
+                    buildingFloorItems={form.buildingFloorItems}
+                    buildingFloor={form.buildingFloor}
+                    onChangeBuildingFloor={form.setBuildingFloor}
                   />
 
                   <ComposerCategorySection

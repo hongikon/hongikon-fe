@@ -13,6 +13,7 @@ test('층 한 칸: 0층은 건너뛰고 B10~30F 안', () => {
   assert.equal(stepFloor(-10, -1), -10)
   assert.equal(formatEditFloor(-2), 'B2')
   assert.equal(formatEditFloor(3), '3F')
+  assert.equal(formatEditFloor(0), 'L')
 })
 
 test('처음 사진 칸은 서버 번호를 지키고 null 은 건너뛴다', () => {

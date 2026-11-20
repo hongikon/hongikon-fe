@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 
 import { ApiError, NetworkError } from '../../src/apis/client'
 import {
+  buildingFloorDialItems,
   composerMissingFields,
+  defaultBuildingFloor,
   filterPickedAssets,
   formatFloor,
   isPhotoRejection,
@@ -97,4 +99,14 @@ test('고른 사진 거르기: 중복·형식·용량·남은 자리', () => {
   assert.equal(pickedAssetsError({ accepted: [], unsupported: 0, tooLarge: 0, overflow: 2 }, false, 3), '사진은 3장까지라 2장은 뺐어요.')
   assert.match(pickedAssetsError({ accepted: [], unsupported: 0, tooLarge: 1, overflow: 0 }, true, 3) ?? '', /5MB 이하/)
   assert.equal(pickedAssetsError({ accepted: [], unsupported: 0, tooLarge: 0, overflow: 0 }, true, 3), null)
+})
+
+test('로비층(L)이 있는 건물만 그 건물 층 목록 다이얼', () => {
+  const r = { name: 'R동', lat: 0, lng: 0, floorLevels: [-2, -1, 0, 1, 1.5, 2, 3] } as never
+  const items = buildingFloorDialItems(r)
+  assert.deepEqual(items?.map((i) => i.label), ['3F', '2F', '1F', 'L', 'B1', 'B2'])
+  assert.equal(defaultBuildingFloor(items ?? []), 1)
+  assert.equal(buildingFloorDialItems({ name: 'T동', lat: 0, lng: 0, floors: 5, basementFloors: 1 } as never), null)
+  assert.equal(buildingFloorDialItems(null), null)
+  assert.equal(defaultBuildingFloor([{ value: 0 }, { value: -1 }]), 0)
 })
