@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { QUERY_KEYS } from '../../constants/queryKeys'
 import { useFocusEffect } from '@react-navigation/native'
 import { getHotReports, hasCommunityFields } from '../../apis/community'
 import { getLiveReports } from '../../apis/reports'
@@ -59,7 +60,7 @@ export function useMapReports({ accessToken, postToMap, onToggleHot, onCategorie
         : // 3일(72시간) 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
           visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
     [accessToken, hotOnly],
-    { enabled: reportsOn, fallbackMessage: '제보를 불러오지 못했어요.' },
+    { enabled: reportsOn, fallbackMessage: '제보를 불러오지 못했어요.', queryKey: QUERY_KEYS.mapReports },
   )
   useEffect(() => {
     if (!hotOnly && hasCommunityFields(resource.data)) setHotAvailable(true)

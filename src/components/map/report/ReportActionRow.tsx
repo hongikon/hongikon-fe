@@ -12,6 +12,8 @@ import { promptLogin } from '../../../utils/reports'
 import { shareReport } from '../../../utils/shareReport'
 import type { ReportListItem } from '../../../types'
 import { useMapData } from '../../../lib/mapData'
+import { useMutation } from '../../../hooks/useMutation'
+import { createLatestGate } from '../../../utils/query/latestGate'
 
 /** 시트가 들고 있는 제보 사본에 덮어쓸 값(🔥·관심·조회 수). */
 export type ReportCommunityPatch = Partial<
@@ -41,8 +43,6 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
   const toast = useToast()
   const [busy, setBusy] = useState<'fire' | 'follow' | null>(null)
   const [missing, setMissing] = useState(false)
-  // 연타 중 늦게 온 응답이 최신 상태를 덮지 않게 요청 순번을 둔다.
-  const fireSeq = useRef(0)
 
   const hasFire = typeof report.fireCount === 'number' && !missing
   const hasFollow = typeof report.followedByMe === 'boolean' && !report.isMine && !missing
@@ -50,7 +50,44 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
   const fired = !!report.firedByMe
   const followed = !!report.followedByMe
 
-  const handleFire = async () => {
+  // 연타 중 늦게 온 응답이 최신 상태를 덮지 않게 마지막 요청만 반영한다.
+  const fireGate = useRef(createLatestGate()).current
+  /** 공감. 낙관적으로 먼저 바꾸고, 실패하면 되돌린다. */
+  const fireMutation = useMutation(
+    ({ reportId, next, token }: { reportId: number; next: boolean; token: string }) => setReportFire(reportId, next, token),
+    {
+      onMutate: ({ next }) => {
+        const before = { firedByMe: fired, fireCount: report.fireCount ?? 0 }
+        onPatch({ firedByMe: next, fireCount: Math.max(0, before.fireCount + (next ? 1 : -1)) })
+        const seq = fireGate.begin()
+        setBusy('fire')
+        return { before, seq }
+      },
+      onSuccess: (result, _vars, snapshot) => {
+        if (!snapshot || !fireGate.isCurrent(snapshot.seq)) return
+        onPatch({
+          firedByMe: result.fired,
+          fireCount: result.fireCount,
+          ...(typeof result.recentFireCount === 'number' ? { recentFireCount: result.recentFireCount } : {}),
+          ...(typeof result.hot === 'boolean' ? { hot: result.hot } : {}),
+        })
+      },
+      onError: (error, _vars, snapshot) => {
+        if (!snapshot || !fireGate.isCurrent(snapshot.seq)) return
+        onPatch(snapshot.before)
+        if (isCommunityApiMissing(error, true)) {
+          setMissing(true)
+          return
+        }
+        toast.show({ message: communityErrorMessage(error, '공감하지 못했어요. 잠시 뒤 다시 해 주세요.'), tone: 'warning' })
+      },
+      onSettled: (_vars, snapshot) => {
+        if (snapshot && fireGate.isCurrent(snapshot.seq)) setBusy(null)
+      },
+    },
+  )
+
+  const handleFire = () => {
     if (report.isMine) {
       toast.show({ message: '내 제보에는 공감할 수 없어요', tone: 'info' })
       return
@@ -60,36 +97,40 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
       return
     }
     const next = !fired
-    const before = { firedByMe: fired, fireCount: report.fireCount ?? 0 }
     if (next) haptics.switchOn()
     else haptics.tapLight()
-    // 낙관적 반영 — 실패하면 되돌린다.
-    onPatch({ firedByMe: next, fireCount: Math.max(0, before.fireCount + (next ? 1 : -1)) })
-    const seq = ++fireSeq.current
-    setBusy('fire')
-    try {
-      const result = await setReportFire(report.id, next, accessToken)
-      if (seq !== fireSeq.current) return
-      onPatch({
-        firedByMe: result.fired,
-        fireCount: result.fireCount,
-        ...(typeof result.recentFireCount === 'number' ? { recentFireCount: result.recentFireCount } : {}),
-        ...(typeof result.hot === 'boolean' ? { hot: result.hot } : {}),
-      })
-    } catch (error) {
-      if (seq !== fireSeq.current) return
-      onPatch(before)
-      if (isCommunityApiMissing(error, true)) {
-        setMissing(true)
-        return
-      }
-      toast.show({ message: communityErrorMessage(error, '공감하지 못했어요. 잠시 뒤 다시 해 주세요.'), tone: 'warning' })
-    } finally {
-      if (seq === fireSeq.current) setBusy(null)
-    }
+    void fireMutation.mutate({ reportId: report.id, next, token: accessToken })
   }
 
-  const handleFollow = async () => {
+  /** 관심 제보. 낙관적으로 먼저 바꾸고, 실패하면 되돌린다. */
+  const followMutation = useMutation(
+    ({ reportId, next, token }: { reportId: number; next: boolean; token: string }) => setReportFollow(reportId, next, token),
+    {
+      onMutate: ({ next }) => {
+        onPatch({ followedByMe: next })
+        setBusy('follow')
+      },
+      onSuccess: (result) => {
+        onPatch({ followedByMe: result.followed })
+        toast.show({
+          message: result.followed
+            ? '관심 제보로 등록했어요. 시작할 때, 끝나기 30분 전, 새 댓글이 달리면 알려 드려요'
+            : '관심 제보에서 뺐어요',
+        })
+      },
+      onError: (error, { next }) => {
+        onPatch({ followedByMe: !next })
+        if (isCommunityApiMissing(error, true)) {
+          setMissing(true)
+          return
+        }
+        toast.show({ message: communityErrorMessage(error, '관심 제보를 바꾸지 못했어요.'), tone: 'warning' })
+      },
+      onSettled: () => setBusy(null),
+    },
+  )
+
+  const handleFollow = () => {
     if (!accessToken) {
       promptLogin('관심 제보로 등록하려면 로그인해 주세요.', logout)
       return
@@ -97,26 +138,7 @@ export default function ReportActionRow({ report, onPatch }: ReportActionRowProp
     const next = !followed
     if (next) haptics.switchOn()
     else haptics.tapLight()
-    onPatch({ followedByMe: next })
-    setBusy('follow')
-    try {
-      const result = await setReportFollow(report.id, next, accessToken)
-      onPatch({ followedByMe: result.followed })
-      toast.show({
-        message: result.followed
-          ? '관심 제보로 등록했어요. 시작할 때, 끝나기 30분 전, 새 댓글이 달리면 알려 드려요'
-          : '관심 제보에서 뺐어요',
-      })
-    } catch (error) {
-      onPatch({ followedByMe: !next })
-      if (isCommunityApiMissing(error, true)) {
-        setMissing(true)
-        return
-      }
-      toast.show({ message: communityErrorMessage(error, '관심 제보를 바꾸지 못했어요.'), tone: 'warning' })
-    } finally {
-      setBusy(null)
-    }
+    void followMutation.mutate({ reportId: report.id, next, token: accessToken })
   }
 
   const handleShare = async () => {

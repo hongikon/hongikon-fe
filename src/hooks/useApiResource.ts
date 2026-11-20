@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react'
+import { useCallback, useEffect, useRef, useState, type DependencyList, type SetStateAction } from 'react'
 import { AppState } from 'react-native'
 import {
   ApiError,
@@ -8,6 +8,7 @@ import {
   isRetryableError,
 } from '../apis/client'
 import { useReconnect } from '../lib/connectivity'
+import { queryBus, type QueryKey } from '../utils/query/invalidation'
 
 /** 포그라운드 복귀 때마다 부르면 앱 전환이 잦은 사용자에게 요청이 몰려, 이 간격 안에서는 건너뛴다. */
 const FOREGROUND_REFETCH_MIN_INTERVAL_MS = 30_000
@@ -27,6 +28,11 @@ interface UseApiResourceOptions {
   refetchOnForeground?: boolean
   /** 오류 문구를 고를 수 없을 때(알 수 없는 예외) 보여줄 문구. */
   fallbackMessage?: string
+  /**
+   * 이 조회의 키. 주면 저장(`useMutation` 의 `invalidates`, `invalidateQueries`)이 이 키를 무효화할 때 다시 부른다.
+   * 없으면 무효화 알림을 받지 않는다(예전 동작).
+   */
+  queryKey?: QueryKey
 }
 
 export interface ApiResource<T> {
@@ -53,6 +59,13 @@ export interface ApiResource<T> {
    * 계속 화면을 가리지 않게 하려는 것이다.
    */
   clearError: () => void
+  /**
+   * 받아 둔 값을 화면에서 바로 고친다(낙관적 반영·저장 결과 반영). 서버에 보내지 않는다.
+   * 다음에 새로 받으면 서버 값으로 바뀐다.
+   */
+  setData: (next: SetStateAction<T | undefined>) => void
+  /** `retry` 와 같다 — 저장 뒤 다시 받을 때 읽기 쉽게 붙인 이름. */
+  refetch: () => void
 }
 
 /**
@@ -71,6 +84,7 @@ export function useApiResource<T>(
     refetchOnReconnect = true,
     refetchOnForeground = true,
     fallbackMessage = '정보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+    queryKey,
   } = options
 
   const [data, setData] = useState<T | undefined>(undefined)
@@ -160,6 +174,12 @@ export function useApiResource<T>(
     return () => subscription.remove()
   }, [enabled, refetchOnForeground, run])
 
+  // 저장이 이 키를 무효화하면 다시 부른다(꺼져 있으면 받지 않는다).
+  useEffect(() => {
+    if (!enabled || !queryKey) return
+    return queryBus.subscribe(queryKey, run)
+  }, [enabled, queryKey, run])
+
   const clearError = useCallback(() => setError(null), [])
 
   const hasError = error !== null
@@ -174,5 +194,19 @@ export function useApiResource<T>(
     canRetry: hasError && (isRetryableError(error) || !(error instanceof ApiError)),
     retry: run,
     clearError,
+    setData,
+    refetch: run,
   }
+}
+
+/**
+ * 키가 있는 조회. `useApiResource` 에 `queryKey` 를 붙인 것과 같다 — 저장(`useMutation`)이 같은 키를 무효화하면 다시 부른다.
+ */
+export function useQuery<T>(
+  queryKey: QueryKey,
+  fetcher: (signal: AbortSignal) => Promise<T>,
+  deps: DependencyList,
+  options: Omit<UseApiResourceOptions, 'queryKey'> = {},
+): ApiResource<T> {
+  return useApiResource(fetcher, deps, { ...options, queryKey })
 }

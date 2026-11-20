@@ -6,6 +6,7 @@ import {
   type PickedReportImage,
 } from '../../apis/reports'
 import type { ReportListItem } from '../../types'
+import { formatFloor } from '../floors'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 export const PLACE_MAX_LENGTH = 60
@@ -15,9 +16,9 @@ export const MAX_FLOOR = 30
 /** 사진 한 칸: 지금 붙은 사진(서버 번호 index) 또는 새로 고른 사진. */
 export type PhotoItem = { kind: 'existing'; index: number; url: string } | { kind: 'new'; picked: PickedReportImage }
 
-/** 층 표시: 지상 3층 = '3F', 지하 1층 = 'B1'. */
+/** 층 표시: 지상 3층 = '3F', 지하 1층 = 'B1', 로비층(0, 홍문관 R동) = 'L'. */
 export function formatEditFloor(floor: number): string {
-  return floor < 0 ? `B${-floor}` : `${floor}F`
+  return formatFloor(floor)
 }
 
 /** 층 −/+ 한 칸(0층은 없다: B1 ↔ 1F). */

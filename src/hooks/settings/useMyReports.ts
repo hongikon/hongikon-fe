@@ -7,6 +7,8 @@ import { mergeReportPages, resolveDisplayStatus } from '../../utils/myReports'
 import { confirmAction } from '../../utils/dialog'
 import { deleteConfirmMessage } from '../../utils/settings/myReports'
 import type { useToast } from '../../components/common/Toast'
+import { useMutation } from '../useMutation'
+import { QUERY_KEYS } from '../../constants/queryKeys'
 
 export type MyReportsLoadState =
   | { kind: 'loading' }
@@ -104,6 +106,37 @@ export function useMyReports({ visible, toast, onChanged }: Options) {
     void load(pageRef.current + 1, 'more')
   }
 
+  /** 지우기는 서버가 확인한 뒤 목록에서 뺀다(검토 중이면 409 로 거절되는 일이 잦아 먼저 빼면 깜빡인다). */
+  const deleteMutation = useMutation(
+    ({ reportId, token }: { reportId: number; token: string }) => deleteReport(reportId, token),
+    {
+      onMutate: ({ reportId }) => setDeletingIds((prev) => new Set(prev).add(reportId)),
+      onSuccess: (_result, { reportId }) => {
+        setItems((prev) => prev.filter((r) => r.id !== reportId))
+        toast.show({ message: '제보를 삭제했어요' })
+        onChangedRef.current?.()
+      },
+      onError: (error) => {
+        const conflict = error instanceof ApiError && error.status === 409
+        toast.show({
+          message: conflict
+            ? '신고로 검토 중인 제보는 운영진 검토가 끝난 뒤에 지울 수 있어요.'
+            : getErrorMessage(error, '삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
+          tone: 'warning',
+        })
+      },
+      onSettled: ({ reportId }) =>
+        setDeletingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(reportId)
+          return next
+        }),
+      // 지운 제보가 지도에 남아 있지 않게 지도 제보 레이어도 다시 받는다.
+      invalidates: [QUERY_KEYS.reports],
+    },
+  )
+  const sendDelete = deleteMutation.mutate
+
   const handleDelete = useCallback((report: MyReport) => {
     const status = resolveDisplayStatus(report)
     confirmAction({
@@ -114,30 +147,10 @@ export function useMyReports({ visible, toast, onChanged }: Options) {
       onConfirm: async () => {
         const token = tokenRef.current
         if (!token) return
-        setDeletingIds((prev) => new Set(prev).add(report.id))
-        try {
-          await deleteReport(report.id, token)
-          setItems((prev) => prev.filter((r) => r.id !== report.id))
-          toast.show({ message: '제보를 삭제했어요' })
-          onChangedRef.current?.()
-        } catch (error) {
-          const conflict = error instanceof ApiError && error.status === 409
-          toast.show({
-            message: conflict
-              ? '신고로 검토 중인 제보는 운영진 검토가 끝난 뒤에 지울 수 있어요.'
-              : getErrorMessage(error, '삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
-            tone: 'warning',
-          })
-        } finally {
-          setDeletingIds((prev) => {
-            const next = new Set(prev)
-            next.delete(report.id)
-            return next
-          })
-        }
+        await sendDelete({ reportId: report.id, token })
       },
     })
-  }, [toast])
+  }, [sendDelete])
 
   return { items, state, refreshing, loadingMore, deletingIds, load, handleEndReached, handleDelete }
 }

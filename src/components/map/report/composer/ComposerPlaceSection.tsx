@@ -31,6 +31,10 @@ interface ComposerPlaceSectionProps {
   floorItems: WheelItem<number>[]
   floorNumber: number
   onChangeFloorNumber: (value: number) => void
+  /** 로비층(L)이 있는 건물의 층 목록(위층 → 아래층). 있으면 지상/지하 다이얼 대신 이 목록 하나로 고른다. */
+  buildingFloorItems: WheelItem<number>[] | null
+  buildingFloor: number
+  onChangeBuildingFloor: (value: number) => void
 }
 
 /**
@@ -50,6 +54,9 @@ export default function ComposerPlaceSection({
   floorItems,
   floorNumber,
   onChangeFloorNumber,
+  buildingFloorItems,
+  buildingFloor,
+  onChangeBuildingFloor,
 }: ComposerPlaceSectionProps) {
   return (
     <>
@@ -90,24 +97,38 @@ export default function ComposerPlaceSection({
       ) : (
         <>
           <Text style={composerStyles.sectionLabel}>몇 층인가요?</Text>
-          <View style={styles.floorWheels}>
-            <WheelPicker
-              items={FLOOR_LEVEL_ITEMS}
-              value={basement}
-              onChange={onChangeBasement}
-              visibleRows={3}
-              accessibilityLabel="지상 또는 지하"
-              style={styles.floorWheel}
-            />
-            <WheelPicker
-              items={floorItems}
-              value={floorNumber}
-              onChange={onChangeFloorNumber}
-              visibleRows={3}
-              accessibilityLabel={basement ? '지하 몇 층' : '몇 층'}
-              style={styles.floorWheel}
-            />
-          </View>
+          {buildingFloorItems ? (
+            // 홍문관 R동처럼 L층이 있는 건물: 길찾기 층 다이얼과 같은 그 건물의 층 목록.
+            <View style={styles.floorWheels}>
+              <WheelPicker
+                items={buildingFloorItems}
+                value={buildingFloor}
+                onChange={onChangeBuildingFloor}
+                visibleRows={3}
+                accessibilityLabel="몇 층"
+                style={styles.floorWheel}
+              />
+            </View>
+          ) : (
+            <View style={styles.floorWheels}>
+              <WheelPicker
+                items={FLOOR_LEVEL_ITEMS}
+                value={basement}
+                onChange={onChangeBasement}
+                visibleRows={3}
+                accessibilityLabel="지상 또는 지하"
+                style={styles.floorWheel}
+              />
+              <WheelPicker
+                items={floorItems}
+                value={floorNumber}
+                onChange={onChangeFloorNumber}
+                visibleRows={3}
+                accessibilityLabel={basement ? '지하 몇 층' : '몇 층'}
+                style={styles.floorWheel}
+              />
+            </View>
+          )}
         </>
       )}
     </>

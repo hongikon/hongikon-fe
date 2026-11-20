@@ -280,6 +280,8 @@ export default function MapScreen() {
     onCommitEndpoint: () => {
       setSelectedBuilding(null);
       setSelectedFacilityBuilding(null);
+      // 제보 시트의 출발·도착으로 정했을 때도 시트를 닫아 경로가 가려지지 않게 한다(11-20 사용자).
+      setSelectedReport(null);
     },
   });
   const {
@@ -312,6 +314,9 @@ export default function MapScreen() {
     handleSetTo,
     handleFacilitySetFrom,
     handleFacilitySetTo,
+    reportSheetBuilding,
+    handleReportSetFrom,
+    handleReportSetTo,
     handleCloseBuilding,
     handleClosePartner,
     handleCloseReportSheet,
@@ -322,6 +327,7 @@ export default function MapScreen() {
     facilityKind,
     selectedBuilding,
     selectedFacilityBuilding,
+    selectedReport,
     searchedFacility,
     fromBuilding,
     fromMyLocation,
@@ -780,7 +786,16 @@ export default function MapScreen() {
           {selectedReport && (
             // 제보마다 새로 그린다. 시트 안의 🔥·관심·신고 요청 중 상태와 늦게 온 응답·오류·메뉴가 다른 제보로
             // 넘어가지 않게(예전엔 마커만 바꿔 누르면 앞 제보의 응답이 뒤 제보 시트에 덮였다).
-            <ReportSheet key={selectedReport.id} report={selectedReport} onClose={handleCloseReportSheet} onChanged={refetchReports} />
+            <ReportSheet
+              key={selectedReport.id}
+              report={selectedReport}
+              onClose={handleCloseReportSheet}
+              onChanged={refetchReports}
+              routeBuildingName={ROUTE_FINDING_ENABLED ? (reportSheetBuilding?.name ?? null) : null}
+              onSetFrom={ROUTE_FINDING_ENABLED && reportSheetBuilding ? handleReportSetFrom : undefined}
+              onSetTo={ROUTE_FINDING_ENABLED && reportSheetBuilding ? handleReportSetTo : undefined}
+              routeNext={routeNext}
+            />
           )}
         </MapSheets>
       </View>

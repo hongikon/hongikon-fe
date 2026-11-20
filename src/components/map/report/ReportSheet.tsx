@@ -30,6 +30,7 @@ import type { ReportListItem } from '../../../types'
 import { useMapData } from '../../../lib/mapData'
 import { RADIUS } from '../../../constants/spacing'
 import SheetScrollBody from '../SheetScrollBody'
+import RouteEndpointButtons, { type RouteNext } from '../route/RouteEndpointButtons'
 import { usePhotoTileSizes } from '../../../hooks/map/report/usePhotoTileSizes'
 import { useReportOwnerActions } from '../../../hooks/map/report/useReportOwnerActions'
 import { useReportModeration } from '../../../hooks/map/report/useReportModeration'
@@ -44,6 +45,14 @@ interface ReportSheetProps {
   onClose: () => void
   /** 내 제보를 고치거나 지운 뒤 — 지도 목록을 다시 받는다. */
   onChanged?: () => void
+  /**
+   * 이 제보로 가는 길찾기에 쓸 건물 이름(제보가 있는 캠퍼스 건물). 출발·도착 버튼과 함께 넘기면
+   * 제목 아래에 버튼 줄을 그린다. 길찾기가 꺼져 있거나 캠퍼스 밖·건물 밖 제보면 넘기지 않는다.
+   */
+  routeBuildingName?: string | null
+  onSetFrom?: () => void
+  onSetTo?: () => void
+  routeNext?: RouteNext
 }
 
 /**
@@ -54,7 +63,7 @@ interface ReportSheetProps {
  *
  * 내 제보 메뉴(⋯)는 `useReportOwnerActions`, 남의 제보 숨기기·신고(⋮)는 `useReportModeration` 이 맡는다.
  */
-function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProps) {
+function ReportSheet({ report: reportProp, onClose, onChanged, routeBuildingName = null, onSetFrom, onSetTo, routeNext = null }: ReportSheetProps) {
   // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
   const { buildings } = useMapData()
   // 화면 맨 아래에 붙는 시트라 홈 인디케이터 높이만큼 안쪽 아래 여백을 더 준다.
@@ -177,6 +186,12 @@ function ReportSheet({ report: reportProp, onClose, onChanged }: ReportSheetProp
       {phase.text && phase.kind !== 'upcoming' ? (
         <View style={[styles.phase, phase.kind === 'ending' && styles.phaseEnding, phase.kind === 'later' && styles.phaseLater]}>
           <Text style={[styles.phaseText, phase.kind === 'ending' && styles.phaseTextEnding]}>{phase.text}</Text>
+        </View>
+      ) : null}
+      {/* 이 제보로 가는 길찾기. 캠퍼스 건물 안 제보만(캠퍼스 밖·건물 밖 제보는 부르는 쪽이 넘기지 않는다, 11-20). */}
+      {routeBuildingName && onSetFrom && onSetTo ? (
+        <View style={styles.route}>
+          <RouteEndpointButtons name={routeBuildingName} routeNext={routeNext} onSetFrom={onSetFrom} onSetTo={onSetTo} />
         </View>
       ) : null}
       </View>
@@ -347,7 +362,7 @@ const styles = StyleSheet.create({
   },
   freshness: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
   // 오늘 운영 상태(11-08). 운영 중은 옅은 남색, 곧 종료는 남색으로 채움, 운영 시간 밖은 테두리만.
-  phase: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: COLORS.primarySoft },
+  phase: { alignSelf: 'flex-start', marginTop: 6, marginBottom: 8, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: COLORS.primarySoft },
   phaseEnding: { backgroundColor: COLORS.primary },
   phaseLater: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.chipBorder },
   phaseText: { fontFamily: FONTS.semibold, fontSize: 12, color: COLORS.primary },
@@ -355,6 +370,7 @@ const styles = StyleSheet.create({
   placeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
   placeText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   errorBox: { marginTop: 8 },
+  route: { marginTop: 10 },
 })
 
 
