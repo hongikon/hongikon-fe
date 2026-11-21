@@ -3,7 +3,6 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
 import { useWheelPicker } from '../../hooks/common/useWheelPicker'
-
 import { WHEEL_ITEM_HEIGHT, IS_WEB, DEFAULT_VISIBLE_ROWS, type WheelItem } from '../../utils/common/wheelPicker'
 
 export interface WheelPickerProps<T> {

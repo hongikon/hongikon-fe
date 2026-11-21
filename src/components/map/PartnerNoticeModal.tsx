@@ -1,14 +1,11 @@
-import { useSyncExternalStore } from 'react'
-import { useIsFocused } from '@react-navigation/native'
 import { View, Text, StyleSheet, Modal } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import Button from '../common/Button'
 import { RADIUS } from '../../constants/spacing'
-import { setNoticeState, subscribe, noticeState, STORAGE_KEY } from '../../utils/map/partnerNoticeModal'
+import { usePartnerNoticeModal } from '../../hooks/map/usePartnerNoticeModal'
 
 export const PARTNER_NOTICE_TEXT =
   '해당 정보들은 각 단과대의 instagram을 참고하여 제작하였으며 잘못된 제휴 내용은 업데이트를 위해 제보 부탁드립니다.'
@@ -19,15 +16,7 @@ export const PARTNER_NOTICE_TEXT =
  * 같은 문구는 설정 탭 공지사항에도 실려 있어, 언제든 다시 확인할 수 있다.
  */
 export default function PartnerNoticeModal() {
-  const visible = useSyncExternalStore(subscribe, () => noticeState, () => noticeState) === 'pending'
-  // 지도 탭이 화면에 보일 때만 띄운다. 소식 상세 링크로 바로 들어오면 지도 탭이 뒤에서 먼저 그려지는데,
-  // 그때 이 창이 소식 화면 위를 덮었다.
-  const focused = useIsFocused()
-
-  const handleConfirm = () => {
-    setNoticeState('seen')
-    AsyncStorage.setItem(STORAGE_KEY, '1').catch(() => {})
-  }
+  const { visible, focused, handleConfirm } = usePartnerNoticeModal()
 
   if (!visible || !focused) return null
 

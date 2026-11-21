@@ -5,6 +5,7 @@ import { COLORS } from '../../constants/colors'
 import { notify } from '../../utils/common/dialog'
 import { RADIUS } from '../../constants/spacing'
 import { useUpdateBanner } from '../../hooks/common/useUpdateBanner'
+
 /** 하단 탭 바(FloatingTabBar: 알약 60 + 아래 여백) 위로 띄운다. 예전에는 탭 바와 같은 높이라 겹쳐 가렸다(11-03). */
 const TAB_BAR_PILL_HEIGHT = 60
 
