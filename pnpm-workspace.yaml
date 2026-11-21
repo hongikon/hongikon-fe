@@ -1,2 +1,22 @@
 patchedDependencies:
   expo-notifications@57.0.24: patches/expo-notifications@57.0.24.patch
+
+# Security overrides (Dependabot alerts, 2026-11-21) — transitive deps only.
+# Drop an entry once its parent package ships the patched range itself.
+overrides:
+  node-forge: ^1.4.3
+  shell-quote: ^1.11.0
+  source-map-js: ^1.2.2
+  compression: ^1.8.2
+  brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
+  svgo@>=3.0.0 <3.3.5: ^3.3.5
+  '@xmldom/xmldom@>=0.7.0 <0.8.15': ^0.8.15
+  '@xmldom/xmldom@>=0.9.0-beta.1 <0.9.12': ^0.9.12
+  baseline-browser-mapping: ^2.11.0
+  browserslist: ^4.28.7
+  nanoid@<3.3.18: ^3.3.18
+  postcss: ^8.5.23
+  glob@>=9.0.0 <14.0.2: ^14.0.2
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1
+  zod@<4.6.6: ^4.6.6
