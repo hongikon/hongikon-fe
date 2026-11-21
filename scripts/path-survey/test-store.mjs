@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 
 register('../ask/ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const S = await import('../../src/utils/pathSurveyStore.ts')
+const S = await import('../../src/utils/pathSurvey/store.ts')
 
 /** localStorage 흉내. */
 function memoryStorage(init = {}) {

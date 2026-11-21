@@ -1,5 +1,5 @@
-import type { PathEdge, PathWaypoint } from '../types'
-import type { SurveyModule } from './pathSurveyStore'
+import type { PathEdge, PathWaypoint } from '../../types'
+import type { SurveyModule } from './store'
 
 /**
  * 경로망 현장 조사 초안 — 개발용 `/dev/path-survey` 화면이 쓴다. SurveyDraft 는 v1 저장 모양이다(hongikon.pathSurvey.v1).

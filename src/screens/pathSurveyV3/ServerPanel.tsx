@@ -1,22 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
-import {
-  activateGraphVersion,
-  getGraphVersion,
-  listGraphVersions,
-  previewGraphRoutes,
-  routeGraphErrorMessage,
-  type GraphReport,
-  type GraphVersion,
-  type GraphVersionList,
-} from '../../apis/routeGraph'
+import { activateGraphVersion, getGraphVersion, previewGraphRoutes, routeGraphErrorMessage, type GraphReport, type GraphVersion } from '../../apis/routeGraph'
 import type { RouteAlternative } from '../../apis/routes'
 import type { Building } from '../../types'
 import { buildFloorOptions } from '../../utils/common/floors'
 import { shortBuildingName } from '../../utils/map/route/routeLabels'
 import { applyConfirmText, serverTimeText as timeText, visibleVersions, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
-import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'
+import { Btn, Row, Section, ui } from '../pathSurvey/ui'
+import { confirmAction } from '../../utils/pathSurvey/ui'
 import { Chip } from './controls'
+import { useServerPanel } from '../../hooks/pathSurveyV3/useServerPanel'
+import { minutes } from '../../utils/pathSurveyV3/serverPanel'
 
 /** Route test colors: chosen version = orange solid, production = navy dashed. */
 export const PREVIEW_VERSION_COLOR = '#E8590C'
@@ -29,8 +22,6 @@ export interface RouteLine {
 }
 
 const STATUS_TEXT = { DRAFT: '초안', ACTIVE: '운영 중', ARCHIVED: '지난 버전' } as const
-
-const minutes = (seconds: number) => `${(seconds / 60).toFixed(1)}분`
 
 function ReportView({ report }: { report: GraphReport }) {
   const { checks, comparison } = report
@@ -138,32 +129,7 @@ export default function ServerPanel({
   /** Changes after every upload, also from the save button, so the list is fetched again. */
   tick: number
 }) {
-  const [list, setList] = useState<GraphVersionList | null>(null)
-  const [busy, setBusy] = useState('')
-  const [name, setName] = useState('')
-  const [shown, setShown] = useState<GraphVersion | null>(null)
-  const [testId, setTestId] = useState<number | null>(null)
-  // Screen state only: the list opens folded every time.
-  const [expanded, setExpanded] = useState(false)
-  const [from, setFrom] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
-  const [to, setTo] = useState<{ building: Building | null; floor: number | null }>({ building: null, floor: null })
-  const [preview, setPreview] = useState<{ version: RouteAlternative[]; active: RouteAlternative[] } | null>(null)
-
-  const refresh = useCallback(async () => {
-    if (!devKey) return
-    try {
-      setList(await listGraphVersions(devKey))
-    } catch (e) {
-      onNotice(routeGraphErrorMessage(e, '서버 경로망 목록을 받지 못했어요.'))
-    }
-  }, [devKey, onNotice])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh, tick])
-
-  // Leaving the tab clears the test lines.
-  useEffect(() => () => onRouteLines([]), [onRouteLines])
+  const { list, busy, setBusy, name, setName, shown, setShown, testId, setTestId, expanded, setExpanded, from, setFrom, to, setTo, preview, setPreview, refresh } = useServerPanel({ devKey, onRouteLines, onNotice, tick })
 
   if (!devKey) {
     return (

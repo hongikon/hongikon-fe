@@ -1,5 +1,5 @@
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { STAIRS_COLOR, type SurveyEdgeKind, type SurveyModule } from '../../utils/pathSurveyStore'
+import { STAIRS_COLOR, type SurveyEdgeKind, type SurveyModule } from '../../utils/pathSurvey/store'
 import { Btn, Section, shortId, ui } from './ui'
 
 /**

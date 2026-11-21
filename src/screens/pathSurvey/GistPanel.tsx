@@ -1,13 +1,8 @@
-import { useState } from 'react'
 import { Text, TextInput, View } from 'react-native'
-import type { GistMeta, GistSettings } from '../../utils/pathSurveySync'
+import type { GistMeta, GistSettings } from '../../utils/pathSurvey/sync'
 import { Btn, Section, ui } from './ui'
-
-const timeText = (t: number | null) => {
-  if (!t) return '아직 없음'
-  const d = new Date(t)
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+import { useGistPanel } from '../../hooks/pathSurvey/useGistPanel'
+import { timeText } from '../../utils/pathSurvey/gistPanel'
 
 /**
  * Gist 동기화 설정·상태. 토큰과 gist id 는 이 기기 localStorage 에만 둔다(화면이 저장).
@@ -36,10 +31,7 @@ export default function GistPanel({
   onPush: () => void
   onPull: () => void
 }) {
-  const [token, setToken] = useState(settings.token)
-  const [gistId, setGistId] = useState(settings.gistId)
-  const changed = token.trim() !== settings.token || gistId.trim() !== settings.gistId
-  const configured = !!settings.token
+  const { token, setToken, gistId, setGistId, changed, configured } = useGistPanel({ settings })
 
   return (
     <View style={{ gap: 16 }}>

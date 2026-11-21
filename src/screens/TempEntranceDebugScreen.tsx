@@ -1,11 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
-import type { NaverMapViewHandle } from '../components/map/NaverMapView'
-import { buildMapHTML } from '../utils/map/mapHtml'
-import { useMapData } from '../lib/mapData'
+import { useTempEntranceDebugScreen } from '../hooks/debug/useTempEntranceDebugScreen'
 
-interface Props {
+export interface Props {
   /**
    * 'dots' = 지점+연결선+경로 전부(/temp/dots). 'paths' = 실내 경로 선만(/temp/path).
    * 'nodes' = 실외 보행 경로망 전체(/temp/path-nodes).
@@ -23,11 +20,7 @@ interface Props {
  * 쓰지 않으므로 이 화면은 웹에서만 의미가 있다.
  */
 export default function TempEntranceDebugScreen({ mode }: Props) {
-  const webViewRef = useRef<NaverMapViewHandle>(null)
-  const [authFailed, setAuthFailed] = useState(false)
-  // 디버그 오버레이는 건물(출입구)을 문서에 구워 넣는다. 지도 데이터를 받은 뒤에 지도를 띄운다.
-  const { buildings, data, status, reload } = useMapData()
-  const mapHTML = useMemo(() => buildMapHTML(buildings, mode), [buildings, mode])
+  const { webViewRef, authFailed, setAuthFailed, data, status, reload, mapHTML } = useTempEntranceDebugScreen({ mode })
 
   return (
     <View style={styles.container}>

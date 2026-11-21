@@ -1,19 +1,19 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
-import * as Notifications from 'expo-notifications'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
 import { FONTS } from '../constants/typography'
-import { PUSH_NOTIFICATION_SAMPLES, type PushNotificationSample } from '../constants/pushNotificationSamples'
+import { PUSH_NOTIFICATION_SAMPLES } from '../constants/pushNotificationSamples'
 import { getBackendStatus } from '../apis/status'
 import { API_BASE_URL } from '../apis/client'
 import { useApiResource } from '../hooks/query/useApiResource'
 import RetryableError from '../components/common/RetryableError'
 import type { RootStackParamList } from '../navigation/RootNavigator'
+import { fireTestNotification } from '../utils/common/appStatusScreen'
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
 
@@ -28,25 +28,6 @@ const EXECUTION_ENVIRONMENT_LABEL: Record<string, string> = {
   standalone: '독립 실행형 빌드',
   storeClient: 'Expo Go',
   bare: 'Bare 워크플로우',
-}
-
-/**
- * 서버 푸시와 같은 제목·본문·`data` payload로 기기에 바로 로컬 알림을 띄운다. 탭하면 실제 원격 푸시를
- * 탭했을 때와 똑같이 라우팅된다(`usePushNotifications`의 리스너가 처리). 웹에서 카드 모양만 보려면
- * `/temp/notifications`(`TempNotificationPreviewScreen`)를 쓴다.
- */
-async function fireTestNotification(sample: PushNotificationSample) {
-  const { status } = await Notifications.requestPermissionsAsync()
-  if (status !== 'granted') {
-    Alert.alert('알림 권한 필요', '기기 설정에서 알림 권한을 허용해 주세요.')
-    return
-  }
-
-  await Notifications.scheduleNotificationAsync({
-    content: { title: sample.title, body: sample.body, data: sample.data },
-    // Android: 서버 푸시처럼 채널을 지정한다(관리자 표본은 "관리자 알림" 채널 — 관리자 계정에서만 만들어진다).
-    trigger: Platform.OS === 'android' && sample.channelId ? { channelId: sample.channelId } : null,
-  })
 }
 
 export default function AppStatusScreen() {

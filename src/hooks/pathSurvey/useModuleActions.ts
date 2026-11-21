@@ -1,7 +1,7 @@
 import { useState, type MutableRefObject } from 'react'
 import type { Tab } from '../../screens/pathSurvey/screenModel'
-import { confirmAction } from '../../screens/pathSurvey/ui'
-import { createModule, deleteModule, findModule, finishModule, reopenModule, updateModule, type SurveyStore } from '../../utils/pathSurveyStore'
+import { confirmAction } from '../../utils/pathSurvey/ui'
+import { createModule, deleteModule, findModule, finishModule, reopenModule, updateModule, type SurveyStore } from '../../utils/pathSurvey/store'
 
 interface ModuleOptions {
   storeRef: MutableRefObject<SurveyStore>

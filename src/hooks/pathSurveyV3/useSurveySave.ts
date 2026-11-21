@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { fetchGraphBackup, listGraphVersions, routeGraphErrorMessage, uploadGraphVersion, type GraphVersion, type GraphVersionSummary } from '../../apis/routeGraph'
-import { confirmAction } from '../../screens/pathSurvey/ui'
-import { clockText } from '../../screens/pathSurveyV3/SaveBar'
+import { confirmAction } from '../../utils/pathSurvey/ui'
+import { clockText } from '../../utils/pathSurveyV3/saveBar'
 import {
   afterAdopt,
   afterUpload,

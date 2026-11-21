@@ -112,7 +112,7 @@ test('간선 잇기 모드에서는 다른 모듈의 일반 지점도 누를 수
 })
 
 test('지도 주입 코드의 색이 저장소 상수(NODE_KIND_INFO, STAIRS_COLOR)와 같다', async () => {
-  const S = await import('../../src/utils/pathSurveyStore.ts')
+  const S = await import('../../src/utils/pathSurvey/store.ts')
   for (const [kind, info] of Object.entries(S.NODE_KIND_INFO)) {
     const color = kind === 'stairs' ? 'STAIRS' : `'${info.color}'`
     assert.ok(setup.includes(`if (kind === '${kind}') return ${color};`), kind)
