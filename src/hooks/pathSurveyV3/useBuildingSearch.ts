@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { searchBuildings, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 
-/** BuildingSearch 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of BuildingSearch. The screen file only renders. */
 export function useBuildingSearch({ index, exclude = [] }: Pick<{
   index: BuildingIndex
   onPick: (code: string) => void

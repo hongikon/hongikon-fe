@@ -4,7 +4,7 @@ import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import type { ChangeCounts } from '../../utils/pathSurveyV3/changes'
 import { type MapFilter } from '../../screens/pathSurveyV3/mapState'
 
-/** FilterBar 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of FilterBar. The screen file only renders. */
 export function useFilterBar({ nodes, index, filter, onChange }: Pick<{
   nodes: readonly SurveyNodeV3[]
   index: BuildingIndex

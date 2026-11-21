@@ -5,7 +5,7 @@ import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import { serializeBackup, snapshotFileName } from '../../utils/pathSurveyV3/transfer'
 import { confirmAction } from '../../utils/pathSurvey/ui'
 
-/** SnapshotPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of SnapshotPanel. The screen file only renders. */
 export function useSnapshotPanel({ store, tick, onChanged, onNotice }: Pick<{
   store: StoreV3
   tick: number

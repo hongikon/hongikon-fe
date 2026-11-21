@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { floorOptions, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import { filterFloors, floorsOutsideBuilding, parseFloorInput } from '../../utils/pathSurveyV3/levels'
 
-/** FloorPicker 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of FloorPicker. The screen file only renders. */
 export function useFloorPicker({ index, building, selected, used = [], single = false, onToggle, onSetMany }: Pick<{
   index: BuildingIndex
   building: string

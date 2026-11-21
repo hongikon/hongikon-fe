@@ -3,7 +3,7 @@ import { buildingsContaining, type BuildingIndex } from '../../utils/pathSurveyV
 import type { BulkChange } from '../../utils/pathSurveyV3/store'
 import type { LevelRef, NodeType, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 
-/** MultiPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of MultiPanel. The screen file only renders. */
 export function useMultiPanel({ nodes, index, selected }: Pick<{
   nodes: readonly SurveyNodeV3[]
   index: BuildingIndex

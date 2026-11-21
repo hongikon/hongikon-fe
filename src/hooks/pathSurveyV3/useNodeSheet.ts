@@ -6,7 +6,7 @@ import { nodesNear } from '../../utils/pathSurveyV3/levels'
 import { findNode, setEntranceLabel, setNodeLevels, setNodeScope, type StoreV3 } from '../../utils/pathSurveyV3/store'
 import { sameLevel, type LevelRef, type SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 
-/** NodeSheet 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of NodeSheet. The screen file only renders. */
 export function useNodeSheet({ node, store, candidates, onChange }: Pick<{
   node: SurveyNodeV3
   store: StoreV3

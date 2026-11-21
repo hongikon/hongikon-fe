@@ -6,7 +6,7 @@ import { confirmAction } from '../../utils/pathSurvey/ui'
 import { clockText } from '../../utils/pathSurveyV3/saveBar'
 import { failureText } from '../../utils/pathSurveyV3/gistPanel'
 
-/** GistPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of GistPanel. The screen file only renders. */
 export function useGistPanel({ store, onPulled, onPushed, onNotice }: Pick<{
   store: StoreV3
   /** Replaces the data after asking. false when the person said no. */

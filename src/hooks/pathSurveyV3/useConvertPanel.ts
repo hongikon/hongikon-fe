@@ -5,7 +5,7 @@ import { isManualItemOpen, parseV2Text, readV2FromStorage, type ConvertReport, t
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import { floorText } from '../../utils/pathSurveyV3/convertPanel'
 
-/** ConvertPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of ConvertPanel. The screen file only renders. */
 export function useConvertPanel({ store, index, report, multi, onConvert, onNotice }: Pick<{
   store: StoreV3
   index: BuildingIndex

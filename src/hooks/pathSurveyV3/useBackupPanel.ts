@@ -4,7 +4,7 @@ import { type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import { backupFileName, buildGraphExport, labelsNotOnServer, parseBackupText, serializeBackup, type BackupVia } from '../../utils/pathSurveyV3/transfer'
 
-/** BackupPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of BackupPanel. The screen file only renders. */
 export function useBackupPanel({ store, index, tolerance, onBackedUp, onRestore, onNotice }: Pick<{
   store: StoreV3
   index: BuildingIndex

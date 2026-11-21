@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import { updateWorkContext, type WorkContext } from '../../utils/pathSurveyV3/transfer'
 
-/** ContextBar 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of ContextBar. The screen file only renders. */
 export function useContextBar({ index, context, closeSignal, onChange }: Pick<{
   index: BuildingIndex
   context: WorkContext

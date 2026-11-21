@@ -20,6 +20,8 @@ const files = [
   ...walk(join(root, 'src/screens/pathSurveyV3')),
   ...walk(join(root, 'src/hooks/pathSurveyV3')),
   join(root, 'src/screens/DevPathSurveyV3Screen.tsx'),
+  join(root, 'src/hooks/debug/useDevPathSurveyV3Screen.ts'),
+  join(root, 'src/utils/debug/devPathSurveyV3Screen.ts'),
   join(root, 'scripts/path-survey/v3-helpers.mjs'),
   ...readdirSync(join(root, 'scripts/path-survey'))
     .filter((name) => name.startsWith('test-v3-'))

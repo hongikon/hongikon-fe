@@ -9,7 +9,7 @@ import { applyConfirmText } from '../../utils/pathSurveyV3/serverSave'
 import { confirmAction } from '../../utils/pathSurvey/ui'
 import { PREVIEW_ACTIVE_COLOR, PREVIEW_VERSION_COLOR } from '../../utils/pathSurveyV3/serverPanel'
 
-/** ServerPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of ServerPanel. The screen file only renders. */
 export function useServerPanel({ devKey, onRouteLines, onNotice, tick, onLoadVersion, onUpload }: Pick<{
   devKey: string | undefined
   buildings: readonly Building[]

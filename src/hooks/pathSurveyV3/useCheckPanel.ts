@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { type CheckIssue, type CheckResult } from '../../utils/pathSurveyV3/check'
 
-/** CheckPanel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of CheckPanel. The screen file only renders. */
 export function useCheckPanel({ check }: Pick<{
   check: CheckResult
   tolerance: number

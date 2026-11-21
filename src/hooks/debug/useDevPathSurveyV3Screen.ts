@@ -21,7 +21,7 @@ import { clockText } from '../../utils/pathSurveyV3/saveBar'
 import { CORRUPT_TEXT, type Tab } from '../../screens/pathSurveyV3/screenModel'
 import { initialLoad, LEGACY_OFF } from '../../utils/debug/devPathSurveyV3Screen'
 
-/** DevPathSurveyV3Screen 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+/** State, effects and handlers of DevPathSurveyV3Screen. The screen file only renders. */
 export function useDevPathSurveyV3Screen({ devKey }: Pick<{ devKey?: string }, 'devKey'>) {
   const webViewRef = useRef<NaverMapViewHandle>(null)
   const panelRef = useRef<ScrollView>(null)
