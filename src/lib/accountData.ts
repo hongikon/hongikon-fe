@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { restoreSettings, toSignedOutSettings, type StoredSettings } from '../utils/settingsStorage'
+import { restoreSettings, toSignedOutSettings, type StoredSettings } from '../utils/settings/storage'
 import { clearTermsConsent } from './termsConsent'
 import { deleteAccountHiddenAuthors } from './hiddenAuthors'
 import { wipeNearbyAlerts } from './nearbyPartners/background'

@@ -7,7 +7,7 @@ import { formatFreshness, reportImageUrls } from '../../../utils/reports'
 import PhotoCarousel from '../../common/PhotoCarousel'
 import OfficialBadge from '../../common/OfficialBadge'
 import ReportActionRow, { type ReportCommunityPatch } from './ReportActionRow'
-import { reportAuthorName } from '../../../utils/nickname'
+import { reportAuthorName } from '../../../utils/settings/nickname'
 import type { ReportListItem } from '../../../types'
 import { RADIUS } from '../../../constants/spacing'
 

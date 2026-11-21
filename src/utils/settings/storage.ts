@@ -1,4 +1,4 @@
-import type { CategoryKey } from '../constants/colors'
+import type { CategoryKey } from '../../constants/colors'
 import { normalizeBoardState } from './boardSubscriptionSync'
 import { DEFAULT_REPORT_ALERT_PREFS } from './reportAlertSync'
 

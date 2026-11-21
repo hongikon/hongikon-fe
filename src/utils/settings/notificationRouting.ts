@@ -1,5 +1,5 @@
-import type { PushNotificationData } from '../types'
-import type { AdminIntent } from '../lib/adminIntents'
+import type { PushNotificationData } from '../../types'
+import type { AdminIntent } from '../../lib/adminIntents'
 
 /**
  * 알림을 탭했을 때 갈 곳. 화면 이동 자체는 `lib/pushNotifications.ts` 가 한다 — 이 파일은 React·Expo 에

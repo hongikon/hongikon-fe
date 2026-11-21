@@ -1,4 +1,4 @@
-import type { LoginProvider } from '../../contexts/AuthContext'
+import type { LoginProvider } from '../auth/authContext'
 import type { MyProfile } from '../../apis/users'
 
 /**

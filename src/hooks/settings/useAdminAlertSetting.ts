@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, isCancelledError } from '../apis/client'
-import { getNotificationSettings, patchNotificationSettings } from '../apis/notificationSettings'
-import { useAuth } from '../contexts/AuthContext'
-import { useToast } from '../components/common/Toast'
-import { useMutation } from './query/useMutation'
-import { createLatestGate } from '../utils/query/latestGate'
+import { ApiError, isCancelledError } from '../../apis/client'
+import { getNotificationSettings, patchNotificationSettings } from '../../apis/notificationSettings'
+import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
+import { useMutation } from '../query/useMutation'
+import { createLatestGate } from '../../utils/query/latestGate'
 
 /**
  * 설정 > 알림의 "관리자 알림" 스위치(관리자 계정에만 보인다). 서버 `notification-settings.adminAlerts` 를 그대로 쓴다 —

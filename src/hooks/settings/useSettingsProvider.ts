@@ -1,0 +1,613 @@
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { AppState } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { CategoryKey } from '../../constants/colors'
+import { useAuth } from '../../contexts/AuthContext'
+import { getNotificationCategories, setNotificationCategoryEnabled } from '../../apis/notifications'
+import { deleteMySubscription, getMySubscriptions, isSubscriptionApiMissing, putMySubscription } from '../../apis/subscriptions'
+import { getNotificationSettings, isNotificationSettingsApiMissing, patchNotificationSettings } from '../../apis/notificationSettings'
+import { isRetryableError } from '../../apis/client'
+import { useReconnect } from '../../lib/connectivity'
+import { createBoardSyncQueue, diffBoardSubscriptions, mergeBoardSubscriptions, type BoardTarget } from '../../utils/settings/boardSubscriptionSync'
+import { resolveReportAlertPrefs, sameReportAlertPrefs, type ReportAlertPrefs } from '../../utils/settings/reportAlertSync'
+import { DEFAULT_SETTINGS, restoreSettings, toSignedOutSettings, type Settings, type StoredSettings } from '../../utils/settings/storage'
+import { SETTINGS_STORAGE_KEY as STORAGE_KEY, getAccountPushEnabled, saveAccountPushEnabled } from '../../lib/accountData'
+import { getUserIdFromToken } from '../../lib/jwt'
+import { toReportAlertPrefs, toggleInList, KNOWN_BOARD_IDS } from '../../utils/settings/settingsContext'
+
+/** SettingsProvider 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+export function useSettingsProvider() {
+  const { accessToken } = useAuth()
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (!raw) return
+
+        const { settings: restored, changed } = restoreSettings(JSON.parse(raw) as StoredSettings)
+        setSettings(restored)
+
+        // 옮긴 값이 있으면 다음 실행부터 다시 계산하지 않도록 바로 저장한다.
+        if (changed) return AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
+      })
+      .catch((error) => {
+        if (__DEV__) console.warn('설정을 불러오지 못해 기본값으로 시작합니다:', error)
+      })
+      .finally(() => setLoaded(true))
+  }, [])
+
+  /**
+   * 저장은 상태가 바뀐 뒤에 따라간다.
+   *
+   * 예전에는 setSettings 의 갱신 함수 안에서 저장까지 했는데 갱신 함수는 순수해야 한다.
+   * React 가 같은 갱신 함수를 두 번 부르면 저장도 두 번 일어나고 setState 도 겹쳐 돌았다.
+   */
+  useEffect(() => {
+    if (!loaded) return
+
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings)).catch((error) => {
+      if (__DEV__) console.warn('설정을 저장하지 못했습니다:', error)
+    })
+  }, [settings, loaded])
+
+  /**
+   * 서버에 아직 반영하지 못한 알림 분야 변경(분야 → 켜짐 여부).
+   * 끊긴 상태에서 토글해도 화면은 바로 바뀌고, 연결이 돌아오면 마지막 값만 다시 보낸다.
+   * PATCH 가 절댓값을 덮어쓰는 요청이라 늦게 다시 보내도 결과가 어긋나지 않는다.
+   */
+  const pendingCategoryChangesRef = useRef(new Map<CategoryKey, boolean>())
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  // 서버에서 분야를 끝내 못 받아온 상태. 재연결·포그라운드 때 다시 부를지 판단한다.
+  const [categoryFetchFailed, setCategoryFetchFailed] = useState(false)
+  const [categoryFetchNonce, setCategoryFetchNonce] = useState(0)
+
+  const isLoggedIn = Boolean(accessToken)
+
+  // 로그아웃·계정 전환 시 이전 계정의 미전송 변경을 다른 계정에 보내면 안 된다.
+  // 토큰 재발급(accessToken 값만 바뀜)에는 비우지 않는다 — 계정이 바뀌려면 반드시 로그아웃(null)을 거친다.
+  // 서버 값을 받아오는 아래 효과보다 먼저 돌아야 해서 앞에 둔다.
+  useEffect(() => {
+    pendingCategoryChangesRef.current.clear()
+    setCategoryFetchFailed(false)
+  }, [isLoggedIn])
+
+  /**
+   * 로그인하면 서버에 저장된 알림 분야가 기기 로컬 값을 덮는다 — 로그인한
+   * 사용자에게는 서버가 진실 소스다. 게스트(accessToken 없음)는 계속 로컬 값만 쓴다.
+   * 단, 아직 서버에 못 보낸 변경은 사용자가 방금 고른 값이라 서버 값보다 우선한다.
+   */
+  useEffect(() => {
+    if (!loaded || !accessToken) return
+
+    let cancelled = false
+    getNotificationCategories(accessToken)
+      .then((categories) => {
+        if (cancelled) return
+        setCategoryFetchFailed(false)
+        const pending = pendingCategoryChangesRef.current
+        const enabled = categories
+          .filter((c) => pending.get(c.category) ?? c.enabled)
+          .map((c) => c.category)
+        setSettings((prev) => ({ ...prev, alertCategories: enabled }))
+      })
+      .catch((error) => {
+        if (cancelled) return
+        // 로컬 값으로 계속 쓸 수 있어 화면을 막지 않는다. 연결이 돌아오면 다시 받아온다.
+        setCategoryFetchFailed(isRetryableError(error))
+        if (__DEV__) console.warn('알림 분야 설정을 불러오지 못했습니다:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [accessToken, loaded, categoryFetchNonce])
+
+  /** 못 보낸 변경을 다시 보낸다. 보내는 사이 사용자가 또 바꿨으면 그 값은 남겨 둔다. */
+  const flushPendingCategoryChanges = useCallback(() => {
+    if (!accessToken) return
+    const pending = pendingCategoryChangesRef.current
+    pending.forEach((enabled, category) => {
+      setNotificationCategoryEnabled(category, enabled, accessToken)
+        .then(() => {
+          if (pending.get(category) === enabled) pending.delete(category)
+        })
+        .catch((error) => {
+          if (!isRetryableError(error)) pending.delete(category)
+          if (__DEV__) console.warn('알림 분야 설정을 다시 저장하지 못했습니다:', error)
+        })
+    })
+  }, [accessToken])
+
+  /**
+   * 게시판 구독 서버 동기화(`/users/me/subscriptions`). 새 소식 푸시는 서버 구독 목록과
+   * 게시판별 `alertEnabled` 로 대상을 정해서, 로컬에만 두면 아무도 받지 못한다.
+   *
+   * - 화면은 바로 바꾸고(낙관적 반영) 서버 저장은 게시판별 대기열이 뒤따른다(`createBoardSyncQueue`).
+   * - 서버에 구독 API 가 아직 없으면(404, 또는 재발급 뒤에도 401 — `isSubscriptionApiMissing`) 이번 실행 동안은 로컬에만 두고 다시 보내지 않는다.
+   *   다음 실행 때 로그인 합치기가 로컬 상태로 차이를 다시 계산하므로 잃는 값은 없다.
+   * - 게스트는 로컬에만 둔다. 로그인하면 합집합으로 합쳐 서버로 올라간다.
+   */
+  const accessTokenRef = useRef(accessToken)
+  accessTokenRef.current = accessToken
+  const boardQueueRef = useRef<ReturnType<typeof createBoardSyncQueue> | null>(null)
+  if (!boardQueueRef.current) {
+    boardQueueRef.current = createBoardSyncQueue({
+      send: async (sourceId, target) => {
+        const token = accessTokenRef.current
+        // 로그아웃 직후라면 보낼 계정이 없다. 대기열은 로그아웃 때 비워진다.
+        if (!token) return
+        if (target === null) await deleteMySubscription(sourceId, token)
+        else await putMySubscription(sourceId, target, token)
+      },
+      classify: (error) =>
+        isSubscriptionApiMissing(error) ? 'unsupported' : isRetryableError(error) ? 'retry' : 'drop',
+      onUnsupported: () => {
+        if (__DEV__) console.warn('서버에 게시판 구독 API 가 아직 없어(404·재발급 뒤 401) 이번 실행 동안 구독은 기기에만 저장합니다.')
+      },
+      log: (message, error) => {
+        if (__DEV__ && !isSubscriptionApiMissing(error)) console.warn(message, error)
+      },
+    })
+  }
+  const boardQueue = boardQueueRef.current
+  /** 로그인 직후 합치기가 연결 문제로 실패했는지. 그러면 재연결·포그라운드 때 다시 한다. */
+  const [boardSyncFailed, setBoardSyncFailed] = useState(false)
+  const [boardSyncNonce, setBoardSyncNonce] = useState(0)
+  /** 이번 로그인에서 서버 구독과 합치기를 한 번이라도 끝냈는지(성공·실패 무관). 로그아웃하면 되돌린다. */
+  const [boardMergeSettled, setBoardMergeSettled] = useState(false)
+
+  // 로그아웃하면 이전 계정의 미전송 변경을 버린다. 토큰 재발급(accessToken 값만 바뀜)에는 비우지 않는다 —
+  // 계정이 바뀌려면 반드시 로그아웃(null)을 거친다.
+  useEffect(() => {
+    if (isLoggedIn) return
+    boardQueue.clear()
+    setBoardSyncFailed(false)
+    setBoardMergeSettled(false)
+  }, [isLoggedIn, boardQueue])
+
+  /** 로그인 상태일 때만 서버로 보낸다. 게스트 변경은 로그인 때 합치기가 한꺼번에 올린다. */
+  const queueBoardChange = useCallback(
+    (sourceId: string, target: BoardTarget) => {
+      if (accessTokenRef.current) boardQueue.set(sourceId, target)
+    },
+    [boardQueue],
+  )
+
+  /**
+   * 로그인하면 서버 구독과 로컬 구독을 합친다(기준은 `mergeBoardSubscriptions` 주석).
+   * 합친 뒤 서버와 다른 게시판만 대기열에 넣어 보낸다.
+   */
+  useEffect(() => {
+    if (!loaded || !isLoggedIn || boardQueue.isUnsupported()) return
+
+    let cancelled = false
+    ;(async () => {
+      const token = accessTokenRef.current
+      if (!token) return
+      const server = await getMySubscriptions(token)
+      if (cancelled) return
+
+      const pending = boardQueue.pending
+      const toState = (s: Settings) => ({ subscribed: s.subscribedDepts, muted: s.mutedDepts })
+      const merged = mergeBoardSubscriptions(toState(settingsRef.current), server, KNOWN_BOARD_IDS, pending)
+      setSettings((prev) => {
+        // 기다리는 사이 사용자가 바꾼 값(prev)을 기준으로 다시 합친다.
+        const next = mergeBoardSubscriptions(toState(prev), server, KNOWN_BOARD_IDS, pending)
+        return { ...prev, subscribedDepts: next.subscribed, mutedDepts: next.muted }
+      })
+      setBoardSyncFailed(false)
+      setBoardMergeSettled(true)
+
+      const { toPut, toDelete } = diffBoardSubscriptions(merged, server, KNOWN_BOARD_IDS)
+      // 이미 대기 중인 게시판은 그 값이 더 최신이라 건드리지 않는다.
+      for (const [sourceId, alertEnabled] of toPut) {
+        if (!pending.has(sourceId)) boardQueue.set(sourceId, alertEnabled)
+      }
+      for (const sourceId of toDelete) {
+        if (!pending.has(sourceId)) boardQueue.set(sourceId, null)
+      }
+    })().catch((error) => {
+      if (cancelled) return
+      // 못 합쳤어도 기다리는 화면(학과 고르기)을 붙잡지 않는다 — 로컬 값으로 판단한다.
+      setBoardMergeSettled(true)
+      if (isSubscriptionApiMissing(error)) {
+        boardQueue.markUnsupported()
+        return
+      }
+      // 로컬 값으로 계속 쓸 수 있어 화면을 막지 않는다. 연결이 돌아오면 다시 합친다.
+      setBoardSyncFailed(isRetryableError(error))
+      if (__DEV__) console.warn('게시판 구독을 서버와 맞추지 못했습니다:', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, loaded, boardSyncNonce, boardQueue])
+
+  /**
+   * 제보 알림 설정 서버 동기화(`/users/me/notification-settings`). 제보 푸시는 서버 값으로 대상을 정한다.
+   * 맞추는 규칙은 `utils/reportAlertSync.ts` — 서버에 못 올린 변경(`reportAlertsDirty`)이 있으면 로컬이 이긴다.
+   * 서버에 API 가 아직 없으면(404) 이번 실행 동안은 기기에만 두고, dirty 로 남겨 배포 뒤 다음 실행 때 올린다.
+   */
+  const reportAlertsUnsupportedRef = useRef(false)
+  const reportAlertsSeqRef = useRef(0)
+  const [reportAlertsFetchFailed, setReportAlertsFetchFailed] = useState(false)
+  const [reportAlertsFetchNonce, setReportAlertsFetchNonce] = useState(0)
+
+  /** 이 값을 서버로 올린다. 보내는 사이 또 바뀌었으면 dirty 를 그대로 둔다(마지막 요청이 다시 지운다). */
+  const pushReportAlerts = useCallback((prefs: ReportAlertPrefs) => {
+    const token = accessTokenRef.current
+    if (!token || reportAlertsUnsupportedRef.current) return
+    const seq = ++reportAlertsSeqRef.current
+    patchNotificationSettings(prefs, token)
+      .then(() => {
+        if (seq !== reportAlertsSeqRef.current) return
+        setSettings((prev) =>
+          sameReportAlertPrefs(toReportAlertPrefs(prev), prefs) ? { ...prev, reportAlertsDirty: false } : prev,
+        )
+      })
+      .catch((error) => {
+        if (isNotificationSettingsApiMissing(error)) {
+          reportAlertsUnsupportedRef.current = true
+          if (__DEV__) console.warn('서버에 제보 알림 설정 API 가 아직 없어(404) 이번 실행 동안 기기에만 저장합니다.')
+          return
+        }
+        // 연결 문제면 dirty 로 남겨 두었다가 재연결·포그라운드 때 다시 보낸다.
+        if (isRetryableError(error)) return
+        // 서버가 거절한 변경은 다시 보내도 같으니 서버 값을 다시 받아 화면을 맞춘다.
+        if (seq === reportAlertsSeqRef.current) {
+          setSettings((prev) => ({ ...prev, reportAlertsDirty: false }))
+          setReportAlertsFetchNonce((n) => n + 1)
+        }
+        if (__DEV__) console.warn('제보 알림 설정이 거절되었습니다:', error)
+      })
+  }, [])
+
+  /**
+   * 로그아웃·탈퇴·로그인 만료(로그인 → 비로그인 전환)면 이전 계정의 설정을 화면·기기에서 지운다(`toSignedOutSettings`).
+   * 같은 기기를 쓰는 다음 사람에게 이전 계정의 구독·알림 설정이 보이면 안 된다. 기기 저장값은 `AuthContext` 가
+   * 토큰보다 먼저 지우고(`clearAccountLinkedSettings`), 여기서는 메모리 값과 서버 전송 대기열을 비운다.
+   * 늦게 도착한 응답이 지운 값을 되살리지 않게 제보 알림 요청 번호도 올린다(구독·분야 요청은 위 효과들의 정리가 막는다).
+   *
+   * 처음부터 게스트인 실행에서는 지우지 않는다 — 게스트가 고른 구독은 로그인 때 계정 구독과 합쳐진다.
+   * 다시 로그인하면 로컬이 비어 있으니 아래 합치기 규칙대로 서버 값을 그대로 불러온다(서버 구독을 지우지 않는다).
+   */
+  const wasLoggedInRef = useRef(isLoggedIn)
+  useEffect(() => {
+    if (wasLoggedInRef.current && !isLoggedIn) {
+      reportAlertsSeqRef.current++
+      setReportAlertsFetchFailed(false)
+      boardQueue.clear()
+      pendingCategoryChangesRef.current.clear()
+      setSettings((prev) => toSignedOutSettings(prev))
+    }
+    wasLoggedInRef.current = isLoggedIn
+  }, [isLoggedIn, boardQueue])
+
+  /**
+   * '구독 소식 알림' 스위치의 계정별 값(`getAccountPushEnabled` 주석). 로그인하면 그 계정의 마지막 값을 되살리고,
+   * 로그인 중 바꾸면(토글·초기화) 그 계정 칸에 적는다. 로그아웃하면 위 효과가 게스트 기본값(켜짐)으로 돌리지만 계정 칸은
+   * 건드리지 않는다 — 적는 곳이 토글·초기화뿐이라 로그아웃·게스트 값이 계정 값을 덮지 않는다.
+   *
+   * 업데이트 직후 이미 로그인된 채 켠 실행: 그 계정 칸이 비어 있으면 지금 기기 값(`@hongik_settings` 에서 불러온 값)이 곧
+   * 그 계정의 값이라 그대로 칸에 옮겨 적는다(꺼 둔 사람이 업데이트로 다시 켜지지 않게). 로그아웃 뒤 새로 로그인한 계정은
+   * 칸이 비어 있으면 켜짐(이 기기에서 처음 보는 계정). 회원 번호를 못 읽는 토큰이면 계정별로 두지 않고 지금 값을 쓴다.
+   */
+  const accountId = useMemo(() => getUserIdFromToken(accessToken), [accessToken])
+  const accountIdRef = useRef(accountId)
+  accountIdRef.current = accountId
+  /** 앱을 켤 때부터 로그인돼 있던 계정. 로그아웃하면 지운다 — 그 뒤의 로그인은 "새로 로그인"이다. */
+  const launchAccountIdRef = useRef<number | null | undefined>(isLoggedIn ? accountId : undefined)
+  /** 스위치 값을 되살린 계정(회원 번호를 모르면 'unknown'). 로그인 상태가 아니면 null. */
+  const [pushPrefFor, setPushPrefFor] = useState<number | 'unknown' | null>(null)
+  /** 되살리는 사이 사용자가 스위치를 바꿨으면(그 값을 이미 계정 칸에 적었다) 늦게 읽은 값으로 덮지 않는다. */
+  const pushPrefTouchedRef = useRef(false)
+
+  useEffect(() => {
+    if (isLoggedIn) return
+    launchAccountIdRef.current = undefined
+    setPushPrefFor(null)
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!loaded || !isLoggedIn) return
+    if (accountId === null) {
+      setPushPrefFor('unknown')
+      return
+    }
+    if (pushPrefFor === accountId) return
+    let cancelled = false
+    pushPrefTouchedRef.current = false
+    void getAccountPushEnabled(accountId).then((stored) => {
+      if (cancelled) return
+      if (pushPrefTouchedRef.current) {
+        // 방금 사용자가 고른 값이 이긴다.
+      } else if (stored !== null) {
+        setSettings((prev) => (prev.subscriptionAlert === stored ? prev : { ...prev, subscriptionAlert: stored }))
+      } else if (launchAccountIdRef.current === accountId) {
+        // 업데이트 직후: 지금 기기 값을 이 계정 칸으로 옮긴다.
+        void saveAccountPushEnabled(accountId, settingsRef.current.subscriptionAlert)
+      } else {
+        setSettings((prev) => (prev.subscriptionAlert ? prev : { ...prev, subscriptionAlert: true }))
+      }
+      setPushPrefFor(accountId)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [loaded, isLoggedIn, accountId, pushPrefFor])
+
+  /** 로그인 중 스위치 값을 바꿨으면 이 계정 칸에도 적는다. 게스트(토큰 없음)·회원 번호를 모르는 토큰이면 적지 않는다. */
+  const rememberAccountPushPref = useCallback((enabled: boolean) => {
+    const id = accountIdRef.current
+    if (!accessTokenRef.current || id === null) return
+    pushPrefTouchedRef.current = true
+    void saveAccountPushEnabled(id, enabled)
+  }, [])
+
+  useEffect(() => {
+    if (!loaded || !isLoggedIn || reportAlertsUnsupportedRef.current) return
+
+    let cancelled = false
+    const token = accessTokenRef.current
+    if (!token) return
+    getNotificationSettings(token)
+      .then((server) => {
+        if (cancelled) return
+        setReportAlertsFetchFailed(false)
+        const current = settingsRef.current
+        const { toPatch } = resolveReportAlertPrefs(toReportAlertPrefs(current), server, current.reportAlertsDirty)
+        setSettings((prev) => {
+          const resolved = resolveReportAlertPrefs(toReportAlertPrefs(prev), server, prev.reportAlertsDirty)
+          return {
+            ...prev,
+            reportStatusAlert: resolved.next.reportStatus,
+            newReportAlert: resolved.next.newReports,
+            reportAlertsDirty: resolved.toPatch !== null,
+          }
+        })
+        if (toPatch) pushReportAlerts(toPatch)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        if (isNotificationSettingsApiMissing(error)) {
+          reportAlertsUnsupportedRef.current = true
+          return
+        }
+        setReportAlertsFetchFailed(isRetryableError(error))
+        if (__DEV__) console.warn('제보 알림 설정을 불러오지 못했습니다:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, loaded, reportAlertsFetchNonce, pushReportAlerts])
+
+  const recoverServerSync = useCallback(() => {
+    if (!accessToken) return
+    if (!reportAlertsUnsupportedRef.current) {
+      if (reportAlertsFetchFailed) setReportAlertsFetchNonce((n) => n + 1)
+      else if (settingsRef.current.reportAlertsDirty) pushReportAlerts(toReportAlertPrefs(settingsRef.current))
+    }
+    if (categoryFetchFailed) setCategoryFetchNonce((n) => n + 1)
+    if (pendingCategoryChangesRef.current.size > 0) flushPendingCategoryChanges()
+    if (boardQueue.isUnsupported()) return
+    if (boardSyncFailed) setBoardSyncNonce((n) => n + 1)
+    if (boardQueue.pending.size > 0) boardQueue.flush()
+  }, [
+    accessToken,
+    categoryFetchFailed,
+    flushPendingCategoryChanges,
+    boardSyncFailed,
+    boardQueue,
+    reportAlertsFetchFailed,
+    pushReportAlerts,
+  ])
+
+  useReconnect(recoverServerSync, Boolean(accessToken))
+
+  useEffect(() => {
+    if (!accessToken) return
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') recoverServerSync()
+    })
+    return () => subscription.remove()
+  }, [accessToken, recoverServerSync])
+
+  const toggleSubscriptionAlert = useCallback(() => {
+    // 갱신 함수 밖에서 다음 값을 정해 계정 칸에도 적는다(갱신 함수는 순수해야 한다 — 위 저장 효과 주석).
+    // 계정 값을 되살리기 전(로그인 직후 몇 ms)에 누르면 그 누름이 마지막 값이 된다 — 사용자가 방금 고른 값이라 맞다
+    // (`pushPrefTouchedRef`).
+    const next = !settingsRef.current.subscriptionAlert
+    setSettings((prev) => ({ ...prev, subscriptionAlert: next }))
+    rememberAccountPushPref(next)
+  }, [rememberAccountPushPref])
+
+  /** 알림 분야 하나를 화면(로컬 설정)에서 켜거나 끈다. */
+  const applyLocalCategory = useCallback((cat: CategoryKey, enabled: boolean) => {
+    setSettings((prev) => {
+      const without = prev.alertCategories.filter((c) => c !== cat)
+      return { ...prev, alertCategories: enabled ? [...without, cat] : without }
+    })
+  }, [])
+
+  /**
+   * 알림 분야 하나의 새 값을 서버로 보낸다(로그인 상태만). 토글과 설정 초기화가 같이 쓴다.
+   * 보내기 전 pending 에 적어 두어, 그 사이 서버 값을 다시 받아도(토큰 재발급 등) 이 값이 이긴다.
+   */
+  const syncAlertCategory = useCallback(
+    (cat: CategoryKey, nextEnabled: boolean) => {
+      const token = accessTokenRef.current
+      if (!token) return
+      const pending = pendingCategoryChangesRef.current
+      pending.set(cat, nextEnabled)
+      setNotificationCategoryEnabled(cat, nextEnabled, token)
+        .then(() => {
+          if (pending.get(cat) === nextEnabled) pending.delete(cat)
+        })
+        .catch((error) => {
+          // 연결 문제면 값을 남겨 두었다가 재연결 때 다시 보낸다.
+          if (isRetryableError(error)) {
+            if (__DEV__) console.warn('알림 분야 설정을 저장하지 못해 연결되면 다시 보냅니다:', error)
+            return
+          }
+          // 서버가 거절한 변경(권한·입력 오류)은 다시 보내도 같으니 화면을 서버 상태로 되돌린다.
+          if (pending.get(cat) === nextEnabled) {
+            pending.delete(cat)
+            applyLocalCategory(cat, !nextEnabled)
+          }
+          if (__DEV__) console.warn('알림 분야 설정이 거절되었습니다:', error)
+        })
+    },
+    [applyLocalCategory],
+  )
+
+  /**
+   * 화면은 바로 바꾸고(낙관적 반영) 서버 저장은 뒤따른다. 서버 호출은 setSettings 갱신 함수
+   * 밖에서 한다 — 갱신 함수는 순수해야 하고, React 가 두 번 부르면 요청도 두 번 나간다.
+   */
+  const toggleAlertCategory = useCallback(
+    (cat: CategoryKey) => {
+      const nextEnabled = !settingsRef.current.alertCategories.includes(cat)
+      applyLocalCategory(cat, nextEnabled)
+      syncAlertCategory(cat, nextEnabled)
+    },
+    [applyLocalCategory, syncAlertCategory],
+  )
+
+  /**
+   * 화면은 바로 바꾸고(낙관적 반영), 로그인 상태면 서버 구독도 뒤따라 맞춘다. 실패해도 화면은 막지 않는다.
+   * 새로 구독하면 알림은 켜진 채 시작하고, 해지하면 그 게시판의 알림 설정도 함께 지운다.
+   */
+  const toggleSubscribedDept = useCallback(
+    (id: string) => {
+      const nextSubscribed = !settingsRef.current.subscribedDepts.includes(id)
+      setSettings((prev) => ({
+        ...prev,
+        subscribedDepts: toggleInList(prev.subscribedDepts, id),
+        mutedDepts: prev.mutedDepts.filter((d) => d !== id),
+      }))
+      queueBoardChange(id, nextSubscribed ? true : null)
+    },
+    [queueBoardChange],
+  )
+
+  const toggleDeptAlert = useCallback(
+    (id: string) => {
+      const current = settingsRef.current
+      if (!current.subscribedDepts.includes(id)) return
+      const nextAlert = current.mutedDepts.includes(id)
+      setSettings((prev) => ({
+        ...prev,
+        mutedDepts: nextAlert ? prev.mutedDepts.filter((d) => d !== id) : [...prev.mutedDepts, id],
+      }))
+      queueBoardChange(id, nextAlert)
+    },
+    [queueBoardChange],
+  )
+
+  /** 화면은 바로 바꾸고 dirty 로 표시한 뒤, 로그인 상태면 서버로 올린다. 게스트 값은 로그인 때 올라간다. */
+  const setReportAlert = useCallback(
+    (key: 'reportStatusAlert' | 'newReportAlert', value: boolean) => {
+      const prefs = toReportAlertPrefs({ ...settingsRef.current, [key]: value })
+      setSettings((prev) => ({ ...prev, [key]: value, reportAlertsDirty: true }))
+      if (accessTokenRef.current) pushReportAlerts(prefs)
+    },
+    [pushReportAlerts],
+  )
+
+  const toggleReportStatusAlert = useCallback(
+    () => setReportAlert('reportStatusAlert', !settingsRef.current.reportStatusAlert),
+    [setReportAlert],
+  )
+
+  const toggleNewReportAlert = useCallback(
+    () => setReportAlert('newReportAlert', !settingsRef.current.newReportAlert),
+    [setReportAlert],
+  )
+
+  const isDeptAlertOn = useCallback(
+    (id: string) => settings.subscribedDepts.includes(id) && !settings.mutedDepts.includes(id),
+    [settings.subscribedDepts, settings.mutedDepts],
+  )
+
+  const toggleBookmark = useCallback((id: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      bookmarkedNews: toggleInList(prev.bookmarkedNews, id),
+    }))
+  }, [])
+
+  const isBookmarked = useCallback(
+    (id: string) => settings.bookmarkedNews.includes(id),
+    [settings.bookmarkedNews]
+  )
+
+  const resetSettings = useCallback(() => {
+    // 초기화하면 구독 게시판이 비므로 서버 구독도 해지한다 — 안 그러면 다음 로그인 때 합치기로 되살아난다.
+    for (const id of settingsRef.current.subscribedDepts) queueBoardChange(id, null)
+    // 로그인 상태면 제보 알림도 기본값으로 서버에 올린다(못 보내면 dirty 로 남겨 다시 보낸다).
+    // 게스트는 제보 알림을 바꿀 수 없고 계정 값을 덮으면 안 되니 dirty 로 두지 않는다 — 로그인하면 서버 값을 따른다.
+    const loggedIn = Boolean(accessTokenRef.current)
+    // 알림 분야는 기본값(전부 켜짐)으로 돌린다. 로그인 상태면 지금 꺼진 분야마다 켜기를 서버로 보낸다(토글과 같은 길) —
+    // 예전엔 화면에서만 켜고 서버엔 안 보내, 토큰 재발급·재실행 때 서버 값(꺼짐)이 다시 덮었다. 꺼짐으로 남아 있던
+    // 미전송 변경도 켜기로 덮인다. 남는 미전송 값은 모두 '켜짐'(초기화와 같은 값)이라 그대로 두어야 아직 못 보낸
+    // 켜기가 재연결 때 마저 나간다. 게스트는 서버에 보낼 게 없어 비운다.
+    const disabledCategories = DEFAULT_SETTINGS.alertCategories.filter(
+      (cat) => !settingsRef.current.alertCategories.includes(cat),
+    )
+    if (!loggedIn) pendingCategoryChangesRef.current.clear()
+    setSettings({ ...DEFAULT_SETTINGS, reportAlertsDirty: loggedIn })
+    // 알림 스위치도 기본값(켜짐)이 되니 로그인 상태면 이 계정 칸에도 적는다(게스트는 계정 칸을 건드리지 않는다).
+    rememberAccountPushPref(DEFAULT_SETTINGS.subscriptionAlert)
+    if (loggedIn) {
+      pushReportAlerts(toReportAlertPrefs(DEFAULT_SETTINGS))
+      for (const cat of disabledCategories) syncAlertCategory(cat, true)
+    }
+  }, [queueBoardChange, pushReportAlerts, syncAlertCategory, rememberAccountPushPref])
+
+  // 서버 구독 API 가 없다고 이미 판정됐으면 합치기 효과가 돌지 않으므로 기다릴 것도 없다.
+  const boardSubscriptionsReady = !isLoggedIn || boardMergeSettled || boardQueue.isUnsupported()
+  const pushPrefReady = !isLoggedIn || pushPrefFor === (accountId ?? 'unknown')
+
+  /**
+   * 값을 매 렌더 새 객체로 만들면 설정을 건드리지 않아도 모든 소비자가 다시 그려진다.
+   * 소식 목록처럼 항목이 많은 화면에서 특히 크게 걸린다.
+   */
+  const value = useMemo(
+    () => ({
+      settings,
+      toggleSubscriptionAlert,
+      toggleAlertCategory,
+      toggleSubscribedDept,
+      toggleDeptAlert,
+      isDeptAlertOn,
+      toggleReportStatusAlert,
+      toggleNewReportAlert,
+      toggleBookmark,
+      isBookmarked,
+      resetSettings,
+      boardSubscriptionsReady,
+      pushPrefReady,
+    }),
+    [
+      settings,
+      toggleSubscriptionAlert,
+      toggleAlertCategory,
+      toggleSubscribedDept,
+      toggleDeptAlert,
+      isDeptAlertOn,
+      toggleReportStatusAlert,
+      toggleNewReportAlert,
+      toggleBookmark,
+      isBookmarked,
+      resetSettings,
+      boardSubscriptionsReady,
+      pushPrefReady,
+    ]
+  )
+  return { loaded, value }
+}

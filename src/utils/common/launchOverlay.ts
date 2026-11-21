@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SETTINGS_STORAGE_KEY } from '../../lib/accountData'
-import { restoreSettings, type StoredSettings } from '../settingsStorage'
+import { restoreSettings, type StoredSettings } from '../settings/storage'
 import { prefetchNewsFirstPage } from '../../hooks/useNewsFeed'
 
 /**

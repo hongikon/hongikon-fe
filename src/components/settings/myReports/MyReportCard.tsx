@@ -8,7 +8,7 @@ import type { MyReport } from '../../../apis/myReports'
 import { formatDateTime } from '../../../admin/format'
 import { formatReportSchedule, isUpcomingReport } from '../../../utils/reportSchedule'
 import { reportImageUrls } from '../../../utils/reports'
-import { resolveDisplayStatus, STATUS_META } from '../../../utils/myReports'
+import { resolveDisplayStatus, STATUS_META } from '../../../utils/settings/myReportStatus'
 import { CATEGORY_BY_KEY, categoryLabel, placeLabel } from '../../../utils/settings/myReports'
 import { BODY_14, myReportsStyles as shared } from './styles'
 

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { useSettings } from '../contexts/SettingsContext'
-import type { CategoryKey } from '../constants/colors'
-import { SUBSCRIBABLE_ITEMS } from '../constants/news'
-import { useToast } from '../components/common/Toast'
-import * as haptics from '../lib/haptics'
+import { useSettings } from '../../contexts/SettingsContext'
+import type { CategoryKey } from '../../constants/colors'
+import { SUBSCRIBABLE_ITEMS } from '../../constants/news'
+import { useToast } from '../../components/common/Toast'
+import * as haptics from '../../lib/haptics'
 
 /** 게시판 id → 이름. 트리 맨 위 기관은 이름 자체가 id 라 못 찾으면 id 를 그대로 쓴다. */
 const NAME_BY_ID = new Map(SUBSCRIBABLE_ITEMS.map((item) => [item.id, item.name]))

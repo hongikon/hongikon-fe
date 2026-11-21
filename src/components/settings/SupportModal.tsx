@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,16 +6,14 @@ import { COLORS } from '../../constants/colors'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
 import { REPORT_FLAG_REASONS } from '../../constants/report'
-import { notify } from '../../utils/common/dialog'
 import { openSitePage } from '../../utils/common/openSitePage'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import ListRow from '../common/ListRow'
 import WithdrawConfirmDialog from './WithdrawConfirmDialog'
 import SectionTitle from '../common/SectionTitle'
-
-/** 처리방침·약관·hongikon.com/support/ 에 적힌 것과 같은 주소. */
-export const SUPPORT_EMAIL = 'hongikonsupport@gmail.com'
+import { useSupportModal } from '../../hooks/settings/useSupportModal'
+import { SUPPORT_EMAIL } from '../../utils/settings/supportModal'
 
 interface Faq {
   q: string
@@ -47,7 +44,7 @@ const FAQS: readonly Faq[] = [
   },
 ]
 
-interface SupportModalProps {
+export interface SupportModalProps {
   visible: boolean
   onClose: () => void
   /** '앱에서 문의 보내기' — 설정 화면이 이 창을 닫고 문의하기 창을 연다. */
@@ -63,15 +60,7 @@ interface SupportModalProps {
  * App Store 지원 URL(hongikon.com/support/)과 같은 내용을 앱 안에서도 볼 수 있게 한다.
  */
 export default function SupportModal({ visible, onClose, onOpenFeedback, isMember, onWithdraw }: SupportModalProps) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
-  // 이 창 위에 떠야 해서(iOS 는 모달 위에 다른 모달을 띄우려면 그 안에 있어야 한다) 탈퇴 확인 창을 여기 둔다.
-  const [withdrawVisible, setWithdrawVisible] = useState(false)
-
-  const openEmail = () => {
-    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('[홍익온] 문의')}`
-    // 메일 앱이 없는 기기(시뮬레이터, 메일 계정 없는 폰)에서는 주소를 보여 준다.
-    Linking.openURL(url).catch(() => notify('이메일로 문의하기', `${SUPPORT_EMAIL} 로 보내 주세요.`))
-  }
+  const { openIndex, setOpenIndex, withdrawVisible, setWithdrawVisible, openEmail } = useSupportModal()
 
   return (
     <SwipeBackModal visible={visible} onRequestClose={onClose}>

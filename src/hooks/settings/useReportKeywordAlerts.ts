@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, getErrorMessage, isCancelledError } from '../apis/client'
-import type { NewReportsScope } from '../apis/notificationSettings'
+import { ApiError, getErrorMessage, isCancelledError } from '../../apis/client'
+import type { NewReportsScope } from '../../apis/notificationSettings'
 import {
   createReportKeyword,
   deleteReportKeyword,
@@ -11,11 +11,11 @@ import {
   MAX_REPORT_KEYWORDS,
   patchNewReportsScope,
   type ReportKeyword,
-} from '../apis/reportKeywords'
-import { useToast } from '../components/common/Toast'
-import * as haptics from '../lib/haptics'
-import { useMutation } from './query/useMutation'
-import { createLatestGate } from '../utils/query/latestGate'
+} from '../../apis/reportKeywords'
+import { useToast } from '../../components/common/Toast'
+import * as haptics from '../../lib/haptics'
+import { useMutation } from '../query/useMutation'
+import { createLatestGate } from '../../utils/query/latestGate'
 
 /**
  * 설정 > 알림 > 캠퍼스 새 제보 알림 아래의 "받을 제보 범위"와 "제보 키워드". 서버에만 저장한다(게스트 불가).
