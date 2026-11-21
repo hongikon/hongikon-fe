@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 
 register('./ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const { matchAskFlow } = await import('../../src/utils/officeAsk.ts')
+const { matchAskFlow } = await import('../../src/utils/ask/officeAsk.ts')
 
 const dir = new URL('./cases/', import.meta.url)
 const filter = process.argv[2]

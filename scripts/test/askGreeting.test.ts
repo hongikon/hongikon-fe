@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { defaultGuides, guidesFromIds, isGreeting } from '../../src/utils/askGreeting'
+import { defaultGuides, guidesFromIds, isGreeting } from '../../src/utils/ask/askGreeting'
 
 test('짧은 인사만 인사로 본다', () => {
   for (const text of ['ㅎㅇ', 'ㅎㅇ~', '하이!', '안녕하세요', '안녕ㅋㅋ', 'Hi', 'hello!!', '헬로우', '반가워요 ㅎㅎ']) {

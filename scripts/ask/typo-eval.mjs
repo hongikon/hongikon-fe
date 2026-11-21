@@ -11,7 +11,7 @@ import { combineCharacter, disassembleCompleteCharacter } from 'es-hangul'
 
 register('./ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const { matchAskFlow } = await import('../../src/utils/officeAsk.ts')
+const { matchAskFlow } = await import('../../src/utils/ask/officeAsk.ts')
 
 const args = process.argv.slice(2)
 const opt = (name, fallback) => {

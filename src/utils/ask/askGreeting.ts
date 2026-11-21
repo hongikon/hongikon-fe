@@ -1,4 +1,4 @@
-import type { AskFlow } from '../constants/askAnswers'
+import type { AskFlow } from '../../constants/askAnswers'
 import { ALL_ASK_FLOWS, matchAskFlow } from './officeAsk'
 
 /**

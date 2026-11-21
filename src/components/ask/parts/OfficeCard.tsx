@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import { RADIUS } from "../../../constants/spacing";
-import type { OfficeAskResult } from "../../../utils/officeAsk";
+import type { OfficeAskResult } from "../../../utils/ask/officeAsk";
 import { LinkButton, PhoneRow } from "./ContactButtons";
 
 /** 담당 부서 카드 — 이름·위치, 업무별 전화, 부서 안내 한 줄, 학교 홈페이지 부서 안내 링크. */

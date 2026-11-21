@@ -1,20 +1,11 @@
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import { RADIUS } from "../../../constants/spacing";
 import type { AskLink } from "../../../constants/askAnswers";
-import * as haptics from "../../../lib/haptics";
 
-function call(phone: string) {
-  haptics.selection();
-  Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {});
-}
-
-function openLink(url: string) {
-  haptics.selection();
-  Linking.openURL(url).catch(() => {});
-}
+import { call, openLink } from '../../../utils/ask/parts/contactButtons'
 
 /** 담당 업무 한 줄과 전화 걸기 버튼. */
 export function PhoneRow({ label, phone }: { label: string; phone: string }) {

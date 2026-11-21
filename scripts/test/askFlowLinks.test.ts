@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { ALL_ASK_FLOWS } from '../../src/utils/officeAsk'
+import { ALL_ASK_FLOWS } from '../../src/utils/ask/officeAsk'
 
 // 되묻기 버튼·이어 묻기 버튼이 가리키는 단계가 모두 있어야 한다. 'flow/node' 는 다른 안내로 넘어가는 버튼(주제표 see).
 test('every option and follow-up points at an existing step', () => {

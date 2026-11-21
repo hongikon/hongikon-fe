@@ -1,6 +1,6 @@
-import { SUBSCRIBABLE_ITEMS, type SubscribableItem } from '../constants/news'
-import type { CategoryKey } from '../constants/colors'
-import { ALL_CATEGORIES } from './settings/storage'
+import { SUBSCRIBABLE_ITEMS, type SubscribableItem } from '../../constants/news'
+import type { CategoryKey } from '../../constants/colors'
+import { ALL_CATEGORIES } from '../settings/storage'
 
 /**
  * 물어보기로 앱 설정 바꾸기·화면 열기(11-09 운영진 — '화학공학과 구독해줘', '알림 설정 어떻게 해').

@@ -1,6 +1,6 @@
 import type { AskAnswerNode } from '../../constants/askAnswers'
 import type { AskRouteTurn } from '../../apis/ask'
-import { ALL_ASK_FLOWS, matchAskFlow } from '../officeAsk'
+import { ALL_ASK_FLOWS, matchAskFlow } from './officeAsk'
 import type { ChatMessage, ChatMessageOf, FlowStep, NewMessage } from './chatTypes'
 
 /** 이어 묻는 말로 보는 짧은 질문(공백 뺀 글자 수)과 말투. */
