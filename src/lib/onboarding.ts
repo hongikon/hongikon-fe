@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
 
 /**
  * 첫 실행 온보딩(소개 → 앱 접근권한 안내)을 마쳤는지, 그 뒤 "내 학과 고르기"가 남았는지 앱 전체가 함께 본다.
@@ -79,6 +80,12 @@ let initPromise: Promise<void> | null = null
 export function initOnboarding(hasSession: boolean): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
+      // 웹(hongikon.com)은 소개 화면과 학과 고르기 없이 바로 앱으로 들어간다(11-20 사용자). 학과는 소식·설정에서 고를 수 있다.
+      // 저장소에는 아무것도 남기지 않는다 — 웹 판단은 매번 이 줄에서 끝난다.
+      if (Platform.OS === 'web') {
+        setDeptPick(false)
+        return set('done')
+      }
       try {
         const [stored, deptPick] = await Promise.all([
           AsyncStorage.getItem(ONBOARDING_KEY),

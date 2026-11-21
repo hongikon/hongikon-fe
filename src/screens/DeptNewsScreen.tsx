@@ -1,20 +1,16 @@
 import { useCallback, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import type { CompositeScreenProps } from '@react-navigation/native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 import type { NewsStackParamList } from '../navigation/NewsStackNavigator'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
-import { FONTS } from '../constants/typography'
 import { SUBSCRIBABLE_ITEMS } from '../constants/news'
 import { useSettings } from '../contexts/SettingsContext'
-import { NEWS_PAGE_SIZE, useNewsFeed } from '../hooks/useNewsFeed'
-import { useApiResource } from '../hooks/useApiResource'
-import { getNews } from '../apis/news'
-import { backendSummaryToNewsItem } from '../utils/newsMapping'
+import { useNewsFeed } from '../hooks/useNewsFeed'
+import { useDeptPinnedNews } from '../hooks/news/useDeptPinnedNews'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
 import { NewsListSkeleton } from '../components/common/Skeleton'
@@ -46,20 +42,8 @@ export default function DeptNewsScreen({ route, navigation }: Props) {
   const newsFeed = useNewsFeed({ sourceIds, keyword, pinned: false })
   const isSearching = keyword.length > 0
 
-  // 고정 글 묶음은 곁다리라 로딩·오류 안내 없이 받으면 보여주고 못 받으면 조용히 숨긴다(아래 목록을 막지 않게).
-  const pinnedResource = useApiResource(
-    (signal) => getNews({ sourceIds: [deptId], pinned: true, size: NEWS_PAGE_SIZE, signal }),
-    [deptId],
-  )
-  const pinnedItems = useMemo(
-    () =>
-      (pinnedResource.data?.content ?? [])
-        .map(backendSummaryToNewsItem)
-        // `pinned` 를 모르는 예전 서버는 파라미터를 무시하고 일반 글을 돌려주므로, 고정 표시가 있는 글만 남긴다.
-        .filter((item) => item.pinned),
-    [pinnedResource.data],
-  )
-  const { retry: refetchPinned } = pinnedResource
+  // 상단 고정 글 묶음(hooks/news/useDeptPinnedNews).
+  const { items: pinnedItems, refetch: refetchPinned } = useDeptPinnedNews(deptId)
   const { refresh: refreshFeed } = newsFeed
   const handleRefresh = useCallback(() => {
     refreshFeed()

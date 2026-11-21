@@ -8,7 +8,7 @@ import { register } from 'node:module'
 register('../ask/ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
 
-const source = readFileSync(new URL('../../src/screens/DevPathSurveyScreen.tsx', import.meta.url), 'utf8')
+const source = readFileSync(new URL('../../src/screens/pathSurvey/mapBridge.ts', import.meta.url), 'utf8')
 const setup = vm.runInNewContext(source.match(/const SETUP_JS = (`[\s\S]*?`)/)[1])
 
 function drag({ x = 50, y = 7, active = true, mode = 'move', otherActive = false, kind = 'intersection', edgeKind } = {}) {

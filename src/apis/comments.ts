@@ -38,11 +38,6 @@ export function isCommentsApiKnownMissing(): boolean {
   return apiMissing
 }
 
-/** 테스트·스크린샷용. */
-export function resetCommentsApiMissing(): void {
-  apiMissing = false
-}
-
 export async function getReportComments(
   reportId: number,
   options: {

@@ -200,6 +200,22 @@
 "expect": "double-major"
 },
 {
+"q": "공학 공학 복수전공 최종이수학점",
+"expect": "double-major"
+},
+{
+"q": "공대끼리 복수전공하면 몇 학점 들어야 돼",
+"expect": "double-major"
+},
+{
+"q": "복수전공 인정받으려면 어떻게 해야 돼",
+"expect": "double-major"
+},
+{
+"q": "부전공 못 채우면 졸업 못해?",
+"expect": "minor"
+},
+{
 "q": "부전공 신청 자격",
 "expect": "minor"
 },

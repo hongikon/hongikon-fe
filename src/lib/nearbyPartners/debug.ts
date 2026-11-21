@@ -29,11 +29,6 @@ export function nearbyDevTools(): boolean {
   return SHOW_DEVELOPER_TOOLS || values.admin === true
 }
 
-/** 운영 앱의 관리자 계정인지(테스트 빌드는 관리자가 아니어도 이미 도구가 열려 있다). */
-export function nearbyAdminTools(): boolean {
-  return !SHOW_DEVELOPER_TOOLS && values.admin === true
-}
-
 const KEY = 'hongikon_nearby_debug_v1'
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000

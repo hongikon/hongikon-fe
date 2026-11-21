@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import {
 import { ApiError, getErrorMessage } from '../../apis/client'
 import { ToastViewport, useToast } from '../common/Toast'
 import * as haptics from '../../lib/haptics'
+import { useMutation } from '../../hooks/useMutation'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
@@ -51,7 +51,6 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
   const [keywords, setKeywords] = useState<KeywordSubscription[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const loadSeqRef = useRef(0)
 
   const load = useCallback(() => {
@@ -71,6 +70,28 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
     if (visible) load()
   }, [visible, load])
 
+  /** 키워드 추가는 서버가 만든 구독(id)을 받아 넣는다. */
+  const addMutation = useMutation(
+    ({ keyword, token }: { keyword: string; token: string }) => createKeywordSubscription(keyword, token),
+    {
+      onSuccess: (created) => {
+        setKeywords((prev) => [...(prev ?? []), created])
+        setInput('')
+        haptics.tapLight()
+        toast.show({ message: `'${created.keyword}' 소식을 알려드릴게요` })
+      },
+      onError: (error) => {
+        const message =
+          error instanceof ApiError && error.status === 409
+            ? '이미 등록한 키워드예요'
+            : getErrorMessage(error, '키워드를 추가하지 못했어요.')
+        toast.show({ message, tone: 'info' })
+      },
+    },
+  )
+
+  const submitting = addMutation.pending
+
   const trimmed = input.trim()
   const list = keywords ?? []
   const duplicate = list.some((k) => k.keyword.toLowerCase() === trimmed.toLowerCase())
@@ -79,38 +100,29 @@ export default function KeywordAlertsModal({ visible, onClose }: KeywordAlertsMo
 
   const handleAdd = async () => {
     if (!canAdd || !accessToken) return
-    setSubmitting(true)
-    try {
-      const created = await createKeywordSubscription(trimmed, accessToken)
-      setKeywords((prev) => [...(prev ?? []), created])
-      setInput('')
-      haptics.tapLight()
-      toast.show({ message: `'${created.keyword}' 소식을 알려드릴게요` })
-    } catch (error) {
-      const message =
-        error instanceof ApiError && error.status === 409
-          ? '이미 등록한 키워드예요'
-          : getErrorMessage(error, '키워드를 추가하지 못했어요.')
-      toast.show({ message, tone: 'info' })
-    } finally {
-      setSubmitting(false)
-    }
+    await addMutation.mutate({ keyword: trimmed, token: accessToken })
   }
+
+  /** 키워드 지우기. 화면에서 먼저 빼고, 실패하면 되돌린다(이미 지워진 404 는 지운 것으로 본다). */
+  const deleteMutation = useMutation(
+    ({ item, token }: { item: KeywordSubscription; token: string }) => deleteKeywordSubscription(item.id, token),
+    {
+      onMutate: ({ item }) => {
+        setKeywords((prev) => (prev ?? []).filter((k) => k.id !== item.id))
+        haptics.tapLight()
+      },
+      onSuccess: (_result, { item }) => toast.show({ message: `'${item.keyword}' 키워드를 지웠어요`, tone: 'info' }),
+      onError: (error, { item }) => {
+        if (error instanceof ApiError && error.status === 404) return
+        setKeywords((prev) => (prev ? [...prev, item].sort((a, b) => a.id - b.id) : prev))
+        toast.show({ message: getErrorMessage(error, '키워드를 지우지 못했어요.'), tone: 'info' })
+      },
+    },
+  )
 
   const handleDelete = async (item: KeywordSubscription) => {
     if (!accessToken) return
-    // 화면에서 먼저 빼고, 실패하면 되돌린다.
-    setKeywords((prev) => (prev ?? []).filter((k) => k.id !== item.id))
-    haptics.tapLight()
-    try {
-      await deleteKeywordSubscription(item.id, accessToken)
-      toast.show({ message: `'${item.keyword}' 키워드를 지웠어요`, tone: 'info' })
-    } catch (error) {
-      // 이미 지워진 구독(404)이면 지운 것으로 본다.
-      if (error instanceof ApiError && error.status === 404) return
-      setKeywords((prev) => (prev ? [...prev, item].sort((a, b) => a.id - b.id) : prev))
-      toast.show({ message: getErrorMessage(error, '키워드를 지우지 못했어요.'), tone: 'info' })
-    }
+    await deleteMutation.mutate({ item, token: accessToken })
   }
 
   const hint = duplicate

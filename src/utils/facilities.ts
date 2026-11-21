@@ -1,5 +1,4 @@
 import { facilityKindMeta } from '../constants/facilityKinds'
-import { formatFloor } from './floors'
 import type { Building, Facility, FacilityKind } from '../types'
 
 // 편의시설·건물 목록은 지도 데이터(`useMapData()`)에서 받아 인자로 넘긴다. 이 파일은 계산만 한다.
@@ -57,11 +56,6 @@ export function unresolvedFacilities(facilities: readonly Facility[], buildings:
   return facilities.filter((facility) => !byName.has(facility.buildingName))
 }
 
-function buildLabel(buildingName: string, floors: readonly number[]): string {
-  if (floors.length === 0) return buildingName
-  return `${buildingName} ${floors.map(formatFloor).join('·')}`
-}
-
 /**
  * 고른 종류의 편의시설을 건물 단위로 묶어 지도 핀 목록으로 만든다.
  * 건물을 못 찾은 항목은 좌표가 없어 뺀다(`unresolvedFacilities` 로 확인할 수 있다).
@@ -74,7 +68,6 @@ export function facilityMarkers(
   const byName = buildingsByName(buildings)
   const meta = kind === null ? null : facilityKindMeta(kind)
   const color = meta?.color ?? ''
-  const pinLabel = (name: string, floors: readonly number[]) => (meta?.hideFloorsInPin ? name : buildLabel(name, floors))
   const byBuilding = new Map<string, FacilityMarker>()
 
   const pinned: FacilityMarker[] = []
@@ -94,7 +87,9 @@ export function facilityMarkers(
         lng: facility.lng,
         floors,
         color,
-        label: pinLabel(building.name, floors),
+        // 핀 이름에는 건물 이름만 둔다. 층을 붙이면 "Q동 1F·2F·3F·9F" 처럼 길어지기만 하고(11-06 행정·지원, 11-18 모든 종류),
+        // 층은 핀을 눌러 여는 시트에 시설마다 나온다.
+        label: building.name,
       })
       return
     }
@@ -114,7 +109,7 @@ export function facilityMarkers(
       lng: building.lng,
       floors,
       color,
-      label: pinLabel(building.name, floors),
+      label: building.name,
     })
   })
 

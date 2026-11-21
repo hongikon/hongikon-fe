@@ -1,425 +1,124 @@
-import { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-  ActivityIndicator,
-  Pressable,
-  Animated,
-  BackHandler,
-  Platform,
-  AppState,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useCallback, useRef, useMemo } from "react";
+import { View, StyleSheet } from "react-native";
 import NaverMapView from "../components/map/NaverMapView";
 import type { NaverMapViewHandle } from "../components/map/NaverMapView";
 import BuildingSheet from "../components/map/BuildingSheet";
-import { nextRouteEndpoint } from "../components/map/RouteEndpointButtons";
 import FacilitySheet from "../components/map/FacilitySheet";
 import MapFilterChips from "../components/map/MapFilterChips";
 import MapActionMenu from "../components/map/MapActionMenu";
-import ReportComposerModal from "../components/map/ReportComposerModal";
+import ReportComposerModal from "../components/map/report/ReportComposerModal";
 import InfoSuggestModal from "../components/settings/InfoSuggestModal";
-import ReportMegaphoneIcon from "../components/common/ReportMegaphoneIcon";
-import type { InfoSuggestLocation, InfoSuggestPrefill } from "../components/settings/InfoSuggestModal";
-import { consumeMapIntent, setOpenReport, subscribeMapIntent } from "../lib/mapIntents";
-import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
-import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from "../navigation/tabBarStyles";
-import type { ReportTarget } from "../components/map/ReportComposerModal";
-import ReportSheet from "../components/map/ReportSheet";
+import ReportSheet from "../components/map/report/ReportSheet";
 import { useAuth } from "../contexts/AuthContext";
-import { getLiveReports } from "../apis/reports";
-import { getHotReports, hasCommunityFields } from "../apis/community";
-import HotReportList from "../components/map/HotReportList";
-import { useApiResource } from "../hooks/useApiResource";
-import Button from "../components/common/Button";
+import HotReportList from "../components/map/report/HotReportList";
 import RetryableError from "../components/common/RetryableError";
-import { useToast } from "../components/common/Toast";
-import { promptLogin, toReportMarkers, visibleReports } from "../utils/reports";
-import { parseServerTime } from "../utils/serverTime";
-import { useHiddenAuthorKeys, withoutHiddenAuthors } from "../lib/hiddenAuthors";
-import PartnerChips from "../components/map/PartnerChips";
-import PartnerSheet from "../components/map/PartnerSheet";
-import PartnerSearchModal from "../components/map/PartnerSearchModal";
+import PartnerChips from "../components/map/partner/PartnerChips";
+import PartnerSheet from "../components/map/partner/PartnerSheet";
+import PartnerSearchModal from "../components/map/partner/PartnerSearchModal";
 import PartnerNoticeModal from "../components/map/PartnerNoticeModal";
-import NearbyFilterIntro from "../components/map/NearbyFilterIntro";
+import NearbyFilterIntro from "../components/map/nearby/NearbyFilterIntro";
 import LaunchNoticeModal from "../components/common/LaunchNoticeModal";
-import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { getMapDataSnapshot, useMapData } from "../lib/mapData";
-import { toMarker } from "../utils/partnerMarker";
-import { buildFloorOptions, formatFloor, hasFloorData } from "../utils/floors";
 import FloorDialSheet from "../components/map/FloorDialSheet";
-import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlternative, type WalkApproach } from "../apis/routes";
-import { isCancelledError } from "../apis/client";
-import { straightLineFallback, straightLineFromPoint } from "../utils/routeEstimate";
-import { myLocationScript } from "../utils/myLocationScript";
-import { filterAccuracy, filterFix, snapToRoute, type FilterState } from "../utils/locationFilter";
-import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from "../utils/routeStyleScript";
 
-/** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
-const ROUTE_STYLE_DELAY_MS = 300;
 /** 길찾기 도착을 핀으로 고를 때, 핀 아래 건물이 없으면 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
-const ROUTE_PIN_MAX_METERS = 150;
-import { canLocate, locateOnce, watchLocation, type LivePosition } from "../lib/nearbyPartners/platform";
-import { notify } from "../utils/dialog";
-import RouteOptions from "../components/map/RouteOptions";
+import { canLocate } from "../lib/nearbyPartners/platform";
 import { MY_LOCATION_BUTTON_FROM, ROUTE_FINDING_ENABLED } from "../constants/route";
-import { CAMPUS_CENTER, DEFAULT_ZOOM, FOCUS_ZOOM } from "../constants/map";
-import { buildMapHTML, mapBuildingPayload } from "../utils/mapHtml";
-import {
-  filterPartners,
-  hasActiveFilter,
-  partnersOutsideFocus,
-} from "../utils/partners";
-import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from "../utils/mapBounds";
-import type { PartnerFilter } from "../utils/partners";
-import { facilityMarkers, unresolvedFacilities } from "../utils/facilities";
-import { kstTodayYmd, withExhibitionHints } from "../utils/exhibitions";
-import type {
-  Building,
-  Facility,
-  FacilityKind,
-  MapLayer,
-  Partner,
-  PartnerAffiliation,
-  PartnerCategory,
-  ReportCategory,
-  ReportListItem,
-} from "../types";
-import { REPORT_CATEGORIES, reportCategoryMeta } from "../constants/reportCategories";
-import { REPORT_OFF_CAMPUS_MAX_METERS } from "../constants/report";
-import { haversineMeters } from "../utils/geo";
-import { FONTS } from "../constants/typography";
-import { useCenteredGutter } from "../hooks/useCenteredGutter";
-import { RADIUS } from "../constants/spacing";
-import { SheetHeaderContext } from "../hooks/useResizableSheet";
-import ContentColumn from "../components/common/ContentColumn";
-import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from "../lib/nearbyPartners/background";
-import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS, testLocation as nearbyTestLocation } from "../lib/nearbyPartners/debug";
-import { useIsAdmin } from "../admin/AdminAccess";
-import { nearbyOverlayScript } from "../utils/nearbyOverlayScript";
-import { requestSettingsIntent } from "../lib/settingsIntents";
-import { navigationRef } from "../navigation/navigationRef";
-import SwipeBackModal from "../components/common/SwipeBackModal";
+import { buildMapHTML } from "../utils/mapHtml";
+import { kstTodayYmd } from "../utils/exhibitions";
+import type { ReportListItem } from "../types";
+import RoutePlannerModal from "../components/map/route/RoutePlannerModal";
+import MapTopBar from "../components/map/topbar/MapTopBar";
+import MapSearchBar from "../components/map/topbar/MapSearchBar";
+import FilterChipSection from "../components/map/topbar/FilterChipSection";
+import LocationPickerOverlay from "../components/map/picker/LocationPickerOverlay";
+import RouteStrip from "../components/map/route/RouteStrip";
+import RouteResultCard from "../components/map/route/RouteResultCard";
+import MapNoticeStack from "../components/map/notices/MapNoticeStack";
+import MapDataStatusNotice from "../components/map/notices/MapDataStatusNotice";
+import MapAuthErrorNotice from "../components/map/notices/MapAuthErrorNotice";
+import ReportsLoadingNotice from "../components/map/notices/ReportsLoadingNotice";
+import AskPlaceCard from "../components/map/notices/AskPlaceCard";
+import ReviewPinNotice from "../components/map/notices/ReviewPinNotice";
+import DismissibleNotice from "../components/map/notices/DismissibleNotice";
+import NearbyTestPicker from "../components/map/nearby/NearbyTestPicker";
+import NearbyOverlayNote from "../components/map/nearby/NearbyOverlayNote";
+import { useNearbyDebugTools } from "../hooks/map/useNearbyDebugTools";
+import MapSheets from "../components/map/sheets/MapSheets";
+import { useMapReports } from "../hooks/map/useMapReports";
+import { useMapBackHandler } from "../hooks/map/useMapBackHandler";
+import { useMapHeader, useMapLayout } from "../hooks/map/useMapLayout";
+import { useLocationPicker } from "../hooks/map/useLocationPicker";
+import { useRoutePlanner } from "../hooks/map/useRoutePlanner";
+import { useMapFilters } from "../hooks/map/useMapFilters";
+import { useMapIntents } from "../hooks/map/useMapIntents";
+import { useMapPlaceCards } from "../hooks/map/useMapPlaceCards";
+import { useMyLocation } from "../hooks/map/useMyLocation";
+import { useInfoSuggest } from "../hooks/map/useInfoSuggest";
+import { useFacilityNavigation } from "../hooks/map/useFacilityNavigation";
+import { useMapSearch } from "../hooks/map/useMapSearch";
+import { useMapSelection } from "../hooks/map/useMapSelection";
+import { useReportComposer } from "../hooks/map/useReportComposer";
+import { useMapNotices } from "../hooks/map/useMapNotices";
+import { useSheetActions } from "../hooks/map/useSheetActions";
+import { useMapCamera } from "../hooks/map/useMapCamera";
+import { useMapMessages } from "../hooks/map/useMapMessages";
+import { useMapPageSync } from "../hooks/map/useMapPageSync";
+import { mapVisibility } from "../utils/map/visibility";
+import { withRo } from "../utils/josa";
+import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */
-/** 제보 레이어가 아직 한 번도 못 받았을 때 쓰는 빈 목록. 렌더마다 새 배열을 만들지 않게 모듈에 둔다. */
-const EMPTY_REPORTS: ReportListItem[] = [];
-/** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
-const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key);
-const ALL_REPORT_CATEGORIES: ReadonlySet<ReportCategory> = new Set(REPORT_CATEGORY_KEYS);
-
-/** 관리 탭 "지도에서 보기"의 검토용 핀. label 은 핀 이름표(제보 제목), detail 은 안내 줄의 작성자·건물·층. */
-interface PreviewTarget {
-  lat: number;
-  lng: number;
-  label: string;
-  detail: string;
-}
-
-function buildingLabel(building: Building, floor: number | null): string {
-  return floor === null
-    ? building.name
-    : `${building.name} ${formatFloor(floor)}`;
-}
 
 export default function MapScreen() {
   const webViewRef = useRef<NaverMapViewHandle>(null);
-  // 근처 알림 영역 보기(개발·현장 테스트 빌드, 운영 앱은 관리자 계정만 — 11-10): 등록한 업체 인식 원과 "다시 고르기" 원을 지도에 그린다.
-  const isAdmin = useIsAdmin();
-  const nearbyTools = NEARBY_DEBUG_TOOLS || isAdmin;
-  const showNearbyOverlayMenu = nearbyTools && nearbyAlertsAvailable();
-  const [nearbyOverlayOn, setNearbyOverlayOn] = useState(false);
-  const [nearbyOverlayNote, setNearbyOverlayNote] = useState<string | null>(null);
-  /** 근처 알림이 아직 등록 전(설정에서 켜지 않음). 안내 줄에 설정으로 가는 버튼을 단다(11-09). */
-  const [nearbyUnregistered, setNearbyUnregistered] = useState(false);
-  // 테스트 위치 정하기: 지도 가운데 십자 → "여기로 정하기"를 누르면 그 좌표를 가짜 GPS 로 쓴다(근처 알림 판단만).
-  const [pickingNearbyTest, setPickingNearbyTest] = useState(false);
-  const [nearbyTestLabel, setNearbyTestLabel] = useState<string | null>(null);
-  useEffect(() => {
-    if (!nearbyOverlayOn) {
-      webViewRef.current?.injectJavaScript(nearbyOverlayScript(null));
-      return;
-    }
-    let cancelled = false;
-    let focused = false;
-    const draw = async () => {
-      const overlay = await getNearbyOverlay();
-      if (cancelled) return;
-      // 링크(at=)로 바꾼 테스트 위치도 안내 줄에 보이게 그릴 때마다 다시 읽는다.
-      const fake = nearbyTestLocation();
-      setNearbyTestLabel(fake ? `테스트 위치 ${fake.lat.toFixed(5)}, ${fake.lng.toFixed(5)}` : null);
-      // 처음 그릴 때만 등록한 자리로 옮긴다(그 뒤에는 사용자가 지도를 움직일 수 있게).
-      webViewRef.current?.injectJavaScript(nearbyOverlayScript(overlay, { focus: !focused && !!overlay }));
-      if (overlay) focused = true;
-      setNearbyUnregistered(!overlay);
-      setNearbyOverlayNote(
-        overlay?.error
-          ? `등록 실패(원은 계획만 표시): ${overlay.error}\n파란 원: 업체 인식 반경 · 점선: 다시 고르기 원 · 남색 점: 기준 위치`
-          : overlay
-          ? `등록 ${overlay.regions.length}곳 · 안에 있음 ${overlay.regions.filter((r) => r.inside).length}곳 · 다시 고르기 원 ${overlay.reselectMeters}m\n파란 원: 업체 인식 반경 · 주황: 알림 예약 · 점선: 다시 고르기 원 · 남색 점: 등록한 자리`
-          : "아직 등록 전이에요. 근처 제휴 알림을 켜고 앱을 다시 열면 원이 보여요.",
-      );
-    };
-    void draw();
-    const id = setInterval(() => void draw(), 4000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [nearbyOverlayOn]);
+  // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
+  const postToMap = useCallback((msg: object) => {
+    webViewRef.current?.injectJavaScript(
+      `if (typeof window.handleNativeMessage === "function") window.handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
+    );
+  }, []);
   const { accessToken, logout } = useAuth();
-  // react-native-safe-area-context 는 iOS Modal 안에서 top inset 을 0으로 보고하는
-  // 알려진 문제가 있어서 (https://github.com/th3rdwave/react-native-safe-area-context/issues/677),
-  // Modal 바깥의 화면에서 미리 재서 넘긴다.
-  const insets = useSafeAreaInsets();
-  // 지도 탭만 탭바를 지도 위에 띄운다(TabNavigator.tsx) — 그만큼 화면 맨
-  // 아래에 깔린 버튼·배너가 탭바에 가리지 않게 이 높이만큼 띄워 올린다.
-  const tabBarHeight = useBottomTabBarHeight();
-  const { height: windowHeight } = useWindowDimensions();
-  const navigation = useNavigation();
-  // 검색바·필터 칩이 지도 위에 뜨는 오버레이로 바뀌면서(§아래 JSX), 실제
-  // 렌더된 높이만큼 지도 위 배너·상단바들을 밀어내야 겹치지 않는다.
-  // 칩 줄 수가 상태(피킹 모드·레이어 선택)에 따라 달라 고정값을 못 쓴다.
-  const [headerHeight, setHeaderHeight] = useState(0);
-  // 시트를 화면 맨 위까지 올리면 검색바·칩을 잠깐 숨긴다(시트 위에 겹쳐 그려지지 않게). useSheetSizing 이 알려 준다.
-  const [headerCovered, setHeaderCovered] = useState(false);
-  const headerFade = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.timing(headerFade, { toValue: headerCovered ? 0 : 1, duration: 160, useNativeDriver: false }).start();
-  }, [headerCovered, headerFade]);
-  const sheetHeaderCtx = useMemo(() => ({ headerHeight, onCoverHeader: setHeaderCovered }), [headerHeight]);
-  // 넓은 창(폴드 펼침·가로·웹)에서 지도는 끝까지 깔되, 검색바·칩·배너·하단 시트는
-  // 가운데 한 폭(SHEET_MAX_WIDTH)에 모은다. 좁은 화면에선 0 이라 기존 배치 그대로다.
-  // 폴드를 접고 펴면 앱이 다시 시작되지 않고 창 크기만 바뀌므로 매 렌더 다시 계산한다.
-  const sideGutter = useCenteredGutter();
-  const overlayInset = { left: 12 + sideGutter, right: 12 + sideGutter };
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
-    null,
-  );
-  // 1단(소속) · 2단(업종) 필터. 둘 다 null 이면 지도에 마커를 그리지 않는다.
-  const [selectedAffiliation, setSelectedAffiliation] =
-    useState<PartnerAffiliation | null>(null);
-  const [selectedCategory, setSelectedCategory] =
-    useState<PartnerCategory | null>(null);
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
-  /** 관리 탭 "지도에서 보기"로 찍은 검토용 임시 핀. 있으면 지도 위에 안내 줄(닫기)을 띄운다. */
-  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
-  /** 물어보기 "지도에서 보기"로 온 곳의 짧은 설명 카드(지도 위). 닫거나 그 곳 시트를 닫으면 사라진다(11-07). */
-  const [askCard, setAskCard] = useState<{ title: string; summary: string } | null>(null);
-  const previewTargetRef = useRef(previewTarget);
-  previewTargetRef.current = previewTarget;
-  const selectedPartnerRef = useRef(selectedPartner);
-  selectedPartnerRef.current = selectedPartner;
-  const selectedBuildingRef = useRef(selectedBuilding);
-  selectedBuildingRef.current = selectedBuilding;
+  // 위 검색바·칩 막대 높이(길찾기가 읽는다). 배치 값은 길찾기 뒤의 useMapLayout 에서.
+  const { headerHeight, setHeaderHeight, headerCovered, headerFade, sheetHeaderCtx } = useMapHeader();
   /** 필터 없이 검색으로만 지도에 올린 업체 id. 그 시트가 닫히면 마커도 거둔다(아래 effect). */
   const searchedPartnerIdRef = useRef<string | null>(null);
   /** 지금 지도 이동 범위가 먼 제휴 지점 둘레면 그 지점 id, 캠퍼스 일대면 null(`mapBounds.ts`). */
   const farViewPartnerIdRef = useRef<string | null>(null);
-  // 네이버 지도 인증 실패. 실패해도 지도는 빈 화면으로만 남아, 알리지 않으면
-  // 사용자가 앱이 멈춘 것으로 오해한다.
-  const [mapAuthFailed, setMapAuthFailed] = useState(false);
-  const [fromBuilding, setFromBuilding] = useState<Building | null>(null);
-  const [toBuilding, setToBuilding] = useState<Building | null>(null);
-  const [fromFloor, setFromFloor] = useState<number | null>(null);
-  /** 길찾기 표시의 첫 층 이동을 '1F→3F' 로 쓰려고 그리는 함수에서 읽는다. */
-  const fromFloorRef = useRef<number | null>(null);
-  fromFloorRef.current = fromFloor;
-  const [toFloor, setToFloor] = useState<number | null>(null);
-  /** 출발·도착 층 다이얼 팝업(11-03). 건물을 고르면 층부터 묻는다. */
-  /** initialFloor: 다이얼을 열 때 먼저 골라 둘 층(필터 칩 시설이 여러 층에 있을 때 가장 아래 층, 11-16). */
-  const [floorDial, setFloorDial] = useState<
-    { role: "출발" | "도착"; building: Building; initialFloor?: number | null } | null
-  >(null);
-  /**
-   * 출발지 "내 위치"(11-03). 위치는 길찾기를 보는 동안만 휴대폰에서 읽어 경로 계산과 지도 점에만 쓰고,
-   * 저장하거나 서버로 보내지 않는다(처리방침 11-09판 "길찾기 화면을 보는 동안에만").
-   */
-  const [fromMyLocation, setFromMyLocation] = useState(false);
-  /** 물어보기 "여기서 가는 길"(routeTo 지도 요청)이 출발을 내 위치로 잡을 때 쓴다 — 요청 처리기가 이 함수보다 위에 있어 ref 로 잇는다. */
-  const selectMyLocationRef = useRef<(() => Promise<void>) | null>(null);
-  const [myLocation, setMyLocation] = useState<LivePosition | null>(null);
-  /** 경로를 다시 계산하는 기준 위치. 15m 넘게 움직였을 때만 바꿔 경로가 자꾸 바뀌지 않게 한다. */
-  const [routeOrigin, setRouteOrigin] = useState<LivePosition | null>(null);
-  // handleOpenRoute 는 위쪽에서 만들어져 최신 출발 상태를 ref 로 본다.
-  const fromBuildingRef = useRef<Building | null>(null);
-  fromBuildingRef.current = fromBuilding;
-  const [routeCardHeight, setRouteCardHeight] = useState(0);
-  /**
-   * 경로를 화면에 맞출 때 쓰는 실측 높이(11-08). 전에는 막대 100px·카드 90px 어림값이라 기기·글자 크기에 따라 경로가 카드나
-   * 막대에 가렸다. 맞추는 스크립트를 넣는 순간 값을 읽도록 ref 에 둔다(높이가 바뀔 때마다 경로를 다시 그리지 않게).
-   */
-  const routeStripHeightRef = useRef(0);
-  const routeCardHeightRef = useRef(0);
-  routeCardHeightRef.current = routeCardHeight;
-  /**
-   * 길찾기 한쪽 끝만 정한 채 나머지를 고르는 중. 이때 칩을 눌러도 건물 시트를 닫지 않는다(11-08 — 도착을 고르러 연 건물 시트가
-   * 칩 때문에 사라져 처음부터 다시 찾아야 했다).
-   */
-  const routePicking = (fromBuilding !== null || fromMyLocation) !== (toBuilding !== null);
-  /** 두 끝이 다 정해져 경로가 지도에 그려진 상태. 칩 핀을 흐리게 해 경로가 묻히지 않게 한다. */
-  const routeDrawn = (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
-  const routeDrawnRef = useRef(false);
-  routeDrawnRef.current = routeDrawn;
-  // 출발 건물만 고른 동안 그 건물에 '출발' 표시(11-16). 도착까지 고르면 지도 페이지가 경로와 함께 제 표시를 올리므로 지운다.
-  const pendingStart = fromBuilding && !toBuilding ? fromBuilding : null;
-  useEffect(() => {
-    webViewRef.current?.injectJavaScript(
-      pendingStartScript(pendingStart ? { lat: pendingStart.lat, lng: pendingStart.lng } : null),
-    );
-  }, [pendingStart]);
-  const fromMyLocationRef = useRef(false);
-  fromMyLocationRef.current = fromMyLocation;
-  // 최상단 필터(제휴 업체 / 학교 시설). null 이면 하위 칩 줄이 없다. 제보는 이 갈래와 따로 켜고 끈다(10-27, 아래 reportsOn).
-  const [layer, setLayer] = useState<MapLayer | null>(null);
-  const [facilityKind, setFacilityKind] = useState<FacilityKind | null>(null);
-  // 지도를 길게 눌러 잡은 제보 위치. null 이면 작성창이 닫혀 있다.
-  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-  // 제보 위치 선택 모드. 켜져 있으면 화면 중앙에 고정된 핀 아래로 지도를
-  // 움직여 위치를 맞추고, 확인하면 그 좌표로 작성창을 연다.
-  const [pickingLocation, setPickingLocation] = useState(false);
-  /** 핀을 무엇 때문에 고르는지. 제보(report) 또는 정보 제보(partner, 설정의 정보 제보 창). 확인 버튼 문구와 다음 창이 달라진다. */
-  /** report: 제보, partner: 정보 제보, routeTo: 길찾기 도착 건물을 핀으로(11-12). */
-  const [pickerPurpose, setPickerPurpose] = useState<"report" | "partner" | "routeTo">("report");
-  /** 정보 제보 창(제휴·전시·행사 위치). null 이면 닫힘, 위치 없이 열 수도 있다(undefined 와 구분하려고 객체로 둔다). */
-  const [partnerSuggest, setPartnerSuggest] = useState<{ location: InfoSuggestLocation | null; prefill?: InfoSuggestPrefill } | null>(null);
-  const [pickerCenter, setPickerCenter] = useState<{
-    lat: number;
-    lng: number;
-    buildingName: string | null;
-  } | null>(null);
-  // 제보는 서버에서 받아오므로 켰을 때만 부른다. 지도·제휴·편의시설은
-  // 정적 데이터라 서버가 죽어도 그대로 동작해야 한다.
-  // 지도 탭에선 늘 켜 둔다 — 제보가 앱의 주 기능이라(10-18). 끄는 스위치는 없고 메뉴에서 종류·HOT 만 고른다(10-27).
-  const [reportsOn, setReportsOn] = useState(true);
-  /**
-   * '🔥 HOT' 칩. 켜면 제보 레이어를 HOT·인기 제보(`GET /reports?sort=hot`, 최근 60분 🔥 순)로만 채우고 위에 짧은 목록을 띄운다.
-   * reportsOn 과 함께 켜진다(제보 칩과는 둘 중 하나만 선택돼 보인다).
-   */
-  const [hotOnly, setHotOnly] = useState(false);
-  /** 지도에 보일 제보 종류(메뉴의 종류 칩, 여러 개 고름). 처음엔 전부. 받아 온 목록을 기기에서 좁힌다. */
-  const [reportCategories, setReportCategories] = useState<ReadonlySet<ReportCategory>>(ALL_REPORT_CATEGORIES);
-  const reportsNarrowed = reportCategories.size < ALL_REPORT_CATEGORIES.size;
-  /** 서버가 🔥 를 아는지(목록 항목에 fireCount 가 오는지). 모르면 HOT 칩을 숨긴다(커뮤니티 기능 배포 전). */
-  const [hotAvailable, setHotAvailable] = useState(false);
-  // 연결이 끊겨도 마지막으로 받은 제보는 계속 보여주고, 재연결되면 다시 받는다.
-  const reportsResource = useApiResource(
-    async (signal) =>
-      hotOnly
-        ? visibleReports(await getHotReports({ accessToken, signal }))
-        : // 3일(72시간) 안에 시작할 예정 제보도 받아 따로(속이 빈 배지) 보여 준다. 구버전 서버는 무시하고 진행 중만 준다.
-          visibleReports(await getLiveReports({ accessToken, signal, includeUpcoming: true })),
-    [accessToken, hotOnly],
-    { enabled: reportsOn, fallbackMessage: "제보를 불러오지 못했어요." },
-  );
-  useEffect(() => {
-    if (!hotOnly && hasCommunityFields(reportsResource.data)) setHotAvailable(true);
-  }, [reportsResource.data, hotOnly]);
-  // 숨긴 사용자(기기 저장)의 제보는 지도에서 뺀다. 숨기는 순간 마커도 다시 그린다.
-  const hiddenAuthorKeys = useHiddenAuthorKeys();
-  const fetchedReportData = useMemo(
-    () =>
-      reportsResource.data === undefined
-        ? undefined
-        : withoutHiddenAuthors(reportsResource.data, hiddenAuthorKeys),
-    [reportsResource.data, hiddenAuthorKeys],
-  );
-  /**
-   * 지금 들고 있는 제보 목록이 어느 HOT 상태로 받은 것인지. HOT 을 켜고 끄면 새 목록이 오기 전까지 앞 목록이 남아,
-   * HOT 목록에 HOT 이 아닌 제보가 잠깐 끼거나 '제보가 없어요' 안내가 반짝였다. 상태가 맞을 때만 목록·안내를 그린다.
-   */
-  const hotOnlyRef = useRef(hotOnly);
-  hotOnlyRef.current = hotOnly;
-  const [reportsDataHotOnly, setReportsDataHotOnly] = useState(hotOnly);
-  useEffect(() => {
-    setReportsDataHotOnly(hotOnlyRef.current);
-  }, [reportsResource.data]);
-  const reportsMatchHot = reportsDataHotOnly === hotOnly;
-  /**
-   * '제보를 불러오는 중…' 줄은 0.4초 넘게 걸릴 때만 띄운다. 금방 오는 경우엔 이 줄이 한 번 반짝이고
-   * 바로 'HOT 제보가 없어요' 같은 결과 안내로 바뀌어, 문구가 두 번 뜨는 것처럼 보였다.
-   */
-  const reportsLoading = reportsResource.loading;
-  const [showReportsLoading, setShowReportsLoading] = useState(false);
-  useEffect(() => {
-    if (!reportsLoading) {
-      setShowReportsLoading(false);
-      return;
-    }
-    const timer = setTimeout(() => setShowReportsLoading(true), 400);
-    return () => clearTimeout(timer);
-  }, [reportsLoading]);
-  // HOT 을 켰는데 아직 전체 목록뿐이면, HOT 목록이 오기 전에도 HOT 인 제보만 남긴다(HOT 아닌 마커가 잠깐 남았다 사라지지 않게).
-  const hotReportData = useMemo(
-    () =>
-      fetchedReportData !== undefined && hotOnly && !reportsMatchHot
-        ? fetchedReportData.filter((report) => report.hot === true)
-        : fetchedReportData,
-    [fetchedReportData, hotOnly, reportsMatchHot],
-  );
-  const shownReportData = useMemo(
-    () =>
-      hotReportData !== undefined && reportsNarrowed
-        ? hotReportData.filter((report) => reportCategories.has(report.category))
-        : hotReportData,
-    [hotReportData, reportsNarrowed, reportCategories],
-  );
-  const reports = shownReportData ?? EMPTY_REPORTS;
-  const [selectedReport, setSelectedReport] = useState<ReportListItem | null>(
-    null,
-  );
-  /** 편의시설 핀을 누른 건물. 그 건물의 (지금 고른 종류) 시설이 몇 층 어디에 있는지 보여 준다. */
-  const [selectedFacilityBuilding, setSelectedFacilityBuilding] = useState<string | null>(null);
-  /** 검색으로 찾아간 편의시설. 그 시설 시트에서 해당 줄을 강조한다. 핀을 직접 누르거나 칩을 바꾸면 지운다. */
-  const [searchedFacility, setSearchedFacility] = useState<Facility | null>(null);
-  const [showSearch, setShowSearch] = useState(false);
-  /** 안내 줄에서 검색을 열면 그 업체들을 검색 화면 맨 위에 모아 보여 준다. 검색창 버튼으로 열면 null. */
-  const [searchPinned, setSearchPinned] = useState<Partner[] | null>(null);
-  /** 근처 제휴 알림(여러 곳)을 눌러 띄운 "지금 계신 곳 근처 제휴" 목록. 검색 창 맨 위에 둔다. */
-  const [nearbyGroup, setNearbyGroup] = useState<Partner[] | null>(null);
-  const [showRoute, setShowRoute] = useState(false);
-  const [routeTarget, setRouteTarget] = useState<"from" | "to" | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  /** 길찾기 버튼. 기능이 꺼져 있으면(ROUTE_FINDING_ENABLED) 버튼 자체를 그리지 않는다. */
-  /** 길찾기 버튼: 정하지 않은 쪽(출발 먼저)을 검색 창으로 고른다. */
-  const handleOpenRoute = useCallback(() => {
-    setSearchQuery("");
-    setRouteTarget(fromBuildingRef.current || fromMyLocationRef.current ? "to" : "from");
-    setShowRoute(true);
-  }, []);
-
-  /**
-   * "캠퍼스로 돌아가기". 지도를 처음 위치(캠퍼스 중심·기본 줌)로 되돌린다. GPS 는 쓰지 않는다.
-   * 이미 배포된 원격 map.html 에도 바로 먹히도록 새 메시지 타입 대신 페이지 전역 `map` 을 직접 움직인다.
-   */
-  const handleRecenter = useCallback(() => {
-    // 먼 제휴 지점을 보던 중이어도 이동 범위를 캠퍼스 일대로 되돌린 뒤 옮긴다(범위가 좁으면 캠퍼스로 못 간다).
-    farViewPartnerIdRef.current = null;
-    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-    webViewRef.current?.injectJavaScript(
-      // 진행 중인 '눌러 보기' 확대가 늦게 끝나며 돌아온 화면을 옛 핀 19배로 덮지 않게 먼저 멈춘다(옛 map.html 엔 없어 확인하고 부른다).
-      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.setCenter(new naver.maps.LatLng(${CAMPUS_CENTER.lat}, ${CAMPUS_CENTER.lng})); map.setZoom(${DEFAULT_ZOOM}); } true;`,
-    );
-  }, []);
-
-  // 이미 지도 탭에 있을 때 하단 '지도' 탭을 다시 누르면 학사모 버튼처럼 캠퍼스로 돌아간다(10-08 요청).
-  // tabPress 는 다른 탭에서 넘어올 때도 오지만 그땐 아직 이 화면이 포커스가 아니라 건너뛴다.
-  useEffect(() => {
-    // 지도는 하단 탭의 화면이라 탭 바가 보내는 tabPress 가 이 화면의 navigation 으로 바로 온다.
-    const tabNavigation = navigation as unknown as { addListener: (type: "tabPress", cb: () => void) => () => void };
-    return tabNavigation.addListener("tabPress", () => {
-      if (navigation.isFocused()) handleRecenter();
-    });
-  }, [navigation, handleRecenter]);
-
+  /** 아래 탭바(또는 안전 영역) 높이. 경로를 화면에 맞출 때 읽는다(값은 useMapLayout 이 채운다). */
+  const bottomInsetRef = useRef(0);
+  // 제보 레이어(목록 받기·HOT·종류·마커). HOT·종류를 바꾸면 열린 시트를 닫는다.
+  const {
+    reportsOn,
+    hotOnly,
+    hotAvailable,
+    reportCategories,
+    resource: reportsResource,
+    hiddenAuthorKeys,
+    shown: shownReportData,
+    reports,
+    matchesHot: reportsMatchHot,
+    showLoading: showReportsLoading,
+    empty: reportsEmpty,
+    toggleHot: handleToggleHot,
+    toggleCategory: handleToggleReportCategory,
+    showAll: showAllReports,
+    refetch: refetchReports,
+    menuFilter,
+  } = useMapReports({
+    accessToken,
+    postToMap,
+    onToggleHot: (next) => {
+      setSelectedReport(null);
+      if (next) {
+        setSelectedPartner(null);
+        setSelectedBuilding(null);
+        setSelectedFacilityBuilding(null);
+      }
+    },
+    onCategoriesChange: () => setSelectedReport(null),
+  });
   /**
    * 지도 데이터(건물·편의시설·제휴업체). 앱 시작 때 받기 시작해 기기에 저장해 둔다(`lib/mapData.ts`).
    * 아직 없으면 빈 배열이고, 지도 위에 "불러오는 중"/"다시 시도" 안내가 뜬다.
@@ -433,1566 +132,463 @@ export default function MapScreen() {
     status: mapDataStatus,
     reload: reloadMapData,
   } = useMapData();
-  // 근처 알림 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치).
-  const nearbySourceRef = useRef({ partners: allPartners, campusPoints: buildings, serverEnabled: false });
-  nearbySourceRef.current = { partners: allPartners, campusPoints: buildings, serverEnabled: mapData?.nearbyAlertsEnabled === true };
-  useEffect(() => {
-    const fake = nearbyTestLocation();
-    if (fake) setNearbyTestLabel(`테스트 위치 ${fake.lat.toFixed(5)}, ${fake.lng.toFixed(5)}`);
-  }, []);
+  // 지도 칩 거르기(갈래·제휴 소속/업종·학교 시설 종류). 칩을 바꾸면 열린 시트를 닫는다(길찾기 한쪽만 정한 동안 건물 시트는 남긴다).
+  const filters = useMapFilters({
+    webViewRef,
+    postToMap,
+    partners: allPartners,
+    facilities,
+    buildings,
+    exhibitions,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    onPartnerFilterChange: (active) => {
+      setSelectedPartner(null);
+      if (active && !routePicking) setSelectedBuilding(null);
+    },
+    onFacilityKindChange: () => {
+      setSelectedFacilityBuilding(null);
+      setSearchedFacility(null);
+    },
+    onLayerChange: () => {
+      setSelectedPartner(null);
+      if (!routePicking) setSelectedBuilding(null);
+      // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
+      setSelectedReport(null);
+    },
+  });
+  const { layer, setLayer, facilityKind, selectedAffiliation, selectedCategory, activeFilter, applyFacilityKind } = filters;
+  // 고른 건물·제휴·제보·학교 시설과 아래 시트(열고 닫기·지도 강조 거두기). 시트는 한 번에 하나만 연다.
+  const {
+    selectedBuilding,
+    setSelectedBuilding,
+    selectedPartner,
+    setSelectedPartner,
+    selectedReport,
+    setSelectedReport,
+    selectedFacilityBuilding,
+    setSelectedFacilityBuilding,
+    searchedFacility,
+    setSearchedFacility,
+    selectedBuildingRef,
+    selectedPartnerRef,
+    selectedReportRef,
+    selectedFacilityBuildingRef,
+    openReport,
+    reassertPartnerSelection,
+    handleTap: handleSelectionTap,
+  } = useMapSelection({
+    postToMap,
+    buildings,
+    partners: allPartners,
+    reports: shownReportData,
+    activeFilter,
+    searchedPartnerIdRef,
+    onLongPress: (at) => {
+      // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
+      if (!requireLogin()) return;
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+      reportComposer.open(at);
+    },
+    onLeaveBuildingFacility: () => facilityNav.leave(),
+  });
+  // 캠퍼스로 돌아가기(학사모 버튼·지도 탭 다시 누르기·먼 지점 시트 닫기).
+  const { recenter: handleRecenter } = useMapCamera({ webViewRef, farViewPartnerIdRef, selectedPartner });
+  // 제보 작성창(길게 누른 자리·핀으로 고른 자리)과 로그인 확인.
+  const reportComposer = useReportComposer({
+    accessToken,
+    logout,
+    reportsOn,
+    retryReports: reportsResource.retry,
+    startPicker: () => picker.start("report"),
+  });
+  const { reportTarget, requireLogin } = reportComposer;
+  // 지도 위에 얹는 검토용 임시 핀과 물어보기 설명 카드.
+  const preview = useMapPlaceCards({
+    webViewRef,
+    postToMap,
+    placeSheetOpen: selectedBuilding !== null || selectedPartner !== null || selectedFacilityBuilding !== null,
+  });
+  // 제휴·편의시설 검색 창(열기·닫기·맨 위 업체 묶음·결과로 업체 고르기).
+  const search = useMapSearch({
+    webViewRef,
+    postToMap,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    clearPartnerFilter: filters.clearPartnerFilter,
+    openPartnerSheet: (partner) => {
+      setSelectedBuilding(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+      setSelectedPartner(partner);
+    },
+  });
+  // 정보 제보 창(제휴·전시·행사 위치)과 제휴 시트의 '정보 수정'.
+  const infoSuggest = useInfoSuggest({
+    selectedPartnerRef,
+    closePartnerSheet: () => handleClosePartner(),
+    startPartnerLocationPick: (before) => picker.start("partner", { partnerLocationBefore: before }),
+  });
+  // 학교 시설 시트 열기와 건물 시트 ↔ 시설 시트 오가기.
+  const facilityNav = useFacilityNavigation({
+    postToMap,
+    buildings,
+    layer,
+    facilityKind,
+    setLayer,
+    applyFacilityKind,
+    showFacilityKind: filters.showFacilityKind,
+    selectedBuilding,
+    selectedFacilityBuilding,
+    setSelectedBuilding,
+    setSelectedPartner,
+    setSelectedReport,
+    setSelectedFacilityBuilding,
+    setSearchedFacility,
+    hideSearch: search.hide,
+  });
+  // 지도 가운데 핀으로 위치 고르기(제보·정보 제보·길찾기 도착).
+  const picker = useLocationPicker({
+    postToMap,
+    buildings,
+    onStart: () => {
+      setSelectedBuilding(null);
+      setSelectedPartner(null);
+      setSelectedReport(null);
+      setSelectedFacilityBuilding(null);
+    },
+    onConfirmReport: (center) => reportComposer.open({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
+    onConfirmPartner: (center) =>
+      infoSuggest.open({ lat: center.lat, lng: center.lng, buildingName: center.buildingName }),
+    // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
+    onConfirmRouteTo: (building) => beginTo(building),
+    onCancelPartner: (previous) => infoSuggest.open(previous),
+  });
+  const pickingLocation = picker.picking;
+  // 길찾기(출발·도착·층·후보 길). 출발·도착을 정하면 열린 건물·시설 시트를 닫는다.
+  const route = useRoutePlanner({
+    webViewRef,
+    postToMap,
+    buildings,
+    headerHeight,
+    bottomInsetRef,
+    facilityKind,
+    facilities,
+    onCommitEndpoint: () => {
+      setSelectedBuilding(null);
+      setSelectedFacilityBuilding(null);
+      // 제보 시트의 출발·도착으로 정했을 때도 시트를 닫아 경로가 가려지지 않게 한다(11-20 사용자).
+      setSelectedReport(null);
+    },
+  });
+  const {
+    fromBuilding,
+    toBuilding,
+    fromFloor,
+    toFloor,
+    fromMyLocation,
+    picking: routePicking,
+    drawn: routeDrawn,
+    drawnRef: routeDrawnRef,
+    alternatives: routeAlternatives,
+    selectedIndex: selectedRouteIndex,
+    showSearch: showRoute,
+    searchTarget: routeTarget,
+    searchQuery,
+    setSearchQuery,
+    beginFrom,
+    beginTo,
+    cardHeight: routeCardHeight,
+  } = route;
+  // 아래 시트에 넘기는 값(시설 목록·출발·도착 버튼)과 시트 닫기.
+  const {
+    selectedBuildingFacilities,
+    selectedFacilityItems,
+    highlightedFacilityId,
+    facilitySheetBuilding,
+    routeNext,
+    handleSetFrom,
+    handleSetTo,
+    handleFacilitySetFrom,
+    handleFacilitySetTo,
+    reportSheetBuilding,
+    handleReportSetFrom,
+    handleReportSetTo,
+    handleCloseBuilding,
+    handleClosePartner,
+    handleCloseReportSheet,
+  } = useSheetActions({
+    postToMap,
+    buildings,
+    facilities,
+    facilityKind,
+    selectedBuilding,
+    selectedFacilityBuilding,
+    selectedReport,
+    searchedFacility,
+    fromBuilding,
+    fromMyLocation,
+    toBuilding,
+    setSelectedBuilding,
+    setSelectedPartner,
+    setSelectedReport,
+    beginFrom,
+    beginTo,
+  });
+  // 근처 알림 개발 도구. 테스트 위치를 바꿀 때 다시 판단하는 데 쓰는 지도 데이터(대상 업체·캠퍼스 건물·긴급 스위치)를 넘긴다.
+  const nearbyDebug = useNearbyDebugTools(webViewRef, {
+    partners: allPartners,
+    campusPoints: buildings,
+    serverEnabled: mapData?.nearbyAlertsEnabled === true,
+  });
 
   // 웹은 이 문서를 처음 한 번만 넣는다(NaverMapView.web). 그때 있는 건물로 굽고, 그 뒤 바뀐 건물은 setBuildings 로 보낸다.
   // 앱(WebView)은 이 값을 쓰지 않고 배포된 map.html(구운 초기 건물)을 불러온다.
   const mapHTML = useMemo(() => buildMapHTML(getMapDataSnapshot()?.buildings ?? []), []);
 
-  /**
-   * 길찾기는 서버가 계산한다(11-09, GET /map/routes). 받기 전에는 비어 있고, 받지 못하면(오프라인·오류) 직선 어림 하나로 대신한다.
-   * 내 위치 출발은 위치를 보내지 않는다 — 도착까지의 길 묶음(GET /map/routes/approach)을 받아 휴대폰이 내 위치에서 가까운 길 점을 골라 잇는다.
-   */
-  const routesKey =
-    !fromMyLocation && fromBuilding && toBuilding ? `${fromBuilding.id}|${fromFloor}|${toBuilding.id}|${toFloor}` : null;
-  const approachKey = fromMyLocation && toBuilding ? `${toBuilding.id}|${toFloor}` : null;
-  const [serverRoutes, setServerRoutes] = useState<{ key: string; routes: RouteAlternative[] | null } | null>(null);
-  const [approach, setApproach] = useState<{ key: string; data: WalkApproach | null } | null>(null);
-  useEffect(() => {
-    if (!routesKey || !fromBuilding || !toBuilding) return;
-    const controller = new AbortController();
-    fetchWalkRoutes({ from: fromBuilding, fromFloor, to: toBuilding, toFloor, signal: controller.signal })
-      .then((routes) => setServerRoutes({ key: routesKey, routes: routes.length > 0 ? routes : null }))
-      .catch((error) => {
-        if (!isCancelledError(error) && !controller.signal.aborted) setServerRoutes({ key: routesKey, routes: null });
-      });
-    return () => controller.abort();
-    // routesKey 가 건물 id·층을 모두 담는다(같은 건물이 새로 받아져도 다시 묻지 않게).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routesKey]);
-  useEffect(() => {
-    if (!approachKey || !toBuilding) return;
-    const controller = new AbortController();
-    fetchWalkApproach({ to: toBuilding, toFloor, signal: controller.signal })
-      .then((data) => setApproach({ key: approachKey, data }))
-      .catch((error) => {
-        if (!isCancelledError(error) && !controller.signal.aborted) setApproach({ key: approachKey, data: null });
-      });
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [approachKey]);
 
-  const routeAlternatives = useMemo<RouteAlternative[]>(() => {
-    if (fromMyLocation && toBuilding) {
-      if (!routeOrigin || approach?.key !== approachKey) return [];
-      const fromMe = approach.data ? pickApproachRoutes(approach.data, routeOrigin, buildings) : [];
-      return fromMe.length > 0 ? fromMe : [straightLineFromPoint(routeOrigin, toBuilding, toFloor)];
-    }
-    if (!fromBuilding || !toBuilding || serverRoutes?.key !== routesKey) return [];
-    return serverRoutes.routes ?? [straightLineFallback(fromBuilding, fromFloor, toBuilding, toFloor)];
-  }, [fromBuilding, toBuilding, fromFloor, toFloor, fromMyLocation, routeOrigin, approach, approachKey, serverRoutes, routesKey, buildings]);
 
-  const selectedRoute = routeAlternatives[selectedRouteIndex] ?? null;
 
-  const activeFilter = useMemo<PartnerFilter>(
-    () => ({ affiliation: selectedAffiliation, category: selectedCategory }),
-    [selectedAffiliation, selectedCategory],
-  );
-
-  const visiblePartners = useMemo(
-    () => (hasActiveFilter(activeFilter) ? filterPartners(allPartners, activeFilter) : []),
-    [allPartners, activeFilter],
-  );
-
-  /** 화면 맞춤 범위 밖이라 눈에 잘 안 띄는 지점 수. 안내 배지에 쓴다. */
-  /**
-   * 지도 위 안내 줄(캠퍼스 밖 N곳 등)을 탭하거나 X 로 닫은 기록. 문구 단위로 기억해, 숫자가 바뀌는 등
-   * 내용이 달라지면 다시 보여 준다. 앱을 다시 켜면 초기화된다.
-   */
-  const [dismissedNotices, setDismissedNotices] = useState<ReadonlySet<string>>(() => new Set());
-  const dismissNotice = useCallback((message: string) => {
-    setDismissedNotices((prev) => new Set(prev).add(message));
-  }, []);
-  /** 지금 필터에 걸렸지만 지도 화면 범위 밖이라 핀이 잘 안 보이는 업체들(구로·강남·성수 등). */
-  const offscreenPartners = useMemo(
-    () => partnersOutsideFocus(visiblePartners),
-    [visiblePartners],
-  );
+  // 지도 위 안내 줄 상태(네이버 지도 인증 실패·닫은 안내·안 보이는 업체 수).
+  const { offscreenPartners, unresolvedCount, mapAuthFailed, reportMapAuthFailure, dismissMapAuthError, dismissedNotices, dismissNotice } =
+    useMapNotices({ partners: allPartners, activeFilter, facilities, buildings, facilityKind });
   const offscreenCount = offscreenPartners.length;
 
-  /**
-   * 건물명이 지도 데이터의 건물과 안 맞아 좌표를 못 찾은 편의시설 수.
-   * 조용히 빠지면 데이터를 넣었는데 지도에 안 뜨는 이유를 알 수 없어 알린다.
-   */
-  const unresolvedCount = useMemo(
-    () =>
-      facilityKind === null
-        ? 0
-        : unresolvedFacilities(facilities, buildings).filter((f) => f.kind === facilityKind).length,
-    [facilities, buildings, facilityKind],
-  );
+  const { insets, sideGutter, sheetOpen, routeMode, bottomInset, sheetBottom, mapMenuStyle, mapMenuMaxItemsHeight } = useMapLayout({
+    bottomInsetRef,
+    selectedBuilding,
+    selectedPartner,
+    selectedReport,
+    selectedFacilityBuilding,
+    facilityKind,
+    pickingLocation,
+    fromBuilding,
+    fromMyLocation,
+    toBuilding,
+    headerHeight,
+    routeCardHeight,
+  });
 
-  /** 필터는 걸었는데 걸리는 업체가 없는 상태. 빈 지도만 보여주지 않고 알려준다. */
-  const isEmptyResult =
-    hasActiveFilter(activeFilter) && visiblePartners.length === 0;
-
-  /** 제보 레이어를 켰는데 지금 진행 중인 제보가 하나도 없는 상태. */
-  const reportsEmpty =
-    reportsOn &&
-    reportsMatchHot &&
-    reportsResource.data !== undefined &&
-    reportsResource.errorMessage === null &&
-    reports.length === 0;
-
-  const filteredBuildings = searchQuery.trim()
-    ? buildings.filter((b) => b.name.includes(searchQuery.trim()))
-    : buildings;
-
-  // 페이지 스크립트가 아직 안 떴으면(웹은 maps.js 를 받은 뒤에 주입한다) 조용히 건너뛴다. 준비되면 resyncMap 이 다시 보낸다.
-  const postToMap = useCallback((msg: object) => {
-    webViewRef.current?.injectJavaScript(
-      `if (typeof window.handleNativeMessage === "function") window.handleNativeMessage(${JSON.stringify(JSON.stringify(msg))});true;`,
-    );
-  }, []);
-
-  /**
-   * 건물 배너가 닫히면(제보·제휴·편의시설을 누르거나 HOT 목록·링크로 제보를 열어서) 지도 페이지의 건물 강조도 거둔다.
-   * 앱 쪽 상태만 비우면 페이지에는 전에 누른 건물 핀(예: 인문사회관 A동)이 선택된 채 남아, 다른 제보를 보는 중에도
-   * 그 건물이 눌린 것처럼 보였다. 기존 `selectBuilding` 메시지라 이미 배포된 map.html 에도 먹힌다.
-   */
-  const prevSelectedBuildingRef = useRef<Building | null>(null);
-  useEffect(() => {
-    const prev = prevSelectedBuildingRef.current;
-    prevSelectedBuildingRef.current = selectedBuilding;
-    if (prev !== null && selectedBuilding === null) postToMap({ type: "selectBuilding", name: null });
-  }, [selectedBuilding, postToMap]);
-
-  /**
-   * 업체 시트가 닫히면(제보·편의시설·건물을 누르거나, 칩·제보 위치 고르기·알림 등 어떤 경로로든) 페이지의 업체 강조도 거둔다.
-   * 필터 없이 검색으로만 올린 마커였으면 시트와 함께 마커도 내린다 — 안 그러면 시트 없이 핀 하나만 지도에 남는다.
-   * 필터가 켜져 있으면 마커는 그대로 둔다. 모두 기존 메시지라 이미 배포된 map.html 에도 먹힌다.
-   */
-  const prevSelectedPartnerRef = useRef<Partner | null>(null);
-  useEffect(() => {
-    const prev = prevSelectedPartnerRef.current;
-    prevSelectedPartnerRef.current = selectedPartner;
-    if (prev === null || selectedPartner !== null) return;
-    if (!hasActiveFilter(activeFilter) && searchedPartnerIdRef.current !== null) {
-      searchedPartnerIdRef.current = null;
-      postToMap({ type: "clearPartners" });
-      return;
-    }
-    postToMap({ type: "selectPartner", id: null });
-  }, [selectedPartner, activeFilter, postToMap]);
-
-  /**
-   * 제휴·편의시설·제보 시트가 열려 있는지 페이지에 알린다. 열린 채 건물을 누르면 페이지가 건물로 날아가 확대하지 않고
-   * 시트 닫기로만 쓰게 한다(sheetDismiss). 옛 map.html 은 이 메시지를 모르니 무시한다.
-   */
-  const otherSheetOpen = selectedReport !== null || selectedPartner !== null || selectedFacilityBuilding !== null;
-  useEffect(() => {
-    postToMap({ type: "sheetOpen", open: otherSheetOpen });
-  }, [otherSheetOpen, postToMap]);
-
-  /** 지도 페이지가 마커를 새로 받으면(setPartners) 선택이 풀린다. 고른 업체가 그 목록에 아직 있으면 다시 강조한다. */
-  const reassertPartnerSelection = useCallback(
-    (partnersOnPage: Partner[]) => {
-      const current = selectedPartnerRef.current;
-      if (current && partnersOnPage.some((p) => p.id === current.id)) {
-        postToMap({ type: "selectPartner", id: current.id });
-      }
-    },
-    [postToMap],
-  );
-
-  /** 제보 시트를 연다. 배너는 모두 같은 자리(아래)에 겹쳐 그려지므로 건물·업체·편의시설 배너는 닫는다. */
-  const openReport = useCallback((report: ReportListItem | null) => {
-    setSelectedBuilding(null);
-    setSelectedFacilityBuilding(null);
-    setSelectedPartner(null);
-    setSelectedReport(report);
-    // 같은 손동작으로 바로 뒤따르는 건물 탭(buildingTap)이 렌더 전에 와도 '방금 제보를 열었다'를 알 수 있게 바로 적어 둔다.
-    if (report) {
-      selectedReportRef.current = report;
-      reportOpenedAtRef.current = Date.now();
-    }
-  }, []);
-
-  /**
-   * 건물·제휴·편의시설·제보 시트를 여는 동안에는 아래 탭 막대를 잠시 숨겨 시트를 화면 맨 아래까지 내린다.
-   * 시트를 읽는 중엔 탭을 옮길 일이 거의 없고, 탭바가 시트 아래를 받쳐 지도를 더 가렸다. 닫으면 다시 보인다.
-   */
-  const sheetOpen =
-    selectedBuilding !== null ||
-    selectedPartner !== null ||
-    selectedReport !== null ||
-    (selectedFacilityBuilding !== null && facilityKind !== null);
-  /**
-   * 길찾기 중(출발·도착 막대가 떠 있는 동안, 11-09 사용자 요청): 다른 탭으로 갈 일이 없고 제휴 검색·칩도 쓸 일이 없어
-   * 아래 탭 막대와 위 검색바·칩을 숨긴다. 그 자리를 출발·도착 막대(오른쪽 위 X 로 끝내기)와 아래 경로 카드가 쓴다.
-   */
-  const routeMode = !pickingLocation && (fromBuilding !== null || fromMyLocation || toBuilding !== null);
-  const tabBarHidden = sheetOpen || routeMode;
-  // 화면을 그리기 전에(useLayoutEffect) 탭바를 바꾼다. useEffect 면 시트와 탭바가 한 프레임 겹쳐 보여 반짝였다.
-  useLayoutEffect(() => {
-    navigation.setOptions({ tabBarStyle: tabBarHidden ? MAP_TAB_BAR_HIDDEN_STYLE : MAP_TAB_BAR_STYLE });
-  }, [navigation, tabBarHidden]);
-  /** 지도 위 아래쪽 버튼·카드의 기준선. 탭바가 숨으면 홈 인디케이터 여백만. */
-  const bottomInset = tabBarHidden ? insets.bottom : tabBarHeight;
-  const bottomInsetRef = useRef(bottomInset);
-  bottomInsetRef.current = bottomInset;
-  // 탭바를 숨긴 동안 시트는 화면 맨 아래에 붙는다(지도 아래쪽 NAVER 로고 줄까지 덮는다).
-  // 홈 인디케이터 여백은 각 시트가 안쪽 아래 여백(useSafeAreaInsets)으로 띄운다.
-  const sheetBottom = sheetOpen ? 0 : tabBarHeight;
-
-  /**
-   * 제보 시트가 열려 있는 동안엔 건물 핀이 지도에 남지 않게 한다. 제보 마커(또는 그 이름표)를 누른 손동작이 지도 탭으로도
-   * 넘어가 아래 건물(강당 S동 등) 핀이 같이 켜지는 경우가 있었다. 제보가 열리거나 바뀔 때마다 건물 강조를 거둔다.
-   * 다음 프레임에도 한 번 더 보내, 같은 손동작으로 페이지가 뒤늦게 켠 핀까지 지운다(배포된 map.html 도 아는 메시지).
-   */
-  const selectedReportId = selectedReport?.id ?? null;
-  const reportOpenedAtRef = useRef(0);
-  // 지금 열린 제보를 알려 둔다 — 게스트가 로그인 안내로 떠났다 돌아오면 이 제보를 다시 띄운다(lib/mapIntents).
-  useEffect(() => {
-    setOpenReport(selectedReportId);
-  }, [selectedReportId]);
-  useEffect(() => {
-    if (selectedReportId === null) return;
-    reportOpenedAtRef.current = Date.now();
-    postToMap({ type: "selectBuilding", name: null });
-    const timer = setTimeout(() => postToMap({ type: "selectBuilding", name: null }), 120);
-    return () => clearTimeout(timer);
-  }, [selectedReportId, postToMap]);
-
-  const showPreviewPin = useCallback(
-    (preview: PreviewTarget) => {
-      // focusReport 는 예전 지도 페이지도 알아듣는다(가운데로만). previewPin 은 새 페이지에서 핀까지 찍는다.
-      postToMap({ type: "focusReport", lat: preview.lat, lng: preview.lng, zoom: FOCUS_ZOOM });
-      postToMap({ type: "previewPin", lat: preview.lat, lng: preview.lng, label: preview.label });
-    },
-    [postToMap],
-  );
-
-  /** 미리보기 핀과 안내 줄을 거둔다. 핀은 배포된 원격 map.html 에도 먹히게 페이지 전역을 직접 지운다. */
-  const clearPreview = useCallback(() => {
-    if (previewTargetRef.current === null) return;
-    setPreviewTarget(null);
-    webViewRef.current?.injectJavaScript(
-      "if (window.__previewPin) { window.__previewPin.setMap(null); window.__previewPin = null; } true;",
-    );
-  }, []);
-
-  /**
-   * 건물 시트 → '건물 안 시설'로 연 시설 시트를 정리한다(11-08). 아래 handleLeaveBuildingFacility 가 채운다 —
-   * 지도 메시지 처리기가 그보다 위에 있어 ref 로 부른다. 그렇게 연 시트가 아니면 false.
-   */
-  const leaveBuildingFacilityRef = useRef<() => boolean>(() => false);
-  /** 지도에서 경로를 누른 시각과, 메시지 처리기(위)에서 부를 경로 고르기(아래에서 채운다). */
-  const routeTapAtRef = useRef(0);
-  /** 출발·도착이 다 정해져 경로를 보여 주는 중인지(아래에서 채운다). 이때는 지도 탭으로 건물을 고르지 않는다. */
-  const routeShownRef = useRef(false);
-  routeShownRef.current = !pickingLocation && (fromBuilding !== null || fromMyLocation) && toBuilding !== null;
-  const routeAlternativesRef = useRef<RouteAlternative[]>([]);
-  const handleSelectRouteAlternativeRef = useRef<(index: number) => void>(() => {});
-
-  const handleWebViewMessage = useCallback(
-    (event: { nativeEvent: { data: string } }) => {
-      try {
-        const msg = JSON.parse(event.nativeEvent.data);
-
-        // 지도에서 회색(다른) 경로를 눌렀다(11-09) — 그 길로 바꾼다. 같은 손동작이 지도 탭으로도 들어와 건물 시트가 열렸으면 닫는다.
-        if (msg.type === "routeTap" && typeof msg.index === "number") {
-          routeTapAtRef.current = Date.now();
-          if (msg.index >= 0 && msg.index < routeAlternativesRef.current.length) handleSelectRouteAlternativeRef.current(msg.index);
-          setSelectedBuilding(null);
-          postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-        // 경로를 누른 바로 그 손동작의 지도 탭은 무시한다. 경로를 보여 주는 동안에는 지도 탭 자체로 건물을 고르지 않는다(11-12) —
-        // 길(선)을 누른 탭이 경로 선이 아닌 건물 위로 들어와 건물 배너가 경로 카드를 가렸다.
-        if (
-          ((msg.type === "buildingTap" || msg.type === "buildingDismiss") && Date.now() - routeTapAtRef.current < 500) ||
-          (msg.type === "buildingTap" && routeShownRef.current)
-        ) {
-          postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-
-        if (msg.type === "buildingTap") {
-          // 제보를 연 바로 그 손동작이 건물 탭으로도 들어온 것 — 제보 시트는 두고 건물 핀만 거둔다.
-          if (selectedReportRef.current && Date.now() - reportOpenedAtRef.current < 400) {
-            postToMap({ type: "selectBuilding", name: null });
-            return;
-          }
-          // 제보·제휴·편의시설 시트가 열린 채 지도를 누르면 그 탭은 '시트 닫기'로만 쓴다. 바로 건물 배너까지
-          // 열면 시트가 내려가지 않고 엉뚱한 건물이 눌린 것처럼 보였다. 건물을 보려면 한 번 더 누른다.
-          if (selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current) {
-            setSelectedReport(null);
-            setSelectedPartner(null);
-            setSelectedFacilityBuilding(null);
-            postToMap({ type: "selectBuilding", name: null });
-            return;
-          }
-          const building = buildings.find((b) => b.name === msg.name) ?? null;
-          setSelectedPartner(null);
-          setSelectedFacilityBuilding(null);
-          // 배너는 모두 같은 자리(아래)에 겹쳐 그려진다. 제보 시트를 닫지 않으면 새 건물 배너가 그 밑에 가려진다.
-          setSelectedReport(null);
-          setSelectedBuilding(building);
-          // 앱 데이터에 없는 건물이면 배너가 안 뜬다. 페이지에 핀만 남지 않게 강조도 거둔다.
-          if (!building) postToMap({ type: "selectBuilding", name: null });
-          return;
-        }
-
-        if (msg.type === "partnerTap") {
-          const partner = allPartners.find((p) => p.id === msg.id) ?? null;
-          setSelectedBuilding(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedReport(null);
-          setSelectedPartner(partner);
-          // 앱 데이터에 없는 업체면 시트가 안 뜬다. 페이지에 강조만 남지 않게 거둔다.
-          if (!partner) postToMap({ type: "selectPartner", id: null });
-          return;
-        }
-
-        if (msg.type === "reportTap") {
-          openReport(reports.find((r) => r.id === msg.id) ?? null);
-          return;
-        }
-
-        // 지도를 길게 누르면 그 자리에 제보를 남기는 작성창이 열린다.
-        // 좌표는 건물로 스냅되지 않은 원본이고, 근처 건물명은 참고용이다.
-        if (msg.type === "reportLongPress") {
-          // 제보 등록은 로그인이 필요하다. 게스트가 작성창을 다 채운 뒤에야 막히지 않게 여기서 먼저 묻는다.
-          if (!accessToken) {
-            promptLogin("제보를 남기려면 로그인해 주세요.", logout);
-            return;
-          }
-          setSelectedBuilding(null);
-          setSelectedPartner(null);
-          setSelectedReport(null);
-          setSelectedFacilityBuilding(null);
-          setReportTarget({
-            lat: msg.lat,
-            lng: msg.lng,
-            buildingName: msg.buildingName ?? null,
-          });
-          return;
-        }
-
-        // 편의시설 핀: 건물 소개가 아니라 그 시설이 몇 층 어디에 있는지 보여 준다(FacilitySheet).
-        if (msg.type === "facilityTap") {
-          setSearchedFacility(null);
-          setSelectedPartner(null);
-          setSelectedBuilding(null);
-          setSelectedReport(null);
-          setSelectedFacilityBuilding(msg.buildingName ?? null);
-          return;
-        }
-
-        // 제휴·편의시설·제보 시트가 열린 채 건물을 눌렀다. 그 탭은 시트 닫기로만 쓴다(페이지는 건물 선택·이동을 하지 않았다).
-        if (msg.type === "sheetDismiss") {
-          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
-          leaveBuildingFacilityRef.current();
-          setSelectedReport(null);
-          setSelectedPartner(null);
-          setSelectedFacilityBuilding(null);
-          return;
-        }
-
-        // 지도 빈 곳을 눌렀다. 핀이 사라졌으니 건물 배너도 함께 닫는다.
-        if (msg.type === "buildingDismiss") {
-          // 지도 빈 곳을 누르면 열린 시트를 모두 내린다(제보 시트 포함).
-          // 건물에서 들어간 시설 시트면 그 시설 핀까지 거둬 들어오기 전 지도로 돌아간다(11-08).
-          leaveBuildingFacilityRef.current();
-          setSelectedBuilding(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedReport(null);
-          return;
-        }
-
-        if (msg.type === "partnerDismiss") {
-          setSelectedPartner(null);
-          return;
-        }
-
-        if (msg.type === "mapAuthFailure") {
-          setMapAuthFailed(true);
-        }
-
-        // 근처 알림 테스트 위치(개발 도구): 지도 가운데 좌표.
-        if (msg.type === "nearbyTestCenter" && typeof msg.lat === "number" && typeof msg.lng === "number") {
-          const at = { lat: msg.lat, lng: msg.lng };
-          setPickingNearbyTest(false);
-          setNearbyOverlayOn(true);
-          setNearbyTestLabel(`테스트 위치 ${at.lat.toFixed(5)}, ${at.lng.toFixed(5)}`);
-          void applyNearbyTestLocation(at, nearbySourceRef.current);
-          return;
-        }
-
-        // 위치 선택 모드 중 지도가 멈출 때마다 온다. 화면 중앙 좌표를 갱신한다.
-        if (msg.type === "pickerCenter") {
-          setPickerCenter({
-            lat: msg.lat,
-            lng: msg.lng,
-            buildingName: msg.buildingName ?? null,
-          });
-          return;
-        }
-      } catch {}
-    },
-    [reports, accessToken, logout, buildings, allPartners, postToMap, openReport],
-  );
-
-  /** 두 단계를 합쳐 지도를 다시 그린다. 어느 칩 줄을 눌렀든 여기로 모인다. */
-  const applyFilter = useCallback(
-    (filter: PartnerFilter) => {
-      setSelectedPartner(null);
-      searchedPartnerIdRef.current = null;
-
-      if (!hasActiveFilter(filter)) {
-        postToMap({ type: "clearPartners" });
-        return;
-      }
-
-      if (!routePicking) setSelectedBuilding(null);
-      // 먼 제휴 지점을 보던 중이면 이동 범위를 먼저 캠퍼스로 되돌린다. 좁은 범위에 갇혀 칩 결과를 둘러볼 수 없고,
-      // ref 를 비워 두지 않으면 아래 effect 가 캠퍼스 기본 줌으로 다시 옮긴다. 칩만으로는 카메라를 옮기지 않는다(10-09 요청).
-      if (farViewPartnerIdRef.current !== null) {
-        farViewPartnerIdRef.current = null;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-      }
-      const partners = filterPartners(allPartners, filter);
-      postToMap({
-        type: "setPartners",
-        partners: partners.map(toMarker),
-        bounds: null,
-      });
-    },
-    [allPartners, postToMap, routePicking],
-  );
-
-  /** 같은 칩을 다시 누르면 그 단계만 해제한다. */
-  const handleSelectAffiliation = useCallback(
-    (affiliation: PartnerAffiliation) => {
-      const next = selectedAffiliation === affiliation ? null : affiliation;
-      setSelectedAffiliation(next);
-      applyFilter({ affiliation: next, category: selectedCategory });
-    },
-    [selectedAffiliation, selectedCategory, applyFilter],
-  );
-
-  const handleSelectCategory = useCallback(
-    (category: PartnerCategory) => {
-      const next = selectedCategory === category ? null : category;
-      setSelectedCategory(next);
-      applyFilter({ affiliation: selectedAffiliation, category: next });
-    },
-    [selectedAffiliation, selectedCategory, applyFilter],
-  );
-
-  /**
-   * 검색 결과를 고르면 그 업체만 지도에 올리고 화면 가운데로 가져온다.
-   * 칩 필터는 모두 해제한다. 검색 결과가 칩 조건에 안 맞으면
-   * 칩은 켜져 있는데 다른 업체가 떠 있는 어긋난 상태가 되기 때문이다.
-   */
-  const handleSearchSelect = useCallback(
-    (partner: Partner) => {
-      setShowSearch(false);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
-      setSelectedBuilding(null);
-      setSelectedReport(null);
-      setSelectedFacilityBuilding(null);
-      setSelectedPartner(partner);
-      searchedPartnerIdRef.current = partner.id;
-
-      // 캠퍼스에서 먼 지점은 검색으로만 찾아간다 — 옮기기 전에 이동 범위를 그 지점 둘레로 바꾼다(캠퍼스 범위로는 못 간다).
-      // 시트를 닫거나 다른 것을 고르면 아래 effect 가 캠퍼스로 되돌린다.
-      if (isFarFromCampus(partner)) {
-        farViewPartnerIdRef.current = partner.id;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(partner)));
-      } else if (farViewPartnerIdRef.current !== null) {
-        farViewPartnerIdRef.current = null;
-        webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-      }
-
-      postToMap({
-        type: "setPartners",
-        partners: [toMarker(partner)],
-        bounds: null,
-      });
-      postToMap({ type: "focusPartner", id: partner.id, zoom: FOCUS_ZOOM });
-    },
-    [postToMap],
-  );
-
-  /**
-   * 검색이나 건물 시트에서 편의시설(교무처·프린터 등)을 골랐다. 편의시설 갈래로 바꿔 그 종류 핀을 켜고, 그 건물(실측 좌표가 있으면
-   * 그 지점)로 카메라를 옮긴 뒤 시설 시트를 연다. 칩을 누를 때와 달리 카메라를 옮긴다 — 어디 있는지 찾으러 온 것이므로.
-   * `facility` 가 있으면(검색) 시트에서 그 줄을 강조한다.
-   */
-  const openFacilitySheet = useCallback(
-    (kind: FacilityKind, buildingName: string, facility: Facility | null) => {
-      setShowSearch(false);
-      // 갈래 전환(handleSelectLayer)과 같은 정리: 제휴·제보 선택과 마커를 지운다.
-      setLayer("편의시설");
-      setSelectedPartner(null);
-      setSelectedBuilding(null);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
-      postToMap({ type: "clearPartners" });
-      // 제보는 갈래와 따로라 끄지 않는다(10-27). 열려 있던 제보 시트만 닫는다.
-      setSelectedReport(null);
-
-      setFacilityKind(kind);
-      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, kind), facilities, exhibitions);
-      const building = buildings.find((b) => b.name === buildingName);
-      const lat = facility?.lat ?? building?.lat;
-      const lng = facility?.lng ?? building?.lng;
-      // 핀을 직접 누를 때와 같은 배율·자리(FOCUS_ZOOM, 시트 위 가운데)로 간다. 전에는 ±70m 범위 맞춤(fitBounds)이라
-      // 화면 크기에 따라 한두 단계 덜 확대돼, 직접 누를 때(19)와 배율이 달랐다(10-14). 'focusReport' 는 이름과 달리
-      // 좌표로 가는 일반 이동이다 — 배포된 지도 페이지에 이미 있는 메시지라 페이지를 다시 올리지 않아도 된다.
-      postToMap({ type: "setFacilities", markers, bounds: null });
-      // 검색으로 찾아왔을 때만 확대한다. 건물 시트에서 '건물 안 시설'을 누른 것은 핀을 누를 때처럼 지금 배율로 가운데만 옮긴다(10-27).
-      if (lat !== undefined && lng !== undefined)
-        postToMap({ type: "focusReport", lat, lng, ...(facility ? { zoom: FOCUS_ZOOM } : {}) });
-      setSelectedFacilityBuilding(buildingName);
-      setSearchedFacility(facility);
-    },
-    [facilities, buildings, exhibitions, postToMap],
-  );
-
-  const handleSearchSelectFacility = useCallback(
-    (facility: Facility) => openFacilitySheet(facility.kind, facility.buildingName, facility),
-    [openFacilitySheet],
-  );
-
-  /** 건물 시트의 '건물 안 시설' 줄을 눌렀다. 검색과 같은 길로 그 종류 핀을 켜고 이 건물의 시설 시트를 연다(강조할 줄은 없음). */
-  /**
-   * 건물 시트에서 넘어온 시설 시트면 그 건물과 넘어오기 전 칩 상태를 기억한다. 시설 시트의 '<'로 그 건물 시트에 돌아간다(10-15 요청 —
-   * 문헌관 → 프린터를 누르면 프린터 칩이 켜지며 시설 시트로 바뀌어, 문헌관 정보로 돌아갈 길이 없었다).
-   */
-  const [facilityFrom, setFacilityFrom] = useState<{ building: Building; layer: MapLayer | null; kind: FacilityKind | null } | null>(null);
-
-  const handleOpenBuildingFacility = useCallback(
-    (kind: FacilityKind) => {
-      if (!selectedBuilding) return;
-      const from = { building: selectedBuilding, layer, kind: facilityKind };
-      openFacilitySheet(kind, selectedBuilding.name, null);
-      setFacilityFrom(from);
-    },
-    [selectedBuilding, layer, facilityKind, openFacilitySheet],
-  );
-
-  // 시설 시트가 닫히거나 다른 건물·검색으로 바뀌면 돌아갈 곳을 잊는다.
-  useEffect(() => {
-    if (facilityFrom && selectedFacilityBuilding !== facilityFrom.building.name) setFacilityFrom(null);
-  }, [facilityFrom, selectedFacilityBuilding]);
-
-
-  const selectedBuildingFacilities = useMemo(
-    () => (selectedBuilding ? facilities.filter((f) => f.buildingName === selectedBuilding.name) : []),
-    [selectedBuilding, facilities],
-  );
-
-  // 먼 지점 시트를 닫았거나(어떤 경로로든) 다른 것을 골랐으면 이동 범위를 캠퍼스로 되돌리고 캠퍼스로 돌아온다.
-  useEffect(() => {
-    const farId = farViewPartnerIdRef.current;
-    if (farId !== null && selectedPartner?.id !== farId) handleRecenter();
-  }, [selectedPartner, handleRecenter]);
-
-  const handleClosePartner = useCallback(() => {
-    setSelectedPartner(null);
-    postToMap({ type: "selectPartner", id: null });
-  }, [postToMap]);
-
-  /** 대안 경로들을 지도에 올린다. 고른 것을 굵게, 나머지는 옅게 그린다. */
-  const drawRoute = useCallback(
-    (routes: RouteAlternative[], selectedIndex: number) => {
-      postToMap({
-        type: "showRoute",
-        routes: routes.map((route) => ({ points: route.points })),
-        selectedIndex,
-      });
-      // 그린 뒤 위 경로 막대와 아래 결과 카드 사이에 맞춘다. 높이는 실측값이고, 아직 재지 못했으면 어림값(막대 100·카드 90)을 쓴다.
-      // 지도 페이지는 메시지를 조금 늦게 처리해서, 바로 넣으면 경로가 아직 없다 — 잠깐 뒤에 칠하고 맞춘다.
-      // 지도 페이지가 그 뒤에 다시 맞추는 경우가 있어(웹에서 확인) 한 번 더 맞춘다. 두 번째에는 카드 높이가 잡혀 있다.
-      const fitScript = () =>
-        routeStyleScript(
-          selectedIndex,
-          {
-            top: headerHeight + 8 + (routeStripHeightRef.current || 100) + 24,
-            bottom: bottomInsetRef.current + 12 + (routeCardHeightRef.current || 90) + 24,
-          },
-          routes,
-          routes[selectedIndex]?.markers ?? [],
-          fromFloorRef.current,
-        );
-      for (const delay of [ROUTE_STYLE_DELAY_MS, ROUTE_STYLE_DELAY_MS * 4]) {
-        setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay);
-      }
-    },
-    [postToMap, headerHeight],
-  );
+  // 지도 페이지가 보내는 메시지(경로 탭·위치 고르기·근처 테스트·인증 실패·시트 열고 닫기)를 나눠 처리한다.
+  const handleWebViewMessage = useMapMessages({
+    postToMap,
+    pickingLocation,
+    handleRouteTap: route.handleRouteTap,
+    ignoresMapTap: route.ignoresMapTap,
+    handlePickerCenter: picker.handleCenterMessage,
+    handleNearbyCenter: nearbyDebug.handleCenter,
+    reportMapAuthFailure,
+    handleSelectionTap,
+    clearSelectedBuilding: () => setSelectedBuilding(null),
+  });
 
   // 길찾기를 보는 동안(길찾기 창이 열렸거나 경로가 지도에 있을 때)만 위치를 계속 읽는다. 권한이 이미 있을 때만 — 권한 창은
   // 출발지 "내 위치"를 고를 때만 뜬다. 나가면 멈추고 지도 점을 지운다.
   const routeActive = showRoute || ((fromBuilding !== null || fromMyLocation) && toBuilding !== null);
-  // 테스트 앱(현장 테스트·개발 빌드)은 근처 알림을 실제 위치로 확인하려고 지도에 내 위치를 늘 보여 준다(11-03 운영진 요청).
-  // 운영 앱은 길찾기를 볼 때만 위치를 읽는다(처리방침 11-09판).
-  // 앱이 화면에 떠 있을 때만 읽는다 — 내리면 바로 멈춰 위치 표시(다이나믹 아일랜드)가 남지 않게(11-03).
-  const [appForeground, setAppForeground] = useState(AppState.currentState === "active");
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => setAppForeground(state === "active"));
-    return () => subscription.remove();
-  }, []);
-  /**
-   * 지도 메뉴의 "내 위치 켜기"(11-06). 켜 둔 동안 지도 화면에서만 위치를 읽어 점을 보여 주고, 다시 누르거나 지도 탭을 떠나면
-   * 끈다. 길찾기와 같이 휴대폰 안에서만 쓰고 저장하거나 보내지 않는다(처리방침 "지도에서 '내 위치 켜기'를 누를 때").
-   */
-  // 테스트 앱은 켠 채로 시작한다(11-03 운영진 요청). 다만 '내 위치 끄기'를 누르면 정말 끈다 — 전에는 테스트 앱이면
-  // 메뉴와 상관없이 늘 위치를 읽어 끄기가 먹지 않았다(11-09 버그). 직접 끈 뒤에는 지도 탭에 돌아와도 다시 켜지 않는다.
-  const [myLocationOn, setMyLocationOn] = useState(NEARBY_DEBUG_TOOLS);
-  const myLocationUserOffRef = useRef(false);
-  const mapFocused = useIsFocused();
-  useEffect(() => {
-    if (!mapFocused) setMyLocationOn(false);
-    else if (NEARBY_DEBUG_TOOLS && !myLocationUserOffRef.current) setMyLocationOn(true);
-  }, [mapFocused]);
-  const locationActive = appForeground && (routeActive || (myLocationOn && mapFocused));
-  /** 받은 GPS 를 다듬은 추정(locationFilter). 길찾기를 나가면 버린다. */
-  const locationFilterRef = useRef<FilterState | null>(null);
-  useEffect(() => {
-    if (!locationActive) {
-      locationFilterRef.current = null;
-      setMyLocation(null);
-      return;
-    }
-    let stop: (() => void) | null = null;
-    let cancelled = false;
-    void watchLocation((position) => {
-      const next = filterFix(locationFilterRef.current, { ...position, at: Date.now() });
-      if (!next || next === locationFilterRef.current) return; // 오차가 커서 버린 값
-      locationFilterRef.current = next;
-      setMyLocation({ lat: next.lat, lng: next.lng, accuracy: filterAccuracy(next) });
-    }).then((unsubscribe) => {
-      if (cancelled) unsubscribe();
-      else stop = unsubscribe;
-    });
-    return () => {
-      cancelled = true;
-      stop?.();
-    };
-  }, [locationActive]);
+  const myLocation = useMyLocation({
+    webViewRef,
+    routeActive,
+    selectedRouteRef: route.selectedRouteRef,
+    alternatives: routeAlternatives,
+    selectedIndex: selectedRouteIndex,
+    fromMyLocation,
+    setRouteOrigin: route.setRouteOrigin,
+    startRouteFromMyLocation: route.startFromMyLocation,
+    farViewPartnerIdRef,
+  });
 
-  // 고른 경로에서 20m 안이면 점을 경로선 위에 붙여 보여 준다(길 맞추기). 직선 어림 경로에는 붙이지 않는다.
-  const shownLocationRef = useRef<LivePosition | null>(null);
-  const shownLocation = useMemo(() => {
-    if (!myLocation) return null;
-    const route = routeAlternatives[selectedRouteIndex];
-    const snapped = route && !route.isEstimate ? snapToRoute(myLocation, route.points) : null;
-    return snapped ? { ...myLocation, ...snapped } : myLocation;
-  }, [myLocation, routeAlternatives, selectedRouteIndex]);
+  const closeRouteSearch = route.closeSearch;
 
-  useEffect(() => {
-    shownLocationRef.current = shownLocation;
-    webViewRef.current?.injectJavaScript(myLocationScript(shownLocation));
-  }, [shownLocation]);
 
-  useEffect(() => {
-    if (!fromMyLocation || !myLocation) return;
-    setRouteOrigin((prev) =>
-      prev && haversineMeters(prev.lat, prev.lng, myLocation.lat, myLocation.lng) < 15 ? prev : myLocation,
-    );
-  }, [fromMyLocation, myLocation]);
-
-  // fromBuilding/toBuilding/fromFloor/toFloor 가 바뀌어 routeAlternatives 가
-  // 새로 계산될 때마다(둘 다 골랐을 때만 채워진다) 첫 번째 대안으로 다시 그린다.
-  useEffect(() => {
-    setSelectedRouteIndex(0);
-    if (routeAlternatives.length > 0) drawRoute(routeAlternatives, 0);
-  }, [routeAlternatives, drawRoute]);
-
-  /** 대안 목록에서 다른 경로를 고르면, 다시 그리지 않고 스타일만 바꾼다. */
-  const handleSelectRouteAlternative = useCallback(
-    (index: number) => {
-      setSelectedRouteIndex(index);
-      postToMap({ type: "selectRouteAlternative", index });
-      setTimeout(
-        () =>
-          webViewRef.current?.injectJavaScript(
-            routeStyleScript(
-              index,
-              undefined,
-              routeAlternativesRef.current,
-              routeAlternativesRef.current[index]?.markers ?? [],
-              fromFloorRef.current,
-            ),
-          ),
-        ROUTE_STYLE_DELAY_MS,
-      );
-    },
-    [postToMap],
-  );
-  handleSelectRouteAlternativeRef.current = handleSelectRouteAlternative;
-  routeAlternativesRef.current = routeAlternatives;
-
-  /** 길찾기 창(검색)을 닫는다. 출발·도착을 고르면 지도로 돌아가 경로 막대·결과 카드로 이어 간다(11-03). */
-  const closeRouteSearch = useCallback(() => {
-    setShowRoute(false);
-    setRouteTarget(null);
-    setSearchQuery("");
-  }, []);
-
-  const commitFrom = useCallback(
-    (building: Building, floor: number | null) => {
-      setFromMyLocation(false);
-      setFromBuilding(building);
-      setFromFloor(floor);
-      setSelectedBuilding(null);
-      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
-      setSelectedFacilityBuilding(null);
-      closeRouteSearch();
-    },
-    [closeRouteSearch],
-  );
-
-  const commitTo = useCallback(
-    (building: Building, floor: number | null) => {
-      setToBuilding(building);
-      setToFloor(floor);
-      setSelectedBuilding(null);
-      // 시설 시트에서 정했으면 그 시트도 내려 결과 카드가 보이게 한다(11-08).
-      setSelectedFacilityBuilding(null);
-      closeRouteSearch();
-    },
-    [closeRouteSearch],
-  );
-
-  /** 층을 고를 수 있는 건물이면 다이얼 팝업으로 층부터 묻고, 아니면 바로 정한다. */
-  const beginFrom = useCallback(
-    (building: Building) => {
-      if (hasFloorData(building)) setFloorDial({ role: "출발", building });
-      else commitFrom(building, null);
-    },
-    [commitFrom],
-  );
-
-  /**
-   * 도착 정하기. 학교 시설 필터 칩(열람실 등)을 켠 채 건물을 도착으로 고르면 그 시설이 있는 층을 도착 층으로 쓴다(11-16 사용자 요청).
-   * 한 층에만 있으면 바로 정하고, 여러 층이면 층 다이얼을 가장 아래 층에 맞춰 연다.
-   */
-  const beginTo = useCallback(
-    (building: Building) => {
-      const options = buildFloorOptions(building).map((o) => o.value);
-      if (options.length === 0) {
-        commitTo(building, null);
-        return;
-      }
-      // 건물 층 목록에 있는 층만(없는 층을 보내면 서버가 400 — 직선 어림으로 떨어진다).
-      const kindFloors = facilityKind
-        ? [...new Set(facilities
-            .filter((f) => f.kind === facilityKind && f.buildingName === building.name && typeof f.floor === "number")
-            .map((f) => f.floor as number))].filter((floor) => options.includes(floor)).sort((a, b) => a - b)
-        : [];
-      if (kindFloors.length === 1) commitTo(building, kindFloors[0]);
-      else setFloorDial({ role: "도착", building, initialFloor: kindFloors[0] ?? null });
-    },
-    [commitTo, facilityKind, facilities],
-  );
-
-  const handleFloorDialConfirm = useCallback(
-    (floor: number) => {
-      const dial = floorDial;
-      setFloorDial(null);
-      if (!dial) return;
-      if (dial.role === "출발") commitFrom(dial.building, floor);
-      else commitTo(dial.building, floor);
-    },
-    [floorDial, commitFrom, commitTo],
-  );
-
-  const floorDialInitial =
-    floorDial?.initialFloor != null
-      ? floorDial.initialFloor
-      : floorDial?.role === "출발"
-      ? fromBuilding === floorDial.building ? fromFloor : null
-      : floorDial && toBuilding === floorDial.building ? toFloor : null;
   const floorDialSheet = (
     <FloorDialSheet
-      building={floorDial?.building ?? null}
-      role={floorDial?.role ?? "출발"}
-      initialFloor={floorDialInitial}
-      onCancel={() => setFloorDial(null)}
-      onConfirm={handleFloorDialConfirm}
+      building={route.floorDial?.building ?? null}
+      role={route.floorDial?.role ?? "출발"}
+      initialFloor={route.floorDialInitial}
+      onCancel={route.cancelFloorDial}
+      onConfirm={route.confirmFloorDial}
     />
   );
 
-  const handleSetFrom = useCallback(() => {
-    if (selectedBuilding) beginFrom(selectedBuilding);
-  }, [selectedBuilding, beginFrom]);
+  const handleSelectFacilityKind = filters.selectFacilityKind;
 
-  const handleSetTo = useCallback(() => {
-    if (selectedBuilding) beginTo(selectedBuilding);
-  }, [selectedBuilding, beginTo]);
+  const handleSelectLayer = filters.selectLayer;
 
-  /** 시설 시트의 출발·도착. 그 시설이 있는 건물로 정한다(11-08). 지도 데이터에 그 건물이 없으면 버튼을 그리지 않는다. */
-  const facilitySheetBuilding = useMemo(
-    () => (selectedFacilityBuilding ? (buildings.find((b) => b.name === selectedFacilityBuilding) ?? null) : null),
-    [buildings, selectedFacilityBuilding],
-  );
+  // 지도 페이지와 앱 상태 맞추기: 페이지가 (다시) 준비되면 화면 상태를 다시 그리고, 경로 흐림·지도 데이터 갱신도 반영한다.
+  const resyncMap = useMapPageSync({
+    webViewRef,
+    postToMap,
+    // 그릴 데이터
+    mapData,
+    partners: allPartners,
+    buildings,
+    facilities,
+    exhibitions,
+    activeFilter,
+    facilityKind,
+    reportsOn,
+    reports: shownReportData,
+    // 경로
+    routeDrawn,
+    routeDrawnRef,
+    // 고른 것
+    selectedBuildingRef,
+    selectedPartnerRef,
+    selectedReportRef,
+    selectedFacilityBuildingRef,
+    searchedPartnerIdRef,
+    farViewPartnerIdRef,
+    setSelectedBuilding,
+    setSelectedPartner,
+    // 다시 맞출 부수 효과
+    recenter: handleRecenter,
+    reassertPartnerSelection,
+    redrawMyLocation: myLocation.redrawShown,
+    repinPreview: preview.repin,
+    resyncPicker: picker.resync,
+  });
 
-  const handleFacilitySetFrom = useCallback(() => {
-    if (facilitySheetBuilding) beginFrom(facilitySheetBuilding);
-  }, [facilitySheetBuilding, beginFrom]);
-
-  const handleFacilitySetTo = useCallback(() => {
-    if (facilitySheetBuilding) beginTo(facilitySheetBuilding);
-  }, [facilitySheetBuilding, beginTo]);
-
-  /** 시트의 출발·도착 버튼 중 다음에 고를 쪽(건물 시트·시설 시트가 함께 쓴다). */
-  const routeNext = nextRouteEndpoint(Boolean(fromBuilding || fromMyLocation), Boolean(toBuilding));
-
-  const handleCloseBuilding = useCallback(() => {
-    setSelectedBuilding(null);
-    // 배너만 닫고 핀은 그대로 둔다. 켜 둔 핀이 배너를 닫을 때마다 사라지면
-    // 다시 켜야 해서 번거롭다. 강조 표시만 되돌린다.
-    postToMap({ type: "selectBuilding", name: null });
-  }, [postToMap]);
-
-  /** 편의시설 핀을 지도에 반영한다. null 이면 모두 지운다. */
-  const applyFacilityKind = useCallback(
-    (next: FacilityKind | null) => {
-      setFacilityKind(next);
-      setSelectedFacilityBuilding(null);
-      setSearchedFacility(null);
-      if (next === null) {
-        postToMap({ type: "clearFacilities" });
-        return;
-      }
-      const markers = withExhibitionHints(facilityMarkers(facilities, buildings, next), facilities, exhibitions);
-      // 칩을 눌러도 카메라는 옮기지 않는다(10-09 요청 — 네이버·카카오 지도처럼 보던 자리를 지킨다).
-      postToMap({ type: "setFacilities", markers, bounds: null });
+  // 다른 화면에서 넘어온 지도 요청(제보 알림·물어보기·관리 탭 미리보기·정보 제보 위치 찍기 등).
+  useMapIntents({
+    accessToken,
+    postToMap,
+    buildings,
+    facilities,
+    partners: allPartners,
+    hiddenAuthorKeys,
+    stopPicker: picker.stop,
+    startPartnerLocationPick: () => {
+      infoSuggest.close();
+      picker.start("partner", { partnerLocationBefore: null });
     },
-    [facilities, buildings, exhibitions, postToMap],
-  );
-
-  const handleBackToBuilding = useCallback(() => {
-    const from = facilityFrom;
-    if (!from) return;
-    setFacilityFrom(null);
-    setSearchedFacility(null);
-    // 넘어오기 전 칩으로 되돌린다(같은 종류면 그대로 두고 시트만 닫는다). 제휴·제보에서 왔으면 그 갈래 칩만 다시 보인다.
-    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
-    else setSelectedFacilityBuilding(null);
-    setLayer(from.layer);
-    setSelectedBuilding(from.building);
-    postToMap({ type: "selectBuilding", name: from.building.name });
-  }, [facilityFrom, facilityKind, applyFacilityKind, postToMap]);
-
-  /**
-   * 건물 시트에서 '건물 안 시설'(예: 스터디룸)로 들어간 시설 시트를 지도 빈 곳이나 X 로 닫았다(11-08 요청).
-   * 사용자는 그 건물을 보던 중이었지 캠퍼스 전체의 스터디룸을 보려던 게 아니므로, 그 때문에 켜진 칩·핀을 거두고
-   * 들어오기 전 지도(보통 아무것도 고르지 않은 지도)로 돌아간다. 칩을 직접 눌러 켠 핀은 지금처럼 남는다.
-   */
-  const handleLeaveBuildingFacility = useCallback((): boolean => {
-    const from = facilityFrom;
-    if (!from) return false;
-    setFacilityFrom(null);
-    setSearchedFacility(null);
-    // 같은 종류 칩을 이미 켜 두고 들어왔으면 그 핀은 남기고 시트만 닫는다.
-    if (from.kind !== facilityKind) applyFacilityKind(from.kind);
-    else setSelectedFacilityBuilding(null);
-    setLayer(from.layer);
-    return true;
-  }, [facilityFrom, facilityKind, applyFacilityKind]);
-  leaveBuildingFacilityRef.current = handleLeaveBuildingFacility;
-
-  /** 같은 칩을 다시 누르면 그 종류만 해제한다. 제휴 칩과 같은 규칙이다. */
-  const handleSelectFacilityKind = useCallback(
-    (kind: FacilityKind) => {
-      applyFacilityKind(facilityKind === kind ? null : kind);
-    },
-    [facilityKind, applyFacilityKind],
-  );
-
-  /**
-   * 최상단 칩. 갈래를 바꾸면 반대편 선택과 마커를 모두 정리한다.
-   * 안 그러면 칩은 편의 시설인데 지도에는 제휴 마커가 떠 있는 어긋난 상태가 된다.
-   */
-  const handleSelectLayer = useCallback(
-    (next: MapLayer) => {
-      setLayer(layer === next ? null : next);
+    startReportPicker: reportComposer.handleStartPicker,
+    openReport,
+    showAllReports,
+    showNearbyGroup: search.showNearbyGroup,
+    selectPartner: search.selectPartner,
+    openFacility: facilityNav.openFacility,
+    openBuilding: (building) => {
+      search.hide();
       setSelectedPartner(null);
-      if (!routePicking) setSelectedBuilding(null);
-      setSelectedAffiliation(null);
-      setSelectedCategory(null);
-      postToMap({ type: "clearPartners" });
-      applyFacilityKind(null);
-      // 제보는 갈래와 따로 켜고 끈다(10-27, 메뉴의 '제보 보기'). 열려 있던 제보 시트만 닫는다.
-      setSelectedReport(null);
-    },
-    [layer, postToMap, applyFacilityKind, routePicking],
-  );
-
-  /**
-   * 지도 페이지가 (다시) 준비됐을 때 지금 화면 상태를 다시 그린다. 첫 로딩이 늦거나 실패해 자동으로
-   * 다시 불러오면 페이지가 새로 떠서, 그 사이 보낸 마커 명령이 사라지기 때문이다(NaverMapView 참고).
-   */
-  const resyncMap = useCallback(() => {
-    // 새로 뜬 페이지는 배포된 map.html 에 박힌 초기 위치로 시작해 지금 CAMPUS_CENTER 와 어긋날 수 있다.
-    // 학사모(캠퍼스로 돌아가기)와 같은 위치로 먼저 맞춘다.
-    handleRecenter();
-    // 새 페이지는 시트가 닫힌 줄 안다. 열려 있으면 다시 알린다(건물 탭을 시트 닫기로만 쓰게).
-    postToMap({
-      type: "sheetOpen",
-      open: !!(selectedReportRef.current || selectedPartnerRef.current || selectedFacilityBuildingRef.current),
-    });
-    // 고른 건물은 setBuildings 보다 먼저 알려 준다 — setBuildings 가 그 이름을 지키며 핀을 그린다.
-    if (selectedBuildingRef.current) postToMap({ type: "selectBuilding", name: selectedBuildingRef.current.name });
-    // 지도 데이터가 있으면 새 페이지의 건물(구운 초기값)을 지금 데이터로 바꾼다. 없으면 구운 건물을 그대로 둔다.
-    if (mapData) postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
-    // 먼 제휴 지점을 보던 중에 페이지가 다시 떴으면 그 지점 범위로 다시 옮긴다.
-    const farPartner = selectedPartnerRef.current;
-    if (farPartner && isFarFromCampus(farPartner)) {
-      farViewPartnerIdRef.current = farPartner.id;
-      webViewRef.current?.injectJavaScript(viewBoundsScript(farPointViewBox(farPartner)));
-      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
-      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
-    } else if (farPartner && !hasActiveFilter(activeFilter) && searchedPartnerIdRef.current === farPartner.id) {
-      // 캠퍼스 근처 업체를 검색해 보던 중이었으면 그 마커를 다시 올린다(필터가 없어 아래에서 다시 그려지지 않는다).
-      postToMap({ type: "setPartners", partners: [toMarker(farPartner)], bounds: null });
-      reassertPartnerSelection([farPartner]);
-      // 위 handleRecenter 가 캠퍼스로 옮겼으니 먼 지점처럼 그 업체로 다시 가져온다(마커를 올린 뒤라야 찾는다).
-      postToMap({ type: "focusPartner", id: farPartner.id, zoom: FOCUS_ZOOM });
-    }
-    if (hasActiveFilter(activeFilter)) {
-      const partners = filterPartners(allPartners, activeFilter);
-      postToMap({
-        type: "setPartners",
-        partners: partners.map(toMarker),
-        bounds: null,
-      });
-      reassertPartnerSelection(partners);
-    }
-    if (facilityKind !== null) {
-      postToMap({
-        type: "setFacilities",
-        markers: withExhibitionHints(facilityMarkers(facilities, buildings, facilityKind), facilities, exhibitions),
-      });
-    }
-    if (reportsOn && shownReportData !== undefined) {
-      postToMap({ type: "setReports", markers: toReportMarkers(shownReportData) });
-    }
-    // 내 위치 점도 다시 그린다 — 지도가 다시 뜨면 점이 사라지고, 가만히 있으면 새 위치가 오지 않아 다시 그려지지 않았다(11-10).
-    if (shownLocationRef.current) webViewRef.current?.injectJavaScript(myLocationScript(shownLocationRef.current));
-    // 새 페이지는 경로 흐림(칩 핀)을 모른다. 경로가 그려진 중이면 다시 켠다.
-    if (routeDrawnRef.current) postToMap({ type: "setRouteFocus", on: true });
-    // 관리 탭 "지도에서 보기" 핀 — 지도가 뜨기 전에 보낸 명령은 사라지므로 다시 찍는다.
-    if (previewTargetRef.current) showPreviewPin(previewTargetRef.current);
-    // 지도가 늦게 뜬 사이 공유 링크·알림으로 연 제보가 있으면 그 자리로 다시 옮긴다.
-    const opened = selectedReportRef.current;
-    if (opened) postToMap({ type: "focusReport", lat: opened.lat, lng: opened.lng });
-    // 위치를 고르던 중이면 새 페이지에서도 고르기 모드를 다시 켠다. 이전 페이지가 보낸 중앙 좌표는
-    // 버리고 새 페이지가 다시 알려 줄 때까지 확인 버튼을 막는다.
-    if (pickingLocation) {
-      setPickerCenter(null);
-      postToMap({ type: "startLocationPicker", purpose: pickerPurpose });
-    }
-  }, [mapData, allPartners, facilities, buildings, exhibitions, activeFilter, facilityKind, reportsOn, shownReportData, pickingLocation, pickerPurpose, postToMap, handleRecenter, showPreviewPin, reassertPartnerSelection]);
-
-  // 경로가 그려진 동안 칩 핀을 흐리게, 길찾기를 끝내면 되돌린다(11-08).
-  useEffect(() => {
-    postToMap({ type: "setRouteFocus", on: routeDrawn });
-  }, [routeDrawn, postToMap]);
-
-  /**
-   * 지도 데이터가 새로 오면(저장본 → 서버 최신, 관리자 수정 반영) 지도 페이지의 건물과, 켜 둔 제휴·편의시설 마커를
-   * 다시 그린다. 카메라는 옮기지 않는다(bounds 없음) — 보던 자리를 잃지 않게.
-   */
-  const mapDataSyncedRef = useRef<typeof mapData>(null);
-  useEffect(() => {
-    if (!mapData || mapDataSyncedRef.current === mapData) return;
-    mapDataSyncedRef.current = mapData;
-    postToMap({ type: "setBuildings", buildings: mapBuildingPayload(mapData.buildings) });
-    if (hasActiveFilter(activeFilter)) {
-      const partners = filterPartners(mapData.partners, activeFilter);
-      postToMap({ type: "setPartners", partners: partners.map(toMarker), bounds: null });
-      reassertPartnerSelection(partners);
-    }
-    if (facilityKind !== null) {
-      postToMap({
-        type: "setFacilities",
-        markers: withExhibitionHints(
-          facilityMarkers(mapData.facilities, mapData.buildings, facilityKind),
-          mapData.facilities,
-          mapData.exhibitions,
-        ),
-      });
-    }
-    // 고른 건물·업체 배너는 새 데이터의 같은 항목으로 바꾼다(없어졌으면 닫는다).
-    setSelectedBuilding((prev) => (prev ? mapData.buildings.find((b) => b.name === prev.name) ?? null : prev));
-    setSelectedPartner((prev) => (prev ? mapData.partners.find((p) => p.id === prev.id) ?? null : prev));
-    // 지도 데이터가 바뀔 때만 돈다. 필터 상태가 바뀌는 경우는 각 핸들러가 이미 다시 그린다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapData, postToMap]);
-
-  /**
-   * 예정 제보가 시작하면 목록을 새로 받아 진행 중 마커로 바꿔 그린다(가장 이른 시작 시각에 한 번).
-   * 새로 받은 목록에 또 예정 제보가 있으면 다음 시작 시각으로 다시 맞춰진다.
-   */
-  const nextUpcomingStart = useMemo(() => {
-    const now = Date.now();
-    let next = Infinity;
-    for (const report of shownReportData ?? EMPTY_REPORTS) {
-      const start = parseServerTime(report.startsAt);
-      if (start > now && start < next) next = start;
-    }
-    return Number.isFinite(next) ? next : null;
-  }, [shownReportData]);
-  const retryReports = reportsResource.retry;
-  useEffect(() => {
-    if (!reportsOn || nextUpcomingStart === null) return;
-    // 서버 시계와 조금 어긋나도 시작한 뒤에 받도록 몇 초 늦춘다. setTimeout 상한(약 24.8일)보다 훨씬 짧다(3일 안).
-    const timer = setTimeout(() => retryReports(), Math.max(0, nextUpcomingStart - Date.now()) + 5000);
-    return () => clearTimeout(timer);
-  }, [reportsOn, nextUpcomingStart, retryReports]);
-
-  /**
-   * 제보 핀 둘째 줄('오늘 14:00 시작'·'운영 중'·'곧 종료', 11-08)은 시간이 흐르며 바뀐다. 1분마다 다시 만들어 보고
-   * 달라졌을 때만 다시 그린다(같으면 핀을 다시 그리지 않아 깜빡이지 않는다).
-   */
-  const [reportClock, setReportClock] = useState(() => Date.now());
-  useEffect(() => {
-    if (!reportsOn) return;
-    const timer = setInterval(() => setReportClock(Date.now()), 60_000);
-    return () => clearInterval(timer);
-  }, [reportsOn]);
-  const lastReportMarkersRef = useRef<string | null>(null);
-
-  /** 제보를 새로 받을 때마다(그리고 핀 글이 바뀔 때) 지도에 올린다. */
-  useEffect(() => {
-    if (!reportsOn || shownReportData === undefined) {
-      // 다시 켰을 때 같은 목록이어도 그리도록 잊는다.
-      lastReportMarkersRef.current = null;
-      return;
-    }
-    const markers = toReportMarkers(shownReportData, reportClock);
-    const key = JSON.stringify(markers);
-    if (key === lastReportMarkersRef.current) return;
-    lastReportMarkersRef.current = key;
-    postToMap({ type: "setReports", markers });
-  }, [reportsOn, shownReportData, reportClock, postToMap]);
-
-  /**
-   * 'HOT' 칩. 켜면 HOT·인기 제보만 지도와 위 목록에 보이고, 다시 누르면 전체 제보 보기로 돌아간다('제보' 칩이 켜진 상태).
-   * 예전엔 다시 누르면 제보 레이어까지 꺼져 지도가 텅 비었다(10-06). 마커는 지우지 않고 새 목록이 오면 바꿔 그린다 —
-   * 미리 지우면 같은 데이터가 다시 올 때 그리기 효과가 돌지 않아 지도가 빈 채로 남을 수 있다.
-   */
-  const handleToggleHot = useCallback(() => {
-    const next = !hotOnly;
-    setHotOnly(next);
-    setReportsOn(true);
-    setSelectedReport(null);
-    if (next) {
-      setSelectedPartner(null);
-      setSelectedBuilding(null);
       setSelectedFacilityBuilding(null);
-    }
-  }, [hotOnly]);
-
-  /**
-   * 메뉴의 제보 종류 칩(여러 개 고름). 누를 때마다 그 종류만 넣고 뺀다. 제보는 지도에 늘 켜 두므로(10-27)
-   * 마지막 하나는 뺄 수 없다 — 다 빼면 지도가 비어 고장처럼 보인다. 열려 있던 제보 시트는 닫는다(목록에서 빠질 수 있다).
-   */
-  const handleToggleReportCategory = useCallback(
-    (category: ReportCategory) => {
-      if (reportCategories.size === 1 && reportCategories.has(category)) return;
       setSelectedReport(null);
-      const next = new Set(reportCategories);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      setReportCategories(next);
+      setSelectedBuilding(building);
     },
-    [reportCategories],
-  );
-
-  /** 제보를 켜 두면 서버가 🔥 를 아는지 한 번 확인해 HOT 칩을 보일지 정한다(진행 중 제보 목록 한 번). */
-  useEffect(() => {
-    if (!reportsOn || hotAvailable) return;
-    const controller = new AbortController();
-    getLiveReports({ accessToken, signal: controller.signal })
-      .then((list) => {
-        if (!controller.signal.aborted && hasCommunityFields(list)) setHotAvailable(true);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [reportsOn, hotAvailable, accessToken]);
-
-  /**
-   * 제보 목록은 켜 둔 동안 지도 탭에 올 때마다, 그리고 1분마다 새로 받는다. 운영진이 승인한 제보를 반려·숨김하면
-   * 서버 목록에서 빠지는데, 예전엔 앱을 백그라운드에 보냈다 와야만 다시 받아서 지도에 계속 남았다.
-   */
-  const refetchReports = reportsResource.retry;
-  useFocusEffect(
-    useCallback(() => {
-      if (!reportsOn) return;
-      refetchReports();
-      const timer = setInterval(refetchReports, 60_000);
-      return () => clearInterval(timer);
-    }, [reportsOn, refetchReports]),
-  );
-
-  /**
-   * 열어 둔 제보가 새 목록에서 빠졌으면(반려·숨김·종료) 시트도 닫는다.
-   * 목록이 새로 왔을 때만 본다 — 시트를 연 순간에 보면 알림 탭(focusReportFromNotification)이 따로 받아 연
-   * 방금 승인된 제보가, 아직 도착하지 않은 레이어 새 목록 대신 이전 목록과 비교돼 바로 닫힌다.
-   */
-  const selectedReportRef = useRef(selectedReport);
-  selectedReportRef.current = selectedReport;
-  const selectedFacilityBuildingRef = useRef(selectedFacilityBuilding);
-  selectedFacilityBuildingRef.current = selectedFacilityBuilding;
-  useEffect(() => {
-    const current = selectedReportRef.current;
-    if (!current || shownReportData === undefined) return;
-    if (!shownReportData.some((r) => r.id === current.id)) {
-      setSelectedReport(null);
-    }
-  }, [shownReportData]);
-
-  /**
-   * 제보 등록 성공. 작성창은 닫지 않는다 — 새 제보는 `PENDING`(운영진 검토 대기)이라 지도에는 승인 후에
-   * 뜨므로, 작성창이 그 안내를 보여 주고 사용자가 '확인'을 눌러 닫는다(onClose).
-   * 레이어가 켜져 있으면 목록은 새로 받아 둔다(그 사이 승인된 다른 제보 반영).
-   */
-  const handleReportCreated = useCallback(() => {
-    if (reportsOn) reportsResource.retry();
-  }, [reportsOn, reportsResource.retry]);
-
-  /** 메가폰 버튼. 다른 배너를 모두 닫고 화면 중앙 고정 핀으로 위치를 고르게 한다. */
-  const startPicker = useCallback(
-    (purpose: "report" | "partner" | "routeTo") => {
+    setAskCard: preview.setAskCard,
+    clearPreview: preview.clearPreview,
+    showPreview: (target) => {
       setSelectedBuilding(null);
       setSelectedPartner(null);
       setSelectedReport(null);
       setSelectedFacilityBuilding(null);
-      setPickerCenter(null);
-      setPickerPurpose(purpose);
-      setPickingLocation(true);
-      postToMap({ type: "startLocationPicker", purpose });
+      preview.showPreview(target);
     },
-    [postToMap],
-  );
-
-  /** 제보는 로그인이 필요하다. 게스트는 위치를 고르고 작성창을 다 채운 뒤가 아니라 시작할 때 묻는다. */
-  const handleStartReportPicker = useCallback(() => {
-    if (!accessToken) {
-      promptLogin("제보를 남기려면 로그인해 주세요.", logout);
-      return;
-    }
-    startPicker("report");
-  }, [accessToken, logout, startPicker]);
-
-  /** 위치 고르기 모드를 끈다. 취소 버튼과, 고르는 중에 다른 지도 요청(알림 제보·검토 핀)이 들어올 때 쓴다. */
-  const stopPicker = useCallback(() => {
-    setPickingLocation(false);
-    setPickerCenter(null);
-    postToMap({ type: "stopLocationPicker" });
-  }, [postToMap]);
-
-  /** 정보 제보 창에서 "지도에서 (다시) 찍기"로 넘어올 때 그 창에 있던 위치. 핀 고르기를 취소하면 되돌린다. */
-  const partnerLocationBeforePickRef = useRef<InfoSuggestLocation | null>(null);
-
-  const toast = useToast();
-  /** 알림발 제보 포커스 요청 순번. 연달아 탭했을 때 늦게 도착한 이전 요청 결과를 버린다. */
-  const focusRequestRef = useRef(0);
-
-  /**
-   * 제보 알림(승인·새 제보)을 탭해 들어온 경우. 제보 레이어를 켜고, 진행 중 제보를 새로 받아 그 제보를 찾아
-   * 시트를 띄우고 지도 가운데로 옮긴다. 레이어 목록은 승인 전에 받아 둔 것일 수 있어 따로 새로 받는다.
-   * 이미 끝났거나 숨겨져 목록에 없으면 안내만 띄운다(지도는 그대로 쓸 수 있다).
-   */
-  const focusReportFromNotification = useCallback(
-    async (reportId: number) => {
-      const request = ++focusRequestRef.current;
-      // 위치를 고르던 중이면 그 모드부터 끈다 — 안 그러면 지도가 탭을 막은 채 제보 시트만 뜬다.
-      stopPicker();
-      openReport(null);
-      // 제보는 갈래(제휴·학교 시설)와 따로라 보던 칩은 그대로 둔다(10-27).
-      // 레이어가 이미 켜져 있으면 목록도 새로 받아 방금 올라온 제보가 마커로 보이게 한다. 꺼져 있으면 켜는 순간 받는다.
-      // HOT 만 보던 중이면 전체 제보로 바꾼다(알림으로 연 제보가 HOT 이 아닐 수 있다). 종류도 같은 까닭으로 전부 켠다.
-      setHotOnly(false);
-      setReportCategories(ALL_REPORT_CATEGORIES);
-      if (reportsOn) reportsResource.retry();
-      else setReportsOn(true);
-      try {
-        const live = visibleReports(await getLiveReports({ accessToken, includeUpcoming: true }));
-        if (request !== focusRequestRef.current) return;
-        const found = live.find(
-          (r) => r.id === reportId && !(r.authorKey && hiddenAuthorKeys.has(r.authorKey)),
-        );
-        if (!found) {
-          // 예정 제보는 3일 안에 시작할 때만 목록에 온다 — 그보다 먼 예정 제보도 여기로 온다.
-          toast.show({ message: "이 제보는 지금 지도에 없어요. 아직 시작 전이거나 이미 끝났어요.", tone: "info" });
-          return;
-        }
-        // 기다리는 사이 다른 배너를 열었을 수 있어 여기서 다시 닫고 연다.
-        openReport(found);
-        postToMap({ type: "focusReport", lat: found.lat, lng: found.lng });
-      } catch {
-        if (request !== focusRequestRef.current) return;
-        toast.show({ message: "제보를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.", tone: "info" });
-      }
-    },
-    [accessToken, reportsOn, reportsResource.retry, postToMap, toast, hiddenAuthorKeys, stopPicker, openReport],
-  );
-
-  /**
-   * 다른 화면에서 넘어온 지도 요청(`lib/mapIntents.ts`). 지도 탭에 올 때(또는 이미 떠 있으면 즉시) 처리한다.
-   * - 설정의 정보 제보 창 "지도에서 위치 찍기" → 핀 고르기
-   * - 제보 알림 탭·내 제보 내역의 표시 중 제보 → 그 제보 포커스
-   * - 내 제보 내역의 "지도로 가서 제보하기" → 제보 위치 고르기
-   */
-  const handleMapIntent = useCallback(() => {
-    const intent = consumeMapIntent();
-    if (intent?.type === "pickPartnerLocation") {
-      partnerLocationBeforePickRef.current = null;
-      setPartnerSuggest(null);
-      startPicker("partner");
-      return;
-    }
-    if (intent?.type === "focusReport") {
-      void focusReportFromNotification(intent.reportId);
-      return;
-    }
-    if (intent?.type === "startReport") {
-      handleStartReportPicker();
-      return;
-    }
-    if (intent?.type === "nearbyGroup") {
-      // 근처에 제휴가 여러 곳 겹친 알림 → 그 곳들만 목록으로(알림을 만든 순서: 앞세운 곳, 그다음 가까운 순). 하나만 남으면 바로 시트.
-      const group = intent.partnerIds.flatMap((id) => allPartners.filter((p) => p.id === id));
-      if (group.length === 1) handleSearchSelect(group[0]);
-      else if (group.length > 1) {
-        setSearchPinned(null);
-        setNearbyGroup(group);
-        setShowSearch(true);
-      }
-      return;
-    }
-    if (intent?.type === "focusPartner") {
-      // 근처 제휴 알림 → 검색에서 고른 것과 같게(그 업체만 올리고 가운데로, 시트 열기). 지도 데이터에서 빠진 업체면 지도만 연다.
-      const partner = allPartners.find((p) => p.id === intent.partnerId);
-      if (partner) handleSearchSelect(partner);
-      return;
-    }
-    if (intent?.type === "focusPlace") {
-      // 물어보기 답의 "지도에서 보기"(11-07). 앱 지도 데이터에 있는 곳만 — 없으면 지도만 연다(카드도 없음).
-      stopPicker();
-      clearPreview();
-      const split = intent.target.indexOf(":");
-      const kind = intent.target.slice(0, split);
-      const id = intent.target.slice(split + 1);
-      let title: string | null = null;
-      if (kind === "partner") {
-        const partner = allPartners.find((p) => p.id === id);
-        if (partner) {
-          handleSearchSelect(partner);
-          title = partner.name;
-        }
-      } else if (kind === "facility") {
-        const facility = facilities.find((f) => f.id === id);
-        if (facility) {
-          openFacilitySheet(facility.kind, facility.buildingName, facility);
-          title = [facility.note, facility.buildingName].filter(Boolean).join(" · ");
-        }
-      } else if (kind === "building") {
-        const building = buildings.find((b) => b.code === id);
-        if (building) {
-          // 지도에서 건물을 누를 때와 같은 정리(다른 시트를 닫고 건물 배너), 그 건물로 옮겨 확대.
-          setShowSearch(false);
-          setSelectedPartner(null);
-          setSelectedFacilityBuilding(null);
-          setSelectedReport(null);
-          setSelectedBuilding(building);
-          postToMap({ type: "selectBuilding", name: building.name });
-          postToMap({ type: "focusReport", lat: building.lat, lng: building.lng, zoom: FOCUS_ZOOM });
-          title = building.name;
-        }
-      }
-      setAskCard(title ? { title: intent.title || title, summary: intent.summary ?? "" } : null);
-      return;
-    }
-    if (intent?.type === "routeTo") {
-      // 물어보기 답의 길찾기 버튼(11-09). 도착 = 그 건물(시설이면 그 건물·층). 출발 = 질문의 출발 건물(11-15 '제4공학관에서 홍문관'),
-      // 없으면 내 위치(권한·위치를 못 쓰면 출발은 비워 둬 고르게 한다).
-      stopPicker();
-      clearPreview();
-      setAskCard(null);
-      const split = intent.target.indexOf(":");
-      const kind = intent.target.slice(0, split);
-      const id = intent.target.slice(split + 1);
-      const facility = kind === "facility" ? facilities.find((f) => f.id === id) : undefined;
-      const building = kind === "building"
-        ? buildings.find((b) => b.code === id)
-        : facility ? buildings.find((b) => b.name === facility.buildingName) : undefined;
-      if (!building || !ROUTE_FINDING_ENABLED) return;
-      setShowSearch(false);
+    startRouteTo: ({ building, floor, from }) => {
+      search.hide();
       setSelectedPartner(null);
       setSelectedReport(null);
-      commitTo(building, typeof facility?.floor === "number" ? facility.floor : null);
-      const fromBuilding = intent.from?.startsWith("building:")
-        ? buildings.find((b) => b.code === intent.from!.slice("building:".length))
-        : undefined;
-      if (fromBuilding && fromBuilding.code !== building.code) commitFrom(fromBuilding, null);
-      else void selectMyLocationRef.current?.();
-      return;
-    }
-    if (intent?.type === "previewLocation") {
-      stopPicker();
-      setSelectedBuilding(null);
-      setSelectedPartner(null);
-      setSelectedReport(null);
-      setSelectedFacilityBuilding(null);
-      const preview = { lat: intent.lat, lng: intent.lng, label: intent.label ?? "제보 위치", detail: intent.detail ?? "" };
-      setPreviewTarget(preview);
-      // 지도가 아직 안 떴으면(지도 탭 첫 방문) 이 명령은 사라진다 — 준비되면 resyncMap 이 previewTarget 으로 다시 찍는다.
-      showPreviewPin(preview);
-    }
-  }, [startPicker, focusReportFromNotification, handleStartReportPicker, showPreviewPin, stopPicker, allPartners, handleSearchSelect,
-    clearPreview, facilities, buildings, openFacilitySheet, postToMap, commitTo, commitFrom]);
+      route.commitTo(building, floor);
+      if (from) route.commitFrom(from, null);
+      else void myLocation.selectForRoute();
+    },
+  });
 
-  // 그 곳의 시트를 닫으면(지도를 누르거나 아래로 내림) 설명 카드도 거둔다.
-  useEffect(() => {
-    if (askCard && !selectedBuilding && !selectedPartner && !selectedFacilityBuilding) setAskCard(null);
-  }, [askCard, selectedBuilding, selectedPartner, selectedFacilityBuilding]);
+  const handleCancelReportPicker = picker.cancel;
 
-  useFocusEffect(handleMapIntent);
-  // 지도 탭을 떠나면 미리보기 핀을 거둔다. 예전엔 지울 길이 없어 앱을 껐다 켜야 사라졌다.
-  useFocusEffect(useCallback(() => () => clearPreview(), [clearPreview]));
-  useEffect(() => subscribeMapIntent(handleMapIntent), [handleMapIntent]);
-
-  const handleCancelReportPicker = useCallback(() => {
-    stopPicker();
-    // 정보 제보 중이었으면 그 창으로 돌아간다(입력해 둔 내용은 창이 되살린다). 안 그러면 쓰던 제보가 사라진다.
-    if (pickerPurpose === "partner") {
-      setPartnerSuggest({ location: partnerLocationBeforePickRef.current });
-    }
-  }, [pickerPurpose, stopPicker]);
-
-  /**
-   * 안드로이드 뒤로가기(웹은 Esc)는 위치 고르기·열린 시트부터 닫는다. 시트·고르기는 화면 안 상태라 내비게이션이
-   * 모르고, 지도가 첫 탭이라 그냥 두면 앱이 꺼진다. 닫기(X)와 똑같은 처리를 쓴다. 닫을 게 없으면 기본 동작에 맡긴다.
-   */
-  const closeTopMapLayer = useCallback((): boolean => {
-    // 검색·작성·길찾기 창이 떠 있으면 그 창이 먼저 닫혀야 한다(웹 Esc 가 아래 시트까지 닫지 않게).
-    if (showSearch || showRoute || reportTarget !== null || partnerSuggest !== null) return false;
-    if (pickingLocation) {
-      handleCancelReportPicker();
-      return true;
-    }
-    if (selectedReport) {
-      setSelectedReport(null);
-      return true;
-    }
-    if (selectedPartner) {
-      handleClosePartner();
-      return true;
-    }
-    if (selectedFacilityBuilding !== null && facilityKind !== null) {
-      // 건물에서 들어간 시설 시트면 '뒤로'는 그 건물 시트로(시트의 '<'와 같다, 11-08).
-      if (facilityFrom) handleBackToBuilding();
-      else setSelectedFacilityBuilding(null);
-      return true;
-    }
-    if (selectedBuilding) {
-      handleCloseBuilding();
-      return true;
-    }
-    return false;
-  }, [
-    showSearch,
-    showRoute,
-    reportTarget,
-    partnerSuggest,
+  // 안드로이드 뒤로가기(웹은 Esc): 열린 창·위치 고르기·시트를 위에서부터 하나씩 닫는다.
+  useMapBackHandler({
+    windowOpen: search.visible || showRoute || reportTarget !== null || infoSuggest.visible,
     pickingLocation,
+    cancelPicker: handleCancelReportPicker,
     selectedReport,
     selectedPartner,
+    selectedBuilding,
     selectedFacilityBuilding,
     facilityKind,
-    facilityFrom,
-    handleBackToBuilding,
-    selectedBuilding,
-    handleCancelReportPicker,
-    handleClosePartner,
-    handleCloseBuilding,
-  ]);
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS === "android") {
-        const sub = BackHandler.addEventListener("hardwareBackPress", closeTopMapLayer);
-        return () => sub.remove();
-      }
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        const onKey = (e: KeyboardEvent) => {
-          // 입력 중인 칸의 Esc 나 모달(검색·작성창)이 떠 있을 때는 건드리지 않는다.
-          if (e.key !== "Escape" || e.defaultPrevented) return;
-          const target = e.target as HTMLElement | null;
-          if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-          if (closeTopMapLayer()) e.preventDefault();
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-      }
-      return undefined;
-    }, [closeTopMapLayer]),
-  );
+    facilityFrom: facilityNav.facilityFrom,
+    closeReportSheet: handleCloseReportSheet,
+    closePartnerSheet: handleClosePartner,
+    closeBuildingSheet: handleCloseBuilding,
+    closeFacilitySheet: () => setSelectedFacilityBuilding(null),
+    backToBuilding: facilityNav.backToBuilding,
+  });
 
-  /**
-   * 길찾기 도착을 핀으로 고를 때 그 핀이 가리키는 건물(11-12). 길은 서버가 건물(id)끼리만 계산해, 핀 아래(지도가 알려 준 가까운
-   * 건물) 건물을 쓰고, 없으면 핀에서 ROUTE_PIN_MAX_METERS 안의 가장 가까운 건물을 쓴다. 그것도 없으면 null.
-   */
-  const routePinBuilding = useMemo(() => {
-    if (pickerPurpose !== "routeTo" || !pickerCenter) return null;
-    const routable = buildings.filter((b) => b.id !== undefined);
-    const named = pickerCenter.buildingName ? routable.find((b) => b.name === pickerCenter.buildingName) : undefined;
-    if (named) return named;
-    let best: Building | null = null;
-    let bestMeters = ROUTE_PIN_MAX_METERS;
-    for (const b of routable) {
-      const meters = haversineMeters(pickerCenter.lat, pickerCenter.lng, b.lat, b.lng);
-      if (meters <= bestMeters) {
-        best = b;
-        bestMeters = meters;
-      }
-    }
-    return best;
-  }, [pickerPurpose, pickerCenter, buildings]);
 
   /** 도착 검색 창의 "지도에서 핀으로 고르기". 검색 창을 닫고 화면 가운데 핀으로 도착 건물을 고르게 한다. */
   const handlePickRouteDestinationOnMap = useCallback(() => {
     closeRouteSearch();
-    startPicker("routeTo");
-  }, [closeRouteSearch, startPicker]);
+    picker.start("routeTo");
+  }, [closeRouteSearch, picker.start]);
 
   /** 확인을 누르면 화면 중앙 좌표로 작성창을 연다. 롱프레스 제보와 같은 작성창을 쓴다. 정보 제보면 정보 제보 창을 연다. */
-  const handleConfirmReportPicker = useCallback(() => {
-    if (!pickerCenter) return;
-    if (pickerPurpose === "routeTo" && !routePinBuilding) return;
-    setPickingLocation(false);
-    postToMap({ type: "stopLocationPicker" });
-    if (pickerPurpose === "routeTo") {
-      // 층 정보가 있는 건물이면 검색으로 고를 때처럼 층 다이얼이 뜬다.
-      beginTo(routePinBuilding!);
-      return;
-    }
-    if (pickerPurpose === "partner") {
-      setPartnerSuggest({
-        location: {
-          lat: pickerCenter.lat,
-          lng: pickerCenter.lng,
-          buildingName: pickerCenter.buildingName,
-        },
-      });
-      return;
-    }
-    setReportTarget({
-      lat: pickerCenter.lat,
-      lng: pickerCenter.lng,
-      buildingName: pickerCenter.buildingName,
-    });
-  }, [pickerCenter, pickerPurpose, postToMap, routePinBuilding, beginTo]);
+  const handleConfirmReportPicker = picker.confirm;
 
-  /** 출발지 "내 위치". 이때 처음으로 "앱 사용 중" 위치 권한을 묻는다. */
-  const handleSelectMyLocation = useCallback(async () => {
-    const located = await locateOnce("route");
-    if (located.status === "declined") return;
-    if (located.status === "ok") {
-      const first = { lat: located.lat, lng: located.lng, accuracy: located.accuracy };
-      setMyLocation(first);
-      setRouteOrigin(first);
-      setFromMyLocation(true);
-      setFromBuilding(null);
-      setFromFloor(null);
-      closeRouteSearch();
-      return;
-    }
-    if (located.status === "denied") {
-      notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 내 위치에서 출발할 수 있어요.");
-    } else if (located.status === "servicesOff") {
-      notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
-    } else {
-      notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보거나 건물을 골라 주세요.");
-    }
-  }, [closeRouteSearch]);
-  selectMyLocationRef.current = handleSelectMyLocation;
+  const handleSwapRoute = route.swap;
 
-  /**
-   * 지도 메뉴 "내 위치 켜기". 처음 누를 때 "앱 사용 중" 위치 권한을 묻고, 켜져 있으면 끈다. 지도는 캠퍼스 일대만 움직일 수 있어
-   * 그 밖이면 켜지 않는다. 캠퍼스 안일 때만 지도를 내 위치로 옮긴다(지도 그림 요청으로 드러나는 범위가 처음 화면과 같다).
-   */
-  const handleToggleMyLocation = useCallback(async () => {
-    if (myLocationOn) {
-      myLocationUserOffRef.current = true;
-      setMyLocationOn(false);
-      return;
-    }
-    myLocationUserOffRef.current = false;
-    const located = await locateOnce("myLocation");
-    if (located.status === "declined") return;
-    if (located.status !== "ok") {
-      if (located.status === "denied") {
-        notify("위치를 쓸 수 없어요", "휴대폰 설정에서 홍익온의 위치 권한을 '앱을 사용하는 동안'으로 바꾸면 지도에서 내 위치를 볼 수 있어요.");
-      } else if (located.status === "servicesOff") {
-        notify("위치 서비스가 꺼져 있어요", "휴대폰 설정에서 위치 서비스를 켜 주세요.");
-      } else {
-        notify("내 위치를 찾지 못했어요", "잠시 뒤 다시 해 보세요.");
-      }
-      return;
-    }
-    const { south, north, west, east } = CAMPUS_VIEW_BOX;
-    if (located.lat < south || located.lat > north || located.lng < west || located.lng > east) {
-      notify("지도 범위 밖에 있어요", "학교 근처에 오면 지도에서 내 위치를 볼 수 있어요.");
-      return;
-    }
-    setMyLocation({ lat: located.lat, lng: located.lng, accuracy: located.accuracy });
-    setMyLocationOn(true);
-    farViewPartnerIdRef.current = null;
-    webViewRef.current?.injectJavaScript(viewBoundsScript(CAMPUS_VIEW_BOX));
-    webViewRef.current?.injectJavaScript(
-      `if (window.map && window.naver) { if (typeof window.cancelFocus === "function") window.cancelFocus(); map.panTo(new naver.maps.LatLng(${located.lat}, ${located.lng})); } true;`,
-    );
-  }, [myLocationOn]);
+  const handleClearRoute = route.clear;
 
-  /** 출발·도착 바꾸기. 내 위치는 도착이 될 수 없어 그때는 바꾸지 않는다. */
-  const handleSwapRoute = useCallback(() => {
-    if (fromMyLocation || !fromBuilding || !toBuilding) return;
-    setFromBuilding(toBuilding);
-    setFromFloor(toFloor);
-    setToBuilding(fromBuilding);
-    setToFloor(fromFloor);
-  }, [fromMyLocation, fromBuilding, toBuilding, fromFloor, toFloor]);
+  const handleSelectRouteBuilding = route.selectSearchBuilding;
 
-  const handleClearRoute = useCallback(() => {
-    setFromMyLocation(false);
-    setFromBuilding(null);
-    setToBuilding(null);
-    setFromFloor(null);
-    setToFloor(null);
-    postToMap({ type: "clearRoute" });
-    webViewRef.current?.injectJavaScript(ROUTE_HITS_CLEAR_SCRIPT);
-  }, [postToMap]);
+  const handleRouteEndpointPress = route.pressEndpoint;
+  const handleRouteStripHeight = route.onStripHeight;
+  // ---- 지도 메뉴(오른쪽 아래) ----
+  /** '내 위치 켜기': 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다. */
+  const canShowMyLocationButton = canLocate() && (nearbyDebug.enabled || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM);
 
-  const handleSelectRouteBuilding = useCallback(
-    (building: Building) => {
-      if (routeTarget === "from") beginFrom(building);
-      else if (routeTarget === "to") beginTo(building);
+  // ---- 검색·제보·정보 제보 창 ----
+  // ---- 아래 시트 ----
+
+  // ---- 지도 위 안내 줄 ----
+  /** 'HOT' 목록에서 제보를 고르면 그 제보 시트를 열고 지도를 그 자리로. */
+  const handleSelectHotReport = useCallback(
+    (report: ReportListItem) => {
+      openReport(report);
+      postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
     },
-    [routeTarget, beginFrom, beginTo],
+    [openReport, postToMap],
   );
+  /** '지도에 안 보이는 N곳 · 보기' — 그 업체들을 검색 창 맨 위에 모아 연다. */
+  const handleShowOffscreenPartners = useCallback(() => search.showPinned(offscreenPartners), [search.showPinned, offscreenPartners]);
 
-  const handleCloseRoute = useCallback(() => {
-    setShowRoute(false);
-    setRouteTarget(null);
-    setSearchQuery("");
-  }, []);
+  const handleSelectMyLocationPress = useCallback(() => void myLocation.selectForRoute(), [myLocation.selectForRoute]);
+  const handleChangeRouteTarget = route.changeSearchTarget;
+  const routeFromLabel = route.fromLabel;
+  const routeToLabel = route.toLabel;
+
+  const handleCloseRoute = route.closeSearch;
+
+  // ---- 화면에 무엇을 보일지 ----
+  const routeHasFrom = fromBuilding !== null || fromMyLocation;
+  const {
+    showSearchAndChips,
+    showRouteStrip,
+    showRouteResultCard,
+    showMapMenu,
+    showOverlayNotices,
+    showReportsLoadingNotice,
+    showReportsError,
+    showHotReportList,
+    showNearbyOverlayNote,
+  } = mapVisibility({
+    pickingLocation,
+    routeMode,
+    sheetOpen,
+    routeHasFrom,
+    hasTo: toBuilding !== null,
+    nearbyPicking: nearbyDebug.picking,
+    nearbyOverlayOn: nearbyDebug.overlayOn,
+    reportsOn,
+    reportsLoading: showReportsLoading,
+    reportsErrored: reportsResource.errorMessage !== null,
+    hotOnly,
+    reportsMatchHot,
+    reportsEmpty,
+    reportsLoaded: shownReportData !== undefined,
+    reportSheetOpen: selectedReport !== null,
+  });
 
   return (
     <View style={styles.container}>
@@ -2002,13 +598,8 @@ export default function MapScreen() {
       <LaunchNoticeModal />
 
       <View style={styles.mapArea}>
-        {/*
-          지도 탭은 탭바가 지도 위에 떠 있다(TabNavigator). 지도 자체는 탭바 위에서 끝나게 해,
-          지도 왼쪽 아래 NAVER 로고·저작권 표기가 탭바에 가리지 않게 한다(네이버 지도 API 약관).
-          탭바는 불투명이라 그 아래로 지도가 깔릴 필요가 없다.
-        */}
-        {/* 탭 바가 지도 위에 떠 있는 캡슐이라(FloatingTabBar) 지도는 화면 맨 아래까지 깐다. 캡슐은 가운데에 떠 있어
-            지도 아래 양 끝의 NAVER 로고·저작권 표시는 가리지 않는다. */}
+        {/* [지도] 탭 바가 지도 위에 떠 있는 캡슐이라(FloatingTabBar) 지도는 화면 맨 아래까지 깐다. 캡슐은 가운데에 떠 있어
+            지도 아래 양 끝의 NAVER 로고·저작권 표시는 가리지 않는다(네이버 지도 API 약관). */}
         <View style={styles.mapCanvas}>
           <NaverMapView
             ref={webViewRef}
@@ -2018,71 +609,21 @@ export default function MapScreen() {
           />
         </View>
 
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.bannerStack,
-            { top: headerHeight + 8 },
-            // 넓은 창에선 검색바·시트와 같은 칸에 둔다(10-07 요청). 좁으면 양옆 16.
-            sideGutter > 0 && { left: sideGutter, right: sideGutter, maxWidth: undefined },
-          ]}
-        >
-          {/* 지도 데이터(건물·편의시설·제휴업체)가 아직 하나도 없을 때만. 저장본이 있으면 그걸로 그리고 조용히 새로 받는다. */}
-          {!mapData && (
-            <View style={styles.offscreenNotice} accessibilityRole="alert" accessibilityLiveRegion="polite">
-              {mapDataStatus === "error" ? (
-                <>
-                  <Ionicons name="cloud-offline-outline" size={14} color={COLORS.primary} />
-                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오지 못했어요</Text>
-                  <TouchableOpacity
-                    onPress={reloadMapData}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityRole="button"
-                    accessibilityLabel="지도 정보 다시 불러오기"
-                  >
-                    <Text style={styles.mapDataRetryText}>다시 시도</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                  <Text style={[styles.offscreenText, styles.mapDataNoticeText]}>지도 정보를 불러오는 중이에요</Text>
-                </>
-              )}
-            </View>
-          )}
+        {/* [지도 위 안내 줄] 검색바·칩 아래에 쌓인다. */}
+        <MapNoticeStack top={headerHeight + 8} side={sideGutter}>
+          {!mapData && <MapDataStatusNotice failed={mapDataStatus === "error"} onRetry={reloadMapData} />}
 
-          {mapAuthFailed && (
-            <View style={styles.mapErrorNotice}>
-              <Ionicons name="warning" size={15} color={COLORS.warningIcon} />
-              <Text style={styles.mapErrorText}>
-                지도를 불러오지 못했어요. 네이버 지도 인증에 실패했어요.
-              </Text>
-              <TouchableOpacity
-                onPress={() => setMapAuthFailed(false)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                accessibilityRole="button"
-                accessibilityLabel="닫기"
-              >
-                <Ionicons name="close" size={15} color={COLORS.warningIcon} />
-              </TouchableOpacity>
-            </View>
-          )}
+          {mapAuthFailed && <MapAuthErrorNotice onDismiss={dismissMapAuthError} />}
 
-          {reportsOn && showReportsLoading && reportsResource.errorMessage === null && (
-            <View style={styles.offscreenNotice}>
-              <ActivityIndicator size="small" color={COLORS.textSecondary} />
-              <Text style={styles.offscreenText}>제보를 불러오는 중…</Text>
-            </View>
-          )}
+          {showReportsLoadingNotice && <ReportsLoadingNotice />}
 
-          {reportsOn && reportsResource.errorMessage !== null && (
+          {showReportsError && (
             <RetryableError
               variant="chip"
               message={
                 reportsResource.data !== undefined
                   ? "제보를 새로 불러오지 못했어요. 마지막으로 받은 제보를 보여주고 있어요."
-                  : reportsResource.errorMessage
+                  : (reportsResource.errorMessage ?? "")
               }
               isNetworkError={reportsResource.isNetworkError}
               onRetry={reportsResource.canRetry ? reportsResource.retry : undefined}
@@ -2091,67 +632,19 @@ export default function MapScreen() {
             />
           )}
 
-          {/* 시트를 연 동안에는 목록을 접어 지도를 덜 가린다(닫으면 다시 보인다). */}
-          {/* 위치를 고르는 동안에는 아래 목록·안내 줄을 모두 숨긴다(고르기 안내 줄과 같은 자리에 겹친다). */}
-          {!pickingLocation && hotOnly && reportsOn && reportsMatchHot && !reportsEmpty && shownReportData !== undefined && !selectedReport && (
-            <HotReportList
-              reports={reports}
-              selectedId={null}
-              onSelect={(report) => {
-                openReport(report);
-                postToMap({ type: "focusReport", lat: report.lat, lng: report.lng });
-              }}
-            />
+          {showHotReportList && (
+            <HotReportList reports={reports} selectedId={null} onSelect={handleSelectHotReport} />
           )}
 
-          {!pickingLocation && askCard && (
-            <View style={styles.askCard} accessibilityLiveRegion="polite">
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={COLORS.primary} style={styles.askCardIcon} />
-              <View style={styles.previewTextWrap}>
-                <Text style={styles.askCardTitle} numberOfLines={1}>{askCard.title}</Text>
-                {askCard.summary ? (
-                  <Text style={styles.askCardSummary} numberOfLines={3}>{askCard.summary}</Text>
-                ) : null}
-                <TouchableOpacity
-                  onPress={() => {
-                    setAskCard(null);
-                    navigation.navigate("Ask" as never);
-                  }}
-                  hitSlop={6}
-                  accessibilityRole="button"
-                  accessibilityLabel="물어보기로 돌아가기"
-                >
-                  <Text style={styles.askCardBack}>물어보기로 돌아가기</Text>
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity onPress={() => setAskCard(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="설명 닫기">
-                <Ionicons name="close" size={18} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
+          {showOverlayNotices && preview.askCard && (
+            <AskPlaceCard title={preview.askCard.title} summary={preview.askCard.summary} onBack={preview.backToAsk} onClose={preview.closeAskCard} />
           )}
 
-          {!pickingLocation && previewTarget && (
-            <View style={styles.previewNotice}>
-              <Ionicons name="eye-outline" size={14} color={COLORS.white} />
-              <View style={styles.previewTextWrap}>
-                <Text style={styles.previewTitle} numberOfLines={1}>검토 중인 제보 · {previewTarget.label}</Text>
-                {previewTarget.detail ? (
-                  <Text style={styles.previewDetail} numberOfLines={1}>{previewTarget.detail}</Text>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                onPress={clearPreview}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="검토 위치 핀 닫기"
-              >
-                <Ionicons name="close" size={18} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
+          {showOverlayNotices && preview.previewTarget && (
+            <ReviewPinNotice label={preview.previewTarget.label} detail={preview.previewTarget.detail} onClose={preview.clearPreview} />
           )}
 
-
-          {!pickingLocation && unresolvedCount > 0 && (
+          {showOverlayNotices && unresolvedCount > 0 && (
             <DismissibleNotice
               message={`건물을 찾지 못한 편의시설 ${unresolvedCount}곳은 지도에서 빠졌어요`}
               dismissed={dismissedNotices}
@@ -2159,293 +652,103 @@ export default function MapScreen() {
             />
           )}
 
-          {!pickingLocation && offscreenCount > 0 && (
+          {showOverlayNotices && offscreenCount > 0 && (
             <DismissibleNotice
               message={`지도에 안 보이는 ${offscreenCount}곳 · ${offscreenSummary(offscreenPartners)}`}
               actionLabel="보기"
-              onPress={() => {
-                setNearbyGroup(null);
-                setSearchPinned(offscreenPartners);
-                setShowSearch(true);
-              }}
+              onPress={handleShowOffscreenPartners}
               dismissed={dismissedNotices}
               onDismiss={dismissNotice}
             />
           )}
-        </View>
+        </MapNoticeStack>
 
-        {pickingNearbyTest && (
-          <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
-              <View style={[styles.pickerCrosshairV, styles.nearbyTestCross]} />
-              <View style={[styles.pickerCrosshairH, styles.nearbyTestCross]} />
-            </View>
-            <View style={[styles.nearbyTestBar, { bottom: 16 + bottomInset }]}>
-              <Text style={styles.nearbyOverlayNoteText}>
-                지도를 움직여 십자를 테스트할 자리에 맞추세요. 근처 알림만 이 자리를 내 위치로 보고, 실제 GPS 는 쓰지 않아요.
-              </Text>
-              <View style={styles.nearbyTestButtons}>
-                <TouchableOpacity
-                  style={[styles.nearbyTestButton, styles.nearbyTestButtonPrimary]}
-                  onPress={() =>
-                    webViewRef.current?.injectJavaScript(
-                      'if (window.map && window.ReactNativeWebView) { var c = map.getCenter(); window.ReactNativeWebView.postMessage(JSON.stringify({ type: "nearbyTestCenter", lat: c.lat(), lng: c.lng() })); } true;',
-                    )
-                  }
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.nearbyTestButtonPrimaryText}>여기로 정하기</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.nearbyTestButton}
-                  onPress={() => {
-                    setPickingNearbyTest(false);
-                    setNearbyTestLabel(null);
-                    void applyNearbyTestLocation(null, nearbySourceRef.current);
-                  }}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.nearbyTestButtonText}>실제 위치로</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.nearbyTestButton} onPress={() => setPickingNearbyTest(false)} accessibilityRole="button">
-                  <Text style={styles.nearbyTestButtonText}>취소</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+        {/* [근처 알림 개발 도구] 테스트 위치 고르기·영역 보기 안내 */}
+        {nearbyDebug.picking && (
+          <NearbyTestPicker
+            bottom={16 + bottomInset}
+            onConfirm={nearbyDebug.requestCenter}
+            onUseRealLocation={nearbyDebug.resetToRealLocation}
+            onCancel={nearbyDebug.cancelPicking}
+          />
         )}
-        {nearbyOverlayOn && nearbyOverlayNote && !sheetOpen && !pickingNearbyTest && (
-          <View pointerEvents={nearbyUnregistered ? "box-none" : "none"} style={[styles.nearbyOverlayNote, { bottom: 84 + bottomInset }]}>
-            <Text style={styles.nearbyOverlayNoteText}>{nearbyTestLabel ? `${nearbyTestLabel} (빨간 점)\n${nearbyOverlayNote}` : nearbyOverlayNote}</Text>
-            {/* 등록 전이면 바로 설정 > 근처 제휴 알림 창으로(제휴 시트의 안내와 같은 길, 11-09). */}
-            {nearbyUnregistered && (
-              <TouchableOpacity
-                style={styles.nearbyOverlayNoteButton}
-                onPress={() => {
-                  requestSettingsIntent({ type: "openNearbyAlerts" });
-                  if (navigationRef.isReady()) navigationRef.navigate("Main", { screen: "Settings" });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="근처 제휴 알림 켜러 가기, 설정의 근처 제휴 알림 창이 열려요"
-              >
-                <Ionicons name="navigate" size={15} color={COLORS.white} />
-                <Text style={styles.nearbyOverlayNoteButtonText}>근처 제휴 알림 켜러 가기</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {showNearbyOverlayNote && nearbyDebug.note && (
+          <NearbyOverlayNote
+            note={nearbyDebug.note}
+            testLabel={nearbyDebug.label}
+            unregistered={nearbyDebug.unregistered}
+            bottom={84 + bottomInset}
+          />
         )}
-        {/* 시트가 열려 있으면 오른쪽 아래 메뉴(제보하기·캠퍼스로)가 시트 가장자리로 삐져나와 숨긴다. */}
-        {!pickingLocation && !sheetOpen && !pickingNearbyTest && (
+        {/* [지도 메뉴] 오른쪽 아래(제보 보기·내 위치·캠퍼스로·길찾기·제보하기) */}
+        {showMapMenu && (
           <MapActionMenu
-            style={[
-              styles.mapControls,
-              // 아래 길찾기 결과 카드가 떠 있으면 그 위로 올린다.
-              { bottom: 20 + bottomInset + (!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding ? routeCardHeight + 8 : 0) },
-            ]}
-            onReport={handleStartReportPicker}
-            onRoute={ROUTE_FINDING_ENABLED ? handleOpenRoute : undefined}
+            style={mapMenuStyle}
+            onReport={reportComposer.handleStartPicker}
+            onRoute={ROUTE_FINDING_ENABLED ? route.openSearch : undefined}
             onRecenter={handleRecenter}
-            // 운영은 처리방침 11-16판 적용일부터. 테스트 앱(개발 도구)은 미리 확인하게 바로 보인다.
-            onMyLocation={canLocate() && (nearbyTools || kstTodayYmd() >= MY_LOCATION_BUTTON_FROM) ? handleToggleMyLocation : undefined}
-            myLocationOn={myLocationOn}
-            onToggleNearbyOverlay={showNearbyOverlayMenu ? () => setNearbyOverlayOn((v) => !v) : undefined}
-            onPickNearbyTestLocation={showNearbyOverlayMenu ? () => setPickingNearbyTest(true) : undefined}
-            nearbyOverlayOn={nearbyOverlayOn}
-            // 검색바·칩(headerHeight) 아래부터 접기 버튼(46 + 간격 10) 위까지.
-            maxItemsHeight={Math.max(160, windowHeight - (20 + tabBarHeight) - 56 - headerHeight - 12)}
-            reportFilter={{
-              categories: REPORT_CATEGORY_KEYS,
-              selected: reportCategories,
-              onToggleCategory: handleToggleReportCategory,
-              hotOn: hotOnly,
-              hotAvailable,
-              onToggleHot: handleToggleHot,
-            }}
+            onMyLocation={canShowMyLocationButton ? myLocation.toggle : undefined}
+            myLocationOn={myLocation.on}
+            onToggleNearbyOverlay={nearbyDebug.menuAvailable ? nearbyDebug.toggleOverlay : undefined}
+            onPickNearbyTestLocation={nearbyDebug.menuAvailable ? nearbyDebug.startPicking : undefined}
+            nearbyOverlayOn={nearbyDebug.overlayOn}
+            maxItemsHeight={mapMenuMaxItemsHeight}
+            reportFilter={menuFilter}
           />
         )}
 
+        {/* [위치 고르기] 제보·정보 제보·길찾기 도착을 지도 가운데 핀으로 */}
         {pickingLocation && (
-          <>
-            <View pointerEvents="none" style={styles.pickerMarkerWrap}>
-              <View style={styles.pickerCrosshairV} />
-              <View style={styles.pickerCrosshairH} />
-              <View style={styles.pickerPinAnchor}>
-                <View style={styles.pickerPinBubble}>
-                  {pickerPurpose === "routeTo" ? (
-                    <Ionicons name="flag" size={18} color={COLORS.white} />
-                  ) : (
-                    <ReportMegaphoneIcon size={18} color={COLORS.white} />
-                  )}
-                </View>
-                <View style={styles.pickerPinTail} />
-              </View>
-              <View style={styles.pickerDot} />
-            </View>
-
-            <View style={[styles.pickerTopBar, overlayInset, { top: headerHeight + 8 }]}>
-              <Text style={styles.pickerTopText} numberOfLines={2}>
-                {pickerPurpose === "partner"
-                  ? "지도를 움직여 가게 위치에 핀을 맞춰 주세요"
-                  : pickerPurpose === "routeTo"
-                    ? "지도를 움직여 도착할 건물에 핀을 맞춰 주세요"
-                    : "지도를 움직여 제보할 위치를 맞춰 주세요"}
-              </Text>
-              <TouchableOpacity
-                onPress={handleCancelReportPicker}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="위치 선택 취소"
-              >
-                <Ionicons name="close" size={18} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* 지도 탭은 탭바가 지도 위에 떠 있어(TabNavigator) 그 높이만큼 올려야 가려지지 않는다. */}
-            <View style={[styles.pickerBottomBar, overlayInset, { bottom: 20 + bottomInset }]}>
-              <View style={styles.pickerLocationRow}>
-                <Ionicons name="location" size={16} color={COLORS.primary} />
-                <Text style={styles.pickerLocationText} numberOfLines={1}>
-                  {pickerPurpose === "routeTo" && pickerCenter
-                    ? routePinBuilding
-                      ? `도착: ${routePinBuilding.name}`
-                      : "근처에 길찾기할 수 있는 건물이 없어요"
-                    : pickerCenter
-                    ? pickerCenter.buildingName
-                      ? `${pickerCenter.buildingName} 근처`
-                      : pickerPurpose === "report"
-                        ? // 캠퍼스 밖 제보(10-27): 홍대 생활권 안이면 장소를 직접 적어 올리고, 더 멀면 올릴 수 없다고 미리 알린다.
-                          haversineMeters(CAMPUS_CENTER.lat, CAMPUS_CENTER.lng, pickerCenter.lat, pickerCenter.lng) <=
-                          REPORT_OFF_CAMPUS_MAX_METERS
-                          ? "캠퍼스 밖 · 다음 화면에서 장소를 적어 주세요"
-                          : `캠퍼스에서 ${REPORT_OFF_CAMPUS_MAX_METERS / 1000}km 밖은 제보할 수 없어요`
-                        : `${pickerCenter.lat.toFixed(5)}, ${pickerCenter.lng.toFixed(5)}`
-                    : "위치 확인 중..."}
-                </Text>
-                {/* 위쪽 안내 줄의 X 까지 손을 뻗지 않아도 되게 아래 카드에도 취소를 둔다(10-27 요청).
-                    오른손 엄지가 닿는 오른쪽, 위치 문구와 같은 줄. */}
-                <TouchableOpacity
-                  onPress={handleCancelReportPicker}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="위치 선택 취소"
-                >
-                  <Ionicons name="close" size={20} color={COLORS.textPrimary} />
-                </TouchableOpacity>
-              </View>
-              <Button
-                label={
-                  pickerPurpose === "partner" ? "이 위치로 정보 제보" : pickerPurpose === "routeTo" ? "여기로 도착" : "이 위치 제보하기"
-                }
-                onPress={handleConfirmReportPicker}
-                disabled={!pickerCenter || (pickerPurpose === "routeTo" && !routePinBuilding)}
-              />
-            </View>
-          </>
+          <LocationPickerOverlay
+            purpose={picker.purpose}
+            center={picker.center}
+            routeBuildingName={picker.routeTarget?.name ?? null}
+            top={headerHeight + 8}
+            bottom={20 + bottomInset}
+            side={sideGutter}
+            onCancel={handleCancelReportPicker}
+            onConfirm={handleConfirmReportPicker}
+          />
         )}
 
-        {!pickingLocation && (fromBuilding || fromMyLocation || toBuilding) && (
-          <View
-            style={[styles.routeStrip, overlayInset, { top: headerHeight + 8 }]}
-            onLayout={(e) => {
-              routeStripHeightRef.current = e.nativeEvent.layout.height;
-            }}
-          >
-            <View style={styles.routeStripRows}>
-              <TouchableOpacity
-                style={styles.routeStripRow}
-                onPress={() => (fromBuilding ? beginFrom(fromBuilding) : (setRouteTarget("from"), setSearchQuery(""), setShowRoute(true)))}
-                accessibilityRole="button"
-                accessibilityLabel={fromBuilding ? `출발 ${buildingLabel(fromBuilding, fromFloor)}, 층 바꾸기` : "출발지 고르기"}
-              >
-                <View style={styles.routeDotFrom} />
-                <Text style={fromBuilding || fromMyLocation ? styles.routeStripLabel : styles.routeStripPlaceholder} numberOfLines={1}>
-                  {fromBuilding ? buildingLabel(fromBuilding, fromFloor) : fromMyLocation ? "내 위치" : "출발 — 지도에서 건물을 눌러요"}
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.routeStripDivider} />
-              <TouchableOpacity
-                style={styles.routeStripRow}
-                onPress={() => (toBuilding ? beginTo(toBuilding) : (setRouteTarget("to"), setSearchQuery(""), setShowRoute(true)))}
-                accessibilityRole="button"
-                accessibilityLabel={toBuilding ? `도착 ${buildingLabel(toBuilding, toFloor)}, 층 바꾸기` : "도착지 고르기"}
-              >
-                <View style={styles.routeDotTo} />
-                <Text style={toBuilding ? styles.routeStripLabel : styles.routeStripPlaceholder} numberOfLines={1}>
-                  {toBuilding ? buildingLabel(toBuilding, toFloor) : "도착 — 지도에서 건물을 눌러요"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.routeStripActions}>
-              <TouchableOpacity
-                onPress={handleOpenRoute}
-                style={styles.routeStripIcon}
-                accessibilityRole="button"
-                accessibilityLabel="건물 검색"
-              >
-                <Ionicons name="search" size={18} color={COLORS.primary} />
-              </TouchableOpacity>
-              {fromBuilding && toBuilding && !fromMyLocation ? (
-                <TouchableOpacity
-                  onPress={handleSwapRoute}
-                  style={styles.routeStripIcon}
-                  accessibilityRole="button"
-                  accessibilityLabel="출발 도착 바꾸기"
-                >
-                  <Ionicons name="swap-vertical" size={18} color={COLORS.primary} />
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                onPress={handleClearRoute}
-                style={[styles.routeStripIcon, styles.routeStripClose]}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="길찾기 끝내기"
-              >
-                <Ionicons name="close" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* [길찾기] 위 출발·도착 막대, 아래 결과 카드 */}
+        {showRouteStrip && (
+          <RouteStrip
+            fromLabel={routeFromLabel}
+            toLabel={routeToLabel}
+            fromIsBuilding={fromBuilding !== null}
+            toIsBuilding={toBuilding !== null}
+            canSwap={fromBuilding !== null && toBuilding !== null && !fromMyLocation}
+            onPressEndpoint={handleRouteEndpointPress}
+            onSearch={route.openSearch}
+            onSwap={handleSwapRoute}
+            onClose={handleClearRoute}
+            top={headerHeight + 8}
+            side={sideGutter}
+            onHeight={handleRouteStripHeight}
+          />
         )}
 
-        {!pickingLocation && !sheetOpen && (fromBuilding || fromMyLocation) && toBuilding && (
-          <View
-            style={[styles.routeCardWrap, overlayInset, { bottom: 8 + bottomInset }]}
-            onLayout={(e) => setRouteCardHeight(e.nativeEvent.layout.height)}
-          >
-            {selectedRoute ? (
-              <RouteOptions
-                routes={routeAlternatives}
-                selectedIndex={selectedRouteIndex}
-                onSelect={handleSelectRouteAlternative}
-                onClose={handleClearRoute}
-              />
-            ) : (
-              <View style={styles.routeCard}>
-                <Text style={styles.routeCardNote}>내 위치를 찾고 있어요</Text>
-              </View>
-            )}
-          </View>
+        {showRouteResultCard && (
+          <RouteResultCard
+            routes={routeAlternatives}
+            selectedIndex={selectedRouteIndex}
+            onSelect={route.selectAlternative}
+            onClose={handleClearRoute}
+            bottom={8 + bottomInset}
+            side={sideGutter}
+            onHeight={route.setCardHeight}
+          />
         )}
 
-        {/*
-          건물·제휴업체·제보 배너("하단 배너"). 각 배너는 자기 스타일에서 이미
-          position:absolute; bottom:0 을 쓰므로, 이 레이어는 화면 전체를 덮어
-          (position:absolute, 사방 0) 그 기준선을 그대로 유지해 준다.
-        */}
-        <SheetHeaderContext.Provider value={sheetHeaderCtx}>
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.bottomSheetLayer,
-            { bottom: sheetBottom, left: sideGutter, right: sideGutter },
-          ]}
-        >
+        {/* [아래 시트] 고른 건물·제휴·시설·제보 */}
+        <MapSheets headerContext={sheetHeaderCtx} bottom={sheetBottom} side={sideGutter}>
           {selectedBuilding && (
             <BuildingSheet
               key={selectedBuilding.name}
               building={selectedBuilding}
               facilities={selectedBuildingFacilities}
-              onOpenFacility={handleOpenBuildingFacility}
+              onOpenFacility={facilityNav.openFromBuilding}
               onClose={handleCloseBuilding}
               routeFindingEnabled={ROUTE_FINDING_ENABLED}
               onSetFrom={handleSetFrom}
@@ -2459,21 +762,7 @@ export default function MapScreen() {
               key={selectedPartner.id}
               partner={selectedPartner}
               onClose={handleClosePartner}
-              onSuggestEdit={() => {
-                // 그 가게로 정보 제보 창을 '정보 수정'으로 연다(이름·주소·소속·위치를 채워서). 시트는 닫는다.
-                const partner = selectedPartner;
-                handleClosePartner();
-                setPartnerSuggest({
-                  location: { lat: partner.lat, lng: partner.lng, buildingName: null },
-                  prefill: {
-                    type: "partner",
-                    kind: "fix",
-                    name: partner.name,
-                    address: partner.address ?? "",
-                    affiliation: partner.affiliations?.[0] ?? null,
-                  },
-                });
-              }}
+              onSuggestEdit={infoSuggest.suggestPartnerEdit}
             />
           )}
 
@@ -2482,22 +771,12 @@ export default function MapScreen() {
               key={`${facilityKind}:${selectedFacilityBuilding}`}
               kind={facilityKind}
               buildingName={selectedFacilityBuilding}
-              items={facilities.filter(
-                (f) => f.kind === facilityKind && f.buildingName === selectedFacilityBuilding,
-              )}
+              items={selectedFacilityItems}
               exhibitions={exhibitions}
-              highlightId={
-                searchedFacility &&
-                searchedFacility.kind === facilityKind &&
-                searchedFacility.buildingName === selectedFacilityBuilding
-                  ? searchedFacility.id
-                  : null
-              }
-              onClose={() => {
-                if (!handleLeaveBuildingFacility()) setSelectedFacilityBuilding(null);
-              }}
-              onBack={facilityFrom ? handleBackToBuilding : undefined}
-              backLabel={facilityFrom ? `${facilityFrom.building.name}로 돌아가기` : undefined}
+              highlightId={highlightedFacilityId}
+              onClose={facilityNav.closeSheet}
+              onBack={facilityNav.facilityFrom ? facilityNav.backToBuilding : undefined}
+              backLabel={facilityNav.facilityFrom ? `${withRo(facilityNav.facilityFrom.building.name)} 돌아가기` : undefined}
               onSetFrom={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetFrom : undefined}
               onSetTo={ROUTE_FINDING_ENABLED && facilitySheetBuilding ? handleFacilitySetTo : undefined}
               routeNext={routeNext}
@@ -2510,734 +789,98 @@ export default function MapScreen() {
             <ReportSheet
               key={selectedReport.id}
               report={selectedReport}
-              onClose={() => setSelectedReport(null)}
+              onClose={handleCloseReportSheet}
               onChanged={refetchReports}
+              routeBuildingName={ROUTE_FINDING_ENABLED ? (reportSheetBuilding?.name ?? null) : null}
+              onSetFrom={ROUTE_FINDING_ENABLED && reportSheetBuilding ? handleReportSetFrom : undefined}
+              onSetTo={ROUTE_FINDING_ENABLED && reportSheetBuilding ? handleReportSetTo : undefined}
+              routeNext={routeNext}
             />
           )}
-        </View>
-        </SheetHeaderContext.Provider>
+        </MapSheets>
       </View>
 
-      {/*
-        검색바·필터 칩을 지도 위에 뜨는 투명 오버레이로 띄운다. mapArea 뒤에
-        와야(later sibling) 그 위에 그려진다. pointerEvents="box-none" 이라
-        빈 공간(제목 옆, 칩 사이)은 터치가 그대로 지도로 전달되고, 안의
-        버튼·칩만 눌린다. onLayout 으로 잰 실제 높이를 배너·상단바 위치
-        계산에 쓴다(headerHeight, 위 선언부 주석 참고).
-      */}
-      <Animated.View
-        style={[
-          styles.headerOverlay,
-          // 제목 줄을 없앤 뒤라, 상태 바에 검색바가 바로 붙지 않게 여백만 조금 남긴다.
-          // 검색바·칩은 지도처럼 창 너비를 다 쓴다 — 폴드를 펴거나 웹 창을 늘려도 지도와 같이 늘어난다.
-          { paddingTop: insets.top + 8, opacity: headerFade },
-        ]}
-        pointerEvents={headerCovered ? "none" : "box-none"}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
-        {/* 길찾기 중에는 검색바·칩을 숨긴다(routeMode) — 출발·도착 막대가 그 자리로 올라간다. */}
-        {!pickingLocation && !routeMode && (
+      {/* [위 막대] 검색바·칩. mapArea 뒤에 와야(later sibling) 지도 위에 그려진다. 빈 곳 터치는 지도로 간다. */}
+      <MapTopBar topInset={insets.top} opacity={headerFade} covered={headerCovered} onHeight={setHeaderHeight}>
+        {showSearchAndChips && (
           <>
-            {/* 넓은 창(웹·태블릿)에선 아래 시트와 같은 너비로 맞춘다(10-07 요청). 좁으면 시트가 화면을 꽉 채우니 16 만 띄운다. */}
-            <View style={[styles.searchBarWrap, sideGutter > 0 && { paddingHorizontal: sideGutter }]}>
-              <TouchableOpacity
-                style={styles.searchBar}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSearchPinned(null);
-                  setNearbyGroup(null);
-                  setShowSearch(true);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="제휴 업체·편의시설 검색"
-              >
-                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <Text style={styles.searchPlaceholder}>제휴 업체·편의시설 검색</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 칩도 검색바와 같은 왼쪽 끝에서 시작한다(10-07 요청). 칩 줄 안쪽 여백 16 을 빼고 띄운다. */}
-            <View style={sideGutter > 16 ? { paddingHorizontal: sideGutter - 16 } : null} pointerEvents="box-none">
-            <MapFilterChips
-              layer={layer}
-              facilityKind={facilityKind}
-              onSelectLayer={handleSelectLayer}
-              onSelectFacilityKind={handleSelectFacilityKind}
-            />
-
-            {layer === "제휴업체" && (
-              <PartnerChips
-                affiliation={selectedAffiliation}
-                category={selectedCategory}
-                onSelectAffiliation={handleSelectAffiliation}
-                onSelectCategory={handleSelectCategory}
+            <MapSearchBar sideGutter={sideGutter} onPress={search.open} />
+            <FilterChipSection sideGutter={sideGutter}>
+              <MapFilterChips
+                layer={layer}
+                facilityKind={facilityKind}
+                onSelectLayer={handleSelectLayer}
+                onSelectFacilityKind={handleSelectFacilityKind}
               />
-            )}
-            </View>
+              {layer === "제휴업체" && (
+                <PartnerChips
+                  affiliation={selectedAffiliation}
+                  category={selectedCategory}
+                  onSelectAffiliation={filters.selectAffiliation}
+                  onSelectCategory={filters.selectCategory}
+                />
+              )}
+            </FilterChipSection>
           </>
         )}
-      </Animated.View>
+      </MapTopBar>
 
+      {/* [창] 층 다이얼·길찾기 창·검색 창·제보 쓰기·정보 제보 */}
       {!showRoute && floorDialSheet}
-      <SwipeBackModal visible={showRoute} onRequestClose={handleCloseRoute}>
-        {/* 길찾기 창 안에서 고른 건물의 층 팝업은 이 창 위에 떠야 해서 창 안에 둔다. */}
-        {showRoute && floorDialSheet}
-        {/* Modal 은 별도 화면으로 떠서 바깥 SafeAreaProvider 의 inset 이 맞지 않는다(노치·홈 인디케이터와 겹침). */}
-        <SafeAreaProvider>
-        <SafeAreaView style={styles.routeModal} edges={["top"]}>
-          <ContentColumn>
-          <View style={styles.routeModalHeader}>
-            <TouchableOpacity
-              onPress={handleCloseRoute}
-              accessibilityRole="button"
-              accessibilityLabel="뒤로 가기"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color={COLORS.textPrimary}
-              />
-            </TouchableOpacity>
-            <Text style={styles.routeModalTitle}>길찾기</Text>
-            <View style={{ width: 22 }} />
-          </View>
-
-          <View style={styles.routeInputs}>
-            <TouchableOpacity
-              style={[
-                styles.routeInputRow,
-                routeTarget === "from" && styles.routeInputActive,
-              ]}
-              onPress={() => {
-                setRouteTarget("from");
-                setSearchQuery("");
-              }}
-            >
-              <View style={styles.routeDotFrom} />
-              <Text
-                style={
-                  fromBuilding || fromMyLocation ? styles.inputFilled : styles.inputPlaceholder
-                }
-              >
-                {fromBuilding
-                  ? buildingLabel(fromBuilding, fromFloor)
-                  : fromMyLocation
-                    ? "내 위치"
-                    : "출발지 입력"}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.inputDivider} />
-            <TouchableOpacity
-              style={[
-                styles.routeInputRow,
-                routeTarget === "to" && styles.routeInputActive,
-              ]}
-              onPress={() => {
-                setRouteTarget("to");
-                setSearchQuery("");
-              }}
-            >
-              <View style={styles.routeDotTo} />
-              <Text
-                style={
-                  toBuilding ? styles.inputFilled : styles.inputPlaceholder
-                }
-              >
-                {toBuilding ? buildingLabel(toBuilding, toFloor) : "도착지 입력"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {routeTarget && (
-            <View style={styles.routeSearch}>
-              <View style={styles.routeSearchBar}>
-                <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-                <TextInput
-                  style={styles.routeSearchInput}
-                  placeholder="건물 검색"
-                  placeholderTextColor={COLORS.textPlaceholder}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoFocus
-                />
-              </View>
-              <FlatList
-                data={filteredBuildings}
-                keyExtractor={(item) => item.name}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.buildingItem}
-                    onPress={() => handleSelectRouteBuilding(item)}
-                  >
-                    {/* 건물별 색 대신 앱 메인 컬러로 통일(buildingItemDot). */}
-                    <View style={styles.buildingItemDot} />
-                    <View style={styles.buildingItemInfo}>
-                      <Text style={styles.buildingItemName}>{item.name}</Text>
-                      {item.type && item.type !== "확인 필요" ? (
-                        <Text style={styles.buildingItemType}>{item.type}</Text>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                  </TouchableOpacity>
-                )}
-                ListHeaderComponent={
-                  routeTarget === "to" ? (
-                    <TouchableOpacity
-                      style={styles.buildingItem}
-                      onPress={handlePickRouteDestinationOnMap}
-                      accessibilityRole="button"
-                      accessibilityLabel="지도에서 핀으로 도착 건물 고르기"
-                    >
-                      <Ionicons name="flag" size={18} color={COLORS.primary} />
-                      <View style={styles.buildingItemInfo}>
-                        <Text style={styles.buildingItemName}>지도에서 핀으로 고르기</Text>
-                        <Text style={styles.buildingItemType}>지도를 움직여 도착할 건물에 핀을 맞춰요</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                    </TouchableOpacity>
-                  ) : routeTarget === "from" && canLocate() ? (
-                    <TouchableOpacity
-                      style={styles.buildingItem}
-                      onPress={() => void handleSelectMyLocation()}
-                      accessibilityRole="button"
-                      accessibilityLabel="내 위치에서 출발"
-                    >
-                      <Ionicons name="navigate" size={18} color={COLORS.primary} />
-                      <View style={styles.buildingItemInfo}>
-                        <Text style={styles.buildingItemName}>내 위치</Text>
-                        <Text style={styles.buildingItemType}>위치는 휴대폰 안에서만 써요</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
-                    </TouchableOpacity>
-                  ) : null
-                }
-                contentContainerStyle={styles.buildingList}
-              />
-            </View>
-          )}
-
-          </ContentColumn>
-        </SafeAreaView>
-        </SafeAreaProvider>
-      </SwipeBackModal>
+      <RoutePlannerModal
+        visible={showRoute}
+        onClose={handleCloseRoute}
+        overlay={showRoute ? floorDialSheet : null}
+        target={routeTarget}
+        fromLabel={routeFromLabel}
+        toLabel={routeToLabel}
+        onChangeTarget={handleChangeRouteTarget}
+        query={searchQuery}
+        onChangeQuery={setSearchQuery}
+        buildings={buildings}
+        onSelectBuilding={handleSelectRouteBuilding}
+        onPickDestinationOnMap={handlePickRouteDestinationOnMap}
+        onSelectMyLocation={canLocate() ? handleSelectMyLocationPress : undefined}
+      />
 
       <PartnerSearchModal
-        visible={showSearch}
+        visible={search.visible}
         topInset={insets.top}
-        onClose={() => {
-          setShowSearch(false);
-          setNearbyGroup(null);
-        }}
-        onSelect={handleSearchSelect}
-        onSelectFacility={handleSearchSelectFacility}
-        autoFocus={!nearbyGroup}
-        pinned={
-          nearbyGroup && nearbyGroup.length > 0
-            ? {
-                title: "지금 계신 곳 근처 제휴",
-                hint: "알림을 보낸 순간 함께 잡힌 곳이에요. 가까운 순으로, 누르면 그 가게 혜택을 볼 수 있어요.",
-                partners: nearbyGroup,
-              }
-            : searchPinned && searchPinned.length > 0
-            ? {
-                title: `지도에 안 보이는 ${searchPinned.length}곳`,
-                hint: "캠퍼스에서 멀어 지도에는 핀이 안 보여요. 누르면 그 주변으로 이동해요.",
-                partners: searchPinned,
-              }
-            : undefined
-        }
+        onClose={search.close}
+        onSelect={search.selectPartner}
+        onSelectFacility={facilityNav.openFacility}
+        autoFocus={!search.nearbyGroup}
+        pinned={search.pinnedSection}
       />
 
       <ReportComposerModal
         target={reportTarget}
-        onClose={() => setReportTarget(null)}
-        onCreated={handleReportCreated}
+        onClose={reportComposer.close}
+        onCreated={reportComposer.handleCreated}
       />
 
       <InfoSuggestModal
-        visible={partnerSuggest !== null}
-        location={partnerSuggest?.location ?? null}
-        prefill={partnerSuggest?.prefill ?? null}
-        onClose={() => setPartnerSuggest(null)}
-        onPickOnMap={() => {
-          partnerLocationBeforePickRef.current = partnerSuggest?.location ?? null;
-          setPartnerSuggest(null);
-          startPicker("partner");
-        }}
+        visible={infoSuggest.visible}
+        location={infoSuggest.state?.location ?? null}
+        prefill={infoSuggest.state?.prefill ?? null}
+        onClose={infoSuggest.close}
+        onPickOnMap={infoSuggest.pickOnMap}
       />
     </View>
   );
 }
 
-/** 업체 이름 두 곳까지 보여 주고 나머지는 "외 N곳" 으로 줄인다. */
-function offscreenSummary(partners: readonly Partner[]): string {
-  const names = partners.slice(0, 2).map((partner) => partner.name);
-  const rest = partners.length - names.length;
-  return rest > 0 ? `${names.join(", ")} 외 ${rest}곳` : names.join(", ");
-}
-
-/**
- * 지도 위 안내 줄. 끝의 X 를 누르면 닫힌다. `onPress` 가 없으면 줄 어디를 눌러도 닫히고,
- * 있으면(예: 지도에 안 보이는 업체 보기) 줄을 누를 때 그 동작을 한다. 이미 닫은 문구면 그리지 않는다.
- */
-function DismissibleNotice({
-  message,
-  actionLabel,
-  onPress,
-  dismissed,
-  onDismiss,
-}: {
-  message: string;
-  /** `onPress` 가 있을 때 문구 끝에 붙는 행동 이름(예: '보기'). */
-  actionLabel?: string;
-  onPress?: () => void;
-  dismissed: ReadonlySet<string>;
-  onDismiss: (message: string) => void;
-}) {
-  if (dismissed.has(message)) return null;
-  const dismiss = () => onDismiss(message);
-  return (
-    <Pressable
-      onPress={onPress ?? dismiss}
-      style={({ pressed }) => [styles.offscreenNotice, pressed && styles.noticePressed]}
-      accessibilityRole="button"
-      accessibilityLabel={onPress ? `${message}. ${actionLabel ?? "열기"}` : `${message}. 탭하면 닫혀요`}
-    >
-      <Ionicons name="information-circle" size={13} color={COLORS.textSecondary} />
-      <Text style={[styles.offscreenText, styles.noticeText]} numberOfLines={1}>
-        {message}
-      </Text>
-      {onPress && actionLabel && <Text style={styles.noticeAction}>{actionLabel}</Text>}
-      <Pressable
-        onPress={dismiss}
-        hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="안내 닫기"
-      >
-        <Ionicons name="close" size={14} color={COLORS.textSecondary} />
-      </Pressable>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
-  // 등록 전 안내의 바로가기. 안내 칸 너비를 꽉 채운 남색 버튼(11-09 — 왼쪽 작은 칩이라 눈에 안 띄었다).
-  nearbyOverlayNoteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "stretch",
-    gap: 6,
-    marginTop: 8,
-    minHeight: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-  },
-  nearbyOverlayNoteButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: COLORS.white },
-  nearbyOverlayNote: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-  },
-  nearbyOverlayNoteText: { fontSize: 12, lineHeight: 17, fontFamily: FONTS.regular, color: COLORS.textPrimary },
-  nearbyTestCross: { width: 2, height: 36, opacity: 0.9 },
-  nearbyTestBar: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    padding: 12,
-    gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-  },
-  nearbyTestButtons: { flexDirection: "row", gap: 8 },
-  nearbyTestButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.fill,
-  },
-  nearbyTestButtonPrimary: { backgroundColor: COLORS.primary },
-  nearbyTestButtonText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  nearbyTestButtonPrimaryText: { fontSize: 13, fontFamily: FONTS.semibold, color: COLORS.white },
   container: { flex: 1, backgroundColor: COLORS.white },
-  // 지도 위에 뜨는 투명 오버레이. 빈 공간은 지도 터치를 그대로 통과시킨다
-  // (JSX 의 pointerEvents="box-none" 참고).
-  headerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-  },
   // 검색바 좌우에 지도가 비치는 여백이 남지 않도록, 알약 모양은 이 흰
   // 배경 안쪽 padding 으로만 띄운다(margin 이면 그 여백엔 배경이 없다).
   // 흰 배경을 깔지 않는다 — 검색바 알약 자체(아래 searchBar)만 흰색이고,
-  // 양옆은 지도가 그대로 비쳐야 네이버맵처럼 떠 있는 느낌이 난다.
-  searchBarWrap: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  searchBar: {
-    height: 44,
-    borderRadius: RADIUS.floating,
-    backgroundColor: COLORS.white,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
   mapArea: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   // 실제 지도가 그려지는 칸. 탭바가 떠 있는 캡슐이라 화면 전체를 덮는다(JSX 주석 참고).
   // 위치 고르기 중앙 핀(pickerMarkerWrap)도 같은 칸 전체 기준이어야 map.getCenter() 와 겹친다.
   mapCanvas: { flex: 1 },
-  mapControls: { position: "absolute", right: 12, bottom: 20, gap: 8 },
   // 건물·제휴업체·제보 배너를 얹는 레이어. 얘 자체엔 위치가 없고(화면 전체를 덮기만),
-  // 배너 각각이 자기 스타일에서 position:absolute; bottom:0 으로 자리를 잡는다.
-  bottomSheetLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  pickerMarkerWrap: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pickerCrosshairV: {
-    position: "absolute",
-    width: 1,
-    height: 22,
-    backgroundColor: COLORS.danger,
-    opacity: 0.5,
-  },
-  pickerCrosshairH: {
-    position: "absolute",
-    width: 22,
-    height: 1,
-    backgroundColor: COLORS.danger,
-    opacity: 0.5,
-  },
-  pickerDot: {
-    position: "absolute",
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: COLORS.danger,
-    borderWidth: 1.5,
-    borderColor: COLORS.white,
-  },
-  pickerPinAnchor: {
-    position: "absolute",
-    alignItems: "center",
-    transform: [{ translateY: -25 }],
-  },
-  pickerPinBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: COLORS.white,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  pickerPinTail: {
-    width: 2,
-    height: 9,
-    backgroundColor: COLORS.primary,
-    marginTop: -1,
-  },
-  pickerTopBar: {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    right: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pickerTopText: {
-    flex: 1,
-    fontFamily: FONTS.medium,
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    lineHeight: 18,
-  },
-  pickerBottomBar: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 20,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    padding: 12,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pickerLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  pickerLocationText: {
-    flex: 1,
-    fontFamily: FONTS.regular,
-    fontSize: 14.5,
-    color: COLORS.textPrimary,
-  },
   // 필터 칩 줄과 같은 왼쪽 여백(16)에 맞춘다. 넓은 화면에서 가운데로 몰려 칩과 어긋나지 않게 하고, 너무 넓어지지 않게 폭만 묶는다.
-  bannerStack: {
-    position: "absolute",
-    top: 8,
-    left: 16,
-    right: 16,
-    maxWidth: 560,
-    gap: 6,
-  },
-  mapErrorNotice: {
-    backgroundColor: COLORS.warningSoft,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  mapErrorText: {
-    flex: 1,
-    fontSize: 12,
-    color: COLORS.warning,
-  },
-  offscreenNotice: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  offscreenText: { fontSize: 12, color: COLORS.textSecondary, fontFamily: FONTS.medium },
-  // 문구가 남는 폭을 다 써서 X(와 보기)를 줄 오른쪽 끝에 붙인다.
-  noticeText: { flex: 1 },
-  noticeAction: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
-  noticePressed: { opacity: 0.6 },
-  mapDataNoticeText: { flex: 1, color: COLORS.primary },
-  mapDataRetryText: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.bold, textDecorationLine: "underline" },
-  previewNotice: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 12,
-    paddingRight: 10,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "stretch",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  askCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 12,
-    paddingRight: 10,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    alignSelf: "stretch",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  askCardIcon: { marginTop: 1 },
-  askCardTitle: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
-  askCardSummary: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular, marginTop: 2, lineHeight: 18 },
-  askCardBack: { fontSize: 12, color: COLORS.primary, fontFamily: FONTS.semibold, marginTop: 6 },
-  previewTextWrap: { flex: 1 },
-  previewTitle: { fontSize: 13, color: COLORS.white, fontFamily: FONTS.semibold },
-  previewDetail: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: FONTS.regular, marginTop: 1 },
-  routeStrip: {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    right: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  routeStripRows: { flex: 1 },
-  routeStripRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 36 },
-  routeStripDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginLeft: 20 },
-  routeStripLabel: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontFamily: FONTS.semibold },
-  routeStripPlaceholder: { flex: 1, fontSize: 14, color: COLORS.textTertiary, fontFamily: FONTS.regular },
-  routeStripActions: { flexDirection: "row", alignItems: "center" },
-  routeStripIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19 },
-  /** 길찾기 끝내기(오른쪽 위 X, 11-09) — 눈에 띄게 남색 옅은 바탕. */
-  routeStripClose: { backgroundColor: COLORS.primarySoft, marginLeft: 2 },
   /** 출발: 남색 테두리 빈 원, 도착: 남색 채운 원(지도 표시와 같음). */
-  routeDotFrom: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: COLORS.primary, backgroundColor: COLORS.white },
-  routeDotTo: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  routeCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.floating,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  /** 경로 카드 자리(카드는 RouteOptions 가 그린다). 높이를 재 지도 맞춤·오른쪽 아래 메뉴 위치에 쓴다. */
-  routeCardWrap: { position: "absolute" },
-  routeCardNote: { fontSize: 13, color: COLORS.textSecondary, fontFamily: FONTS.regular },
-  routeModal: { flex: 1, backgroundColor: COLORS.white },
-  routeModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.border,
-  },
-  routeModalTitle: {
-    fontSize: 16,
-    fontFamily: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-  routeInputs: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: COLORS.fill,
-    borderRadius: RADIUS.floating,
-    overflow: "hidden",
-  },
-  routeInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  routeInputActive: { backgroundColor: COLORS.primarySoft },
-  inputDot: { width: 10, height: 10, borderRadius: 5 },
-  inputPlaceholder: { fontFamily: FONTS.regular, fontSize: 14, color: COLORS.textPlaceholder },
-  inputFilled: { fontSize: 14, color: COLORS.textPrimary, fontFamily: FONTS.medium },
-  inputDivider: {
-    height: 0.5,
-    backgroundColor: COLORS.border,
-    marginHorizontal: 14,
-  },
-  routeSearch: { flex: 1, marginTop: 12 },
-  routeSearchBar: {
-    marginHorizontal: 16,
-    height: 38,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.fill,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    gap: 8,
-    marginBottom: 8,
-  },
-  routeSearchInput: { fontFamily: FONTS.regular, flex: 1, minWidth: 0, fontSize: 14, color: COLORS.textPrimary },
-  buildingList: { paddingHorizontal: 16 },
-  buildingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.border,
-    gap: 10,
-  },
-  buildingItemDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  buildingItemInfo: { flex: 1 },
-  buildingItemName: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: COLORS.textPrimary,
-  },
-  buildingItemType: { fontFamily: FONTS.regular, fontSize: 11, color: COLORS.textSecondary, marginTop: 1 },
-  routeResultCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: COLORS.fill,
-    borderRadius: RADIUS.floating,
-    padding: 16,
-  },
-  routeResultRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  routeResultRowSpaced: { marginTop: 14 },
-  routeResultName: {
-    fontSize: 14,
-    fontFamily: FONTS.medium,
-    color: COLORS.textPrimary,
-  },
-  routeStartBtn: {
-    marginTop: 14,
-    height: 42,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  routeStartText: { fontSize: 14, color: COLORS.white, fontFamily: FONTS.semibold },
 });

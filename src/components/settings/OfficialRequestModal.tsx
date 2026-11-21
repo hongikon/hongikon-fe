@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'

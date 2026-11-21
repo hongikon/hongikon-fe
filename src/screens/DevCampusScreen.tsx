@@ -14,6 +14,7 @@ import { formatFloor } from '../utils/floors'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import type { CampusPreviewData } from '../debug/campusPreview'
+import { withRo } from '../utils/josa'
 
 /**
  * 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 조사 데이터(`src/debug/<학교>Data.ts`)를 홍익대 지도와 같은 화면으로 본다.
@@ -234,7 +235,7 @@ function DevCampusMap({ data, path }: { data: CampusPreviewData; path: string })
                 setFrom(null)
               }}
               onBack={from ? backToBuilding : undefined}
-              backLabel={from ? `${from.building.name}로 돌아가기` : undefined}
+              backLabel={from ? `${withRo(from.building.name)} 돌아가기` : undefined}
             />
           )}
         </View>

@@ -523,12 +523,24 @@ test('click shortcuts: key state kept from key events for clicks that do not car
 })
 
 // The screen needs the app runtime to render, so these read its source. They exist so that a screen rewrite cannot silently drop these again.
-const screen = readFileSync(new URL('../../src/screens/DevPathSurveyV3Screen.tsx', import.meta.url), 'utf8')
+// The screen is split into hooks (src/hooks/pathSurveyV3) and panels; together they are what the old single file held.
+const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8')
+const topBar = read('../../src/screens/pathSurveyV3/SurveyTopBar.tsx')
+const screen = [
+  '../../src/screens/DevPathSurveyV3Screen.tsx',
+  '../../src/screens/pathSurveyV3/EditTab.tsx',
+  '../../src/hooks/pathSurveyV3/useSurveyEditActions.ts',
+  '../../src/hooks/pathSurveyV3/useSurveyKeyboard.ts',
+  '../../src/hooks/pathSurveyV3/useSurveyMapRender.ts',
+]
+  .map(read)
+  .concat(topBar)
+  .join('\n')
 const controls = readFileSync(new URL('../../src/screens/pathSurveyV3/controls.tsx', import.meta.url), 'utf8')
 const bridge = readFileSync(new URL('../../src/screens/pathSurveyV3/mapBridge.ts', import.meta.url), 'utf8')
 
 test('presence: the chain toggle is in the top bar, under the modes and above the context bar', () => {
-  const top = screen.slice(screen.indexOf('const topBar = ('), screen.indexOf('const editTab = ('))
+  const top = topBar
   const modes = top.indexOf('styles.modeRow')
   const toggle = top.indexOf('<ChainToggle')
   const contextBar = top.indexOf('<ContextBar')

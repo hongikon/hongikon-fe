@@ -3,6 +3,8 @@ import { ApiError, isCancelledError } from '../apis/client'
 import { getNotificationSettings, patchNotificationSettings } from '../apis/notificationSettings'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/common/Toast'
+import { useMutation } from './useMutation'
+import { createLatestGate } from '../utils/query/latestGate'
 
 /**
  * 설정 > 알림의 "관리자 알림" 스위치(관리자 계정에만 보인다). 서버 `notification-settings.adminAlerts` 를 그대로 쓴다 —
@@ -35,13 +37,14 @@ export function useAdminAlertSetting(active: boolean): {
   const tokenRef = useRef(accessToken)
   tokenRef.current = accessToken
   const loggedIn = !!accessToken
-  const seqRef = useRef(0)
+  // 연타하면 마지막 요청만 반영한다. 꺼지거나 로그아웃하면 진행 중인 응답을 버린다.
+  const gate = useRef(createLatestGate()).current
 
   useEffect(() => {
     const token = tokenRef.current
     if (!active || !token) {
       // 로그아웃하면 이전 계정의 값을 들고 있지 않는다(다음 로그인 때 서버에서 다시 받는다).
-      seqRef.current++
+      gate.close()
       setState({ status: 'loading' })
       return
     }
@@ -65,32 +68,42 @@ export function useAdminAlertSetting(active: boolean): {
     }
   }, [active, loggedIn, reloadKey])
 
-  const toggle = useCallback(() => {
-    const token = tokenRef.current
-    if (state.status !== 'ready' || !token) return
-    const previous = state.enabled
-    const next = !previous
-    const seq = ++seqRef.current
-    setState({ status: 'ready', enabled: next, saving: true })
-    patchNotificationSettings({ adminAlerts: next }, token)
-      .then((server) => {
-        if (seq !== seqRef.current) return
+  /** 낙관적으로 먼저 바꾸고, 실패하면 이전 값으로 되돌린다. */
+  const toggleMutation = useMutation(
+    ({ next, token }: { next: boolean; previous: boolean; token: string }) =>
+      patchNotificationSettings({ adminAlerts: next }, token),
+    {
+      onMutate: ({ next }) => {
+        const seq = gate.begin()
+        setState({ status: 'ready', enabled: next, saving: true })
+        return seq
+      },
+      onSuccess: (server, _vars, seq) => {
+        if (seq === undefined || !gate.isCurrent(seq)) return
         setState(
           typeof server.adminAlerts === 'boolean'
             ? { status: 'ready', enabled: server.adminAlerts, saving: false }
             : { status: 'unsupported' },
         )
-      })
-      .catch((error: unknown) => {
-        if (seq !== seqRef.current) return
+      },
+      onError: (error, { previous }, seq) => {
+        if (seq === undefined || !gate.isCurrent(seq)) return
         if (isUnsupported(error)) {
           setState({ status: 'unsupported' })
           return
         }
         setState({ status: 'ready', enabled: previous, saving: false })
         toast.show({ message: '관리자 알림 설정을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.', tone: 'warning' })
-      })
-  }, [state, toast])
+      },
+    },
+  )
+  const sendToggle = toggleMutation.mutate
+
+  const toggle = useCallback(() => {
+    const token = tokenRef.current
+    if (state.status !== 'ready' || !token) return
+    void sendToggle({ next: !state.enabled, previous: state.enabled, token })
+  }, [state, sendToggle])
 
   const retry = useCallback(() => setReloadKey((n) => n + 1), [])
 

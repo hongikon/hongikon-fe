@@ -3,8 +3,6 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? ''
 
 /** 일반 요청 제한 시간. 캠퍼스 와이파이가 붙었다 끊겼다 할 때 무한정 멈춰 있지 않게 한다. */
 const DEFAULT_TIMEOUT_MS = 10_000
-/** 사진 업로드는 느린 망에서 10초를 쉽게 넘겨 따로 넉넉히 준다. */
-const UPLOAD_TIMEOUT_MS = 30_000
 /** 자동 재시도 횟수(첫 시도 제외). 총 3번까지 시도한다. */
 const DEFAULT_RETRIES = 2
 const BACKOFF_BASE_MS = 500
@@ -435,32 +433,6 @@ async function withTokenRefresh<T>(
       throw retryError
     }
   }
-}
-
-/**
- * 파일 업로드 전용. `apiRequest` 와 나눈 이유는 Content-Type 때문이다.
- * multipart 는 경계 문자열(boundary)을 런타임이 직접 붙여야 해서, 헤더를
- * 손으로 지정하면 오히려 깨진다.
- *
- * POST 라 기본적으로 자동 재시도하지 않는다. 실패하면 사용자가 "다시 시도"로 직접 올린다.
- */
-export async function apiUpload<T>(
-  path: string,
-  form: FormData,
-  accessToken: string,
-  options: Pick<ApiRequestOptions, 'timeoutMs' | 'retries' | 'signal'> = {},
-): Promise<T> {
-  return withTokenRefresh(accessToken, async (token) => {
-    const response = await send(path, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-      timeoutMs: options.timeoutMs ?? UPLOAD_TIMEOUT_MS,
-      retries: Math.max(0, options.retries ?? 0),
-      signal: options.signal,
-    })
-    return parseJson<T>(response)
-  })
 }
 
 /**
