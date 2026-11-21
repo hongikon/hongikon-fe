@@ -66,7 +66,7 @@ import { useMapCamera } from "../hooks/map/useMapCamera";
 import { useMapMessages } from "../hooks/map/useMapMessages";
 import { useMapPageSync } from "../hooks/map/useMapPageSync";
 import { mapVisibility } from "../utils/map/visibility";
-import { withRo } from "../utils/josa";
+import { withRo } from "../utils/common/josa";
 import { offscreenSummary } from "../utils/map/labels";
 
 /** 경로 표시에 층을 병기한다. 층을 고르지 않았으면 건물명만. */

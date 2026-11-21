@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
-import { openExternalUrl } from '../../utils/openExternalUrl'
+import { openExternalUrl } from '../../utils/common/openExternalUrl'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 

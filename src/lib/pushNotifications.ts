@@ -15,7 +15,7 @@ import { requestSettingsIntent } from './settingsIntents'
 import { navigateToAdminTab, notifyAdminAlertReceived, requestAdminIntent } from './adminIntents'
 import { useIsAdmin } from '../admin/AdminAccess'
 import { handleNearbyNotificationAction } from './nearbyPartners/background'
-import { notify } from '../utils/dialog'
+import { notify } from '../utils/common/dialog'
 import type { PushNotificationData } from '../types'
 
 /**

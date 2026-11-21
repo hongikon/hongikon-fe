@@ -1,6 +1,6 @@
 import { getCafeteriaWeek, type CafeteriaWeek } from '../apis/cafeteria'
 import { kstTodayYmd } from '../utils/exhibitions'
-import { useApiResource, type ApiResource } from './useApiResource'
+import { useApiResource, type ApiResource } from './query/useApiResource'
 
 /** 학식 메뉴는 하루 한두 번 바뀌므로 앱을 켜 둔 동안 이 시간 안에서는 다시 부르지 않는다. */
 const CACHE_TTL_MS = 30 * 60 * 1000

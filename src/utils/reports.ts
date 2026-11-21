@@ -1,6 +1,6 @@
 import { Alert, Platform } from 'react-native'
 import type { ReportCategory, ReportListItem } from '../types'
-import { parseServerTime } from './serverTime'
+import { parseServerTime } from './common/serverTime'
 import {
   formatDay,
   formatReportSchedule,

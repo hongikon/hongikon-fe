@@ -21,7 +21,7 @@ import {
   parseReportDays,
   type ReportDayHours,
 } from '../../../utils/reportSchedule'
-import { parseServerTime } from '../../../utils/serverTime'
+import { parseServerTime } from '../../../utils/common/serverTime'
 import ReportDaysEditor from './ReportDaysEditor'
 import { reportDaysFor, type EditableDay } from '../../../utils/map/reportDays'
 

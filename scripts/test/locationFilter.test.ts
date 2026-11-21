@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { filterFix, snapToRoute, MAX_ACCEPT_ACCURACY_M } from '../../src/utils/locationFilter'
-import { haversineMeters } from '../../src/utils/geo'
+import { haversineMeters } from '../../src/utils/common/geo'
 
 const base = { lat: 37.55, lng: 126.925 }
 

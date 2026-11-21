@@ -4,8 +4,8 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import Button from '../common/Button'
-import { notify } from '../../utils/dialog'
-import { haversineMeters } from '../../utils/geo'
+import { notify } from '../../utils/common/dialog'
+import { haversineMeters } from '../../utils/common/geo'
 import { getNearbyDebugInfo, startNearbyFieldRecording, stopNearbyFieldRecording } from '../../lib/nearbyPartners/background'
 import {
   clearFieldEntries,

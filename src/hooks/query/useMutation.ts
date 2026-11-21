@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isCancelledError } from '../apis/client'
-import { invalidateQueries, type QueryKey } from '../utils/query/invalidation'
-import { runMutation, type MutationCallbacks, type MutationOutcome } from '../utils/query/mutation'
+import { isCancelledError } from '../../apis/client'
+import { invalidateQueries, type QueryKey } from '../../utils/query/invalidation'
+import { runMutation, type MutationCallbacks, type MutationOutcome } from '../../utils/query/mutation'
 
 export interface UseMutationOptions<TVars, TResult, TSnapshot> extends MutationCallbacks<TVars, TResult, TSnapshot> {
   /** 성공하면 이 키들의 조회(`useQuery`)를 다시 부른다. */

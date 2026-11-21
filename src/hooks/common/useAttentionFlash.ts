@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing } from 'react-native'
-import { COLORS } from '../constants/colors'
+import { COLORS } from '../../constants/colors'
 import { useReduceMotion } from './useReduceMotion'
 
 /** 빨간 테두리가 원래 색으로 돌아오기까지(ms). 처음 잠깐 빨갛게 머문 뒤 서서히 빠진다. */

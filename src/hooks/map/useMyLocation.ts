@@ -4,9 +4,9 @@ import type { RouteAlternative } from '../../apis/routes'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { SHOW_DEVELOPER_TOOLS as NEARBY_DEBUG_TOOLS } from '../../lib/nearbyPartners/debug'
 import { locateOnce, type LivePosition } from '../../lib/nearbyPartners/platform'
-import { notify } from '../../utils/dialog'
+import { notify } from '../../utils/common/dialog'
 import { CAMPUS_VIEW_BOX, viewBoundsScript } from '../../utils/mapBounds'
-import { useAppForeground } from '../useAppForeground'
+import { useAppForeground } from '../common/useAppForeground'
 import { useLiveLocation } from './useLiveLocation'
 
 interface Options {

@@ -1,5 +1,5 @@
 import type { ReportDateRange } from '../api'
-import { formatFloor } from '../../utils/floors'
+import { formatFloor } from '../../utils/common/floors'
 import { parseServerDate } from '../format'
 import type { AdminReport, ReportStatus, ReportStatusFilter, ReportTargetStatus } from '../types'
 

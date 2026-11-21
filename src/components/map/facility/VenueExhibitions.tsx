@@ -12,7 +12,7 @@ import {
   formatExhibitionPeriod,
   kstTodayIndex,
 } from "../../../utils/exhibitions";
-import { isSafeExternalUrl, openExternalUrl } from "../../../utils/openExternalUrl";
+import { isSafeExternalUrl, openExternalUrl } from "../../../utils/common/openExternalUrl";
 
 /** 설명이 이보다 길거나 줄바꿈이 있으면 두 줄로 줄이고 "자세히 보기"를 단다. */
 const DESCRIPTION_FOLD_CHARS = 60;

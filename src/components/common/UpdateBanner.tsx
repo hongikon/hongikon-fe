@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState, Platform } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import * as Updates from 'expo-updates'
 import { FONTS } from '../../constants/typography'
 import { COLORS } from '../../constants/colors'
-import { notify } from '../../utils/dialog'
+import { notify } from '../../utils/common/dialog'
 import { RADIUS } from '../../constants/spacing'
+import { useUpdateBanner } from '../../hooks/common/useUpdateBanner'
 /** 하단 탭 바(FloatingTabBar: 알약 60 + 아래 여백) 위로 띄운다. 예전에는 탭 바와 같은 높이라 겹쳐 가렸다(11-03). */
 const TAB_BAR_PILL_HEIGHT = 60
 
@@ -18,28 +17,7 @@ const TAB_BAR_PILL_HEIGHT = 60
  * 개발 빌드/Expo Go/웹은 `expo-updates` 가 동작하지 않아 `Updates.isEnabled` 로 걸러낸다.
  */
 export default function UpdateBanner() {
-  const insets = useSafeAreaInsets()
-  const [reloading, setReloading] = useState(false)
-  const { isUpdatePending } = Updates.useUpdates()
-  useEffect(() => {
-    if (!Updates.isEnabled || Platform.OS === 'web') return
-
-    // 앱을 계속 켜두고 있어도 받을 수 있도록, 포그라운드로 돌아올 때마다 다시 확인한다.
-    // 받은 업데이트는 배너의 "지금 적용"을 눌러야 적용된다(갑자기 리로드되면 안 되니까). 시스템 알림창은 띄우지 않는다(11-03 운영진).
-    const checkAndDownload = () => {
-      Updates.checkForUpdateAsync()
-        .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : undefined))
-        .catch((error) => {
-          if (__DEV__) console.warn('[updates] 확인 실패:', error)
-        })
-    }
-
-    checkAndDownload()
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkAndDownload()
-    })
-    return () => subscription.remove()
-  }, [])
+  const { insets, reloading, setReloading, isUpdatePending } = useUpdateBanner()
 
   if (!isUpdatePending) return null
 

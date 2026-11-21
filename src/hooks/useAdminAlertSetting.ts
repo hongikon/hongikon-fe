@@ -3,7 +3,7 @@ import { ApiError, isCancelledError } from '../apis/client'
 import { getNotificationSettings, patchNotificationSettings } from '../apis/notificationSettings'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/common/Toast'
-import { useMutation } from './useMutation'
+import { useMutation } from './query/useMutation'
 import { createLatestGate } from '../utils/query/latestGate'
 
 /**

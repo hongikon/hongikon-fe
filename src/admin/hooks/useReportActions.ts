@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getErrorMessage } from '../../apis/client'
-import { confirmAction } from '../../utils/dialog'
+import { confirmAction } from '../../utils/common/dialog'
 import { formatReportSchedule } from '../../utils/reportSchedule'
 import { updateReportStatus } from '../api'
 import type { AdminReport } from '../types'

@@ -4,7 +4,7 @@ import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import { formatNewsBody, splitLinks } from '../../../utils/newsBody'
-import { openExternalUrl } from '../../../utils/openExternalUrl'
+import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 
 /**
  * 크롤러가 가져온 본문을 정리해 보여 준다(utils/newsBody). 소제목·항목(굵은 라벨)·주의 문구·문단으로 나누고,

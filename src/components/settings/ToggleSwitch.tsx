@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Animated, Pressable, StyleSheet } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import * as haptics from '../../lib/haptics'
-import { useReduceMotion } from '../../hooks/useReduceMotion'
+import { useReduceMotion } from '../../hooks/common/useReduceMotion'
 
 interface ToggleSwitchProps {
   value: boolean

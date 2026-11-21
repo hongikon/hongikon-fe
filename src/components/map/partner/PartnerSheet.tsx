@@ -16,7 +16,7 @@ import { FONTS, TYPE } from "../../../constants/typography";
 import IconButton from "../../common/IconButton";
 import { sheetCloseStyle } from "../chipStyles";
 import { useSheetSizing } from "../../../hooks/useResizableSheet";
-import { openExternalUrl } from "../../../utils/openExternalUrl";
+import { openExternalUrl } from "../../../utils/common/openExternalUrl";
 import { openNaverMapPlace } from "../../../utils/openNaverMap";
 import { RADIUS } from "../../../constants/spacing";
 import SheetScrollBody from "../SheetScrollBody";

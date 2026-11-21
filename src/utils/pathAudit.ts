@@ -1,5 +1,5 @@
 import type { Building, PathEdge, PathWaypoint } from '../types'
-import type { RoutePoint } from './floors'
+import type { RoutePoint } from './common/floors'
 
 /**
  * 실외 보행 경로망(pathNodes.ts) 점검 — 개발용 `/dev/path` 화면이 쓴다.

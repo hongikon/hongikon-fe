@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { confirmAction } from '../../utils/dialog'
+import { confirmAction } from '../../utils/common/dialog'
 import { clearOfficialName, grantAdmin, revokeAdmin, suspendUser, unsuspendUser } from '../api'
 import type { AdminUser } from '../types'
 import { moderationError, officialError, roleError } from '../utils/moderationErrors'

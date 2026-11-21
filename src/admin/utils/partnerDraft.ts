@@ -1,7 +1,7 @@
 import { PARTNER_CATEGORIES } from '../../constants/partnerCategories'
 import type { PartnerAffiliation, PartnerCategory } from '../../types'
 import { ymdToDayIndex } from '../../utils/exhibitions'
-import { normalize } from '../../utils/normalize'
+import { normalize } from '../../utils/common/normalize'
 import type { AdminPartner, AdminPartnerInput } from '../types'
 import { LAT_RANGE, LNG_RANGE, linkErrors, optional, parseCoordinate, tooLong, type BuildResult } from './mapFormRules'
 

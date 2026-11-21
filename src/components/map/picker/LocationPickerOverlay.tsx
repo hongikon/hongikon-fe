@@ -8,7 +8,7 @@ import { CAMPUS_CENTER } from '../../../constants/map'
 import { REPORT_OFF_CAMPUS_MAX_METERS } from '../../../constants/report'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { haversineMeters } from '../../../utils/geo'
+import { haversineMeters } from '../../../utils/common/geo'
 import MapCrosshair from './MapCrosshair'
 
 /** report: 제보, partner: 정보 제보(설정의 정보 제보 창), routeTo: 길찾기 도착 건물을 핀으로. */

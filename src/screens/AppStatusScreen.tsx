@@ -11,7 +11,7 @@ import { FONTS } from '../constants/typography'
 import { PUSH_NOTIFICATION_SAMPLES, type PushNotificationSample } from '../constants/pushNotificationSamples'
 import { getBackendStatus } from '../apis/status'
 import { API_BASE_URL } from '../apis/client'
-import { useApiResource } from '../hooks/useApiResource'
+import { useApiResource } from '../hooks/query/useApiResource'
 import RetryableError from '../components/common/RetryableError'
 import type { RootStackParamList } from '../navigation/RootNavigator'
 

@@ -9,7 +9,7 @@ import { PARTNER_SOURCES } from '../../constants/partnerSources'
 import { PARTNER_NOTICE_TEXT } from '../map/PartnerNoticeModal'
 import ModalHeader from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
-import { openExternalUrl } from '../../utils/openExternalUrl'
+import { openExternalUrl } from '../../utils/common/openExternalUrl'
 
 interface PartnerSourcesModalProps {
   visible: boolean

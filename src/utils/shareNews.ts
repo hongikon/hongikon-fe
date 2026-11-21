@@ -1,5 +1,5 @@
 import type { NewsItem } from '../types'
-import { shareLink, type ShareResult } from './share'
+import { shareLink, type ShareResult } from './common/share'
 import { SHARE_ORIGIN } from './shareReport'
 
 /** 본문 미리보기 길이(글자). 메신저 미리보기에서 두 줄 남짓. */

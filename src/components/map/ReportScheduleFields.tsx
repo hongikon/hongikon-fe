@@ -16,7 +16,7 @@ import {
   kstMidnight,
   nextStepAfter,
 } from '../../utils/reportSchedule'
-import { useAttentionFlash } from '../../hooks/useAttentionFlash'
+import { useAttentionFlash } from '../../hooks/common/useAttentionFlash'
 import ReportTimeSheet from './report/ReportTimeSheet'
 import ReportDaysEditor from './report/ReportDaysEditor'
 import { effectiveDays, pinDailyHours } from '../../utils/map/reportDays'

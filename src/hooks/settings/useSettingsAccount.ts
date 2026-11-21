@@ -7,7 +7,7 @@ import {
   type MyProfile,
 } from '../../apis/users'
 import { getMyReportCount, isMyReportsApiKnownMissing, type MyReportCount } from '../../apis/myReports'
-import { useApiResource } from '../useApiResource'
+import { useApiResource } from '../query/useApiResource'
 import { getUserIdFromToken } from '../../lib/jwt'
 import { resolveMemberNumber, visibleProfile } from '../../utils/settings/account'
 

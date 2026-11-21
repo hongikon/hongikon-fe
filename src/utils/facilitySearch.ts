@@ -1,6 +1,6 @@
 import { facilityKindLabel } from '../constants/facilityKinds'
-import { formatFloor } from './floors'
-import { normalize } from './normalize'
+import { formatFloor } from './common/floors'
+import { normalize } from './common/normalize'
 import type { Facility, FacilityKind } from '../types'
 
 /** 검색 결과에 한 번에 보여 줄 편의시설 수. 한두 글자 검색에 수십 줄이 쏟아지지 않게. */

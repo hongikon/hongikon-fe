@@ -1,6 +1,6 @@
 import type { MyReport, MyReportDisplayStatus } from '../apis/myReports'
 import { COLORS } from '../constants/colors'
-import { parseServerTime } from './serverTime'
+import { parseServerTime } from './common/serverTime'
 
 /**
  * 화면용 상태. 서버가 준 `displayStatus` 를 따르고, 없으면(옛 서버·모르는 값) 저장 상태와 시각으로 정한다.

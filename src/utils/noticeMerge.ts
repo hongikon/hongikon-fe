@@ -1,6 +1,6 @@
 import type { AppNotice } from '../constants/appNotices'
 import type { ServerNotice } from '../apis/notices'
-import { parseServerTime } from './serverTime'
+import { parseServerTime } from './common/serverTime'
 import { kstTodayYmd } from './exhibitions'
 
 /** 서버 공지(GET /notices)를 앱 공지 모양으로 바꾸고 앱에 적힌 공지와 섞는다(lib/appNotices). react-native 없이 테스트한다. */

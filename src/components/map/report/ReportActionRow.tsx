@@ -12,7 +12,7 @@ import { promptLogin } from '../../../utils/reports'
 import { shareReport } from '../../../utils/shareReport'
 import type { ReportListItem } from '../../../types'
 import { useMapData } from '../../../lib/mapData'
-import { useMutation } from '../../../hooks/useMutation'
+import { useMutation } from '../../../hooks/query/useMutation'
 import { createLatestGate } from '../../../utils/query/latestGate'
 
 /** 시트가 들고 있는 제보 사본에 덮어쓸 값(🔥·관심·조회 수). */

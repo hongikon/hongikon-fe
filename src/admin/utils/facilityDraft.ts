@@ -1,6 +1,6 @@
 import { FACILITY_KINDS } from '../../constants/facilityKinds'
 import type { FacilityKind } from '../../types'
-import { normalize } from '../../utils/normalize'
+import { normalize } from '../../utils/common/normalize'
 import type { AdminBuildingOption, AdminFacility, AdminFacilityInput } from '../types'
 import { LAT_RANGE, LNG_RANGE, optional, parseCoordinate, tooLong, type BuildResult } from './mapFormRules'
 

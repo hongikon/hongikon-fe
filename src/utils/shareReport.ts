@@ -1,7 +1,7 @@
-import { shareLink, type ShareResult } from './share'
+import { shareLink, type ShareResult } from './common/share'
 import type { Building, ReportListItem } from '../types'
-import { formatFloor } from './floors'
-import { haversineMeters } from './geo'
+import { formatFloor } from './common/floors'
+import { haversineMeters } from './common/geo'
 import { formatReportSchedule } from './reportSchedule'
 
 /** 공유 링크. 웹판(hongikon.com)의 `/r/{id}` 가 지도를 열고 그 제보 시트를 띄운다(App.tsx `sharedReportIdFromPath`). */

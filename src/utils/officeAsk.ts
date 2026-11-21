@@ -2,8 +2,8 @@ import { ASK_ALIASES } from '../constants/askAliases'
 import { ASK_FLOWS, type AskFlow } from '../constants/askAnswers'
 import { ASK_PAGE_FLOWS } from '../constants/askPages'
 import { ADMIN_OFFICE_DETAILS, type AdminOfficeContact, type AdminOfficeDetail } from '../constants/adminOffices'
-import { formatFloor } from './floors'
-import { askVocabulary, fixQuestionTypos, fixTypos, qwertyToHangul } from './typoFix'
+import { formatFloor } from './common/floors'
+import { askVocabulary, fixQuestionTypos, fixTypos, qwertyToHangul } from './common/typoFix'
 import type { Facility } from '../types'
 
 /** 운영진이 다듬은 흐름(`ASK_FLOWS`) 먼저, 그 뒤에 학교 홈페이지 원문을 옮긴 흐름(`ASK_PAGE_FLOWS`). */

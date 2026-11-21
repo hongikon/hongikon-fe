@@ -7,7 +7,7 @@ import * as haptics from '../../../lib/haptics'
 import type { Report, ReportListItem } from '../../../types'
 import type { ReportDayHours } from '../../../utils/reportSchedule'
 import type { ReportSheetPatch } from '../../../utils/map/reportSheet'
-import { useMutation } from '../../useMutation'
+import { useMutation } from '../../query/useMutation'
 
 interface Options {
   /** 시트에 보이는 제보(덮어 둔 값까지 합친 것). */

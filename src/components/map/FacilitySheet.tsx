@@ -14,7 +14,7 @@ import { NoteText } from "./facility/FacilityNoteText";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
 import { useSheetSizing } from "../../hooks/useResizableSheet";
-import { formatFloor } from "../../utils/floors";
+import { formatFloor } from "../../utils/common/floors";
 import { useCafeteriaWeek } from "../../hooks/useCafeteriaWeek";
 import CafeteriaMenu from "./facility/CafeteriaMenu";
 import { RADIUS } from "../../constants/spacing";

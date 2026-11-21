@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import type { BuildResult } from '../utils/mapFormRules'
-import { useMutation } from '../../hooks/useMutation'
+import { useMutation } from '../../hooks/query/useMutation'
 
 interface Options<D, I, Item, K> {
   /** 화면 목록(useAdminLoad 의 setData). 저장·삭제 결과를 다시 불러오지 않고 바로 반영한다. */

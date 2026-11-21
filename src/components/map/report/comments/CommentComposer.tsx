@@ -10,7 +10,7 @@ import { COMMENT_MAX_LENGTH, commentWriteErrorMessage, createReportComment } fro
 import { commentLength } from '../../../../utils/comments'
 import { promptLogin } from '../../../../utils/reports'
 import type { ReportComment } from '../../../../types'
-import { useMutation } from '../../../../hooks/useMutation'
+import { useMutation } from '../../../../hooks/query/useMutation'
 import { RADIUS } from '../../../../constants/spacing'
 
 /** 답글 모드: 어느 최상위 댓글에, 누구에게 답하는지(칩에 이름을 보인다). */

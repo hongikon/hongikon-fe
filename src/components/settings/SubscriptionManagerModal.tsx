@@ -20,7 +20,7 @@ import ContentColumn from '../common/ContentColumn'
 import EmptyState from '../common/EmptyState'
 import SearchBar from '../news/SearchBar'
 import ModalHeader, { ModalPanel } from './ModalHeader'
-import { useDragToClose } from '../../hooks/useDragToClose'
+import { useDragToClose } from '../../hooks/common/useDragToClose'
 import SubscribeBell from '../common/SubscribeBell'
 
 interface SubscriptionManagerModalProps {

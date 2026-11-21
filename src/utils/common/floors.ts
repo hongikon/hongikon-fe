@@ -1,5 +1,5 @@
-import { FLOOR_TRANSIT_SECONDS } from '../constants/route'
-import type { Building, BuildingEntrance } from '../types'
+import { FLOOR_TRANSIT_SECONDS } from '../../constants/route'
+import type { Building, BuildingEntrance } from '../../types'
 
 export interface RoutePoint {
   lat: number

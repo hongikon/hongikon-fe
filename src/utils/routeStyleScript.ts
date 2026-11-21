@@ -8,8 +8,8 @@
  * - 출발: 흰 바탕에 남색 테두리 '출발', 도착: 남색 바탕 흰 글씨 '도착'
  */
 import type { RouteMarker } from '../apis/routes'
-import { formatFloor } from './floors'
-import { haversineMeters } from './geo'
+import { formatFloor } from './common/floors'
+import { haversineMeters } from './common/geo'
 
 const NAVY = '#05014A'
 const ROUTE_GRAY = '#A3A7B3'

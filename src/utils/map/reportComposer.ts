@@ -2,7 +2,7 @@ import { ApiError, isNetworkError } from '../../apis/client'
 import { REPORT_IMAGE_MAX_BYTES, reportImageContentType, type PickedReportImage } from '../../apis/reports'
 import { REPORT_OFF_CAMPUS_MAX_METERS } from '../../constants/report'
 import type { Building } from '../../types'
-import { buildFloorOptions } from '../floors'
+import { buildFloorOptions } from '../common/floors'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 export const REPORT_PLACE_MAX_LENGTH = 60

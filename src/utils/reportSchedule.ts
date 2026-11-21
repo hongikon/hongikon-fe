@@ -1,4 +1,4 @@
-import { parseServerTime } from './serverTime'
+import { parseServerTime } from './common/serverTime'
 
 /**
  * 예정 제보 — 시작·종료 시각 고르기와 표시.

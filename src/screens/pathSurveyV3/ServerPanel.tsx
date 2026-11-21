@@ -12,7 +12,7 @@ import {
 } from '../../apis/routeGraph'
 import type { RouteAlternative } from '../../apis/routes'
 import type { Building } from '../../types'
-import { buildFloorOptions } from '../../utils/floors'
+import { buildFloorOptions } from '../../utils/common/floors'
 import { shortBuildingName } from '../../utils/routeLabels'
 import { applyConfirmText, serverTimeText as timeText, visibleVersions, type PushOutcome } from '../../utils/pathSurveyV3/serverSave'
 import { Btn, confirmAction, Row, Section, ui } from '../pathSurvey/ui'

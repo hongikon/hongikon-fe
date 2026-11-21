@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { watchLocation, type LivePosition } from '../../lib/nearbyPartners/platform'
-import { haversineMeters } from '../../utils/geo'
+import { haversineMeters } from '../../utils/common/geo'
 import { filterAccuracy, filterFix, snapToRoute, type FilterState } from '../../utils/locationFilter'
 import { myLocationScript } from '../../utils/myLocationScript'
 

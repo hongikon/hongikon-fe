@@ -5,7 +5,7 @@ import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
 import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import * as haptics from '../../lib/haptics'
-import { useTabBarInset } from '../../hooks/useTabBarInset'
+import { useTabBarInset } from '../../hooks/common/useTabBarInset'
 
 interface NewsListProps {
   /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 목록 ref. */

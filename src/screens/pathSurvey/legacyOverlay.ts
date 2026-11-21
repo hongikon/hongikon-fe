@@ -1,6 +1,6 @@
 import { PATH_EDGES, PATH_WAYPOINTS } from '../../constants/pathNodes'
 import type { Building } from '../../types'
-import { formatFloor } from '../../utils/floors'
+import { formatFloor } from '../../utils/common/floors'
 import { resolveRef } from '../../utils/pathAudit'
 
 /**

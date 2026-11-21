@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { WheelItem } from '../../../components/common/WheelPicker'
+import type { WheelItem } from '../../../utils/common/wheelPicker'
 import type { ReportTarget } from '../../../components/map/report/ReportComposerModal'
 import { initialReportSchedule, resolveSchedule, type ReportSchedule } from '../../../utils/map/reportScheduleState'
 import { CAMPUS_CENTER } from '../../../constants/map'
 import { REPORT_DEFAULT_DURATION_HOURS, REPORT_OFF_CAMPUS_MAX_METERS } from '../../../constants/report'
 import { useMapData } from '../../../lib/mapData'
 import type { ReportCategory } from '../../../types'
-import { haversineMeters } from '../../../utils/geo'
+import { haversineMeters } from '../../../utils/common/geo'
 import {
   BASEMENT_NUMBERS,
   FLOOR_NUMBERS,

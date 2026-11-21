@@ -22,7 +22,7 @@ import {
 import { ApiError, getErrorMessage } from '../../apis/client'
 import { ToastViewport, useToast } from '../common/Toast'
 import * as haptics from '../../lib/haptics'
-import { useMutation } from '../../hooks/useMutation'
+import { useMutation } from '../../hooks/query/useMutation'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'

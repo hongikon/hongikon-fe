@@ -6,7 +6,7 @@
  * 2. 간단한 칼만 필터로 부드럽게 잇는다 — 새 값이 정확할수록 더 많이 따라가고, 시간이 지나면 움직였을 수 있으니 덜 믿는다.
  * 3. 고른 경로에서 20m 안이면 경로선 위 가장 가까운 곳에 붙인다(길 맞추기).
  */
-import type { RoutePoint } from './floors'
+import type { RoutePoint } from './common/floors'
 
 export interface Fix {
   lat: number

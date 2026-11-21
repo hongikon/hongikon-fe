@@ -4,7 +4,7 @@ import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { RADIUS } from '../../../constants/spacing'
 import * as haptics from '../../../lib/haptics'
-import { notify } from '../../../utils/dialog'
+import { notify } from '../../../utils/common/dialog'
 import { permissionActions, pillKey, type PermissionView } from '../../../utils/settings/permissions'
 import Button from '../../common/Button'
 

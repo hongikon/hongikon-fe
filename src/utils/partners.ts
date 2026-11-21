@@ -2,7 +2,7 @@ import {
   CAMPUS_CENTER,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
-import { haversineMeters } from './geo'
+import { haversineMeters } from './common/geo'
 import type { Partner, PartnerAffiliation, PartnerCategory } from '../types'
 
 /** 두 단계 필터. 고르지 않은 단계는 null 이고, 그 단계로는 걸러내지 않는다. */

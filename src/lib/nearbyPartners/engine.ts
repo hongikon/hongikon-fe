@@ -1,5 +1,5 @@
 import { kstTodayYmd } from '../../utils/exhibitions'
-import { haversineMeters } from '../../utils/geo'
+import { haversineMeters } from '../../utils/common/geo'
 import { filterFix, type FilterState } from '../../utils/locationFilter'
 import {
   ALERT_LEAD_MS,

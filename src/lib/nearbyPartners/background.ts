@@ -52,7 +52,7 @@ import {
   testLocation,
   toRealTime,
 } from './debug'
-import { haversineMeters } from '../../utils/geo'
+import { haversineMeters } from '../../utils/common/geo'
 import { kstTodayYmd } from '../../utils/exhibitions'
 import type { FilterState } from '../../utils/locationFilter'
 import { fieldRecording, recordField, setFieldRecording, type FieldFix } from './fieldRecord'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getErrorMessage } from '../../apis/client'
-import { confirmAction } from '../../utils/dialog'
+import { confirmAction } from '../../utils/common/dialog'
 import { updateCommentStatus } from '../api'
 import type { AdminComment, AdminFlaggedComment } from '../types'
 import { COMMENT_ACTION_META, topReasonLabel, type CommentAction } from '../utils/commentModeration'

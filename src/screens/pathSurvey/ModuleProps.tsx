@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
 import type { Building } from '../../types'
-import { formatFloor } from '../../utils/floors'
+import { formatFloor } from '../../utils/common/floors'
 import { isHexColor, PALETTE, type SurveyModule, type SurveyPlace } from '../../utils/pathSurveyStore'
 import { Btn, Section, TOUCH, ui } from './ui'
 

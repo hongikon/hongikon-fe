@@ -1,17 +1,9 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
-import {
-  Animated,
-  Platform,
-  StyleSheet,
-  View,
-  type DimensionValue,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native'
+import { createContext, useContext, type ReactNode } from 'react'
+import { Animated, StyleSheet, View, type DimensionValue, type StyleProp, type ViewStyle } from 'react-native'
 import { COLORS } from '../../constants/colors'
-import { useReduceMotion } from '../../hooks/useReduceMotion'
 import { CONTENT_MAX_WIDTH } from '../../constants/layout'
 import { RADIUS } from '../../constants/spacing'
+import { useSkeletonGroup } from '../../hooks/common/useSkeletonGroup'
 
 /**
  * 첫 로딩 동안 실제 화면 모양을 회색 블록으로 미리 보여주는 자리표시자(스켈레톤).
@@ -35,24 +27,7 @@ export function SkeletonGroup({
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
 }) {
-  const pulse = useRef(new Animated.Value(1)).current
-  const reduceMotion = useReduceMotion()
-
-  useEffect(() => {
-    if (reduceMotion) {
-      pulse.setValue(1)
-      return
-    }
-    const useNativeDriver = Platform.OS !== 'web'
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.45, duration: 750, useNativeDriver }),
-        Animated.timing(pulse, { toValue: 1, duration: 750, useNativeDriver }),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [pulse, reduceMotion])
+  const { pulse } = useSkeletonGroup()
 
   return (
     <PulseContext.Provider value={pulse}>

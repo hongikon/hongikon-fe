@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { facilityKindLabel } from '../../../constants/facilityKinds'
-import { formatFloor } from '../../../utils/floors'
+import { formatFloor } from '../../../utils/common/floors'
 import type { AdminFacility } from '../../types'
 import { adminText, Badge, Button, Card, ConfirmBar } from '../../ui'
 

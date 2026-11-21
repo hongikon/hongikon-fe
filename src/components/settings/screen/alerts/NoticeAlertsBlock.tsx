@@ -7,7 +7,7 @@ import { ALL_CATEGORIES } from '../../../../contexts/SettingsContext'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS, TYPE } from '../../../../constants/typography'
 import { RADIUS, SPACING } from '../../../../constants/spacing'
-import { notify } from '../../../../utils/dialog'
+import { notify } from '../../../../utils/common/dialog'
 import { boardAlertsValue, subscriptionNewsDescription } from '../../../../utils/settings/alerts'
 import { settingsStyles as s } from '../styles'
 

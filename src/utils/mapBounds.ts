@@ -5,7 +5,7 @@ import {
   MAP_MIN_ZOOM,
   PARTNER_FOCUS_RADIUS_METERS,
 } from '../constants/map'
-import { haversineMeters } from './geo'
+import { haversineMeters } from './common/geo'
 
 /** 지도를 끌어 옮길 수 있는 사각 범위(위·경도). */
 export interface ViewBox {

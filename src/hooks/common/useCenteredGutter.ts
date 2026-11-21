@@ -1,5 +1,5 @@
 import { useWindowDimensions } from 'react-native'
-import { SHEET_MAX_WIDTH } from '../constants/layout'
+import { SHEET_MAX_WIDTH } from '../../constants/layout'
 
 /**
  * 창 너비가 `maxWidth` 보다 넓을 때 양옆에 더 띄워야 하는 거리(dp). 좁으면 0.

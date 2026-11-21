@@ -1,4 +1,4 @@
-import { useApiResource } from '../useApiResource'
+import { useApiResource } from '../query/useApiResource'
 import { getNewsById } from '../../apis/news'
 import { backendDetailToNewsItem } from '../../utils/newsMapping'
 import { backendNewsId } from '../../utils/news/detail'

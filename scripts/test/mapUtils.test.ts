@@ -6,7 +6,7 @@ import { searchPinnedSection } from '../../src/utils/map/searchPinned'
 import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
 import { overlayMarkerMessages } from '../../src/utils/map/mapSync'
 import { mapVisibility } from '../../src/utils/map/visibility'
-import { withRo } from '../../src/utils/josa'
+import { withRo } from '../../src/utils/common/josa'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 

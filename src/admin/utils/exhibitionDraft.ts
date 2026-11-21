@@ -1,4 +1,4 @@
-import { formatFloor } from '../../utils/floors'
+import { formatFloor } from '../../utils/common/floors'
 import { exhibitionPhase, ymdToDayIndex, type ExhibitionPhase } from '../../utils/exhibitions'
 import type { AdminExhibition, AdminExhibitionInput, AdminFacility } from '../types'
 import { linkErrors, optional, tooLong, type BuildResult } from './mapFormRules'

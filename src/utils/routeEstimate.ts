@@ -1,9 +1,9 @@
 import type { RouteAlternative } from '../apis/routes'
 import { WALKING_METERS_PER_MINUTE } from '../constants/route'
 import type { Building } from '../types'
-import { entranceTransitSeconds, resolveEntrancePoint } from './floors'
-import type { RoutePoint } from './floors'
-import { haversineMeters } from './geo'
+import { entranceTransitSeconds, resolveEntrancePoint } from './common/floors'
+import type { RoutePoint } from './common/floors'
+import { haversineMeters } from './common/geo'
 
 /**
  * 서버 길찾기(GET /map/routes)를 못 받을 때(오프라인·오류) 보여 주는 직선 어림. 경로망 없이 출입구 사이 직선거리와 층 이동 시간으로만

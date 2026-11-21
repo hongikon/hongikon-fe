@@ -1,5 +1,5 @@
 import type { ReportComment } from '../types'
-import { parseServerTime } from './serverTime'
+import { parseServerTime } from './common/serverTime'
 
 /** 댓글 시각. '방금 전' · '12분 전' · '3시간 전' · '2일 전'(제보는 길어야 7일이라 날짜까지는 쓰지 않는다). */
 export function formatCommentTime(iso: string, now: number = Date.now()): string {

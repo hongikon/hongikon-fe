@@ -6,8 +6,9 @@ import { FONTS, TYPE } from '../../constants/typography'
 import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import { RADIUS } from '../../constants/spacing'
 import Button from '../common/Button'
-import WheelPicker, { type WheelItem } from '../common/WheelPicker'
-import { buildFloorOptions, formatFloor } from '../../utils/floors'
+import WheelPicker from '../common/WheelPicker'
+import { type WheelItem } from '../../utils/common/wheelPicker'
+import { buildFloorOptions, formatFloor } from '../../utils/common/floors'
 import type { Building } from '../../types'
 
 interface FloorDialSheetProps {

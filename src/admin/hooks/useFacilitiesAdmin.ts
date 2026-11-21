@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { normalize } from '../../utils/normalize'
+import { normalize } from '../../utils/common/normalize'
 import { createAdminFacility, deleteAdminFacility, fetchAdminBuildings, fetchAdminFacilities, updateAdminFacility } from '../api'
 import { mapLoadErrorMessage, mapWriteErrorMessage } from '../MapForm'
 import type { AdminBuildingOption, AdminFacility } from '../types'

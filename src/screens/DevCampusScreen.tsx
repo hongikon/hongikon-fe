@@ -10,11 +10,11 @@ import { buildMapHTML } from '../utils/mapHtml'
 import { facilityMarkers } from '../utils/facilities'
 import { FACILITY_KINDS, facilityKindLabel } from '../constants/facilityKinds'
 import type { Building, FacilityKind } from '../types'
-import { formatFloor } from '../utils/floors'
+import { formatFloor } from '../utils/common/floors'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import type { CampusPreviewData } from '../debug/campusPreview'
-import { withRo } from '../utils/josa'
+import { withRo } from '../utils/common/josa'
 
 /**
  * 개발용 `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` — 다른 학교 조사 데이터(`src/debug/<학교>Data.ts`)를 홍익대 지도와 같은 화면으로 본다.

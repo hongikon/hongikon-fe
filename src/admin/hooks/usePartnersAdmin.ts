@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ApiError } from '../../apis/client'
-import { normalize } from '../../utils/normalize'
+import { normalize } from '../../utils/common/normalize'
 import { createAdminPartner, deleteAdminPartner, fetchAdminPartners, updateAdminPartner } from '../api'
 import { mapLoadErrorMessage, mapWriteErrorMessage } from '../MapForm'
 import type { AdminPartner } from '../types'

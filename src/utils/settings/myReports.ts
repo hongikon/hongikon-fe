@@ -1,6 +1,6 @@
 import type { MyReport, MyReportDisplayStatus } from '../../apis/myReports'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
-import { formatFloor } from '../floors'
+import { formatFloor } from '../common/floors'
 
 export const CATEGORY_BY_KEY = new Map(REPORT_CATEGORIES.map((meta) => [meta.key, meta]))
 

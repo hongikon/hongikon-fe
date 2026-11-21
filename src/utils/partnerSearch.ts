@@ -1,5 +1,5 @@
 import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
-import { normalize } from './normalize'
+import { normalize } from './common/normalize'
 import type { Partner, PartnerCategory } from '../types'
 
 export interface PartnerSection {

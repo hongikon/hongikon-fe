@@ -23,7 +23,7 @@ import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
-import { useTabBarInset } from '../hooks/useTabBarInset'
+import { useTabBarInset } from '../hooks/common/useTabBarInset'
 
 /**
  * 앱 하단 "관리" 탭. 웹 `/admin` 콘솔의 화면들을 그대로 쓰되, 앱 로그인 토큰으로 요청하고(AdminAccessProvider)

@@ -6,9 +6,9 @@ import {
   isCancelledError,
   isNetworkError,
   isRetryableError,
-} from '../apis/client'
-import { useReconnect } from '../lib/connectivity'
-import { queryBus, type QueryKey } from '../utils/query/invalidation'
+} from '../../apis/client'
+import { useReconnect } from '../../lib/connectivity'
+import { queryBus, type QueryKey } from '../../utils/query/invalidation'
 
 /** 포그라운드 복귀 때마다 부르면 앱 전환이 잦은 사용자에게 요청이 몰려, 이 간격 안에서는 건너뛴다. */
 const FOREGROUND_REFETCH_MIN_INTERVAL_MS = 30_000

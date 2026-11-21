@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { NEWS_PAGE_SIZE } from '../useNewsFeed'
-import { useApiResource } from '../useApiResource'
+import { useApiResource } from '../query/useApiResource'
 import { getNews } from '../../apis/news'
 import { backendSummaryToNewsItem } from '../../utils/newsMapping'
 

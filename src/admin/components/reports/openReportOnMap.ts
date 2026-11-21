@@ -1,6 +1,6 @@
 import { requestMapIntent } from '../../../lib/mapIntents'
 import { navigationRef } from '../../../navigation/navigationRef'
-import { openExternalUrl } from '../../../utils/openExternalUrl'
+import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 import type { AdminReport } from '../../types'
 import { googleMapsSearchUrl, reportMapPreviewDetail } from '../../utils/reportReview'
 

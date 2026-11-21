@@ -1,5 +1,5 @@
 import type { Building } from '../../types'
-import { haversineMeters } from '../geo'
+import { haversineMeters } from '../common/geo'
 
 /** 핀 아래 건물이 없을 때 이만큼 안의 가장 가까운 건물을 도착으로 쓴다(11-12). */
 export const ROUTE_PIN_MAX_METERS = 150

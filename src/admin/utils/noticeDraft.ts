@@ -1,5 +1,5 @@
 import type { AdminNotice, AdminNoticeInput } from '../types'
-import { parseServerTime } from '../../utils/serverTime'
+import { parseServerTime } from '../../utils/common/serverTime'
 import { tooLong, type BuildResult } from './mapFormRules'
 
 /**

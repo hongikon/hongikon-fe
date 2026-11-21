@@ -14,7 +14,7 @@ import {
 } from '../apis/reportKeywords'
 import { useToast } from '../components/common/Toast'
 import * as haptics from '../lib/haptics'
-import { useMutation } from './useMutation'
+import { useMutation } from './query/useMutation'
 import { createLatestGate } from '../utils/query/latestGate'
 
 /**

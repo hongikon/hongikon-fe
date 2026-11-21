@@ -1,5 +1,5 @@
 import type { Building, Partner } from '../../types'
-import { formatFloor } from '../floors'
+import { formatFloor } from '../common/floors'
 
 /** 길찾기 표시의 건물 이름. 층을 골랐으면 '홍문관 R동 3F' 처럼 붙인다. */
 export function buildingLabel(building: Building, floor: number | null): string {

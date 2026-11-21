@@ -4,10 +4,10 @@ import { deleteReport } from '../../apis/reports'
 import { ApiError, getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../apis/client'
 import { getMyReports, isMyReportsApiKnownMissing, isMyReportsApiMissing, type MyReport } from '../../apis/myReports'
 import { mergeReportPages, resolveDisplayStatus } from '../../utils/myReports'
-import { confirmAction } from '../../utils/dialog'
+import { confirmAction } from '../../utils/common/dialog'
 import { deleteConfirmMessage } from '../../utils/settings/myReports'
 import type { useToast } from '../../components/common/Toast'
-import { useMutation } from '../useMutation'
+import { useMutation } from '../query/useMutation'
 import { QUERY_KEYS } from '../../constants/queryKeys'
 
 export type MyReportsLoadState =

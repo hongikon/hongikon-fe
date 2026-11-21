@@ -6,7 +6,7 @@ import {
   type PickedReportImage,
 } from '../../apis/reports'
 import type { ReportListItem } from '../../types'
-import { formatFloor } from '../floors'
+import { formatFloor } from '../common/floors'
 
 /** 장소 설명 최대 길이(서버 reports.place_label 과 같다). */
 export const PLACE_MAX_LENGTH = 60

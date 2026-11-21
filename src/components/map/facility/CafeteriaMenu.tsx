@@ -12,10 +12,10 @@ import {
   type CafeteriaMeal,
   type CafeteriaWeek,
 } from "../../../apis/cafeteria";
-import type { ApiResource } from "../../../hooks/useApiResource";
+import type { ApiResource } from "../../../hooks/query/useApiResource";
 import { formatYmdShort, ymdToDayIndex } from "../../../utils/exhibitions";
 import { formatCommentTime } from "../../../utils/comments";
-import { isSafeExternalUrl, openExternalUrl } from "../../../utils/openExternalUrl";
+import { isSafeExternalUrl, openExternalUrl } from "../../../utils/common/openExternalUrl";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 /** 화면이 이보다 넓으면(태블릿·넓은 웹) 반찬을 두 칸으로 나눠 보여 준다. 폰은 한 칸. */
