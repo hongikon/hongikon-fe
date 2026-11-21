@@ -1,6 +1,5 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
-import { useFonts } from 'expo-font'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { NavigationContainer } from '@react-navigation/native'
@@ -21,7 +20,6 @@ import ErrorBoundary from './src/components/common/ErrorBoundary'
 import { ToastProvider } from './src/components/common/Toast'
 import { DevPathAuditEntry, DevPathSurveyEntry, DevPathSurveyV3Entry, DevAskEntry, DevCampusEntry, TempEntranceDebugEntry, TempChangesPreviewEntry, TempNotificationPreviewEntry } from './src/debug/TempDebugEntry'
 import { SHOW_DEVELOPER_TOOLS } from './src/lib/appVariant'
-import { FONT_ASSETS } from './src/constants/typography'
 import AdminEntry from './src/admin/AdminEntry'
 import { AdminAccessProvider } from './src/admin/AdminAccess'
 import { requestMapIntent } from './src/lib/mapIntents'
@@ -29,6 +27,9 @@ import { captureWebReturnPath, useWebReturnPath } from './src/lib/webReturnPath'
 import { requestAdminIntent } from './src/lib/adminIntents'
 import { initMapData } from './src/lib/mapData'
 import LaunchOverlay from './src/components/common/LaunchOverlay'
+import { useWebDocumentTitleBridge } from './src/hooks/app/useWebDocumentTitleBridge'
+import { useApp } from './src/hooks/app/useApp'
+import { sharedReportIdFromPath } from './src/utils/app/app'
 
 /** usePushNotifications는 useAuth를 쓰므로 AuthProvider 안, 리스너 등록은
  * NavigationContainer 안(navigationRef가 준비된 뒤)이어야 해서 별도 컴포넌트로 뺐다. */
@@ -51,14 +52,7 @@ function WebReturnPathBridge() {
  * 상태('state')가 바뀔 때 같은 formatter 로 덮어쓴다. 상태 이벤트는 그 커밋의 자식 effect(옵션 이벤트)보다 뒤에 온다.
  */
 function WebDocumentTitleBridge() {
-  useEffect(
-    () =>
-      navigationRef.addListener('state', () => {
-        const route = navigationRef.getCurrentRoute()
-        document.title = formatDocumentTitle(route?.name, route?.params)
-      }),
-    [],
-  )
+  useWebDocumentTitleBridge()
   return null
 }
 
@@ -117,18 +111,6 @@ const isAdminPath =
   /^\/admin(\/|$)/.test(window.location.pathname)
 
 /**
- * 공유 링크 `https://hongikon.com/r/{id}`(제보 시트의 "공유"). Netlify 의 SPA 대체 규칙이 index.html 을 돌려주고,
- * 여기서 지도에 "그 제보 띄우기" 요청을 남긴 뒤 주소를 `/` 로 바꾼다(새로고침해도 다시 열리지 않게).
- * 지도 탭이 포커스될 때 요청을 꺼내 제보 레이어를 켜고 시트를 연다. 끝났거나 내려간 제보면 안내만 띄운다.
- */
-export function sharedReportIdFromPath(pathname: string): number | null {
-  const m = /^\/r\/(\d{1,12})\/?$/.exec(pathname)
-  if (!m) return null
-  const id = Number(m[1])
-  return Number.isSafeInteger(id) && id > 0 ? id : null
-}
-
-/**
  * 웹 파비콘. 페이지가 아이콘 링크를 따로 걸지 않으면 브라우저는 `/favicon.ico` 를 쓰고, 그 결과를 아주 오래 붙잡는다 —
  * 아이콘을 남색(#05014A)으로 바꾼 뒤에도 탭에 예전 파란 아이콘이 남았다(10-07). 주소에 버전을 붙여 새 파일로 받게 한다.
  * 아이콘을 다시 바꾸면 FAVICON_VERSION 을 올린다.
@@ -171,14 +153,7 @@ if (!isAdminPath) initMapData()
 SplashScreen.preventAutoHideAsync()
 
 export default function App() {
-  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS)
-
-  useEffect(() => {
-    // 폰트 로드에 실패해도 스플래시는 내린다. 시스템 폰트로라도 앱은 써야 한다.
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync()
-    }
-  }, [fontsLoaded, fontError])
+  const { fontsLoaded, fontError } = useApp()
 
   if (!fontsLoaded && !fontError) {
     return null

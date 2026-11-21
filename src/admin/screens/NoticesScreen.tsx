@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { NoticeCard } from '../components/notices/NoticeCard'
 import { NoticeForm } from '../components/notices/NoticeForm'
-import { useNoticesAdmin } from '../hooks/useNoticesAdmin'
+import { useNoticesAdmin } from '../hooks/notices/useNoticesAdmin'
 import { adminText, Button, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
-import { NOTICE_SECTIONS } from '../utils/noticeDraft'
+import { NOTICE_SECTIONS } from '../utils/notices/noticeDraft'
 
 /**
  * 앱 공지 관리(11-09). 여기서 쓴 공지는 게시 시각부터 앱의 설정 > 공지사항에 보이고(`GET /notices`), 팝업을 켜면

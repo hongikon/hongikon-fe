@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { fetchFeedback, updateFeedbackStatus } from '../api'
 import { formatDateTime, formatMemberRef, formatRelative } from '../format'
-import type { AdminFeedback, AdminOverview, FeedbackStatusFilter } from '../types'
+import type { AdminFeedback, AdminOverview } from '../types'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
 import { OfficialNameForm } from '../UserModeration'
-import { INFO_SUGGESTION_BADGES, OFFICIAL_REQUEST_PREFIX, infoSuggestTypeOf } from '../../constants/feedback'
+import { INFO_SUGGESTION_BADGES } from '../../constants/feedback'
+import { useFeedbackScreen } from '../hooks/feedback/useFeedbackScreen'
+import { useFeedbackCard } from '../hooks/feedback/useFeedbackCard'
+import { requestedNameOf, withFocusedFirst } from '../utils/feedback/feedbackScreen'
 
 /** 앱 설정 > 문의하기로 들어온 의견. 처리 완료/다시 열기만 한다(답장은 연락처로 직접). */
 export default function FeedbackScreen({
@@ -21,47 +21,7 @@ export default function FeedbackScreen({
   /** 관리자 알림으로 연 문의. 목록에 있으면 맨 위로 올려 강조한다. */
   focusFeedbackId?: number | null
 }) {
-  const [filter, setFilter] = useState<FeedbackStatusFilter>('OPEN')
-  const [items, setItems] = useState<AdminFeedback[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    setError(null)
-    fetchFeedback(filter, controller.signal)
-      .then(setItems)
-      .catch((err: unknown) => {
-        if (isCancelledError(err)) return
-        setError(getErrorMessage(err, '문의 목록을 불러오지 못했습니다.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [filter, reloadKey])
-
-  const changeFilter = (next: FeedbackStatusFilter) => {
-    if (next === filter) return
-    setItems(null)
-    setFilter(next)
-  }
-
-  const handleUpdated = useCallback(
-    (updated: AdminFeedback) => {
-      setItems((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? prev)
-      onChanged()
-    },
-    [onChanged],
-  )
-
-  const tabs = [
-    { value: 'OPEN' as const, label: '미처리', count: overview?.feedback.open },
-    { value: 'RESOLVED' as const, label: '처리 완료' },
-    { value: 'ALL' as const, label: '전체' },
-  ]
+  const { filter, items, loading, error, setReloadKey, changeFilter, handleUpdated, tabs } = useFeedbackScreen({ onChanged, overview })
 
   return (
     <View>
@@ -94,18 +54,6 @@ export default function FeedbackScreen({
   )
 }
 
-/** 신청 글 첫 줄 머리말 뒤의 단체 이름. 서버가 officialRequestName 을 주기 전 버전일 때만 쓴다. */
-function requestedNameOf(content: string): string {
-  return content.slice(OFFICIAL_REQUEST_PREFIX.length).split('\n')[0].trim()
-}
-
-/** 알림으로 연 항목을 맨 위로(나머지 순서는 그대로). */
-function withFocusedFirst<T extends { id: number }>(items: T[], focusId: number | null): T[] {
-  if (focusId === null) return items
-  const focused = items.find((item) => item.id === focusId)
-  return focused ? [focused, ...items.filter((item) => item !== focused)] : items
-}
-
 function FeedbackCard({
   item,
   movedOut,
@@ -117,27 +65,7 @@ function FeedbackCard({
   highlighted?: boolean
   onUpdated: (item: AdminFeedback) => void
 }) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  /** 공식 계정 신청에 공식 이름을 붙이는 중(입력 막대 열림). */
-  const [appointing, setAppointing] = useState(false)
-  /** 방금 붙인 공식 이름(카드에 결과를 보여 준다). */
-  const [appointedName, setAppointedName] = useState<string | null>(null)
-  const resolved = item.status === 'RESOLVED'
-  // 설정 > 정보 제보하기로 들어온 문의면 종류(제휴·전시·행사·시설 정보·기타)를 표시한다.
-  const suggestType = infoSuggestTypeOf(item.content)
-  const officialRequest = item.content.startsWith(OFFICIAL_REQUEST_PREFIX)
-  // 로그인해서 보낸 신청만 그 계정에 붙일 수 있다(탈퇴한 작성자는 userId 가 없다).
-  const canAppoint = officialRequest && item.userId !== null && !resolved
-
-  const toggle = () => {
-    setPending(true)
-    setError(null)
-    updateFeedbackStatus(item.id, resolved ? 'OPEN' : 'RESOLVED')
-      .then(onUpdated)
-      .catch((err: unknown) => setError(getErrorMessage(err, '상태를 바꾸지 못했습니다. 다시 시도해주세요.')))
-      .finally(() => setPending(false))
-  }
+  const { pending, error, setError, appointing, setAppointing, appointedName, setAppointedName, resolved, suggestType, officialRequest, canAppoint, toggle } = useFeedbackCard({ item, onUpdated })
 
   return (
     <Card style={[styles.card, highlighted && styles.cardHighlighted, movedOut && styles.cardMoved]}>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
@@ -6,6 +6,8 @@ import { formatDateTime, formatDuration, formatNumber, formatRelative } from '..
 import type { AdminSection, OverviewState } from '../types'
 import { ADMIN_COLORS, Badge, Button, Card, InlineError, LabelValue, Loading, ScreenHeader } from '../ui'
 import { RADIUS } from '../../constants/spacing'
+import { useDashboardScreen } from '../hooks/shell/useDashboardScreen'
+import { formatClock } from '../utils/shell/dashboardScreen'
 
 /** 한눈에 보는 운영 현황. 수치는 AdminApp 이 들고 있는 overview 를 그대로 쓴다. */
 export default function DashboardScreen({
@@ -15,17 +17,7 @@ export default function DashboardScreen({
   overview: OverviewState
   onNavigate: (section: AdminSection) => void
 }) {
-  const { data, loading, error, updatedAt, refresh } = overview
-  // 상대 시각(“3분 전”)이 멈춰 보이지 않게 30초마다 다시 그린다.
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(timer)
-  }, [])
-  // 새 수치를 받은 순간 기준 시각도 맞춘다(안 그러면 방금 받은 값이 "곧"으로 보인다).
-  useEffect(() => {
-    if (updatedAt) setNow(Date.now())
-  }, [updatedAt])
+  const { data, loading, error, updatedAt, refresh, now } = useDashboardScreen({ overview })
 
   const header = (
     <ScreenHeader
@@ -143,13 +135,6 @@ export default function DashboardScreen({
       </View>
     </View>
   )
-}
-
-/** 브라우저 시계 기준 `14:05:09`. 갱신 시각은 이 화면에서 잰 값이라 서버 시간대와 무관하다. */
-function formatClock(ms: number): string {
-  const date = new Date(ms)
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 function Tile({

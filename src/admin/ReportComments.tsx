@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { getErrorMessage } from '../apis/client'
@@ -8,16 +7,16 @@ import { confirmAction } from '../utils/common/dialog'
 import { fetchReportComments, isAdminCommentsMissing, updateCommentStatus } from './api'
 import { FLAG_REASON_LABEL, formatDateTime, formatMemberRef, formatRelative } from './format'
 import type { AdminComment, AdminCommentStatus, FlagReason } from './types'
-import { Badge, Button, InlineError, useAdminHost, type Tone } from './ui'
+import { Badge, Button, InlineError, type Tone } from './ui'
 import { RADIUS } from '../constants/spacing'
+import { useReportCommentsPanel } from './hooks/comments/useReportCommentsPanel'
+import { actionsFor, byThread, markCommentsApiMissing, type CommentAction } from './utils/comments/reportComments'
 
 const STATUS_META: Record<AdminCommentStatus, { label: string; tone: Tone }> = {
   VISIBLE: { label: '공개', tone: 'success' },
   HIDDEN: { label: '숨김', tone: 'neutral' },
   DELETED: { label: '삭제됨', tone: 'neutral' },
 }
-
-type CommentAction = 'hide' | 'delete' | 'restore'
 
 const ACTION_META: Record<CommentAction, { label: string; target: AdminCommentStatus; confirm: string; destructive?: boolean }> = {
   hide: { label: '숨김', target: 'HIDDEN', confirm: '이 댓글을 숨길까요? 앱에서 바로 내려가고, 나중에 다시 공개할 수 있습니다.', destructive: true },
@@ -26,48 +25,11 @@ const ACTION_META: Record<CommentAction, { label: string; target: AdminCommentSt
 }
 
 /**
- * 작성자가 스스로 지운 댓글(관리자 검토 기록 없음)은 되살리지 않는다 — 작성자의 삭제 의사를 따른다.
- * 관리자가 숨기거나 지운 댓글만 다시 공개할 수 있다.
- */
-function actionsFor(comment: AdminComment): CommentAction[] {
-  switch (comment.status) {
-    case 'VISIBLE':
-      return ['hide', 'delete']
-    case 'HIDDEN':
-      return ['restore', 'delete']
-    case 'DELETED':
-      return comment.reviewedAt ? ['restore'] : []
-  }
-}
-
-/** 서버는 id 순으로 준다 — 답글을 그 최상위 댓글 바로 아래로 모아 대화 순서로 보여 준다. */
-function byThread(comments: AdminComment[]): AdminComment[] {
-  const replies = new Map<number, AdminComment[]>()
-  for (const c of comments) {
-    if (c.parentId) replies.set(c.parentId, [...(replies.get(c.parentId) ?? []), c])
-  }
-  const roots = comments.filter((c) => !c.parentId)
-  const rootIds = new Set(roots.map((c) => c.id))
-  const orphans = comments.filter((c) => c.parentId && !rootIds.has(c.parentId))
-  return [...roots.flatMap((root) => [root, ...(replies.get(root.id) ?? [])]), ...orphans]
-}
-
-/** 서버에 댓글 관리 API 가 없으면(배포 전) 한 번 확인한 뒤로는 토글 자체를 감춘다. */
-let commentsApiMissing = false
-
-/**
  * 제보 카드 안의 댓글 검토. 접어 두었다가 펼칠 때 `GET /admin/reports/{id}/comments` 를 부른다(카드마다 미리 부르지 않음).
  * 웹 콘솔과 앱 관리 탭이 함께 쓴다 — 앱에서는 처리 전에 확인 창으로 한 번 묻는다.
  */
 export function ReportCommentsPanel({ reportId }: { reportId: number }) {
-  const app = useAdminHost() === 'app'
-  const [open, setOpen] = useState(false)
-  const [comments, setComments] = useState<AdminComment[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [missing, setMissing] = useState(commentsApiMissing)
-  const [pending, setPending] = useState<{ id: number; action: CommentAction } | null>(null)
-  const [actionError, setActionError] = useState<{ id: number; message: string } | null>(null)
+  const { app, open, setOpen, comments, setComments, loading, setLoading, error, setError, missing, setMissing, pending, setPending, actionError, setActionError } = useReportCommentsPanel()
 
   if (missing && !open) return null
 
@@ -78,7 +40,7 @@ export function ReportCommentsPanel({ reportId }: { reportId: number }) {
       .then(setComments)
       .catch((err: unknown) => {
         if (isAdminCommentsMissing(err)) {
-          commentsApiMissing = true
+          markCommentsApiMissing()
           setMissing(true)
           return
         }

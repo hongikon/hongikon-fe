@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { canAssignOfficial, hasNoAppNickname, memberLabel, memberName } from '../../src/admin/utils/userModeration'
+import { canAssignOfficial, hasNoAppNickname, memberLabel, memberName } from '../../src/admin/utils/users/userModeration'
 import type { AdminUser } from '../../src/admin/types'
 
 const user = (over: Partial<AdminUser>) => ({ id: 7, status: 'ACTIVE', role: 'USER', ...over }) as AdminUser

@@ -1,20 +1,20 @@
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { AskFeedbackCard } from '../components/ask/AskFeedbackCard'
-import { useAskFeedbackList } from '../hooks/useAskFeedbackList'
+import { useAskFeedbackList } from '../hooks/ask/useAskFeedbackList'
 import { Button, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
-import { ASK_DAY_OPTIONS, reasonChipOptions } from '../utils/askFeedback'
+import { ASK_DAY_OPTIONS, reasonChipOptions } from '../utils/ask/askFeedback'
 import { AskNotesView, AskReportView } from './AskInsightViews'
+import { useAskFeedbackScreen } from '../hooks/ask/useAskFeedbackScreen'
 
 /**
  * 물어보기에서 학생이 '해결 안 됨'을 누른 답(11-06). 이유·질문·답·근거와, 같은 답에서 보낸 '운영진에게 물어보기' 문의(남긴 말·사진)를
  * 함께 본다. 고친 뒤 '확인함'으로 넘긴다. 답장이 필요하면 문의 탭에서 처리한다(연락처·처리 완료는 문의 쪽).
  */
 export default function AskFeedbackScreen() {
-  const [view, setView] = useState<'feedback' | 'report' | 'notes'>('feedback')
-  const [draftQuestion, setDraftQuestion] = useState<string | null>(null)
+  const { view, setView, draftQuestion, setDraftQuestion } = useAskFeedbackScreen()
   const viewTabs = (
     <FilterTabs
       options={[

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { kstTodayYmd } from '../../../utils/map/exhibitions'
 import { Field, FormActions, FormErrors, formStyles, OptionChips, TextRow } from '../../MapForm'
 import { adminText, Card } from '../../ui'
-import type { ExhibitionDraft } from '../../utils/exhibitionDraft'
+import type { ExhibitionDraft } from '../../utils/exhibitions/exhibitionDraft'
 
 interface Props {
   draft: ExhibitionDraft

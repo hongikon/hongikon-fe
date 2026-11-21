@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { ApiError, getErrorMessage } from '../../apis/client'
+import { ApiError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { backfillNewsLocation, isGatewayTimeout, triggerCrawler } from '../api'
+import { backfillNewsLocation, triggerCrawler } from '../api'
 import { formatNumber } from '../format'
 import { ADMIN_COLORS, Button, Card, ConfirmBar, InlineError, ScreenHeader } from '../ui'
 import { RADIUS } from '../../constants/spacing'
+import { useToolCard } from '../hooks/shell/useToolCard'
 
 /**
  * 서버 작업을 손으로 돌리는 곳. 둘 다 오래 걸리고 멱등이 아니라서
@@ -68,41 +68,7 @@ function ToolCard({
   errorMessage?: (error: unknown) => string | null
   onFinished: () => void
 }) {
-  const [confirming, setConfirming] = useState(false)
-  const [running, setRunning] = useState(false)
-  const [elapsed, setElapsed] = useState(0)
-  const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const startedAt = useRef(0)
-
-  useEffect(() => {
-    if (!running) return
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000)), 1000)
-    return () => clearInterval(timer)
-  }, [running])
-
-  const execute = () => {
-    setConfirming(false)
-    setRunning(true)
-    setElapsed(0)
-    setResult(null)
-    setError(null)
-    startedAt.current = Date.now()
-    run()
-      .then(setResult)
-      .catch((err: unknown) => {
-        const custom = errorMessage?.(err)
-        if (custom) setError(custom)
-        else if (isGatewayTimeout(err)) {
-          // 응답만 못 받았을 뿐 서버에서는 계속 돌고 있을 수 있다. 다시 누르기 전에 상태부터 본다.
-          setError('응답을 기다리다 연결이 끊겼습니다. 서버에서는 작업이 계속 진행 중일 수 있으니 잠시 뒤 대시보드에서 결과를 확인하세요.')
-        } else setError(getErrorMessage(err, '작업을 실행하지 못했습니다.'))
-      })
-      .finally(() => {
-        setRunning(false)
-        onFinished()
-      })
-  }
+  const { confirming, setConfirming, running, elapsed, result, error, execute } = useToolCard({ run, errorMessage, onFinished })
 
   return (
     <Card style={styles.card}>

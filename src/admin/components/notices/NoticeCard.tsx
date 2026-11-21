@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { parseServerTime } from '../../../utils/common/serverTime'
 import type { AdminNotice } from '../../types'
 import { adminText, Badge, Button, Card, ConfirmBar } from '../../ui'
-import { formatKst, type NoticePhase } from '../../utils/noticeDraft'
+import { formatKst, type NoticePhase } from '../../utils/notices/noticeDraft'
 
 interface Props {
   notice: AdminNotice

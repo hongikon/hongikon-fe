@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { applyReviewed, filterByReason, reasonChipOptions } from '../../src/admin/utils/askFeedback'
+import { applyReviewed, filterByReason, reasonChipOptions } from '../../src/admin/utils/ask/askFeedback'
 import type { AdminAskFeedbackItem, AdminAskFeedbackResponse } from '../../src/admin/types'
 
 const item = (id: number, source: 'ROUTE' | 'FLOW', reason: AdminAskFeedbackItem['reason']) =>
@@ -35,7 +35,7 @@ test('applyReviewed 는 출처와 id 가 모두 같은 줄만 바꾼다', () => 
   assert.equal(applyReviewed(null, { source: 'ROUTE', id: 1 }, true, 'x'), null)
 })
 
-import { askReasonText, upsertAskNote } from '../../src/admin/utils/askFeedback'
+import { askReasonText, upsertAskNote } from '../../src/admin/utils/ask/askFeedback'
 import type { AdminAskNote } from '../../src/admin/types'
 
 test('askReasonText: 많은 순, 0건 제외, 모르는 코드는 그대로', () => {

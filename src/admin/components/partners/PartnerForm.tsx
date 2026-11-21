@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { PARTNER_AFFILIATIONS } from '../../../constants/partnerAffiliations'
 import { Field, FormActions, FormErrors, formStyles, OptionChips, TextRow } from '../../MapForm'
 import { adminText, Card } from '../../ui'
-import { PARTNER_CATEGORY_KEYS, type PartnerDraft } from '../../utils/partnerDraft'
+import { PARTNER_CATEGORY_KEYS, type PartnerDraft } from '../../utils/partners/partnerDraft'
 
 interface Props {
   draft: PartnerDraft

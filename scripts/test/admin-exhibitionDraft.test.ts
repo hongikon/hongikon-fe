@@ -7,7 +7,7 @@ import {
   exhibitionDraftFrom,
   groupExhibitions,
   venueLabel,
-} from '../../src/admin/utils/exhibitionDraft'
+} from '../../src/admin/utils/exhibitions/exhibitionDraft'
 import { ymdToDayIndex } from '../../src/utils/map/exhibitions'
 import type { AdminExhibition, AdminFacility } from '../../src/admin/types'
 

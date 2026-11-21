@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Field, FormActions, FormErrors, formStyles, OptionChips, TextRow } from '../../MapForm'
 import type { AdminBuildingOption } from '../../types'
 import { adminText, Card } from '../../ui'
-import { buildingNameOf, FACILITY_KIND_KEYS, type FacilityDraft } from '../../utils/facilityDraft'
+import { buildingNameOf, FACILITY_KIND_KEYS, type FacilityDraft } from '../../utils/facilities/facilityDraft'
 
 interface Props {
   draft: FacilityDraft
