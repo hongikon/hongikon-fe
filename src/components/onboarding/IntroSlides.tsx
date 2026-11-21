@@ -1,14 +1,13 @@
-import { useCallback } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 import BrandSymbol from '../../../assets/brand/symbol.svg'
-import { useIntroPager } from '../../hooks/onboarding/useIntroPager'
-import IntroSlide, { introArtScale } from './intro/IntroSlide'
+import IntroSlide from './intro/IntroSlide'
 import { SLIDES } from './intro/slides'
+import { useIntroSlides } from '../../hooks/onboarding/useIntroSlides'
 
-interface IntroSlidesProps {
+export interface IntroSlidesProps {
   /** 마지막 장에서 "시작하기" 또는 "건너뛰기"를 누르면 다음 단계(접근권한 안내, 웹은 웰컴)로 넘어간다. */
   onDone: () => void
 }
@@ -19,13 +18,7 @@ interface IntroSlidesProps {
  * 그림 줄이기)은 `intro/IntroSlide` 가 한다.
  */
 export default function IntroSlides({ onDone }: IntroSlidesProps) {
-  const { scrollRef, width, height, index, isLast, handleLayout, handleScroll, goTo } = useIntroPager(SLIDES.length)
-  const { artScale, showArt } = introArtScale(height)
-
-  const handleNext = useCallback(() => {
-    if (isLast) onDone()
-    else goTo(index + 1)
-  }, [isLast, onDone, goTo, index])
+  const { scrollRef, width, index, isLast, handleLayout, handleScroll, goTo, artScale, showArt, handleNext } = useIntroSlides({ onDone })
 
   return (
     <View style={styles.container}>
