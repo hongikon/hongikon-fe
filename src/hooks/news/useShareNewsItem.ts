@@ -1,5 +1,5 @@
 import { useToast } from '../../components/common/Toast'
-import { shareNews } from '../../utils/shareNews'
+import { shareNews } from '../../utils/news/shareNews'
 import type { NewsItem } from '../../types'
 
 /**

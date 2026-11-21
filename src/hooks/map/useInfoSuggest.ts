@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type RefObject } from 'react'
 import type { InfoSuggestLocation, InfoSuggestPrefill } from '../../components/settings/InfoSuggestModal'
 import type { Partner } from '../../types'
-import { partnerEditSuggestion } from '../../utils/map/partnerEdit'
+import { partnerEditSuggestion } from '../../utils/map/partner/partnerEdit'
 
 /** 정보 제보 창의 열린 상태. 위치 없이 열 수도 있어(location null) 닫힘(null)과 구분하려고 객체로 둔다. */
 interface InfoSuggestState {

@@ -12,10 +12,10 @@ import Button from '../../common/Button'
 import TextField from '../../common/TextField'
 import { chipStyles } from '../chipStyles'
 import ReportScheduleEditModal from './ReportScheduleEditModal'
-import { REPORT_MAX_IMAGES } from '../../../utils/reports'
-import { formatClock, formatDay } from '../../../utils/reportSchedule'
+import { REPORT_MAX_IMAGES } from '../../../utils/map/report/reports'
+import { formatClock, formatDay } from '../../../utils/map/report/reportSchedule'
 import type { Report, ReportListItem } from '../../../types'
-import { MAX_FLOOR, MIN_FLOOR, PLACE_MAX_LENGTH, formatEditFloor, stepFloor } from '../../../utils/map/reportEdit'
+import { MAX_FLOOR, MIN_FLOOR, PLACE_MAX_LENGTH, formatEditFloor, stepFloor } from '../../../utils/map/report/reportEdit'
 import { useReportEditForm } from '../../../hooks/map/report/useReportEditForm'
 
 interface ReportEditModalProps {

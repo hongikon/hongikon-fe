@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import type { ReportOwnerMenuProps } from '../../../components/map/report/ReportOwnerMenu'
+
+/** ReportOwnerMenu 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+export function useReportOwnerMenu({ visible }: Pick<ReportOwnerMenuProps, 'visible'>) {
+  const insets = useSafeAreaInsets()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  useEffect(() => {
+    if (!visible) setConfirmDelete(false)
+  }, [visible])
+  return { insets, confirmDelete, setConfirmDelete }
+}

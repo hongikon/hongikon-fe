@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import { Platform } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { uploadReportImage, type PickedReportImage } from '../../../apis/reports'
-import { filterPickedAssets, pickedAssetsError } from '../../../utils/map/reportComposer'
-import { REPORT_MAX_IMAGES } from '../../../utils/reports'
+import { filterPickedAssets, pickedAssetsError } from '../../../utils/map/report/reportComposer'
+import { REPORT_MAX_IMAGES } from '../../../utils/map/report/reports'
 
 /**
  * 제보 작성창의 사진: 붙인 사진(최대 3장)·이미 올린 사진 키·사진 관련 오류 안내.

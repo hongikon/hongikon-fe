@@ -5,8 +5,8 @@ import { deleteReport, updateReportSchedule } from '../../../apis/reports'
 import { useToast } from '../../../components/common/Toast'
 import * as haptics from '../../../lib/haptics'
 import type { Report, ReportListItem } from '../../../types'
-import type { ReportDayHours } from '../../../utils/reportSchedule'
-import type { ReportSheetPatch } from '../../../utils/map/reportSheet'
+import type { ReportDayHours } from '../../../utils/map/report/reportSchedule'
+import type { ReportSheetPatch } from '../../../utils/map/report/reportSheet'
 import { useMutation } from '../../query/useMutation'
 
 interface Options {

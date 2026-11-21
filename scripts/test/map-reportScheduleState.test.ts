@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { clampEnd, defaultScheduledStart, initialReportSchedule, resolveSchedule } from '../../src/utils/map/reportScheduleState'
+import { clampEnd, defaultScheduledStart, initialReportSchedule, resolveSchedule } from '../../src/utils/map/report/reportScheduleState'
 
 const HOUR = 60 * 60 * 1000
 

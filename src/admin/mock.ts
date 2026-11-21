@@ -3,7 +3,7 @@ import type { MockMode } from './session'
 import { PARTNER_AFFILIATIONS } from '../constants/partnerAffiliations'
 import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { FACILITY_KINDS } from '../constants/facilityKinds'
-import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
+import { kstTodayIndex, ymdToDayIndex } from '../utils/map/exhibitions'
 import type {
   AdminAskFeedbackItem,
   AdminAskNote,

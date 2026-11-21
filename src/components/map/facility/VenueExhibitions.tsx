@@ -11,7 +11,7 @@ import {
   exhibitionsForVenue,
   formatExhibitionPeriod,
   kstTodayIndex,
-} from "../../../utils/exhibitions";
+} from "../../../utils/map/exhibitions";
 import { isSafeExternalUrl, openExternalUrl } from "../../../utils/common/openExternalUrl";
 
 /** 설명이 이보다 길거나 줄바꿈이 있으면 두 줄로 줄이고 "자세히 보기"를 단다. */

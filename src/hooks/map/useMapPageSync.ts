@@ -3,12 +3,12 @@ import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { FOCUS_ZOOM } from '../../constants/map'
 import type { MapData } from '../../apis/mapData'
 import type { Building, Exhibition, Facility, FacilityKind, Partner, ReportListItem } from '../../types'
-import { farPointViewBox, isFarFromCampus, viewBoundsScript } from '../../utils/mapBounds'
-import { mapBuildingPayload } from '../../utils/mapHtml'
+import { farPointViewBox, isFarFromCampus, viewBoundsScript } from '../../utils/map/mapBounds'
+import { mapBuildingPayload } from '../../utils/map/mapHtml'
 import { overlayMarkerMessages } from '../../utils/map/mapSync'
-import { toReportMarkers } from '../../utils/reports'
-import { toMarker } from '../../utils/partnerMarker'
-import { hasActiveFilter, type PartnerFilter } from '../../utils/partners'
+import { toReportMarkers } from '../../utils/map/report/reports'
+import { toMarker } from '../../utils/map/partner/partnerMarker'
+import { hasActiveFilter, type PartnerFilter } from '../../utils/map/partner/partners'
 
 interface Options {
   webViewRef: RefObject<NaverMapViewHandle | null>

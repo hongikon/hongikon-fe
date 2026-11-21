@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getErrorMessage } from '../../apis/client'
 import { confirmAction } from '../../utils/common/dialog'
-import { formatReportSchedule } from '../../utils/reportSchedule'
+import { formatReportSchedule } from '../../utils/map/report/reportSchedule'
 import { updateReportStatus } from '../api'
 import type { AdminReport } from '../types'
 import { ACTION_CONFIRM, ACTION_META, type ActionKind } from '../utils/reportReview'

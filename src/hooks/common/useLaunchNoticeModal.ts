@@ -4,7 +4,7 @@ import { ScrollView, type NativeScrollEvent, type NativeSyntheticEvent } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
 import { useAuth } from '../../contexts/AuthContext'
-import { usePartnerNoticePending } from '../../components/map/PartnerNoticeModal'
+import { usePartnerNoticePending } from '../map/usePartnerNoticePending'
 import { setNoticeState, subscribe, noticeState, popupNotice, STORAGE_KEY } from '../../utils/common/launchNoticeModal'
 
 /** LaunchNoticeModal 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */

@@ -7,7 +7,7 @@ import { ApiError, getErrorMessage } from '../../../apis/client'
 import { deleteReportComment, flagReportComment } from '../../../apis/comments'
 import { communityErrorMessage, setCommentLike } from '../../../apis/community'
 import { confirmAction } from '../../../utils/common/dialog'
-import { promptLogin } from '../../../utils/reports'
+import { promptLogin } from '../../../utils/map/report/reports'
 import type { ReportComment, ReportFlagReason } from '../../../types'
 import { useMutation } from '../../query/useMutation'
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WheelItem } from '../../../utils/common/wheelPicker'
 import type { ReportTarget } from '../../../components/map/report/ReportComposerModal'
-import { initialReportSchedule, resolveSchedule, type ReportSchedule } from '../../../utils/map/reportScheduleState'
+import { initialReportSchedule, resolveSchedule, type ReportSchedule } from '../../../utils/map/report/reportScheduleState'
 import { CAMPUS_CENTER } from '../../../constants/map'
 import { REPORT_DEFAULT_DURATION_HOURS, REPORT_OFF_CAMPUS_MAX_METERS } from '../../../constants/report'
 import { useMapData } from '../../../lib/mapData'
@@ -15,8 +15,8 @@ import {
   composerMissingFields,
   defaultBuildingFloor,
   formatFloor,
-} from '../../../utils/map/reportComposer'
-import { scheduleError } from '../../../utils/reportSchedule'
+} from '../../../utils/map/report/reportComposer'
+import { scheduleError } from '../../../utils/map/report/reportSchedule'
 
 /**
  * 제보 작성창의 입력값: 장소·층·카테고리·제목·설명·시간과, 그걸로 계산한 빠진 필수 항목.

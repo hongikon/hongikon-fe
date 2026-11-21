@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { pickApproachRoutes, type WalkApproach } from '../../src/apis/routes'
-import { straightLineFallback, straightLineFromPoint } from '../../src/utils/routeEstimate'
-import { describeRoutes, shortBuildingName } from '../../src/utils/routeLabels'
+import { straightLineFallback, straightLineFromPoint } from '../../src/utils/map/route/routeEstimate'
+import { describeRoutes, shortBuildingName } from '../../src/utils/map/route/routeLabels'
 import type { Building } from '../../src/types'
 
 /** 길찾기 계산은 서버(hongikon-be walkroute)가 하고 그쪽에서 앱 예전 결과와 맞춰 본다. 앱에는 결과를 다루는 부분만 남았다. */

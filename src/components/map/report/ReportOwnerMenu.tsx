@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MenuRow, menuStyles } from './ModerationMenu'
+import { useReportOwnerMenu } from '../../../hooks/map/report/useReportOwnerMenu'
 
-interface ReportOwnerMenuProps {
+export interface ReportOwnerMenuProps {
   visible: boolean
   onClose: () => void
   /** 이 제보 알림(새 댓글·답글, 🔥 10·50·100개) 켜짐 여부. */
@@ -38,11 +37,7 @@ export default function ReportOwnerMenu({
   onDelete,
   deleting = false,
 }: ReportOwnerMenuProps) {
-  const insets = useSafeAreaInsets()
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  useEffect(() => {
-    if (!visible) setConfirmDelete(false)
-  }, [visible])
+  const { insets, confirmDelete, setConfirmDelete } = useReportOwnerMenu({ visible })
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={menuStyles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="메뉴 닫기">

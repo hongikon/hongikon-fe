@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View 
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS } from '../../../../constants/typography'
-import { formatCommentTime } from '../../../../utils/comments'
+import { formatCommentTime } from '../../../../utils/map/report/comments'
 import CommentAvatar from './CommentAvatar'
 import ThumbIcon from '../../../common/ThumbIcon'
 import OfficialBadge from '../../../common/OfficialBadge'

@@ -15,14 +15,14 @@ import type { Partner } from "../../../types";
 import { FONTS, TYPE } from "../../../constants/typography";
 import IconButton from "../../common/IconButton";
 import { sheetCloseStyle } from "../chipStyles";
-import { useSheetSizing } from "../../../hooks/useResizableSheet";
+import { useSheetSizing } from "../../../hooks/map/useResizableSheet";
 import { openExternalUrl } from "../../../utils/common/openExternalUrl";
-import { openNaverMapPlace } from "../../../utils/openNaverMap";
+import { openNaverMapPlace } from "../../../utils/map/openNaverMap";
 import { RADIUS } from "../../../constants/spacing";
 import SheetScrollBody from "../SheetScrollBody";
 import NearbyAlertPromo from "../nearby/NearbyAlertPromo";
 import PartnerBenefitCard from "./PartnerBenefitCard";
-import { hasAlcoholBenefit } from "../../../utils/map/partnerBenefits";
+import { hasAlcoholBenefit } from "../../../utils/map/partner/partnerBenefits";
 
 interface PartnerSheetProps {
   partner: Partner;

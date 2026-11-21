@@ -1,20 +1,15 @@
-import { useEffect, useState } from 'react'
 import { Modal, StyleSheet, Text, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
-import { useIsFocused } from '@react-navigation/native'
 import Button from '../../common/Button'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { RADIUS } from '../../../constants/spacing'
 import { DIALOG_MAX_WIDTH } from '../../../constants/layout'
-import { useAuth } from '../../../contexts/AuthContext'
-import { getNearbySettings, nearbyAlertsAvailable } from '../../../lib/nearbyPartners/background'
 import { requestSettingsIntent } from '../../../lib/settingsIntents'
 import { navigationRef } from '../../../navigation/navigationRef'
-import { usePartnerNoticePending } from '../PartnerNoticeModal'
-
-const SEEN_KEY = 'hongikon_nearby_filter_intro_seen_v1'
+import { useNearbyFilterIntro } from '../../../hooks/map/nearby/useNearbyFilterIntro'
+import { SEEN_KEY } from '../../../utils/map/nearby/nearbyFilterIntro'
 
 /**
  * 근처 제휴 알림 소개(11-12 사용자 요청). 업데이트한 사용자가 지도에서 '제휴 업체'를 처음 눌렀을 때 한 번만 띄운다.
@@ -22,30 +17,7 @@ const SEEN_KEY = 'hongikon_nearby_filter_intro_seen_v1'
  * 네이티브 Modal 두 개가 겹치면 뒤 것이 안 열리고 화면이 막혔다(PartnerNoticeModal 참고). 한 번 닫으면 다시 띄우지 않는다.
  */
 export default function NearbyFilterIntro({ active }: { active: boolean }) {
-  const { status } = useAuth()
-  const noticePending = usePartnerNoticePending()
-  const focused = useIsFocused()
-  const [show, setShow] = useState(false)
-
-  useEffect(() => {
-    if (!active || noticePending || status !== 'authenticated' || !nearbyAlertsAvailable()) return
-    let alive = true
-    void (async () => {
-      const seen = await AsyncStorage.getItem(SEEN_KEY).catch(() => '1')
-      if (seen) return
-      const settings = await getNearbySettings()
-      if (!alive) return
-      if (settings.enabled) {
-        // 이미 켠 사람에게는 소개할 필요가 없다. 다시 묻지 않게 본 것으로 둔다.
-        AsyncStorage.setItem(SEEN_KEY, '1').catch(() => {})
-        return
-      }
-      setShow(true)
-    })()
-    return () => {
-      alive = false
-    }
-  }, [active, noticePending, status])
+  const { focused, show, setShow } = useNearbyFilterIntro({ active })
 
   if (!show || !focused) return null
 

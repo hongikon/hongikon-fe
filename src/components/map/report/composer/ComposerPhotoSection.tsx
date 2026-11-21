@@ -4,7 +4,7 @@ import type { PickedReportImage } from '../../../../apis/reports'
 import { COLORS } from '../../../../constants/colors'
 import { RADIUS } from '../../../../constants/spacing'
 import { FONTS } from '../../../../constants/typography'
-import { REPORT_MAX_IMAGES } from '../../../../utils/reports'
+import { REPORT_MAX_IMAGES } from '../../../../utils/map/report/reports'
 import { composerStyles } from './composerStyles'
 
 interface ComposerPhotoSectionProps {

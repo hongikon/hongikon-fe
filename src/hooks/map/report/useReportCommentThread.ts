@@ -7,15 +7,15 @@ import type { ReplyTarget } from '../../../components/map/report/comments/Commen
 import { useAuth } from '../../../contexts/AuthContext'
 import { useHiddenAuthorKeys } from '../../../lib/hiddenAuthors'
 import type { ReportComment } from '../../../types'
-import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/comments'
+import { mergeComments, patchComment, supportsCommentLikes } from '../../../utils/map/report/comments'
 import {
   appendReply,
   commentRemovalCounts,
   nextCommentPage,
   removeCommentFromThreads,
   visibleThreads,
-} from '../../../utils/map/commentThreads'
-import { promptLogin } from '../../../utils/reports'
+} from '../../../utils/map/report/commentThreads'
+import { promptLogin } from '../../../utils/map/report/reports'
 import { useCommentActions, type CommentRemovedReason } from './useCommentActions'
 
 /**

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
-import { buildMapHTML } from '../utils/mapHtml'
+import { buildMapHTML } from '../utils/map/mapHtml'
 import { useMapData } from '../lib/mapData'
 
 interface Props {

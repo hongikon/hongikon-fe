@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { refreshNotificationPermission } from '../../lib/notificationPermission'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
-import { usePartnerNoticePending } from '../../components/map/PartnerNoticeModal'
+import { usePartnerNoticePending } from '../map/usePartnerNoticePending'
 import { useLaunchNoticePending } from './useLaunchNoticePending'
 import { markNotificationPermissionAsked, ASKED_KEY, FIRST_LAUNCH_DELAY_MS } from '../../utils/common/notificationPrimer'
 

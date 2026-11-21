@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { AppNotice } from '../../constants/appNotices'
 import { loadAppNotices } from '../../lib/appNotices'
-import { currentPopupNotice } from '../noticeMerge'
+import { currentPopupNotice } from '../settings/noticeMerge'
 
 /** '다시 보지 않기'를 누른 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. '닫기'는 남기지 않는다(다음 실행에 다시 뜬다). */
 export const STORAGE_KEY = '@hongikon_launch_notice_seen'

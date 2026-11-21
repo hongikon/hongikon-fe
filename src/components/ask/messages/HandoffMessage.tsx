@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import { RADIUS } from "../../../constants/spacing";
-import { ATTACH_MAX_IMAGES } from "../../../utils/attachImages";
+import { ATTACH_MAX_IMAGES } from "../../../utils/map/report/attachImages";
 import type { ChatMessageOf } from "../../../utils/ask/chatTypes";
 import { askStyles, botBubbleStyle } from "../askStyles";
 import type { AskMessageActions, AskMessageEnv } from "./types";

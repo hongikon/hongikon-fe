@@ -1,26 +1,15 @@
-import { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import { partnerCategoryMeta } from "../../../constants/partnerCategories";
-import { formatDistance, partnersNear, type PartnerDistance } from "../../../lib/nearbyPartners/rules";
-import {
-  CAN_OPEN_LOCATION_SETTINGS,
-  CAN_TURN_ON_LOCATION_SERVICES,
-  canLocate,
-  getLocationPermission,
-  locateOnce,
-  openLocationSettings,
-  turnOnLocationServices,
-  type LocateResult,
-} from "../../../lib/nearbyPartners/platform";
+import { formatDistance, type PartnerDistance } from '../../../lib/nearbyPartners/rules'
+import { CAN_OPEN_LOCATION_SETTINGS, CAN_TURN_ON_LOCATION_SERVICES, openLocationSettings, turnOnLocationServices, type LocateResult } from '../../../lib/nearbyPartners/platform'
 import Button from "../../common/Button";
 import type { Partner } from "../../../types";
+import { useNearbyPartners } from '../../../hooks/map/partner/useNearbyPartners'
+import { NEARBY_RADIUS_METERS } from '../../../utils/map/partner/nearbyPartners'
 
-/** 걸어서 6~7분. 이보다 먼 곳은 "근처"라고 보기 어렵다. */
-const NEARBY_RADIUS_METERS = 500;
-const NEARBY_LIMIT = 10;
 /** 위치 오차가 이보다 크면(실내·Wi-Fi 끔·대략적 위치) 거리가 틀릴 수 있다고 알린다. */
 const INACCURATE_METERS = 150;
 
@@ -28,7 +17,7 @@ export type NearbyState = { kind: "idle" } | { kind: "locating" } | { kind: "don
 
 export const INITIAL_NEARBY_STATE: NearbyState = { kind: "idle" };
 
-interface NearbyPartnersProps {
+export interface NearbyPartnersProps {
   partners: readonly Partner[];
   onSelect: (partner: Partner) => void;
   /**
@@ -45,39 +34,7 @@ interface NearbyPartnersProps {
  * 위치를 읽을 수 없는 기기(이 기능 전 바이너리, HTTPS 아닌 웹)에서는 아무것도 그리지 않는다.
  */
 export default function NearbyPartners({ partners, onSelect, state, onStateChange }: NearbyPartnersProps) {
-  const available = useMemo(() => canLocate(), []);
-
-  const located = state.kind === "done" && state.result.status === "ok" ? state.result : null;
-  const nearby = useMemo(
-    () => (located ? partnersNear(partners, located.lat, located.lng, NEARBY_RADIUS_METERS, NEARBY_LIMIT) : []),
-    [partners, located],
-  );
-  // 500m 안에 없으면 가장 가까운 한 곳이라도 보여 준다(캠퍼스에서 먼 곳에서 "없어요"로 끝나지 않게).
-  const closest = useMemo(
-    () => (located && nearby.length === 0 ? partnersNear(partners, located.lat, located.lng, Infinity, 1)[0] ?? null : null),
-    [partners, located, nearby.length],
-  );
-
-  const locate = async () => {
-    onStateChange({ kind: "locating" });
-    const result = await locateOnce("nearby");
-    // 위치 정보 사용 안내에서 '동의하지 않음' — 처음 상태로(버튼을 다시 누를 수 있게).
-    onStateChange(result.status === "declined" ? { kind: "idle" } : { kind: "done", result });
-  };
-
-  // 휴대폰 설정에서 권한·위치를 켜고 돌아오면 다시 누르지 않아도 바로 찾는다.
-  const waitingForSettings =
-    state.kind === "done" && (state.result.status === "denied" || state.result.status === "servicesOff");
-  useEffect(() => {
-    if (!waitingForSettings) return;
-    const sub = AppState.addEventListener("change", async (next) => {
-      if (next !== "active") return;
-      const permission = await getLocationPermission();
-      if (permission?.status === "granted") void locate();
-    });
-    return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waitingForSettings]);
+  const { available, located, nearby, closest, locate } = useNearbyPartners({ partners, state, onStateChange })
 
   if (!available) return null;
 

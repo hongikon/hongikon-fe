@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
 import type { NaverMapViewHandle } from '../components/map/NaverMapView'
-import { buildMapHTML } from '../utils/mapHtml'
+import { buildMapHTML } from '../utils/map/mapHtml'
 import { useMapData } from '../lib/mapData'
 import { PATH_EDGES, PATH_WAYPOINTS } from '../constants/pathNodes'
 import { auditPathNetwork, type AuditPoint } from '../utils/pathAudit'

@@ -7,7 +7,7 @@ import * as haptics from '../../../lib/haptics'
 import { hideAuthor } from '../../../lib/hiddenAuthors'
 import type { ReportFlagReason, ReportListItem } from '../../../types'
 import { confirmAction } from '../../../utils/common/dialog'
-import { promptLogin } from '../../../utils/reports'
+import { promptLogin } from '../../../utils/map/report/reports'
 import { useMutation } from '../../query/useMutation'
 
 interface Options {

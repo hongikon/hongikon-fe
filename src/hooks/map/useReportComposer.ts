@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { ReportTarget } from '../../components/map/report/ReportComposerModal'
-import { promptLogin } from '../../utils/reports'
+import { promptLogin } from '../../utils/map/report/reports'
 
 interface Options {
   accessToken: string | null

@@ -2,8 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { formatReportSchedule, parseReportDays } from '../../../utils/reportSchedule'
-import { reportImageUrls } from '../../../utils/reports'
+import { formatReportSchedule, parseReportDays } from '../../../utils/map/report/reportSchedule'
+import { reportImageUrls } from '../../../utils/map/report/reports'
 import {
   REPORT_STATUS_LABEL,
   formatDateTime,

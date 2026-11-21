@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, type ComponentProps } from 'react'
+import { memo, useCallback, type ComponentProps } from 'react'
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
@@ -6,8 +6,10 @@ import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import type { Building } from '../../../types'
 import type { RouteEndpoint } from './RouteEndpointInputs'
+import { useBuildingSearchList } from '../../../hooks/map/route/useBuildingSearchList'
+import { keyOf } from '../../../utils/map/route/buildingSearchList'
 
-interface Props {
+export interface Props {
   target: RouteEndpoint
   query: string
   onChangeQuery: (query: string) => void
@@ -21,10 +23,7 @@ interface Props {
 
 /** 길찾기 창의 건물 검색 칸과 결과 목록. */
 function BuildingSearchList({ target, query, onChangeQuery, buildings, onSelectBuilding, onPickDestinationOnMap, onSelectMyLocation }: Props) {
-  const filtered = useMemo(() => {
-    const q = query.trim()
-    return q ? buildings.filter((b) => b.name.includes(q)) : buildings
-  }, [buildings, query])
+  const { filtered } = useBuildingSearchList({ query, buildings })
 
   const renderItem = useCallback(
     ({ item }: { item: Building }) => (
@@ -80,8 +79,6 @@ function BuildingSearchList({ target, query, onChangeQuery, buildings, onSelectB
     </View>
   )
 }
-
-const keyOf = (item: Building) => item.name
 
 /** 목록 한 줄: 왼쪽 점(건물) 또는 아이콘, 이름, 작은 설명, 오른쪽 화살표. */
 function ListRow({

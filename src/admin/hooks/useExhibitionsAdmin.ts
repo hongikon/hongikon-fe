@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { kstTodayIndex } from '../../utils/exhibitions'
+import { kstTodayIndex } from '../../utils/map/exhibitions'
 import { createAdminExhibition, deleteAdminExhibition, fetchAdminExhibitions, fetchAdminFacilities, updateAdminExhibition } from '../api'
 import { mapLoadErrorMessage, mapWriteErrorMessage } from '../MapForm'
 import type { AdminExhibition, AdminFacility } from '../types'

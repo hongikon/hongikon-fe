@@ -9,7 +9,7 @@ import {
   type NearbyState,
   type PreciseRadii,
 } from '../../src/lib/nearbyPartners/engine.ts'
-import type { FilterState } from '../../src/utils/locationFilter.ts'
+import type { FilterState } from '../../src/utils/map/locationFilter.ts'
 import { ALERT_RADIUS_METERS, PARTNER_REGION_RADIUS_METERS, type PreciseMode } from '../../src/lib/nearbyPartners/rules.ts'
 
 /**

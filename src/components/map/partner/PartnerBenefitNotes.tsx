@@ -2,8 +2,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
-import { formatUntilYmd } from "../../../utils/exhibitions";
-import { splitBulletItems } from "../../../utils/map/partnerBenefits";
+import { formatUntilYmd } from "../../../utils/map/exhibitions";
+import { splitBulletItems } from "../../../utils/map/partner/partnerBenefits";
 
 /** 혜택 본문. 항목이 여럿이면(위 splitBulletItems) 한 줄씩 "- "로 나눠 보여준다. */
 export function BenefitText({ text }: { text: string }) {

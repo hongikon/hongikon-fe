@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { formatNewsBody, splitLinks } from '../../../utils/newsBody'
+import { formatNewsBody, splitLinks } from '../../../utils/news/newsBody'
 import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 
 /**

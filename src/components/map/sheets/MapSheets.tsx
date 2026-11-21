@@ -1,6 +1,6 @@
 import { memo, type ContextType, type ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { SheetHeaderContext } from '../../../hooks/useResizableSheet'
+import { SheetHeaderContext } from '../../../hooks/map/useResizableSheet'
 
 interface Props {
   /** 시트가 위로 끌어 올릴 때 검색바·칩을 가리는지 알리는 통로(useResizableSheet). */

@@ -8,7 +8,7 @@ import {
   isRetryableError,
 } from '../apis/client'
 import { useReconnect } from '../lib/connectivity'
-import { backendSummaryToNewsItem } from '../utils/newsMapping'
+import { backendSummaryToNewsItem } from '../utils/news/newsMapping'
 import { ALL_CATEGORIES } from '../contexts/SettingsContext'
 import type { CategoryKey } from '../constants/colors'
 import type { NewsItem } from '../types'

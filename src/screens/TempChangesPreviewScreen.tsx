@@ -8,7 +8,7 @@ import BuildingSheet from '../components/map/BuildingSheet'
 import FacilitySheet from '../components/map/FacilitySheet'
 import AskChat from '../components/ask/AskChat'
 import ReportScheduleFields, { initialReportSchedule, resolveSchedule, scheduleDaysFor, type ReportSchedule } from '../components/map/ReportScheduleFields'
-import { toReportMarkers } from '../utils/reports'
+import { toReportMarkers } from '../utils/map/report/reports'
 import {
   formatDaySpan,
   formatReportSchedule,
@@ -17,7 +17,7 @@ import {
   parseReportDays,
   reportPhase,
   type ReportDayHours,
-} from '../utils/reportSchedule'
+} from '../utils/map/report/reportSchedule'
 import type { Building, Facility, ReportListItem } from '../types'
 
 /**

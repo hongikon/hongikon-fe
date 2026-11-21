@@ -3,7 +3,7 @@ import { PARTNER_AFFILIATION_USAGE_NOTES } from "../../../constants/partnerAffil
 import { RADIUS } from "../../../constants/spacing";
 import { FONTS } from "../../../constants/typography";
 import type { Partner } from "../../../types";
-import { partnerBenefitGroups } from "../../../utils/map/partnerBenefits";
+import { partnerBenefitGroups } from "../../../utils/map/partner/partnerBenefits";
 import { BenefitText, EndsOnNote, UsageNote } from "./PartnerBenefitNotes";
 
 interface PartnerBenefitCardProps {

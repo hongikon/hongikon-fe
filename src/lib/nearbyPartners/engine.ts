@@ -1,6 +1,6 @@
-import { kstTodayYmd } from '../../utils/exhibitions'
+import { kstTodayYmd } from '../../utils/map/exhibitions'
 import { haversineMeters } from '../../utils/common/geo'
-import { filterFix, type FilterState } from '../../utils/locationFilter'
+import { filterFix, type FilterState } from '../../utils/map/locationFilter'
 import {
   ALERT_LEAD_MS,
   REENTRY_GRACE_MS,

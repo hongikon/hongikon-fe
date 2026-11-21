@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { NEWS_PAGE_SIZE } from '../useNewsFeed'
 import { useApiResource } from '../query/useApiResource'
 import { getNews } from '../../apis/news'
-import { backendSummaryToNewsItem } from '../../utils/newsMapping'
+import { backendSummaryToNewsItem } from '../../utils/news/newsMapping'
 
 /**
  * 학과·기관 게시판 하나의 상단 고정 글. 고정 글 묶음은 곁다리라 로딩·오류 안내 없이 받으면 보여주고

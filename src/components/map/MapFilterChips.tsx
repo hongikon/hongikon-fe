@@ -1,14 +1,13 @@
-import { useMemo, memo } from 'react'
+import { memo } from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
-import { VISIBLE_FACILITY_KINDS, facilityChipLabel } from '../../constants/facilityKinds'
-import { facilityCount } from '../../utils/facilities'
-import { useMapData } from '../../lib/mapData'
-import { chipStyles, useChipRowScrollStyle } from './chipStyles'
+import { facilityChipLabel } from '../../constants/facilityKinds'
+import { chipStyles } from './chipStyles'
 import ChipIcon from './ChipIcon'
 import ChipRow from './ChipRow'
 import type { FacilityKind, MapLayer } from '../../types'
 import * as haptics from '../../lib/haptics'
+import { useMapFilterChips } from '../../hooks/map/useMapFilterChips'
 
 const LAYERS: readonly {
   key: MapLayer
@@ -25,7 +24,7 @@ const LAYERS: readonly {
 // 숨기는 종류(엘리베이터)와 짧은 칩 이름은 facilityKinds.ts 에 둔다 — 건물 시트의 '건물 안 시설'과 같은 목록을 쓴다(11-08).
 // 흡연구역은 10-05 에 숨겼다가 운영진이 11곳 좌표를 직접 찍어 정리한 뒤 다시 보인다(10-27).
 
-interface MapFilterChipsProps {
+export interface MapFilterChipsProps {
   /** 최상단 갈래. 고르지 않았으면 null 이고, 아래 칩 줄은 나오지 않는다. */
   layer: MapLayer | null
   /** 편의시설 종류. 레이어가 '편의시설' 일 때 쓰인다. */
@@ -51,17 +50,7 @@ function MapFilterChips({
   onSelectLayer,
   onSelectFacilityKind,
 }: MapFilterChipsProps) {
-  const rowScroll = useChipRowScrollStyle()
-  // 아직 데이터가 하나도 없는 종류(정수기·학생처 등)는 칩을 숨긴다. 눌러도 빈 지도와 "0곳"만 보였다.
-  // 지도 데이터를 아직 못 받았으면 칩 대신 안내 한 줄만 둔다(지도 위 안내와 같은 상태).
-  const { facilities, data } = useMapData()
-  const facilityCounts = useMemo(
-    () =>
-      VISIBLE_FACILITY_KINDS.map((meta) => ({ meta, count: facilityCount(facilities, meta.key) })).filter(
-        ({ count }) => count > 0,
-      ),
-    [facilities],
-  )
+  const { rowScroll, data, facilityCounts } = useMapFilterChips()
 
   return (
     <>

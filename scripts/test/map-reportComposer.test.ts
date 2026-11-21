@@ -11,7 +11,7 @@ import {
   isPhotoRejection,
   pickedAssetsError,
   reportSubmitErrorMessage,
-} from '../../src/utils/map/reportComposer'
+} from '../../src/utils/map/report/reportComposer'
 
 // ApiError 생성자가 __DEV__ 를 읽는다(RN 전역).
 ;(globalThis as { __DEV__?: boolean }).__DEV__ = false

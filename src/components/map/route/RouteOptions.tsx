@@ -1,33 +1,21 @@
-import { useEffect, useRef, useState, memo } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
+import { memo } from 'react'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { RADIUS } from "../../../constants/spacing";
 import { FONTS } from "../../../constants/typography";
 import { ROUTE_DIRECTIONS_TEXT_ENABLED } from "../../../constants/route";
-import { describeRoutes } from "../../../utils/routeLabels";
 import type { RouteAlternative } from "../../../apis/routes";
+import { useRouteOptions } from '../../../hooks/map/route/useRouteOptions'
+import { PAGE_GAP } from '../../../utils/map/route/routeOptions'
 
-interface RouteOptionsProps {
+export interface RouteOptionsProps {
   routes: readonly RouteAlternative[];
   selectedIndex: number;
   onSelect: (index: number) => void;
   /** 카드 오른쪽 위 X — 길찾기 끝내기(11-09: 오른손 엄지로 누르기 쉬운 자리). */
   onClose?: () => void;
 }
-
-/** 카드 사이 틈(한쪽). 넘기는 동안 카드끼리 붙어 보이지 않게. */
-const PAGE_GAP = 4;
-/** 넘기기를 멈춘 뒤 이만큼 지나면 그 카드로 정한다(웹은 관성 끝 이벤트가 없어 스크롤 멈춤으로 판단한다). */
-const SETTLE_MS = 140;
 
 /**
  * 길찾기 결과 카드(11-09 사용자 요청: 후보 3개 정도, 옆으로 넘겨 보기). 카드 하나가 후보 하나다 —
@@ -41,35 +29,7 @@ function RouteOptions({
   onSelect,
   onClose,
 }: RouteOptionsProps) {
-  const [width, setWidth] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const texts = describeRoutes(routes);
-  const page = width + PAGE_GAP * 2;
-
-  // 밖에서 고른 길이 바뀌면(새 경로는 0번부터) 그 카드로 옮긴다.
-  useEffect(() => {
-    if (page > 0)
-      scrollRef.current?.scrollTo({ x: selectedIndex * page, animated: true });
-  }, [selectedIndex, page]);
-  useEffect(
-    () => () => {
-      if (settleTimer.current) clearTimeout(settleTimer.current);
-    },
-    [],
-  );
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = event.nativeEvent.contentOffset.x;
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    settleTimer.current = setTimeout(() => {
-      const index = Math.max(
-        0,
-        Math.min(routes.length - 1, Math.round(x / page)),
-      );
-      if (index !== selectedIndex) onSelect(index);
-    }, SETTLE_MS);
-  };
+  const { width, setWidth, scrollRef, texts, page, handleScroll } = useRouteOptions({ routes, selectedIndex, onSelect })
 
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>

@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { REPORT_FLAG_REASONS } from '../../../constants/report'
 import type { ReportFlagReason } from '../../../types'
 import { RADIUS } from '../../../constants/spacing'
+import { useModerationMenu } from '../../../hooks/map/report/useModerationMenu'
 
-interface ModerationMenuProps {
+export interface ModerationMenuProps {
   visible: boolean
   onClose: () => void
   /** '제보' | '댓글' — 문구에 쓴다. */
@@ -37,12 +36,7 @@ export default function ModerationMenu({
   beforeFlag,
   onFlag,
 }: ModerationMenuProps) {
-  const insets = useSafeAreaInsets()
-  const [step, setStep] = useState<'menu' | 'reasons'>('menu')
-
-  useEffect(() => {
-    if (visible) setStep('menu')
-  }, [visible])
+  const { insets, step, setStep } = useModerationMenu({ visible })
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { allSameHours, effectiveDays, initialHours, pinDailyHours, reportDaysFor } from '../../src/utils/map/reportDays'
+import { allSameHours, effectiveDays, initialHours, pinDailyHours, reportDaysFor } from '../../src/utils/map/report/reportDays'
 
 // 서버 시각은 존 없는 UTC. 한국 시간 = UTC + 9.
 const kst = (iso: string) => Date.parse(`${iso}+09:00`)

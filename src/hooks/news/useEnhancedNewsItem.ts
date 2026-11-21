@@ -1,6 +1,6 @@
 import { useApiResource } from '../query/useApiResource'
 import { getNewsById } from '../../apis/news'
-import { backendDetailToNewsItem } from '../../utils/newsMapping'
+import { backendDetailToNewsItem } from '../../utils/news/newsMapping'
 import { backendNewsId } from '../../utils/news/detail'
 import type { RootStackParamList } from '../../navigation/RootNavigator'
 

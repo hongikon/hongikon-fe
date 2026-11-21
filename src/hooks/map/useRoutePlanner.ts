@@ -6,7 +6,7 @@ import type { LivePosition } from '../../lib/nearbyPartners/platform'
 import type { Building, Facility, FacilityKind } from '../../types'
 import { buildFloorOptions, hasFloorData } from '../../utils/common/floors'
 import { buildingLabel } from '../../utils/map/labels'
-import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from '../../utils/routeStyleScript'
+import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from '../../utils/map/route/routeStyleScript'
 import { useRouteData } from './useRouteData'
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */

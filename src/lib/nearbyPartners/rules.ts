@@ -1,6 +1,6 @@
 import { haversineMeters } from '../../utils/common/geo'
 import { distanceToRingMeters, pointInRing } from '../../utils/pathSurveyV3/geo'
-import { kstTodayYmd } from '../../utils/exhibitions'
+import { kstTodayYmd } from '../../utils/map/exhibitions'
 import type { Partner, PartnerAffiliation } from '../../types'
 
 /**

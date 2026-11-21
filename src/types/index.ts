@@ -1,4 +1,4 @@
-import type { ReportDayHours } from '../utils/reportSchedule'
+import type { ReportDayHours } from '../utils/map/report/reportSchedule'
 import type { CategoryKey } from '../constants/colors'
 
 export type BuildingCategory = '강의' | '식당' | '편의' | '주차'

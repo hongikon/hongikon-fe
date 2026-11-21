@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, type Dispatch, type RefObject, type Set
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { watchLocation, type LivePosition } from '../../lib/nearbyPartners/platform'
 import { haversineMeters } from '../../utils/common/geo'
-import { filterAccuracy, filterFix, snapToRoute, type FilterState } from '../../utils/locationFilter'
-import { myLocationScript } from '../../utils/myLocationScript'
+import { filterAccuracy, filterFix, snapToRoute, type FilterState } from '../../utils/map/locationFilter'
+import { myLocationScript } from '../../utils/map/myLocationScript'
 
 /** 경로를 다시 계산하는 기준 위치는 이만큼 넘게 움직였을 때만 바꾼다(경로가 자꾸 바뀌지 않게). */
 const ROUTE_ORIGIN_MOVE_METERS = 15

@@ -10,7 +10,7 @@ import { useReportKeywordAlerts } from './useReportKeywordAlerts'
 import { isReportKeywordsMock } from '../../apis/reportKeywords'
 import * as haptics from '../../lib/haptics'
 import { notify } from '../../utils/common/dialog'
-import { promptLogin } from '../../utils/reports'
+import { promptLogin } from '../../utils/map/report/reports'
 import { isSystemNotificationBlocked, permissionSummary, subscriptionNewsTargets } from '../../utils/settings/alerts'
 
 interface Options {

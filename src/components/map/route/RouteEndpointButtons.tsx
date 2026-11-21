@@ -4,7 +4,7 @@ import { FONTS } from "../../../constants/typography";
 import { RADIUS } from "../../../constants/spacing";
 import { withRo } from "../../../utils/common/josa";
 
-export type RouteNext = "from" | "to" | null;
+import { type RouteNext } from '../../../utils/map/route/routeEndpointButtons'
 
 interface RouteEndpointButtonsProps {
   /** 출발·도착으로 정할 곳의 이름(건물 이름). 읽어 주기 이름에 쓴다. */
@@ -43,13 +43,6 @@ export default function RouteEndpointButtons({ name, routeNext, onSetFrom, onSet
       </TouchableOpacity>
     </View>
   );
-}
-
-/** 지금 출발·도착 상태에서 다음에 고를 쪽. 출발을 정했으면 '도착', 도착만 정했으면 '출발', 아니면 null. */
-export function nextRouteEndpoint(hasFrom: boolean, hasTo: boolean): RouteNext {
-  if (hasFrom && !hasTo) return "to";
-  if (hasTo && !hasFrom) return "from";
-  return null;
 }
 
 const styles = StyleSheet.create({

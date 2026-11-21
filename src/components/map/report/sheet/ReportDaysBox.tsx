@@ -2,8 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS } from '../../../../constants/typography'
-import { daySpansSummary } from '../../../../utils/map/reportSheet'
-import { formatDaySpan, isSameKstDay, type ReportDaySpan } from '../../../../utils/reportSchedule'
+import { daySpansSummary } from '../../../../utils/map/report/reportSheet'
+import { formatDaySpan, isSameKstDay, type ReportDaySpan } from '../../../../utils/map/report/reportSchedule'
 
 interface ReportDaysBoxProps {
   daySpans: readonly ReportDaySpan[]
