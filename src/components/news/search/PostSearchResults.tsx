@@ -3,7 +3,7 @@ import NewsList from '../NewsList'
 import RetryableError from '../../common/RetryableError'
 import EmptyState from '../../common/EmptyState'
 import { NewsListSkeleton } from '../../common/Skeleton'
-import type { NewsFeed } from '../../../hooks/useNewsFeed'
+import type { NewsFeed } from '../../../hooks/news/useNewsFeed'
 import type { NewsItem } from '../../../types'
 
 interface Props {

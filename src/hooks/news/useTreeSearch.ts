@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { normalize } from '../utils/common/normalize'
-import type { TreeChild, TreeNode } from '../types'
+import { normalize } from '../../utils/common/normalize'
+import type { TreeChild, TreeNode } from '../../types'
 
 function matches(name: string, keyword: string): boolean {
   return normalize(name).includes(keyword)

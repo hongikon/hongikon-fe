@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { getNewsById } from '../apis/news'
-import { ApiError } from '../apis/client'
-import { backendSummaryToNewsItem } from '../utils/news/newsMapping'
-import { settleWithConcurrency } from '../utils/common/concurrency'
-import { useApiResource, type ApiResource } from './query/useApiResource'
-import type { NewsItem } from '../types'
+import { getNewsById } from '../../apis/news'
+import { ApiError } from '../../apis/client'
+import { backendSummaryToNewsItem } from '../../utils/news/newsMapping'
+import { settleWithConcurrency } from '../../utils/common/concurrency'
+import { useApiResource, type ApiResource } from '../query/useApiResource'
+import type { NewsItem } from '../../types'
 
 const isBackendId = (id: string) => /^\d+$/.test(id)
 

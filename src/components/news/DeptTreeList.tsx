@@ -1,4 +1,4 @@
-import { useCallback, useState, type Ref } from 'react'
+import { type Ref } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
@@ -6,13 +6,13 @@ import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
 import { FONTS } from '../../constants/typography'
 import type { TreeNode } from '../../types'
 import EmptyState from '../common/EmptyState'
-import { useTabBarInset } from '../../hooks/common/useTabBarInset'
 import { RADIUS } from '../../constants/spacing'
 import SubscribeBell from '../common/SubscribeBell'
 import TreeLeafRow from './tree/TreeLeafRow'
 import TreeSubGroup from './tree/TreeSubGroup'
+import { useDeptTreeList } from '../../hooks/news/useDeptTreeList'
 
-interface DeptTreeListProps {
+export interface DeptTreeListProps {
   /** 검색어. 검색 중이 아니면 빈 문자열. */
   query: string
   /** 보여줄 트리. 검색 중이 아니면 원본 전체(훑어보기)를 그대로 넣는다. */
@@ -44,20 +44,7 @@ export default function DeptTreeList({
   scrollRef,
   onScrollEndDrag,
 }: DeptTreeListProps) {
-  const tabInset = useTabBarInset()
-  // 펼침 상태는 이름으로 기억한다. 검색으로 목록이 걸러지면 순서가 밀려서
-  // 인덱스로 기억하면 엉뚱한 단과대가 펼쳐진다.
-  // 처음에는 전부 접어 둔다. 단과대가 많아 하나가 펼쳐져 있으면 나머지가 아래로 밀린다.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-
-  const toggleNode = useCallback((name: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }, [])
+  const { tabInset, expanded, toggleNode } = useDeptTreeList()
 
   if (results.length === 0) {
     return (

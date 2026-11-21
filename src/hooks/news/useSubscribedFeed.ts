@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react'
 import type { FlatList } from 'react-native'
-import { useNewsFeed } from '../useNewsFeed'
+import { useNewsFeed } from './useNewsFeed'
 import { pickBoardItems, sameSourceIds } from '../../utils/news/feed'
 import type { NewsItem } from '../../types'
 

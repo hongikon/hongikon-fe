@@ -1,4 +1,3 @@
-import { useCallback, useMemo, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { CompositeScreenProps } from '@react-navigation/native'
@@ -7,12 +6,6 @@ import type { RootStackParamList } from '../navigation/RootNavigator'
 import type { NewsStackParamList } from '../navigation/NewsStackNavigator'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
-import { SUBSCRIBABLE_ITEMS } from '../constants/news'
-import { useSettings } from '../contexts/SettingsContext'
-import { useNewsFeed } from '../hooks/useNewsFeed'
-import { useDeptPinnedNews } from '../hooks/news/useDeptPinnedNews'
-import { useDebouncedValue } from '../hooks/common/useDebouncedValue'
-import { useFeedbackToggles } from '../hooks/settings/useFeedbackToggles'
 import { NewsListSkeleton } from '../components/common/Skeleton'
 import NewsList from '../components/news/NewsList'
 import SearchBar from '../components/news/SearchBar'
@@ -20,40 +13,16 @@ import PinnedNoticeSection from '../components/news/PinnedNoticeSection'
 import RetryableError from '../components/common/RetryableError'
 import ScreenHeader from '../components/common/ScreenHeader'
 import EmptyState from '../components/common/EmptyState'
-import type { NewsItem } from '../types'
+import { useDeptNewsScreen } from '../hooks/news/useDeptNewsScreen'
 
-type Props = CompositeScreenProps<
+export type Props = CompositeScreenProps<
   NativeStackScreenProps<NewsStackParamList, 'DeptNews'>,
   NativeStackScreenProps<RootStackParamList>
 >
 
 /** 학과·기관 하나의 소식 목록. 학과 트리(전체 탭·검색)에서 항목을 고르면 들어온다. */
 export default function DeptNewsScreen({ route, navigation }: Props) {
-  const { deptId, deptName } = route.params
-  // 웹에서 `?deptName=` 없이 `/news/dept/{id}` 로 들어오면 이름이 없다 — 빈 머리줄 대신 id 로 찾은 이름(없으면 "학과 소식")을 쓴다.
-  const title = deptName || SUBSCRIBABLE_ITEMS.find((item) => item.id === deptId)?.name || '학과 소식'
-  const { isBookmarked } = useSettings()
-  const { toggleBookmark } = useFeedbackToggles()
-  const [query, setQuery] = useState('')
-  const keyword = useDebouncedValue(query.trim())
-  // 학과·기관 = 수집 게시판 하나(sourceId). 검색어는 서버가 제목에서 찾는다.
-  const sourceIds = useMemo(() => [deptId], [deptId])
-  // 상단 고정 글은 위 "고정 공지" 묶음에서 따로 보여주므로 최신순 목록에선 뺀다.
-  const newsFeed = useNewsFeed({ sourceIds, keyword, pinned: false })
-  const isSearching = keyword.length > 0
-
-  // 상단 고정 글 묶음(hooks/news/useDeptPinnedNews).
-  const { items: pinnedItems, refetch: refetchPinned } = useDeptPinnedNews(deptId)
-  const { refresh: refreshFeed } = newsFeed
-  const handleRefresh = useCallback(() => {
-    refreshFeed()
-    refetchPinned()
-  }, [refreshFeed, refetchPinned])
-
-  const handlePressItem = useCallback(
-    (item: NewsItem) => navigation.navigate('NewsDetail', { item }),
-    [navigation],
-  )
+  const { title, isBookmarked, toggleBookmark, query, setQuery, keyword, newsFeed, isSearching, pinnedItems, handleRefresh, handlePressItem } = useDeptNewsScreen({ route, navigation })
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

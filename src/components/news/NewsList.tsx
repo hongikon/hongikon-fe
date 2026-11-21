@@ -4,10 +4,9 @@ import type { NewsItem } from '../../types'
 import NewsCard from './NewsCard'
 import { COLORS } from '../../constants/colors'
 import { KEYBOARD_DISMISS_MODE, layoutStyles } from '../../constants/layout'
-import * as haptics from '../../lib/haptics'
-import { useTabBarInset } from '../../hooks/common/useTabBarInset'
+import { useNewsList } from '../../hooks/news/useNewsList'
 
-interface NewsListProps {
+export interface NewsListProps {
   /** 탭을 다시 누르면 맨 위로 올리기(useScrollToTop) 같은 데 쓰는 목록 ref. */
   listRef?: Ref<FlatList<NewsItem>>
   /** 손을 뗄 때(검색 화면이 맨 위에서 끌어내려 닫기에 쓴다). */
@@ -54,7 +53,7 @@ export default function NewsList({
   listRef,
   onScrollEndDrag,
 }: NewsListProps) {
-  const tabInset = useTabBarInset()
+  const { tabInset, keyExtractor, handleRefresh } = useNewsList({ onRefresh })
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<NewsItem>) => (
@@ -67,14 +66,6 @@ export default function NewsList({
     ),
     [isBookmarked, onPressItem, onToggleBookmark],
   )
-
-  const keyExtractor = useCallback((item: NewsItem) => item.id, [])
-
-  // 당겨서 새로고침이 걸리는 순간 가볍게 진동한다.
-  const handleRefresh = useCallback(() => {
-    haptics.tapLight()
-    onRefresh?.()
-  }, [onRefresh])
 
   return (
     <FlatList

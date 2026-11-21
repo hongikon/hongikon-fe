@@ -1,13 +1,13 @@
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS, CATEGORY_COLORS } from '../../constants/colors'
-import type { CategoryKey } from '../../constants/colors'
+import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import type { NewsItem } from '../../types'
 import { RADIUS } from '../../constants/spacing'
+import { useNewsCard } from '../../hooks/news/useNewsCard'
 
-interface NewsCardProps {
+export interface NewsCardProps {
   item: NewsItem
   bookmarked: boolean
   /**
@@ -19,13 +19,7 @@ interface NewsCardProps {
 }
 
 function NewsCardComponent({ item, bookmarked, onPress, onToggleBookmark }: NewsCardProps) {
-  const catColor = CATEGORY_COLORS[item.category as CategoryKey]
-
-  const handlePress = useCallback(() => onPress(item), [onPress, item])
-  const handleToggleBookmark = useCallback(
-    () => onToggleBookmark(item.id),
-    [onToggleBookmark, item.id],
-  )
+  const { catColor, handlePress, handleToggleBookmark } = useNewsCard({ item, onPress, onToggleBookmark })
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={handlePress}>

@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getNews } from '../apis/news'
+import { getNews } from '../../apis/news'
 import {
   ApiError,
   getErrorMessage,
   isCancelledError,
   isNetworkError,
   isRetryableError,
-} from '../apis/client'
-import { useReconnect } from '../lib/connectivity'
-import { backendSummaryToNewsItem } from '../utils/news/newsMapping'
-import { ALL_CATEGORIES } from '../contexts/SettingsContext'
-import type { CategoryKey } from '../constants/colors'
-import type { NewsItem } from '../types'
+} from '../../apis/client'
+import { useReconnect } from '../../lib/connectivity'
+import { backendSummaryToNewsItem } from '../../utils/news/newsMapping'
+import { ALL_CATEGORIES } from '../../contexts/SettingsContext'
+import type { CategoryKey } from '../../constants/colors'
+import type { NewsItem } from '../../types'
 
 /** 한 번에 받아 올 개수(백엔드 기본값과 같다, 서버 상한 50). */
 export const NEWS_PAGE_SIZE = 20

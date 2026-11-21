@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SETTINGS_STORAGE_KEY } from '../../lib/accountData'
 import { restoreSettings, type StoredSettings } from '../settings/storage'
-import { prefetchNewsFirstPage } from '../../hooks/useNewsFeed'
+import { prefetchNewsFirstPage } from '../../hooks/news/useNewsFeed'
 
 /**
  * 지도 데이터가 이 시간 안에 준비되면(기기 저장본이 있는 두 번째 실행부터) 로딩 화면 없이 바로 걷는다 — 안내·막대는 이 시간이
