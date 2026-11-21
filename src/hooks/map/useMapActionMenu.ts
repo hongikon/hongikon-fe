@@ -24,5 +24,10 @@ export function useMapActionMenu() {
     setOpen((value) => !value)
     setFilterOpen(false)
   }, [])
-  return { open, setOpen, filterOpen, setFilterOpen, progress, scrollRef, toggle }
+
+  const itemsMotion = {
+    opacity: progress,
+    transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+  }
+  return { open, setOpen, filterOpen, setFilterOpen, progress, scrollRef, toggle, itemsMotion }
 }

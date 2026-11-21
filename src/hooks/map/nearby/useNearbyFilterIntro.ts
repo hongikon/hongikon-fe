@@ -5,6 +5,8 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { getNearbySettings, nearbyAlertsAvailable } from '../../../lib/nearbyPartners/background'
 import { usePartnerNoticePending } from '../usePartnerNoticePending'
 import { SEEN_KEY } from '../../../utils/map/nearby/nearbyFilterIntro'
+import { requestSettingsIntent } from '../../../lib/settingsIntents'
+import { navigationRef } from '../../../navigation/navigationRef'
 
 /** NearbyFilterIntro 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
 export function useNearbyFilterIntro({ active }: Pick<{ active: boolean }, 'active'>) {
@@ -32,5 +34,16 @@ export function useNearbyFilterIntro({ active }: Pick<{ active: boolean }, 'acti
       alive = false
     }
   }, [active, noticePending, status])
-  return { focused, show, setShow }
+
+  const close = () => {
+    setShow(false)
+    AsyncStorage.setItem(SEEN_KEY, '1').catch(() => {})
+  }
+
+  const openSettings = () => {
+    close()
+    requestSettingsIntent({ type: 'openNearbyAlerts' })
+    if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Settings' })
+  }
+  return { focused, show, setShow, close, openSettings }
 }

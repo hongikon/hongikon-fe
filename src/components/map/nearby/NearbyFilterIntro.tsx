@@ -1,15 +1,11 @@
 import { Modal, StyleSheet, Text, View } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import Button from '../../common/Button'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { RADIUS } from '../../../constants/spacing'
 import { DIALOG_MAX_WIDTH } from '../../../constants/layout'
-import { requestSettingsIntent } from '../../../lib/settingsIntents'
-import { navigationRef } from '../../../navigation/navigationRef'
 import { useNearbyFilterIntro } from '../../../hooks/map/nearby/useNearbyFilterIntro'
-import { SEEN_KEY } from '../../../utils/map/nearby/nearbyFilterIntro'
 
 /**
  * 근처 제휴 알림 소개(11-12 사용자 요청). 업데이트한 사용자가 지도에서 '제휴 업체'를 처음 눌렀을 때 한 번만 띄운다.
@@ -17,20 +13,9 @@ import { SEEN_KEY } from '../../../utils/map/nearby/nearbyFilterIntro'
  * 네이티브 Modal 두 개가 겹치면 뒤 것이 안 열리고 화면이 막혔다(PartnerNoticeModal 참고). 한 번 닫으면 다시 띄우지 않는다.
  */
 export default function NearbyFilterIntro({ active }: { active: boolean }) {
-  const { focused, show, setShow } = useNearbyFilterIntro({ active })
+  const { focused, show, setShow, close, openSettings } = useNearbyFilterIntro({ active })
 
   if (!show || !focused) return null
-
-  const close = () => {
-    setShow(false)
-    AsyncStorage.setItem(SEEN_KEY, '1').catch(() => {})
-  }
-
-  const openSettings = () => {
-    close()
-    requestSettingsIntent({ type: 'openNearbyAlerts' })
-    if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Settings' })
-  }
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>

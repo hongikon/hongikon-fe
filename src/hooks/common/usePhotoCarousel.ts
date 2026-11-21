@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Image } from 'react-native'
+import { type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 
 /** PhotoCarousel 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
 export function usePhotoCarousel({ urls }: Pick<{
@@ -33,5 +34,15 @@ export function usePhotoCarousel({ urls }: Pick<{
   useEffect(() => {
     if (index >= urls.length) setIndex(Math.max(0, urls.length - 1))
   }, [urls.length, index])
-  return { width, setWidth, index, setIndex, ratios }
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const next = Math.round(event.nativeEvent.layout.width)
+    if (next !== width) setWidth(next)
+  }
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!width) return
+    const next = Math.round(event.nativeEvent.contentOffset.x / width)
+    setIndex(Math.min(urls.length - 1, Math.max(0, next)))
+  }
+  return { width, setWidth, index, setIndex, ratios, handleLayout, handleScrollEnd }
 }

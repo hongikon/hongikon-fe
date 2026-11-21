@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { useDevPathGate } from '../hooks/debug/useDevPathGate'
-import { sha256Hex, cannotCheckKey, TITLES, RAW_KEY, UNLOCK_KEY, KEY_SHA256 } from '../utils/debug/devPathGate'
+import { cannotCheckKey, TITLES } from '../utils/debug/devPathGate'
 import { type DevPathMode } from '../utils/debug/devPathGate'
 
 const DevPathAuditScreen = lazy(() => import('./DevPathAuditScreen'))
@@ -12,7 +12,7 @@ const DevPathSurveyV3Screen = lazy(() => import('./DevPathSurveyV3Screen'))
 const DevAskScreen = lazy(() => import('./DevAskScreen'))
 
 export default function DevPathGate({ mode }: { mode: DevPathMode }) {
-  const { unlocked, setUnlocked, rawKey, setRawKey, value, setValue, error, setError, checking, setChecking } = useDevPathGate({ mode })
+  const { unlocked, setUnlocked, rawKey, setRawKey, value, setValue, error, setError, checking, setChecking, submit } = useDevPathGate({ mode })
 
   if (unlocked) {
     return (
@@ -20,31 +20,6 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
         {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : mode === 'surveyV3' ? <DevPathSurveyV3Screen devKey={rawKey} /> : <DevAskScreen devKey={rawKey} />}
       </Suspense>
     )
-  }
-
-  const submit = async () => {
-    const key = value.trim()
-    if (!key || checking) return
-    setChecking(true)
-    setError(null)
-    try {
-      if ((await sha256Hex(key)) !== KEY_SHA256) {
-        setError('암호키가 맞지 않아요.')
-        return
-      }
-      try {
-        window.sessionStorage.setItem(UNLOCK_KEY, KEY_SHA256)
-        window.sessionStorage.setItem(RAW_KEY, key)
-      } catch {
-        // 저장소를 사용할 수 없으면 새로고침 때 다시 암호키를 묻는다.
-      }
-      setRawKey(key)
-      setUnlocked(true)
-    } catch {
-      setError('이 브라우저에서는 확인할 수 없어요. https 주소로 열어 주세요.')
-    } finally {
-      setChecking(false)
-    }
   }
 
   return (

@@ -1,14 +1,4 @@
-import {
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native'
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
@@ -34,7 +24,7 @@ export default function PhotoCarousel({
   onPressPhoto: (index: number) => void
   labelPrefix?: string
 }) {
-  const { width, setWidth, index, setIndex, ratios } = usePhotoCarousel({ urls })
+  const { width, setWidth, index, setIndex, ratios, handleLayout, handleScrollEnd } = usePhotoCarousel({ urls })
 
   if (urls.length === 0) return null
 
@@ -43,16 +33,6 @@ export default function PhotoCarousel({
     ? Math.min(MAX_FRAME_RATIO, Math.max(MIN_FRAME_RATIO, Math.min(...known)))
     : FALLBACK_RATIO
   const height = width ? width / frameRatio : 0
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const next = Math.round(event.nativeEvent.layout.width)
-    if (next !== width) setWidth(next)
-  }
-  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!width) return
-    const next = Math.round(event.nativeEvent.contentOffset.x / width)
-    setIndex(Math.min(urls.length - 1, Math.max(0, next)))
-  }
 
   return (
     <View onLayout={handleLayout}>

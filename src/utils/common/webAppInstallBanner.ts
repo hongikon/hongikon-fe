@@ -35,3 +35,6 @@ export function dismissedNow(): boolean {
     return false
   }
 }
+
+/** 닫으면 이만큼 다시 띄우지 않는다. */
+export const DISMISS_DAYS = 14

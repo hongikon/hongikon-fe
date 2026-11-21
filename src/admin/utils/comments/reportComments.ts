@@ -1,4 +1,5 @@
 import type { AdminComment } from '../../types'
+import type { AdminCommentStatus } from '../../types'
 
 export type CommentAction = 'hide' | 'delete' | 'restore'
 
@@ -35,4 +36,10 @@ export let commentsApiMissing = false
 /** 댓글 API 가 없음을 기억한다. */
 export function markCommentsApiMissing(): void {
   commentsApiMissing = true
+}
+
+export const ACTION_META: Record<CommentAction, { label: string; target: AdminCommentStatus; confirm: string; destructive?: boolean }> = {
+  hide: { label: '숨김', target: 'HIDDEN', confirm: '이 댓글을 숨길까요? 앱에서 바로 내려가고, 나중에 다시 공개할 수 있습니다.', destructive: true },
+  delete: { label: '삭제', target: 'DELETED', confirm: '이 댓글을 삭제할까요? 앱에서 내려가며 기록은 제보와 함께 지워질 때까지 남습니다.', destructive: true },
+  restore: { label: '다시 공개', target: 'VISIBLE', confirm: '이 댓글을 다시 공개할까요? 이후 새 신고가 3건 쌓이면 다시 자동으로 숨겨집니다.' },
 }

@@ -62,7 +62,7 @@ function MapActionMenu({
   onPickNearbyTestLocation,
   style,
 }: MapActionMenuProps) {
-  const { open, setOpen, filterOpen, setFilterOpen, progress, scrollRef, toggle } = useMapActionMenu()
+  const { open, setOpen, filterOpen, setFilterOpen, progress, scrollRef, toggle, itemsMotion } = useMapActionMenu()
 
   const items: MenuItem[] = [
     ...(onPickNearbyTestLocation
@@ -112,11 +112,6 @@ function MapActionMenu({
       onPress: onReport,
     },
   ]
-
-  const itemsMotion = {
-    opacity: progress,
-    transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-  }
 
   return (
     <View style={[styles.wrap, style]} pointerEvents="box-none">

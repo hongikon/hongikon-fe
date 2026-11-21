@@ -1,16 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { getErrorMessage } from '../apis/client'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { confirmAction } from '../utils/common/dialog'
-import { fetchReportComments, isAdminCommentsMissing, updateCommentStatus } from './api'
 import { FLAG_REASON_LABEL, formatDateTime, formatMemberRef, formatRelative } from './format'
-import type { AdminComment, AdminCommentStatus, FlagReason } from './types'
+import type { AdminCommentStatus, FlagReason } from './types'
 import { Badge, Button, InlineError, type Tone } from './ui'
 import { RADIUS } from '../constants/spacing'
 import { useReportCommentsPanel } from './hooks/comments/useReportCommentsPanel'
-import { actionsFor, byThread, markCommentsApiMissing, type CommentAction } from './utils/comments/reportComments'
+import { actionsFor, byThread } from './utils/comments/reportComments'
+import { ACTION_META } from './utils/comments/reportComments'
 
 const STATUS_META: Record<AdminCommentStatus, { label: string; tone: Tone }> = {
   VISIBLE: { label: '공개', tone: 'success' },
@@ -18,65 +16,14 @@ const STATUS_META: Record<AdminCommentStatus, { label: string; tone: Tone }> = {
   DELETED: { label: '삭제됨', tone: 'neutral' },
 }
 
-const ACTION_META: Record<CommentAction, { label: string; target: AdminCommentStatus; confirm: string; destructive?: boolean }> = {
-  hide: { label: '숨김', target: 'HIDDEN', confirm: '이 댓글을 숨길까요? 앱에서 바로 내려가고, 나중에 다시 공개할 수 있습니다.', destructive: true },
-  delete: { label: '삭제', target: 'DELETED', confirm: '이 댓글을 삭제할까요? 앱에서 내려가며 기록은 제보와 함께 지워질 때까지 남습니다.', destructive: true },
-  restore: { label: '다시 공개', target: 'VISIBLE', confirm: '이 댓글을 다시 공개할까요? 이후 새 신고가 3건 쌓이면 다시 자동으로 숨겨집니다.' },
-}
-
 /**
  * 제보 카드 안의 댓글 검토. 접어 두었다가 펼칠 때 `GET /admin/reports/{id}/comments` 를 부른다(카드마다 미리 부르지 않음).
  * 웹 콘솔과 앱 관리 탭이 함께 쓴다 — 앱에서는 처리 전에 확인 창으로 한 번 묻는다.
  */
 export function ReportCommentsPanel({ reportId }: { reportId: number }) {
-  const { app, open, setOpen, comments, setComments, loading, setLoading, error, setError, missing, setMissing, pending, setPending, actionError, setActionError } = useReportCommentsPanel()
+  const { app, open, setOpen, comments, setComments, loading, setLoading, error, setError, missing, setMissing, pending, setPending, actionError, setActionError, load, toggle, onAction } = useReportCommentsPanel({ reportId })
 
   if (missing && !open) return null
-
-  const load = () => {
-    setLoading(true)
-    setError(null)
-    fetchReportComments(reportId)
-      .then(setComments)
-      .catch((err: unknown) => {
-        if (isAdminCommentsMissing(err)) {
-          markCommentsApiMissing()
-          setMissing(true)
-          return
-        }
-        setError(getErrorMessage(err, '댓글을 불러오지 못했습니다.'))
-      })
-      .finally(() => setLoading(false))
-  }
-
-  const toggle = () => {
-    const next = !open
-    setOpen(next)
-    if (next && !comments && !loading) load()
-  }
-
-  const run = (comment: AdminComment, action: CommentAction) => {
-    setPending({ id: comment.id, action })
-    setActionError(null)
-    updateCommentStatus(comment.id, ACTION_META[action].target)
-      .then((updated) => setComments((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? prev))
-      .catch((err: unknown) => setActionError({ id: comment.id, message: getErrorMessage(err, '처리하지 못했습니다. 다시 시도해주세요.') }))
-      .finally(() => setPending(null))
-  }
-
-  const onAction = (comment: AdminComment, action: CommentAction) => {
-    if (!app) {
-      run(comment, action)
-      return
-    }
-    confirmAction({
-      title: `댓글 ${ACTION_META[action].label}`,
-      message: `${ACTION_META[action].confirm}\n\n"${comment.content.slice(0, 60)}"`,
-      confirmLabel: ACTION_META[action].label,
-      destructive: ACTION_META[action].destructive,
-      onConfirm: () => run(comment, action),
-    })
-  }
 
   const visibleCount = comments?.filter((c) => c.status === 'VISIBLE').length ?? 0
   const hiddenCount = comments?.filter((c) => c.status === 'HIDDEN').length ?? 0

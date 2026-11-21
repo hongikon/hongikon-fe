@@ -4,7 +4,7 @@ import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import { partnerCategoryMeta } from "../../../constants/partnerCategories";
 import { formatDistance, type PartnerDistance } from '../../../lib/nearbyPartners/rules'
-import { CAN_OPEN_LOCATION_SETTINGS, CAN_TURN_ON_LOCATION_SERVICES, openLocationSettings, turnOnLocationServices, type LocateResult } from '../../../lib/nearbyPartners/platform'
+import { CAN_OPEN_LOCATION_SETTINGS, CAN_TURN_ON_LOCATION_SERVICES, openLocationSettings, type LocateResult } from '../../../lib/nearbyPartners/platform'
 import Button from "../../common/Button";
 import type { Partner } from "../../../types";
 import { useNearbyPartners } from '../../../hooks/map/partner/useNearbyPartners'
@@ -34,13 +34,9 @@ export interface NearbyPartnersProps {
  * 위치를 읽을 수 없는 기기(이 기능 전 바이너리, HTTPS 아닌 웹)에서는 아무것도 그리지 않는다.
  */
 export default function NearbyPartners({ partners, onSelect, state, onStateChange }: NearbyPartnersProps) {
-  const { available, located, nearby, closest, locate } = useNearbyPartners({ partners, state, onStateChange })
+  const { available, located, nearby, closest, locate, turnOn } = useNearbyPartners({ partners, state, onStateChange })
 
   if (!available) return null;
-
-  const turnOn = async () => {
-    if (await turnOnLocationServices()) void locate();
-  };
 
   const renderStatus = () => {
     if (state.kind === "idle") {

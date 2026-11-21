@@ -4,9 +4,6 @@ import { FONTS } from '../../constants/typography'
 import IconButton from './IconButton'
 import { RADIUS } from '../../constants/spacing'
 import { useWebAppInstallBanner } from '../../hooks/common/useWebAppInstallBanner'
-import { DISMISS_KEY } from '../../utils/common/webAppInstallBanner'
-/** 닫으면 이만큼 다시 띄우지 않는다. */
-const DISMISS_DAYS = 14
 
 /**
  * 웹판을 휴대폰 브라우저로 볼 때 화면 맨 위에 붙는 앱 설치 안내(Safari 기본 배너와 같은 자리·모양).
@@ -14,17 +11,8 @@ const DISMISS_DAYS = 14
  * 앱이 깔려 있으면 스토어 화면에 '열기'가 나온다.
  */
 export default function WebAppInstallBanner() {
-  const { store, hidden, setHidden } = useWebAppInstallBanner()
+  const { store, hidden, setHidden, dismiss } = useWebAppInstallBanner()
   if (!store || hidden) return null
-
-  const dismiss = () => {
-    setHidden(true)
-    try {
-      window.localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000))
-    } catch {
-      // 저장소를 못 쓰면(사생활 보호 모드 등) 이번 방문 동안만 숨긴다.
-    }
-  }
 
   return (
     <View style={styles.bar}>

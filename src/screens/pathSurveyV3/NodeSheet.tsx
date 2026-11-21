@@ -34,7 +34,7 @@ function EntranceLabelPicker({
   index: BuildingIndex
   onChange: (fn: (s: StoreV3) => StoreV3) => void
 }) {
-  const { level, used } = useEntranceLabelPicker({ node, store })
+  const { level, used, pickServer } = useEntranceLabelPicker({ node, store, onChange })
   if (!level) return <Text style={ui.warn}>{'출입구 이름을 고르려면 건물과 층을 먼저 고르세요. 비워 두면 점검에 오류로 나와요.'}</Text>
   const server = index.byCode.get(level.building)?.entrances ?? []
   const sorted = [...server].sort((x, y) => Number(y.floor === level.floor) - Number(x.floor === level.floor) || x.floor - y.floor)
@@ -42,13 +42,6 @@ function EntranceLabelPicker({
     ...new Set(store.nodes.flatMap((n) => (n.entranceLabel && n.levels?.[0]?.building === level.building && !index.serverLabels.has(n.entranceLabel) ? [n.entranceLabel] : []))),
   ]
   const onServer = node.entranceLabel ? index.serverLabels.has(node.entranceLabel) : true
-
-  const pickServer = (label: string, floor: number) =>
-    onChange((s) => {
-      // A label belongs to a floor, so the point follows it.
-      const next = floor === level.floor ? s : setNodeLevels(s, node.id, [{ building: level.building, floor }])
-      return setEntranceLabel(next, node.id, node.entranceLabel === label ? undefined : label)
-    })
 
   return (
     <View style={styles.block}>

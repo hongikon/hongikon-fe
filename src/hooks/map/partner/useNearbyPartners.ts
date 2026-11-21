@@ -4,6 +4,7 @@ import { partnersNear } from '../../../lib/nearbyPartners/rules'
 import { canLocate, getLocationPermission, locateOnce } from '../../../lib/nearbyPartners/platform'
 import { NEARBY_RADIUS_METERS, NEARBY_LIMIT } from '../../../utils/map/partner/nearbyPartners'
 import type { NearbyPartnersProps } from '../../../components/map/partner/NearbyPartners'
+import { turnOnLocationServices } from '../../../lib/nearbyPartners/platform'
 
 /** NearbyPartners 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
 export function useNearbyPartners({ partners, state, onStateChange }: Pick<NearbyPartnersProps, 'partners' | 'state' | 'onStateChange'>) {
@@ -40,5 +41,9 @@ export function useNearbyPartners({ partners, state, onStateChange }: Pick<Nearb
     return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [waitingForSettings]);
-  return { available, located, nearby, closest, locate }
+
+  const turnOn = async () => {
+    if (await turnOnLocationServices()) void locate();
+  };
+  return { available, located, nearby, closest, locate, turnOn }
 }

@@ -4,10 +4,9 @@ import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import { CAMPUS_PREVIEW_LOADERS, type CampusPreviewKey } from '../debug/campusPreview'
 import { useDevCampusGate } from '../hooks/debug/useDevCampusGate'
-import { sha256Hex, UNLOCK_KEY, KEY_SHA256 } from '../utils/debug/devCampusGate'
 
 export default function DevCampusGate({ campus }: { campus: CampusPreviewKey }) {
-  const { name, unlocked, setUnlocked, value, setValue, error, setError, checking, setChecking } = useDevCampusGate({ campus })
+  const { name, unlocked, setUnlocked, value, setValue, error, setError, checking, setChecking, submit } = useDevCampusGate({ campus })
   // 화면 코드와 그 학교 데이터를 함께 받는다(다른 학교 데이터는 받지 않는다).
   const Screen = useMemo(
     () =>
@@ -27,29 +26,6 @@ export default function DevCampusGate({ campus }: { campus: CampusPreviewKey }) 
         <Screen />
       </Suspense>
     )
-  }
-
-  const submit = async () => {
-    const key = value.trim()
-    if (!key || checking) return
-    setChecking(true)
-    try {
-      if ((await sha256Hex(key)) !== KEY_SHA256) {
-        setError('인증키가 맞지 않아요.')
-        return
-      }
-      try {
-        // 이 탭을 닫기 전까지만 기억한다.
-        window.sessionStorage.setItem(UNLOCK_KEY, KEY_SHA256)
-      } catch {
-        // 저장소를 못 쓰면 새로고침 때 다시 묻는다.
-      }
-      setUnlocked(true)
-    } catch {
-      setError('이 브라우저에서는 확인할 수 없어요. https 주소로 열어 주세요.')
-    } finally {
-      setChecking(false)
-    }
   }
 
   return (
