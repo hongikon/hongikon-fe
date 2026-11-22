@@ -68,7 +68,7 @@ export interface NearbyState {
   pending: PendingAlert | null
   /** 현장 테스트 빌드: 하루·간격 제한 없이, 가게에 머무는 동안 5분마다(`FIELD_TEST_REPEAT_MS`) 알린다. */
   perVisit?: boolean
-  /** 설정: 밤(22~8시)에는 받지 않기. 기본 꺼짐. */
+  /** 야간에 알림을 쉬는지. 값이 없으면 기본 휴식, `false`는 별도 야간 수신 동의 상태. */
   quietNight?: boolean
   /** 설정: 알림까지 머무는 시간(분). 없으면 카페 2분·그 밖 5분. */
   dwellMinutes?: DwellMinutes | null
@@ -303,7 +303,7 @@ export function smoothFineFix(prev: FilterState | null, at: Position, accuracy: 
 export const STOP_ACCURACY_CAP_METERS = 300
 
 export interface PreciseRadii {
-  /** 알림 반경(기본 20m, 테스트 앱에서 바꿀 수 있음). */
+  /** 이용자가 고른 알림 반경(기본·권장 20m). */
   alert: number
   /** 운영체제 지오펜스(깨우는 원) 반경. */
   wake: number

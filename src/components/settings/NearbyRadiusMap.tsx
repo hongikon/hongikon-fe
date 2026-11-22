@@ -4,10 +4,6 @@ import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
 import { useMapData } from '../../lib/mapData'
-import { ACCURACY_ALLOWANCE_METERS } from '../../lib/nearbyPartners/rules'
-
-/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside). 설명 글에만 적는다. */
-const GPS_ALLOWANCE_METERS = ACCURACY_ALLOWANCE_METERS
 
 /**
  * 예시 그림의 가운데 지점(11-02 운영진이 고름, 소코아 홍대점 위치). 상수역 앞 제휴업체가 모인 골목이다. 알림 영역은 가게마다 그린다.
@@ -39,8 +35,8 @@ function project(lat: number, lng: number, zoom: number): { x: number; y: number
 }
 
 /**
- * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 알림은 가게마다 따로 정한 영역(가게 둘레 반경) 안에 들어가 머물 때 온다.
- * 그래서 그림에 보이는 제휴 가게마다 고른 반경 원을 실제 축척으로 그린다. 원은 앱이 가진 업체 목록에서 그린다.
+ * 알림 반경 아래 지도 예시(11-01, 11-02 그림으로 바꿈). 제휴 가게마다 사용자가 고른 명목 반경을 실제 축척으로 그린다.
+ * 실제 판정에는 GPS 정확도 허용치가 별도로 적용된다(`rules.preciselyInside`). 원은 앱이 가진 업체 목록에서 그린다.
  */
 export default function NearbyRadiusMap({ meters }: { meters: number }) {
   const { partners } = useMapData()
@@ -89,10 +85,6 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
       <Text style={styles.caption}>
         가게마다 반경 {meters}m · 이 지도에 {zones.length}곳
       </Text>
-      <Text style={styles.legend}>
-        원 하나가 제휴 가게 하나의 알림 영역이에요. 이 영역 안에 들어가 잠시 머물면 그 가게 알림이 와요. GPS 오차를 생각해 최대{' '}
-        {GPS_ALLOWANCE_METERS}m까지 넉넉하게 봐줘요.
-      </Text>
     </View>
   )
 }
@@ -104,5 +96,4 @@ const styles = StyleSheet.create({
   // 반경이 크면 원이 많이 겹쳐 지도가 덮이므로 옅게.
   zoneWide: { borderWidth: 1, borderColor: 'rgba(5, 1, 74, 0.45)', backgroundColor: 'rgba(5, 1, 74, 0.04)' },
   caption: { fontSize: 13, lineHeight: 18, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  legend: { fontSize: 13, lineHeight: 19, fontFamily: FONTS.regular, color: COLORS.textTertiary },
 })

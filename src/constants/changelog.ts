@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.1.0',
+    date: '2026-11-22',
+    title: '근처 제휴 알림 설정 다듬기',
+    kind: 'ota',
+    items: [
+      '알림 반경을 넓히면, 가까운 건물 안에서 알림이 오는 것을 막는 범위도 함께 넓어져요.',
+      '근처 제휴 알림 설정과 동의 안내를 간결하게 다듬었어요.',
+    ],
+  },
+  {
+    version: '1.1.0',
     date: '2026-11-19',
     title: '소식·지도 사용성 다듬기',
     kind: 'ota',

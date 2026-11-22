@@ -21,7 +21,7 @@ import {
   reselectRadius,
   stayStartedAt,
   type StayRecord,
-  CAMPUS_CLEARANCE_METERS,
+  campusClearanceMeters,
   blockedRingsFor,
   benefitFor,
   liveBenefits,
@@ -68,6 +68,9 @@ test('알림 반경(20m): GPS 오차는 25m 까지만 더하고(11-10), 안에 �
   assert.equal(preciselyInside(44, 0, true), true)
   assert.equal(preciselyInside(46, 0, true), false)
   assert.equal(preciselyInside(28, null, false, 30), true)
+  // 설정 반경 100m에도 정확도 허용치는 별도 상한(25m)으로 더한다.
+  assert.equal(preciselyInside(125, 80, false, 100), true)
+  assert.equal(preciselyInside(126, 80, false, 100), false)
 })
 
 test('대상 업체: 혜택·기한·소속·캠퍼스 겹침으로 거른다(관리자 표시는 보지 않음, 11-09)', () => {
@@ -93,13 +96,18 @@ test('대상 업체: 혜택·기한·소속·캠퍼스 겹침으로 거른다(�
   assert.deepEqual(art, ['ok', 'notFlagged', 'endsToday', 'collegeOnly'])
 })
 
-test('대상 업체: 캠퍼스 건물과는 알림이 닿는 거리(70m, 11-10)로 겹침을 본다 — 깨우는 원(150m)이 아니라(11-09)', () => {
+test('대상 업체: 캠퍼스 건물 제외 범위는 이용자가 고른 반경에 맞춰 계산한다', () => {
   const dorm = [north(0)]
-  const ids = (m: number) => pickTargets([partner('p', m)], { affiliations: [], campusPoints: dorm, now: NOON }).length
-  assert.equal(CAMPUS_CLEARANCE_METERS, 70)
+  const ids = (m: number, alertRadius?: number) =>
+    pickTargets([partner('p', m)], { affiliations: [], campusPoints: dorm, now: NOON, alertRadius }).length
+  assert.equal(campusClearanceMeters(), 70)
+  assert.equal(campusClearanceMeters(10), 60)
+  assert.equal(campusClearanceMeters(100), 150)
   assert.equal(ids(66), 0)
   assert.equal(ids(71), 1)
   assert.equal(ids(103), 1)
+  assert.equal(ids(149, 100), 0)
+  assert.equal(ids(151, 100), 1)
 })
 
 test('대상 업체: 소속 전용 혜택만 있어도 그 소속에는 대상', () => {
@@ -396,6 +404,17 @@ test('건물과 겹치는 업체: 통째로 빼지 않고 겹친 건물 안에�
   const target = { ...shop, blocked: blockedRingsFor(shop, [building]) }
   assert.equal(target.blocked.length, 1)
   assert.equal(blockedRingsFor(partner('far', -200), [building]).length, 0)
+  const fartherBuilding = {
+    ...north(125),
+    boundary: [
+      [north(100).lat, lng - 0.0001],
+      [north(100).lat, lng + 0.0001],
+      [north(150).lat, lng + 0.0001],
+      [north(150).lat, lng - 0.0001],
+    ] as [number, number][],
+  }
+  assert.equal(blockedRingsFor(shop, [fartherBuilding], 20).length, 0)
+  assert.equal(blockedRingsFor(shop, [fartherBuilding], 100).length, 1)
   // 가게 안(0m)·앞(남쪽 10m)은 그대로, 건물 안(북쪽 18m, 원 안이지만 건물 영역)은 아니다.
   assert.deepEqual([...preciseInsideIds([target], north(0), 5, new Set())], ['shop'])
   assert.deepEqual([...preciseInsideIds([target], north(-10), 5, new Set())], ['shop'])

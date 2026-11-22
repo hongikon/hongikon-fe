@@ -13,14 +13,12 @@ interface Props {
   alreadyOn: boolean
   checklist: NearbyChecklist | null
   serverPaused: boolean
-  radius: number
-  dwell: { cafe: number; other: number }
   onFixNotifications: () => void
   onFixAlways: () => void
 }
 
 /** 창 맨 위: 켜져 있으면 "알림이 오려면" 점검표, 꺼져 있으면 "항상 허용" 안내와 받는 조건 설명. */
-export default function NearbyStatusSection({ alreadyOn, checklist, serverPaused, radius, dwell, onFixNotifications, onFixAlways }: Props) {
+export default function NearbyStatusSection({ alreadyOn, checklist, serverPaused, onFixNotifications, onFixAlways }: Props) {
   if (alreadyOn) {
     return (
       <>
@@ -55,9 +53,8 @@ export default function NearbyStatusSection({ alreadyOn, checklist, serverPaused
       </View>
       <View style={styles.card}>
         {[
-          `제휴 가게 ${radius}m 안에 ${dwell.other}분(카페는 ${dwell.cafe}분) 넘게 머물면 그 가게 혜택을 알려 드려요.`,
+          `제휴 가게 근처에 머물면 그 가게 혜택을 알려 드려요.`,
           '위치는 휴대폰 안에서 근처 업체를 찾는 데만 쓰고, 서버로 보내거나 저장하지 않아요.',
-          '가게가 붙어 있으면 옆 가게 알림이 갈 수 있고, 일부 휴대폰에서는 늦거나 오지 않을 수 있어요.',
         ].map((line) => (
           <View key={line} style={styles.bulletRow}>
             <Text style={styles.bullet}>·</Text>
