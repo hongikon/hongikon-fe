@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { injectMeta, leadSentence, newsDescription, newsMetaTags } from '../../netlify/edge-functions/news-preview'
-import { injectReportMeta, reportDescription, reportWhen } from '../../netlify/edge-functions/report-preview'
+import { injectReportMeta, reportDescription, reportLeadIn, reportWhen } from '../../netlify/edge-functions/report-preview'
 
 const SITE_HTML =
   '<html><head><title>홍익온</title>' +
@@ -53,7 +53,9 @@ const REPORT = {
 test('제보 미리보기: 일시는 한국 시간, 여러 날이면 날짜 범위, 하루면 시각 범위', () => {
   assert.equal(reportWhen(REPORT), '11/16(월) ~ 11/22(일)')
   assert.equal(reportWhen({ ...REPORT, startsAt: '2026-11-23T09:00:00', endsAt: '2026-11-23T11:00:00' }), '11/23(월) 18:00~20:00')
-  assert.equal(reportDescription(REPORT), '홍익대에서 올라온 제보 · 11/16(월) ~ 11/22(일) · 홍문관 지하2층')
+  const during = Date.parse('2026-11-18T03:00:00Z')
+  assert.equal(reportDescription(REPORT, during), '지금 홍대에서 · 11/16(월) ~ 11/22(일) · 홍문관 지하2층')
+  assert.equal(reportLeadIn(REPORT, Date.parse('2026-11-15T00:00:00Z')), '곧 홍대에서')
 })
 
 test('제보 미리보기: 기본 태그를 바꾸고 작성자 정보는 넣지 않는다', () => {

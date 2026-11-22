@@ -1,6 +1,6 @@
 /**
  * 제보 링크 미리보기 카드(11-22). 앱의 제보 공유 링크 `hongikon.com/r/{id}`(`src/utils/shareReport.ts`)를 메신저가 읽으러 오면
- * 그 제보의 제목과 '홍익대에서 올라온 제보 · 일시 · 장소'를 넣어 돌려준다. 예전엔 어떤 제보든 사이트 기본 "홍익온" 카드였다.
+ * 그 제보의 제목과 '지금 홍대에서 · 일시 · 장소'를 넣어 돌려준다. 예전엔 어떤 제보든 사이트 기본 "홍익온" 카드였다.
  *
  * - 공지 미리보기(`news-preview.ts`)와 같은 방식: 봇일 때만, 2.5초 안에, 기본 미리보기 태그는 지우고 바꾼다.
  * - 제보는 공개 목록(`GET /reports?include=upcoming` — 승인되고 지금 진행 중이거나 예정인 것)에서만 찾는다. 승인 전·끝난 제보는
@@ -51,13 +51,18 @@ export function reportWhen(report: ReportForPreview): string {
   return `${start.day} ~ ${end.day}`
 }
 
-/** 카드 설명 맨 앞 말머리. 제목만으로는 무슨 링크인지 몰라서(11-22 사용자). 앱 공유 문구 첫 줄과 같다. */
-export const REPORT_LEAD_IN = '홍익대에서 올라온 제보'
+/**
+ * 카드 설명 맨 앞 말머리(11-22 사용자 시안 6). 제목만으로는 무슨 링크인지 몰라서 붙인다.
+ * 시작 전인 예정 제보에 '지금'이라고 하면 아직 안 열린 행사가 지금 하는 것처럼 읽혀 '곧'으로 바꾼다.
+ */
+export function reportLeadIn(report: ReportForPreview, now = Date.now()): string {
+  const start = report.startsAt ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(report.startsAt) ? report.startsAt : `${report.startsAt}Z`) : NaN
+  return !Number.isNaN(start) && start > now ? '곧 홍대에서' : '지금 홍대에서'
+}
 
-export function reportDescription(report: ReportForPreview): string {
-  const meta = [REPORT_LEAD_IN, reportWhen(report), report.placeLabel?.trim() || '홍익대학교 서울캠퍼스'].filter(Boolean).join(' · ')
+export function reportDescription(report: ReportForPreview, now = Date.now()): string {
   // 내용 첫 문장은 넣지 않는다 — 말머리·일시·장소만으로 카카오 카드 설명 두 줄이 차서, 붙이면 끝이 '…'로 잘렸다(11-22).
-  return meta
+  return [reportLeadIn(report, now), reportWhen(report), report.placeLabel?.trim() || '홍익대학교 서울캠퍼스'].filter(Boolean).join(' · ')
 }
 
 export function reportMetaTags(report: ReportForPreview): string {
