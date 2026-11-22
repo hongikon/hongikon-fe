@@ -53,7 +53,7 @@ const REPORT = {
 test('제보 미리보기: 일시는 한국 시간, 여러 날이면 날짜 범위, 하루면 시각 범위', () => {
   assert.equal(reportWhen(REPORT), '11/16(월) ~ 11/22(일)')
   assert.equal(reportWhen({ ...REPORT, startsAt: '2026-11-23T09:00:00', endsAt: '2026-11-23T11:00:00' }), '11/23(월) 18:00~20:00')
-  assert.equal(reportDescription(REPORT), '11/16(월) ~ 11/22(일) · 홍문관 지하2층 — 한대요 근데 빵 파는 게 아닌 거 같음')
+  assert.equal(reportDescription(REPORT), '홍익대에서 올라온 제보 · 11/16(월) ~ 11/22(일) · 홍문관 지하2층')
 })
 
 test('제보 미리보기: 기본 태그를 바꾸고 작성자 정보는 넣지 않는다', () => {

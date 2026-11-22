@@ -42,6 +42,8 @@ export function reportPlaceText(
  */
 export function reportShareMessage(report: ReportListItem, buildings: readonly Building[]): string {
   return [
+    // 첫 줄 말머리(11-22 사용자) — 링크 카드 설명 앞머리(`report-preview.ts` REPORT_LEAD_IN)와 같은 말.
+    '홍익대에서 올라온 제보',
     report.title,
     `일시: ${formatReportSchedule(report)}`,
     `장소: ${reportPlaceText(report, buildings)}`,

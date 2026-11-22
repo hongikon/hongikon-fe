@@ -1,17 +1,16 @@
 /**
  * 제보 링크 미리보기 카드(11-22). 앱의 제보 공유 링크 `hongikon.com/r/{id}`(`src/utils/shareReport.ts`)를 메신저가 읽으러 오면
- * 그 제보의 제목·일시·장소·내용 첫 문장을 넣어 돌려준다. 예전엔 어떤 제보든 사이트 기본 "홍익온" 카드였다.
+ * 그 제보의 제목과 '홍익대에서 올라온 제보 · 일시 · 장소'를 넣어 돌려준다. 예전엔 어떤 제보든 사이트 기본 "홍익온" 카드였다.
  *
  * - 공지 미리보기(`news-preview.ts`)와 같은 방식: 봇일 때만, 2.5초 안에, 기본 미리보기 태그는 지우고 바꾼다.
  * - 제보는 공개 목록(`GET /reports?include=upcoming` — 승인되고 지금 진행 중이거나 예정인 것)에서만 찾는다. 승인 전·끝난 제보는
  *   목록에 없어 사이트 기본 카드 그대로 둔다(숨긴 제보 내용이 미리보기로 새지 않게). 작성자 정보는 넣지 않는다.
- * - Deno 에서 도는 파일이라 다른 파일을 import 하지 않는다. 글 다듬기 함수는 `news-preview.ts` 와 같은 것을 한 벌 둔다.
+ * - Deno 에서 도는 파일이라 다른 파일을 import 하지 않는다.
  */
 
 const API_ORIGIN = 'https://api.hongikon.com'
 const SITE_ORIGIN = 'https://hongikon.com'
 const OG_IMAGE = `${SITE_ORIGIN}/og-image.png`
-const LEAD_CHARS = 60
 
 const PREVIEW_BOT =
   /kakaotalk-scrap|kakaostory|facebookexternalhit|facebot|twitterbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|line\/|yeti|daumoa|applebot|googlebot|bingbot|skypeuripreview|iframely|embedly|pinterest/i
@@ -28,18 +27,6 @@ export interface ReportForPreview {
 
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-}
-
-/** 내용 첫 문장(`news-preview.ts` 의 leadSentence 와 같은 자르기, 인사말 거르기는 뺌). */
-export function reportLead(text: string, max = LEAD_CHARS): string | null {
-  const flat = text.replace(/\s+/g, ' ').trim()
-  if (!flat) return null
-  const first = flat.split(/(?<=[.!?。])\s+/)[0]!.trim()
-  const chars = Array.from(first)
-  if (chars.length <= max) return first
-  const cut = chars.slice(0, max).join('')
-  const space = cut.lastIndexOf(' ')
-  return `${(space >= max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,·:;(]+$/, '')}…`
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -64,10 +51,13 @@ export function reportWhen(report: ReportForPreview): string {
   return `${start.day} ~ ${end.day}`
 }
 
+/** 카드 설명 맨 앞 말머리. 제목만으로는 무슨 링크인지 몰라서(11-22 사용자). 앱 공유 문구 첫 줄과 같다. */
+export const REPORT_LEAD_IN = '홍익대에서 올라온 제보'
+
 export function reportDescription(report: ReportForPreview): string {
-  const meta = [reportWhen(report), report.placeLabel?.trim() || '홍익대학교 서울캠퍼스'].filter(Boolean).join(' · ')
-  const lead = reportLead(report.content ?? '')
-  return lead ? `${meta} — ${lead}` : meta
+  const meta = [REPORT_LEAD_IN, reportWhen(report), report.placeLabel?.trim() || '홍익대학교 서울캠퍼스'].filter(Boolean).join(' · ')
+  // 내용 첫 문장은 넣지 않는다 — 말머리·일시·장소만으로 카카오 카드 설명 두 줄이 차서, 붙이면 끝이 '…'로 잘렸다(11-22).
+  return meta
 }
 
 export function reportMetaTags(report: ReportForPreview): string {

@@ -6,8 +6,7 @@
  * - API 가 실패하거나 늦으면(2.5초) 원래 페이지를 그대로 돌려준다.
  * - 페이지에 이미 있는 사이트 기본 태그(`scripts/fix-web-export.mjs`)는 지우고 바꾼다. 예전엔 뒤에 덧붙이기만 해서
  *   메신저가 먼저 나온 기본 태그를 읽어 공지 대신 "홍익온" 카드가 떴다(11-22).
- * - 아래 순수 함수는 Node 에서도 돈다(`scripts/test/og-preview.test.ts`). Deno 에서 도는 파일이라 다른 파일을 import 하지 않는다
- *   (제보 미리보기 `report-preview.ts` 에 같은 글 다듬기 함수가 한 벌 더 있다).
+ * - 아래 순수 함수는 Node 에서도 돈다(`scripts/test/og-preview.test.ts`). Deno 에서 도는 파일이라 다른 파일을 import 하지 않는다.
  */
 
 const API_ORIGIN = 'https://api.hongikon.com'
