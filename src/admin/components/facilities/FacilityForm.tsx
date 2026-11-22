@@ -19,6 +19,8 @@ interface Props {
   onSave: () => void
 }
 
+const STATUS_OPTIONS = ['이용 가능', '이용 불가'] as const
+
 /** 편의시설 추가·수정 폼. 건물은 검색해서 칩으로 고른다. */
 export function FacilityForm({
   draft,
@@ -93,6 +95,56 @@ export function FacilityForm({
           </Field>
         </View>
       </View>
+      <Field
+        label="이용 상태"
+        hint="이용 불가로 두면 지도에서 지우지 않고 핀이 회색 + 금지 표시로 바뀌고, 시트와 물어보기가 사유·종료일을 알려 줍니다."
+      >
+        <OptionChips
+          options={STATUS_OPTIONS}
+          isSelected={(value) => (value === '이용 불가') === draft.unavailable}
+          onToggle={(value) => update({ unavailable: value === '이용 불가' })}
+          accessibilityLabel="이용 상태"
+        />
+      </Field>
+      {draft.unavailable ? (
+        <>
+          <Field label="사유 (앱에 보임)">
+            <TextRow
+              value={draft.unavailableReason}
+              onChangeText={(unavailableReason) => update({ unavailableReason })}
+              maxLength={100}
+              placeholder="예: 기기 고장, 리모델링 공사"
+              accessibilityLabel="이용 불가 사유"
+            />
+          </Field>
+          <View style={formStyles.row}>
+            <View style={formStyles.half}>
+              <Field label="시작 (선택)" hint="이때부터 이용 불가. 비우면 지금부터. 날짜만 쓰면 그날 0시.">
+                <TextRow
+                  value={draft.unavailableFrom}
+                  onChangeText={(unavailableFrom) => update({ unavailableFrom })}
+                  maxLength={16}
+                  placeholder="2026-12-01 09:00"
+                  keyboardType="numbers-and-punctuation"
+                  accessibilityLabel="이용 불가 시작"
+                />
+              </Field>
+            </View>
+            <View style={formStyles.half}>
+              <Field label="끝 (선택)" hint="이때까지 이용 불가, 지나면 저절로 풀립니다. 비우면 직접 풀 때까지. 날짜만 쓰면 그날 끝까지.">
+                <TextRow
+                  value={draft.unavailableUntil}
+                  onChangeText={(unavailableUntil) => update({ unavailableUntil })}
+                  maxLength={16}
+                  placeholder="2026-12-01 18:00"
+                  keyboardType="numbers-and-punctuation"
+                  accessibilityLabel="이용 불가 끝"
+                />
+              </Field>
+            </View>
+          </View>
+        </>
+      ) : null}
       <FormErrors errors={formErrors} />
       <FormActions saving={saving} onCancel={onCancel} onSave={onSave} />
     </Card>

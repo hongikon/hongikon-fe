@@ -219,6 +219,7 @@ export type AdminSection =
   | 'askFeedback'
   | 'partners'
   | 'facilities'
+  | 'roads'
   | 'exhibitions'
   | 'notices'
   | 'tools'
@@ -232,8 +233,15 @@ export type AdminPartner = Partner
 export type AdminPartnerInput = Omit<Partner, 'id'> & { id?: string }
 
 /** 편의시설. map/data 의 facility(`buildingName` = 건물 표시 이름) + 건물 code. */
-export interface AdminFacility extends Facility {
+export interface AdminFacility extends Omit<Facility, 'unavailable'> {
   buildingCode: string
+  /** 관리자가 둔 값 그대로(종료일이 지났어도 true 일 수 있다 — 그때 지도에는 이미 안 보인다). */
+  unavailable: boolean
+  unavailableReason?: string
+  /** KST 'yyyy-MM-ddTHH:mm'. 없으면 바로부터. */
+  unavailableFrom?: string
+  /** KST 'yyyy-MM-ddTHH:mm'. 없으면 풀 때까지. */
+  unavailableUntil?: string
 }
 
 /** 추가·수정 요청 본문. 건물은 표시 이름 대신 code 로 가리킨다. 추가할 때 `id` 를 비우면 서버가 `f-<랜덤8>`. */
@@ -245,6 +253,70 @@ export interface AdminFacilityInput {
   note?: string
   lat?: number
   lng?: number
+  /** 이용 불가 표시(11-22). 풀면 사유·종료일도 지운다. */
+  unavailable: boolean
+  unavailableReason?: string
+  /** KST 'yyyy-MM-ddTHH:mm', 이때부터 이용 불가. 비우면 지금부터. */
+  unavailableFrom?: string
+  /** KST 'yyyy-MM-ddTHH:mm', 이때까지 이용 불가. 비우면 풀 때까지. */
+  unavailableUntil?: string
+}
+
+// ── 길 관리(길찾기 통행 제한) — `/admin/map/walk-restrictions`, `/admin/map/walk-graph` (11-22) ──────────────
+
+/** ENTRANCE: 출입구 라벨로 건물에 드나들지 않음 · EDGE: 'a|b' 구간을 지나지 않음 · BUILDING_PASS: 건물 code 안을 지나가지 않음. */
+export type WalkRestrictionKind = 'ENTRANCE' | 'EDGE' | 'BUILDING_PASS'
+
+/** RULE 상시 길 규칙(안 쓰는 문·지나가지 않는 건물, 기간 없음, 앱에 금지 표시 안 함) · CLOSURE 공사·행사 같은 임시 통제. */
+export type WalkRestrictionPurpose = 'RULE' | 'CLOSURE'
+
+/** 임시 통제 이유. */
+export type WalkClosureCause = 'CONSTRUCTION' | 'EVENT' | 'OTHER'
+
+export interface AdminWalkRestriction {
+  id: number
+  purpose: WalkRestrictionPurpose
+  cause?: WalkClosureCause | null
+  kind: WalkRestrictionKind
+  target: string
+  /** 사람이 읽는 대상('문헌관 MH동 지하 1층 출입구'). */
+  label: string
+  reason?: string | null
+  /** KST 'yyyy-MM-ddTHH:mm'. 없으면 만든 때부터. */
+  startsAt?: string | null
+  /** KST 'yyyy-MM-ddTHH:mm'. 없으면 풀 때까지. */
+  endsAt?: string | null
+  /** UPCOMING 기간 전 · ACTIVE 길찾기가 피하는 중 · ENDED 끝남. */
+  phase: 'UPCOMING' | 'ACTIVE' | 'ENDED'
+  active: boolean
+  createdAt: string
+}
+
+export interface AdminWalkRestrictionInput {
+  purpose: WalkRestrictionPurpose
+  cause?: WalkClosureCause
+  kind: WalkRestrictionKind
+  target: string
+  reason?: string
+  startsAt?: string
+  endsAt?: string
+}
+
+/** 길찾기 경로망 정점. type: 0 길, 1 출입구, 2 엘리베이터, 3 계단. 건물 안 정점은 id 에 '@' 가 있다. */
+export interface AdminWalkVertex {
+  id: string
+  lat: number
+  lng: number
+  building?: string | null
+  floor?: number | null
+  type: number
+  label?: string | null
+}
+
+export interface AdminWalkGraph {
+  vertices: AdminWalkVertex[]
+  edges: { a: string; b: string; kind: string }[]
+  buildings: { code: string; name: string; lat: number; lng: number }[]
 }
 
 /** 전시. `GET /map/data` 의 exhibition 과 같은 모양이고, 관리 목록에는 끝난 전시도 온다. */

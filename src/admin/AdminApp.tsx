@@ -14,6 +14,7 @@ import UsersScreen from './screens/UsersScreen'
 import ToolsScreen from './screens/ToolsScreen'
 import PartnersScreen from './screens/PartnersScreen'
 import FacilitiesScreen from './screens/FacilitiesScreen'
+import RoadsScreen from './screens/RoadsScreen'
 import ExhibitionsScreen from './screens/ExhibitionsScreen'
 import NoticesScreen from './screens/NoticesScreen'
 import { RADIUS } from '../constants/spacing'
@@ -48,6 +49,7 @@ export default function AdminApp() {
   else if (section === 'askFeedback') content = <AskFeedbackScreen />
   else if (section === 'partners') content = <PartnersScreen />
   else if (section === 'facilities') content = <FacilitiesScreen />
+  else if (section === 'roads') content = <RoadsScreen />
   else if (section === 'exhibitions') content = <ExhibitionsScreen />
   else if (section === 'notices') content = <NoticesScreen />
   else if (section === 'tools') content = <ToolsScreen onChanged={refreshOverview} />

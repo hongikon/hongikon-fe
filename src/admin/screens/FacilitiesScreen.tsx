@@ -31,7 +31,7 @@ export default function FacilitiesScreen() {
   return (
     <View>
       <ScreenHeader
-        title="편의시설 관리"
+        title="시설 관리"
         subtitle="지도 '편의 시설'과 '전시' 칩에 나오는 시설입니다. 핀은 고른 건물 좌표에 찍히고, 현장에서 잰 좌표가 있을 때만 위도·경도를 넣습니다."
         right={draft ? null : <Button label="시설 추가" icon="add" variant="primary" onPress={openNew} small />}
       />

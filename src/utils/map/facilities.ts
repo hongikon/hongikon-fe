@@ -1,5 +1,6 @@
 import { facilityKindMeta } from '../../constants/facilityKinds'
 import type { Building, Facility, FacilityKind } from '../../types'
+import { isFacilityUnavailable } from './facilityStatus'
 
 // 편의시설·건물 목록은 지도 데이터(`useMapData()`)에서 받아 인자로 넘긴다. 이 파일은 계산만 한다.
 
@@ -32,6 +33,8 @@ export interface FacilityMarker {
   color: string
   /** 핀 아래에 쓰는 문구. 예: '홍문관 R동 2F·4F' */
   label: string
+  /** 이 핀에 묶인 시설이 모두 이용 불가(11-22) — 핀을 회색으로 낮추고 금지 배지를 단다. 하나라도 열려 있으면 false. */
+  unavailable: boolean
 }
 
 /** 종류를 고르지 않았으면(null) 아무것도 그리지 않는다. 제휴 칩과 같은 규칙이다. */
@@ -90,6 +93,7 @@ export function facilityMarkers(
         // 핀 이름에는 건물 이름만 둔다. 층을 붙이면 "Q동 1F·2F·3F·9F" 처럼 길어지기만 하고(11-06 행정·지원, 11-18 모든 종류),
         // 층은 핀을 눌러 여는 시트에 시설마다 나온다.
         label: building.name,
+        unavailable: isFacilityUnavailable(facility),
       })
       return
     }
@@ -110,6 +114,7 @@ export function facilityMarkers(
       floors,
       color,
       label: building.name,
+      unavailable: (existing ? existing.unavailable : true) && isFacilityUnavailable(facility),
     })
   })
 

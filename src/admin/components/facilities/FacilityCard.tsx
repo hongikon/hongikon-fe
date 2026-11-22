@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { facilityKindLabel } from '../../../constants/facilityKinds'
 import { formatFloor } from '../../../utils/common/floors'
 import type { AdminFacility } from '../../types'
+import { termLabel, termPhase } from '../../utils/common/term'
 import { adminText, Badge, Button, Card, ConfirmBar } from '../../ui'
 
 interface Props {
@@ -15,18 +16,31 @@ interface Props {
   onRemove: () => void
 }
 
+/** '이용 불가 · 지금 ~ 12-01' · 기간 전이면 '이용 불가 예정 · …' · 지났으면 '이용 불가 기간 끝남(지도엔 열림)'. */
+function unavailableBadge(facility: AdminFacility): { label: string; tone: 'danger' | 'warning' | 'neutral' } {
+  const phase = termPhase(facility.unavailableFrom, facility.unavailableUntil, new Date())
+  const term = termLabel(facility.unavailableFrom, facility.unavailableUntil)
+  if (phase === 'upcoming') return { label: `이용 불가 예정 · ${term}`, tone: 'warning' }
+  if (phase === 'ended') return { label: '이용 불가 기간 끝남(지도엔 열림)', tone: 'neutral' }
+  return { label: `이용 불가 · ${term}`, tone: 'danger' }
+}
+
 /** 편의시설 목록 카드. 좌표가 없으면 '건물 좌표 사용'. */
 export function FacilityCard({ facility, confirming, deleting, onEdit, onAskDelete, onCancelDelete, onRemove }: Props) {
   return (
     <Card>
       <View style={styles.itemHeader}>
         <Badge label={facilityKindLabel(facility.kind)} tone="info" />
+        {facility.unavailable ? <Badge {...unavailableBadge(facility)} /> : null}
         <Text style={[adminText.strong, styles.itemTitle]}>
           {facility.buildingName}
           {typeof facility.floor === 'number' ? ` ${formatFloor(facility.floor)}` : ''}
         </Text>
       </View>
       {facility.note ? <Text style={adminText.body}>{facility.note}</Text> : null}
+      {facility.unavailable && facility.unavailableReason ? (
+        <Text style={adminText.body}>사유: {facility.unavailableReason}</Text>
+      ) : null}
       <Text style={[adminText.muted, styles.meta]}>
         {facility.id}
         {typeof facility.lat === 'number' && typeof facility.lng === 'number' ? ` · ${facility.lat}, ${facility.lng}` : ' · 건물 좌표 사용'}
