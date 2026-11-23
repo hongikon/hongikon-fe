@@ -32,7 +32,25 @@ test('facilityDraftFrom → buildFacilityInput: 좌표 없으면 빼고 보낸�
   assert.equal(draft.lat, '')
   const result = buildFacilityInput(draft)
   assert.ok('input' in result)
-  assert.deepEqual(result.input, { id: 'hi-r-9f-printer', kind: '프린터', buildingCode: 'R', floor: 9, note: 'PC실', lat: undefined, lng: undefined })
+  assert.deepEqual(result.input, { id: 'hi-r-9f-printer', kind: '프린터', buildingCode: 'R', floor: 9, note: 'PC실', lat: undefined, lng: undefined, unavailable: false, unavailableReason: undefined, unavailableFrom: undefined, unavailableUntil: undefined })
+})
+
+test('buildFacilityInput: 이용 불가 기간 — 시작·끝을 보내고, 지난 끝·거꾸로 된 기간은 막는다(11-22)', () => {
+  const now = new Date(2026, 10, 22, 10, 0)
+  const draft = { ...facilityDraftFrom(FACILITY), unavailable: true, unavailableReason: ' 기기 고장 ', unavailableFrom: '2026-12-01 09:00', unavailableUntil: '2026-12-03' }
+  const ok = buildFacilityInput(draft, now)
+  assert.equal(ok.input?.unavailable, true)
+  assert.equal(ok.input?.unavailableReason, '기기 고장')
+  assert.equal(ok.input?.unavailableFrom, '2026-12-01T09:00')
+  assert.equal(ok.input?.unavailableUntil, '2026-12-03T23:59')
+  assert.deepEqual(buildFacilityInput({ ...draft, unavailableFrom: '', unavailableUntil: '2026-11-21' }, now).errors, ['끝이 이미 지났어요. 앞으로의 시각을 고르거나 비워 주세요.'])
+  assert.deepEqual(buildFacilityInput({ ...draft, unavailableUntil: '2026-12-01 08:00' }, now).errors, ['끝이 시작보다 뒤여야 해요.'])
+  assert.deepEqual(buildFacilityInput({ ...draft, unavailableFrom: '12/01' }, now).errors, ['시작은 2026-12-01 또는 2026-12-01 09:00 처럼 입력해 주세요.'])
+  // 이용 가능으로 돌리면 사유·기간은 보내지 않는다.
+  const reopened = buildFacilityInput({ ...draft, unavailable: false }, now)
+  assert.equal(reopened.input?.unavailable, false)
+  assert.equal(reopened.input?.unavailableFrom, undefined)
+  assert.equal(reopened.input?.unavailableUntil, undefined)
 })
 
 test('buildFacilityInput: 필수·층·좌표 짝 검증', () => {

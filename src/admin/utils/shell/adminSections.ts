@@ -13,6 +13,7 @@ export const SECTION_PATHS: Record<AdminSection, string> = {
   askFeedback: '/admin/ask-feedback',
   partners: '/admin/partners',
   facilities: '/admin/facilities',
+  roads: '/admin/roads',
   exhibitions: '/admin/exhibitions',
   notices: '/admin/notices',
   tools: '/admin/tools',

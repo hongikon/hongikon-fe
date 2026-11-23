@@ -20,6 +20,8 @@ import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
 import RouteEndpointButtons from './route/RouteEndpointButtons'
 import { type RouteNext } from '../../utils/map/route/routeEndpointButtons'
 import { useFacilitySheet } from '../../hooks/map/useFacilitySheet'
+import { Ionicons } from '@expo/vector-icons'
+import { facilityUnavailableText } from '../../utils/map/facilityStatus'
 
 export interface FacilitySheetProps {
   kind: FacilityKind;
@@ -117,16 +119,25 @@ function FacilitySheet({ kind, buildingName, items, exhibitions, onClose, onBack
             rowY.current.set(item.id, e.nativeEvent.layout.y);
             if (highlighted) setLayoutTick((n) => n + 1);
           };
+          const closedText = facilityUnavailableText(item);
           const row = (
             <View
               style={[styles.row, highlighted && styles.rowHighlighted]}
               accessible
-              accessibilityLabel={`${item.floor !== undefined ? formatFloor(item.floor) : "층 확인 중"} ${item.note ?? kind}`}
+              accessibilityLabel={`${item.floor !== undefined ? formatFloor(item.floor) : "층 확인 중"} ${item.note ?? kind}${closedText ? `, ${closedText}` : ""}`}
             >
-              <Text style={[styles.floor, item.floor === undefined && styles.floorUnknown]}>
+              <Text style={[styles.floor, item.floor === undefined && styles.floorUnknown, closedText !== null && styles.closedFloor]}>
                 {item.floor !== undefined ? formatFloor(item.floor) : "층 확인 중"}
               </Text>
-              <NoteText note={item.note ?? kind} />
+              <View style={styles.rowBody}>
+                <NoteText note={item.note ?? kind} />
+                {closedText ? (
+                  <View style={styles.closedLine}>
+                    <Ionicons name="ban" size={14} color={COLORS.danger} />
+                    <Text style={styles.closedText}>{closedText}</Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
           );
           if (isRestaurant) {
@@ -218,6 +229,10 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   floorUnknown: { fontSize: 12, color: COLORS.textTertiary },
+  closedFloor: { color: COLORS.textTertiary },
+  rowBody: { flex: 1, gap: 4 },
+  closedLine: { flexDirection: "row", alignItems: "center", gap: 4 },
+  closedText: { flexShrink: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.semibold, color: COLORS.danger },
   venue: { borderRadius: RADIUS.md, backgroundColor: COLORS.background, overflow: "hidden" },
   titleText: { flexShrink: 1 },
 });

@@ -8,6 +8,7 @@ import { buildFloorOptions, hasFloorData } from '../../utils/common/floors'
 import { buildingLabel } from '../../utils/map/labels'
 import { pendingStartScript, ROUTE_HITS_CLEAR_SCRIPT, routeStyleScript } from '../../utils/map/route/routeStyleScript'
 import { useRouteData } from './useRouteData'
+import { useWalkRestrictionSpots } from './useWalkRestrictionSpots'
 
 /** 경로 메시지를 보낸 뒤 남색으로 다시 칠하고 화면을 맞추기까지 기다리는 시간. */
 const ROUTE_STYLE_DELAY_MS = 300
@@ -104,6 +105,8 @@ export function useRoutePlanner({
   const alternatives = useRouteData({ fromBuilding, fromFloor, toBuilding, toFloor, fromMyLocation, routeOrigin, buildings })
   const alternativesRef = useRef(alternatives)
   alternativesRef.current = alternatives
+  // 관리자가 막은 곳(11-22) — 경로를 그릴 때 금지 표시를 같이 찍는다. 받기 전에 그렸으면 받은 뒤 다시 그린다.
+  const restrictionSpots = useWalkRestrictionSpots(alternatives.length > 0)
   /** 지금 고른 경로(내 위치 점을 경로선에 붙일 때 쓴다). */
   const selectedRouteRef = useRef<RouteAlternative | null>(null)
   selectedRouteRef.current = alternatives[selectedIndex] ?? null
@@ -111,7 +114,12 @@ export function useRoutePlanner({
   /** 경로를 지도에 그리고, 위 막대·아래 카드에 가리지 않게 화면을 맞춘다. */
   const draw = useCallback(
     (routes: RouteAlternative[], index: number) => {
-      postToMap({ type: 'showRoute', routes: routes.map((route) => ({ points: route.points })), selectedIndex: index })
+      postToMap({
+        type: 'showRoute',
+        routes: routes.map((route) => ({ points: route.points })),
+        selectedIndex: index,
+        restrictions: restrictionSpots.map((spot) => ({ points: spot.points, label: spot.label })),
+      })
       const fitScript = () =>
         routeStyleScript(
           index,
@@ -127,7 +135,7 @@ export function useRoutePlanner({
         setTimeout(() => webViewRef.current?.injectJavaScript(fitScript()), delay)
       }
     },
-    [postToMap, headerHeight, bottomInsetRef, webViewRef],
+    [postToMap, headerHeight, bottomInsetRef, webViewRef, restrictionSpots],
   )
 
   // 출발·도착이 바뀌어 후보가 새로 오면(둘 다 골랐을 때만 채워진다) 첫 번째 후보로 다시 그린다.

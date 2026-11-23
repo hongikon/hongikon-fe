@@ -622,3 +622,16 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - `useToast` 접근자의 `useMemo`(컨텍스트 접근자는 허용).
 
 > **미결**: 가드 뒤의 파생 값 계산(`DashboardScreen`·`ToastViewport` 의 아이콘, `EntranceLabelPicker` 의 `sorted` 등)과 JSX 를 만드는 보조 함수(`SectionBlock.itemLabel`, `FacilityNoteText.linkHeyYoung`)는 화면에 남았다. 가드를 훅 안으로 옮기는 작은 구조 변경이 필요해 이번엔 안 했다.
+
+## 2026-11-22 — 지도 이용 제한: 시설 관리(이용 불가) + 길 관리(임시 통제 / 상시 길 규칙)
+
+- 관리자(웹 `/admin` 과 앱 관리 탭 같은 화면): 메뉴 '편의시설' → **시설 관리**, 새 **길 관리**(`/admin/roads`, `trail-sign-outline`).
+  - 시설 관리: 편집기에 이용 상태(이용 가능/이용 불가), 사유, 시작·끝(선택, '2026-12-01' 또는 '2026-12-01 09:00'). 목록 배지 '이용 불가 · 기간' / '예정' / '끝남'.
+  - 길 관리: 경로망 지도(react-native-svg, 지도 전체 누름 하나 + `pickAt` 으로 가장 가까운 출입구·구간 — svg 도형 onPress 는 웹에서 동작 안 함), 종류 **임시 통제(공사·행사)** / **상시 길 규칙**, 이유(공사·행사·기타), 대상(구간·출입구·건물 통과), 기간(임시 통제만). 목록도 두 갈래.
+  - 기간 입력·표시는 `src/admin/utils/common/term.ts`(날짜만 쓰면 시작 0시·끝 23:59).
+- 앱 사용자 화면:
+  - 시설 핀: 묶인 시설이 모두 이용 불가면 회색 + 오른쪽 위 금지 배지(원 + 사선, Ionicons `ban` 모양), 이름 뒤 '이용 불가'. 시설 시트 줄에 `ban` 아이콘 + '지금 이용할 수 없어요 · 사유 · 12월 1일 18:00까지'(`utils/map/facilityStatus.ts`).
+  - 길찾기 지도: `GET /map/walk-restrictions`(임시 통제만) 를 받아 막힌 구간 빨간 점선 + 가운데 금지 표시(`useWalkRestrictionSpots`, `mapHtml` `drawRestrictions`). 길 자체는 서버가 이미 피한다.
+- 훅·유틸 분리 규칙(리팩터링 #78) 그대로: 화면은 `useRoadsAdmin`·`useWalkRestrictionSpots` 를 부르고, 계산은 `utils/roads/roadMap.ts`·`term.ts`.
+- 검증: `tsc` 0, `pnpm test` 294 통과(새 `map-accessRestrictions.test.ts`, `admin-facilityDraft` 기간 테스트). 로컬 서버 8097 + 웹 8081 에서 관리 화면(웹·앱 관리 탭)·시설 시트·길찾기 금지 표시 확인. 휴대폰 기기 확인은 아직.
+- 서버 의존: hongikon-be `feat/map-access-restrictions`(운영 SQL 필요). 서버가 아직 없으면 금지 표시만 빠지고 나머지는 그대로.

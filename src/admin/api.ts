@@ -13,6 +13,9 @@ import type {
   AdminNotice,
   AdminNoticeInput,
   AdminFacility,
+  AdminWalkGraph,
+  AdminWalkRestriction,
+  AdminWalkRestrictionInput,
   AdminFacilityInput,
   AdminPartner,
   AdminPartnerInput,
@@ -471,6 +474,30 @@ export async function updateAdminFacility(code: string, input: AdminFacilityInpu
 export async function deleteAdminFacility(code: string): Promise<void> {
   await adminRequest<void>(`/admin/map/facilities/${encodeURIComponent(code)}`, { method: 'DELETE', retries: 0 })
   afterMapWrite(undefined)
+}
+
+// ── 길 관리(길찾기 통행 제한, 11-22). 저장하면 서버 길찾기가 바로 피한다(앱 길찾기 응답은 기기에서 최대 5분 남는다). ──
+
+export async function fetchWalkRestrictions(signal?: AbortSignal): Promise<AdminWalkRestriction[]> {
+  const response = await adminRequest<{ restrictions: AdminWalkRestriction[] }>('/admin/map/walk-restrictions', { signal })
+  return response?.restrictions ?? []
+}
+
+export async function fetchWalkGraph(signal?: AbortSignal): Promise<AdminWalkGraph> {
+  const response = await adminRequest<AdminWalkGraph>('/admin/map/walk-graph', { signal })
+  return response ?? { vertices: [], edges: [], buildings: [] }
+}
+
+export async function createWalkRestriction(input: AdminWalkRestrictionInput): Promise<AdminWalkRestriction> {
+  return adminRequest<AdminWalkRestriction>('/admin/map/walk-restrictions', { method: 'POST', body: input, retries: 0 })
+}
+
+export async function updateWalkRestriction(id: number, input: AdminWalkRestrictionInput): Promise<AdminWalkRestriction> {
+  return adminRequest<AdminWalkRestriction>(`/admin/map/walk-restrictions/${id}`, { method: 'PUT', body: input, retries: 0 })
+}
+
+export async function deleteWalkRestriction(id: number): Promise<void> {
+  await adminRequest<void>(`/admin/map/walk-restrictions/${id}`, { method: 'DELETE', retries: 0 })
 }
 
 /** 전시 전체(끝난 것 포함). 앱 지도에는 서버가 끝나지 않았고 60일 안에 시작하는 것만 내려 준다. */

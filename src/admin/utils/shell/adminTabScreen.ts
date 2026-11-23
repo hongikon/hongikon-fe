@@ -17,7 +17,8 @@ export const SECTIONS: { section: AdminSection; label: string; icon: ComponentPr
   { section: 'askFeedback', label: '물어보기 피드백', icon: 'thumbs-down-outline' },
   { section: 'users', label: '회원', icon: 'people-outline' },
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
-  { section: 'facilities', label: '편의시설', icon: 'business-outline' },
+  { section: 'facilities', label: '시설 관리', icon: 'business-outline' },
+  { section: 'roads', label: '길 관리', icon: 'trail-sign-outline' },
   { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },
 ]

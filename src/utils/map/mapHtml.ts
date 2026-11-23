@@ -1101,22 +1101,34 @@ export function buildMapHTML(
       '엘리베이터': partnerSVG('<path d="M12 2l4 5H8l4-5z"/><path d="M12 22l-4-5h8l-4 5z"/><rect x="10.7" y="8" width="2.6" height="8" rx="1"/>')
     };
 
+    // 이용 불가(11-22): 원 + 사선(Ionicons 'ban' 과 같은 모양). 시설 핀 오른쪽 위, 길찾기 지도의 막힌 곳에 쓴다.
+    function banBadgeHTML(size) {
+      return '<span style="width:' + size + 'px;height:' + size + 'px;display:block;border-radius:50%;background:#fff;'
+        + 'box-shadow:0 1px 2px rgba(0,0,0,0.3);">'
+        + '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true">'
+        + '<circle cx="12" cy="12" r="9" fill="none" stroke="#DC2626" stroke-width="3"/>'
+        + '<path d="M5.6 5.6l12.8 12.8" stroke="#DC2626" stroke-width="3" stroke-linecap="round"/></svg></span>';
+    }
+
     function facilityLabelHTML(marker) {
       var badge = ${PARTNER_BADGE_SIZE_PX};
       var glyph = Math.round(badge * 0.58);
       var iconSVG = FACILITY_ICONS[marker.kind] || PARTNER_ICONS['기타'];
+      var closed = marker.unavailable === true;
 
       var badgeEl = '<div style="position:relative;width:' + badge + 'px;height:' + badge + 'px;border-radius:50%;'
-        + 'background:' + safeColor(marker.color, 'transparent') + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;'
+        + 'background:' + (closed ? '#9AA0A6' : safeColor(marker.color, 'transparent')) + ';box-shadow:0 1px 4px rgba(0,0,0,0.28),0 0 0 2px #fff;'
         + 'pointer-events:auto;display:flex;align-items:center;justify-content:center;">'
         + hitHalo(10)
-        + '<span style="width:' + glyph + 'px;height:' + glyph + 'px;display:block;">' + iconSVG + '</span></div>';
+        + '<span style="width:' + glyph + 'px;height:' + glyph + 'px;display:block;">' + iconSVG + '</span>'
+        + (closed ? '<span style="position:absolute;top:-5px;right:-6px;">' + banBadgeHTML(14) + '</span>' : '')
+        + '</div>';
 
       // 이름도 누르면 그 시설이 열린다(배지만 맞히기 어려웠다).
       var nameEl = '<div style="margin-top:3px;white-space:nowrap;pointer-events:auto;font-family:' + PARTNER_FONT
-        + ';font-size:11px;font-weight:600;color:#33363d;letter-spacing:-0.2px;'
+        + ';font-size:11px;font-weight:600;color:' + (closed ? '#767676' : '#33363d') + ';letter-spacing:-0.2px;'
         + 'text-shadow:0 0 3px #fff,0 0 2px #fff,0 1px 1px rgba(255,255,255,0.9);">'
-        + escapeHTML(marker.label) + '</div>';
+        + escapeHTML(marker.label) + (closed ? ' · 이용 불가' : '') + '</div>';
 
       return '<div style="display:flex;flex-direction:column;align-items:center;width:100%;pointer-events:none;">'
         + badgeEl + nameEl + '</div>';
@@ -1271,7 +1283,33 @@ export function buildMapHTML(
       return { swLat: swLat, swLng: swLng, neLat: neLat, neLng: neLng };
     }
 
+    // 관리자가 막은 곳(11-22): 빨간 점선 구간 + 가운데 금지 표시. 길찾기 경로와 함께 그리고 함께 지운다.
+    var restrictionOverlays = [];
+
+    function drawRestrictions(spots) {
+      (spots || []).forEach(function(spot) {
+        var pts = (spot.points || []).map(function(p) { return new naver.maps.LatLng(p[0], p[1]); });
+        if (pts.length === 0) return;
+        if (pts.length > 1) {
+          restrictionOverlays.push(new naver.maps.Polyline({
+            map: map, path: pts, strokeWeight: 5, strokeColor: '#DC2626', strokeOpacity: 0.9,
+            strokeStyle: 'shortdash', zIndex: 250,
+          }));
+        }
+        var mid = pts.length > 1
+          ? new naver.maps.LatLng((pts[0].lat() + pts[1].lat()) / 2, (pts[0].lng() + pts[1].lng()) / 2)
+          : pts[0];
+        restrictionOverlays.push(new naver.maps.Marker({
+          map: map, position: mid, zIndex: 260,
+          title: spot.label ? spot.label + ' 통행 불가' : '통행 불가',
+          icon: { content: banBadgeHTML(22), size: new naver.maps.Size(22, 22), anchor: new naver.maps.Point(11, 11) },
+        }));
+      });
+    }
+
     function clearRouteOverlays() {
+      restrictionOverlays.forEach(function(o) { o.setMap(null); });
+      restrictionOverlays = [];
       routePolylines.forEach(function(p) { p.setMap(null); });
       routePolylines = [];
       if (fromOverlay) { fromOverlay.setMap(null); fromOverlay = null; }
@@ -1633,6 +1671,7 @@ export function buildMapHTML(
             });
           }
 
+          drawRestrictions(msg.restrictions);
           fitToBounds(boundsFromRoutes(routes));
         }
 

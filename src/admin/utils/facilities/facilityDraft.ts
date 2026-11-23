@@ -2,6 +2,7 @@ import { FACILITY_KINDS } from '../../../constants/facilityKinds'
 import type { FacilityKind } from '../../../types'
 import { normalize } from '../../../utils/common/normalize'
 import type { AdminBuildingOption, AdminFacility, AdminFacilityInput } from '../../types'
+import { parseTermInput, termErrors, termToInput } from '../common/term'
 import { LAT_RANGE, LNG_RANGE, optional, parseCoordinate, tooLong, type BuildResult } from './mapFormRules'
 
 /**
@@ -21,10 +22,20 @@ export interface FacilityDraft {
   note: string
   lat: string
   lng: string
+  /** 이용 불가(11-22) — 지도 핀에 금지 배지, 시트에 사유·종료일. */
+  unavailable: boolean
+  unavailableReason: string
+  /** '2026-12-01' · '2026-12-01 09:00' · 빈 글자(지금부터). */
+  unavailableFrom: string
+  /** '2026-12-01' · '2026-12-01 18:00' · 빈 글자(풀 때까지). */
+  unavailableUntil: string
 }
 
 export function emptyFacilityDraft(): FacilityDraft {
-  return { originalCode: null, code: '', kind: null, buildingCode: null, floor: '', note: '', lat: '', lng: '' }
+  return {
+    originalCode: null, code: '', kind: null, buildingCode: null, floor: '', note: '', lat: '', lng: '',
+    unavailable: false, unavailableReason: '', unavailableFrom: '', unavailableUntil: '',
+  }
 }
 
 export function facilityDraftFrom(facility: AdminFacility): FacilityDraft {
@@ -37,11 +48,15 @@ export function facilityDraftFrom(facility: AdminFacility): FacilityDraft {
     note: facility.note ?? '',
     lat: facility.lat === undefined || facility.lat === null ? '' : String(facility.lat),
     lng: facility.lng === undefined || facility.lng === null ? '' : String(facility.lng),
+    unavailable: facility.unavailable === true,
+    unavailableReason: facility.unavailableReason ?? '',
+    unavailableFrom: termToInput(facility.unavailableFrom, 'start'),
+    unavailableUntil: termToInput(facility.unavailableUntil, 'end'),
   }
 }
 
 /** 화면 검증. 통과하면 요청 본문, 아니면 오류 문구 목록. */
-export function buildFacilityInput(draft: FacilityDraft): BuildResult<AdminFacilityInput> {
+export function buildFacilityInput(draft: FacilityDraft, today: Date = new Date()): BuildResult<AdminFacilityInput> {
   const errors: string[] = []
   if (!draft.kind) errors.push('시설 종류를 골라 주세요.')
   if (!draft.buildingCode) errors.push('건물을 골라 주세요.')
@@ -60,6 +75,13 @@ export function buildFacilityInput(draft: FacilityDraft): BuildResult<AdminFacil
   if (typeof lat === 'string') errors.push(lat)
   if (typeof lng === 'string') errors.push(lng)
   if ((lat === null) !== (lng === null)) errors.push('위도·경도는 둘 다 넣거나 둘 다 비워 주세요.')
+  const from = parseTermInput(draft.unavailableFrom, 'start')
+  const until = parseTermInput(draft.unavailableUntil, 'end')
+  if (draft.unavailable) {
+    const reasonError = tooLong(draft.unavailableReason, 100, '이용 불가 사유')
+    if (reasonError) errors.push(reasonError)
+    errors.push(...termErrors(from, until, today))
+  }
   if (errors.length || !draft.kind || !draft.buildingCode) return { errors }
   return {
     input: {
@@ -70,6 +92,10 @@ export function buildFacilityInput(draft: FacilityDraft): BuildResult<AdminFacil
       note: optional(draft.note),
       lat: typeof lat === 'number' ? lat : undefined,
       lng: typeof lng === 'number' ? lng : undefined,
+      unavailable: draft.unavailable,
+      unavailableReason: draft.unavailable ? optional(draft.unavailableReason) : undefined,
+      unavailableFrom: draft.unavailable && from && from !== 'invalid' ? from : undefined,
+      unavailableUntil: draft.unavailable && until && until !== 'invalid' ? until : undefined,
     },
   }
 }
