@@ -8,13 +8,11 @@ import {
 } from '../../lib/nearbyPartners/rules'
 import type { PartnerAffiliation } from '../../types'
 
-/** 테스트 빌드에서 고를 수 있는 업체 반경(m). */
-export const TEST_RADIUS_OPTIONS = [10, 20, 30, 50, 100] as const
 /** "밤 9시"처럼 12시간제로 읽는다("밤 21시"는 어색하다). */
 export const QUIET_START_LABEL = `밤 ${QUIET_START_HOUR > 12 ? QUIET_START_HOUR - 12 : QUIET_START_HOUR}시`
 export const NIGHT_LABEL = `${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에도 받기`
 /** 켜면 야간 수신 별도 동의가 된다(정보통신망법 제50조 제3항) — 기본은 꺼짐이라 이 시간엔 오지 않는다. */
-export const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요(야간 수신 동의). 끄면 야간 수신 동의를 철회하고 ${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
+export const NIGHT_HINT = `켜면 이 시간에도 제휴 혜택 알림을 받는 데 동의해요. 끄면 ${QUIET_START_LABEL}~아침 ${QUIET_END_HOUR}시에는 보내지 않아요.`
 
 export function affiliationLabel(affiliations: readonly PartnerAffiliation[]): string {
   return [...affiliations, '총학생회'].join('·')

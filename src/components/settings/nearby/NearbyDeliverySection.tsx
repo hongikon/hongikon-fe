@@ -53,7 +53,6 @@ export default function NearbyDeliverySection({ settings, dwell, working, unlimi
             </Text>
           </Pressable>
         )}
-        <Text style={styles.hint}>짧게 하면 가게 앞을 지나가기만 해도 올 수 있어요.</Text>
         <View style={styles.divider} />
         <View style={styles.settingRow}>
           <View style={styles.settingText}>
