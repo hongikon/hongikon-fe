@@ -5,10 +5,10 @@ import type { Partner, PartnerAffiliation } from '../../types'
 
 /**
  * 근처 제휴 판단 규칙. 위치·알림·저장 API 를 부르지 않는 순수 함수만 둔다 — 시각(ms)과 좌표를 모두 인자로 받아
- * 기기 없이 `pnpm test` 로 확인한다. 숫자와 그 근거는 `docs/nearby-partner-alert-plan.md` "판단 알고리즘".
+ * 기기 없이 `pnpm test` 로 확인한다. 수치 분석·결정 기록은 `docs/nearby-partner-alert-impl-plan.md`.
  *
  * - 앱 안 "내 주변 제휴"(포그라운드, 위치 한 번 읽기): `partnersNear`
- * - 근처 알림(백그라운드 지오펜스, 아직 연결 전): `pickTargets` → `pickNearest` → `stayStartedAt` → `decideOnEnter`
+ * - 근처 알림(백그라운드 지오펜스): `pickTargets` → `pickNearest` → `stayStartedAt` → `decideOnEnter`
  */
 
 /**
@@ -19,12 +19,15 @@ import type { Partner, PartnerAffiliation } from '../../types'
  */
 export const PARTNER_REGION_RADIUS_METERS = 150
 /**
- * 알림 반경: 업체 좌표에서 이만큼 안에 머물러야 알린다(10-29 — 100m 는 옆 가게·길 건너까지 걸려 20m 로).
+ * 기본·권장 알림 반경. 이용자는 설정에서 `ALERT_RADIUS_OPTIONS` 중 하나를 고른다.
  * 깨우는 원에 들어오면 GPS 를 켜 이 거리를 잰다(`preciselyInside`).
  */
 export const ALERT_RADIUS_METERS = 20
+/** 설정에서 고르는 명목 알림 반경(m). GPS 정확도 허용치는 별도 규칙이다. */
+export const ALERT_RADIUS_OPTIONS = [10, 20, 30, 50, 100] as const
 /**
- * GPS 오차를 얼마까지 반경에 더해 줄지(실내 오차가 커도 반경이 끝없이 넓어지지 않게).
+ * GPS 정확도 오차를 명목 알림 반경에 더해 줄 상한. 이용자가 고르는 반경(10~100m)과는 별개이며,
+ * 실내 오차가 커도 판정 거리가 끝없이 넓어지지 않게 한다.
  * 11-10: 15 → 25. 가게 안(실내)에서는 GPS 가 20~40m 밀려 찍혀 오래 앉아 있어도 '안'으로 잡히지 않았다(현장 제보:
  * 오래 있어도 알림이 안 옴). 대신 알림은 머문 시간이 다 찬 때의 위치로 한 번 더 확인한다(`STAY_CONFIRM_MS`).
  */
@@ -32,11 +35,13 @@ export const ACCURACY_ALLOWANCE_METERS = 25
 /** 한 번 안으로 본 뒤에는 이만큼 더 멀어져야 나간 것으로 본다(위치 흔들림으로 들락날락하지 않게). */
 const EXIT_MARGIN_METERS = 25
 /**
- * 알림이 실제로 닿는 거리(알림 반경 + GPS 오차 여유 + 나감 여유 = 70m, 11-10 전에는 60m). 건물 외곽이 업체에서 이만큼 안이면 그 건물 영역은
- * 이 업체의 알림 영역에서 뺀다(`blockedRingsFor`). 외곽이 없는 건물은 중심이 이 거리 안이면 업체를 통째로 뺀다.
- * 11-09: 깨우는 원(150m)으로 재 기숙사 앞 가게 24곳이 빠지던 것을 바꿈.
+ * 알림 영역과 건물 제외 범위 계산에 쓰는 거리(명목 반경 + GPS 오차 여유 + 나감 여유).
+ * 이용자가 반경을 바꾸면 대상 업체와 제외할 건물도 함께 다시 계산한다.
  */
-export const CAMPUS_CLEARANCE_METERS = ALERT_RADIUS_METERS + ACCURACY_ALLOWANCE_METERS + EXIT_MARGIN_METERS
+export function campusClearanceMeters(alertRadius: number = ALERT_RADIUS_METERS): number {
+  return alertRadius + ACCURACY_ALLOWANCE_METERS + EXIT_MARGIN_METERS
+}
+
 /**
  * 사용자 둘레 "다시 고르기" 원의 한계. 실제 반경은 `reselectRadius` 가 업체 밀도에 맞춰 정한다.
  * 홍대 앞은 500m 안에 제휴 업체가 중앙값 86곳이라(10-28 운영 데이터) 고정 500m 원이면 19곳 밖 업체 반경에
@@ -107,8 +112,8 @@ export const REENTRY_GRACE_MS = 3 * 60 * 1000
 /** 하루(한국 날짜) 전체 알림 수. 같은 가게는 `SAME_PARTNER_COOLDOWN_MS` 규칙을 따로 지킨다. */
 export const MAX_ALERTS_PER_DAY = 3
 /**
- * 알림 사이 최소 간격. 20m 반경이면 실제로 그 가게에 있을 때만 오므라 2시간(10-28)은 길었다 — 밥 먹고 카페로 옮기면
- * 카페 알림이 오게 30분(10-29). 시간대 제한(밤 9시~아침 8시, 점심·저녁 우선)은 10-29 사용자 요청으로 없앴다.
+ * 알림 사이 최소 간격. 권장 20m 반경이면 실제로 그 가게에 있을 때만 오므로 2시간(10-28)은 길었다 — 밥 먹고 카페로 옮기면
+ * 카페 알림이 오게 30분(10-29). 밤 시간 제한은 이 간격과 별개로 야간 수신 동의 설정에서 처리한다.
  */
 export const MIN_ALERT_GAP_MS = 30 * 60 * 1000
 /**
@@ -132,7 +137,6 @@ export const QUIET_END_HOUR = 8
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-/** 한국 시간으로 밤(21~8시)인지. */
 /** 저장된 값(`quietNight`)으로 밤에 쉬는지. 값이 없으면(처음·예전 설치) 쉰다 — `false` 는 야간 수신에 동의했을 때만 저장한다. */
 export function quietAtNight(quietNight: boolean | undefined): boolean {
   return quietNight !== false
@@ -243,9 +247,13 @@ function blockedAt(partner: Located, lat: number, lng: number): boolean {
  * 업체 알림 영역과 겹치는 건물 외곽(11-09 사용자 요청: 업체를 통째로 빼지 말고 겹치는 곳만 빼기).
  * 알림 영역 = 업체 원 − 이 외곽들. 강의실·기숙사 방에서 잡힌 위치로는 알리지 않고, 가게 안·앞에서는 그대로 알린다.
  */
-export function blockedRingsFor(partner: { lat: number; lng: number }, campus: readonly CampusPoint[]): [number, number][][] {
+export function blockedRingsFor(
+  partner: { lat: number; lng: number },
+  campus: readonly CampusPoint[],
+  alertRadius: number = ALERT_RADIUS_METERS,
+): [number, number][][] {
   return campus
-    .filter((b) => b.boundary && b.boundary.length >= 3 && distanceToRingMeters(partner.lat, partner.lng, b.boundary) <= CAMPUS_CLEARANCE_METERS)
+    .filter((b) => b.boundary && b.boundary.length >= 3 && distanceToRingMeters(partner.lat, partner.lng, b.boundary) <= campusClearanceMeters(alertRadius))
     .map((b) => b.boundary!.map(([lat, lng]) => [lat, lng] as [number, number]))
 }
 
@@ -269,10 +277,12 @@ export interface PickTargetsOptions {
   affiliations: readonly PartnerAffiliation[]
   /**
    * 캠퍼스 건물. 업체가 건물 외곽 안에 있으면 뺀다(캠퍼스 안 가게). 그 밖에는 대상으로 두고 겹치는 건물 영역만 알림에서 뺀다
-   * (`blockedRingsFor`). 외곽이 없는 건물은 중심에서 `CAMPUS_CLEARANCE_METERS` 안이면 뺀다.
+   * (`blockedRingsFor`). 외곽이 없는 건물은 중심에서 알림 반경 + GPS 오차 여유 + 나감 여유 안이면 뺀다.
    */
   campusPoints: readonly CampusPoint[]
   now: number
+  /** 이용자가 고른 명목 알림 반경. 건물 제외 범위에도 반영한다. */
+  alertRadius?: number
   /** 소속을 보지 않고 모든 제휴를 대상으로(현장 테스트 빌드만, 10-29). 제휴가 끝났는지는 그대로 본다. */
   anyAffiliation?: boolean
 }
@@ -286,6 +296,7 @@ export interface PickTargetsOptions {
 export function pickTargets(partners: readonly Partner[], options: PickTargetsOptions): Partner[] {
   const today = kstTodayYmd(options.now)
   const mine = options.affiliations
+  const clearance = campusClearanceMeters(options.alertRadius)
   return partners.filter((partner) => {
     if (benefitFor(liveBenefits(partner, today), mine) === null) return false
     if (endedBefore(partner.endsOn, today)) return false
@@ -294,7 +305,7 @@ export function pickTargets(partners: readonly Partner[], options: PickTargetsOp
     return !options.campusPoints.some((point) =>
       point.boundary && point.boundary.length >= 3
         ? pointInRing(partner.lat, partner.lng, point.boundary)
-        : haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < CAMPUS_CLEARANCE_METERS,
+        : haversineMeters(point.lat, point.lng, partner.lat, partner.lng) < clearance,
     )
   })
 }
@@ -481,7 +492,7 @@ export type EnterDecision =
 export interface DecideOptions {
   /** 현장 테스트: 횟수·간격 제한 없이 방문마다 한 번. */
   perVisit?: boolean
-  /** 밤(22~8시)에는 알리지 않기(설정). */
+  /** 밤(21~8시)에는 알리지 않기(설정). */
   quietNight?: boolean
   /** 머물러야 하는 시간(`dwellFor`). 기본 `DWELL_MS`. */
   dwellMs?: number

@@ -36,10 +36,13 @@ export function reportPlaceText(
   return '홍익대학교 서울캠퍼스'
 }
 
-/** 공유 문구: 제목, 시간(KST), 장소, 링크. */
+/**
+ * 공유 문구: 제목, 시간(KST), 장소, 링크. 머리표('[홍익온]')는 11-22 에 뺐다 — 링크 미리보기 카드
+ * (`netlify/edge-functions/report-preview.ts`)가 홍익온 이름과 그림을 보여 준다.
+ */
 export function reportShareMessage(report: ReportListItem, buildings: readonly Building[]): string {
   return [
-    `[홍익온] ${report.title}`,
+    report.title,
     `일시: ${formatReportSchedule(report)}`,
     `장소: ${reportPlaceText(report, buildings)}`,
     reportShareUrl(report.id),

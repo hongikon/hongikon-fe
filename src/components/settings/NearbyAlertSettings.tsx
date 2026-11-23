@@ -11,7 +11,7 @@ import NearbyAlertModal from './nearby/NearbyAlertModal'
  * - 줄: 켜고 끄는 스위치 + 지금 상태 한 줄(빠진 권한·받는 범위). 줄을 누르면 창이 열린다.
  * - 꺼져 있을 때 창: 안내·소속·수신 동의 → "항상 허용" 안내 화면 → 알림 권한 → 위치 "앱 사용 중" → "항상" → 감시 시작.
  * - 켜져 있을 때 창: "알림이 오려면" 점검표(빠진 권한 고치기), 받는 방법(밤에 받지 않기),
- *   내 소속, 알림 안 받는 가게, (테스트 앱) 반경·횟수 제한·시험 알림. 바꾸면 바로 저장된다.
+ *   내 소속, 알림 안 받는 가게, 모든 사용자의 반경 설정. 개발 도구(현장 테스트 빌드·관리자만)에는 횟수 제한·시험 알림이 있다.
  * 끄기: 감시·예약을 멈추고 서버 동의 시각을 지운다(수신 거부). 설계: `docs/nearby-partner-alert-release-plan.md`.
  * 상태는 hooks/settings/useNearbyAlertRow·useNearbyAlertFlow, 창의 칸들은 components/settings/nearby/*.
  */

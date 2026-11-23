@@ -1,6 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
-import { ALERT_RADIUS_METERS } from '../../../lib/nearbyPartners/rules'
-import { TEST_RADIUS_OPTIONS } from '../../../utils/settings/nearby'
+import { ALERT_RADIUS_METERS, ALERT_RADIUS_OPTIONS } from '../../../lib/nearbyPartners/rules'
 import NearbyRadiusMap from '../NearbyRadiusMap'
 import { nearbyStyles as styles } from './styles'
 
@@ -20,7 +19,7 @@ export default function NearbyRadiusSection({ radius, working, onChoose }: Props
       <Text style={styles.sectionTitle}>알림 반경</Text>
       <View style={styles.card}>
         <View style={[styles.chips, styles.radiusChips]}>
-          {TEST_RADIUS_OPTIONS.map((meters) => {
+          {ALERT_RADIUS_OPTIONS.map((meters) => {
             const selected = radius === meters
             return (
               <Pressable

@@ -2,12 +2,8 @@ import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-nat
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
-import { ACCURACY_ALLOWANCE_METERS } from '../../lib/nearbyPartners/rules'
 import { useNearbyRadiusMap } from '../../hooks/settings/useNearbyRadiusMap'
 import { IMAGE_ASPECT } from '../../utils/settings/nearbyRadiusMap'
-
-/** 실제 판정은 GPS 오차를 반경에 더해 준다(rules.preciselyInside). 설명 글에만 적는다. */
-const GPS_ALLOWANCE_METERS = ACCURACY_ALLOWANCE_METERS
 
 /**
  * 배경 그림(네이버 지도를 11-02 한 번 찍은 것). 설정을 열 때마다 지도를 불러오지 않는다.
@@ -51,10 +47,6 @@ export default function NearbyRadiusMap({ meters }: { meters: number }) {
       <Text style={styles.caption}>
         가게마다 반경 {meters}m · 이 지도에 {zones.length}곳
       </Text>
-      <Text style={styles.legend}>
-        원 하나가 제휴 가게 하나의 알림 영역이에요. 이 영역 안에 들어가 잠시 머물면 그 가게 알림이 와요. GPS 오차를 생각해 최대{' '}
-        {GPS_ALLOWANCE_METERS}m까지 넉넉하게 봐줘요.
-      </Text>
     </View>
   )
 }
@@ -66,5 +58,4 @@ const styles = StyleSheet.create({
   // 반경이 크면 원이 많이 겹쳐 지도가 덮이므로 옅게.
   zoneWide: { borderWidth: 1, borderColor: 'rgba(5, 1, 74, 0.45)', backgroundColor: 'rgba(5, 1, 74, 0.04)' },
   caption: { fontSize: 13, lineHeight: 18, fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  legend: { fontSize: 13, lineHeight: 19, fontFamily: FONTS.regular, color: COLORS.textTertiary },
 })

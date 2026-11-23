@@ -93,16 +93,18 @@ if (existsSync(favicon) && existsSync(indexHtml)) {
   // 검색 결과·링크 미리보기에 쓰이는 소개(11-18). 없으면 검색 엔진이 아래 <noscript> 의 Expo 기본 영어 문구
   // ("You need to enable JavaScript to run this app.")를 소개로 가져갔다.
   const description =
-    '홍익대 생활을 한 곳에서. 학교·학과 공지 알림, 캠퍼스 지도와 건물 길찾기, 학식, 제휴 혜택을 볼 수 있어요. ' +
+    '홍익대 생활을 한 곳에서. 공지 알림, 캠퍼스 길찾기, 제휴 혜택, AI 챗봇(물어보기)을 쓸 수 있어요. ' +
     '홍익대학교 학생이 만든 비공식 서비스예요.'
   const meta =
     `<meta name="description" content="${description}"/>` +
     '<meta property="og:type" content="website"/>' +
     '<meta property="og:site_name" content="홍익온"/>' +
-    '<meta property="og:title" content="홍익온 — 홍익대 공지·캠퍼스 지도·학식"/>' +
+    '<meta property="og:title" content="홍익온 — 공지 알림 · 길찾기 · 제휴 · AI 챗봇"/>' +
     `<meta property="og:description" content="${description}"/>` +
     '<meta property="og:url" content="https://hongikon.com/"/>' +
     '<meta property="og:image" content="https://hongikon.com/og-image.png"/>' +
+    '<meta property="og:image:width" content="1200"/>' +
+    '<meta property="og:image:height" content="630"/>' +
     '<meta property="og:locale" content="ko_KR"/>' +
     '<meta name="twitter:card" content="summary_large_image"/>'
   // 자바스크립트를 끈 브라우저·검색 로봇에 보이는 안내. 앱 설명과 정적 안내 페이지로 가는 링크를 둔다.

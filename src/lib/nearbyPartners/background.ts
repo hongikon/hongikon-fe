@@ -66,12 +66,11 @@ import type { Partner, PartnerAffiliation } from '../../types'
  * ExpoLocation·ExpoTaskManager 네이티브 모듈이 있는 바이너리. 그 밖에는 `nearbyAlertsAvailable()` 이 false 라 아무것도 하지 않는다.
  * 이 파일은 앱 진입점(index.ts) 맨 위에서 불러 작업을 정의한다 — 앱이 꺼진 채 지오펜스 신호로 깨어날 때도 작업이 있어야 한다.
  *
- * 두 단계로 잰다(10-29, 알림 반경 20m):
- * 1. 운영체제 지오펜스(업체마다 100m, `PARTNER_REGION_RADIUS_METERS`) — 가게 근처에 오면 앱을 깨운다. iOS 는 이보다 작은
+ * 두 단계로 잰다(알림 반경은 설정값 10~100m, 기본 20m):
+ * 1. 운영체제 지오펜스(업체마다 150m, `PARTNER_REGION_RADIUS_METERS`) — 가게 근처에 오면 앱을 깨운다. iOS 는 이보다 작은
  *    원을 믿을 만하게 알려 주지 않는다.
- * 2. 깨운 원 안에 있는 동안만 GPS 위치 갱신(`NEARBY_PRECISE_TASK`)을 켜 업체까지 거리를 재고, 알림 반경(기본 20m) 안이면
- *    머무름을 센다. 모든 깨운 원에서 멀어지거나 2시간이 지나면 끈다. 위치 갱신을 켤 수 없는 기기(Android 포그라운드 서비스
- *    없는 빌드 등)는 1단계 신호를 그대로 머무름으로 쓴다(반경 100m).
+ * 2. 깨운 원 안에서 GPS 위치 갱신(`NEARBY_PRECISE_TASK`)으로 선택한 알림 반경을 판단한다. 모든 깨운 원에서 멀어지거나
+ *    2시간이 지나면 끈다. 위치 갱신을 켤 수 없으면 깨우는 신호만으로 진입 처리하지 않고 GPS 를 한 번 재서 판단한다.
  *
  * 위치는 서버로 보내지 않는다. 기기에는 대상 업체 목록·머무름·보낸 시각만 저장한다(좌표 기록 없음).
  */
@@ -89,7 +88,7 @@ const PRECISE_MAX_MS = 2 * 60 * 60 * 1000
 const PRECISE_STOP_MARGIN_METERS = 50
 /**
  * 단계별 정확도(11-03, 배터리): 깨우는 원 안에서는 먼저 Wi-Fi·기지국 위치(GPS 칩 안 씀)로 보다가, 어느 가게 가까이 오면
- * GPS 로 올려 20m 를 잰다(`nextPreciseMode` — 50m 안이면 올리고 70m 밖이면 내림, 위치 오차를 빼고 잰다).
+ * GPS 로 올려 선택한 알림 반경을 잰다(`nextPreciseMode` — 50m 안이면 올리고 70m 밖이면 내림, 위치 오차를 빼고 잰다).
  * 홍대 앞은 늘 어느 가게 150m 안이라 GPS 를 계속 켜 두면 배터리를 많이 썼다.
  */
 const PRECISE_MODE_KEY = 'hongikon_nearby_precise_mode'
@@ -376,7 +375,7 @@ async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
     await pkg.Location.startLocationUpdatesAsync(NEARBY_PRECISE_TASK, {
       accuracy: mode === 'fine' ? pkg.Location.Accuracy.High : pkg.Location.Accuracy.Balanced,
       // 11-03: 5m 움직여야 새 위치를 주던 것을 0으로. 가게에 들어가 가만히 있으면 위치가 더 오지 않아, 들어갈 때 실내 오차로
-      // '20m 밖'으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다. 깨우는 원 안에서만 켜지고 멀어지면 끈다.
+      // 선택 반경 밖으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다. 깨우는 원 안에서만 켜지고 멀어지면 끈다.
       distanceInterval: 0,
       timeInterval: 5_000,
       pausesUpdatesAutomatically: false,
@@ -794,7 +793,7 @@ async function handleGeofenceEvent(event: GeofenceEvent): Promise<void> {
     await mutate((state, now) => (state.enabled ? registerAround(state, now, at) : { state, actions: [] }))
     return
   }
-  // 깨우는 원에 들어왔다 → GPS 를 켜 알림 반경(20m)은 위치 갱신이 판단한다. 못 켜도 이 신호(150m)를 머무름으로 쓰지 않고
+  // 깨우는 원에 들어왔다 → GPS 를 켜 선택한 알림 반경은 위치 갱신이 판단한다. 못 켜도 이 신호(150m)를 머무름으로 쓰지 않고
   // GPS 한 번으로 알림 반경 안인지만 본다(11-06: 150m 떨어진 곳에서 알림이 오던 것).
   // 등록 직후 상태 신호면 등록이 이미 GPS 를 한 번 쟀으니(`registerAround`) 가게마다 또 재지 않는다.
   if (entered) {
@@ -934,11 +933,17 @@ function blockedField(rings: [number, number][][]): { blocked?: [number, number]
   return rings.length > 0 ? { blocked: rings } : {}
 }
 
-function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAffiliation[], campusPoints: NearbySource['campusPoints'], now: number): SnapshotPartner[] {
+function snapshot(
+  partners: readonly Partner[],
+  affiliations: readonly PartnerAffiliation[],
+  campusPoints: NearbySource['campusPoints'],
+  now: number,
+  alertRadius: number,
+): SnapshotPartner[] {
   // 테스트 앱도 고른 소속(+총학생회)만 대상으로 본다(11-09 사용자 요청 — 소속과 상관없이 모두 잡던 10-29 현장 테스트 규칙을 없앰:
   // 기숙사를 골랐는데 지도 '근처 알림 영역'에 다른 소속 가게가 섞여 헷갈렸다).
   const today = kstTodayYmd(now)
-  return pickTargets(partners, { affiliations, campusPoints, now }).map((p) => ({
+  return pickTargets(partners, { affiliations, campusPoints, now, alertRadius }).map((p) => ({
     id: p.id,
     name: p.name,
     lat: p.lat,
@@ -948,7 +953,7 @@ function snapshot(partners: readonly Partner[], affiliations: readonly PartnerAf
     affiliations: p.affiliations,
     affiliationBenefits: liveBenefits(p, today).affiliationBenefits,
     until: targetUntil(p, affiliations, today),
-    ...blockedField(blockedRingsFor(p, campusPoints)),
+    ...blockedField(blockedRingsFor(p, campusPoints, alertRadius)),
   }))
 }
 
@@ -1071,7 +1076,7 @@ export async function syncNearbyAlerts(
     }
     state = {
       ...state,
-      targets: snapshot(source.partners, state.affiliations, source.campusPoints, now),
+      targets: snapshot(source.partners, state.affiliations, source.campusPoints, now, partnerRadiusMeters()),
       // 현장 테스트 앱은 기본으로 횟수 제한 없이. 설정의 [테스트] 스위치로 운영 규칙(하루 최대 수·간격)을 켜 볼 수 있다.
       // 관리자 계정도 설정의 테스트 모드를 켜면 같은 규칙(11-10).
       perVisit: fieldTestUnlimited(),
