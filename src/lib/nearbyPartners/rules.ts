@@ -149,21 +149,44 @@ export function isQuietHour(ms: number): boolean {
 
 /**
  * 깨우는 원 안의 위치 갱신 단계(11-03 배터리): 'coarse' = Wi-Fi·기지국(GPS 칩 안 씀), 'fine' = GPS.
- * 어느 가게 50m 안이면 GPS 로 올리고 70m 밖이면 내린다(경계에서 오락가락하지 않게 20m 틈).
+ * 아직 알릴 수 있는 가게에 (고른 알림 반경 + GPS 오차 여유) 안으로 다가가면 GPS 로 올리고, 거기서 20m 더 멀어지면 내린다
+ * (경계에서 오락가락하지 않게 20m 틈). 11-23: 고정 50m·70m 에서 알림 반경 기준으로 — 반경 100m 를 고른 사람은 50m 안에
+ * 와서야 GPS 를 켜 반경 가장자리 진입을 Wi-Fi 위치로만 쟀다. 기본 반경 20m 는 45m·65m 로 예전과 거의 같다.
  */
 export type PreciseMode = 'coarse' | 'fine'
-export const FINE_ENTER_METERS = 50
-export const FINE_EXIT_METERS = 70
+/** GPS 로 내리는 거리 = 올리는 거리 + 이만큼. */
+export const FINE_EXIT_GAP_METERS = 20
+
+/** 이 거리(가게까지 - 위치 오차) 안이면 GPS 로 올린다: 고른 알림 반경 + GPS 오차 여유. */
+export function fineEnterMeters(alertRadius: number = ALERT_RADIUS_METERS): number {
+  return alertRadius + ACCURACY_ALLOWANCE_METERS
+}
+
+/**
+ * 단계별 위치 갱신 간격(11-23 배터리, 사용자: 홍대 거리·캠퍼스는 늘 어느 가게의 깨우는 원 안이라 위치 갱신이 계속 돈다).
+ * - Wi-Fi·기지국: 20초(Android 만 — expo-location `timeInterval` 은 Android 전용)이고, 15m 넘게 움직였을 때만 새 위치를 받는다
+ *   (iOS·Android). 가게에서 먼 단계라 가만히 있는 동안은 위치가 필요 없다. 걸어서 다가오면 15m 마다 위치가 온다.
+ * - GPS: 5초·0m 그대로 — 가게 안에 가만히 있어도 위치가 와야 머문 시간을 센다(11-03).
+ */
+export const COARSE_UPDATE_INTERVAL_MS = 20_000
+export const COARSE_UPDATE_DISTANCE_METERS = 15
+export const FINE_UPDATE_INTERVAL_MS = 5_000
 
 /**
  * 다음 위치 갱신 단계. 거리에서 위치 오차를 빼고(가장 가까울 수 있는 거리) 비교한다 — Wi-Fi·기지국 위치는 실내에서 수십~수백 m
  * 틀려, 가게 안(10m)에 있어도 90m 밖으로 찍히면 GPS 로 올라가지 않아 진입을 못 재고 알림이 오지 않았다(11-04 현장).
  * 오차는 깨우는 원 크기까지만 빼 준다(이 판단은 깨우는 원 안에서만 쓰인다).
  */
-export function nextPreciseMode(mode: PreciseMode, nearestMeters: number, accuracy: number | null | undefined): PreciseMode {
+export function nextPreciseMode(
+  mode: PreciseMode,
+  nearestMeters: number,
+  accuracy: number | null | undefined,
+  alertRadius: number = ALERT_RADIUS_METERS,
+): PreciseMode {
   const closest = nearestMeters - Math.min(Math.max(accuracy ?? 0, 0), PARTNER_REGION_RADIUS_METERS)
-  if (closest <= FINE_ENTER_METERS) return 'fine'
-  if (closest > FINE_EXIT_METERS) return 'coarse'
+  const enter = fineEnterMeters(alertRadius)
+  if (closest <= enter) return 'fine'
+  if (closest > enter + FINE_EXIT_GAP_METERS) return 'coarse'
   return mode
 }
 

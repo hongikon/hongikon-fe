@@ -394,7 +394,7 @@ export function preciseUpdate(input: NearbyState, now: number, fix: PreciseFix, 
         step.state.stays[t.id]?.exitedAt === null &&
         coarseExitUncertain(haversineMeters(at.lat, at.lng, t.lat, t.lng), accuracy, radii.alert),
     )
-  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy), stop, nearestMeters: nearest, needsFineCheck }
+  return { ...step, nextMode: nextPreciseMode(fix.mode, nearest, accuracy, radii.alert), stop, nearestMeters: nearest, needsFineCheck }
 }
 
 /**

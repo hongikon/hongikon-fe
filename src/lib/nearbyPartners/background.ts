@@ -23,6 +23,9 @@ import {
   DEFAULT_DWELL_MINUTES,
   MAX_PARTNER_REGIONS,
   PARTNER_REGION_RADIUS_METERS,
+  COARSE_UPDATE_DISTANCE_METERS,
+  COARSE_UPDATE_INTERVAL_MS,
+  FINE_UPDATE_INTERVAL_MS,
   alertGroup,
   insideAtRegistration,
   REGISTER_SETTLE_MS,
@@ -88,7 +91,7 @@ const PRECISE_MAX_MS = 2 * 60 * 60 * 1000
 const PRECISE_STOP_MARGIN_METERS = 50
 /**
  * 단계별 정확도(11-03, 배터리): 깨우는 원 안에서는 먼저 Wi-Fi·기지국 위치(GPS 칩 안 씀)로 보다가, 어느 가게 가까이 오면
- * GPS 로 올려 선택한 알림 반경을 잰다(`nextPreciseMode` — 50m 안이면 올리고 70m 밖이면 내림, 위치 오차를 빼고 잰다).
+ * GPS 로 올려 선택한 알림 반경을 잰다(`nextPreciseMode` — 알림 반경 + 오차 여유 안이면 올리고 20m 더 멀면 내림, 위치 오차를 빼고 잰다).
  * 홍대 앞은 늘 어느 가게 150m 안이라 GPS 를 계속 켜 두면 배터리를 많이 썼다.
  */
 const PRECISE_MODE_KEY = 'hongikon_nearby_precise_mode'
@@ -374,10 +377,12 @@ async function startPrecise(mode: PreciseMode = 'coarse'): Promise<boolean> {
     }
     await pkg.Location.startLocationUpdatesAsync(NEARBY_PRECISE_TASK, {
       accuracy: mode === 'fine' ? pkg.Location.Accuracy.High : pkg.Location.Accuracy.Balanced,
-      // 11-03: 5m 움직여야 새 위치를 주던 것을 0으로. 가게에 들어가 가만히 있으면 위치가 더 오지 않아, 들어갈 때 실내 오차로
-      // 선택 반경 밖으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다. 깨우는 원 안에서만 켜지고 멀어지면 끈다.
-      distanceInterval: 0,
-      timeInterval: 5_000,
+      // GPS 단계: 11-03 에 5m 움직여야 새 위치를 주던 것을 0으로. 가게에 들어가 가만히 있으면 위치가 더 오지 않아, 들어갈 때 실내
+      // 오차로 선택 반경 밖으로 잡히면 머문 시간을 세지 못해 알림이 들쭉날쭉 늦었다.
+      // Wi-Fi·기지국 단계(가게에서 먼 곳): 11-23 배터리 — 15m 움직였을 때만, Android 는 20초마다(rules 의 COARSE_UPDATE_*).
+      // 깨우는 원 안에서만 켜지고 멀어지면 끈다.
+      distanceInterval: mode === 'fine' ? 0 : COARSE_UPDATE_DISTANCE_METERS,
+      timeInterval: mode === 'fine' ? FINE_UPDATE_INTERVAL_MS : COARSE_UPDATE_INTERVAL_MS,
       pausesUpdatesAutomatically: false,
       activityType: pkg.Location.ActivityType.Other,
       // 11-03: 상태 막대·다이나믹 아일랜드의 파란 위치 표시를 끈다. 가게 근처에 있을 때마다 계속 떠 거슬렸다(운영진).

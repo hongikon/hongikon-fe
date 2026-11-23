@@ -14,6 +14,10 @@ import {
   insideAtRegistration,
   preciselyInside,
   nextPreciseMode,
+  fineEnterMeters,
+  COARSE_UPDATE_INTERVAL_MS,
+  COARSE_UPDATE_DISTANCE_METERS,
+  FINE_UPDATE_INTERVAL_MS,
   coarselyOutside,
   partnersNear,
   pickNearest,
@@ -338,7 +342,7 @@ test('나감 여유는 가장 가까운 업체에만: 지나온 C 가 더 가까
   assert.deepEqual([...preciseInsideIds(near, at, 0, new Set())], ['A'])
 })
 
-test('Wi-Fi·기지국 위치는 오차만큼 가까울 수 있으니 거리 - 오차가 50m 안이면 GPS 로 올린다(11-04 원 안인데 알림 안 옴)', () => {
+test('Wi-Fi·기지국 위치는 오차만큼 가까울 수 있으니 거리 - 오차가 (반경 + 오차 여유) 안이면 GPS 로 올린다(11-04 원 안인데 알림 안 옴)', () => {
   // 가게 안(실제 10m)인데 Wi-Fi 위치가 90m 밖으로 찍히고 오차 65m — 예전에는 50m 밖이라 GPS 를 켜지 않아 진입을 못 쟀다.
   assert.equal(nextPreciseMode('coarse', 90, 65), 'fine')
   // 오차가 작고 정말 멀면 그대로 Wi-Fi·기지국.
@@ -349,7 +353,7 @@ test('Wi-Fi·기지국 위치는 오차만큼 가까울 수 있으니 거리 - �
   assert.equal(nextPreciseMode('coarse', 160, 1000), 'fine')
 })
 
-test('GPS 단계는 거리 - 오차가 70m 밖이어야 내리고, 50~70m 사이는 지금 단계를 둔다', () => {
+test('GPS 단계는 거리 - 오차가 올리는 거리 + 20m 밖이어야 내리고, 그 사이는 지금 단계를 둔다(기본 반경 45~65m)', () => {
   assert.equal(nextPreciseMode('fine', 75, 0), 'coarse')
   assert.equal(nextPreciseMode('fine', 75, 10), 'fine')
   assert.equal(nextPreciseMode('fine', 60, 0), 'fine')
@@ -455,4 +459,27 @@ test('광고성 정보 수신 동의: 처리 결과 안내와 2년 재확인(정
   // 2월 29일 동의는 2년 뒤 2월 28일.
   const leap = parseConsentAt('2028-02-29T12:00:00+09:00')!
   assert.equal(reconfirmDueAt(leap, Date.parse('2030-03-01T00:00:00+09:00'), null), Date.parse('2030-02-28T12:00:00+09:00'))
+})
+
+test('GPS 로 올리는 거리는 고른 알림 반경을 따른다(11-23 — 반경 100m 는 50m 안에서야 GPS 를 켰다)', () => {
+  // 기본 반경 20m: 20 + 오차 여유 25 = 45m(예전 50m 와 거의 같다).
+  assert.equal(fineEnterMeters(), 45)
+  assert.equal(nextPreciseMode('coarse', 45, 0), 'fine')
+  assert.equal(nextPreciseMode('coarse', 46, 0), 'coarse')
+  // 반경 100m: 125m 안이면 GPS. 예전에는 110m 에서도 Wi-Fi·기지국으로 남아 반경 가장자리 진입을 정밀하게 못 쟀다.
+  assert.equal(fineEnterMeters(100), 125)
+  assert.equal(nextPreciseMode('coarse', 110, 0, 100), 'fine')
+  assert.equal(nextPreciseMode('fine', 140, 0, 100), 'fine')
+  assert.equal(nextPreciseMode('fine', 150, 0, 100), 'coarse')
+  // 반경 10m: 35m 안부터.
+  assert.equal(nextPreciseMode('coarse', 40, 0, 10), 'coarse')
+  assert.equal(nextPreciseMode('coarse', 35, 0, 10), 'fine')
+})
+
+test('위치 갱신 간격: Wi-Fi·기지국은 20초·15m, GPS 는 5초(가게 안에 가만히 있어도 위치가 온다)', () => {
+  assert.equal(COARSE_UPDATE_INTERVAL_MS, 20_000)
+  assert.equal(COARSE_UPDATE_DISTANCE_METERS, 15)
+  assert.equal(FINE_UPDATE_INTERVAL_MS, 5_000)
+  // 걸어서(초당 약 1.3m) 깨우는 원 가장자리(150m)에서 GPS 로 올리는 거리(45m)까지 오는 동안 위치가 몇 번은 와야 한다.
+  assert.ok((150 - fineEnterMeters()) / COARSE_UPDATE_DISTANCE_METERS >= 5)
 })
