@@ -1,68 +1,16 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
-import { useIsFocused } from '@react-navigation/native'
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { DIALOG_MAX_WIDTH } from '../../constants/layout'
 import { RADIUS } from '../../constants/spacing'
-import type { AppNotice } from '../../constants/appNotices'
-import { loadAppNotices } from '../../lib/appNotices'
-import { currentPopupNotice } from '../../utils/noticeMerge'
-import { useDeptPickPending, useOnboardingDone } from '../../lib/onboarding'
-import { useAuth } from '../../contexts/AuthContext'
-import { usePartnerNoticePending } from '../map/PartnerNoticeModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { NoticeDetailContent } from '../settings/NoticeDetailModal'
 import ModalHeader from '../settings/ModalHeader'
 import ContentColumn from './ContentColumn'
 import Button from './Button'
-
-/** '다시 보지 않기'를 누른 팝업 공지 id. 새 팝업 공지(id 가 다름)가 생기면 다시 뜬다. '닫기'는 남기지 않는다(다음 실행에 다시 뜬다). */
-const STORAGE_KEY = '@hongikon_launch_notice_seen'
-
-/**
- * 띄울 차례인지. PartnerNoticeModal 과 같은 방식으로 앱 전체가 함께 본다 — 알림 안내(NotificationPrimer)가 이 창이
- * 닫힐 때까지 기다린다(네이티브 Modal 두 개가 겹치면 화면이 눌리지 않았다, PartnerNoticeModal 주석).
- * 'unknown' = 저장소를 아직 안 읽음, 'pending' = 띄울 차례, 'seen' = 봤음·띄울 공지 없음·못 읽어 건너뜀.
- */
-type LaunchNoticeState = 'unknown' | 'pending' | 'seen'
-/** 서버 공지(11-09)를 받은 뒤 정한다 — 받기 전엔 'unknown' 이라 다른 첫 실행 안내도 기다린다(받기는 최대 4초). */
-let popupNotice: AppNotice | null = null
-let noticeState: LaunchNoticeState = 'unknown'
-let loading = false
-const listeners = new Set<() => void>()
-
-function setNoticeState(next: LaunchNoticeState): void {
-  if (noticeState === next) return
-  noticeState = next
-  listeners.forEach((listener) => listener())
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  if (!loading) {
-    loading = true
-    loadAppNotices()
-      .then(async (notices) => {
-        const notice = currentPopupNotice(notices)
-        if (!notice) return setNoticeState('seen')
-        const seenId = await AsyncStorage.getItem(STORAGE_KEY)
-        popupNotice = notice
-        setNoticeState(seenId === notice.id ? 'seen' : 'pending')
-      })
-      .catch(() => setNoticeState('seen'))
-  }
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-/** 앱 공지 팝업이 아직 닫히지 않았는지(판단 전 포함). 다른 첫 실행 안내 창은 이게 false 가 된 뒤에 띄운다. */
-export function useLaunchNoticePending(): boolean {
-  return useSyncExternalStore(subscribe, () => noticeState, () => noticeState) !== 'seen'
-}
+import { useLaunchNoticeModal } from '../../hooks/common/useLaunchNoticeModal'
+import { popupNotice } from '../../utils/common/launchNoticeModal'
 
 /**
  * 앱을 켜고 지도에 들어왔을 때 한 번 뜨는 공지 카드(11-02 처리방침 변경 안내부터). appNotices.ts 에서 popup 을 준 공지만
@@ -72,59 +20,11 @@ export function useLaunchNoticePending(): boolean {
  * 첫 실행 화면(온보딩·학과 고르기)과 제휴 안내가 끝난 뒤에 띄운다.
  */
 export default function LaunchNoticeModal() {
-  const state = useSyncExternalStore(subscribe, () => noticeState, () => noticeState)
-  const focused = useIsFocused()
-  const onboardingDone = useOnboardingDone() === true
-  // 학과 고르기 화면은 로그인한 경우에만 메인을 가린다(RootNavigator) — 게스트는 표시가 남아 있어도 기다리지 않는다.
-  const { status } = useAuth()
-  const deptPickShowing = useDeptPickPending() && status === 'authenticated'
-  const partnerNoticePending = usePartnerNoticePending()
-  const [detailOpen, setDetailOpen] = useState(false)
-
-  /** 이번 실행에서만 닫는다. */
-  const closeForNow = () => setNoticeState('seen')
-
-  /** 이 공지는 다시 띄우지 않는다. */
-  const dontShowAgain = () => {
-    setNoticeState('seen')
-    if (popupNotice) AsyncStorage.setItem(STORAGE_KEY, popupNotice.id).catch(() => {})
-  }
-
-  // '보러가기'는 팝업 창을 닫고 본문 창을 새로 띄우지 않고, 같은 창 안에서 본문으로 바꿔 보여 준다. iOS 에서 창이 닫히는
-  // 중에 다른 창을 띄우면 안 뜨고 화면이 멈출 수 있다(11-06 설정 공지 목록에서 실제로 멈췄다). 본문을 닫으면 이번 실행에서만 닫힌다.
-  const openDetail = () => setDetailOpen(true)
-  const closeDetail = () => {
-    setDetailOpen(false)
-    closeForNow()
-  }
-
-  const popup = popupNotice?.popup
-  const showPopup = state === 'pending' && popup !== undefined && focused && onboardingDone && !deptPickShowing && !partnerNoticePending
-
-  // 카드 폭은 화면마다 달라(폴드·웹 창) 그려진 뒤 잰다. 넘긴 위치로 지금 카드를 고른다.
-  const pagerRef = useRef<ScrollView>(null)
-  const [pageWidth, setPageWidth] = useState(0)
-  const [page, setPage] = useState(0)
-  const lastPage = (popup?.slides.length ?? 1) - 1
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (pageWidth === 0) return
-    const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth)
-    if (next !== page) setPage(Math.max(0, Math.min(lastPage, next)))
-  }
-
-  const goNext = () => {
-    if (page >= lastPage) {
-      closeForNow()
-      return
-    }
-    pagerRef.current?.scrollTo({ x: (page + 1) * pageWidth, animated: true })
-    setPage(page + 1)
-  }
+  const { detailOpen, closeForNow, dontShowAgain, openDetail, closeDetail, popup, showPopup, pagerRef, pageWidth, setPageWidth, page, lastPage, handleScroll, goNext } = useLaunchNoticeModal()
 
   return (
     <>
-      {showPopup && (
+      {showPopup && popup && (
         <Modal visible transparent animationType="fade" onRequestClose={detailOpen ? closeDetail : closeForNow}>
           {detailOpen && popupNotice ? (
             <SafeAreaProvider>

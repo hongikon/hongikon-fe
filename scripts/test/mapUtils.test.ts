@@ -1,12 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { routePinBuilding } from '../../src/utils/map/routePinBuilding'
+import { routePinBuilding } from '../../src/utils/map/route/routePinBuilding'
 import { buildingLabel, offscreenSummary } from '../../src/utils/map/labels'
 import { searchPinnedSection } from '../../src/utils/map/searchPinned'
-import { partnerEditSuggestion } from '../../src/utils/map/partnerEdit'
+import { partnerEditSuggestion } from '../../src/utils/map/partner/partnerEdit'
 import { overlayMarkerMessages } from '../../src/utils/map/mapSync'
 import { mapVisibility } from '../../src/utils/map/visibility'
-import { withRo } from '../../src/utils/josa'
+import { withRo } from '../../src/utils/common/josa'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 

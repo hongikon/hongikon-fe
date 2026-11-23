@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { unresolvedFacilities } from '../../utils/facilities'
-import { filterPartners, hasActiveFilter, partnersOutsideFocus, type PartnerFilter } from '../../utils/partners'
+import { unresolvedFacilities } from '../../utils/map/facilities'
+import { filterPartners, hasActiveFilter, partnersOutsideFocus, type PartnerFilter } from '../../utils/map/partner/partners'
 import type { Building, Facility, FacilityKind, Partner } from '../../types'
 
 interface Options {

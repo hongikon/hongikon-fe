@@ -11,8 +11,8 @@ import {
   type DaysMode,
   type EditableDay,
   type ReportDaysPatch,
-} from '../../../utils/map/reportDays'
-import { canRunDaily, kstDateKey, kstMidnight, kstMinutesOfDay } from '../../../utils/reportSchedule'
+} from '../../../utils/map/report/reportDays'
+import { canRunDaily, kstDateKey, kstMidnight, kstMinutesOfDay } from '../../../utils/map/report/reportSchedule'
 
 interface Options {
   /** 고른 시작(첫날 시작)·종료(마지막 날 끝). */

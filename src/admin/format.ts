@@ -1,7 +1,7 @@
 import { REPORT_CATEGORIES } from '../constants/reportCategories'
 import type { ReportCategory } from '../types'
 import type { FlagReason, ReportStatus } from './types'
-import { parseServerTime } from '../utils/serverTime'
+import { parseServerTime } from '../utils/common/serverTime'
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 

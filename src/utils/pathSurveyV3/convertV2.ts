@@ -1,6 +1,6 @@
-import { edgeKey } from '../pathSurvey'
-import { normalizeStore, STORE_KEY, type SurveyEdge, type SurveyModule, type SurveyNode } from '../pathSurveyStore'
-import { EXPORT_FORMAT, parseBundle } from '../pathSurveySync'
+import { edgeKey } from '../pathSurvey/survey'
+import { normalizeStore, STORE_KEY, type SurveyEdge, type SurveyModule, type SurveyNode } from '../pathSurvey/store'
+import { EXPORT_FORMAT, parseBundle } from '../pathSurvey/sync'
 import {
   buildingsContaining,
   ENTRANCE_LABEL,

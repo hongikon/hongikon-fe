@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { FLAG_REASON_LABEL, formatDateTime, formatMemberRef } from '../../format'
-import { useReportFlags } from '../../hooks/useReportFlags'
+import { useReportFlags } from '../../hooks/reports/useReportFlags'
 import { Badge, InlineError } from '../../ui'
 
 interface Props {

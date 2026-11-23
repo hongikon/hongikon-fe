@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { PartnerCard } from '../components/partners/PartnerCard'
 import { PartnerForm } from '../components/partners/PartnerForm'
-import { usePartnersAdmin } from '../hooks/usePartnersAdmin'
+import { usePartnersAdmin } from '../hooks/partners/usePartnersAdmin'
 import { TextRow } from '../MapForm'
 import { adminText, Button, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
 

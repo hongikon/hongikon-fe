@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { hasAlcoholBenefit, partnerBenefitGroups, splitBulletItems } from '../../src/utils/map/partnerBenefits'
+import { hasAlcoholBenefit, partnerBenefitGroups, splitBulletItems } from '../../src/utils/map/partner/partnerBenefits'
 import { PARTNER_AFFILIATION_USAGE_NOTES } from '../../src/constants/partnerAffiliations'
 import type { Partner } from '../../src/types'
 

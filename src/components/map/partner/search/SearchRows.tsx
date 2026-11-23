@@ -6,8 +6,8 @@ import { partnerCategoryMeta } from "../../../../constants/partnerCategories";
 import { RADIUS } from "../../../../constants/spacing";
 import { FONTS } from "../../../../constants/typography";
 import type { Facility, Partner, PartnerCategory } from "../../../../types";
-import type { FacilitySearchResult } from "../../../../utils/facilitySearch";
-import type { PinnedPartnerGroup } from "../../../../utils/map/partnerSearchSections";
+import type { FacilitySearchResult } from "../../../../utils/map/facilitySearch";
+import type { PinnedPartnerGroup } from "../../../../utils/map/partner/partnerSearchSections";
 import { KindIcon } from "../../ChipIcon";
 
 /** 검색 결과의 편의시설 한 줄(종류 아이콘 · 이름 · 건물·층). */

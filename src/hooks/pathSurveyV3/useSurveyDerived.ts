@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { buildLegacyOverlay } from '../../screens/pathSurvey/legacyOverlay'
 import { devSampleNodeIds } from '../../screens/pathSurveyV3/devSample'
-import { clockText } from '../../screens/pathSurveyV3/SaveBar'
+import { clockText } from '../../utils/pathSurveyV3/saveBar'
 import { BACKUP_VIA, latestRollingSnapshot, openManualCount } from '../../screens/pathSurveyV3/screenModel'
 import { buildBuildingIndex, loadBuildingCache, saveBuildingCache, type BuildingIndex, type RawBuilding } from '../../utils/pathSurveyV3/buildings'
 import { changeMarks, diffStores } from '../../utils/pathSurveyV3/changes'

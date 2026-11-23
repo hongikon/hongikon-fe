@@ -4,7 +4,7 @@ import { getErrorMessage } from "../../apis/client";
 import { submitFeedback } from "../../apis/feedback";
 import { uploadReportImage } from "../../apis/reports";
 import * as haptics from "../../lib/haptics";
-import { pickAttachImages } from "../../utils/attachImages";
+import { pickAttachImages } from "../../utils/map/report/attachImages";
 import type { ChatMessage, ChatMessageOf } from "../../utils/ask/chatTypes";
 import { handoffContent, isContactValid } from "../../utils/ask/handoff";
 

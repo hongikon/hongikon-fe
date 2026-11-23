@@ -1,14 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { LAT_RANGE, linkErrors, optional, parseCoordinate, tooLong } from '../../src/admin/utils/mapFormRules'
+import { LAT_RANGE, linkErrors, optional, parseCoordinate, tooLong } from '../../src/admin/utils/facilities/mapFormRules'
 import {
   buildPartnerInput,
   emptyPartnerDraft,
   partnerDraftFrom,
   partnerMatches,
   type PartnerDraft,
-} from '../../src/admin/utils/partnerDraft'
+} from '../../src/admin/utils/partners/partnerDraft'
 import type { AdminPartner } from '../../src/admin/types'
 
 test('parseCoordinate: 비면 null, 숫자 아니거나 범위 밖이면 문구, 값은 그대로', () => {

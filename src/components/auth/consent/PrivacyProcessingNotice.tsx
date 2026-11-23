@@ -2,15 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { TYPE } from '../../../constants/typography'
 import { RADIUS, SPACING } from '../../../constants/spacing'
-
-/** 로그인 계정별로 회원 식별·로그인 유지에 쓰는 정보. null 이면 둘 다 적는다. */
-function accountInfoFor(provider: 'kakao' | 'apple' | null): string {
-  return provider === 'apple'
-    ? 'Apple 사용자 식별자와 공유한 경우 이름'
-    : provider === 'kakao'
-      ? '카카오 회원번호와 닉네임'
-      : '카카오 회원번호·닉네임(Apple 로그인은 사용자 식별자, 공유한 경우 이름)'
-}
+import { accountInfoFor } from '../../../utils/auth/consent/privacyProcessingNotice'
 
 /**
  * [개인정보 처리 안내] 가입 시트의 처리방침 확인 줄 아래 상자. 동의가 아니라 처리 "안내"다

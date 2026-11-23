@@ -7,8 +7,8 @@ import {
   exhibitionDraftFrom,
   groupExhibitions,
   venueLabel,
-} from '../../src/admin/utils/exhibitionDraft'
-import { ymdToDayIndex } from '../../src/utils/exhibitions'
+} from '../../src/admin/utils/exhibitions/exhibitionDraft'
+import { ymdToDayIndex } from '../../src/utils/map/exhibitions'
 import type { AdminExhibition, AdminFacility } from '../../src/admin/types'
 
 const ex = (id: number, startsOn: string, endsOn: string) =>

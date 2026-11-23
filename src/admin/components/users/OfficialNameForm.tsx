@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { StyleSheet, TextInput, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
-import { setOfficialName } from '../../api'
 import type { AdminUser } from '../../types'
-import { ConfirmBar, InlineError, useAdminHost } from '../../ui'
-import { officialError } from '../../utils/moderationErrors'
+import { ConfirmBar, InlineError } from '../../ui'
 import { moderationStyles } from './moderationStyles'
+import { useOfficialNameForm } from '../../hooks/users/useOfficialNameForm'
 
 /**
  * 공식 이름 입력·지정 막대. 회원 카드와 문의 탭의 '공식 계정 신청' 글에서 함께 쓴다. 신청 글에서는 신청서의 단체 이름을
@@ -23,24 +21,7 @@ export function OfficialNameForm({
   onDone: (user: AdminUser) => void
   onCancel: () => void
 }) {
-  const app = useAdminHost() === 'app'
-  const [draft, setDraft] = useState(initialName)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = () => {
-    const name = draft.trim()
-    if (name.length < 2) {
-      setError('공식 이름을 2자 이상 입력해주세요.')
-      return
-    }
-    setBusy(true)
-    setError(null)
-    setOfficialName(userId, name)
-      .then(onDone)
-      .catch((err: unknown) => setError(officialError(err, '공식 계정으로 지정하지 못했습니다. 다시 시도해주세요.')))
-      .finally(() => setBusy(false))
-  }
+  const { app, draft, setDraft, busy, error, submit } = useOfficialNameForm({ userId, initialName, onDone })
 
   return (
     <View style={styles.officialForm}>

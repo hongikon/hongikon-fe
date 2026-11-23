@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import type { PickerCenter, PickerPurpose } from '../../components/map/picker/LocationPickerOverlay'
+import type { PickerCenter, PickerPurpose } from '../../utils/map/picker/locationPickerOverlay'
 import type { InfoSuggestLocation } from '../../components/settings/InfoSuggestModal'
 import type { Building } from '../../types'
-import { routePinBuilding } from '../../utils/map/routePinBuilding'
+import { routePinBuilding } from '../../utils/map/route/routePinBuilding'
 
 interface Options {
   postToMap: (msg: object) => void

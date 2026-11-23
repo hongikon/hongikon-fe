@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { setOpenReport } from '../../lib/mapIntents'
 import type { Building, Facility, Partner, ReportListItem } from '../../types'
-import { hasActiveFilter, type PartnerFilter } from '../../utils/partners'
+import { hasActiveFilter, type PartnerFilter } from '../../utils/map/partner/partners'
 
 /** 지도 페이지가 보내는, 무언가를 누른 메시지(시트 열고 닫기). */
 export type MapTapMessage =

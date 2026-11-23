@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
 import { MAP_TAB_BAR_HIDDEN_STYLE, MAP_TAB_BAR_STYLE } from '../../navigation/tabBarStyles'
-import { useCenteredGutter } from '../useCenteredGutter'
+import { useCenteredGutter } from '../common/useCenteredGutter'
 import type { Building, Partner, ReportListItem } from '../../types'
 
 /**

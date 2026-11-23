@@ -1,13 +1,10 @@
-import { useEffect, useState } from 'react'
 import { StyleSheet, TextInput, View } from 'react-native'
-import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { searchUsers } from '../api'
-import type { AdminUser } from '../types'
-import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader, useAdminHost } from '../ui'
+import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
 import { UserModerationPanel } from '../UserModeration'
 import { RADIUS } from '../../constants/spacing'
+import { useUsersScreen } from '../hooks/users/useUsersScreen'
 
 /**
  * 회원 조회와 이용 정지(약관 제10조, App Store 가이드라인 1.2).
@@ -16,38 +13,7 @@ import { RADIUS } from '../../constants/spacing'
  */
 /** initialQuery: 관리자 알림(재가입 회원)으로 들어오면 그 회원 id 로 바로 검색한다. */
 export default function UsersScreen({ initialQuery = '' }: { initialQuery?: string } = {}) {
-  const app = useAdminHost() === 'app'
-  const [input, setInput] = useState(initialQuery)
-  const [query, setQuery] = useState(initialQuery)
-  const [users, setUsers] = useState<AdminUser[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    setError(null)
-    searchUsers(query, controller.signal)
-      .then(setUsers)
-      .catch((err: unknown) => {
-        if (isCancelledError(err)) return
-        setError(getErrorMessage(err, '회원을 불러오지 못했습니다. 서버에 회원 관리 기능이 배포됐는지 확인해주세요.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [query, reloadKey])
-
-  const submit = () => {
-    setUsers(null)
-    if (input.trim() === query) setReloadKey((key) => key + 1)
-    else setQuery(input.trim())
-  }
-
-  const replace = (updated: AdminUser) =>
-    setUsers((prev) => (prev ? prev.map((user) => (user.id === updated.id ? updated : user)) : prev))
+  const { app, input, setInput, query, users, loading, error, setReloadKey, submit, replace } = useUsersScreen({ initialQuery })
 
   return (
     <View>

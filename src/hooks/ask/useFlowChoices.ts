@@ -1,6 +1,6 @@
 import { useCallback, type MutableRefObject } from "react";
 import * as haptics from "../../lib/haptics";
-import type { GreetingGuide } from "../../utils/askGreeting";
+import type { GreetingGuide } from "../../utils/ask/askGreeting";
 import type { ChatMessageOf } from "../../utils/ask/chatTypes";
 import { followTarget, lastUserText, stepMessages } from "../../utils/ask/conversation";
 import type { ChatMessagesApi } from "./useChatMessages";

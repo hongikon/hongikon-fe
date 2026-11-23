@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS, TYPE } from '../../../../constants/typography'
-import { formatClock, formatDay } from '../../../../utils/reportSchedule'
+import { formatClock, formatDay } from '../../../../utils/map/report/reportSchedule'
 import Button from '../../../common/Button'
 
 interface ComposerSuccessProps {

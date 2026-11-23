@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import type { AppNotice } from '../../src/constants/appNotices'
-import { currentPopupNotice, fromServerNotice, mergeNotices } from '../../src/utils/noticeMerge'
+import { currentPopupNotice, fromServerNotice, mergeNotices } from '../../src/utils/settings/noticeMerge'
 
 const local = (id: string, date: string, until?: string): AppNotice => ({
   id,

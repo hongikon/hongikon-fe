@@ -1,4 +1,4 @@
-import { edgeKey } from '../pathSurvey'
+import { edgeKey } from '../pathSurvey/survey'
 import { haversineMeters, roundMeters } from './geo'
 import { hasLevel, isEdgeKind, isValidFloor, sameLevel, vertexId, type GraphEdge, type GraphVertex, type LevelRef, type SurveyEdgeV3, type SurveyGraph, type SurveyNodeV3 } from './types'
 

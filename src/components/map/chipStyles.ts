@@ -1,7 +1,7 @@
 import { StyleSheet, useWindowDimensions } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { useCenteredGutter } from '../../hooks/useCenteredGutter'
+import { useCenteredGutter } from '../../hooks/common/useCenteredGutter'
 import { RADIUS } from '../../constants/spacing'
 
 /**

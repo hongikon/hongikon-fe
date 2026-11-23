@@ -4,7 +4,7 @@ import { COLORS } from "../../../constants/colors";
 import { FONTS } from "../../../constants/typography";
 import type { AdminOfficeDetail } from "../../../constants/adminOffices";
 import { splitFacilityNote } from "../../../utils/map/facilityNote";
-import { openExternalUrl } from "../../../utils/openExternalUrl";
+import { openExternalUrl } from "../../../utils/common/openExternalUrl";
 
 /**
  * 행정·지원 목록 줄 아래의 짧은 미리보기(10-14 요청): 주요업무 두 줄 + "담당 업무·연락처 N개 >". 줄 전체를 누르면 부서 화면(`OfficeFull`).

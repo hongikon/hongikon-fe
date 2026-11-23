@@ -1,12 +1,12 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { RADIUS } from '../../../constants/spacing'
 import * as haptics from '../../../lib/haptics'
-import { notify } from '../../../utils/dialog'
 import { permissionActions, pillKey, type PermissionView } from '../../../utils/settings/permissions'
 import Button from '../../common/Button'
+import { openPhoneSettings } from '../../../utils/settings/permissions/permissionRow'
 
 const PILL = {
   granted: { label: '허용됨', bg: COLORS.successSoft, fg: COLORS.success },
@@ -16,12 +16,6 @@ const PILL = {
   loading: { label: '확인 중', bg: COLORS.fill, fg: COLORS.textTertiary },
   notNeeded: { label: '권한 필요 없음', bg: COLORS.fill, fg: COLORS.textSecondary },
 } as const
-
-function openPhoneSettings(what: string) {
-  Linking.openSettings().catch(() =>
-    notify('설정을 열지 못했어요', `휴대폰 설정 > 홍익온 > ${what}에서 바꿀 수 있어요.`),
-  )
-}
 
 /** 권한 한 줄: 아이콘·이름·쓰는 곳·상태 알약, 아래에 허용하기/설정 열기/설정에서 바꾸기. */
 export default function PermissionRow({

@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../constants/colors'
-import { useSettings } from '../contexts/SettingsContext'
-import { completeDeptPick } from '../lib/onboarding'
 import ContentColumn from '../components/common/ContentColumn'
 import DeptPickStep from '../components/onboarding/DeptPickStep'
 import AppLoadingScreen from './AppLoadingScreen'
+import { useDeptPickScreen } from '../hooks/onboarding/useDeptPickScreen'
 
 /**
  * 첫 실행의 "내 학과 고르기"(어떤 소식을 받아볼까요?). 웰컴에서 로그인하거나 둘러보기를 누른 뒤, 메인 대신 한 번 뜬다
@@ -21,26 +19,7 @@ import AppLoadingScreen from './AppLoadingScreen'
  * - 로그인 뒤라 되돌아갈 이전 단계(소개·웰컴)가 없다. 뒤로 버튼은 두지 않고, "나중에 할게요"로 건너뛸 수 있다.
  */
 export default function DeptPickScreen() {
-  const { settings, boardSubscriptionsReady } = useSettings()
-  const hasSubscriptions = settings.subscribedDepts.length > 0
-  // null: 아직 판단 전(서버 구독을 기다리는 중), 'skip': 이미 구독이 있어 넘김, 'show': 고르게 함.
-  const [decision, setDecision] = useState<'skip' | 'show' | null>(null)
-  const decidedRef = useRef(false)
-
-  useEffect(() => {
-    if (decidedRef.current || !boardSubscriptionsReady) return
-    decidedRef.current = true
-    if (hasSubscriptions) {
-      setDecision('skip')
-      void completeDeptPick()
-    } else {
-      setDecision('show')
-    }
-  }, [boardSubscriptionsReady, hasSubscriptions])
-
-  const finish = useCallback(() => {
-    void completeDeptPick()
-  }, [])
+  const { decision, finish } = useDeptPickScreen()
 
   if (decision !== 'show') return <AppLoadingScreen />
 

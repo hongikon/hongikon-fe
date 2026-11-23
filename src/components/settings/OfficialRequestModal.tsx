@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { Ionicons } from '@expo/vector-icons'
@@ -6,19 +5,16 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
-import * as haptics from '../../lib/haptics'
-import { useAuth } from '../../contexts/AuthContext'
-import { submitFeedback } from '../../apis/feedback'
-import { getErrorMessage, isNetworkError, isRetryableError } from '../../apis/client'
-import { OFFICIAL_REQUEST_PREFIX } from '../../constants/feedback'
+import { isNetworkError } from '../../apis/client'
 import RetryableError from '../common/RetryableError'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
 import Button from '../common/Button'
 import OfficialBadge from '../common/OfficialBadge'
 import TextField, { FieldLabel } from '../common/TextField'
+import { useOfficialRequestModal } from '../../hooks/settings/useOfficialRequestModal'
 
-interface OfficialRequestModalProps {
+export interface OfficialRequestModalProps {
   visible: boolean
   onClose: () => void
   /** 신청하는 계정의 회원 번호·지금 이름. 운영진이 이 값으로 계정을 찾아 공식 이름을 붙인다. */
@@ -32,72 +28,7 @@ interface OfficialRequestModalProps {
  * 계정에 붙이는 것이라 로그인한 사람만 연다(설정의 계정 섹션).
  */
 export default function OfficialRequestModal({ visible, onClose, memberNumber, currentName }: OfficialRequestModalProps) {
-  const { accessToken } = useAuth()
-  const [orgName, setOrgName] = useState('')
-  const [proof, setProof] = useState('')
-  const [contact, setContact] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [validation, setValidation] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<{ message: string; network: boolean; retryable: boolean } | null>(null)
-  /** 창을 닫으면 올려, 늦게 끝난 전송 결과가 다음에 연 빈 창을 건드리지 못하게 한다. */
-  const requestGenRef = useRef(0)
-
-  useEffect(() => {
-    if (!visible) {
-      requestGenRef.current += 1
-      setOrgName('')
-      setProof('')
-      setContact('')
-      setSubmitting(false)
-      setSubmitted(false)
-      setValidation(null)
-      setSubmitError(null)
-    }
-  }, [visible])
-
-  const handleSubmit = async () => {
-    if (submitting) return
-    const name = orgName.trim()
-    const reach = contact.trim()
-    if (name.length < 2) {
-      setValidation('단체 이름을 적어 주세요. 예: 경영대학 학생회')
-      return
-    }
-    if (!reach) {
-      setValidation('확인 연락을 받을 이메일이나 전화번호를 적어 주세요.')
-      return
-    }
-    setValidation(null)
-    const content = [
-      `${OFFICIAL_REQUEST_PREFIX} ${name}`,
-      memberNumber ? `회원 번호: ${memberNumber}` : null,
-      currentName ? `지금 이름: ${currentName}` : null,
-      proof.trim() ? `확인 자료: ${proof.trim()}` : null,
-    ]
-      .filter(Boolean)
-      .join('\n')
-
-    const generation = ++requestGenRef.current
-    const isStale = () => generation !== requestGenRef.current
-    setSubmitting(true)
-    setSubmitError(null)
-    try {
-      await submitFeedback({ content, contact: reach }, accessToken)
-      if (isStale()) return
-      setSubmitted(true)
-      haptics.success()
-    } catch (error) {
-      if (isStale()) return
-      setSubmitError({
-        message: getErrorMessage(error, '신청을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
-        network: isNetworkError(error),
-        retryable: isRetryableError(error),
-      })
-    } finally {
-      if (!isStale()) setSubmitting(false)
-    }
-  }
+  const { orgName, setOrgName, proof, setProof, contact, setContact, submitting, submitted, validation, submitError, handleSubmit } = useOfficialRequestModal({ visible, memberNumber, currentName })
 
   return (
     <SwipeBackModal visible={visible} onRequestClose={onClose}>

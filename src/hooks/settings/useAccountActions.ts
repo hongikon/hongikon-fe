@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { confirmAction, notify } from '../../utils/dialog'
+import { confirmAction, notify } from '../../utils/common/dialog'
 
 interface Options {
   logout: () => Promise<void>

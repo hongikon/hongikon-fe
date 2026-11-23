@@ -1,35 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS } from '../../../../constants/typography'
-import { useAuth } from '../../../../contexts/AuthContext'
-import { useHiddenAuthorKeys } from '../../../../lib/hiddenAuthors'
-import { getErrorMessage, isCancelledError, isNetworkError, isRetryableError } from '../../../../apis/client'
-import {
-  COMMENTS_PREVIEW_SIZE,
-  getReportComments,
-  isCommentsApiKnownMissing,
-  isCommentsApiMissing,
-} from '../../../../apis/comments'
-import { formatCommentTime, withoutHiddenCommentAuthors } from '../../../../utils/comments'
-import { promptLogin } from '../../../../utils/reports'
+import { isNetworkError } from '../../../../apis/client'
+import { formatCommentTime } from '../../../../utils/map/report/comments'
 import RetryableError from '../../../common/RetryableError'
 import CommentAvatar from './CommentAvatar'
-import type { ReportComment, ReportListItem } from '../../../../types'
+import type { ReportListItem } from '../../../../types'
 import { RADIUS } from '../../../../constants/spacing'
+import { useReportCommentsSection } from '../../../../hooks/map/report/comments/useReportCommentsSection'
 
-/** 숨긴 사용자·지운 댓글 자리를 빼고도 미리보기를 채우도록 조금 더 받는다. */
-const PREVIEW_FETCH_SIZE = COMMENTS_PREVIEW_SIZE + 3
-
-type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'ready' }
-  | { kind: 'error'; message: string; network: boolean; retryable: boolean }
-  /** 서버에 댓글 기능이 없거나(배포 전) 이 제보가 더는 공개 상태가 아니다 → 댓글 칸을 감춘다. */
-  | { kind: 'unavailable' }
-
-interface ReportCommentsSectionProps {
+export interface ReportCommentsSectionProps {
   report: ReportListItem
   /** 제보 본문 창(본문 + 댓글 전체)을 연다. "댓글 달기"면 입력칸에 바로 초점을 준다. */
   onOpen: (focusInput: boolean) => void
@@ -42,66 +23,7 @@ interface ReportCommentsSectionProps {
  * 쓰기·답글·신고는 제보 본문 창에서 한다(시트는 지도를 가리지 않게 짧게 둔다). 서버에 댓글 API 가 없으면 아무것도 그리지 않는다.
  */
 export default function ReportCommentsSection({ report, onOpen, refreshKey = 0 }: ReportCommentsSectionProps) {
-  const { accessToken, logout } = useAuth()
-  const hiddenKeys = useHiddenAuthorKeys()
-  const [state, setState] = useState<LoadState>(() =>
-    isCommentsApiKnownMissing() ? { kind: 'unavailable' } : { kind: 'loading' },
-  )
-  /** 최근 최상위 댓글(오래된 → 최신 순). */
-  const [recent, setRecent] = useState<ReportComment[]>([])
-  const [count, setCount] = useState<number | null>(report.commentCount ?? null)
-  const [reloadKey, setReloadKey] = useState(0)
-  const tokenRef = useRef(accessToken)
-  tokenRef.current = accessToken
-
-  useEffect(() => {
-    if (isCommentsApiKnownMissing()) {
-      setState({ kind: 'unavailable' })
-      return
-    }
-    const controller = new AbortController()
-    const token = tokenRef.current
-    setState((prev) => (prev.kind === 'ready' ? prev : { kind: 'loading' }))
-    getReportComments(report.id, { size: PREVIEW_FETCH_SIZE, order: 'latest', accessToken: token, signal: controller.signal })
-      .then((page) => {
-        if (controller.signal.aborted) return
-        setRecent([...page.content].reverse())
-        setCount(page.commentCount ?? page.totalElements)
-        setState({ kind: 'ready' })
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted || isCancelledError(error)) return
-        if (isCommentsApiMissing(error, !!token) || (error as { status?: number })?.status === 404) {
-          setState({ kind: 'unavailable' })
-          return
-        }
-        setState({
-          kind: 'error',
-          message: getErrorMessage(error, '댓글을 불러오지 못했어요.'),
-          network: isNetworkError(error),
-          retryable: isRetryableError(error),
-        })
-      })
-    return () => controller.abort()
-    // 로그인·로그아웃하면 다시 받는다.
-  }, [report.id, reloadKey, refreshKey, !!accessToken])
-
-  const preview = useMemo(
-    () =>
-      withoutHiddenCommentAuthors(
-        recent.filter((c) => !c.placeholder),
-        hiddenKeys,
-      ).slice(-COMMENTS_PREVIEW_SIZE),
-    [recent, hiddenKeys],
-  )
-
-  const openWrite = useCallback(() => {
-    if (!accessToken) {
-      promptLogin('댓글을 달려면 로그인해 주세요.', logout)
-      return
-    }
-    onOpen(true)
-  }, [accessToken, logout, onOpen])
+  const { accessToken, state, count, setReloadKey, preview, openWrite } = useReportCommentsSection({ report, onOpen, refreshKey })
 
   if (state.kind === 'unavailable') return null
 

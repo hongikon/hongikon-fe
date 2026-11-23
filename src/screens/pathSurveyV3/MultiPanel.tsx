@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { buildingsContaining, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import { type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import { nodesInBuilding } from '../../utils/pathSurveyV3/levels'
 import type { BulkChange } from '../../utils/pathSurveyV3/store'
-import type { LevelRef, NodeType, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
+import type { NodeType, SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { Btn, Check, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip, Collapsible } from './controls'
 import { BuildingSearch, LevelEditor } from './LevelPicker'
+import { useMultiPanel } from '../../hooks/pathSurveyV3/useMultiPanel'
 
 const TYPES: { key: NodeType; label: string }[] = [
   { key: 'basic', label: '기본' },
@@ -34,22 +34,7 @@ export default function MultiPanel({
   onApply: (change: BulkChange) => void
   onExit: () => void
 }) {
-  const [levels, setLevels] = useState<LevelRef[]>([])
-  const [type, setType] = useState<NodeType | null>(null)
-  const [outdoorOnly, setOutdoorOnly] = useState(true)
-  const [insideOf, setInsideOf] = useState<string | null>(null)
-
-  // Buildings around the selection are offered first, floors stay a person's choice.
-  const nearby = useMemo(() => {
-    const byId = new Map(nodes.map((n) => [n.id, n]))
-    const codes = selected.flatMap((id) => {
-      const node = byId.get(id)
-      return node ? buildingsContaining(index, node.lat, node.lng).map((b) => b.code) : []
-    })
-    return [...new Set(codes)].slice(0, 3)
-  }, [nodes, index, selected])
-
-  const canApply = selected.length > 0 && (levels.length > 0 || !!type)
+  const { levels, setLevels, type, setType, outdoorOnly, setOutdoorOnly, insideOf, setInsideOf, nearby, canApply } = useMultiPanel({ nodes, index, selected })
 
   return (
     <Section title={`여러 점 선택 (${selected.length}개)`} help="지도에서 점을 누르면 선택하거나 뺄 수 있어요. 선택한 점에 같은 값을 한 번에 넣어요. 되돌리기 한 번으로 취소돼요.">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Image, type LayoutChangeEvent } from 'react-native'
-import { photoRowHeight } from '../../../utils/map/reportSheet'
+import { photoRowHeight } from '../../../utils/map/report/reportSheet'
 
 const UNKNOWN_PHOTO_RATIO = 1
 

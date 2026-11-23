@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
-import type { ExhibitionPhase } from '../../utils/exhibitions'
+import type { ExhibitionPhase } from '../../utils/map/exhibitions'
 import { ExhibitionCard } from '../components/exhibitions/ExhibitionCard'
 import { ExhibitionForm } from '../components/exhibitions/ExhibitionForm'
-import { useExhibitionsAdmin } from '../hooks/useExhibitionsAdmin'
+import { useExhibitionsAdmin } from '../hooks/exhibitions/useExhibitionsAdmin'
 import { adminText, Button, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
 
 /**

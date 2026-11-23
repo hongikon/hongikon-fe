@@ -9,7 +9,7 @@ import {
   parseReportDays,
   reportPhase,
   toReportDayHours,
-} from '../../src/utils/reportSchedule'
+} from '../../src/utils/map/report/reportSchedule'
 
 // 서버 시각은 존 없는 UTC. 한국 시간 = UTC + 9.
 const kst = (iso: string) => Date.parse(`${iso}+09:00`)

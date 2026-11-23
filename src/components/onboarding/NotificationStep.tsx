@@ -1,17 +1,14 @@
-import { useCallback, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { SUBSCRIBABLE_ITEMS } from '../../constants/news'
-import { useSettings } from '../../contexts/SettingsContext'
-import { requestNotificationPermission } from '../../lib/notificationPermission'
 import { OnboardingPrimaryButton, OnboardingTextButton } from './OnboardingButtons'
 import { ONBOARDING_TINT } from './OnboardingIllustration'
 import BrandSymbol from '../../../assets/brand/symbol.svg'
 import { RADIUS } from '../../constants/spacing'
+import { useNotificationStep } from '../../hooks/onboarding/useNotificationStep'
 
-interface NotificationStepProps {
+export interface NotificationStepProps {
   /** 허용 창을 띄운 뒤(결과와 무관하게) 또는 "나중에"를 누르면 부른다. */
   onDone: () => void
 }
@@ -23,22 +20,7 @@ interface NotificationStepProps {
  * "나중에"를 골라도 설정 > 알림에서 다시 켤 수 있다.
  */
 export default function NotificationStep({ onDone }: NotificationStepProps) {
-  const { settings } = useSettings()
-  const [requesting, setRequesting] = useState(false)
-
-  // 방금 고른 학과가 있으면 예시 알림에 그 이름을 쓴다. 고른 게 없으면 대표 예시.
-  const firstDeptId = settings.subscribedDepts[0]
-  const deptName = SUBSCRIBABLE_ITEMS.find((item) => item.id === firstDeptId)?.name ?? '컴퓨터공학과'
-
-  const handleAllow = useCallback(async () => {
-    setRequesting(true)
-    try {
-      await requestNotificationPermission()
-    } finally {
-      setRequesting(false)
-      onDone()
-    }
-  }, [onDone])
+  const { requesting, deptName, handleAllow } = useNotificationStep({ onDone })
 
   return (
     <View style={styles.container}>

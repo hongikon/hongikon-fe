@@ -3,8 +3,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../../constants/colors'
 import { RADIUS } from '../../../../constants/spacing'
 import { FONTS } from '../../../../constants/typography'
-import type { EditableDay } from '../../../../utils/map/reportDays'
-import { formatDay } from '../../../../utils/reportSchedule'
+import type { EditableDay } from '../../../../utils/map/report/reportDays'
+import { formatDay } from '../../../../utils/map/report/reportSchedule'
 
 /** 날짜별 운영 시간 편집기의 작은 버튼들: 마지막 날 ± · 쉬는 날 토글 · 시각. */
 export function StepButton({

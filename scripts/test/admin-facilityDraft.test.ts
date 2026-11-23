@@ -8,7 +8,7 @@ import {
   facilityDraftFrom,
   facilityMatches,
   filterBuildingOptions,
-} from '../../src/admin/utils/facilityDraft'
+} from '../../src/admin/utils/facilities/facilityDraft'
 import type { AdminBuildingOption, AdminFacility } from '../../src/admin/types'
 
 const FACILITY = {

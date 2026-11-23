@@ -1,4 +1,4 @@
-import type { AskAppCommand } from '../askAppCommand'
+import type { AskAppCommand } from './askAppCommand'
 
 /** 설정 확인 카드의 물음(누르기 전). */
 export function commandText(command: AskAppCommand): string {

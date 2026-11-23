@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
-import { getErrorMessage } from '../../../apis/client'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { createAskNote, updateAskNote } from '../../api'
 import type { AdminAskNote } from '../../types'
 import { Button, InlineError } from '../../ui'
+import { useAskNoteForm } from '../../hooks/ask/useAskNoteForm'
 
 /**
  * 운영진 확인 안내 쓰기. 물어보기가 비슷한 질문에 답할 때 이 글을 근거로 함께 읽는다.
@@ -25,26 +23,7 @@ export function AskNoteForm({
   onSaved: (note: AdminAskNote) => void
   onCancel: () => void
 }) {
-  const [question, setQuestion] = useState(note?.question ?? initialQuestion)
-  const [answer, setAnswer] = useState(note?.answer ?? '')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const save = () => {
-    if (!question.trim() || !answer.trim()) {
-      setError('질문과 답을 모두 적어 주세요.')
-      return
-    }
-    setPending(true)
-    setError(null)
-    const request = note
-      ? updateAskNote(note.id, { question: question.trim(), answer: answer.trim() })
-      : createAskNote({ question: question.trim(), answer: answer.trim(), askRef })
-    request
-      .then(onSaved)
-      .catch((err: unknown) => setError(getErrorMessage(err, '저장하지 못했습니다.')))
-      .finally(() => setPending(false))
-  }
+  const { question, setQuestion, answer, setAnswer, pending, error, save } = useAskNoteForm({ initialQuestion, askRef, note, onSaved })
 
   return (
     <View style={styles.form}>

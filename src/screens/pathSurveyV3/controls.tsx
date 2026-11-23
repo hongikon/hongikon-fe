@@ -2,10 +2,9 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
-import type { LevelRef } from '../../utils/pathSurveyV3/types'
 import { TOUCH, ui } from '../pathSurvey/ui'
 import { chainToggleLabel } from './editHistory'
+
 
 /** Small shared controls of the v3 screen. All of them have phone sized touch targets. */
 
@@ -96,8 +95,6 @@ export function MemoBox({ value, onEdit }: { value: string | undefined; onEdit: 
     </Collapsible>
   )
 }
-
-export const levelName = (index: BuildingIndex, level: LevelRef) => `${shortBuildingName(index.byCode.get(level.building), level.building)} ${floorChipLabel(level.floor)}층`
 
 const styles = StyleSheet.create({
   chip: {

@@ -1,17 +1,10 @@
-import { useEffect } from 'react'
 import { View } from 'react-native'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AskChat from '../components/ask/AskChat'
 import AskConsent from '../components/ask/tab/AskConsent'
 import AskNotice from '../components/ask/tab/AskNotice'
 import { tabStyles } from '../components/ask/tab/tabStyles'
-import { useAuth } from '../contexts/AuthContext'
-import { useAskTabNavigation } from '../hooks/ask/useAskTabNavigation'
-import { useAskConsent, useAskStatus } from '../hooks/ask/useAskTabStatus'
-import { useKeyboardOpen } from '../hooks/ask/useKeyboardOpen'
 import { ROUTE_FINDING_ENABLED } from '../constants/route'
-import { TAB_BAR_BASE_STYLE } from '../navigation/tabBarStyles'
+import { useAskTabScreen } from '../hooks/ask/useAskTabScreen'
 
 /**
  * 하단 '물어보기' 탭(BETA, 11-01 — docs/ask-tab-plan.md). 탭은 모두에게 보이고, 질문은 로그인한 사용자만.
@@ -19,18 +12,7 @@ import { TAB_BAR_BASE_STYLE } from '../navigation/tabBarStyles'
  * 서버 스위치가 꺼져 있으면 쉬는 중이라고만 보인다. 입력하는 동안은 떠 있는 탭 바를 숨겨 입력줄과 겹치지 않게 한다.
  */
 export default function AskTabScreen() {
-  const { status, accessToken, logout } = useAuth()
-  const { navigation, showOnMap, routeTo, openSettings, searchNews } = useAskTabNavigation()
-  const insets = useSafeAreaInsets()
-  const tabBarHeight = useBottomTabBarHeight()
-  const loggedIn = status === 'authenticated' && !!accessToken
-  const { consented, accept } = useAskConsent()
-  const { askStatus, refreshStatus } = useAskStatus(loggedIn, accessToken)
-  // 키보드가 올라오면 탭 바를 숨긴다(떠 있는 캡슐이 입력줄을 가린다). 이 탭을 떠나면 원래대로.
-  const keyboardShown = useKeyboardOpen()
-  useEffect(() => {
-    navigation.setOptions({ tabBarStyle: keyboardShown ? { display: 'none' } : TAB_BAR_BASE_STYLE })
-  }, [navigation, keyboardShown])
+  const { accessToken, logout, showOnMap, routeTo, openSettings, searchNews, insets, tabBarHeight, loggedIn, consented, accept, askStatus, refreshStatus, keyboardShown } = useAskTabScreen()
 
   if (askStatus && !askStatus.enabled) {
     return (

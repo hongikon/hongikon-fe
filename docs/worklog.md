@@ -576,3 +576,49 @@ Xcode 27.1 설치 뒤 preview-simulator 빌드를 iPhone 18 Pro(iOS 27.1)에 깔
 - `scripts/ask/topics/academic.py` double-major: 학교 안내가 '학생공지 참조'로만 적은 학점 규칙을 학사내규 제49조·제51조·제9조에서 정리해 tips 2개로 앞에 둠(계열별 36학점, 겹치는 과목, 인정 절차·유보·철회). lead 에 36학점 한 줄.
 - `src/constants/askPages.ts` 다시 만듦(gen.py). 서버 카탈로그·색인·규정 그래프는 BE 같은 날 worklog.
 - 경로 정답표 `cases/academic.json` +4문항(공학+공학 최종이수학점, 공대끼리, 인정받으려면, 부전공 못 채우면). 2863/2863, 테스트 111/111.
+
+---
+
+## 2026-11-22 · .tsx 는 그리기만: 훅·유틸을 기능 폴더로 분리(리팩터링, 동작 변경 없음)
+
+**목표**: `src/` 아래 모든 `.tsx` 와 `App.tsx` 가 JSX 를 그리고 훅·유틸을 부르기만 하게 한다. 상태·효과·메모·콜백·ref(`useState` 등)는 `useXxx.ts` 훅으로, 화면 파일 안의 계산·변환·파싱 함수는 `.ts` 유틸로 뺀다. 파일 구조는 기능별로 맞춘다. 브랜치 `refactor/hooks-utils-by-feature`(dev 1c31849 에서 갈라 옴), 커밋 11개, push 안 함.
+
+### 변경된 파일
+
+| 위치 | 변경 | 내용 |
+|---|---|---|
+| `src/hooks/<기능>/` | 신규 135 | 화면·컴포넌트마다 `use<이름>` 훅(상태·효과·핸들러). 기능 폴더는 `common·query·auth·settings·map(+report/route/partner/nearby/notices)·news·ask·onboarding·pathSurvey·pathSurveyV3·debug·app` |
+| `src/utils/<기능>/` | 신규 76 | 화면 파일에 있던 모듈 헬퍼·상수·타입(`<파일이름>.ts`) |
+| `src/admin/hooks·utils/<기능>/` | 신규 + 이동 | 관리 콘솔도 `shell·reports·users·comments·ask·notices·partners·facilities·exhibitions·common` 폴더로 |
+| 평면이던 `src/hooks/*.ts`·`src/utils/*.ts` | `git mv` 약 100 | 폴더 규칙대로 옮기고 src·App·`scripts/**` 의 import 를 모두 고침(이름이 같은 base 의 플랫폼 쌍은 같이 이동) |
+| `.tsx` 약 120 | 수정 | 훅 호출 한 줄 + JSX + `StyleSheet` 만 남김 |
+| `scripts/path-survey/test-v3-ascii.mjs` | 수정 | 화면에서 옮겨 간 v3 훅·유틸도 ASCII 검사 대상에 넣음 |
+| `docs/branching.md` | 수정 | mapHtml 경로 |
+
+### 1. 폴더 규칙
+
+`src/hooks` 와 `src/utils` 바로 아래에는 파일을 두지 않는다. 기능이 분명하면 그 기능 폴더(`news/useNewsFeed.ts`, `map/report/reportSchedule.ts`, `ask/askGreeting.ts`, `settings/storage.ts`, `pathSurvey/store.ts` 등), 여러 기능이 같이 쓰면 `common/`(`useDebouncedValue`, `useReduceMotion`, `geo`, `floors`, `dialog`, `serverTime` …), 쿼리 훅(`useApiResource`·`useMutation`)은 `utils/query` 와 짝이 되게 `hooks/query/`. 새 파일은 컴포넌트가 있던 폴더를 따라간다(`components/map/report/X.tsx` → `hooks/map/report/useX.ts`, `utils/map/report/x.ts`). 화면(`screens/*`)은 이름으로 기능에 붙인다(`MapScreen` → map, `Dev*`·`Temp*` → debug).
+
+### 2. 어떻게 했나
+
+손으로 옮기기엔 160여 개 파일이라 TypeScript 컴파일러 API 로 변환기를 만들어(저장소 밖) 기능마다 돌렸다. 컴포넌트 본문에서 첫 `return`(가드 포함) 앞의 문장을 훅으로 옮기고 화면에는 `const { … } = useX({ 쓰는 props })` 한 줄을 둔다. props 는 훅이 쓰는 것만 `Pick<Props, …>` 로 넘긴다. 모듈 헬퍼는 훅이 부르거나 함수 값이면 유틸 파일로 옮기고(`export` 추가) 화면·훅의 import 를 알아서 고쳤다. 이어서 두 번째 패스로, 훅 호출 뒤에 남은 핸들러(함수 값)도 같은 훅으로 옮겼다.
+
+- 의미를 바꾸지 않으려고 effect 순서·의존 배열·ref·메모는 문장째 그대로 옮겼다. 가드(`if (!x) return null`) 뒤의 값 계산(`const y = x.foo`)은 훅으로 옮기면 가드 전에 실행돼 죽을 수 있어서 화면에 두고, 함수 값(핸들러)만 옮겼다. 그 핸들러에서 가드로 좁혀지던 값(`devKey`·`level`)은 타입만 `!` 로 단언했다(`useServerPanel`·`useEntranceLabelPicker`; 실제로는 가드를 통과한 화면에서만 불린다).
+- 컨텍스트: `AuthContext`·`SettingsContext` 는 `createContext`·Provider·`useAuth`/`useSettings` 접근자만 남기고 상태 기계는 `useAuthProvider`·`useSettingsProvider`(613줄) 로. 모듈 전역 상태(`let nextHostId` 등)를 다른 모듈에서 대입할 수 없어 `allocateHostId()`·`markCommentsApiMissing()` 를 새로 두었다.
+- 네이티브·웹 쌍 `NaverMapView.tsx`/`.web.tsx` 는 훅 이름을 `useNaverMapView`/`useNaverMapViewWeb` 으로 갈라 각자 자기 훅을 직접 import 한다(tsc 가 플랫폼 확장자를 고르지 못해서).
+- 화면 줄 수 예: `MapScreen` 886 → 355. `.tsx` 329개.
+
+### 3. 확인
+
+- `npx tsc --noEmit -p .` 매 기능 커밋마다 0 오류.
+- `pnpm test` 287/287(기준과 같음), `scripts/path-survey/*.mjs` 285 통과·실패 0(skip 3).
+- `npx expo export -p web`(repo 의 `dist/` 가 아니라 scratchpad 로) 성공, `index` 번들 8.5MB.
+- `.tsx` 안 module 수준 `function useXxx` 는 컨텍스트 접근자(`useAuth`·`useSettings`·`useOptionalSettings`·`useToast`·`useAdminAccess`·`useIsAdmin`·`useAdminOverview`)만 남음.
+
+### 4. 화면에 남긴 훅(예외)
+
+- 훅 하나짜리 토글·측정: `ForbiddenScreen`·`LoginScreen`(admin) `useState` 하나, `WithdrawConfirmDialog`, `UpdateHistoryModal`(+`UpdateHistoryRow`), `ReportKeywordAlerts`, `TabHeaderCard`(`SegmentedTabs`), `TreeSubGroup`, `VenueExhibitions`(`CurrentExhibition`), `CafeteriaMenu`, `ReportGuidelines`, `MyReportCard`, `LevelPicker`(`LevelEditor`·`PairEditor`), `CheckPanel`(`ToleranceSetting`), `controls`(`Collapsible`·`MemoBox`), `ConfirmBar`(ref).
+- JSX 를 돌려주는 렌더 콜백 `useCallback`(`renderItem`): `AskChat`, `NewsList`, `BuildingSearchList`, `ReportCommentsModal`. 훅 파일(`.ts`)로 옮기면 JSX 를 못 써서 그대로 둠. `DevCampusGate` 의 `useMemo` 는 화면 컴포넌트를 고른다.
+- `useToast` 접근자의 `useMemo`(컨텍스트 접근자는 허용).
+
+> **미결**: 가드 뒤의 파생 값 계산(`DashboardScreen`·`ToastViewport` 의 아이콘, `EntranceLabelPicker` 의 `sorted` 등)과 JSX 를 만드는 보조 함수(`SectionBlock.itemLabel`, `FacilityNoteText.linkHeyYoung`)는 화면에 남았다. 가드를 훅 안으로 옮기는 작은 구조 변경이 필요해 이번엔 안 했다.

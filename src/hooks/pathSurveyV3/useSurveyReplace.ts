@@ -1,6 +1,6 @@
 import { useState, type MutableRefObject } from 'react'
 import { NO_FILTER, type MapFilter } from '../../screens/pathSurveyV3/mapState'
-import { confirmAction } from '../../screens/pathSurvey/ui'
+import { confirmAction } from '../../utils/pathSurvey/ui'
 import { createSnapshot, storeFromSnapshot, type Snapshot } from '../../utils/pathSurveyV3/snapshots'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import { loadBackupRecord, makeBackupRecord, saveBackupRecord, type BackupRecord, type BackupVia } from '../../utils/pathSurveyV3/transfer'

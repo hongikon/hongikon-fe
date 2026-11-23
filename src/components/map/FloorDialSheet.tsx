@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../../constants/colors'
@@ -6,11 +5,12 @@ import { FONTS, TYPE } from '../../constants/typography'
 import { SHEET_MAX_WIDTH } from '../../constants/layout'
 import { RADIUS } from '../../constants/spacing'
 import Button from '../common/Button'
-import WheelPicker, { type WheelItem } from '../common/WheelPicker'
-import { buildFloorOptions, formatFloor } from '../../utils/floors'
+import WheelPicker from '../common/WheelPicker'
+import { formatFloor } from '../../utils/common/floors'
 import type { Building } from '../../types'
+import { useSheetBody } from '../../hooks/map/useSheetBody'
 
-interface FloorDialSheetProps {
+export interface FloorDialSheetProps {
   /** null 이면 닫힘. */
   building: Building | null
   role: '출발' | '도착'
@@ -33,14 +33,7 @@ export default function FloorDialSheet(props: FloorDialSheetProps) {
 }
 
 function SheetBody({ building, role, initialFloor, onCancel, onConfirm }: FloorDialSheetProps & { building: Building }) {
-  const items = useMemo<WheelItem<number>[]>(
-    () => [...buildFloorOptions(building)].reverse().map((option) => ({ value: option.value, label: option.label })),
-    [building],
-  )
-  const fallback = items.some((item) => item.value === 1) ? 1 : (items[items.length - 1]?.value ?? 1)
-  const start = initialFloor !== null && items.some((item) => item.value === initialFloor) ? initialFloor : fallback
-  const [floor, setFloor] = useState(start)
-  useEffect(() => setFloor(start), [start])
+  const { items, floor, setFloor } = useSheetBody({ building, initialFloor })
 
   return (
     <View style={styles.backdrop}>

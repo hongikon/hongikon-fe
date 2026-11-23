@@ -2,7 +2,7 @@ import { useCallback, type MutableRefObject } from "react";
 import { sendAskFeedback, sendFlowFeedback, type AskAuth, type AskFeedbackReason } from "../../apis/ask";
 import * as haptics from "../../lib/haptics";
 import type { Facility } from "../../types";
-import { askOffices } from "../../utils/officeAsk";
+import { askOffices } from "../../utils/ask/officeAsk";
 import type { ChatMessageOf } from "../../utils/ask/chatTypes";
 import { handoffAfterFeedback } from "../../utils/ask/handoff";
 import type { ChatMessagesApi } from "./useChatMessages";

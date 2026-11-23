@@ -8,8 +8,8 @@ import {
   contentPreview,
   daySpansSummary,
   photoRowHeight,
-} from '../../src/utils/map/reportSheet'
-import { parseReportDays } from '../../src/utils/reportSchedule'
+} from '../../src/utils/map/report/reportSheet'
+import { parseReportDays } from '../../src/utils/map/report/reportSchedule'
 
 const kst = (iso: string) => Date.parse(`${iso}+09:00`)
 

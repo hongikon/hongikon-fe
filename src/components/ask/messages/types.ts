@@ -1,5 +1,5 @@
 import type { AskFeedbackReason } from "../../../apis/ask";
-import type { GreetingGuide } from "../../../utils/askGreeting";
+import type { GreetingGuide } from "../../../utils/ask/askGreeting";
 import type { ChatMessageOf } from "../../../utils/ask/chatTypes";
 import type { AskPlaceData } from "../../../utils/ask/places";
 

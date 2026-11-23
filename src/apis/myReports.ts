@@ -1,4 +1,4 @@
-import type { ReportDayHours } from '../utils/reportSchedule'
+import type { ReportDayHours } from '../utils/map/report/reportSchedule'
 import { ApiError, apiRequest } from './client'
 import type { ReportCategory, ReportStatus } from '../types'
 

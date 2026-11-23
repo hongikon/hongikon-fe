@@ -4,7 +4,7 @@ import { Animated, Platform, StyleSheet, Text, TextInput, type StyleProp, type T
 import { COLORS } from '../../constants/colors'
 import { FONTS, TYPE } from '../../constants/typography'
 import { CONTROL_HEIGHT, RADIUS, SPACING } from '../../constants/spacing'
-import { useAttentionFlash } from '../../hooks/useAttentionFlash'
+import { useAttentionFlash } from '../../hooks/common/useAttentionFlash'
 
 interface TextFieldProps extends TextInputProps {
   /** 여러 줄 입력칸의 높이 */

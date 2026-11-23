@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { requestSettingsIntent } from '../../../lib/settingsIntents'
-import { navigationRef } from '../../../navigation/navigationRef'
+import { openNearbyAlertSettings } from '../../../utils/map/nearby/nearbyOverlayNote'
 
 interface Props {
   note: string
@@ -14,12 +13,6 @@ interface Props {
   /** 근처 알림 등록 전이면 설정으로 가는 버튼을 단다. */
   unregistered: boolean
   bottom: number
-}
-
-/** 등록 전 안내의 바로가기: 설정 > 근처 제휴 알림 창으로(제휴 시트의 안내와 같은 길, 11-09). */
-function openNearbyAlertSettings() {
-  requestSettingsIntent({ type: 'openNearbyAlerts' })
-  if (navigationRef.isReady()) navigationRef.navigate('Main', { screen: 'Settings' })
 }
 
 /** [근처 알림 영역 보기 안내] 개발 도구. 영역 보기를 켠 동안 지도 아래에 등록 상태와 원 색 뜻을 적는다. */

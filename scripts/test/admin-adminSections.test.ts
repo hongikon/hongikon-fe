@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { SECTION_PATHS, navBadgeCount, navBadgeText, sectionFromPath } from '../../src/admin/utils/adminSections'
+import { SECTION_PATHS, navBadgeCount, navBadgeText, sectionFromPath } from '../../src/admin/utils/shell/adminSections'
 import type { AdminOverview, AdminSection } from '../../src/admin/types'
 
 test('sectionFromPath: 끝 / 무시, 모르는 경로는 대시보드', () => {

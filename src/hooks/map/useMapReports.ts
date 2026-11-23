@@ -4,11 +4,11 @@ import { useFocusEffect } from '@react-navigation/native'
 import { getHotReports, hasCommunityFields } from '../../apis/community'
 import { getLiveReports } from '../../apis/reports'
 import { REPORT_CATEGORIES } from '../../constants/reportCategories'
-import { useApiResource } from '../useApiResource'
+import { useApiResource } from '../query/useApiResource'
 import { useHiddenAuthorKeys, withoutHiddenAuthors } from '../../lib/hiddenAuthors'
 import type { ReportCategory, ReportListItem } from '../../types'
-import { toReportMarkers, visibleReports } from '../../utils/reports'
-import { parseServerTime } from '../../utils/serverTime'
+import { toReportMarkers, visibleReports } from '../../utils/map/report/reports'
+import { parseServerTime } from '../../utils/common/serverTime'
 
 /** 제보 종류 칩 줄 — 제보 쓰기에서 고를 수 있는 종류 그대로(지금 목록에 없는 종류도 늘 보인다). */
 export const REPORT_CATEGORY_KEYS = REPORT_CATEGORIES.map((meta) => meta.key)

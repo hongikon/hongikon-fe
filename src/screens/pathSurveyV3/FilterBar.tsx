@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
@@ -7,6 +6,7 @@ import { Chip } from './controls'
 import { BuildingSearch, FloorPicker } from './LevelPicker'
 import type { ChangeCounts } from '../../utils/pathSurveyV3/changes'
 import { buildingColor, CHANGE_ADDED_COLOR, CHANGE_ADDED_RING, CHANGE_CHANGED_COLOR, NO_FILTER, selectionsInListOrder, type MapFilter } from './mapState'
+import { useFilterBar } from '../../hooks/pathSurveyV3/useFilterBar'
 
 function CheckRow({ testID, label, on, onToggle }: { testID: string; label: string; on: boolean; onToggle: () => void }) {
   return (
@@ -44,33 +44,7 @@ export default function FilterBar({
   /** Counts since the last save while "show changes" is on. null: no save to compare with. undefined: off. */
   changeCounts: ChangeCounts | null | undefined
 }) {
-  const levelsByBuilding = useMemo(() => {
-    const map = new Map<string, Set<number>>()
-    for (const node of nodes) {
-      if (node.scope !== 'indoor') continue
-      for (const level of node.levels ?? []) {
-        if (!map.has(level.building)) map.set(level.building, new Set())
-        map.get(level.building)!.add(level.floor)
-      }
-    }
-    return map
-  }, [nodes])
-
-  const selected = filter.selections.map((selection) => selection.building)
-  // Keep codes from older survey data accessible even if absent from the current server list.
-  const unknownBuildings = [...levelsByBuilding.keys()].filter((code) => !index.byCode.has(code))
-
-  const toggleBuilding = (building: string) => {
-    onChange({
-      selections: selected.includes(building)
-        ? filter.selections.filter((selection) => selection.building !== building)
-        : [...filter.selections, { building, floor: null }],
-    })
-  }
-
-  const setFloor = (building: string, floor: number | null) => {
-    onChange({ selections: filter.selections.map((selection) => (selection.building === building ? { building, floor } : selection)) })
-  }
+  const { levelsByBuilding, selected, unknownBuildings, toggleBuilding, setFloor } = useFilterBar({ nodes, index, filter, onChange })
 
   return (
     <View style={styles.wrap}>

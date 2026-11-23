@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 
+
 /** 현장에서 폰으로 누르기 쉬운 최소 높이. */
 export const TOUCH = 44
 
@@ -53,12 +54,6 @@ export function Section({ title, help, children }: { title: string; help?: strin
 }
 
 export const Row = ({ children }: { children: ReactNode }) => <View style={ui.btnRow}>{children}</View>
-
-/** 웹 확인창. 없으면(네이티브) 진행한다 — 이 화면은 웹 전용이다. */
-export function confirmAction(message: string): boolean {
-  const w = globalThis as any
-  return typeof w.confirm === 'function' ? !!w.confirm(message) : true
-}
 
 export { shortId } from './ids'
 

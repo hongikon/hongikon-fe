@@ -1,39 +1,27 @@
-import { useState, memo } from 'react'
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import FlameIcon from '../../common/FlameIcon'
 import HotBadge from '../../common/HotBadge'
-import { sortHot } from '../../../apis/community'
-import { formatCount } from './ReportActionRow'
-import { reportPlaceText } from '../../../utils/shareReport'
+import { formatCount } from '../../../utils/map/report/reportActionRow'
+import { reportPlaceText } from '../../../utils/map/report/shareReport'
 import type { ReportListItem } from '../../../types'
-import { useMapData } from '../../../lib/mapData'
 import { RADIUS } from '../../../constants/spacing'
+import { useHotReportList } from '../../../hooks/map/report/useHotReportList'
 
-interface HotReportListProps {
+export interface HotReportListProps {
   reports: readonly ReportListItem[]
   selectedId: number | null
   onSelect: (report: ReportListItem) => void
 }
 
-/** 처음에 보여 줄 줄 수. 지도를 가리지 않게 짧게, "더 보기"로 최대 10줄까지. */
-const COLLAPSED = 3
-const EXPANDED = 10
-
 /**
  * '🔥 HOT' 칩을 켰을 때 지도 위에 뜨는 짧은 목록. 최근 60분 🔥 순(같으면 전체 🔥 순). 누르면 그 제보 시트를 열고 가운데로 옮긴다.
  */
 function HotReportList({ reports, selectedId, onSelect }: HotReportListProps) {
-  // 장소 문구(가까운 건물)는 지도 데이터의 건물로 찾는다. 아직 없으면 좌표 대신 학교 이름이 나온다.
-  const { buildings } = useMapData()
-  const [expanded, setExpanded] = useState(false)
-  // 목록이 지도를 가린다는 의견(10-06) — 머리줄의 접기로 작은 'HOT 목록' 단추만 남기고, 누르면 다시 편다.
-  const [folded, setFolded] = useState(false)
-  const sorted = sortHot(reports)
-  const shown = sorted.slice(0, expanded ? EXPANDED : COLLAPSED)
-  const more = Math.min(sorted.length, EXPANDED) - shown.length
+  const { buildings, expanded, setExpanded, folded, setFolded, sorted, shown, more } = useHotReportList({ reports })
 
   if (folded) {
     return (

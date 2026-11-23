@@ -6,7 +6,7 @@ import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import type { AdminOverview, AdminSection } from '../../types'
 import { ADMIN_COLORS } from '../../ui'
-import { navBadgeCount, navBadgeText } from '../../utils/adminSections'
+import { navBadgeCount, navBadgeText } from '../../utils/shell/adminSections'
 
 const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { section: 'dashboard', label: '대시보드', icon: 'speedometer-outline' },

@@ -1,22 +1,14 @@
-import { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { floorChipLabel, nextEntranceLabel, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { CheckIssue } from '../../utils/pathSurveyV3/check'
 import type { ManualCandidate } from '../../utils/pathSurveyV3/convertV2'
-import { nodesNear } from '../../utils/pathSurveyV3/levels'
-import {
-  findNode,
-  setEntranceLabel,
-  setNodeLevels,
-  setNodeScope,
-  setNodeTies,
-  setNodeType,
-  type StoreV3,
-} from '../../utils/pathSurveyV3/store'
-import { sameLevel, type LevelRef, type NodeScope, type NodeType, type SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
+import { setEntranceLabel, setNodeLevels, setNodeScope, setNodeTies, setNodeType, type StoreV3 } from '../../utils/pathSurveyV3/store'
+import { type LevelRef, type NodeScope, type NodeType, type SurveyNodeV3 } from '../../utils/pathSurveyV3/types'
 import { Btn, Section, ui } from '../pathSurvey/ui'
 import { Chip, MemoBox, Segmented } from './controls'
 import { LevelEditor, PairEditor } from './LevelPicker'
+import { useEntranceLabelPicker } from '../../hooks/pathSurveyV3/useEntranceLabelPicker'
+import { useNodeSheet } from '../../hooks/pathSurveyV3/useNodeSheet'
 
 const SCOPES: { key: NodeScope; label: string }[] = [
   { key: 'outdoor', label: '외부' },
@@ -42,8 +34,7 @@ function EntranceLabelPicker({
   index: BuildingIndex
   onChange: (fn: (s: StoreV3) => StoreV3) => void
 }) {
-  const level = node.levels?.[0]
-  const used = useMemo(() => store.nodes.flatMap((n) => (n.entranceLabel ? [n.entranceLabel] : [])), [store.nodes])
+  const { level, used, pickServer } = useEntranceLabelPicker({ node, store, onChange })
   if (!level) return <Text style={ui.warn}>{'출입구 이름을 고르려면 건물과 층을 먼저 고르세요. 비워 두면 점검에 오류로 나와요.'}</Text>
   const server = index.byCode.get(level.building)?.entrances ?? []
   const sorted = [...server].sort((x, y) => Number(y.floor === level.floor) - Number(x.floor === level.floor) || x.floor - y.floor)
@@ -51,13 +42,6 @@ function EntranceLabelPicker({
     ...new Set(store.nodes.flatMap((n) => (n.entranceLabel && n.levels?.[0]?.building === level.building && !index.serverLabels.has(n.entranceLabel) ? [n.entranceLabel] : []))),
   ]
   const onServer = node.entranceLabel ? index.serverLabels.has(node.entranceLabel) : true
-
-  const pickServer = (label: string, floor: number) =>
-    onChange((s) => {
-      // A label belongs to a floor, so the point follows it.
-      const next = floor === level.floor ? s : setNodeLevels(s, node.id, [{ building: level.building, floor }])
-      return setEntranceLabel(next, node.id, node.entranceLabel === label ? undefined : label)
-    })
 
   return (
     <View style={styles.block}>
@@ -109,23 +93,7 @@ export default function NodeSheet({
   onDelete: () => void
   onClose: () => void
 }) {
-  const levels = node.levels ?? []
-  const buildingCount = new Set(levels.map((l) => l.building)).size
-  const near = useMemo(() => nodesNear(store.nodes, node), [store.nodes, node])
-  const hasFloors = candidates.some((c) => c.floors?.length)
-
-  const applyCandidate = (c: ManualCandidate) =>
-    onChange((s) => {
-      let next = setNodeScope(s, node.id, 'indoor')
-      const picked = (c.floors ?? []).map((floor) => ({ building: c.building, floor }))
-      if (picked.length) {
-        const old = findNode(next, node.id)?.levels ?? []
-        const merged = node.type === 'entrance' ? picked.slice(0, 1) : [...old.filter((l) => !picked.some((p) => sameLevel(p, l))), ...picked]
-        next = setNodeLevels(next, node.id, merged)
-      }
-      if (c.label) next = setEntranceLabel(next, node.id, c.label)
-      return next
-    })
+  const { levels, buildingCount, near, hasFloors, applyCandidate } = useNodeSheet({ node, store, candidates, onChange })
 
   return (
     <Section title={`점 ${node.id}`} help={`${node.lat.toFixed(7)}, ${node.lng.toFixed(7)}${node.legacyId ? `, 옛 id ${node.legacyId}` : ''}`}>

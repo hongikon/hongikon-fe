@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
-import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from '../../utils/mapBounds'
+import { CAMPUS_VIEW_BOX, farPointViewBox, isFarFromCampus, viewBoundsScript } from '../../utils/map/mapBounds'
 import { FOCUS_ZOOM } from '../../constants/map'
 import type { Partner } from '../../types'
-import { toMarker } from '../../utils/partnerMarker'
+import { toMarker } from '../../utils/map/partner/partnerMarker'
 import { searchPinnedSection } from '../../utils/map/searchPinned'
 
 interface Options {

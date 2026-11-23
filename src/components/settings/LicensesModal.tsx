@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import SwipeBackModal from '../common/SwipeBackModal'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
@@ -6,36 +5,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { SPACING } from '../../constants/spacing'
 import { FONTS, TYPE } from '../../constants/typography'
-import { openExternalUrl } from '../../utils/openExternalUrl'
+import { openExternalUrl } from '../../utils/common/openExternalUrl'
 import ModalHeader, { ModalPanel } from './ModalHeader'
 import ContentColumn from '../common/ContentColumn'
+import { useLicensesModal } from '../../hooks/settings/useLicensesModal'
+import { type Row } from '../../utils/settings/licensesModal'
 
-/** `scripts/generate-licenses.mjs` 가 만드는 한 줄. 전문은 texts[t] (없으면 -1). */
-interface LicenseEntry {
-  n: string
-  v: string
-  l: string
-  a: string
-  h: string
-  t: number
-}
-
-interface LicenseData {
-  fonts: LicenseEntry[]
-  packages: LicenseEntry[]
-  texts: string[]
-}
-
-type Row = { kind: 'header'; title: string } | { kind: 'item'; key: string; entry: LicenseEntry }
-
-/** 목록이 수백 KB 라 화면을 처음 열 때만 읽는다(앱 시작 때 파싱하지 않게). */
-let cached: LicenseData | null = null
-function loadLicenses(): LicenseData {
-  if (!cached) cached = require('../../constants/openSourceLicenses.json') as LicenseData
-  return cached
-}
-
-interface LicensesModalProps {
+export interface LicensesModalProps {
   visible: boolean
   onClose: () => void
 }
@@ -45,19 +21,7 @@ interface LicensesModalProps {
  * 예전에는 웹(hongikon.com/licenses/)으로 보냈는데, 앱 안에서 바로 보이게 옮겼다. 항목을 누르면 전문이 펼쳐진다.
  */
 export default function LicensesModal({ visible, onClose }: LicensesModalProps) {
-  const [openKey, setOpenKey] = useState<string | null>(null)
-
-  const data = visible ? loadLicenses() : null
-  const rows = useMemo<Row[]>(() => {
-    if (!data) return []
-    return [
-      { kind: 'header', title: '글꼴' },
-      ...data.fonts.map((entry): Row => ({ kind: 'item', key: `font:${entry.n}`, entry })),
-      { kind: 'header', title: `소프트웨어 (${data.packages.length}개)` },
-      // 같은 이름이 다른 라이선스로 두 번 나올 수 있어(pnpm licenses list) 순번을 붙인다.
-      ...data.packages.map((entry, i): Row => ({ kind: 'item', key: `pkg:${i}:${entry.n}`, entry })),
-    ]
-  }, [data])
+  const { openKey, setOpenKey, data, rows } = useLicensesModal({ visible })
 
   const renderRow = ({ item }: { item: Row }) => {
     if (item.kind === 'header') return <Text style={styles.header}>{item.title}</Text>

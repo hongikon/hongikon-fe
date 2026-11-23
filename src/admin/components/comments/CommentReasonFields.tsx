@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { MODERATION_REASONS } from '../../utils/commentModeration'
+import { MODERATION_REASONS } from '../../utils/comments/commentModeration'
 
 /** 숨김·삭제 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200

@@ -1,4 +1,4 @@
-import type { ReportDayHours } from '../utils/reportSchedule'
+import type { ReportDayHours } from '../utils/map/report/reportSchedule'
 import type { Exhibition, Facility, FacilityKind, Partner, ReportCategory } from '../types'
 
 /**

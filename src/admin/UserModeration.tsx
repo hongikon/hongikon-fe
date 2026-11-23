@@ -1,22 +1,20 @@
-import { useState } from 'react'
 import { Platform, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { fetchUser } from './api'
 import { LoginNameReveal } from './components/users/LoginNameReveal'
 import { moderationStyles } from './components/users/moderationStyles'
 import { OfficialNameForm } from './components/users/OfficialNameForm'
 import { PriorHistoryNote } from './components/users/PriorHistoryNote'
 import { formatDateTime } from './format'
-import { useUserModeration } from './hooks/useUserModeration'
+import { useUserModeration } from './hooks/users/useUserModeration'
 import type { AdminUser } from './types'
 import { Badge, Button, ConfirmBar, InlineError, useAdminHost } from './ui'
-import { moderationError } from './utils/moderationErrors'
-import { canAssignOfficial, hasNoAppNickname, memberName } from './utils/userModeration'
+import { canAssignOfficial, hasNoAppNickname, memberName } from './utils/users/userModeration'
 import { RADIUS } from '../constants/spacing'
+import { useReportAuthorModeration } from './hooks/users/useReportAuthorModeration'
 
 export { OfficialNameForm } from './components/users/OfficialNameForm'
-export { memberLabel, memberName } from './utils/userModeration'
+export { memberLabel, memberName } from './utils/users/userModeration'
 
 /** 정지 사유 최대 길이(서버 제한과 같다). */
 const REASON_MAX_LENGTH = 200
@@ -113,19 +111,7 @@ export function UserModerationPanel({ user, onChanged }: { user: AdminUser; onCh
 
 /** 제보 카드 안의 "작성자 관리". 누르면 그때 회원 정보를 불러온다. */
 export function ReportAuthorModeration({ authorId }: { authorId: number }) {
-  const [open, setOpen] = useState(false)
-  const [user, setUser] = useState<AdminUser | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = () => {
-    setLoading(true)
-    setError(null)
-    fetchUser(authorId)
-      .then(setUser)
-      .catch((err: unknown) => setError(moderationError(err, '작성자 정보를 불러오지 못했습니다.')))
-      .finally(() => setLoading(false))
-  }
+  const { open, setOpen, user, setUser, loading, error, load } = useReportAuthorModeration({ authorId })
 
   if (!open) {
     return (

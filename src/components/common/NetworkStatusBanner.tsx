@@ -1,13 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { FONTS } from '../../constants/typography'
-import { checkConnectivity, useConnectivity } from '../../lib/connectivity'
+import { checkConnectivity } from '../../lib/connectivity'
 import { RADIUS } from '../../constants/spacing'
-
-/** 다시 연결됐다는 안내를 잠깐만 보여주는 시간. 계속 떠 있으면 화면만 가린다. */
-const RECOVERED_NOTICE_MS = 2_000
+import { useNetworkStatusBanner } from '../../hooks/common/useNetworkStatusBanner'
 
 /**
  * 모든 화면 위에 뜨는 연결 상태 배너. `App.tsx` 에서 내비게이션 위에 한 번만 올린다.
@@ -19,31 +15,7 @@ const RECOVERED_NOTICE_MS = 2_000
  * 닫기를 누르면 이번 끊김 동안은 숨기고, 한 번 복구된 뒤 다시 끊기면 또 보여준다.
  */
 export default function NetworkStatusBanner() {
-  const { status, checking } = useConnectivity()
-  const insets = useSafeAreaInsets()
-  const [dismissed, setDismissed] = useState(false)
-  const [showRecovered, setShowRecovered] = useState(false)
-  const prevStatusRef = useRef(status)
-
-  useEffect(() => {
-    const prev = prevStatusRef.current
-    prevStatusRef.current = status
-    if (status !== 'online') {
-      // 복구 안내가 떠 있는 2초 안에 다시 끊기면 위 타이머는 정리돼 안내가 내려가지 않았다(showRecovered 가 true 로 남음).
-      // 그러면 아래 숨김 조건이 늘 거짓이라 닫기(X)를 눌러도 배너가 사라지지 않았다.
-      setShowRecovered(false)
-      return
-    }
-
-    setDismissed(false)
-    // 배너를 보고 있던 사용자에게만 복구를 알린다.
-    if (prev === 'online') return
-    setShowRecovered(true)
-    const timer = setTimeout(() => setShowRecovered(false), RECOVERED_NOTICE_MS)
-    return () => clearTimeout(timer)
-  }, [status])
-
-  const disconnected = status !== 'online'
+  const { status, checking, insets, dismissed, setDismissed, showRecovered, disconnected } = useNetworkStatusBanner()
   if (!showRecovered && (!disconnected || dismissed)) return null
 
   const recovered = !disconnected

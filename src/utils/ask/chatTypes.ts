@@ -1,9 +1,9 @@
 import type { AskAnswerNode, AskQuestionNode, AskSection } from '../../constants/askAnswers'
 import type { AskAction, AskFeedbackReason } from '../../apis/ask'
 import type { PickedReportImage } from '../../apis/reports'
-import type { OfficeAskResult } from '../officeAsk'
-import type { GreetingGuide } from '../askGreeting'
-import type { AskAppCommand } from '../askAppCommand'
+import type { OfficeAskResult } from './officeAsk'
+import type { GreetingGuide } from './askGreeting'
+import type { AskAppCommand } from './askAppCommand'
 
 /**
  * 대화 한 줄. 고객센터 챗봇처럼 봇이 버튼으로 되묻고(question), 고른 버튼은 사용자 말풍선으로 남는다.

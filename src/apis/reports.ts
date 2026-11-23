@@ -1,6 +1,6 @@
-import type { ReportDayHours } from '../utils/reportSchedule'
+import type { ReportDayHours } from '../utils/map/report/reportSchedule'
 import { ApiError, apiRequest } from './client'
-import { stripJpegLocation, stripPngMetadata } from '../utils/jpegPrivacy'
+import { stripJpegLocation, stripPngMetadata } from '../utils/map/report/jpegPrivacy'
 import type {
   CreateReportFlagInput,
   CreateReportInput,

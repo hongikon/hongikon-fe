@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { FacilityCard } from '../components/facilities/FacilityCard'
 import { FacilityForm } from '../components/facilities/FacilityForm'
-import { useFacilitiesAdmin } from '../hooks/useFacilitiesAdmin'
+import { useFacilitiesAdmin } from '../hooks/facilities/useFacilitiesAdmin'
 import { TextRow } from '../MapForm'
 import { adminText, Button, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
 

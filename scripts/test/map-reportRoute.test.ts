@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { reportRouteBuilding, reportRouteFloor } from '../../src/utils/map/routePinBuilding'
+import { reportRouteBuilding, reportRouteFloor } from '../../src/utils/map/route/routePinBuilding'
 
 const b = (id: number | undefined, name: string, lat: number, lng: number) => ({ id, name, lat, lng }) as never
 

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { findModule, saveStore, updateModule, type LoadResult, type SurveyModule, type SurveyStore } from '../../utils/pathSurveyStore'
+import { findModule, saveStore, updateModule, type LoadResult, type SurveyModule, type SurveyStore } from '../../utils/pathSurvey/store'
 
 interface StoreOptions {
   /** 화면을 열 때 한 번 읽은 저장 내용(loadStore). 읽지 못했으면(corrupt) 이 탭은 저장하지 않는다. */

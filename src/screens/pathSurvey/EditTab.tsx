@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { FONTS } from '../../constants/typography'
-import { NODE_KIND_INFO, type SurveyEdgeKind, type SurveyModule, type SurveyNode, type SurveyNodeKind } from '../../utils/pathSurveyStore'
+import { NODE_KIND_INFO, type SurveyEdgeKind, type SurveyModule, type SurveyNode, type SurveyNodeKind } from '../../utils/pathSurvey/store'
 import EdgePanel from './EdgePanel'
 import Legend from './Legend'
 import { MODES, type Mode } from './screenModel'

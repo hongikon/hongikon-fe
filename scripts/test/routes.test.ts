@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { pickApproachRoutes, type WalkApproach } from '../../src/apis/routes'
-import { straightLineFallback, straightLineFromPoint } from '../../src/utils/routeEstimate'
-import { describeRoutes, shortBuildingName } from '../../src/utils/routeLabels'
+import { straightLineFallback, straightLineFromPoint } from '../../src/utils/map/route/routeEstimate'
+import { describeRoutes, shortBuildingName } from '../../src/utils/map/route/routeLabels'
 import type { Building } from '../../src/types'
 
 /** 길찾기 계산은 서버(hongikon-be walkroute)가 하고 그쪽에서 앱 예전 결과와 맞춰 본다. 앱에는 결과를 다루는 부분만 남았다. */
@@ -118,7 +118,7 @@ test('서버를 못 받을 때 직선 어림(층 이동 시간 더함)', () => {
 })
 
 test('층 다이얼: 서버 층 목록(floorLevels)이 있으면 그대로 — 홍문관은 B1 없이 L(0)', async () => {
-  const { buildFloorOptions } = await import('../../src/utils/floors')
+  const { buildFloorOptions } = await import('../../src/utils/common/floors')
   const r = { name: '홍문관 R동', lat: 37.55, lng: 126.92, floors: 16, basementFloors: 6, floorLevels: [-6, -2, 0, 1, 16] } as Building
   assert.deepEqual(buildFloorOptions(r).map((o) => o.label), ['B6', 'B2', 'L', '1F', '16F'])
   const ranged = { name: 'X', lat: 37.55, lng: 126.92, floors: 3, basementFloors: 1 } as Building

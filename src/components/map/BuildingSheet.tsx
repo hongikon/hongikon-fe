@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SheetHandle from "./SheetHandle";
 import {
+
   Animated,
   View,
   Text,
@@ -12,16 +13,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import type { Building, Facility, FacilityKind } from "../../types";
 import { HIDDEN_FACILITY_KINDS, VISIBLE_FACILITY_KINDS, facilityChipLabel } from "../../constants/facilityKinds";
-import { formatFloor } from "../../utils/floors";
 import { KindIcon } from "./ChipIcon";
 import { FONTS } from "../../constants/typography";
 import IconButton from "../common/IconButton";
 import { sheetCloseStyle } from "./chipStyles";
-import { useSheetSizing } from "../../hooks/useResizableSheet";
-import { openExternalUrl } from "../../utils/openExternalUrl";
+import { useSheetSizing } from "../../hooks/map/useResizableSheet";
+import { openExternalUrl } from "../../utils/common/openExternalUrl";
 import { RADIUS } from "../../constants/spacing";
 import SheetScrollBody, { SheetTouchable } from "./SheetScrollBody";
-import RouteEndpointButtons, { type RouteNext } from "./route/RouteEndpointButtons";
+import RouteEndpointButtons from './route/RouteEndpointButtons'
+import { type RouteNext } from '../../utils/map/route/routeEndpointButtons'
+import { groupByKind, floorSummary } from '../../utils/map/buildingSheet'
 
 interface BuildingSheetProps {
   building: Building;
@@ -40,30 +42,6 @@ interface BuildingSheetProps {
 
 /** 서버가 건물 종류를 아직 모를 때 넣어 둔 값. 사용자에게는 보이지 않게 한다. */
 const UNKNOWN_TYPE = "확인 필요";
-/** 종류 줄에 층을 이만큼까지만 적고 나머지는 '외'로 줄인다(홍문관 행정 부서처럼 층이 많은 경우). */
-const MAX_FLOORS_SHOWN = 4;
-
-interface KindRow {
-  kind: FacilityKind;
-  count: number;
-  floors: number[];
-}
-
-/** 이 건물의 편의시설을 칩 순서대로 종류별로 묶는다. 칩에 없는 종류(엘리베이터)는 빼 칩 줄과 같은 목록을 쓴다(11-08). */
-function groupByKind(facilities: readonly Facility[]): KindRow[] {
-  return VISIBLE_FACILITY_KINDS.flatMap(({ key }) => {
-    const items = facilities.filter((f) => f.kind === key);
-    if (items.length === 0) return [];
-    const floors = [...new Set(items.flatMap((f) => (f.floor === undefined ? [] : [f.floor])))].sort((a, b) => a - b);
-    return [{ kind: key, count: items.length, floors }];
-  });
-}
-
-function floorSummary(floors: number[]): string | null {
-  if (floors.length === 0) return null;
-  const shown = floors.slice(0, MAX_FLOORS_SHOWN).map(formatFloor).join(" · ");
-  return floors.length > MAX_FLOORS_SHOWN ? `${shown} 외` : shown;
-}
 
 /**
  * 건물 정보 배너. 확인된 값이 있는 줄만 보여준다.

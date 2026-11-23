@@ -6,7 +6,7 @@ import { FOCUS_ZOOM } from '../../constants/map'
 import { ROUTE_FINDING_ENABLED } from '../../constants/route'
 import { consumeMapIntent, subscribeMapIntent } from '../../lib/mapIntents'
 import type { Building, Facility, Partner, ReportListItem } from '../../types'
-import { visibleReports } from '../../utils/reports'
+import { visibleReports } from '../../utils/map/report/reports'
 import type { AskCardContent, PreviewTarget } from './useMapPlaceCards'
 
 export type { AskCardContent, PreviewTarget } from './useMapPlaceCards'

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, memo } from 'react'
+import { memo } from 'react'
 import type { ReactNode } from 'react'
 import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
@@ -8,11 +8,12 @@ import { FONTS } from '../../constants/typography'
 import ReportMegaphoneIcon from '../common/ReportMegaphoneIcon'
 import FlameIcon from '../common/FlameIcon'
 import { reportCategoryMeta } from '../../constants/reportCategories'
-import type { ReportCategory } from '../../types'
 import * as haptics from '../../lib/haptics'
 import { RADIUS } from '../../constants/spacing'
+import { useMapActionMenu } from '../../hooks/map/useMapActionMenu'
+import { isNarrowed, type ReportFilterProps } from '../../utils/map/mapActionMenu'
 
-interface MapActionMenuProps {
+export interface MapActionMenuProps {
   onReport: () => void
   /** 넘기지 않으면(길찾기 꺼짐) 항목을 그리지 않는다. */
   onRoute?: () => void
@@ -33,24 +34,6 @@ interface MapActionMenuProps {
   /** 근처 알림 테스트 위치 정하기(개발·현장 테스트 빌드만). */
   onPickNearbyTestLocation?: () => void
   style?: StyleProp<ViewStyle>
-}
-
-/** 제보는 지도에 늘 켜 둔다(10-27) — 끄는 스위치 없이 종류·HOT 만 고른다. */
-export interface ReportFilterProps {
-  /** 칩으로 그릴 종류(순서대로). */
-  categories: readonly ReportCategory[]
-  /** 지금 보이는 종류. 모두 들어 있으면 거르지 않는다. */
-  selected: ReadonlySet<ReportCategory>
-  onToggleCategory: (category: ReportCategory) => void
-  hotOn: boolean
-  /** 서버가 🔥 를 모르면 HOT 칩을 그리지 않는다. */
-  hotAvailable: boolean
-  onToggleHot: () => void
-}
-
-/** 전부 보는 기본 상태가 아니면(일부 종류·HOT 만) 메뉴 버튼에 점을 찍는다 — 닫힌 메뉴만 봐도 걸러 보는 중인 걸 알게. */
-function isNarrowed(filter: ReportFilterProps): boolean {
-  return filter.hotOn || filter.categories.some((key) => !filter.selected.has(key))
 }
 
 interface MenuItem {
@@ -79,25 +62,7 @@ function MapActionMenu({
   onPickNearbyTestLocation,
   style,
 }: MapActionMenuProps) {
-  const [open, setOpen] = useState(false)
-  /** '제보 보기'를 눌러 종류 줄을 펼쳤는지. 메뉴를 닫으면 다시 접는다. */
-  const [filterOpen, setFilterOpen] = useState(false)
-  const progress = useRef(new Animated.Value(0)).current
-  const scrollRef = useRef<ScrollView>(null)
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: open ? 1 : 0,
-      duration: 160,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start()
-  }, [open, progress])
-
-  const toggle = useCallback(() => {
-    haptics.selection()
-    setOpen((value) => !value)
-    setFilterOpen(false)
-  }, [])
+  const { open, setOpen, filterOpen, setFilterOpen, progress, scrollRef, toggle, itemsMotion } = useMapActionMenu()
 
   const items: MenuItem[] = [
     ...(onPickNearbyTestLocation
@@ -147,11 +112,6 @@ function MapActionMenu({
       onPress: onReport,
     },
   ]
-
-  const itemsMotion = {
-    opacity: progress,
-    transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-  }
 
   return (
     <View style={[styles.wrap, style]} pointerEvents="box-none">

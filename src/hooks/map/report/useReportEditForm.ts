@@ -4,10 +4,10 @@ import { updateReport, uploadReportImage } from '../../../apis/reports'
 import { useAuth } from '../../../contexts/AuthContext'
 import * as haptics from '../../../lib/haptics'
 import type { Report, ReportCategory, ReportListItem } from '../../../types'
-import { acceptEditPhotos, initialEditPhotos, saveErrorMessage, type PhotoItem } from '../../../utils/map/reportEdit'
-import type { ReportDayHours } from '../../../utils/reportSchedule'
-import { REPORT_MAX_IMAGES } from '../../../utils/reports'
-import { parseServerTime } from '../../../utils/serverTime'
+import { acceptEditPhotos, initialEditPhotos, saveErrorMessage, type PhotoItem } from '../../../utils/map/report/reportEdit'
+import type { ReportDayHours } from '../../../utils/map/report/reportSchedule'
+import { REPORT_MAX_IMAGES } from '../../../utils/map/report/reports'
+import { parseServerTime } from '../../../utils/common/serverTime'
 
 /**
  * 내 제보 고치기 창의 입력값과 동작. 열 때(닫힘 → 열림, 또는 다른 제보)만 그 제보 값으로 새로 채우고,
