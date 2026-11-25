@@ -199,11 +199,15 @@ export function useAuthProvider() {
           return
         }
 
+        // 웹(hongikon.com)은 웰컴(로그인) 화면 없이 둘러보기로 바로 들어간다(11-25 사용자). 링크로 들어온 사람이
+        // 로그인부터 보면 나가 버린다. 로그인은 설정의 "로그인하기"(logout → signedOut → 웰컴)로 한다.
+        // 게스트 표시는 저장하지 않는다 — 웹 판단은 매번 여기서 끝난다(온보딩 건너뛰기와 같다, `initOnboarding`).
+        // 로그인에서 막 돌아왔는데 실패·취소한 경우(위)는 웰컴에 오류 문구를 보여야 하므로 그대로 signedOut 이다.
         const isGuest = await getItem(GUEST_FLAG_KEY)
-        setStatus(isGuest ? 'guest' : 'signedOut')
+        setStatus(isGuest || isWeb ? 'guest' : 'signedOut')
       } catch (error: unknown) {
         if (__DEV__) console.warn('로그인 상태를 불러오지 못해 웰컴 화면으로 시작합니다:', error)
-        setStatus('signedOut')
+        setStatus(isWeb ? 'guest' : 'signedOut')
       }
     }
 
