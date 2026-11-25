@@ -8,7 +8,7 @@ import {
   nextCommentPage,
   removeCommentFromThreads,
   visibleThreads,
-} from '../../src/utils/map/commentThreads'
+} from '../../src/utils/map/report/commentThreads'
 import type { ReportComment } from '../../src/types'
 
 const c = (id: number, extra: Partial<ReportComment> = {}) => ({ id, content: `c${id}`, ...extra }) as ReportComment

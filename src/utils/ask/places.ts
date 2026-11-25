@@ -1,5 +1,5 @@
 import type { Building, Facility, Partner } from '../../types'
-import { formatFloor } from '../floors'
+import { formatFloor } from '../common/floors'
 
 /** 지도 데이터 중 답 버튼이 찾아보는 것. */
 export interface AskPlaceData {

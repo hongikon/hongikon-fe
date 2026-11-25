@@ -1,12 +1,14 @@
-import { memo, useCallback, useState } from 'react'
+import { memo } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import type { NewsItem } from '../../types'
+import { usePinnedNoticeSection } from '../../hooks/news/usePinnedNoticeSection'
+import { usePinnedRow } from '../../hooks/news/usePinnedRow'
 
-interface PinnedNoticeSectionProps {
+export interface PinnedNoticeSectionProps {
   /** 상단 고정 글. 비어 있으면 아무것도 그리지 않는다. */
   items: readonly NewsItem[]
   /** 화면 단위로 하나만 만들어 넘긴다(NewsCard 와 같은 이유 — memo 가 소용없어지지 않게). */
@@ -21,7 +23,7 @@ const PinnedRow = memo(function PinnedRow({
   item: NewsItem
   onPress: (item: NewsItem) => void
 }) {
-  const handlePress = useCallback(() => onPress(item), [onPress, item])
+  const { handlePress } = usePinnedRow({ item, onPress })
   return (
     <TouchableOpacity
       style={styles.row}
@@ -44,8 +46,7 @@ const PinnedRow = memo(function PinnedRow({
  * 여기서 제목만 따로 보여준다. 접힘 상태는 화면에 있는 동안만 기억한다.
  */
 function PinnedNoticeSectionComponent({ items, onPressItem }: PinnedNoticeSectionProps) {
-  const [expanded, setExpanded] = useState(true)
-  const toggle = useCallback(() => setExpanded((v) => !v), [])
+  const { expanded, toggle } = usePinnedNoticeSection()
 
   if (items.length === 0) return null
 

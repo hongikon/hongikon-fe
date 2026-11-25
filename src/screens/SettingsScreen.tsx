@@ -1,30 +1,12 @@
-import { useCallback, useRef, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation, useScrollToTop } from '@react-navigation/native'
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../constants/colors'
 import { layoutStyles } from '../constants/layout'
-import { useSettings } from '../contexts/SettingsContext'
-import { useAuth } from '../contexts/AuthContext'
-import { useHiddenAuthors } from '../lib/hiddenAuthors'
 import TabHeaderCard from '../components/common/TabHeaderCard'
-import { useToast } from '../components/common/Toast'
-import { useFeedbackToggles } from '../hooks/useFeedbackToggles'
-import { useAppNotices } from '../lib/appNotices'
 import { UNOFFICIAL_NOTICE } from '../constants/disclaimer'
 import { TYPE } from '../constants/typography'
 import { SPACING } from '../constants/spacing'
-import type { RootStackParamList } from '../navigation/RootNavigator'
 import LogotypeHorizontal from '../../assets/brand/logotype-horizontal.svg'
-import { useTabBarInset } from '../hooks/useTabBarInset'
-import type { SettingsModalType } from '../hooks/settings/types'
-import { useSettingsGroups } from '../hooks/settings/useSettingsGroups'
-import { useAccountActions } from '../hooks/settings/useAccountActions'
-import { useSettingsAlerts } from '../hooks/settings/useSettingsAlerts'
-import { useSettingsAccount } from '../hooks/settings/useSettingsAccount'
-import { useNearbySettingHighlight } from '../hooks/settings/useNearbySettingHighlight'
-import { useSettingsIntents } from '../hooks/settings/useSettingsIntents'
 import GroupHeader from '../components/settings/screen/GroupHeader'
 import ProfileCard from '../components/settings/screen/ProfileCard'
 import SuspendedNotice from '../components/settings/screen/SuspendedNotice'
@@ -35,76 +17,14 @@ import SupportGroup from '../components/settings/screen/SupportGroup'
 import PoliciesGroup from '../components/settings/screen/PoliciesGroup'
 import SettingsModals from '../components/settings/screen/SettingsModals'
 import { settingsStyles } from '../components/settings/screen/styles'
-
-type NavProp = NativeStackNavigationProp<RootStackParamList>
+import { useSettingsScreen } from '../hooks/settings/useSettingsScreen'
 
 /**
  * 설정 탭. 묶음(계정·알림·구독 게시판·일반·고객 지원·약관)을 누르면 그 자리에서 펼친다.
  * 상태와 동작은 hooks/settings/*, 묶음별 화면은 components/settings/screen/* 에 있다.
  */
 export default function SettingsScreen() {
-  const tabInset = useTabBarInset()
-  const appNotices = useAppNotices()
-  // 이미 설정 탭에 있을 때 하단 '설정' 탭을 다시 누르면 맨 위로 올린다(10-08 요청).
-  const scrollRef = useRef<ScrollView>(null)
-  useScrollToTop(scrollRef)
-  const {
-    settings,
-    toggleSubscriptionAlert,
-    isDeptAlertOn,
-    toggleDeptAlert,
-    resetSettings,
-  } = useSettings()
-  // 구독·게시판 알림·분야·제보 알림 토글은 진동과 토스트("○○ 알림을 껐어요")를 함께 준다.
-  const {
-    toggleAlertCategory,
-    toggleSubscribedDept,
-    toggleReportStatusAlert,
-    toggleNewReportAlert,
-  } = useFeedbackToggles()
-  const toast = useToast()
-  const hiddenAuthors = useHiddenAuthors()
-
-  const { status, loginProvider, logout, deleteAccount, accessToken } = useAuth()
-  const navigation = useNavigation<NavProp>()
-
-  const [activeModal, setActiveModal] = useState<SettingsModalType>(null)
-  const { expanded, toggleGroup, expandGroup } = useSettingsGroups(navigation, scrollRef)
-  const [subManagerVisible, setSubManagerVisible] = useState(false)
-  const [boardAlertsVisible, setBoardAlertsVisible] = useState(false)
-  const closeModal = useCallback(() => setActiveModal(null), [])
-  const openSubscriptions = useCallback(() => setSubManagerVisible(true), [])
-
-  const actions = useAccountActions({ logout, deleteAccount, resetSettings, closeModal })
-
-  const isGuest = status !== 'authenticated'
-  const alerts = useSettingsAlerts({
-    status,
-    accessToken,
-    logout,
-    settings,
-    toggleSubscriptionAlert,
-    isDeptAlertOn,
-    toggleDeptAlert,
-    toast,
-    openSubscriptions,
-  })
-  const account = useSettingsAccount({ isGuest, accessToken })
-  const { profile } = account
-
-  /** 반려 알림으로 들어왔을 때 내역에서 강조할 제보 */
-  const [highlightReportId, setHighlightReportId] = useState<number | null>(null)
-  const openMyReports = useCallback((reportId: number | null) => {
-    setHighlightReportId(reportId)
-    setActiveModal('myReports')
-  }, [])
-  const nearby = useNearbySettingHighlight(scrollRef)
-  useSettingsIntents({ isGuest, expandGroup, openSubscriptions, showNearbySetting: nearby.show, openMyReports })
-
-  // 설정은 하단 탭 안의 화면이라 탭 이름(Map)으로 이동하면 부모 탭 내비게이터가 처리한다.
-  const navigateToMap = () => (navigation as unknown as { navigate: (name: string) => void }).navigate('Map')
-
-  const { subscribedDepts } = settings
+  const { tabInset, appNotices, scrollRef, toggleAlertCategory, toggleSubscribedDept, toggleReportStatusAlert, toggleNewReportAlert, hiddenAuthors, status, loginProvider, navigation, activeModal, setActiveModal, expanded, toggleGroup, subManagerVisible, setSubManagerVisible, boardAlertsVisible, setBoardAlertsVisible, actions, isGuest, alerts, account, profile, highlightReportId, openMyReports, nearby, navigateToMap, subscribedDepts } = useSettingsScreen()
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

@@ -6,7 +6,7 @@ import { FONTS } from '../../constants/typography'
 import { Button } from './Button'
 import { useAdminHost } from './host'
 import { ADMIN_COLORS } from './theme'
-import { useRevealAboveKeyboard } from './useRevealAboveKeyboard'
+import { useRevealAboveKeyboard } from '../hooks/common/useRevealAboveKeyboard'
 
 /**
  * 되돌릴 수 없는 작업 전의 확인 막대. window.confirm 대신 카드 안에 펼친다

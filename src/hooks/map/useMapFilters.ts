@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import type { Building, Exhibition, Facility, FacilityKind, MapLayer, Partner, PartnerAffiliation, PartnerCategory } from '../../types'
-import { withExhibitionHints } from '../../utils/exhibitions'
-import { facilityMarkers } from '../../utils/facilities'
-import { CAMPUS_VIEW_BOX, viewBoundsScript } from '../../utils/mapBounds'
-import { toMarker } from '../../utils/partnerMarker'
-import { filterPartners, hasActiveFilter, type PartnerFilter } from '../../utils/partners'
+import { withExhibitionHints } from '../../utils/map/exhibitions'
+import { facilityMarkers } from '../../utils/map/facilities'
+import { CAMPUS_VIEW_BOX, viewBoundsScript } from '../../utils/map/mapBounds'
+import { toMarker } from '../../utils/map/partner/partnerMarker'
+import { filterPartners, hasActiveFilter, type PartnerFilter } from '../../utils/map/partner/partners'
 
 interface Options {
   webViewRef: RefObject<NaverMapViewHandle | null>

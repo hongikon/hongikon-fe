@@ -40,6 +40,6 @@ feat/* · fix/* · ui/* · hotfix/* · chore/* · docs/*  ──merge(--no-ff)�
 - 네이티브 변경(패키지·`app.json`·권한·아이콘)은 OTA 로 못 나간다. `dev` 에서 preview 빌드로 확인 후 스토어 빌드.
 - 서버가 먼저 배포돼야 하는 기능은 서버 배포를 확인한 뒤 `main` 에 올린다(그 전엔 dev 에 두거나 설정으로 꺼 둔다).
 - 백엔드(`hongikon-be`)도 같은 규칙(`main` ← `dev` ← 작업 브랜치). 배포는 SQL·환경변수 순서가 있어 `docs/deploy-runbook-*.md` 를 따른다.
-- `src/utils/mapHtml.ts`(지도 페이지)를 고치면 `npx tsx --env-file=.env scripts/generate-map-html.ts` 로 `public/map.html` 을 다시 만들어
+- `src/utils/map/mapHtml.ts`(지도 페이지)를 고치면 `npx tsx --env-file=.env scripts/generate-map-html.ts` 로 `public/map.html` 을 다시 만들어
   함께 커밋한다. 웹은 번들에서 바로 그리지만 앱(WebView)은 배포된 `map.html` 을 불러와, 빠뜨리면 앱 지도에만 변경이 안 들어간다
   (10-03~10-05 수정이 이렇게 앱에서 빠져 있었다).

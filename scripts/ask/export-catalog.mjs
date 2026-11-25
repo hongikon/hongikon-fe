@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 register('./ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const { ALL_ASK_FLOWS } = await import('../../src/utils/officeAsk.ts')
+const { ALL_ASK_FLOWS } = await import('../../src/utils/ask/officeAsk.ts')
 
 const outDir = process.argv[2] ?? fileURLToPath(new URL('../../../hongikon-be/src/main/resources/ask/', import.meta.url))
 

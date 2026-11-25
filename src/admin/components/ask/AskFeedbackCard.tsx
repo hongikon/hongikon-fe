@@ -1,14 +1,13 @@
-import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { getErrorMessage } from '../../../apis/client'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { formatDateTime, formatRelative } from '../../format'
 import { AskNoteForm } from './AskNoteForm'
 import type { AdminAskFeedbackItem } from '../../types'
 import { Badge, Button, Card, InlineError } from '../../ui'
-import { ASK_REASON_LABELS, ASK_REASON_TONES } from '../../utils/askFeedback'
+import { ASK_REASON_LABELS, ASK_REASON_TONES } from '../../utils/ask/askFeedback'
 import { AskHandoffBox } from './AskHandoffBox'
+import { useAskFeedbackCard } from '../../hooks/ask/useAskFeedbackCard'
 
 /**
  * 피드백 한 건: 이유·출처 배지, 질문·답(길면 접힘), 안내·근거, 같은 답에서 온 운영진 문의, '안내로 등록'·'확인함'.
@@ -20,20 +19,7 @@ export function AskFeedbackCard({
   item: AdminAskFeedbackItem
   onReview: (item: AdminAskFeedbackItem, reviewed: boolean) => Promise<void>
 }) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
-  const [writing, setWriting] = useState(false)
-  const [noted, setNoted] = useState(false)
-  const reviewed = item.reviewedAt !== null
-
-  const toggle = () => {
-    setPending(true)
-    setError(null)
-    onReview(item, !reviewed)
-      .catch((err: unknown) => setError(getErrorMessage(err, '상태를 바꾸지 못했습니다. 다시 시도해주세요.')))
-      .finally(() => setPending(false))
-  }
+  const { pending, error, open, setOpen, writing, setWriting, noted, setNoted, reviewed, toggle } = useAskFeedbackCard({ item, onReview })
 
   return (
     <Card style={[styles.card, reviewed && styles.cardReviewed]}>

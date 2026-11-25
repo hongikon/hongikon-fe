@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { AccessibilityInfo, type ScrollView, type Text, type TextInput, type View } from 'react-native'
 import * as haptics from '../../../lib/haptics'
-import type { MissingField, RequiredField } from '../../../utils/map/reportComposer'
+import type { MissingField, RequiredField } from '../../../utils/map/report/reportComposer'
 
 /** 빠진 칸으로 스크롤한 뒤 입력칸에 포커스를 줄 때까지(ms). 스크롤 애니메이션과 겹치지 않게 조금 기다린다. */
 const FOCUS_AFTER_SCROLL_MS = 320

@@ -1,18 +1,8 @@
-import { useEffect, useState } from 'react'
-import {
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native'
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
 import { RADIUS } from '../../constants/spacing'
+import { usePhotoCarousel } from '../../hooks/common/usePhotoCarousel'
 
 /** 사진 틀이 가장 세로로 길어질 수 있는 비율(가로/세로). 이보다 긴 사진은 틀 안에 줄여 넣는다. */
 const MIN_FRAME_RATIO = 3 / 4
@@ -34,32 +24,7 @@ export default function PhotoCarousel({
   onPressPhoto: (index: number) => void
   labelPrefix?: string
 }) {
-  const [width, setWidth] = useState(0)
-  const [index, setIndex] = useState(0)
-  const [ratios, setRatios] = useState<Record<string, number>>({})
-  // 부모가 렌더마다 새 배열을 넘겨도 같은 사진이면 다시 재지 않는다.
-  const urlsKey = urls.join('\n')
-
-  useEffect(() => {
-    let alive = true
-    urls.forEach((url) => {
-      Image.getSize(
-        url,
-        (w, h) => {
-          if (alive && w > 0 && h > 0) setRatios((prev) => (prev[url] ? prev : { ...prev, [url]: w / h }))
-        },
-        () => {},
-      )
-    })
-    return () => {
-      alive = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlsKey])
-
-  useEffect(() => {
-    if (index >= urls.length) setIndex(Math.max(0, urls.length - 1))
-  }, [urls.length, index])
+  const { width, setWidth, index, setIndex, ratios, handleLayout, handleScrollEnd } = usePhotoCarousel({ urls })
 
   if (urls.length === 0) return null
 
@@ -68,16 +33,6 @@ export default function PhotoCarousel({
     ? Math.min(MAX_FRAME_RATIO, Math.max(MIN_FRAME_RATIO, Math.min(...known)))
     : FALLBACK_RATIO
   const height = width ? width / frameRatio : 0
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const next = Math.round(event.nativeEvent.layout.width)
-    if (next !== width) setWidth(next)
-  }
-  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!width) return
-    const next = Math.round(event.nativeEvent.contentOffset.x / width)
-    setIndex(Math.min(urls.length - 1, Math.max(0, next)))
-  }
 
   return (
     <View onLayout={handleLayout}>

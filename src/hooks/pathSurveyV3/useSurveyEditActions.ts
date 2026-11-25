@@ -1,5 +1,5 @@
 import { useRef, type MutableRefObject } from 'react'
-import { confirmAction } from '../../screens/pathSurvey/ui'
+import { confirmAction } from '../../utils/pathSurvey/ui'
 import { addDevSample, removeDevSample } from '../../screens/pathSurveyV3/devSample'
 import { placeChained, type EditHistory } from '../../screens/pathSurveyV3/editHistory'
 import { NO_MODS, nudgeCoord, resolveClickShortcut, type ClickMods, type ClickShortcut, type ClickTarget, type ShortcutAction } from '../../screens/pathSurveyV3/keyboard'

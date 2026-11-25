@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native'
 import { FlaggedCommentCard } from '../components/comments/FlaggedCommentCard'
-import { useFlaggedComments } from '../hooks/useFlaggedComments'
+import { useFlaggedComments } from '../hooks/comments/useFlaggedComments'
 import type { AdminOverview } from '../types'
 import { Button, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
-import { withFocusedFirst } from '../utils/focus'
+import { withFocusedFirst } from '../utils/common/focus'
 
 /**
  * 신고 댓글 — 마지막 검토 뒤 신고가 들어온 댓글을 최근 신고 순으로 모아 본다(`GET /admin/comments?filter=flagged`).

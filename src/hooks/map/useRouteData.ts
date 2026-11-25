@@ -3,7 +3,7 @@ import { fetchWalkApproach, fetchWalkRoutes, pickApproachRoutes, type RouteAlter
 import { isCancelledError } from '../../apis/client'
 import type { LivePosition } from '../../lib/nearbyPartners/platform'
 import type { Building } from '../../types'
-import { straightLineFallback, straightLineFromPoint } from '../../utils/routeEstimate'
+import { straightLineFallback, straightLineFromPoint } from '../../utils/map/route/routeEstimate'
 
 interface Endpoints {
   fromBuilding: Building | null

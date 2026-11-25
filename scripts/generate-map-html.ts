@@ -18,7 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { buildMapHTML } from '../src/utils/mapHtml'
+import { buildMapHTML } from '../src/utils/map/mapHtml'
 import { normalizeMapData } from '../src/apis/mapData'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))

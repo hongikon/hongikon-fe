@@ -4,7 +4,7 @@ import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import type { ReportStatus } from '../../types'
 import { Button, ConfirmBar } from '../../ui'
-import { ACTION_META, actionsFor, type ActionKind } from '../../utils/reportReview'
+import { ACTION_META, actionsFor, type ActionKind } from '../../utils/reports/reportReview'
 
 /** 반려 사유 최대 길이(서버 제한과 같다). */
 const NOTE_MAX_LENGTH = 200

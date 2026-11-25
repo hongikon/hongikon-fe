@@ -1,8 +1,8 @@
 import type { Building, Exhibition, Facility, FacilityKind, Partner } from '../../types'
-import { withExhibitionHints } from '../exhibitions'
-import { facilityMarkers } from '../facilities'
-import { toMarker } from '../partnerMarker'
-import { filterPartners, hasActiveFilter, type PartnerFilter } from '../partners'
+import { withExhibitionHints } from './exhibitions'
+import { facilityMarkers } from './facilities'
+import { toMarker } from './partner/partnerMarker'
+import { filterPartners, hasActiveFilter, type PartnerFilter } from './partner/partners'
 
 interface OverlayInput {
   partners: readonly Partner[]

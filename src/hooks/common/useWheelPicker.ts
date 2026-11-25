@@ -1,0 +1,169 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ScrollView, Platform, type AccessibilityActionEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
+import * as haptics from '../../lib/haptics'
+import { WHEEL_ITEM_HEIGHT, SETTLE_DELAY_MS, IS_WEB, DEFAULT_VISIBLE_ROWS, type WheelItem } from '../../utils/common/wheelPicker'
+import type { WheelPickerProps } from '../../components/common/WheelPicker'
+
+/** WheelPicker 의 상태·효과·핸들러. 화면 파일은 이 훅을 불러 그리기만 한다. */
+export function useWheelPicker<T>({ items, value, onChange, visibleRows = DEFAULT_VISIBLE_ROWS }: Pick<WheelPickerProps<T>, 'items' | 'value' | 'onChange' | 'visibleRows'>) {
+  const padRows = Math.max(0, Math.floor((visibleRows - 1) / 2))
+  const scrollRef = useRef<ScrollView>(null)
+  const selectedIndex = Math.max(0, items.findIndex((item) => item.value === value))
+  /** 스크롤 중 가운데에 든 칸(강조용). 멈추면 selectedIndex 와 같아진다. */
+  const [centerIndex, setCenterIndex] = useState(selectedIndex)
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastY = useRef(selectedIndex * WHEEL_ITEM_HEIGHT)
+  const dragging = useRef(false)
+  /**
+   * 사용자가 끌어서 돌린 스크롤이 아직 값으로 확정되지 않았는지(앱). 코드로 돌린 스크롤(값이 바깥에서 바뀜, 막힌 칸 건너뛰기,
+   * 칸 누르기)의 스크롤·멈춤 이벤트는 값으로 받지 않는다.
+   */
+  const userScroll = useRef(false)
+  /**
+   * 코드로 돌리는 중인 목표 위치(웹). 그 사이 오는 스크롤 이벤트는 사용자가 돌린 게 아니라 값으로 받지 않는다
+   * (애니메이션 중간 칸이 값으로 들어가는 것을 막는다).
+   */
+  const programmatic = useRef<{ y: number; until: number } | null>(null)
+  // contentOffset 은 처음 위치로만 쓴다 — 렌더마다 바뀐 값을 넘기면 iOS 가 돌리는 중에도 그 위치로 되돌린다.
+  const initialOffset = useRef({ x: 0, y: selectedIndex * WHEEL_ITEM_HEIGHT }).current
+  // 늦게 도는 타이머가 옛 값·옛 콜백을 쓰지 않게 최신 값을 ref 로 들고 있는다.
+  const latest = useRef({ items, value, onChange })
+  latest.current = { items, value, onChange }
+
+  const nearestEnabled = (list: readonly WheelItem<T>[], index: number): number => {
+    const clamped = Math.min(Math.max(index, 0), list.length - 1)
+    if (!list[clamped]?.disabled) return clamped
+    for (let distance = 1; distance < list.length; distance += 1) {
+      if (list[clamped + distance] && !list[clamped + distance].disabled) return clamped + distance
+      if (list[clamped - distance] && !list[clamped - distance].disabled) return clamped - distance
+    }
+    return clamped
+  }
+
+  const scrollToIndex = useCallback((index: number, animated: boolean) => {
+    const y = index * WHEEL_ITEM_HEIGHT
+    if (Math.abs(lastY.current - y) <= 1) return
+    programmatic.current = { y, until: Date.now() + 600 }
+    lastY.current = y
+    scrollRef.current?.scrollTo({ y, animated })
+  }, [])
+
+  /** index 칸을 고른다(막혔으면 가장 가까운 칸). 값이 바뀌면 onChange + 햅틱. */
+  const commit = (index: number) => {
+    const { items: list, value: current, onChange: change } = latest.current
+    const target = nearestEnabled(list, index)
+    setCenterIndex(target)
+    scrollToIndex(target, true)
+    const item = list[target]
+    if (item && item.value !== current && !item.disabled) {
+      haptics.selection()
+      change(item.value)
+    }
+  }
+  const commitRef = useRef(commit)
+  commitRef.current = commit
+
+  // 바깥에서 값이 바뀌면(다른 열 때문에 맞춰짐 등) 그 칸으로 돌린다.
+  useEffect(() => {
+    if (dragging.current) return
+    setCenterIndex(selectedIndex)
+    scrollToIndex(selectedIndex, true)
+  }, [selectedIndex, scrollToIndex])
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current)
+    },
+    [],
+  )
+
+  const clearSettle = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current)
+    settleTimer.current = null
+  }
+
+  /** 사용자가 돌린 스크롤이 멈춘 자리(lastY)를 값으로 확정한다. */
+  const settleNow = () => {
+    clearSettle()
+    if (dragging.current) return
+    userScroll.current = false
+    commitRef.current(Math.round(lastY.current / WHEEL_ITEM_HEIGHT))
+  }
+
+  const scheduleSettle = (delay: number = SETTLE_DELAY_MS) => {
+    clearSettle()
+    settleTimer.current = setTimeout(() => settleNow(), delay)
+  }
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y
+    const index = Math.min(Math.max(Math.round(y / WHEEL_ITEM_HEIGHT), 0), items.length - 1)
+    if (index !== centerIndex) setCenterIndex(index)
+    if (!IS_WEB) {
+      // 앱은 OS 가 칸에 붙이고(snapToInterval) 멈춤 이벤트로 확정한다. 여기서는 위치만 기억한다.
+      // 전에는 이벤트가 120ms 끊기면 중간 위치로 확정하고 직접 애니메이션을 걸어, OS 스냅과 맞붙어 값이 튀거나
+      // 되돌아가고 가운데 칸과 값이 어긋났다(10-23 지적).
+      if (userScroll.current) lastY.current = y
+      return
+    }
+    const target = programmatic.current
+    if (target && !dragging.current) {
+      // 코드로 돌리는 중 — 도착했거나 시간이 지나면 끝낸다. 값은 commit 이 이미 정했다.
+      if (Math.abs(y - target.y) <= 1 || Date.now() > target.until) programmatic.current = null
+      return
+    }
+    programmatic.current = null
+    lastY.current = y
+    scheduleSettle()
+  }
+
+  /** 막힌 칸은 건너뛰고 한 칸 옮긴다. */
+  const step = (direction: 1 | -1) => {
+    for (let index = selectedIndex + direction; index >= 0 && index < items.length; index += direction) {
+      if (!items[index].disabled) {
+        commit(index)
+        return
+      }
+    }
+  }
+
+  const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === 'increment') step(1)
+    if (event.nativeEvent.actionName === 'decrement') step(-1)
+  }
+
+  // react-native-web 은 View 에 onKeyDown 을 넘겨준다(RN 타입엔 없음).
+  const webKeyProps =
+    Platform.OS === 'web'
+      ? {
+          onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              step(1)
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              step(-1)
+            }
+          },
+        }
+      : {}
+  return {
+    padRows,
+    scrollRef,
+    selectedIndex,
+    centerIndex,
+    lastY,
+    dragging,
+    userScroll,
+    programmatic,
+    initialOffset,
+    scrollToIndex,
+    commit,
+    clearSettle,
+    settleNow,
+    scheduleSettle,
+    handleScroll,
+    handleAccessibilityAction,
+    webKeyProps,
+  }
+}

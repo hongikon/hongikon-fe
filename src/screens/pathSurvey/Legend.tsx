@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { NODE_KIND_INFO, PALETTE, STAIRS_COLOR, type SurveyNodeKind } from '../../utils/pathSurveyStore'
+import { NODE_KIND_INFO, PALETTE, STAIRS_COLOR, type SurveyNodeKind } from '../../utils/pathSurvey/store'
 import { Section, ui } from './ui'
 
 /** 지도 범례. 간선 종류(일반은 모듈 색, 계단은 모든 모듈에서 같은 색)와 지점 성질 색. */

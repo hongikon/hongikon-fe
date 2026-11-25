@@ -6,10 +6,10 @@ import { hideAuthor } from '../../../lib/hiddenAuthors'
 import { ApiError, getErrorMessage } from '../../../apis/client'
 import { deleteReportComment, flagReportComment } from '../../../apis/comments'
 import { communityErrorMessage, setCommentLike } from '../../../apis/community'
-import { confirmAction } from '../../../utils/dialog'
-import { promptLogin } from '../../../utils/reports'
+import { confirmAction } from '../../../utils/common/dialog'
+import { promptLogin } from '../../../utils/map/report/reports'
 import type { ReportComment, ReportFlagReason } from '../../../types'
-import { useMutation } from '../../useMutation'
+import { useMutation } from '../../query/useMutation'
 
 /** 목록에서 빠진 까닭. 답글이 남은 최상위 댓글은 이 값으로 자리 문구를 고른다("삭제된 댓글" / "운영 정책에 따라 숨겨진 댓글"). */
 export type CommentRemovedReason = 'DELETED' | 'HIDDEN'

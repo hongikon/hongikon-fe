@@ -4,7 +4,7 @@ import { COLORS } from "../../../constants/colors";
 import type { ChatMessageOf } from "../../../utils/ask/chatTypes";
 import { firstSentence } from "../../../utils/ask/replyText";
 import { placeName } from "../../../utils/ask/places";
-import { newsSearchQuery } from "../../../utils/askAppCommand";
+import { newsSearchQuery } from "../../../utils/ask/askAppCommand";
 import { askStyles } from "../askStyles";
 import type { AskMessageEnv } from "../messages/types";
 

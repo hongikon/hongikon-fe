@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react'
-import { nextRouteEndpoint } from '../../components/map/route/RouteEndpointButtons'
+import { nextRouteEndpoint } from '../../utils/map/route/routeEndpointButtons'
 import type { Building, Facility, FacilityKind, ReportListItem } from '../../types'
-import { reportRouteBuilding, reportRouteFloor } from '../../utils/map/routePinBuilding'
-import { buildFloorOptions } from '../../utils/floors'
+import { reportRouteBuilding, reportRouteFloor } from '../../utils/map/route/routePinBuilding'
+import { buildFloorOptions } from '../../utils/common/floors'
 
 interface Options {
   postToMap: (msg: object) => void

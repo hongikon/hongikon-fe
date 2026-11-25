@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { getPopularGuides } from "../../apis/ask";
-import { guidesFromIds, type GreetingGuide } from "../../utils/askGreeting";
+import { guidesFromIds, type GreetingGuide } from "../../utils/ask/askGreeting";
 
 /** 요즘 많이 찾는 안내 — 탭을 열 때 한 번 받아 둔다(인사할 때 기다리지 않게). 못 받으면 빈 목록 → 기본 안내. */
 export function usePopularGuides() {

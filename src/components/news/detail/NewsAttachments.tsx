@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { openExternalUrl } from '../../../utils/openExternalUrl'
+import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 import type { NewsAttachment } from '../../../types'
 
 /** 상세 본문 아래 첨부파일 상자. 줄을 누르면 파일 주소를 바깥(브라우저)에서 연다. 없으면 그리지 않는다. */

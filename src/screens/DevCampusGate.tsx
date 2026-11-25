@@ -1,33 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { CAMPUS_PREVIEW_LOADERS, CAMPUS_PREVIEW_NAMES, type CampusPreviewKey } from '../debug/campusPreview'
-
-/**
- * `/dev/sogang`·`/dev/yonsei`·`/dev/ewha` 앞의 인증키 입력(10-14 요청, 세 곳 같은 키). 키 원문은 저장소에 두지 않고 SHA-256 값만 둔다 — 키는 운영자가 따로 전한다.
- * 키를 맞히기 전에는 학교 데이터·화면 코드(`DevCampusScreen`)를 내려받지 않는다.
- * 다만 정적 웹이라 진짜 잠금은 아니다(번들 파일 주소를 알면 받을 수 있다). 학교가 공개한 정보를 링크 없이 숨겨 두는 정도의 용도.
- * 키를 바꾸려면 새 키의 SHA-256(`printf '%s' 새키 | shasum -a 256`)으로 아래 값을 바꾼다.
- */
-const KEY_SHA256 = '6b980606c6e01c1c613834d4b1546aae577730932517e62e6572c78cc0458dd5'
-const UNLOCK_KEY = '@hongikon_dev_campus_unlocked'
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-function readUnlocked(): boolean {
-  try {
-    return window.sessionStorage.getItem(UNLOCK_KEY) === KEY_SHA256
-  } catch {
-    return false
-  }
-}
+import { CAMPUS_PREVIEW_LOADERS, type CampusPreviewKey } from '../debug/campusPreview'
+import { useDevCampusGate } from '../hooks/debug/useDevCampusGate'
 
 export default function DevCampusGate({ campus }: { campus: CampusPreviewKey }) {
-  const name = CAMPUS_PREVIEW_NAMES[campus]
+  const { name, unlocked, setUnlocked, value, setValue, error, setError, checking, setChecking, submit } = useDevCampusGate({ campus })
   // 화면 코드와 그 학교 데이터를 함께 받는다(다른 학교 데이터는 받지 않는다).
   const Screen = useMemo(
     () =>
@@ -40,21 +19,6 @@ export default function DevCampusGate({ campus }: { campus: CampusPreviewKey }) 
       }),
     [campus],
   )
-  const [unlocked, setUnlocked] = useState(readUnlocked)
-  const [value, setValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [checking, setChecking] = useState(false)
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const meta = document.createElement('meta')
-    meta.name = 'robots'
-    meta.content = 'noindex, nofollow'
-    document.head.appendChild(meta)
-    return () => {
-      meta.remove()
-    }
-  }, [])
 
   if (unlocked) {
     return (
@@ -62,29 +26,6 @@ export default function DevCampusGate({ campus }: { campus: CampusPreviewKey }) 
         <Screen />
       </Suspense>
     )
-  }
-
-  const submit = async () => {
-    const key = value.trim()
-    if (!key || checking) return
-    setChecking(true)
-    try {
-      if ((await sha256Hex(key)) !== KEY_SHA256) {
-        setError('인증키가 맞지 않아요.')
-        return
-      }
-      try {
-        // 이 탭을 닫기 전까지만 기억한다.
-        window.sessionStorage.setItem(UNLOCK_KEY, KEY_SHA256)
-      } catch {
-        // 저장소를 못 쓰면 새로고침 때 다시 묻는다.
-      }
-      setUnlocked(true)
-    } catch {
-      setError('이 브라우저에서는 확인할 수 없어요. https 주소로 열어 주세요.')
-    } finally {
-      setChecking(false)
-    }
   }
 
   return (

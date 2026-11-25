@@ -1,70 +1,18 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-
-const KEY_SHA256 = '6b980606c6e01c1c613834d4b1546aae577730932517e62e6572c78cc0458dd5'
-const UNLOCK_KEY = '@hongikon_dev_path_unlocked'
-/**
- * 입력한 암호키 원문(탭을 닫으면 지워지는 sessionStorage). /dev/ask 가 서버 LLM 분류(/ask/route)에 보내 서버가 SHA-256 으로 확인한다.
- * 개발 페이지라 이 탭 안에서만 둔다. 없으면(예전에 연 탭) 물어보기는 서버 없이 낱말 찾기만 한다.
- */
-const RAW_KEY = '@hongikon_dev_path_key'
+import { useDevPathGate } from '../hooks/debug/useDevPathGate'
+import { cannotCheckKey, TITLES } from '../utils/debug/devPathGate'
+import { type DevPathMode } from '../utils/debug/devPathGate'
 
 const DevPathAuditScreen = lazy(() => import('./DevPathAuditScreen'))
 const DevPathSurveyScreen = lazy(() => import('./DevPathSurveyScreen'))
 const DevPathSurveyV3Screen = lazy(() => import('./DevPathSurveyV3Screen'))
 const DevAskScreen = lazy(() => import('./DevAskScreen'))
 
-/** 'ask' = `/dev/ask` 물어보기 챗봇 미리보기(같은 암호키). */
-type DevPathMode = 'audit' | 'survey' | 'surveyV3' | 'ask'
-
-const TITLES: Record<DevPathMode, string> = { audit: '경로망 점검', survey: '경로망 현장 조사', surveyV3: '경로망 조사 v3', ask: '물어보기 미리보기' }
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-/** crypto.subtle only exists on https and localhost, so the key cannot be checked on a plain http LAN address. */
-function cannotCheckKey(): boolean {
-  return typeof window !== 'undefined' && (window.isSecureContext === false || !globalThis.crypto?.subtle)
-}
-
-function readRawKey(): string | undefined {
-  try {
-    return window.sessionStorage.getItem(RAW_KEY) ?? undefined
-  } catch {
-    return undefined
-  }
-}
-
-function readUnlocked(): boolean {
-  try {
-    return window.sessionStorage.getItem(UNLOCK_KEY) === KEY_SHA256
-  } catch {
-    return false
-  }
-}
-
 export default function DevPathGate({ mode }: { mode: DevPathMode }) {
-  const [unlocked, setUnlocked] = useState(readUnlocked)
-  const [rawKey, setRawKey] = useState(readRawKey)
-  const [value, setValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [checking, setChecking] = useState(false)
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const meta = document.createElement('meta')
-    meta.name = 'robots'
-    meta.content = 'noindex, nofollow'
-    document.head.appendChild(meta)
-    document.title = `${TITLES[mode]} | 홍익온`
-    return () => {
-      meta.remove()
-    }
-  }, [mode])
+  const { unlocked, setUnlocked, rawKey, setRawKey, value, setValue, error, setError, checking, setChecking, submit } = useDevPathGate({ mode })
 
   if (unlocked) {
     return (
@@ -72,31 +20,6 @@ export default function DevPathGate({ mode }: { mode: DevPathMode }) {
         {mode === 'audit' ? <DevPathAuditScreen /> : mode === 'survey' ? <DevPathSurveyScreen /> : mode === 'surveyV3' ? <DevPathSurveyV3Screen devKey={rawKey} /> : <DevAskScreen devKey={rawKey} />}
       </Suspense>
     )
-  }
-
-  const submit = async () => {
-    const key = value.trim()
-    if (!key || checking) return
-    setChecking(true)
-    setError(null)
-    try {
-      if ((await sha256Hex(key)) !== KEY_SHA256) {
-        setError('암호키가 맞지 않아요.')
-        return
-      }
-      try {
-        window.sessionStorage.setItem(UNLOCK_KEY, KEY_SHA256)
-        window.sessionStorage.setItem(RAW_KEY, key)
-      } catch {
-        // 저장소를 사용할 수 없으면 새로고침 때 다시 암호키를 묻는다.
-      }
-      setRawKey(key)
-      setUnlocked(true)
-    } catch {
-      setError('이 브라우저에서는 확인할 수 없어요. https 주소로 열어 주세요.')
-    } finally {
-      setChecking(false)
-    }
   }
 
   return (

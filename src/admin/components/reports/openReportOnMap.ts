@@ -1,8 +1,8 @@
 import { requestMapIntent } from '../../../lib/mapIntents'
 import { navigationRef } from '../../../navigation/navigationRef'
-import { openExternalUrl } from '../../../utils/openExternalUrl'
+import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 import type { AdminReport } from '../../types'
-import { googleMapsSearchUrl, reportMapPreviewDetail } from '../../utils/reportReview'
+import { googleMapsSearchUrl, reportMapPreviewDetail } from '../../utils/reports/reportReview'
 
 /**
  * 제보 위치를 지도에서 연다. 좌표가 없으면 아무것도 안 한다.

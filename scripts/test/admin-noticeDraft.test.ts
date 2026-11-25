@@ -10,7 +10,7 @@ import {
   parseKstInput,
   popupTogglePatch,
   toKstInput,
-} from '../../src/admin/utils/noticeDraft'
+} from '../../src/admin/utils/notices/noticeDraft'
 import type { AdminNotice } from '../../src/admin/types'
 
 const kst = (text: string) => Date.parse(`${text.replace(' ', 'T')}:00+09:00`)

@@ -1,24 +1,16 @@
-import { useState, type ReactNode } from 'react'
-import { Platform, ScrollView, StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
+import { type ReactNode } from 'react'
+import { ScrollView, StyleSheet, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { chipStyles } from './chipStyles'
+import { useChipRow } from '../../hooks/map/useChipRow'
 
-interface ChipRowProps {
+export interface ChipRowProps {
   children: ReactNode
   /** 줄 바깥 모양(useChipRowScrollStyle 등). */
   style?: StyleProp<ViewStyle>
   /** 칩 사이 간격·좌우 여백. */
   contentContainerStyle?: StyleProp<ViewStyle>
-}
-
-/**
- * 마우스로 쓰는 데스크톱 웹인지(주 포인터가 정밀하고 hover 가 된다). 휴대폰·태블릿 브라우저는 손가락으로 칩 줄을 밀 수 있어 아니다.
- * 앱(iOS·Android)은 false.
- */
-function isDesktopPointer(): boolean {
-  if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
 /**
@@ -28,12 +20,7 @@ function isDesktopPointer(): boolean {
  * '⋯ 더보기' 버튼을 두고 누르면 모든 칩을 여러 줄로 펼친다(카카오·네이버 지도 웹처럼). 다시 누르면 접는다.
  */
 export default function ChipRow({ children, style, contentContainerStyle }: ChipRowProps) {
-  const [expanded, setExpanded] = useState(false)
-  /** 접힌 줄에서 칩을 줄바꿈으로 늘어놓았을 때의 높이. 한 줄(칩 높이)보다 크면 넘친다. */
-  const [wrappedHeight, setWrappedHeight] = useState(0)
-
-  // 화면 동안 바뀌지 않는 값이라 처음 한 번만 잰다.
-  const [desktop] = useState(isDesktopPointer)
+  const { expanded, setExpanded, wrappedHeight, setWrappedHeight, desktop } = useChipRow()
 
   if (!desktop) {
     return (

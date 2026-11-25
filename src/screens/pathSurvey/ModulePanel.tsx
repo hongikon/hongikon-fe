@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { findModule, type SurveyStore } from '../../utils/pathSurveyStore'
+import { findModule, type SurveyStore } from '../../utils/pathSurvey/store'
 import { Btn, Section, TOUCH, ui } from './ui'
 
 /**

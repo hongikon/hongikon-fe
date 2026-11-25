@@ -8,8 +8,8 @@ import {
   flagCountLabel,
   flagReasonsText,
   topReasonLabel,
-} from '../../src/admin/utils/commentModeration'
-import { withFocusedFirst } from '../../src/admin/utils/focus'
+} from '../../src/admin/utils/comments/commentModeration'
+import { withFocusedFirst } from '../../src/admin/utils/common/focus'
 import type { AdminComment } from '../../src/admin/types'
 
 test('topReasonLabel: 가장 많은 신고 사유, 기타는 건너뛴다', () => {

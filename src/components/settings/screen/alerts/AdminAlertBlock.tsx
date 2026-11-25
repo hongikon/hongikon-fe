@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native'
 import ListRow from '../../../common/ListRow'
 import ToggleSwitch from '../../ToggleSwitch'
-import type { AdminAlertSettingState } from '../../../../hooks/useAdminAlertSetting'
+import type { AdminAlertSettingState } from '../../../../hooks/settings/useAdminAlertSetting'
 import { settingsStyles as s } from '../styles'
 
 interface Props {

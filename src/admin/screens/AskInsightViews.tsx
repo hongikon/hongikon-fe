@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { getErrorMessage, isCancelledError } from '../../apis/client'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { fetchAskNotes, fetchAskReport, updateAskNote } from '../api'
 import { formatDateTime } from '../format'
-import type { AdminAskNote, AdminAskReport } from '../types'
 import { AskNoteForm } from '../components/ask/AskNoteForm'
 import { Badge, Button, Card, EmptyState, FilterTabs, InlineError, Loading } from '../ui'
-import { askReasonText, upsertAskNote } from '../utils/askFeedback'
+import { askReasonText } from '../utils/ask/askFeedback'
+import { useAskReportView } from '../hooks/ask/useAskReportView'
+import { useAskNotesView } from '../hooks/ask/useAskNotesView'
 
 export { AskNoteForm } from '../components/ask/AskNoteForm'
 
@@ -17,23 +15,7 @@ export { AskNoteForm } from '../components/ask/AskNoteForm'
  * 서버 안에서만 센 값이다. 많이 걸린 묶음부터 안내를 고치거나 '안내로 등록'으로 답을 보탠다.
  */
 export function AskReportView({ onWriteNote }: { onWriteNote: (question: string) => void }) {
-  const [days, setDays] = useState<'7' | '30'>('7')
-  const [report, setReport] = useState<AdminAskReport | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setError(null)
-    fetchAskReport(Number(days), controller.signal)
-      .then(setReport)
-      .catch((err: unknown) => {
-        if (!isCancelledError(err)) setError(getErrorMessage(err, '요약을 불러오지 못했습니다.'))
-      })
-    return () => controller.abort()
-  }, [days, reloadKey])
-
-  const answered = report ? report.resolvedYes + report.resolvedNo : 0
+  const { days, setDays, report, setReport, error, setReloadKey, answered } = useAskReportView()
   return (
     <View style={styles.gap}>
       <FilterTabs
@@ -100,39 +82,7 @@ export function AskReportView({ onWriteNote }: { onWriteNote: (question: string)
 
 /** 등록한 운영진 확인 안내 목록. 지우지 않고 끈다(언제 무엇을 답했는지 남긴다). */
 export function AskNotesView({ draftQuestion, onDraftDone }: { draftQuestion: string | null; onDraftDone: () => void }) {
-  const [notes, setNotes] = useState<AdminAskNote[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [editing, setEditing] = useState<number | 'new' | null>(draftQuestion !== null ? 'new' : null)
-  const [reloadKey, setReloadKey] = useState(0)
-  const [filter, setFilter] = useState<'ON' | 'ALL'>('ON')
-
-  useEffect(() => {
-    if (draftQuestion !== null) setEditing('new')
-  }, [draftQuestion])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setError(null)
-    fetchAskNotes(controller.signal)
-      .then(setNotes)
-      .catch((err: unknown) => {
-        if (!isCancelledError(err)) setError(getErrorMessage(err, '안내 목록을 불러오지 못했습니다.'))
-      })
-    return () => controller.abort()
-  }, [reloadKey])
-
-  const saved = (note: AdminAskNote) => {
-    setNotes((prev) => upsertAskNote(prev, note))
-    setEditing(null)
-    onDraftDone()
-  }
-
-  const toggle = (note: AdminAskNote) =>
-    updateAskNote(note.id, { active: !note.active })
-      .then(saved)
-      .catch((err: unknown) => setError(getErrorMessage(err, '바꾸지 못했습니다.')))
-
-  const shown = (notes ?? []).filter((note) => filter === 'ALL' || note.active)
+  const { notes, error, editing, setEditing, setReloadKey, filter, setFilter, saved, toggle, shown } = useAskNotesView({ draftQuestion, onDraftDone })
   return (
     <View style={styles.gap}>
       <View style={styles.row}>

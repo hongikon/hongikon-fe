@@ -3,7 +3,7 @@ import type { MockMode } from './session'
 import { PARTNER_AFFILIATIONS } from '../constants/partnerAffiliations'
 import { PARTNER_CATEGORIES } from '../constants/partnerCategories'
 import { FACILITY_KINDS } from '../constants/facilityKinds'
-import { kstTodayIndex, ymdToDayIndex } from '../utils/exhibitions'
+import { kstTodayIndex, ymdToDayIndex } from '../utils/map/exhibitions'
 import type {
   AdminAskFeedbackItem,
   AdminAskNote,
@@ -422,9 +422,9 @@ const mapPartners: AdminPartner[] = [
 ]
 
 const mapFacilities: AdminFacility[] = [
-  { id: 'mock-r-printer', kind: '프린터', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 9, note: 'PC실 앞' },
-  { id: 'mock-h-reading', kind: '열람실', buildingCode: 'hongik_h', buildingName: '중앙도서관 H동', floor: 3 },
-  { id: 'mock-g-cafe', kind: '카페', buildingCode: 'hongik_g', buildingName: '학생회관 G동', floor: 1, note: '1층 입구' },
+  { id: 'mock-r-printer', kind: '프린터', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 9, note: 'PC실 앞', unavailable: false },
+  { id: 'mock-h-reading', kind: '열람실', buildingCode: 'hongik_h', buildingName: '중앙도서관 H동', floor: 3, unavailable: false },
+  { id: 'mock-g-cafe', kind: '카페', buildingCode: 'hongik_g', buildingName: '학생회관 G동', floor: 1, note: '1층 입구', unavailable: true, unavailableReason: '리모델링 공사' },
   {
     id: 'mock-b-smoking',
     kind: '흡연구역',
@@ -434,10 +434,11 @@ const mapFacilities: AdminFacility[] = [
     note: '건물 뒤 야외',
     lat: 37.5506,
     lng: 126.9258,
+    unavailable: false,
   },
-  { id: 'hi-mh-4f-exhibition', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 4, note: '현대미술관(HoMA) 1관' },
-  { id: 'hi-r-2f-exhibition', kind: '행사·전시', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 2, note: '현대미술관(HoMA) 2관' },
-  { id: 'hi-mh-3f-museum', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 3, note: '박물관' },
+  { id: 'hi-mh-4f-exhibition', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 4, note: '현대미술관(HoMA) 1관', unavailable: false },
+  { id: 'hi-r-2f-exhibition', kind: '행사·전시', buildingCode: 'hongik_r', buildingName: '홍문관 R동', floor: 2, note: '현대미술관(HoMA) 2관', unavailable: false },
+  { id: 'hi-mh-3f-museum', kind: '행사·전시', buildingCode: 'hongik_mh', buildingName: '문헌관 MH동', floor: 3, note: '박물관', unavailable: false },
 ]
 
 /** 오늘(한국 날짜)에서 offset 일 뒤 'YYYY-MM-DD'. 목업 전시가 늘 지금·다음·지난 전시로 보이게 오늘 기준으로 만든다. */
@@ -542,6 +543,10 @@ function facilityFromBody(body: Record<string, unknown>, id: string): AdminFacil
     floor: typeof body.floor === 'number' ? body.floor : undefined,
     note: optionalText(body.note, '위치 설명', 255),
     ...(hasCoords ? checkCoords(body.lat, body.lng) : {}),
+    unavailable: body.unavailable === true,
+    unavailableReason: body.unavailable === true ? optionalText(body.unavailableReason, '이용 불가 사유', 100) : undefined,
+    unavailableFrom: body.unavailable === true && typeof body.unavailableFrom === 'string' ? body.unavailableFrom : undefined,
+    unavailableUntil: body.unavailable === true && typeof body.unavailableUntil === 'string' ? body.unavailableUntil : undefined,
   }
 }
 

@@ -1,10 +1,10 @@
 import { StyleSheet, View } from 'react-native'
 import { ReportCard } from '../components/reports/ReportCard'
 import { ReportDayNav } from '../components/reports/ReportDayNav'
-import { useAdminReports } from '../hooks/useAdminReports'
+import { useAdminReports } from '../hooks/reports/useAdminReports'
 import type { AdminOverview, ReportStatusFilter } from '../types'
 import { Button, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
-import { PERIOD_TABS, emptyReportsMessage, withFocusedFirst } from '../utils/reportReview'
+import { PERIOD_TABS, emptyReportsMessage, withFocusedFirst } from '../utils/reports/reportReview'
 
 export default function ReportsScreen({
   onChanged,

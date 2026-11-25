@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
 import { REPORT_STATUS_LABEL, formatDateTime, formatMemberRef, formatRelative } from '../../format'
-import { useCommentModeration } from '../../hooks/useCommentModeration'
+import { useCommentModeration } from '../../hooks/comments/useCommentModeration'
 import type { AdminComment, AdminFlaggedComment } from '../../types'
 import { Badge, Button, Card, ConfirmBar, InlineError, useAdminHost, type Tone } from '../../ui'
 import {
@@ -13,7 +13,7 @@ import {
   flagCountLabel,
   flagReasonsText,
   type CommentAction,
-} from '../../utils/commentModeration'
+} from '../../utils/comments/commentModeration'
 import { CommentReasonFields } from './CommentReasonFields'
 
 interface Props {

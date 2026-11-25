@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
-import { confirmAction } from '../../screens/pathSurvey/ui'
-import { findModule, type SurveyStore } from '../../utils/pathSurveyStore'
+import { confirmAction } from '../../utils/pathSurvey/ui'
+import { findModule, type SurveyStore } from '../../utils/pathSurvey/store'
 import {
   applyImport,
   describePlan,
@@ -19,7 +19,7 @@ import {
   type GistMeta,
   type GistSettings,
   type ImportPlan,
-} from '../../utils/pathSurveySync'
+} from '../../utils/pathSurvey/sync'
 
 interface SyncOptions {
   store: SurveyStore

@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
 import * as haptics from '../lib/haptics'
-import { GlassLensBase, GlassLensBubble, useGlassLens } from '../components/common/GlassLens'
+import { GlassLensBase, GlassLensBubble } from '../components/common/GlassLens'
+import { useGlassLens } from '../hooks/common/useGlassLens'
 import { RADIUS } from '../constants/spacing'
 
 /** 아이콘 크기·칸 너비. 네이버 지도 하단 바처럼 아이콘만 둔 둥근 캡슐. */

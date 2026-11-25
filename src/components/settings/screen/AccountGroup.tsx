@@ -1,6 +1,6 @@
 import { View } from 'react-native'
 import ListRow from '../../common/ListRow'
-import type { LoginProvider } from '../../../contexts/AuthContext'
+import type { LoginProvider } from '../../../utils/auth/authContext'
 import { loginProviderLabel, loginProviderName, pendingBadge } from '../../../utils/settings/account'
 import GroupHeader from './GroupHeader'
 import { settingsStyles as s } from './styles'

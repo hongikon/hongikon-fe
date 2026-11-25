@@ -2,7 +2,7 @@ import { Text, View } from 'react-native'
 import ListRow from '../../../common/ListRow'
 import ToggleSwitch from '../../ToggleSwitch'
 import ReportKeywordAlerts from '../../ReportKeywordAlerts'
-import type { useReportKeywordAlerts } from '../../../../hooks/useReportKeywordAlerts'
+import type { useReportKeywordAlerts } from '../../../../hooks/settings/useReportKeywordAlerts'
 import { settingsStyles as s } from '../styles'
 
 interface Props {

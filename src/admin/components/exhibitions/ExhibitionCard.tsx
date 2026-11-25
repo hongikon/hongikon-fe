@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { daysUntilStart, dDayLabel, formatExhibitionPeriod, type ExhibitionPhase } from '../../../utils/exhibitions'
+import { daysUntilStart, dDayLabel, formatExhibitionPeriod, type ExhibitionPhase } from '../../../utils/map/exhibitions'
 import type { AdminExhibition } from '../../types'
 import { adminText, Badge, Button, Card, ConfirmBar } from '../../ui'
 

@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { TYPE } from '../../constants/typography'
 import { SPACING } from '../../constants/spacing'
@@ -11,8 +9,9 @@ import TermsModal from '../settings/TermsModal'
 import PrivacyModal from '../settings/PrivacyModal'
 import ConsentCheckRow from './consent/ConsentCheckRow'
 import PrivacyProcessingNotice from './consent/PrivacyProcessingNotice'
+import { useSignupConsentSheet } from '../../hooks/auth/useSignupConsentSheet'
 
-interface SignupConsentSheetProps {
+export interface SignupConsentSheetProps {
   visible: boolean
   /** 어떤 계정으로 시작하는지. 개인정보 안내 문구를 그 계정에 맞춘다(null 이면 둘 다 적는다). */
   provider: 'kakao' | 'apple' | null
@@ -22,8 +21,6 @@ interface SignupConsentSheetProps {
   /** 시트가 닫힌 뒤 불린다. 다음 시스템 화면(Apple·카카오 로그인)을 이때 띄운다. */
   onDismiss?: () => void
 }
-
-type CheckKey = 'terms' | 'privacy' | 'age'
 
 /**
  * 첫 로그인(가입) 직전의 약관 동의 시트(store-submission-kit §3-1, F1).
@@ -36,38 +33,7 @@ type CheckKey = 'terms' | 'privacy' | 'age'
  * 선택 동의 항목은 없다. 나중에 광고성 알림 등 동의 기반 처리를 더하면 선택 항목과 14세 미만 법정대리인 동의가 필요해진다.
  */
 export default function SignupConsentSheet({ visible, provider, onAgree, onClose, onDismiss }: SignupConsentSheetProps) {
-  const insets = useSafeAreaInsets()
-  const [checked, setChecked] = useState<Record<CheckKey, boolean>>({ terms: false, privacy: false, age: false })
-  const [legal, setLegal] = useState<'terms' | 'privacy' | null>(null)
-
-  // 열 때마다 처음부터 체크하게 한다(다른 사람이 쓰던 기기에서 체크가 남아 있지 않게).
-  useEffect(() => {
-    if (visible) setChecked({ terms: false, privacy: false, age: false })
-  }, [visible])
-
-  // 닫히면(보이다가 안 보이게 되면) 바로 onDismiss — 네이티브 창이 아니라 내려가는 애니메이션을 기다릴 것이 없다.
-  const wasVisibleRef = useRef(visible)
-  useEffect(() => {
-    if (wasVisibleRef.current && !visible) onDismiss?.()
-    wasVisibleRef.current = visible
-  }, [visible, onDismiss])
-
-  // Android 뒤로 가기 = 닫기(예전 Modal 의 onRequestClose).
-  useEffect(() => {
-    if (!visible) return
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      onClose()
-      return true
-    })
-    return () => sub.remove()
-  }, [visible, onClose])
-
-  const allChecked = checked.terms && checked.privacy && checked.age
-  const toggle = (key: CheckKey) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }))
-  const toggleAll = () => {
-    const next = !allChecked
-    setChecked({ terms: next, privacy: next, age: next })
-  }
+  const { insets, checked, legal, setLegal, allChecked, toggle, toggleAll } = useSignupConsentSheet({ visible, onClose, onDismiss })
 
   // 네이티브 Modal 을 쓰지 않고 웰컴 화면 위에 덮는 층으로 그린다(10-06). iOS 에서 Modal 이 내려가는 사이에
   // Apple 로그인 창(ASAuthorizationController)이 떠, 로그인 뒤 보이지 않는 Modal 창이 남아 화면 전체가 터치를 받지 않았다.

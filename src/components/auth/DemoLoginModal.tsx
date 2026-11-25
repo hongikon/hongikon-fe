@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { TYPE } from '../../constants/typography'
 import TextField from '../common/TextField'
 import Button from '../common/Button'
+import { useDemoLoginModal } from '../../hooks/auth/useDemoLoginModal'
 
-interface DemoLoginModalProps {
+export interface DemoLoginModalProps {
   visible: boolean
   onClose: () => void
   /** 실패하면 보여줄 문구를 담은 Error 를 던진다(AuthContext.loginWithDemo). */
@@ -19,31 +19,7 @@ interface DemoLoginModalProps {
  * 입력값은 서버로 보내기만 하고 기기에 저장하지 않는다.
  */
 export default function DemoLoginModal({ visible, onClose, onSubmit }: DemoLoginModalProps) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const close = () => {
-    if (pending) return
-    setPassword('')
-    setError(null)
-    onClose()
-  }
-
-  const submit = async () => {
-    if (pending || !username.trim() || !password) return
-    setPending(true)
-    setError(null)
-    try {
-      await onSubmit(username, password)
-      setPassword('')
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '로그인하지 못했어요. 잠시 뒤 다시 시도해 주세요.')
-    } finally {
-      setPending(false)
-    }
-  }
+  const { username, setUsername, password, setPassword, pending, error, close, submit } = useDemoLoginModal({ onClose, onSubmit })
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>

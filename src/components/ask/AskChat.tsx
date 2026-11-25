@@ -1,31 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from 'react'
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View, type ListRenderItem } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
-import type { AskAuth } from "../../apis/ask";
 import ContentColumn from "../common/ContentColumn";
-import { useMapData } from "../../lib/mapData";
-import { useOptionalSettings } from "../../contexts/SettingsContext";
 import type { ChatMessage } from "../../utils/ask/chatTypes";
-import { useChatMessages } from "../../hooks/ask/useChatMessages";
-import { useKeyboardOpen } from "../../hooks/ask/useKeyboardOpen";
-import { usePopularGuides } from "../../hooks/ask/usePopularGuides";
-import { useChatScroll } from "../../hooks/ask/useChatScroll";
-import { useAskComposer } from "../../hooks/ask/useAskComposer";
-import { useAskStream } from "../../hooks/ask/useAskStream";
-import { useFlowChoices } from "../../hooks/ask/useFlowChoices";
-import { useAskFeedback } from "../../hooks/ask/useAskFeedback";
-import { useAskHandoff } from "../../hooks/ask/useAskHandoff";
-import { useAppCommand } from "../../hooks/ask/useAppCommand";
-import { useReplyToggles } from "../../hooks/ask/useReplyToggles";
-import { useLatestRef } from "../../hooks/ask/useLatestRef";
 import AskChatHeader from "./chat/AskChatHeader";
 import { AskEmptyState, AskIntro, AskListFooter, JumpToBottomButton } from "./chat/ChatListParts";
 import AskComposer from "./composer/AskComposer";
 import MessageItem from "./messages/MessageItem";
-import type { AskMapPlace, AskMessageActions, AskMessageEnv } from "./messages/types";
+import type { AskMapPlace } from './messages/types'
+import { useAskChat } from '../../hooks/ask/useAskChat'
+import { keyExtractor } from '../../utils/ask/askChat'
 
-interface AskChatProps {
+export interface AskChatProps {
   /** 있으면 머리에 뒤로 가기 버튼을 단다. */
   onClose?: () => void;
   /**
@@ -56,8 +42,6 @@ interface AskChatProps {
   onAsked?: () => void;
 }
 
-const keyExtractor = (item: ChatMessage) => String(item.id);
-
 /**
  * '물어보기' 챗봇 화면. 고객센터 챗봇처럼 묻고 답한다.
  * 완성 전까지는 운영 앱에 넣지 않고 웹 `/dev/ask`(암호키 인증, `DevPathGate`)에서만 연다(10-15 요청).
@@ -69,57 +53,11 @@ const keyExtractor = (item: ChatMessage) => String(item.id);
  *    되묻기 단계면 ①처럼 버튼으로 되묻는다. 서버가 실패하면(꺼짐·한도·키·네트워크) ①·②로 돌아가지 않고 실패를 알린다(10-27).
  */
 export default function AskChat({ onClose, serverKey, accessToken, beta = false, bottomInset, composerNote, onShowOnMap, onRouteTo, onOpenSettings, onSearchNews, onAsked }: AskChatProps) {
-  const insets = useSafeAreaInsets();
-  const auth: AskAuth | null = serverKey ? { devKey: serverKey } : accessToken ? { accessToken } : null;
-  const authRef = useLatestRef(auth);
-  const appMode = !serverKey;
-  const composer = useAskComposer();
-  // 키보드가 올라오면 아래 탭 바 자리(bottomInset)만큼 띄우던 여백을 없앤다 — 입력칸이 키보드 바로 위에 붙게(11-11 운영진).
-  const keyboardOpen = useKeyboardOpen({ skipWeb: true });
-  const composerBottom = keyboardOpen ? 0 : (bottomInset ?? insets.bottom);
-  const chat = useChatMessages();
-  const { messages } = chat;
-  // 설정 공급자 밖(웹 /dev/ask 미리보기)이면 설정 카드를 띄우지 않는다.
-  const appSettings = useOptionalSettings();
-  const appSettingsRef = useLatestRef(appSettings);
-  const scroll = useChatScroll();
-  const { facilities, buildings, partners } = useMapData();
-  const facilitiesRef = useLatestRef(facilities);
-  const popularRef = usePopularGuides();
-
-  const { ask, stopAsk, clearChat, pending, pendingRef, conversationId } = useAskStream({
-    chat,
-    auth,
-    appMode,
-    appSettings,
-    popularRef,
-    setInput: composer.setInput,
-    atBottomRef: scroll.atBottomRef,
-    onAsked,
-  });
-  const { choose, chooseGuide, follow } = useFlowChoices({ chat, pendingRef, atBottomRef: scroll.atBottomRef });
-  const { answerFeedback, chooseReason } = useAskFeedback({ chat, authRef, conversationId, facilitiesRef });
-  const { updateHandoff, addHandoffImages, sendHandoff } = useAskHandoff({ setMessages: chat.setMessages, authRef });
-  const applyCommand = useAppCommand({ appSettingsRef, setMessages: chat.setMessages });
-  const toggleReply = useReplyToggles(chat.setMessages);
-
-  // 말풍선에 넘기는 값은 같은 참조로 — 흘려받는 동안 글자가 바뀌는 답 한 줄만 다시 그린다.
-  const actions = useMemo<AskMessageActions>(
-    () => ({ choose, chooseGuide, follow, applyCommand, answerFeedback, chooseReason, updateHandoff, addHandoffImages, sendHandoff, toggleReply }),
-    [choose, chooseGuide, follow, applyCommand, answerFeedback, chooseReason, updateHandoff, addHandoffImages, sendHandoff, toggleReply],
-  );
-  const canAttachImages = !!auth && "accessToken" in auth;
-  const places = useMemo(() => ({ buildings, facilities, partners }), [buildings, facilities, partners]);
-  const env = useMemo<AskMessageEnv>(
-    () => ({ appMode, canAttachImages, places, onShowOnMap, onRouteTo, onOpenSettings, onSearchNews }),
-    [appMode, canAttachImages, places, onShowOnMap, onRouteTo, onOpenSettings, onSearchNews],
-  );
+  const { insets, auth, appMode, composer, composerBottom, messages, scroll, ask, stopAsk, clearChat, pending, actions, env, canSend } = useAskChat({ serverKey, accessToken, bottomInset, onShowOnMap, onRouteTo, onOpenSettings, onSearchNews, onAsked })
   const renderMessage = useCallback<ListRenderItem<ChatMessage>>(
     ({ item }) => <MessageItem item={item} env={env} actions={actions} />,
     [env, actions],
   );
-
-  const canSend = composer.input.trim().length > 0 && !pending;
 
   // Android 도 padding(11-14 핫픽스): 물어보기는 모달이 아니라 탭 화면이라, edge-to-edge(Android 15·Expo 기본)에서는 키보드가 떠도
   // 창이 줄지 않아 입력칸이 키보드에 가렸다. KeyboardAvoidingView 는 키보드와 실제로 겹친 만큼만 띄우므로, 창이 줄어드는 기기에서도

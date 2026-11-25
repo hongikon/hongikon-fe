@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { RouteMarker } from '../../src/apis/routes'
-import { routeMapMarks, routeMarkerHtml, routeRuns, routeStyleScript } from '../../src/utils/routeStyleScript'
+import { routeMapMarks, routeMarkerHtml, routeRuns, routeStyleScript } from '../../src/utils/map/route/routeStyleScript'
 
 /** 운영 /map/routes T동 1F → F동 1F 가장 빠른 길(11-16)의 표시 그대로. */
 const T_TO_F: RouteMarker[] = [

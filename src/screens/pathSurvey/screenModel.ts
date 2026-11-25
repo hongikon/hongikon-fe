@@ -1,4 +1,4 @@
-import { darken, type LoadResult, type SurveyModule, type SurveyStore } from '../../utils/pathSurveyStore'
+import { darken, type LoadResult, type SurveyModule, type SurveyStore } from '../../utils/pathSurvey/store'
 import { shortId } from './ids'
 import { floorKeyOf, type LegacyOverlay } from './legacyOverlay'
 import type { LegacyToggles } from './LegacyPanel'

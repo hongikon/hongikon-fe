@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
-import { updateWorkContext, type WorkContext } from '../../utils/pathSurveyV3/transfer'
+import { type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import { type WorkContext } from '../../utils/pathSurveyV3/transfer'
 import type { NodeType } from '../../utils/pathSurveyV3/types'
 import { TOUCH, ui } from '../pathSurvey/ui'
 import { Chip } from './controls'
 import { BuildingSearch, FloorPicker } from './LevelPicker'
+import { useContextBar } from '../../hooks/pathSurveyV3/useContextBar'
 
 const TYPES: { key: NodeType; label: string }[] = [
   { key: 'basic', label: '기본' },
@@ -31,18 +31,7 @@ export default function ContextBar({
   closeSignal: string | null
   onChange: (next: WorkContext) => void
 }) {
-  const indoor = context.scope === 'indoor'
-  const [open, setOpen] = useState(indoor && (!context.building || context.floors.length === 0))
-  useEffect(() => {
-    if (closeSignal) setOpen(false)
-  }, [closeSignal])
-  const set = (patch: Partial<WorkContext>) => onChange(updateWorkContext(context, patch))
-  const single = context.type === 'entrance'
-  const summary = context.building
-    ? `${shortBuildingName(index.byCode.get(context.building), context.building)} / ${
-        context.floors.length ? [...context.floors].sort((x, y) => x - y).map((f) => floorChipLabel(f)).join(', ') + '층' : '층을 고르세요'
-      }`
-    : '건물과 층을 고르세요'
+  const { indoor, open, setOpen, set, single, summary } = useContextBar({ index, context, closeSignal, onChange })
 
   return (
     <View style={styles.wrap}>

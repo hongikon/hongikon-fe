@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { ALL_ASK_FLOWS } from '../../src/utils/officeAsk'
+import { ALL_ASK_FLOWS } from '../../src/utils/ask/officeAsk'
 import type { ChatMessage } from '../../src/utils/ask/chatTypes'
 import {
   findStep,

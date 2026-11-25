@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import {
+
   ActivityIndicator,
   FlatList,
   Pressable,
@@ -12,8 +13,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../../../../constants/colors'
 import { FONTS } from '../../../../constants/typography'
 import { ToastViewport } from '../../../common/Toast'
-import { reportImageUrls } from '../../../../utils/reports'
-import { moreCommentsLabel } from '../../../../utils/map/commentThreads'
+import { reportImageUrls } from '../../../../utils/map/report/reports'
+import { moreCommentsLabel } from '../../../../utils/map/report/commentThreads'
 import ImageViewerModal from '../../../common/ImageViewerModal'
 import ModalHeader, { ModalPanel } from '../../../settings/ModalHeader'
 import ContentColumn from '../../../common/ContentColumn'
@@ -24,13 +25,13 @@ import { CommentsSkeleton, KeyboardFrame, Separator } from './CommentsModalParts
 import ModerationMenu from '../ModerationMenu'
 import ReportPostBody from '../ReportPostBody'
 import type { ReportCommunityPatch } from '../ReportActionRow'
-import { useReportCommentThread } from '../../../../hooks/map/report/useReportCommentThread'
 import type { ReportComment, ReportListItem } from '../../../../types'
 import EmptyState from '../../../common/EmptyState'
 import { RADIUS } from '../../../../constants/spacing'
 import SwipeBackModal from '../../../common/SwipeBackModal'
+import { useReportCommentsModal } from '../../../../hooks/map/report/comments/useReportCommentsModal'
 
-interface ReportCommentsModalProps {
+export interface ReportCommentsModalProps {
   visible: boolean
   report: ReportListItem
   /** 장소 문구(시트와 같은 값 — 작성자가 고친 장소 설명, 없으면 가까운 건물). */
@@ -58,32 +59,7 @@ export default function ReportCommentsModal({
   onClose,
   focusInput = false,
 }: ReportCommentsModalProps) {
-  // 크게 보는 사진 번호. null 이면 닫힘.
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
-  const closeViewer = useCallback(() => setViewerIndex(null), [])
-  const {
-    items,
-    shown,
-    count,
-    state,
-    refreshing,
-    loadingMore,
-    loadingReplies,
-    replyTo,
-    setReplyTo,
-    focusKey,
-    menuFor,
-    setMenuFor,
-    hasNext,
-    topTotal,
-    listRef,
-    load,
-    loadRest,
-    handlePosted,
-    handleReply,
-    loadMoreReplies,
-    actions,
-  } = useReportCommentThread(report.id, visible, focusInput)
+  const { viewerIndex, setViewerIndex, closeViewer, items, shown, count, state, refreshing, loadingMore, loadingReplies, replyTo, setReplyTo, focusKey, menuFor, setMenuFor, hasNext, topTotal, listRef, load, loadRest, handlePosted, handleReply, loadMoreReplies, actions } = useReportCommentsModal({ visible, report, focusInput })
 
   const renderItem = useCallback(
     ({ item }: { item: ReportComment }) => {

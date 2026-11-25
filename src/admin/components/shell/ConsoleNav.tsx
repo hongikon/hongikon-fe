@@ -6,7 +6,7 @@ import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
 import type { AdminOverview, AdminSection } from '../../types'
 import { ADMIN_COLORS } from '../../ui'
-import { navBadgeCount, navBadgeText } from '../../utils/adminSections'
+import { navBadgeCount, navBadgeText } from '../../utils/shell/adminSections'
 
 const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { section: 'dashboard', label: '대시보드', icon: 'speedometer-outline' },
@@ -16,7 +16,8 @@ const NAV_ITEMS: { section: AdminSection; label: string; icon: ComponentProps<ty
   { section: 'feedback', label: '문의', icon: 'chatbox-ellipses-outline' },
   { section: 'askFeedback', label: '물어보기 피드백', icon: 'thumbs-down-outline' },
   { section: 'partners', label: '제휴업체', icon: 'pricetags-outline' },
-  { section: 'facilities', label: '편의시설', icon: 'business-outline' },
+  { section: 'facilities', label: '시설 관리', icon: 'business-outline' },
+  { section: 'roads', label: '길 관리', icon: 'trail-sign-outline' },
   { section: 'exhibitions', label: '전시', icon: 'easel-outline' },
   { section: 'notices', label: '앱 공지', icon: 'megaphone-outline' },
   { section: 'tools', label: '운영 도구', icon: 'construct-outline' },

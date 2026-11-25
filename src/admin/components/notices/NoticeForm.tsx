@@ -1,7 +1,7 @@
 import { StyleSheet, Text } from 'react-native'
 import { Field, FormActions, FormErrors, OptionChips, TextRow } from '../../MapForm'
 import { adminText, Card } from '../../ui'
-import { MAX_POPUP_DAYS, popupTogglePatch, toKstInput, type NoticeDraft } from '../../utils/noticeDraft'
+import { MAX_POPUP_DAYS, popupTogglePatch, toKstInput, type NoticeDraft } from '../../utils/notices/noticeDraft'
 
 interface Props {
   draft: NoticeDraft

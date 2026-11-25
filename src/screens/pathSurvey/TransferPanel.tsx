@@ -1,9 +1,8 @@
-import { useState } from 'react'
-import { Share, Text, TextInput, View } from 'react-native'
-import { formatModuleExport } from '../../utils/pathSurvey'
-import { findModule, type SurveyStore } from '../../utils/pathSurveyStore'
-import { copyText, downloadText, pickTextFile, serializeAll, serializeModule, stamp } from '../../utils/pathSurveySync'
+import { Text, TextInput, View } from 'react-native'
+import { type SurveyStore } from '../../utils/pathSurvey/store'
+import { pickTextFile, serializeAll, serializeModule } from '../../utils/pathSurvey/sync'
 import { Btn, Section, ui } from './ui'
+import { useTransferPanel } from '../../hooks/pathSurvey/useTransferPanel'
 
 /**
  * 내보내기/가져오기. 전체·모듈 단위 JSON(파일 저장 + 클립보드)과, 모듈 단위 pathNodes.ts 붙여넣기용 코드 조각.
@@ -20,20 +19,7 @@ export default function TransferPanel({
   onImport: (text: string) => void
   onNotice: (text: string) => void
 }) {
-  const [moduleId, setModuleId] = useState(initialModuleId ?? store.modules[0]?.id ?? null)
-  const [showCode, setShowCode] = useState(false)
-  const [paste, setPaste] = useState('')
-  const module = findModule(store, moduleId)
-  const code = module && showCode ? formatModuleExport(module) : ''
-
-  const copy = async (text: string, what: string) => {
-    if (await copyText(text)) return onNotice(`${what} 복사했어요`)
-    await Share.share({ message: text })
-  }
-  const save = (filename: string, text: string) => {
-    if (!downloadText(filename, text)) onNotice('이 브라우저에서는 파일로 저장할 수 없어요. 복사를 써 주세요.')
-  }
-  const fileName = (name: string) => `path-survey-${name.replace(/[\\/:*?"<>|\s]+/g, '_')}-${stamp()}.json`
+  const { moduleId, setModuleId, showCode, setShowCode, paste, setPaste, module, code, copy, save, fileName } = useTransferPanel({ store, initialModuleId, onNotice })
 
   return (
     <View style={{ gap: 16 }}>

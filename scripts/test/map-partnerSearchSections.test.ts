@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { pinnedPartnerGroup, searchResultSections } from '../../src/utils/map/partnerSearchSections'
+import { pinnedPartnerGroup, searchResultSections } from '../../src/utils/map/partner/partnerSearchSections'
 
 const partner = (id: string) => ({ id, name: id }) as never
 const facility = (id: string) => ({ facility: { id }, title: id, subtitle: '' }) as never

@@ -1,4 +1,4 @@
-import { edgeKey } from '../pathSurvey'
+import { edgeKey } from '../pathSurvey/survey'
 import { buildingsContaining, distanceToBuilding, floorChipLabel, type BuildingIndex } from './buildings'
 import { commonLevels, validPairs } from './expand'
 import { hasLevel, isEdgeKind, isValidFloor, type LevelRef, type SurveyEdgeV3, type SurveyNodeV3 } from './types'

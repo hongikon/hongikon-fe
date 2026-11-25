@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { FONTS } from '../../../constants/typography'
-import { formatDayLabel } from '../../utils/reportReview'
+import { formatDayLabel } from '../../utils/reports/reportReview'
 
 interface Props {
   /** 'yyyy-MM-dd' (한국 날짜) */

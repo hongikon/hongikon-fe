@@ -1,23 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { clearNearbyLog, logClock, readNearbyLog, type NearbyLogLine } from '../../../lib/nearbyPartners/debugLog'
+import { clearNearbyLog, logClock } from '../../../lib/nearbyPartners/debugLog'
 import Button from '../../common/Button'
 import { nearbyStyles as styles } from './styles'
+import { useNearbyDecisionLog } from '../../../hooks/settings/nearby/useNearbyDecisionLog'
 
 /**
  * 판단 기록(11-10): 위치를 어떻게 받았는지, 가장 가까운 가게까지 몇 m 였는지, 들어옴·나감, 알림을 걸었는지·안 건 이유.
  * "오래 있었는데 안 왔다", "지나가기만 했는데 왔다"를 현장에서 바로 확인하려는 것. 좌표는 남기지 않는다(`debugLog`).
  */
 export default function NearbyDecisionLog({ visible }: { visible: boolean }) {
-  const [lines, setLines] = useState<NearbyLogLine[]>([])
-  const [expanded, setExpanded] = useState(false)
-  const reload = useCallback(() => {
-    void readNearbyLog().then(setLines)
-  }, [])
-  useEffect(() => {
-    if (visible) reload()
-  }, [visible, reload])
-  const shown = expanded ? lines : lines.slice(0, 30)
+  const { lines, setExpanded, reload, shown } = useNearbyDecisionLog({ visible })
   return (
     <>
       <Text style={styles.settingLabel}>판단 기록(최근 것이 위)</Text>

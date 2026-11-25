@@ -4,7 +4,8 @@ import { COLORS } from '../../constants/colors'
 import { layoutStyles } from '../../constants/layout'
 import { RADIUS, SPACING } from '../../constants/spacing'
 import { TYPE } from '../../constants/typography'
-import { GlassLensBase, GlassLensBubble, useGlassLens } from './GlassLens'
+import { GlassLensBase, GlassLensBubble } from './GlassLens'
+import { useGlassLens } from '../../hooks/common/useGlassLens'
 
 /**
  * 탭 화면(소식·설정) 맨 위의 둥근 흰 카드(10-07 A안). 회색 바탕 위에 떠 있고, 제목 줄 아래에 세그먼트 탭 같은 것을 담는다.

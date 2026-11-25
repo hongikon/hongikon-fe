@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { consumeSettingsIntent, subscribeSettingsIntent } from '../../lib/settingsIntents'
-import { notify } from '../../utils/dialog'
+import { notify } from '../../utils/common/dialog'
 import type { SettingsGroup } from './types'
 
 interface Options {

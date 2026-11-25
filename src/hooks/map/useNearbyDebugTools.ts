@@ -3,7 +3,7 @@ import { useIsAdmin } from '../../admin/AdminAccess'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { applyNearbyTestLocation, getNearbyOverlay, nearbyAlertsAvailable } from '../../lib/nearbyPartners/background'
 import { SHOW_DEVELOPER_TOOLS, testLocation } from '../../lib/nearbyPartners/debug'
-import { nearbyOverlayScript } from '../../utils/nearbyOverlayScript'
+import { nearbyOverlayScript } from '../../utils/map/nearbyOverlayScript'
 
 type NearbySource = Parameters<typeof applyNearbyTestLocation>[1]
 type LatLng = { lat: number; lng: number }

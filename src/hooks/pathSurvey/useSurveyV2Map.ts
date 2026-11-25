@@ -18,7 +18,7 @@ import {
   updateModule,
   type SurveyModule,
   type SurveyStore,
-} from '../../utils/pathSurveyStore'
+} from '../../utils/pathSurvey/store'
 
 /** v2 화면의 지도 모드·이어 찍기와 선택(지점·간선·잇기 시작점). */
 export function useSurveyV2Selection() {

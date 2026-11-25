@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { ApiError, NetworkError } from '../../src/apis/client'
-import { acceptEditPhotos, formatEditFloor, initialEditPhotos, saveErrorMessage, stepFloor } from '../../src/utils/map/reportEdit'
+import { acceptEditPhotos, formatEditFloor, initialEditPhotos, saveErrorMessage, stepFloor } from '../../src/utils/map/report/reportEdit'
 
 ;(globalThis as { __DEV__?: boolean }).__DEV__ = false
 

@@ -1,7 +1,7 @@
 import { apiRequest } from './client'
 import type { Building } from '../types'
-import type { RoutePoint } from '../utils/floors'
-import { haversineMeters } from '../utils/geo'
+import type { RoutePoint } from '../utils/common/floors'
+import { haversineMeters } from '../utils/common/geo'
 import { pointInRing } from '../utils/pathSurveyV3/geo'
 import { WALKING_METERS_PER_MINUTE } from '../constants/route'
 

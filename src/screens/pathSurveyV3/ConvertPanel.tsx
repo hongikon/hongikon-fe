@@ -1,29 +1,15 @@
-import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { pickTextFile } from '../../utils/pathSurveySync'
-import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
-import {
-  isManualItemOpen,
-  parseV2Text,
-  readV2FromStorage,
-  type ConvertReport,
-  type ManualItem,
-  type ManualKind,
-  type V2Source,
-} from '../../utils/pathSurveyV3/convertV2'
+import { shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
+import { type ConvertReport, type ManualItem, type ManualKind, type V2Source } from '../../utils/pathSurveyV3/convertV2'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'
 import { Btn, Check, Row, Section, ui } from '../pathSurvey/ui'
 import { Chip, Collapsible } from './controls'
+import { useConvertPanel } from '../../hooks/pathSurveyV3/useConvertPanel'
 
 const KIND_TITLE: Record<ManualKind, string> = {
   entrance: '출입구 확인',
   elevator: '엘리베이터 확인',
   boundary: '건물 경계 안의 외부 점',
-}
-
-function floorText(floors: number[] | undefined): string {
-  if (!floors?.length) return ''
-  return floors.length === 1 ? ` ${floorChipLabel(floors[0])}층` : ` ${floorChipLabel(floors[0])}~${floorChipLabel(floors[floors.length - 1])}층`
 }
 
 /** v2 import and the list of points a person has to look at. The v2 data is only read. */
@@ -57,43 +43,7 @@ export default function ConvertPanel({
   onResetKept: () => void
   onMakeIndoor: (ids: string[]) => void
 }) {
-  const [text, setText] = useState('')
-  const hasLocal = useMemo(() => !!readV2FromStorage(), [])
-  const nodeById = useMemo(() => new Map(store.nodes.map((n) => [n.id, n])), [store.nodes])
-  const dismissed = report?.dismissed ?? []
-
-  const fromText = (value: string) => {
-    try {
-      onConvert(parseV2Text(value))
-      setText('')
-    } catch (e) {
-      onNotice(`변환하지 못했어요. ${(e as Error).message}`)
-    }
-  }
-
-  const fromLocal = () => {
-    const source = readV2FromStorage()
-    if (source) onConvert(source)
-    else onNotice('이 브라우저에 읽을 수 있는 v2 조사 내용이 없어요.')
-  }
-
-  const fromFile = async () => {
-    const value = await pickTextFile()
-    if (value) fromText(value)
-  }
-
-  const candidateText = (item: ManualItem) => item.candidates.map((c) => `${index.byCode.get(c.building)?.name ?? c.building}${floorText(c.floors)}`).join(', ')
-
-  const manual = report?.manual ?? []
-  const open = manual.filter((item) => isManualItemOpen(item, nodeById.get(item.nodeId), dismissed))
-  const openBoundary = open.filter((item) => item.kind === 'boundary').map((item) => item.nodeId)
-  const pickedBoundary = openBoundary.filter((id) => multi.includes(id))
-  // Floors differ per building, so the usual bulk step is one building at a time.
-  const boundaryByBuilding = new Map<string, string[]>()
-  for (const item of open) {
-    const code = item.kind === 'boundary' ? item.candidates[0]?.building : undefined
-    if (code) boundaryByBuilding.set(code, [...(boundaryByBuilding.get(code) ?? []), item.nodeId])
-  }
+  const { text, setText, hasLocal, dismissed, fromText, fromLocal, fromFile, candidateText, manual, open, openBoundary, pickedBoundary, boundaryByBuilding } = useConvertPanel({ store, index, report, multi, onConvert, onNotice })
 
   const rowBody = (item: ManualItem) => (
     <View style={{ flex: 1, gap: 2 }}>

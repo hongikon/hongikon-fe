@@ -9,7 +9,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync, appendFileSync } f
 
 register('./ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const { matchAskFlow } = await import('../../src/utils/officeAsk.ts')
+const { matchAskFlow } = await import('../../src/utils/ask/officeAsk.ts')
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, arg, i, all) => (arg.startsWith('--') ? [...pairs, [arg.slice(2), all[i + 1]]] : pairs), []),

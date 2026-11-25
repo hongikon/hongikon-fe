@@ -1,5 +1,5 @@
 import { SUBSCRIBABLE_ITEMS, groupSubscribableItems, type SubscribableGroup } from '../../constants/news'
-import { normalize } from '../normalize'
+import { normalize } from '../common/normalize'
 
 /**
  * 온보딩 '내 학과 고르기'의 계산. `components/onboarding/DeptPickStep` 이 쓰고 `scripts/test/news-dept-pick.test.ts` 가 확인한다.

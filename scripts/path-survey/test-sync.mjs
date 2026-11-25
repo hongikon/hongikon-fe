@@ -5,9 +5,9 @@ import assert from 'node:assert/strict'
 
 register('../ask/ts-hooks.mjs', import.meta.url)
 process.removeAllListeners('warning')
-const S = await import('../../src/utils/pathSurveyStore.ts')
-const Y = await import('../../src/utils/pathSurveySync.ts')
-const { formatModuleExport } = await import('../../src/utils/pathSurvey.ts')
+const S = await import('../../src/utils/pathSurvey/store.ts')
+const Y = await import('../../src/utils/pathSurvey/sync.ts')
+const { formatModuleExport } = await import('../../src/utils/pathSurvey/survey.ts')
 
 function moduleOf(id, updatedAt, extra = {}) {
   return S.normalizeModule({ id, name: id, status: 'draft', color: '#2563EB', nodes: [], edges: [], places: [], memo: '', createdAt: 0, updatedAt, ...extra })

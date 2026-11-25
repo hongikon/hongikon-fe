@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { ANONYMOUS_NAME } from '../utils/nickname'
+import { ANONYMOUS_NAME } from '../utils/settings/nickname'
 
 /**
  * "이 사용자의 제보 숨기기"(App Store 가이드라인 1.2의 사용자 차단). 기기에만 저장하고 서버로 보내지 않는다.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { newsSearchQuery, parseAskAppCommand } from '../../src/utils/askAppCommand'
+import { newsSearchQuery, parseAskAppCommand } from '../../src/utils/ask/askAppCommand'
 
 const ids = (text: string) => {
   const command = parseAskAppCommand(text)

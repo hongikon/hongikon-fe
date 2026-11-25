@@ -1,10 +1,11 @@
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../../constants/colors'
 import { noticeStyles } from './noticeStyles'
+import { useDismissibleNotice } from '../../../hooks/map/notices/useDismissibleNotice'
 
-interface Props {
+export interface Props {
   message: string
   /** `onPress` 가 있을 때 문구 끝에 붙는 행동 이름(예: '보기'). */
   actionLabel?: string
@@ -18,7 +19,7 @@ interface Props {
  * 있으면(예: 지도에 안 보이는 업체 보기) 줄을 누를 때 그 동작을 한다. 이미 닫은 문구면 그리지 않는다.
  */
 function DismissibleNotice({ message, actionLabel, onPress, dismissed, onDismiss }: Props) {
-  const dismiss = useCallback(() => onDismiss(message), [onDismiss, message])
+  const { dismiss } = useDismissibleNotice({ message, onDismiss })
   if (dismissed.has(message)) return null
   return (
     <Pressable

@@ -1,16 +1,14 @@
-import { useCallback, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { useSettings } from '../../contexts/SettingsContext'
-import { filterSubscribableGroups, universityAllSubscribed, universityToggleIds } from '../../utils/news/deptPick'
 import SearchBar from '../news/SearchBar'
 import { OnboardingPrimaryButton } from './OnboardingButtons'
 import DeptRow from './dept/DeptRow'
 import UniversityNoticeChip from './dept/UniversityNoticeChip'
+import { useDeptPickStep } from '../../hooks/onboarding/useDeptPickStep'
 
-interface DeptPickStepProps {
+export interface DeptPickStepProps {
   /** 고른 게 있든 없든 다음 단계로. 구독은 고르는 즉시 이미 저장돼 있다. */
   onNext: () => void
 }
@@ -21,21 +19,7 @@ interface DeptPickStepProps {
  * 아무것도 미리 골라 두지 않는다. 학교 전체 공지는 칩 하나로 한 번에 받을 수 있게만 한다.
  */
 export default function DeptPickStep({ onNext }: DeptPickStepProps) {
-  const { settings, toggleSubscribedDept } = useSettings()
-  const [query, setQuery] = useState('')
-  const subscribed = settings.subscribedDepts
-  const subscribedSet = useMemo(() => new Set(subscribed), [subscribed])
-
-  const groups = useMemo(() => filterSubscribableGroups(query), [query])
-
-  const universityAllOn = universityAllSubscribed(subscribedSet)
-
-  const toggleUniversity = useCallback(() => {
-    // 다 켜져 있으면 모두 끄고, 하나라도 꺼져 있으면 꺼진 것만 켠다.
-    for (const id of universityToggleIds(subscribedSet)) toggleSubscribedDept(id)
-  }, [subscribedSet, toggleSubscribedDept])
-
-  const count = subscribed.length
+  const { toggleSubscribedDept, query, setQuery, subscribedSet, groups, universityAllOn, toggleUniversity, count } = useDeptPickStep()
 
   return (
     <View style={styles.container}>

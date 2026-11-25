@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SPACING } from '../../../constants/spacing'
 import { layoutStyles } from '../../../constants/layout'
 import Button from '../../common/Button'
-import { openExternalUrl } from '../../../utils/openExternalUrl'
+import { openExternalUrl } from '../../../utils/common/openExternalUrl'
 import { HONGIK_HOME_URL, originalLinkLabels } from '../../../utils/news/detail'
 
 /**

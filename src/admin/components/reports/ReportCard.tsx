@@ -2,29 +2,21 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { COLORS } from '../../../constants/colors'
 import { RADIUS } from '../../../constants/spacing'
 import { FONTS } from '../../../constants/typography'
-import { formatReportSchedule, parseReportDays } from '../../../utils/reportSchedule'
-import { reportImageUrls } from '../../../utils/reports'
-import {
-  REPORT_STATUS_LABEL,
-  formatDateTime,
-  formatMemberRef,
-  formatRange,
-  formatRelative,
-  parseServerDate,
-  reportCategoryColor,
-  reportCategoryLabel,
-} from '../../format'
-import { useReportActions } from '../../hooks/useReportActions'
+import { formatReportSchedule, parseReportDays } from '../../../utils/map/report/reportSchedule'
+import { reportImageUrls } from '../../../utils/map/report/reports'
+import { REPORT_STATUS_LABEL, formatDateTime, formatRange, formatRelative, parseServerDate, reportCategoryColor, reportCategoryLabel } from '../../format'
+import { useReportActions } from '../../hooks/reports/useReportActions'
 import { ReportCommentsPanel } from '../../ReportComments'
 import type { AdminReport, ReportStatus } from '../../types'
 import { ADMIN_COLORS, Badge, Card, InlineError, useAdminHost, type Tone } from '../../ui'
 import { ReportAuthorModeration } from '../../UserModeration'
-import { belongsTo, reportLocationText, type ScreenFilter } from '../../utils/reportReview'
+import { belongsTo, reportLocationText, type ScreenFilter } from '../../utils/reports/reportReview'
 import { openReportOnMap } from './openReportOnMap'
 import { ReportActionBar } from './ReportActionBar'
 import { ReportFact } from './ReportFact'
 import { ReportFlags } from './ReportFlags'
 import { ReportPhotos } from './ReportPhotos'
+import { authorText } from '../../utils/reports/reportCard'
 
 const STATUS_TONE: Record<ReportStatus, Tone> = {
   PENDING: 'warning',
@@ -142,14 +134,6 @@ export function ReportCard({ report, filter, onUpdated, highlighted = false }: P
       {actions.actionError ? <InlineError message={actions.actionError} /> : null}
     </Card>
   )
-}
-
-/**
- * 작성자: 앱에 보이는 이름 · 회원 번호(없으면 #id). 로그인 닉네임 원문은 보여 주지 않는다(개인정보 최소 처리) —
- * 필요하면 "작성자 관리" → "로그인 닉네임 보기". 예전 서버의 authorNickname 은 원문이라 쓰지 않는다.
- */
-function authorText(report: AdminReport): string {
-  return formatMemberRef(report.authorDisplayName, report.authorMemberCode, report.authorId)
 }
 
 const styles = StyleSheet.create({

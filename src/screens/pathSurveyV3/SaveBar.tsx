@@ -4,21 +4,7 @@ import { FONTS } from '../../constants/typography'
 import type { ServerStatusLine } from '../../utils/pathSurveyV3/serverSave'
 import type { SaveState } from '../../utils/pathSurveyV3/transfer'
 import { TOUCH } from '../pathSurvey/ui'
-
-export const clockText = (at: number) => {
-  const d = new Date(at)
-  const two = (n: number) => String(n).padStart(2, '0')
-  const today = new Date()
-  const sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
-  return `${sameDay ? '' : `${d.getMonth() + 1}/${d.getDate()} `}${two(d.getHours())}:${two(d.getMinutes())}`
-}
-
-/** Always with the date, for lists that span days. */
-export const dateTimeText = (at: number) => {
-  const d = new Date(at)
-  const two = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`
-}
+import { clockText } from '../../utils/pathSurveyV3/saveBar'
 
 /** Always visible: save button with its state, error count and undo, and the server draft line below. */
 export default function SaveBar({

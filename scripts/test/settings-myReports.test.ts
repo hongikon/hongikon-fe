@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { categoryLabel, deleteConfirmMessage, placeLabel } from '../../src/utils/settings/myReports'
-import { formatFloor } from '../../src/utils/floors'
+import { formatFloor } from '../../src/utils/common/floors'
 
 const report = (patch: Record<string, unknown>) => ({ category: 'ETC', customCategoryLabel: null, buildingName: null, floor: null, placeLabel: null, ...patch }) as never
 

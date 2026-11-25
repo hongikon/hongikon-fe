@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { ENTRANCE_BOUNDARY_TOLERANCE_M, type CheckIssue, type CheckResult } from '../../utils/pathSurveyV3/check'
 import { isValidTolerance, MAX_TOLERANCE_M } from '../../utils/pathSurveyV3/transfer'
 import { Btn, Section, ui } from '../pathSurvey/ui'
 import { Collapsible } from './controls'
+import { useCheckPanel } from '../../hooks/pathSurveyV3/useCheckPanel'
 
 const SEVERITY_COLOR = { error: '#DC2626', warning: '#D97706', info: '#64748B' } as const
 
@@ -73,15 +74,7 @@ export default function CheckPanel({
   onTolerance: (meters: number) => void
   onGo: (issue: CheckIssue) => void
 }) {
-  const summary = useMemo(() => check.infos.find((i) => i.code === 'components'), [check])
-  const infoGroups = useMemo(() => {
-    const groups = new Map<string, CheckIssue[]>()
-    for (const issue of check.infos) {
-      if (issue.code === 'components') continue
-      groups.set(issue.code, [...(groups.get(issue.code) ?? []), issue])
-    }
-    return [...groups]
-  }, [check])
+  const { summary, infoGroups } = useCheckPanel({ check })
 
   return (
     <View style={styles.wrap}>

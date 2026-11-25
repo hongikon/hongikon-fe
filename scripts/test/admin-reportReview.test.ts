@@ -16,7 +16,7 @@ import {
   shiftDay,
   splitsActive,
   withFocusedFirst,
-} from '../../src/admin/utils/reportReview'
+} from '../../src/admin/utils/reports/reportReview'
 import type { AdminReport } from '../../src/admin/types'
 
 // 서버 시각은 존 없는 UTC. 한국 시간 = UTC + 9.

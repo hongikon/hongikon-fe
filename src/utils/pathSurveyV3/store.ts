@@ -1,4 +1,4 @@
-import { edgeKey, round7 } from '../pathSurvey'
+import { edgeKey, round7 } from '../pathSurvey/survey'
 import {
   isNodeType,
   sameLevel,

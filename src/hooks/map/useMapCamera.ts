@@ -2,7 +2,7 @@ import { useCallback, useEffect, type RefObject } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NaverMapViewHandle } from '../../components/map/NaverMapView'
 import { CAMPUS_CENTER, DEFAULT_ZOOM } from '../../constants/map'
-import { CAMPUS_VIEW_BOX, viewBoundsScript } from '../../utils/mapBounds'
+import { CAMPUS_VIEW_BOX, viewBoundsScript } from '../../utils/map/mapBounds'
 import type { Partner } from '../../types'
 
 interface Options {

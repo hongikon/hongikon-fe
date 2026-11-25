@@ -1,4 +1,4 @@
-import type { ReportDayHours } from '../utils/reportSchedule'
+import type { ReportDayHours } from '../utils/map/report/reportSchedule'
 import type { CategoryKey } from '../constants/colors'
 
 export type BuildingCategory = '강의' | '식당' | '편의' | '주차'
@@ -138,6 +138,14 @@ export interface Facility {
    */
   lat?: number
   lng?: number
+  /** 관리자가 '이용 불가'로 둔 시설(11-22). 오늘 이용할 수 없을 때만 온다 — 지도 핀에 금지 배지, 시트에 사유·종료일. */
+  unavailable?: FacilityUnavailable
+}
+
+export interface FacilityUnavailable {
+  reason?: string
+  /** KST 'yyyy-MM-ddTHH:mm', 이때까지(포함). 없으면 관리자가 풀 때까지. */
+  until?: string
 }
 
 /**

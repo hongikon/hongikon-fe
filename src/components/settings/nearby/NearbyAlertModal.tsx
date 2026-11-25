@@ -59,8 +59,6 @@ export default function NearbyAlertModal({ visible, settings, checklist, serverP
               alreadyOn={alreadyOn}
               checklist={checklist}
               serverPaused={serverPaused}
-              radius={flow.radius}
-              dwell={dwell}
               onFixNotifications={() => void flow.fixNotifications()}
               onFixAlways={() => flow.setStep({ kind: 'needsAlways' })}
             />

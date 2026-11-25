@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from './client'
-import { APP_NICKNAME_DAILY_LIMIT } from '../utils/nickname'
+import { APP_NICKNAME_DAILY_LIMIT } from '../utils/settings/nickname'
 
 /** `GET /users/me`. 로그인 닉네임 원문은 내려오지 않는다. */
 export interface MyProfile {

@@ -1,7 +1,7 @@
 import { PATH_EDGES, PATH_WAYPOINTS } from '../../constants/pathNodes'
 import type { Building } from '../../types'
-import { formatFloor } from '../../utils/floors'
-import { resolveRef } from '../../utils/pathAudit'
+import { formatFloor } from '../../utils/common/floors'
+import { resolveRef } from '../../utils/pathSurvey/audit'
 
 /**
  * 기존 경로망(pathNodes.ts)을 조사 화면에 겹쳐 보이기 위한 목록. 보기 전용 — 조사 모듈은 여기 지점에 잇거나 붙지 않는다.

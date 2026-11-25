@@ -1,28 +1,17 @@
-import { useMemo, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import NaverMapView from '../components/map/NaverMapView'
-import type { NaverMapViewHandle } from '../components/map/NaverMapView'
-import { buildMapHTML } from '../utils/mapHtml'
-import { useMapData } from '../lib/mapData'
-import { PATH_WAYPOINTS } from '../constants/pathNodes'
-import { addCustomColor, findModule, loadStore, setEdgeKind, setEdgeMemo, setNodeKind, setNodeMemo, updateModule } from '../utils/pathSurveyStore'
+import { addCustomColor, setEdgeKind, setEdgeMemo, setNodeKind, setNodeMemo, updateModule } from '../utils/pathSurvey/store'
 import { COLORS } from '../constants/colors'
 import { FONTS } from '../constants/typography'
-import { useGistSync } from '../hooks/pathSurvey/useGistSync'
-import { useModuleActions } from '../hooks/pathSurvey/useModuleActions'
-import { useNoIndexPage, useSurveyV2Edits, useSurveyV2MapRender, useSurveyV2Selection } from '../hooks/pathSurvey/useSurveyV2Map'
-import { useSurveyV2Store } from '../hooks/pathSurvey/useSurveyV2Store'
-import { buildLegacyOverlay } from './pathSurvey/legacyOverlay'
 import EditTab from './pathSurvey/EditTab'
 import ModulePanel from './pathSurvey/ModulePanel'
 import ModuleProps from './pathSurvey/ModuleProps'
 import TransferPanel from './pathSurvey/TransferPanel'
 import GistPanel from './pathSurvey/GistPanel'
-import LegacyPanel, { DEFAULT_LEGACY, type LegacyToggles } from './pathSurvey/LegacyPanel'
-import { bootNotice, TABS, type Tab } from './pathSurvey/screenModel'
+import LegacyPanel from './pathSurvey/LegacyPanel'
+import { TABS } from './pathSurvey/screenModel'
 import { Btn } from './pathSurvey/ui'
-
-const initialLoad = () => loadStore(PATH_WAYPOINTS)
+import { useDevPathSurveyScreen } from '../hooks/debug/useDevPathSurveyScreen'
 
 /**
  * 개발용 `/dev/path-survey` — 현장에서 지도를 보며 경로망을 '모듈'(한 층위의 지점·간선 묶음) 단위로 찍는다.
@@ -31,40 +20,7 @@ const initialLoad = () => loadStore(PATH_WAYPOINTS)
  * 상태와 핸들러는 hooks/pathSurvey/* 에, 지도 스크립트·그리기 상태는 pathSurvey/mapBridge·screenModel 에 있다.
  */
 export default function DevPathSurveyScreen() {
-  const webViewRef = useRef<NaverMapViewHandle>(null)
-  const { buildings, data, status, reload } = useMapData()
-  const mapHTML = useMemo(() => buildMapHTML(buildings), [buildings])
-  const { width } = useWindowDimensions()
-  const wide = width >= 900
-
-  const [boot] = useState(initialLoad)
-  const [tab, setTab] = useState<Tab>('edit')
-  const [legacyToggles, setLegacyToggles] = useState<LegacyToggles>(DEFAULT_LEGACY)
-  const [notice, setNotice] = useState(() => bootNotice(boot))
-
-  const { store, storeRef, commit, editActive, undo } = useSurveyV2Store({ boot, setNotice })
-  const selection = useSurveyV2Selection()
-  const { mode, setMode, chain, setChain, selected, setSelected, pending, setPending, selectedEdge, setSelectedEdge, clearSelection } = selection
-  const modules = useModuleActions({
-    storeRef,
-    commit,
-    initialDetailId: boot.store.activeModuleId ?? boot.store.modules[0]?.id ?? null,
-    clearSelection,
-    setTab,
-    setNotice,
-  })
-  const { hidden, detailId } = modules
-  const sync = useGistSync({ store, storeRef, commit, clearSelection, setNotice })
-
-  useNoIndexPage('경로망 조사 | 홍익온')
-
-  const overlay = useMemo(() => buildLegacyOverlay(buildings), [buildings])
-  const active = findModule(store, store.activeModuleId)
-
-  const { handlerRef, deleteSelected, deleteEdge } = useSurveyV2Edits({ storeRef, commit, editActive, selection, setTab, setNotice })
-  const { handleReady } = useSurveyV2MapRender({ webViewRef, store, active, hidden, legacyToggles, overlay, selected, pending, selectedEdge, mode })
-
-  const selectedNode = active && selected ? active.nodes.find((n) => n.id === selected) : undefined
+  const { webViewRef, buildings, data, status, reload, mapHTML, wide, tab, setTab, legacyToggles, setLegacyToggles, notice, setNotice, store, storeRef, commit, editActive, undo, mode, setMode, chain, setChain, setSelected, pending, setPending, selectedEdge, setSelectedEdge, modules, hidden, detailId, sync, overlay, active, handlerRef, deleteSelected, deleteEdge, handleReady, selectedNode, detailModule } = useDevPathSurveyScreen()
 
   const editTab = (
     <EditTab
@@ -96,8 +52,6 @@ export default function DevPathSurveyScreen() {
       onDeleteEdge={deleteEdge}
     />
   )
-
-  const detailModule = findModule(store, detailId)
   const modulesTab = (
     <ModulePanel
       store={store}

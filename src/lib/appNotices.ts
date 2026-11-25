@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { APP_NOTICES, type AppNotice } from '../constants/appNotices'
 import { getServerNotices } from '../apis/notices'
-import { fromServerNotice, mergeNotices } from '../utils/noticeMerge'
+import { fromServerNotice, mergeNotices } from '../utils/settings/noticeMerge'
 
 /**
  * 앱 공지 = 앱에 적힌 공지(constants/appNotices.ts) + 관리자 페이지에서 쓴 서버 공지(GET /notices, 11-09).

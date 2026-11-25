@@ -1,4 +1,4 @@
-import { STAIRS_COLOR } from '../../utils/pathSurveyStore'
+import { STAIRS_COLOR } from '../../utils/pathSurvey/store'
 import { floorChipLabel, shortBuildingName, type BuildingIndex } from '../../utils/pathSurveyV3/buildings'
 import type { ChangeMarks } from '../../utils/pathSurveyV3/changes'
 import type { StoreV3 } from '../../utils/pathSurveyV3/store'

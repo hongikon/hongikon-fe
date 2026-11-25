@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { expandAliases, matchAskFlow } from '../../src/utils/officeAsk'
+import { expandAliases, matchAskFlow } from '../../src/utils/ask/officeAsk'
 
 // 11-10 운영진: 학생들은 뜻 단위 첫 글자로 줄인다(중동·교환·대물·C프). 운영진이 확인한 줄임말만 앱이 넓혀 찾는다.
 test('aliases expand only when the token is the alias plus a particle', () => {
