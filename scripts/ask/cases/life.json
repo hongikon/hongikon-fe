@@ -570,5 +570,37 @@
  {
   "q": "동아리 1학년 때 들어야 할까",
   "expect": "club-types"
+ },
+ {
+  "q": "수시정모 꼭 가야 돼?",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "수시 정모가 뭐야",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "수시정모 안 가면 친구 못 사귀나요",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "우리 과도 수시정모 해?",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "정시로 붙었는데 수시정모 가도 돼?",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "수시 합격생 정모 언제 해요",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "수시정모 참가비 있어?",
+  "expect": "susi-meetup"
+ },
+ {
+  "q": "새내기 정모 가야하나",
+  "expect": "susi-meetup"
  }
 ]
