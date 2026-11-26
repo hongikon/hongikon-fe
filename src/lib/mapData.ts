@@ -13,7 +13,9 @@ import type { Building, Exhibition, Facility, Partner } from '../types'
  * 1. 기기에 저장해 둔 지난 응답(AsyncStorage `hongikon_map_data_v1`)이 있으면 바로 내놓는다(status 'ready').
  * 2. 이어서 서버(`GET /map/data`)에 ETag 로 새 데이터가 있는지 묻는다. 304 면 그대로, 새 데이터면 바꾸고 저장한다.
  * 3. 실패하면 1초·3초 뒤 두 번 더 시도한다. 저장본도 없고 셋 다 실패하면 status 'error' — 화면이 "다시 시도"(`reload`)를 띄운다.
- * 4. 앱이 포그라운드로 돌아왔는데 마지막 성공(실패했으면 마지막 시도)이 30분을 넘었으면 다시 확인한다.
+ * 4. 앱이 포그라운드로 돌아왔는데 마지막 성공(실패했으면 마지막 시도)이 1분을 넘었으면 다시 확인한다.
+ *    앱을 켜 둔 동안에도 3분마다 확인한다(`POLL_INTERVAL_MS`). 바뀐 게 없으면 304 라 본문이 오가지 않는다.
+ *    11-27: 예전엔 30분마다만 물어 관리자가 고친 제휴업체 좌표가 지도에 늦게 나왔다(서버 응답도 no-cache 로 바꿈).
  *    연결이 끊겼다 돌아와도 실패 상태면 다시 받되, 실패가 이어질수록 간격을 늘린다(`RECONNECT_COOLDOWNS_MS`).
  * 5. 4xx(401·404 등)는 몇 번을 보내도 같으니 재시도하지 않는다.
  *
@@ -32,7 +34,9 @@ const STORAGE_KEY = 'hongikon_map_data_v1'
 /** 첫 시도 뒤 재시도 간격. */
 const RETRY_DELAYS_MS = [1_000, 3_000]
 /** 포그라운드로 돌아왔을 때 다시 확인하는 기준. */
-const STALE_AFTER_MS = 30 * 60 * 1000
+const STALE_AFTER_MS = 60 * 1000
+/** 앱이 앞에 떠 있는 동안 다시 확인하는 간격. */
+const POLL_INTERVAL_MS = 3 * 60 * 1000
 /**
  * 연결 복구 알림으로 다시 받기 전, 직전 실패 묶음(시도 3번) 뒤 기다리는 시간. 실패가 이어질수록 늘어난다.
  * 연결 상태는 앱 전역이라 `/map/data` 만 5xx·시간 초과로 실패하고 `/status` 는 멀쩡하면, 확인 요청이 성공할 때마다
@@ -166,6 +170,11 @@ export function initMapData(): void {
     if (appState !== 'active') return
     if (Date.now() - Math.max(lastSuccessAt, lastAttemptAt) > STALE_AFTER_MS) void refresh()
   })
+  // 켜 둔 채로 쓰는 동안에도 관리자 수정(제휴업체 좌표 등)이 몇 분 안에 들어오게. 백그라운드에서는 묻지 않는다.
+  setInterval(() => {
+    if (AppState.currentState !== 'active') return
+    if (Date.now() - Math.max(lastSuccessAt, lastAttemptAt) >= POLL_INTERVAL_MS) void refresh()
+  }, POLL_INTERVAL_MS)
   // 실패 상태에서 연결이 돌아오면 다시 받는다. 첫 실패 뒤엔 바로, 실패가 이어지면 간격을 늘려 가며.
   onReconnect(() => {
     if (state.status !== 'error') return
