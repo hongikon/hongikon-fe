@@ -30,14 +30,19 @@ export function CommentsSkeleton() {
  * 키보드가 입력줄을 가리지 않게 화면 전체를 감싼다. 예전엔 머리줄 아래 목록 칸만 감싸, iOS 가 자기 위치를 화면 기준이 아니라
  * 부모 기준으로 재는 탓에 위쪽 안전 영역(노치)만큼 덜 올라가 입력줄이 키보드에 반쯤 가렸다. 화면 전체를 감싸면 키보드 높이만큼
  * 올리면 되고, 아래 안전 영역(홈 표시줄) 여백은 키보드 뒤로 들어가므로 그만큼 빼 입력줄이 키보드 바로 위에 붙는다.
+ *
+ * Android 도 padding(11-26 핫픽스): 예전엔 Android 모달 창이 키보드만큼 줄어든다고 보고 아무것도 안 했는데, edge-to-edge
+ * (Expo 기본)에서는 모달 창도 줄지 않아 입력줄이 키보드에 가려졌다(물어보기 11-14 핫픽스와 같은 원인). KeyboardAvoidingView 는
+ * 키보드와 실제로 겹친 만큼만 띄우므로 창이 줄어드는 기기에서는 0 이라 두 번 띄우지 않는다. 아래 내비게이션 바 여백도
+ * 키보드 뒤로 들어가 iOS 와 같이 뺀다.
  */
 export function KeyboardFrame({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets()
   return (
     <KeyboardAvoidingView
       style={styles.keyboardFrame}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+      behavior={Platform.OS === 'web' ? undefined : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'web' ? 0 : -insets.bottom}
     >
       {children}
     </KeyboardAvoidingView>
