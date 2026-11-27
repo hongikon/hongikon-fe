@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Easing, PanResponder, Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { settleLayoutSize } from '../../utils/map/sheetLayout'
 
 /** 가장 작은 크기에서 이만큼 더 끌어내리면 닫는다. */
 const DISMISS_OVERSHOOT_PX = 70
@@ -452,8 +453,12 @@ export function useSheetSizing(
     panHandlers,
     /** 머리줄(손잡이 + 종류·제목 줄)을 감싼 View 에 건다 — 그 영역 어디를 끌어도 시트 크기가 바뀐다. */
     chromeHandlers: areaHandlers,
-    onChromeLayout: (e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height),
-    onContentSizeChange: (_w: number, h: number) => setContentHeight(h),
+    // 잰 높이는 settleLayoutSize 로 다듬는다 — 1dp 씩 오락가락하면 시트가 위아래로 떨렸다(갤럭시 S22, 11-27).
+    onChromeLayout: (e: LayoutChangeEvent) => {
+      const h = e.nativeEvent.layout.height
+      setChromeHeight((prev) => settleLayoutSize(prev, h))
+    },
+    onContentSizeChange: (_w: number, h: number) => setContentHeight((prev) => settleLayoutSize(prev, h)),
     /** 본문 `SheetScrollBody` 의 `sheetGesture` 로 넘긴다 — 스크롤 끝에서 더 끌면 시트가 커지거나 작아진다. */
     bodyGesture,
   }
