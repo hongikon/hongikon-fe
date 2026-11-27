@@ -13,6 +13,12 @@ import PrivacyModal from '../components/settings/PrivacyModal'
 import SignupConsentSheet from '../components/auth/SignupConsentSheet'
 import { useWelcomeScreen } from '../hooks/auth/useWelcomeScreen'
 
+/**
+ * 로그인 버튼 글자·아이콘 크기(11-28 사용자: 카카오·Apple 글자 크기를 같게). iOS Apple 버튼은 시스템 버튼이라 글자 크기를 못 바꾸고,
+ * 높이 48 에서 약 20pt(시뮬레이터 캡처로 잼)다. 한글 18pt 가 그 영문 대문자 높이와 거의 같아 카카오·웹 Apple 버튼을 18 로 맞춘다(예전 15).
+ */
+const LOGIN_BUTTON_FONT_SIZE = 18
+const LOGIN_ICON_SIZE = 20
 /** 카카오 버튼과 같은 크기·모서리(앱 공용 Button lg 와 같은 48·12). Apple 버튼은 다른 로그인 버튼보다 작거나 아래에 있으면 안 된다(HIG·심사 4.8). */
 const LOGIN_BUTTON_HEIGHT = 48
 const LOGIN_BUTTON_RADIUS = 12
@@ -70,7 +76,7 @@ export default function WelcomeScreen() {
             <ActivityIndicator color="#3C1E1E" />
           ) : (
             <>
-              <Ionicons name="chatbubble" size={18} color="#3C1E1E" />
+              <Ionicons name="chatbubble" size={LOGIN_ICON_SIZE} color="#3C1E1E" />
               <Text style={styles.kakaoButtonText}>카카오로 시작하기</Text>
             </>
           )}
@@ -91,7 +97,7 @@ export default function WelcomeScreen() {
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <>
-                <Ionicons name="logo-apple" size={18} color={COLORS.white} />
+                <Ionicons name="logo-apple" size={LOGIN_ICON_SIZE} color={COLORS.white} />
                 <Text style={styles.applePlaceholderText}>Apple로 시작하기</Text>
               </>
             )}
@@ -104,7 +110,7 @@ export default function WelcomeScreen() {
             accessibilityLabel="Apple로 시작하기, 준비 중"
             accessibilityState={{ disabled: true }}
           >
-            <Ionicons name="logo-apple" size={18} color={COLORS.white} />
+            <Ionicons name="logo-apple" size={LOGIN_ICON_SIZE} color={COLORS.white} />
             <Text style={styles.applePlaceholderText}>Apple로 시작하기 · 준비 중</Text>
           </TouchableOpacity>
         ))}
@@ -185,8 +191,8 @@ const styles = StyleSheet.create({
   kakaoButton: { backgroundColor: '#FEE500' },
   applePlaceholder: { backgroundColor: '#B9B9B9' },
   appleWebButton: { backgroundColor: '#000000' },
-  applePlaceholderText: { fontSize: 15, fontFamily: FONTS.semibold, color: COLORS.white },
-  kakaoButtonText: { fontSize: 15, fontFamily: FONTS.semibold, color: '#3C1E1E' },
+  applePlaceholderText: { fontSize: LOGIN_BUTTON_FONT_SIZE, fontFamily: FONTS.semibold, color: COLORS.white },
+  kakaoButtonText: { fontSize: LOGIN_BUTTON_FONT_SIZE, fontFamily: FONTS.semibold, color: '#3C1E1E' },
   // 시스템 버튼에는 높이·너비만 준다(배경색·모서리는 buttonStyle·cornerRadius 로만 — Apple 규정).
   appleButton: { width: '100%', height: LOGIN_BUTTON_HEIGHT },
   applePending: { opacity: 0.6 },
