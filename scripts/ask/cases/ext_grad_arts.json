@@ -26,5 +26,14 @@
   {"q": "18학번 미대 졸업요건", "expect": "grad-req-fineart"},
   {"q": "영문과 사무실 어디", "expect": "dept-office"},
   {"q": "교양교육원 전화", "expect": "liberal-arts-office"},
-  {"q": "교양 필수 과목 뭐야", "expect": "gen-ed-rules"}
+  {"q": "교양 필수 과목 뭐야", "expect": "gen-ed-rules"},
+  {"q": "드볼이 뭐야", "expect": "gen-ed-areas"},
+  {"q": "드볼 뭐 들어야 돼?", "expect": "gen-ed-areas"},
+  {"q": "드래곤볼 과목 알려줘", "expect": "gen-ed-areas"},
+  {"q": "드볼 다 모아야 졸업해?", "expect": "gen-ed-areas"},
+  {"q": "교양 영역별 과목 뭐 있어?", "expect": "gen-ed-areas"},
+  {"q": "예술과 디자인 영역 과목 뭐 있어", "expect": "gen-ed-areas"},
+  {"q": "공학의 이해 영역 과목 뭐가 있어?", "expect": "gen-ed-areas"},
+  {"q": "사회와 경제 영역 수업 추천", "expect": "gen-ed-areas"},
+  {"q": "핸드볼부 어디야", "expect": "none"}
 ]
