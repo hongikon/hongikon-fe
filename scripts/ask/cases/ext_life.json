@@ -329,5 +329,45 @@
   {"q": "해외봉사 가는데 약", "expect": "overseas-volunteer"},
   {"q": "제3기숙사 거리 얼마나 돼요", "expect": "life-dorm-3-where"},
   {"q": "복학생 기숙사 신청", "expect": "dorm-apply"},
-  {"q": "기숙사비 얼마", "expect": "life-dorm-fee"}
+  {"q": "기숙사비 얼마", "expect": "life-dorm-fee"},
+ {
+  "q": "기숙사 가산점 있어?",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "기숙사 상점 받으면 선발에 반영돼?",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "2학년 기숙사 신청 기준 신입생이랑 달라?",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "재학생 기숙사 선발 기준",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "긱사 가산점 있어?",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "3학년 긱사 선발 기준",
+  "expect": "life-dorm-qualify"
+ },
+ {
+  "q": "3긱 어디 있어?",
+  "expect": "life-dorm-3-where"
+ },
+ {
+  "q": "2긱 신청 언제야",
+  "expect": "dorm-apply"
+ },
+ {
+  "q": "3긱 식당 있어?",
+  "expect": "life-dorm-food"
+ },
+ {
+  "q": "제3기숙사 식당 있어?",
+  "expect": "life-dorm-food"
+ }
 ]
