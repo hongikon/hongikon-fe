@@ -141,7 +141,7 @@ const users: AdminUser[] = [
 
 /** 새 서버 응답 모양: 로그인 닉네임 원문 없이 표시 이름·앱 닉네임만. nickname 은 표시 이름과 같은 값(구버전 화면 호환 키). */
 /** 목업 공식 이름(PUT/DELETE /admin/users/{id}/official). */
-const officialNames: Record<number, string> = {}
+const officialNames: Record<number, string> = { 21: '총학생회' }
 
 function userResponse(user: AdminUser): AdminUser {
   const official = officialNames[user.id] ?? null
@@ -811,7 +811,13 @@ export async function handleMockRequest(path: string, options: MockOptions, mode
     // 백엔드 AdminUserService.search 와 같은 규칙: 회원 번호(대소문자 무시) + 숫자면 id, 아니면 앱 닉네임 일부.
     // 로그인 닉네임으로는 찾지 않는다(개인정보 최소 처리).
     const q = (params.get('q') ?? '').trim()
-    if (!q) return { users: users.filter((user) => user.status === 'SUSPENDED').map(userResponse) }
+    if (!q) {
+      const list = params.get('list') ?? 'SUSPENDED'
+      const picked = list === 'OFFICIAL' ? users.filter((user) => officialNames[user.id])
+        : list === 'ADMIN' ? users.filter((user) => user.role === 'ADMIN')
+        : users.filter((user) => user.status === 'SUSPENDED')
+      return { users: picked.map(userResponse) }
+    }
     const code = q.toUpperCase()
     const byCode = /^[A-Z0-9]{10}$/.test(code) ? users.filter((user) => user.memberCode === code) : []
     const rest = /^\d+$/.test(q)

@@ -25,6 +25,7 @@ import type {
   AdminFlaggedCommentList,
   AdminLoginName,
   AdminUser,
+  AdminUserList,
   AdminOverview,
   AdminReport,
   AdminReportFlag,
@@ -322,8 +323,14 @@ export function isAdminCommentsMissing(error: unknown): boolean {
  * q: 회원 번호(10자리, 대소문자 무시), 회원 id(숫자) 또는 앱 닉네임 일부. 비우면 정지된 회원 목록.
  * 로그인 닉네임으로는 찾지 않는다(서버도 안 찾는다 — 개인정보 최소 처리).
  */
-export async function searchUsers(q: string, signal?: AbortSignal): Promise<AdminUser[]> {
-  const query = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''
+/**
+ * 회원 검색. 검색어가 비면 list 가 고른 목록(정지·공식 계정·관리자). 정지 목록은 list 없이 보내
+ * list 를 모르는 구버전 서버에서도 지금처럼 동작한다.
+ */
+export async function searchUsers(q: string, list: AdminUserList, signal?: AbortSignal): Promise<AdminUser[]> {
+  const query = q.trim()
+    ? `?q=${encodeURIComponent(q.trim())}`
+    : list === 'SUSPENDED' ? '' : `?list=${list}`
   const response = await adminRequest<{ users: AdminUser[] }>(`/admin/users${query}`, { signal })
   return response?.users ?? []
 }
