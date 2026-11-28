@@ -1,25 +1,32 @@
-import { StyleSheet, TextInput, View } from 'react-native'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { COLORS } from '../../constants/colors'
 import { FONTS } from '../../constants/typography'
-import { Button, Card, EmptyState, InlineError, Loading, ScreenHeader } from '../ui'
+import { Button, Card, EmptyState, FilterTabs, InlineError, Loading, ScreenHeader } from '../ui'
+import type { AdminUserList } from '../types'
 import { UserModerationPanel } from '../UserModeration'
 import { RADIUS } from '../../constants/spacing'
 import { useUsersScreen } from '../hooks/users/useUsersScreen'
 
 /**
  * 회원 조회와 이용 정지(약관 제10조, App Store 가이드라인 1.2).
- * 검색어가 비면 정지된 회원 목록. 회원 번호(10자리, 대소문자 무시), 숫자면 회원 id, 그 밖에는 앱 닉네임 일부로 찾는다.
+ * 검색어가 비면 고른 목록(이용 정지·공식 계정·관리자). 회원 번호(10자리, 대소문자 무시), 숫자면 회원 id, 그 밖에는 앱 닉네임 일부로 찾는다.
  * 로그인(카카오/Apple) 닉네임으로는 찾지 않는다 — 실명일 수 있어 운영진도 앱에 보이는 이름·회원 번호로만 회원을 가리킨다.
  */
 /** initialQuery: 관리자 알림(재가입 회원)으로 들어오면 그 회원 id 로 바로 검색한다. */
+const LISTS: readonly { value: AdminUserList; label: string; empty: string }[] = [
+  { value: 'SUSPENDED', label: '이용 정지', empty: '이용 정지된 회원이 없습니다.' },
+  { value: 'OFFICIAL', label: '공식 계정', empty: '공식 계정이 없습니다.' },
+  { value: 'ADMIN', label: '관리자', empty: '관리자 계정이 없습니다.' },
+]
+
 export default function UsersScreen({ initialQuery = '' }: { initialQuery?: string } = {}) {
-  const { app, input, setInput, query, users, loading, error, setReloadKey, submit, replace } = useUsersScreen({ initialQuery })
+  const { app, input, setInput, query, list, chooseList, users, loading, error, setReloadKey, submit, replace } = useUsersScreen({ initialQuery })
 
   return (
     <View>
       <ScreenHeader
         title="회원"
-        subtitle="회원 번호(10자리), 회원 id 또는 앱 닉네임으로 찾습니다. 검색어가 없으면 이용 정지된 회원을 보여줍니다. 회원 번호는 앱 설정 > 계정과 제보·신고·문의 화면에서 확인할 수 있습니다."
+        subtitle="회원 번호(10자리), 회원 id 또는 앱 닉네임으로 찾습니다. 검색어가 없으면 아래에서 고른 목록(이용 정지·공식 계정·관리자)을 보여줍니다. 회원 번호는 앱 설정 > 계정과 제보·신고·문의 화면에서 확인할 수 있습니다."
       />
       <View style={styles.search}>
         <TextInput
@@ -37,11 +44,16 @@ export default function UsersScreen({ initialQuery = '' }: { initialQuery?: stri
         <Button label="검색" icon="search" onPress={submit} variant="primary" small />
       </View>
 
+      <View style={styles.lists}>
+        <FilterTabs options={LISTS} value={list} onChange={chooseList} />
+        {query ? <Text style={styles.listsHint}>검색 결과를 보고 있습니다. 목록을 누르면 검색어가 지워집니다.</Text> : null}
+      </View>
+
       {error ? <InlineError message={error} onRetry={() => setReloadKey((key) => key + 1)} style={styles.error} /> : null}
       {!users ? (
         loading ? <Loading /> : null
       ) : users.length === 0 ? (
-        <EmptyState message={query ? '찾는 회원이 없습니다.' : '이용 정지된 회원이 없습니다.'} />
+        <EmptyState message={query ? '찾는 회원이 없습니다.' : LISTS.find((option) => option.value === list)?.empty ?? ''} />
       ) : (
         <View style={styles.list}>
           {users.map((user) => (
@@ -70,6 +82,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   inputApp: { minHeight: 44, fontSize: 16 },
+  lists: { marginBottom: 12, gap: 6 },
+  listsHint: { fontFamily: FONTS.regular, fontSize: 12, color: COLORS.textSecondary },
   error: { marginBottom: 12 },
   list: { gap: 12 },
 })
