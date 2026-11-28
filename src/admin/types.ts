@@ -159,6 +159,9 @@ export type UserStatus = 'ACTIVE' | 'SUSPENDED'
  * `GET /admin/users` 한 줄(백엔드 `AdminUserResponse`). 연락처·로그인 닉네임 원문은 오지 않는다(개인정보 최소 처리) —
  * 원문은 `revealLoginName`(GET /admin/users/{id}/login-name)으로만 본다.
  */
+/** 회원 화면에서 검색어 없이 볼 목록(GET /admin/users?list=). 검색어가 있으면 쓰지 않는다. */
+export type AdminUserList = 'SUSPENDED' | 'OFFICIAL' | 'ADMIN'
+
 export interface AdminUser {
   id: number
   /** 공개 회원 번호(영문 대문자·숫자 10자리, 예: K7Q2M9XA4D). 회원 번호를 내려 주기 전 서버면 없다 — 그때는 #id 를 보여 준다. */
